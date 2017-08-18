@@ -1,4 +1,4 @@
-from resource import TaskResource, TaskResourceHeader, prepare_delta_zip
+from .resource import TaskResource, TaskResourceHeader, prepare_delta_zip
 
 import os
 import logging

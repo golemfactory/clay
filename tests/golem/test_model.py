@@ -35,8 +35,9 @@ class TestPayment(DatabaseFixture):
 
     def test_create(self):
         p = m.Payment(payee="DEF", subtask="xyz", value=5,
-                      status=m.PaymentStatus.awaiting)
-        self.assertEquals(p.save(force_insert=True), 1)
+                    status=m.PaymentStatus.awaiting)
+        self.assertEqual(p.save(force_insert=True), 1)
+
         with self.assertRaises(IntegrityError):
             m.Payment.create(payee="DEF", subtask="xyz", value=5,
                              status=m.PaymentStatus.awaiting)

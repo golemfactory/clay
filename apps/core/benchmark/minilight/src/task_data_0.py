@@ -1,4 +1,4 @@
-deserialized_task = u'''
+deserialized_task = '''
 (0.278 0.275 -0.789) (0 0 1) 40
 
 

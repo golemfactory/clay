@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from threading import Thread
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
-    DEVNULL
+    DEVNULL, to_unicode
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 from golem.report import report_calls, Component
@@ -165,7 +165,7 @@ class DockerManager(DockerConfigManager):
             cpu_count = max(int(config_desc.num_cores), cpu_count)
 
         with self._try():
-            memory_size += int(config_desc.max_memory_size) / 1000
+            memory_size += int(config_desc.max_memory_size) // 1000
 
         with self._try():
             if config_desc.docker_machine_name:
@@ -183,15 +183,15 @@ class DockerManager(DockerConfigManager):
 
         if diff:
 
-            for constraint, value in diff.iteritems():
+            for constraint, value in diff.items():
                 min_val = self.min_constraints.get(constraint)
                 diff[constraint] = max(min_val, value)
 
-            for constraint, value in constraints.iteritems():
+            for constraint, value in constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
-            for constraint, value in self.min_constraints.iteritems():
+            for constraint, value in self.min_constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
@@ -288,16 +288,17 @@ class DockerManager(DockerConfigManager):
             command += args
         if machine_name:
             command += [machine_name]
+
         logger.debug('docker_machine_command: %s', command)
+        params = dict(shell=shell, stdin=DEVNULL)
 
         if check_output:
-            return subprocess.check_output(command, shell=shell,
-                                           stderr=subprocess.PIPE,
-                                           stdin=DEVNULL)
-        return subprocess.check_call(command, shell=shell,
-                                     stdout=DEVNULL,
-                                     stderr=DEVNULL,
-                                     stdin=DEVNULL)
+            output = subprocess.check_output(command, stderr=subprocess.PIPE,
+                                             **params)
+            return to_unicode(output)
+
+        return subprocess.check_call(command, stdout=DEVNULL, stderr=DEVNULL,
+                                     **params)
 
     @property
     def config_dir(self):
@@ -318,7 +319,7 @@ class DockerManager(DockerConfigManager):
     @classmethod
     @report_calls(Component.docker, 'images.build')
     def _build_images(cls, entries):
-        cwd = os.getcwdu()
+        cwd = os.getcwd()
 
         for entry in entries:
             image, docker_file, tag = entry
@@ -593,7 +594,7 @@ class VirtualBoxHypervisor(Hypervisor):
         if not vm:
             return
 
-        for name, value in params.iteritems():
+        for name, value in params.items():
             try:
                 setattr(vm, name, value)
             except Exception as e:
@@ -673,7 +674,7 @@ class VirtualBoxHypervisor(Hypervisor):
         return session_obj
 
     def _machine_from_arg(self, machine_obj):
-        if isinstance(machine_obj, basestring):
+        if isinstance(machine_obj, str):
             try:
                 return self.virtualbox.find_machine(machine_obj)
             except Exception as e:

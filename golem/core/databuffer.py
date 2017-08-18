@@ -1,6 +1,7 @@
 import struct
+from golem.core.common import to_unicode
 
-from variables import LONG_STANDARD_SIZE
+from .variables import LONG_STANDARD_SIZE
 
 MAX_BUFFER_SIZE = 2 * 1024 * 1024
 
@@ -9,7 +10,7 @@ class DataBuffer:
     """ Data buffer that helps with network communication. """
     def __init__(self):
         """ Create new data buffer """
-        self.buffered_data = ""
+        self.buffered_data = b""
 
     def append_ulong(self, num):
         """
@@ -19,7 +20,7 @@ class DataBuffer:
         if num < 0:
             raise AttributeError("num must be grater than 0")
         str_num_rep = struct.pack("!L", num)
-        self.buffered_data = "".join([self.buffered_data, str_num_rep])
+        self.buffered_data = b"".join([self.buffered_data, str_num_rep])
         return str_num_rep
 
     def append_string(self, data, check_size=True, overflow_prefix=None):
@@ -30,9 +31,9 @@ class DataBuffer:
         """
         new_size = self.data_size() + len(data)
         if check_size and new_size > MAX_BUFFER_SIZE:
-            self.buffered_data = "".join([overflow_prefix or '', data])
+            self.buffered_data = b"".join([overflow_prefix or '', data])
         else:
-            self.buffered_data = "".join([self.buffered_data, data])
+            self.buffered_data = b"".join([self.buffered_data, data])
 
     def data_size(self):
         """ Return size of data in buffer
@@ -85,7 +86,7 @@ class DataBuffer:
         :return str: all data that was in the buffer.
         """
         ret_data = self.buffered_data
-        self.buffered_data = ""
+        self.buffered_data = b""
 
         return ret_data
 
@@ -118,4 +119,4 @@ class DataBuffer:
 
     def clear_buffer(self):
         """ Remove all data from the buffer """
-        self.buffered_data = ""
+        self.buffered_data = b""

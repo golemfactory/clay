@@ -35,7 +35,7 @@ class MockService(object):
         return number / divisor
 
     def ping(self):
-        return u'pong'
+        return 'pong'
 
     def exception(self):
         n = 2
@@ -69,6 +69,7 @@ class TestRouter(TestDirFixtureWithReactor):
             self.frontend_deferred = None
 
         def add_errors(self, *errors):
+            print('Errors: {}'.format(errors))
             if errors:
                 self.errors += errors
             else:
@@ -84,7 +85,7 @@ class TestRouter(TestDirFixtureWithReactor):
         crossbar_dir = join(self.path, 'definitely_not_exists')
         router = CrossbarRouter(datadir=crossbar_dir)
         assert exists(crossbar_dir)
-        self.assertIsInstance(router, CrossbarRouter, "Something went really wrong...")
+        self.assertIsInstance(router, CrossbarRouter)
         self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
 
         router = CrossbarRouter(datadir=self.path, crossbar_dir='crozzbar')
@@ -116,7 +117,9 @@ class TestRouter(TestDirFixtureWithReactor):
         )
 
         self.state.backend_deferred = self.state.backend_session.connect()
-        self.state.backend_deferred.addCallbacks(self._backend_session_started, self.state.add_errors)
+        self.state.backend_deferred.addCallbacks(
+            self._backend_session_started, self.state.add_errors
+        )
 
     def _backend_session_started(self, *_):
         self.state.frontend_session = Session(
@@ -128,7 +131,9 @@ class TestRouter(TestDirFixtureWithReactor):
         )
 
         self.state.frontend_deferred = self.state.frontend_session.connect()
-        self.state.frontend_deferred.addCallbacks(self._frontend_session_started, self.state.add_errors)
+        self.state.frontend_deferred.addCallbacks(
+            self._frontend_session_started, self.state.add_errors
+        )
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
@@ -153,7 +158,7 @@ class TestRouter(TestDirFixtureWithReactor):
             yield client.exception()
 
         ping_result = yield client.ping()
-        assert ping_result == u'pong'
+        assert ping_result == 'pong'
 
         yield self.state.router.stop()
         self.state.done = True
@@ -163,13 +168,12 @@ class TestRouter(TestDirFixtureWithReactor):
         thread.daemon = True
         thread.start()
 
-        started = time.time()
+        deadline = time.time() + TIMEOUT
 
         while True:
             time.sleep(0.5)
-            if time.time() > started + TIMEOUT:
+            if time.time() > deadline:
                 self.state.errors.append(Exception("Test timed out"))
-
             if self.state.errors or self.state.done:
                 break
 

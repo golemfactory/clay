@@ -31,10 +31,10 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert HardwarePresetsMixin.get_hw_preset(CUSTOM_HARDWARE_PRESET_NAME)
 
         with self.assertRaises(DoesNotExist):
-            assert not HardwarePresetsMixin.get_hw_preset(unicode(uuid.uuid4()))
+            assert not HardwarePresetsMixin.get_hw_preset(str(uuid.uuid4()))
 
     def test_create_hw_preset(self):
-        preset_name = unicode(uuid.uuid4())
+        preset_name = str(uuid.uuid4())
         preset_cpu_cores = 1
         preset_memory = 1000 * 1024
         preset_disk = 1000 * 1024
@@ -72,20 +72,20 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert preset['disk'] == preset_disk
 
         # use upsert to create a preset from dict
-        preset_dict['name'] = unicode(uuid.uuid4())
-        print preset_dict
+        preset_dict['name'] = str(uuid.uuid4())
+        print(preset_dict)
         assert HardwarePresetsMixin.upsert_hw_preset(preset_dict)
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
         # use upsert to create a preset from object
-        preset_dict['name'] = unicode(uuid.uuid4())
+        preset_dict['name'] = str(uuid.uuid4())
         preset = HardwarePreset(**preset_dict)
         assert HardwarePresetsMixin.upsert_hw_preset(preset)
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
     def test_update_hw_preset(self):
         preset_dict = HardwarePresetsMixin.get_hw_caps()
-        preset_dict['name'] = unicode(uuid.uuid4())
+        preset_dict['name'] = str(uuid.uuid4())
         assert HardwarePresetsMixin.create_hw_preset(preset_dict)
 
         preset_dict['cpu_cores'] += 1
@@ -107,10 +107,10 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         with self.assertRaises(ValueError):
             HardwarePresetsMixin.delete_hw_preset(CUSTOM_HARDWARE_PRESET_NAME)
         # test removal of a non-existing preset
-        assert not HardwarePresetsMixin.delete_hw_preset(unicode(uuid.uuid4()))
+        assert not HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4()))
 
         preset_dict = HardwarePresetsMixin.get_hw_caps()
-        preset_dict['name'] = unicode(uuid.uuid4())
+        preset_dict['name'] = str(uuid.uuid4())
 
         # create and remove a preset
         assert HardwarePresetsMixin.create_hw_preset(preset_dict)

@@ -24,8 +24,8 @@ class TaskResourceHeader(object):
             return False
         if len(self.sub_dir_headers) != len(other.sub_dir_headers):
             return False
-        sub1 = sorted(self.sub_dir_headers, lambda x: x.dir_name)
-        sub2 = sorted(other.sub_dir_headers, lambda x: x.dir_name)
+        sub1 = sorted(self.sub_dir_headers, key=lambda x: x.dir_name)
+        sub2 = sorted(other.sub_dir_headers, key=lambda x: x.dir_name)
         for i in range(len(self.sub_dir_headers)):
             if not (sub1[i] == sub2[i]):
                 return False
@@ -126,7 +126,7 @@ class TaskResourceHeader(object):
         abs_dirs = split_path(absolute_root)
         delta_parts = []
 
-        for file_, parts in res_parts.iteritems():
+        for file_, parts in res_parts.items():
             dir_, file_name = os.path.split(file_)
             dirs = split_path(dir_)[len(abs_dirs):]
 
@@ -203,20 +203,20 @@ class TaskResourceHeader(object):
         return last_header, last_ref_header, ref_header_found
 
     def to_string(self):
-        out = u"\nROOT '{}' \n".format(self.dir_name)
+        out = "\nROOT '{}' \n".format(self.dir_name)
 
         if len(self.sub_dir_headers) > 0:
-            out += u"DIRS \n"
+            out += "DIRS \n"
             for d in self.sub_dir_headers:
-                out += u"    {}\n".format(d.dir_name)
+                out += "    {}\n".format(d.dir_name)
 
         if len(self.files_data) > 0:
-            out += u"FILES \n"
+            out += "FILES \n"
             for f in self.files_data:
                 if len(f) > 2:
-                    out += u"    {} {} {}".format(f[0], f[1], f[2])
+                    out += "    {} {} {}".format(f[0], f[1], f[2])
                 else:
-                    out += u"    {} {}".format(f[0], f[1])
+                    out += "    {} {}".format(f[0], f[1])
 
         for d in self.sub_dir_headers:
             out += d.to_string()
@@ -422,7 +422,7 @@ valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 
 
 def remove_disallowed_filename_chars(filename):
-    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('utf-8')
     return ''.join(c for c in cleaned_filename if c in valid_filename_chars)
 
 

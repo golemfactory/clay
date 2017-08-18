@@ -138,10 +138,10 @@ class TestMainWindowCustomizer(TestGui):
         assert customizer.gui.ui.previewLabel.pixmap().width() == 301
         assert customizer.gui.ui.previewLabel.pixmap().height() == 206
 
-        rts.definition.task_type = u"Blender"
+        rts.definition.task_type = "Blender"
         rts.definition.options = MagicMock()
         rts.definition.options.use_frames = True
-        rts.definition.options.frames = range(10)
+        rts.definition.options.frames = list(range(10))
         rts.task_state.outputs = ["result"] * 10
         rts.task_state.extra_data = {"result_preview": [img_path]}
         customizer.update_task_additional_info(rts)
@@ -153,9 +153,9 @@ class TestMainWindowCustomizer(TestGui):
         td.definition.task_type = "Blender"
         td.definition.options.use_frames = True
         td.definition.output_file = os.path.join(self.path, "output.png")
-        td.task_state.outputs = [os.path.join(self.path, u"output0011.png"),
-                                 os.path.join(self.path, u"output0014.png"),
-                                 os.path.join(self.path, u"output0017.png")]
+        td.task_state.outputs = [os.path.join(self.path, "output0011.png"),
+                                 os.path.join(self.path, "output0014.png"),
+                                 os.path.join(self.path, "output0017.png")]
         td.definition.options.frames = [11, 14, 17]
         customizer.logic.get_task.return_value = td
         customizer.current_task_highlighted = td
@@ -164,19 +164,19 @@ class TestMainWindowCustomizer(TestGui):
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[0]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file",
+                                           expected_file + " is not a file",
                                            ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[1]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file",
+                                           expected_file + " is not a file",
                                            ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[2]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file",
+                                           expected_file + " is not a file",
                                            ANY, ANY)
 
     @patch("gui.controller.mainwindowcustomizer.QMessageBox")
@@ -190,7 +190,7 @@ class TestMainWindowCustomizer(TestGui):
         f = Mock()
         f.read.return_value = '[{"key": "value"}]'
 
-        with patch('__builtin__.open') as mock_open:
+        with patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 
@@ -205,7 +205,7 @@ class TestMainWindowCustomizer(TestGui):
         f.read = _raise
         customizer._load_new_task_from_definition.called = False
 
-        with patch('__builtin__.open') as mock_open:
+        with patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 

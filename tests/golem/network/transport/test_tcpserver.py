@@ -137,7 +137,7 @@ class TestPendingConnectionServer(unittest.TestCase):
 
         server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
         assert len(server.pending_connections) == 1
-        pending_conn = next(server.pending_connections.itervalues())
+        pending_conn = next(iter(list(server.pending_connections.values())))
 
         final_failure_called[0] = False
         server.final_conn_failure(pending_conn.id)
@@ -151,7 +151,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         assert not final_failure_called[0]
 
         server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
-        pending_conn = next(server.pending_connections.itervalues())
+        pending_conn = next(iter(list(server.pending_connections.values())))
         server._mark_connected(pending_conn.id, "10.10.10.1", self.port)
         assert pending_conn.status == PenConnStatus.Connected
         assert SocketAddress("10.10.10.1", self.port) == pending_conn.socket_addresses[0]
@@ -185,7 +185,7 @@ class TestPendingConnectionServer(unittest.TestCase):
 
         server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
         assert len(server.pending_connections) == 1
-        pending_conn = next(server.pending_connections.itervalues())
+        pending_conn = next(iter(list(server.pending_connections.values())))
         pending_conn.socket_addresses = []
 
         server._sync_pending()

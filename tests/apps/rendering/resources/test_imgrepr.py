@@ -1,33 +1,29 @@
 import os
 import unittest
 
-import Imath
 from PIL import Image
 
-from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_as_pil, load_img, logger,
-                                              PILImgRepr)
+                                              load_as_pil, load_img, load_as_PILImgRepr,
+                                              logger, PILImgRepr)
 
-from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
-                       make_test_img)
+from golem.testutils import TempDirFixture, PEP8MixIn
+from golem.tools.assertlogs import (LogTestCase)
 
+from tests.apps.rendering.resources.imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
 
 class TImgRepr(ImgRepr):
-
     def load_from_file(self, file_):
         super(TImgRepr, self).load_from_file(file_)
 
-    def get_pixel(self, (i, j)):
-        super(TImgRepr, self).get_pixel((i, j))
+    def get_pixel(self, xy):
+        super(TImgRepr, self).get_pixel(xy)
 
     def get_size(self):
         super(TImgRepr, self).get_size()
 
-    def set_pixel(self, (i, j), color):
-        super(TImgRepr, self).set_pixel((i, j), color)
+    def set_pixel(self, xy, color):
+        super(TImgRepr, self).set_pixel(xy, color)
 
     def copy(self):
         super(TImgRepr, self).copy()
@@ -36,7 +32,10 @@ class TImgRepr(ImgRepr):
         super(TImgRepr, self).to_pil()
 
 
-class TestImgRepr(unittest.TestCase):
+class TestImgRepr(unittest.TestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/resources/imgrepr.py',
+    ]
 
     def test_functions(self):
         t = TImgRepr()
@@ -48,7 +47,11 @@ class TestImgRepr(unittest.TestCase):
         t.set_pixel((0, 0), (0, 0, 0))
 
 
-class TestPILImgRepr(TempDirFixture):
+class TestPILImgRepr(TempDirFixture, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/resources/imgrepr.py',
+    ]
+
     def test_init(self):
         p = PILImgRepr()
         assert isinstance(p, ImgRepr)
@@ -96,14 +99,15 @@ def almost_equal_pixels(pix1, pix2):
         almost_equal(c1, c2)
 
 
-class TestExrImgRepr(TempDirFixture):
+class TestExrImgRepr(TempDirFixture, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/resources/imgrepr.py',
+    ]
     def test_init(self):
         img = EXRImgRepr()
         assert isinstance(img, ImgRepr)
         assert img.img is None
         assert img.type == "EXR"
-        assert img.dw is None
-        assert isinstance(img.pt, Imath.PixelType)
         assert img.rgb is None
         assert img.min == 0.0
         assert img.max == 1.0
@@ -122,7 +126,6 @@ class TestExrImgRepr(TempDirFixture):
     def test_exr_repr(self):
         e = get_exr_img_repr()
         assert e.img is not None
-        assert e.dw is not None
         assert e.rgb is not None
 
         assert e.get_size() == (10, 10)
@@ -196,7 +199,6 @@ class TestExrImgRepr(TempDirFixture):
 
 
 class TestImgFunctions(TempDirFixture, LogTestCase):
-
     def test_load_img(self):
         exr_img = load_img(get_test_exr())
         assert isinstance(exr_img, EXRImgRepr)
@@ -265,7 +267,7 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert exr1.get_pixel((3, 2)) == [0.381103515625,
                                           0.412353515625,
                                           0.42236328125]
-        assert exr2.get_pixel((3, 2)) == [0,  0, 0]
+        assert exr2.get_pixel((3, 2)) == [0, 0, 0]
 
         exr = blend(exr1, exr2, 0.5)
         almost_equal_pixels(exr.get_pixel((3, 2)), [0.1905, 0.206, 0.211])
@@ -281,3 +283,12 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         exr_path = get_test_exr()
         img = load_as_pil(exr_path)
         assert isinstance(img, Image.Image)
+
+    def test_load_as_PILImgRepr(self):
+        img_path = self.temp_file_name("path1.png")
+        make_test_img(img_path)
+        img = load_as_PILImgRepr(img_path)
+        assert isinstance(img, PILImgRepr)
+        exr_path = get_test_exr()
+        img = load_as_PILImgRepr(exr_path)
+        assert isinstance(img, PILImgRepr)

@@ -21,15 +21,15 @@ class TestTaskTableElem(TestCase):
         tte = TaskTableElem("TASK ID", "Finished", "TASK NAMED X")
         assert isinstance(tte, TaskTableElem)
         name = tte.get_column_item(ItemMap.Name)
-        assert u"{}".format(name.text()) == u"TASK NAMED X"
+        assert "{}".format(name.text()) == "TASK NAMED X"
         id = tte.get_column_item(ItemMap.Id)
-        assert u"{}".format(id.text()) == u"TASK ID"
+        assert "{}".format(id.text()) == "TASK ID"
         status = tte.get_column_item(ItemMap.Status)
-        assert u"{}".format(status.text()) == "Finished"
+        assert "{}".format(status.text()) == "Finished"
         time = tte.get_column_item(ItemMap.Time)
-        assert u"{}".format(time.text()) == "00:00:00"
+        assert "{}".format(time.text()) == "00:00:00"
         cost = tte.get_column_item(ItemMap.Cost)
-        assert u"{}".format(cost.text()) == "0.000000"
+        assert "{}".format(cost.text()) == "0.000000"
         with self.assertRaises(ValueError):
             tte.get_column_item(ItemMap.Progress)
 

@@ -1,9 +1,17 @@
+import json
 import unittest
 from os import urandom
-from ethereum import tester
-from rlp.utils import decode_hex, encode_hex
+
+from ethereum import tester, processblock
 from ethereum.utils import int_to_big_endian, zpad
+
 from golem.ethereum.contracts import TestGNT
+from golem.utils import decode_hex, encode_hex
+
+# FIXME: upgrade to pyethereum 2.x
+setattr(processblock, 'unicode', str)
+
+TEST_GNT_ABI = json.loads(TestGNT.ABI)
 
 
 class TestGNTTest(unittest.TestCase):
@@ -13,21 +21,21 @@ class TestGNTTest(unittest.TestCase):
     def deploy_contract(self):
         addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
         self.state.mine()
-        return tester.ABIContract(self.state, TestGNT.ABI, addr)
+        return tester.ABIContract(self.state, TEST_GNT_ABI, addr)
 
     @staticmethod
     def encode_payments(payments):
         args = []
-        value_sum = 0L
+        value_sum = 0
         for idx, v in payments:
             addr = tester.accounts[idx]
             value_sum += v
-            v = long(v)
+            v = int(v)
             assert v < 2**96
             vv = zpad(int_to_big_endian(v), 12)
             mix = vv + addr
             assert len(mix) == 32
-            print encode_hex(mix), "v: ", v, "addr", encode_hex(addr)
+            print(encode_hex(mix), "v: ", v, "addr", encode_hex(addr))
             args.append(mix)
         return args, value_sum
 
@@ -47,7 +55,7 @@ class TestGNTTest(unittest.TestCase):
     def test_transfer(self):
         gnt = self.deploy_contract()
         gnt.create(sender=tester.k1)
-        addr = urandom(20).encode('hex')
+        addr = encode_hex(urandom(20))
         value = 999 * 10**18
         sender_balance_before = self.state.block.get_balance(tester.a1)
         gnt.transfer(addr, value, sender=tester.k1)

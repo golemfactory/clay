@@ -1,6 +1,6 @@
 import sys
 import time
-from Queue import Queue
+from queue import Queue
 from threading import Thread
 
 from mock import Mock, patch, ANY
@@ -15,12 +15,13 @@ from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.startapp import load_environments, start_client, stop_reactor, start_app
+from twisted.python import failure
 
 
 def router_start(fail_on_start):
     def start(_, _reactor, callback, errback):
         if fail_on_start:
-            errback(u"Router error")
+            errback("Router error")
         else:
             callback(Mock())
 
@@ -31,7 +32,7 @@ def session_connect(fail_on_start):
     def connect(instance, *args, **kwargs):
         deferred = Deferred()
         if fail_on_start:
-            deferred.errback(u"Session error")
+            deferred.errback(failure.Failure(ValueError("Session error")))
         else:
             instance.connected = True
             deferred.callback(Mock())
@@ -62,7 +63,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         queue = Queue()
 
         @patch('gui.startapp.start_gui')
-        @patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success"))
+        @patch('golem.client.Client.start', side_effect=lambda *_: queue.put("Success"))
         @patch('golem.client.Client.sync')
         @patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))
         @patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails))
@@ -79,13 +80,16 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 thread = Thread(target=lambda: start_client(start_ranking=False,
                                                             client=client,
                                                             reactor=self._get_reactor()))
+
                 thread.daemon = True
                 thread.start()
-
                 message = queue.get(True, 10)
-                assert unicode(message).find(expected_result) != -1
+                if isinstance(message, failure.Failure):
+                    assert message.getErrorMessage().find(expected_result) != -1
+                else:
+                    assert str(message).find(expected_result) != -1
             except Exception as exc:
-                self.fail(u"Cannot start client process: {}".format(exc))
+                self.fail("Cannot start client process: {}".format(exc))
             finally:
                 if client:
                     client.quit()
@@ -94,7 +98,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def _start_gui(self, session_fails=False, expected_result=None):
 
-        address = WebSocketAddress(u'127.0.0.1', 50000, realm=u'golem')
+        address = WebSocketAddress('127.0.0.1', 50000, realm='golem')
         logger = Mock()
 
         def resolve_call(alias, *args, **kwargs):
@@ -103,11 +107,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             elif alias == aliases.Environment.opts:
                 return DictSerializer.dump(ClientConfigDescriptor())
             elif alias == aliases.Environment.opt_description:
-                return u'test description'
+                return 'test description'
             elif alias == aliases.Payments.ident:
-                return u'0xdeadbeef'
+                return '0xdeadbeef'
             elif alias == aliases.Crypto.key_id:
-                return u'0xbadfad'
+                return '0xbadfad'
             elif alias == aliases.Task.tasks_stats:
                 return dict(
                     in_network=0,
@@ -121,7 +125,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             elif alias == aliases.Network.peers_connected:
                 return []
             elif alias == aliases.Computation.status:
-                return u''
+                return ''
             return 1
 
         with patch('logging.getLogger', return_value=logger), \
@@ -148,19 +152,23 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
                     if logger.error.called:
                         if not logger.error.call_args:
-                            raise Exception(u"Invalid result: {}".format(logger.error.call_args))
+                            raise Exception("Invalid result: {}".format(logger.error.call_args))
 
                         message = logger.error.call_args[0][0]
-                        assert unicode(message).find(expected_result) != -1
+                        if isinstance(message, failure.Failure):
+                            assert message.getErrorMessage().find(
+                                expected_result) != -1
+                        else:
+                            assert message.find(expected_result) != -1
                         break
 
                     elif time.time() > deadline:
-                        raise Exception(u"Test timed out")
+                        raise Exception("Test timed out")
                     else:
                         time.sleep(0.1)
 
             except Exception as exc:
-                self.fail(u"Cannot start gui process: {}".format(exc))
+                self.fail("Cannot start gui process: {}".format(exc))
 
     @patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
@@ -168,7 +176,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
     def test_start_client_success(self, *_):
-        self._start_client(expected_result=u"Success")
+        self._start_client(expected_result="Success")
 
     @patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
@@ -177,7 +185,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
               return_value=True)
     def test_start_client_router_failure(self, *_):
         self._start_client(router_fails=True,
-                           expected_result=u"Router error")
+                           expected_result="Router error")
 
     @patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
@@ -186,7 +194,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
               return_value=True)
     def test_start_client_session_failure(self, *_):
         self._start_client(session_fails=True,
-                           expected_result=u"Session error")
+                           expected_result="Session error")
 
     @patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
@@ -194,7 +202,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
     def test_start_gui_success(self, *_):
-        self._start_gui(expected_result=u"Success")
+        self._start_gui(expected_result="Success")
 
     @patch('logging.config.fileConfig')
     @patch('gui.startgui.config_logging')
@@ -204,7 +212,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
               return_value=True)
     def test_start_gui_failure(self, *_):
         self._start_gui(session_fails=True,
-                        expected_result=u"Session error")
+                        expected_result="Session error")
 
     @patch('twisted.internet.reactor')
     def test_stop_reactor(self, reactor, *_):
@@ -216,11 +224,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         stop_reactor()
         assert reactor.stop.called
 
+    @patch('golem.docker.manager.DockerManager.command')
     @patch('gui.startapp.start_client')
     def test_start_app(self, _start_client, *_):
-
         start_app(datadir=self.tempdir)
-        _start_client.assert_called_with(False, self.tempdir, False)
+        _start_client.assert_called_with(False, self.tempdir, False, True)
 
     def test_load_environments(self, *_):
         envs = load_environments()
@@ -232,7 +240,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         from gui.startapp import start_gui as _start_gui
 
-        rpc_address = WebSocketAddress('127.0.0.1', 12345, u'golem')
+        rpc_address = WebSocketAddress('127.0.0.1', 12345, 'golem')
         address_str = '{}:{}'.format(rpc_address.host, rpc_address.port)
 
         with patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor):

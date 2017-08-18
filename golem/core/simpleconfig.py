@@ -1,4 +1,4 @@
-import ConfigParser
+import configparser
 import logging
 import os
 import shutil
@@ -102,7 +102,7 @@ class SimpleConfig(object):
 
         try:
             write_config = True
-            cfg = ConfigParser.ConfigParser()
+            cfg = configparser.ConfigParser()
             files = cfg.read(cfg_file)
 
             if files:
@@ -149,7 +149,7 @@ class SimpleConfig(object):
         return self._node_config
 
     def __create_fresh_config(self):
-        cfg = ConfigParser.ConfigParser()
+        cfg = configparser.ConfigParser()
         cfg.add_section(self.get_node_config().section())
         return cfg
 
@@ -175,13 +175,14 @@ class SimpleConfig(object):
 
     @staticmethod
     def __write_option(cfg, property_):
-        return cfg.set(property_.section(), property_.key(), property_.value())
+        return cfg.set(property_.section(), property_.key(),
+                       str(property_.value()))
 
     def __read_options(self, cfg):
         for prop in self.get_node_config().properties():
             try:
                 prop.set_value_from_str(self.__read_option(cfg, prop))
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 logger.info(
                     "Adding new config option: %r (%r)",
                     prop.key(),

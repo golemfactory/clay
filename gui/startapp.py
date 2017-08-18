@@ -29,13 +29,13 @@ def load_environments():
 
 def register_task_types(logic):
     from gui.view.widget import TaskWidget
-    for app in apps_manager.apps.values():
+    for app in list(apps_manager.apps.values()):
         task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
         logic.register_new_task_type(task_type)
 
 
 def start_error(err):
-    print(u"Startup error: {}".format(err))
+    print("Startup error: {}".format(err))
 
 
 def start_gui(address):
@@ -60,9 +60,9 @@ def start_gui(address):
     )
 
 
-def start_client(start_ranking, datadir=None,
-                 transaction_system=False, client=None,
-                 reactor=None, **config_overrides):
+def start_client(start_ranking, datadir=None, transaction_system=False,
+                 use_monitor=True, client=None, reactor=None,
+                 **config_overrides):
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
@@ -83,7 +83,8 @@ def start_client(start_ranking, datadir=None,
 
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system,
-                        **config_overrides)
+                        use_monitor=use_monitor, **config_overrides)
+
 
     config = client.config_desc
     methods = object_method_map(client, CORE_METHOD_MAP)
@@ -145,7 +146,7 @@ def start_client(start_ranking, datadir=None,
         process_monitor.exit()
 
 
-def start_app(start_ranking=False, datadir=None,
-              transaction_system=False, rendering=False, **config_overrides):
-    start_client(start_ranking, datadir,
-                 transaction_system, **config_overrides)
+def start_app(start_ranking=False, datadir=None, transaction_system=False,
+              rendering=False, use_monitor=True, **config_overrides):
+    start_client(start_ranking, datadir, transaction_system, use_monitor,
+                 **config_overrides)

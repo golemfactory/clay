@@ -1,5 +1,6 @@
+import json
 import unittest
-from ethereum import tester
+from ethereum import tester, processblock
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
 from ethereum.utils import int_to_big_endian, denoms, zpad
@@ -9,6 +10,11 @@ try:
 except ImportError:
     from BankOfDeposit import BankOfDeposit
 
+
+# FIXME: upgrade to pyethereum 2.x
+setattr(processblock, 'unicode', str)
+
+BANK_OF_DEPOSIT_ABI = json.loads(BankOfDeposit.ABI)
 eth = denoms.ether
 
 
@@ -40,7 +46,7 @@ class BankContractTest(unittest.TestCase):
         owner = self.monitor(owner_idx)
         addr = self.state.evm(decode_hex(BankOfDeposit.INIT_HEX),
                               sender=owner.key)
-        self.c = tester.ABIContract(self.state, BankOfDeposit.ABI, addr)
+        self.c = tester.ABIContract(self.state, BANK_OF_DEPOSIT_ABI, addr)
         return addr, owner.gas()
 
     def contract_balance(self):
@@ -69,16 +75,16 @@ class BankContractTest(unittest.TestCase):
     @staticmethod
     def encode_payments(payments):
         args = []
-        value_sum = 0L
+        value_sum = 0
         for idx, v in payments:
             addr = tester.accounts[idx]
             value_sum += v
-            v = long(v)
+            v = int(v)
             assert v < 2**96
             vv = zpad(int_to_big_endian(v), 12)
             mix = vv + addr
             assert len(mix) == 32
-            print encode_hex(mix), "v: ", v, "addr", encode_hex(addr)
+            print(encode_hex(mix), "v: ", v, "addr", encode_hex(addr))
             args.append(mix)
         return args, value_sum
 
@@ -228,7 +234,7 @@ class BankContractTest(unittest.TestCase):
         self.deploy_contract()
         v = 100
         p = 55 + 44 + 33 + 22
-        d = p / 2
+        d = p // 2
         self.deposit(1, d*eth)  # Deposit half of payments
         self.transfer(1, [(5, 55*eth), (4, 44*eth), (3, 33*eth), (2, 22*eth)],
                       value=(d + 100)*eth)  # Transfer another half + v

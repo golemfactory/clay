@@ -2,6 +2,8 @@ import logging
 import socket
 import sys
 
+import binascii
+
 
 def find_free_net_port():
     """Finds a free port on the host"""
@@ -21,7 +23,7 @@ class UnicodeRecord(logging.LogRecord):
         return u_record
 
     def getMessage(self):
-        if sys.platform == "win32" and isinstance(self.msg, unicode):
+        if sys.platform == "win32" and isinstance(self.msg, str):
             self.msg = self.msg.encode(self.ENCODING, 'replace')
         return super(UnicodeRecord, self).getMessage()
 
@@ -34,6 +36,28 @@ class UnicodeFormatter(logging.Formatter):
     def format(self, record):
         u_record = UnicodeRecord.from_record(record)
         s = super(UnicodeFormatter, self).format(u_record)
-        if not isinstance(s, unicode):
+        if not isinstance(s, str):
             s = s.decode('utf-8', 'replace')
         return s
+
+
+def decode_hex(s):
+    if isinstance(s, str):
+        if s.startswith('0x'):
+            s = s[2:]
+        return bytes.fromhex(s)
+    if isinstance(s, (bytes, bytearray)):
+        if s[0] == b'0' and s[1] == b'x':
+            s = s[2:]
+        return binascii.unhexlify(s)
+    raise TypeError('Value must be an instance of str or bytes')
+
+
+def encode_hex(b):
+    if isinstance(b, str):
+        b = bytes(b, 'utf-8')
+    if isinstance(b, (bytes, bytearray)):
+        if b[0] == b'0' and b[1] == b'x':
+            b = b[2:]
+        return str(binascii.hexlify(b), 'utf-8')
+    raise TypeError('Value must be an instance of str or bytes')

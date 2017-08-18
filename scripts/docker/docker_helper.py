@@ -93,7 +93,7 @@ def __execute(container, cmd, background=False, print_output=True):
     try:
 
         joined = ' '.join(cmd)
-        print container, ':', joined
+        print(container, ':', joined)
 
         if background:
             os.system(joined)
@@ -103,18 +103,18 @@ def __execute(container, cmd, background=False, print_output=True):
             if output:
                 output = output[:-1]
                 if print_output:
-                    print output
+                    print(output)
 
             return output
 
     except subprocess.CalledProcessError as e:
-        print "\tError:", e
+        print("\tError:", e)
     return None
 
 
 def main(argv):
     if len(argv) < 3:
-        print 'Usage:', argv[0], '[image] [command]'
+        print('Usage:', argv[0], '[image] [command]')
         sys.exit(1)
 
     image = argv[1]

@@ -33,25 +33,45 @@ hidden_imports = [
     'Imath'
 ]
 
+binaries = []
+
 is_windows = sys.platform == 'win32'
 icon = None
 
 if is_windows:
-    icon = os.path.join(os.getcwdu(), 'Installer', 'favicon.ico')
+    import site
+    icon = os.path.join(os.getcwd(), 'Installer', 'favicon.ico')
     try:
         import vboxapi
     except ImportError:
-        print 'Error importing VirtualBox API. You can install it with:'
-        print 'python "%VBOX_MSI_INSTALL_PATH%\\sdk\\install\\vboxapisetup.py" install'
+        print('Error importing VirtualBox API. You can install it with:')
+        print('python "%VBOX_MSI_INSTALL_PATH%\\sdk\\install\\vboxapisetup.py" install')
         sys.exit(1)
 
     hidden_imports += ['vboxapi']
+
+    # @todo it should be done better (I mean - really better).
+    # We don't need to pack all of it, but can be as a temporary solution
+    # But when everything calms down, we really HAVE TO fix this
+    dir_ = site.getsitepackages()
+    package = ""
+    for d in dir_:
+        if d.endswith('site-packages'):
+            package = d
+            break
+
+    data = tree(package)
+    for entry in data:
+        el = entry[0]
+        if el.endswith('.pyc') or el.endswith('.pyd') or el.endswith('.dll') or el.endswith('.so'):
+            binaries.append((el, os.path.dirname(el.replace(package, '')[1:])))
+
 
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
              hiddenimports=hidden_imports,
              pathex=[],
-             binaries=[],
+             binaries=binaries,
              datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark'),
              runtime_hooks=[],
              win_no_prefer_redirects=False,

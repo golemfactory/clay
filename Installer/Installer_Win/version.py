@@ -11,7 +11,7 @@ def update_ini():
     commit = file_name_[2]
     version = "[version]\nversion = {}\n".format(tag + ("-" + commit) if commit.startswith('0x') else "")
     with open(version_file, 'wb') as f_:
-        f_.write(version)
+        f_.write(version.encode('ascii'))
 
 if __name__ == '__main__':
     update_ini()

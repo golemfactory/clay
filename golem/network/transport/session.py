@@ -6,15 +6,14 @@ import time
 from golem.core.keysauth import get_random_float
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 from golem.network.transport import message
-from network import Session
+from .network import Session
 
 logger = logging.getLogger(__name__)
 
 
-class SafeSession(Session):
+class SafeSession(Session, metaclass=abc.ABCMeta):
     """ Abstract class that represents session interface with additional opperations for cryptographic
     operations (signing, veryfing, encrypting and decrypting data). """
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def sign(self, msg):
@@ -33,10 +32,9 @@ class SafeSession(Session):
         return
 
 
-class FileSession(Session):
+class FileSession(Session, metaclass=abc.ABCMeta):
     """ Abstract class that represents session interface with additional operations for
     receiving files """
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def data_sent(self, extra_data=None):

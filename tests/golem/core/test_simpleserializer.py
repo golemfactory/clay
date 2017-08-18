@@ -7,7 +7,7 @@ from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, DictCo
 class Example(object):
     def __init__(self):
         self.int = 4
-        self.string = u"abcdefghi\\kwa \\bla"
+        self.string = "abcdefghi\\kwa \\bla"
         self.list = ['a', 'b', 'c']
         self.dict = {'k': None, 'w': 1.0, 'a': 'bla'}
 
@@ -18,7 +18,7 @@ class Example(object):
             return False
         if self.list != exm2.list:
             return False
-        if cmp(self.dict, exm2.dict) != 0:
+        if self.dict != exm2.dict:
             return False
         return True
 
@@ -83,7 +83,7 @@ def assert_properties(first, second):
 
     assert inner.property_1
     assert inner.property_1 == second.property_2.property_1
-    assert isinstance(inner.property_3, basestring)
+    assert isinstance(inner.property_3, str)
     assert isinstance(inner.property_4, list)
 
 
@@ -123,39 +123,39 @@ class TestDictSerializer(unittest.TestCase):
 
     def test_serialization_result(self):
         obj = MockSerializationSubject()
-        self.assertEqual(DictSerializer.dump(obj), {u'property_1': {u'k': u'v',
-             u'u': {
-                 u'property_1': obj.property_1[u'u'].property_1,
-                 u'property_3': u'string',
-                 u'property_4': [u'list',
-                                 u'of',
-                                 (u'items',),
-                                 obj.property_1[u'u'].property_4[-1]],
-                 DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'}
+        self.assertEqual(DictSerializer.dump(obj), {'property_1': {'k': 'v',
+             'u': {
+                 'property_1': obj.property_1['u'].property_1,
+                 'property_3': 'string',
+                 'property_4': ['list',
+                                 'of',
+                                 ('items',),
+                                 obj.property_1['u'].property_4[-1]],
+                 DictCoder.cls_key: 'test_simpleserializer.MockSerializationInnerSubject'}
              },
-             u'property_2': {
-                 u'property_1': obj.property_2.property_1,
-                 u'property_3': u'string',
-                 u'property_4': [u'list',
-                                 u'of',
-                                 (u'items',),
+             'property_2': {
+                 'property_1': obj.property_2.property_1,
+                 'property_3': 'string',
+                 'property_4': ['list',
+                                 'of',
+                                 ('items',),
                                  obj.property_2.property_4[-1]],
-                 DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'},
-             u'property_4': [
-                 u'v',
+                 DictCoder.cls_key: 'test_simpleserializer.MockSerializationInnerSubject'},
+             'property_4': [
+                 'v',
                  1,
                  (1, 2, 3),
                  {
-                     u'property_1': obj.property_4[-1].property_1,
-                     u'property_3': u'string',
-                     u'property_4': [u'list',
-                                     u'of',
-                                     (u'items',),
+                     'property_1': obj.property_4[-1].property_1,
+                     'property_3': 'string',
+                     'property_4': ['list',
+                                     'of',
+                                     ('items',),
                                      obj.property_4[-1].property_4[-1]],
-                     DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'
+                     DictCoder.cls_key: 'test_simpleserializer.MockSerializationInnerSubject'
                  }
              ],
-             DictCoder.cls_key: u'test_simpleserializer.MockSerializationSubject'
+             DictCoder.cls_key: 'test_simpleserializer.MockSerializationSubject'
         })
 
         self.assertFalse(DictCoder.cls_key in DictSerializer.dump(obj, typed=False))

@@ -6,7 +6,7 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
 from golem.resource.dirmanager import find_task_script
-from test_docker_job import TestDockerJob
+from .test_docker_job import TestDockerJob
 
 
 class TestBlenderDockerJob(TestDockerJob):

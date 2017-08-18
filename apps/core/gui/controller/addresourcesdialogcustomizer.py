@@ -20,7 +20,7 @@ class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
         header = self.gui.ui.folderTreeView.header()
         header.setSectionResizeMode(QHeaderView.Stretch)
         header.setSectionResizeMode(0, QHeaderView.Stretch)
-        for i in xrange(1, header.count()):
+        for i in range(1, header.count()):
             header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
     def _set_folder_tree(self, gui):
@@ -32,6 +32,6 @@ class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
 
     def __ok_button_clicked(self):
         self.resources = self.gui.ui.folderTreeView.model().export_checked()
-        self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(
+        self.logic.customizer.gui.ui.resourceFilesLabel.setText("{}".format(
             len(self.resources)))
         self.gui.window.close()

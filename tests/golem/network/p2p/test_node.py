@@ -11,7 +11,7 @@ def is_ip_address(address):
     from ipaddress import ip_address, AddressValueError
     try:
         # will raise error in case of incorrect address
-        ip_address(unicode(address))
+        ip_address(str(address))
         return True
     except (ValueError, AddressValueError):
         return False

@@ -27,7 +27,10 @@
 
 import random
 from unittest import TestCase
-from golem.core import crypto
+
+from devp2p import crypto
+
+from golem.utils import decode_hex
 
 
 def get_ecc(secret=''):
@@ -49,7 +52,7 @@ class TestCrypto(TestCase):
         bob = get_ecc('secret2')
 
         # enc / dec
-        plaintext = "Hello Bob"
+        plaintext = b"Hello Bob"
         ciphertext = crypto.encrypt(plaintext, bob.raw_pubkey)
         assert bob.decrypt(ciphertext) == plaintext
 
@@ -80,12 +83,14 @@ class TestCrypto(TestCase):
         assert alice.raw_pubkey == recovered_pubkey
 
     def test_get_ecdh_key(self):
-        privkey = "332143e9629eedff7d142d741f896258f5a1bfab54dab2121d3ec5000093d74b".decode('hex')
-        remote_pubkey = "f0d2b97981bd0d415a843b5dfe8ab77a30300daab3658c578f2340308a2da1a07f0821367332598b6aa4e180a41e92f4ebbae3518da847f0b1c0bbfe20bcf4e1".decode(
-            'hex')
+        privkey = decode_hex("332143e9629eedff7d142d741f896258f5a1bfab54dab2121"
+                             "d3ec5000093d74b")
+        remote_pubkey = decode_hex("f0d2b97981bd0d415a843b5dfe8ab77a30300daab36"
+                                   "58c578f2340308a2da1a07f0821367332598b6aa4e1"
+                                   "80a41e92f4ebbae3518da847f0b1c0bbfe20bcf4e1")
 
-        agree_expected = "ee1418607c2fcfb57fda40380e885a707f49000a5dda056d828b7d9bd1f29a08".decode(
-            'hex')
+        agree_expected = decode_hex("ee1418607c2fcfb57fda40380e885a707f49000a5d"
+                                    "da056d828b7d9bd1f29a08")
 
         e = crypto.ECCx(raw_privkey=privkey)
         agree = e.get_ecdh_key(remote_pubkey)
@@ -94,20 +99,23 @@ class TestCrypto(TestCase):
     def test_en_decrypt(self):
         alice = crypto.ECCx()
         bob = crypto.ECCx()
-        msg = 'test'
+        msg = b'test'
         ciphertext = alice.encrypt(msg, bob.raw_pubkey)
         assert bob.decrypt(ciphertext) == msg
 
     def test_en_decrypt_shared_mac_data(self):
         alice, bob = crypto.ECCx(), crypto.ECCx()
-        ciphertext = alice.encrypt('test', bob.raw_pubkey, shared_mac_data='shared mac data')
-        assert bob.decrypt(ciphertext, shared_mac_data='shared mac data') == 'test'
+        ciphertext = alice.encrypt(b'test', bob.raw_pubkey,
+                                   shared_mac_data=b'shared mac data')
+        assert bob.decrypt(ciphertext,
+                           shared_mac_data=b'shared mac data') == b'test'
 
     def test_en_decrypt_shared_mac_data_fail(self):
         with self.assertRaises(crypto.ECIESDecryptionError):
             alice, bob = crypto.ECCx(), crypto.ECCx()
-            ciphertext = alice.encrypt('test', bob.raw_pubkey, shared_mac_data='shared mac data')
-            bob.decrypt(ciphertext, shared_mac_data='wrong')
+            ciphertext = alice.encrypt(b'test', bob.raw_pubkey,
+                                       shared_mac_data=b'shared mac data')
+            bob.decrypt(ciphertext, shared_mac_data=b'wrong')
 
     def test_privtopub(self):
         priv = crypto.mk_privkey('test')
@@ -136,4 +144,4 @@ if __name__ == '__main__':
     st = time.time()
     times = 100
     recover_1kb(times=times)
-    print 'took %.5f per recovery' % ((time.time() - st) / times)
+    print('took %.5f per recovery' % ((time.time() - st) / times))

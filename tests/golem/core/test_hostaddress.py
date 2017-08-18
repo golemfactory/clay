@@ -38,7 +38,7 @@ def is_ip_address(address):
     from ipaddress import ip_address, AddressValueError
     try:
         # will raise error in case of incorrect address
-        ip_address(unicode(address))
+        ip_address(str(address))
         return True
     except (ValueError, AddressValueError):
         return False
@@ -78,7 +78,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
-    @patch('stun.get_ip_info')
+    @patch('golem.network.stun.pystun.get_ip_info')
     def test_get_external_address_argument(self, stun):
         stun.return_value = ('2607:f0d0:1002:51::4', 1234, "Open Internet")
         address, port, nat = get_external_address(9876)
@@ -112,7 +112,7 @@ class TestHostAddress(unittest.TestCase):
     def testIpAddressPrivate(self):
         self.assertTrue(ip_address_private('::1'))
         ipv6_private_pattern = 'fd{}::'
-        for i in xrange(0, 256):
+        for i in range(0, 256):
             self.assertTrue(ip_address_private(ipv6_private_pattern.format("%0.2X" % i)))
 
         self.assertTrue(ip_address_private('10.0.0.0'))
@@ -132,10 +132,10 @@ class TestHostAddress(unittest.TestCase):
             '8.8.8.8'
         ]
         nets = [
-            (u'10.0.0.0', 8),
-            (u'127.0.0.0', 8),
-            (u'172.16.0.0', 12),
-            (u'192.168.0.0', 16),
+            ('10.0.0.0', 8),
+            ('127.0.0.0', 8),
+            ('172.16.0.0', 12),
+            ('192.168.0.0', 16),
         ]
 
         self.assertTrue(ip_network_contains(nets[0][0], nets[0][1], addrs[0]))

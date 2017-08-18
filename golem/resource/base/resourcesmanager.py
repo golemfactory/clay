@@ -60,7 +60,7 @@ class Resource(object):
             self.hash, self.task_id)
 
     def __unicode__(self):
-        return unicode(self.__str__())
+        return str(self.__str__())
 
     def __repr__(self):
         return str(self)
@@ -268,9 +268,7 @@ class ResourceStorage(object):
         self.cache.clear()
 
 
-class AbstractResourceManager(IClientHandler):
-    __metaclass__ = abc.ABCMeta
-
+class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
     lock = Lock()
     queue_lock = Lock()
 
@@ -317,7 +315,7 @@ class AbstractResourceManager(IClientHandler):
         for r in resources:
             if not r:
                 continue
-            elif isinstance(r[0], basestring):
+            elif isinstance(r[0], str):
                 results.append(r)
             elif r[0]:
                 results.append([os.path.join(*r[0])] + r[1:])

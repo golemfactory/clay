@@ -33,7 +33,7 @@ class TestStatsSnapshotModel(MonitorTestBaseClass):
                 supported_tasks=supported_tasks,
                 stats=stats_mock,
             )
-            self.assertEquals(mock_send.call_count, 1)
+            self.assertEqual(mock_send.call_count, 1)
             result = mock_send.call_args[0][0].dict_repr()
             for key in ('cliid', 'sessid', 'timestamp'):
                 del result[key]
@@ -43,12 +43,12 @@ class TestStatsSnapshotModel(MonitorTestBaseClass):
                 'supported_tasks': supported_tasks,
             }
             expected.update(stats_d)
-            self.assertEquals(expected, result)
+            self.assertEqual(expected, result)
 
 class TestP2PSnapshotModel(TestCase):
     def test_init(self):
-        cliid = uuid4().get_hex()
-        sessid = uuid4().get_hex()
+        cliid = str(uuid4())
+        sessid = str(uuid4())
         p2psnapshot = [{"key_id": "peer1", "port": 1030, "host": "10.10.10.10"},
                        {"key_id": "peer1", "port": 1111, "host": "192.19.19.19"}]
         model = P2PSnapshotModel(cliid, sessid, p2psnapshot)
@@ -63,8 +63,8 @@ class TestP2PSnapshotModel(TestCase):
 
 class TestVMnapshotModel(TestCase):
     def test_init(self):
-        cliid = uuid4().get_hex()
-        sessid = uuid4().get_hex()
+        cliid = str(uuid4())
+        sessid = str(uuid4())
         vmsnapshot = VMDiagnosticsProvider().get_diagnostics(DiagnosticsOutputFormat.data)
         model = VMSnapshotModel(cliid, sessid, vmsnapshot)
         assert isinstance(model, VMSnapshotModel)

@@ -7,7 +7,7 @@ from golem.tools.uigen import gen_ui_files
 def generate_ui_files():
     golem_path = get_golem_path()
     ui_path = os.path.normpath(os.path.join(golem_path, "gui", "view"))
-    gen_ui_files(ui_path)
+    gen_ui_files(ui_path, 'gui.view.gen')
 
     apps_path = os.path.normpath(os.path.join(golem_path, "apps"))
     apps_candidates = os.listdir(apps_path)

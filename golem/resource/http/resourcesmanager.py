@@ -46,14 +46,14 @@ class HTTPResourceManagerClient(IClient):
         results = []
 
         if files:
-            if isinstance(files, basestring):
+            if isinstance(files, str):
                 f = files
                 if os.path.isfile(f):
                     multihash = file_multihash(f)
                     self._upload(f, multihash, **kwargs)
                     results.append({
-                        u'Name': f,
-                        u'Hash': multihash
+                        'Name': f,
+                        'Hash': multihash
                     })
             else:
                 for f in files:

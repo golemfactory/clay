@@ -4,9 +4,9 @@ import fnmatch
 import time
 import logging
 
-from simpleserializer import SimpleSerializer
-from simpleenv import SimpleEnv
-from variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
+from .simpleserializer import SimpleSerializer
+from .simpleenv import SimpleEnv
+from .variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -152,5 +152,5 @@ if __name__ == "__main__":
     import random
 
     id__ = ps.register_self()
-    print "Registered id {}".format(id__)
+    print("Registered id {}".format(id__))
     time.sleep(5.0 + 10.0 * random.random())

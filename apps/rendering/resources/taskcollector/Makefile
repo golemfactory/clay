@@ -24,4 +24,5 @@ clean:
 	rm -f Release/taskcollector
 
 Release/taskcollector: TaskCollector.cpp
+	mkdir -p Release
 	$(CXX) $(CXXFLAGS) $< $(LDFLAGS) -o $@

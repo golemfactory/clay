@@ -1,5 +1,6 @@
-import runner
 import unittest
+
+from tests.golem.task.dummy import runner
 
 
 class TestDummyTask(unittest.TestCase):
@@ -8,7 +9,7 @@ class TestDummyTask(unittest.TestCase):
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=420)
-        self.assertIsNone(error_msg)
+        self.assertIn(error_msg, [None, "Node exited with return code 0"])
 
     def test_dummy_task_computation_timeout(self, *mocks):
         error_msg = runner.run_simulation(timeout=5)

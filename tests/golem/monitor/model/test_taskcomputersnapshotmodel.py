@@ -19,7 +19,7 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
                 event='task_computer_snapshot',
                 task_computer=computer_mock,
             )
-            self.assertEquals(mock_send.call_count, 1)
+            self.assertEqual(mock_send.call_count, 1)
             result = mock_send.call_args[0][0].dict_repr()
             for key in ('cliid', 'sessid', 'timestamp'):
                 del result[key]
@@ -30,6 +30,6 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
                 'task_requested': task_requested,
                 'counting_task': counting_task,
                 'compute_task': compute_tasks,
-                'assigned_subtasks': assigned_subtasks.keys(),
+                'assigned_subtasks': list(assigned_subtasks.keys()),
             }
-            self.assertEquals(expected, result)
+            self.assertEqual(expected, result)

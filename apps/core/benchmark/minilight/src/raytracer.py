@@ -4,8 +4,8 @@
 #  http://www.hxa.name/minilight
 
 
-from surfacepoint import SurfacePoint
-from vector3f import ZERO
+from .surfacepoint import SurfacePoint
+from .vector3f import ZERO
 
 class RayTracer(object):
 

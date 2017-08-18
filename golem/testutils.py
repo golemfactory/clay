@@ -40,7 +40,7 @@ class TempDirFixture(unittest.TestCase):
         self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.root_dir)
         self.path = self.tempdir  # Alias for legacy tests
         if not is_windows():
-            os.chmod(self.tempdir, 0770)
+            os.chmod(self.tempdir, 0o770)
         self.new_path = Path(self.path)
 
     def tearDown(self):
@@ -51,8 +51,11 @@ class TempDirFixture(unittest.TestCase):
         try:
             self.__remove_files()
         except OSError:
+            # Tie up loose ends.
+            import gc
+            gc.collect()
             # On windows there's sometimes a problem with syncing all threads.
-            # Try again after 3 secons
+            # Try again after 3 seconds
             sleep(3)
             self.__remove_files()
 

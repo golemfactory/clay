@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 
 from ethereum.utils import denoms
 import logging
@@ -22,7 +22,6 @@ from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
-
 
 TASK_PROTOCOL_ID = 15
 

@@ -1,4 +1,5 @@
 from copy import deepcopy
+
 from peewee import IntegrityError
 from os import urandom
 
@@ -11,6 +12,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, logger, \
     PaymentsKeeper
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import encode_hex
 
 
 class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
@@ -26,28 +28,28 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         addr = urandom(20)
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", "info", addr)
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
-        with self.assertLogs(logger, level=1) as l:
-            self.assertEquals(0, pd.get_payment_value(pi))
+        with self.assertLogs(logger, level='DEBUG') as l:
+            self.assertEqual(0, pd.get_payment_value(pi))
         self.assertTrue(any("not exist" in log for log in l.output))
         pd.add_payment(pi)
-        self.assertEquals(20, pd.get_payment_value(pi))
+        self.assertEqual(20, pd.get_payment_value(pi))
         pi = PaymentInfo("xyz", "aabbcc", 10, ai)
-        self.assertEquals(0, pd.get_payment_value(pi))
+        self.assertEqual(0, pd.get_payment_value(pi))
         pi2 = PaymentInfo("zzz", "xxyyxx", 14, ai)
         pd.add_payment(pi2)
-        self.assertEquals(14, pd.get_payment_value(pi2))
-        self.assertEquals(0, pd.get_payment_value(pi))
+        self.assertEqual(14, pd.get_payment_value(pi2))
+        self.assertEqual(0, pd.get_payment_value(pi))
 
         # test add_payment
         pd.add_payment(pi)
-        self.assertEquals(pi.value, pd.get_payment_value(pi))
+        self.assertEqual(pi.value, pd.get_payment_value(pi))
         self.assertRaises(IntegrityError, lambda: pd.add_payment(pi))
-        self.assertEquals(pi.value, pd.get_payment_value(pi))
+        self.assertEqual(pi.value, pd.get_payment_value(pi))
         pi.subtask_id = "bbb"
         pd.add_payment(pi)
-        self.assertEquals(10, pd.get_payment_value(pi))
+        self.assertEqual(10, pd.get_payment_value(pi))
         pi.subtask_id = "xyz"
-        self.assertEquals(0, pd.get_payment_value(pi))
+        self.assertEqual(0, pd.get_payment_value(pi))
 
         # test change state
         pi3 = deepcopy(pi)
@@ -55,30 +57,30 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi4 = deepcopy(pi)
         pi4.computer.eth_account.address = "GHI"
         pi4.subtask_id = "ghighi"
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             self.assertIsNone(pd.get_state(pi4))
         pd.add_payment(pi3)
         pd.add_payment(pi4)
         self.assertTrue(any("not exist" in log for log in l.output))
-        self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi4), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi), None)
+        self.assertEqual(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi4), PaymentStatus.awaiting)
         pd.change_state(pi4.subtask_id, PaymentStatus.sent)
-        self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi4), PaymentStatus.sent)
+        self.assertEqual(pd.get_state(pi), None)
+        self.assertEqual(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi4), PaymentStatus.sent)
         pd.change_state(pi4.subtask_id, PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi4), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi), None)
+        self.assertEqual(pd.get_state(pi2), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi4), PaymentStatus.awaiting)
         pd.change_state(pi2.subtask_id, PaymentStatus.confirmed)
-        self.assertEquals(pd.get_state(pi), None)
-        self.assertEquals(pd.get_state(pi2), PaymentStatus.confirmed)
-        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
-        self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi), None)
+        self.assertEqual(pd.get_state(pi2), PaymentStatus.confirmed)
+        self.assertEqual(pd.get_state(pi3), PaymentStatus.awaiting)
+        self.assertEqual(pd.get_state(pi3), PaymentStatus.awaiting)
 
         # test newest payments
         res = [p for p in pd.get_newest_payment(2)]
@@ -131,16 +133,16 @@ class TestPaymentsKeeper(TestWithDatabase):
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 5)
         self.assertEqual(all_payments[0]["subtask"], "xxxxxx")
-        self.assertEqual(all_payments[0]["payee"], str(addr).encode('hex'))
-        self.assertEqual(all_payments[0]["value"], unicode(10))
+        self.assertEqual(all_payments[0]["payee"], encode_hex(addr))
+        self.assertEqual(all_payments[0]["value"], str(10))
         self.assertEqual(all_payments[0]["status"], PaymentStatus.awaiting.name)
         self.assertEqual(all_payments[1]["subtask"], "zzzzzz")
-        self.assertEqual(all_payments[1]["payee"], str(addr).encode('hex'))
-        self.assertEqual(all_payments[1]["value"], unicode(10))
+        self.assertEqual(all_payments[1]["payee"], encode_hex(addr))
+        self.assertEqual(all_payments[1]["value"], str(10))
         self.assertEqual(all_payments[1]["status"], PaymentStatus.awaiting.name)
         self.assertEqual(all_payments[2]["subtask"], "xxxyyy")
-        self.assertEqual(all_payments[2]["payee"], str(addr2).encode('hex'))
-        self.assertEqual(all_payments[2]["value"], unicode(2023))
+        self.assertEqual(all_payments[2]["payee"], encode_hex(addr2))
+        self.assertEqual(all_payments[2]["value"], str(2023))
         self.assertEqual(all_payments[2]["status"], PaymentStatus.awaiting.name)
         pi3.subtask_id = "whaooa!"
         pk.finished_subtasks(pi3)

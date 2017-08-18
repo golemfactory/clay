@@ -1,4 +1,3 @@
-import imp
 import sys
 import time
 import unittest
@@ -16,9 +15,9 @@ __all__ = ['TestWithReactor', 'TestDirFixtureWithReactor']
 
 
 def replace_reactor():
-    try:
-        _prev_reactor = imp.find_module('reactor', 'twisted.internet')
-    except:
+    if 'twisted.internet.reactor' in sys.modules:
+        _prev_reactor = sys.modules['twisted.internet.reactor']
+    else:
         _prev_reactor = Clock()
 
     _reactor = MockReactor()
@@ -66,8 +65,8 @@ class MockReactorThread(Thread):
 
     def __init__(self, _reactor, group=None, name=None, args=(), kwargs=None, verbose=None):
 
-        super(MockReactorThread, self).__init__(group, self.__reactor_loop,
-                                                name, args, kwargs, verbose)
+        super(MockReactorThread, self).__init__(group=group, target=self.__reactor_loop,
+                                                name=name, args=args, kwargs=kwargs)
         self.reactor = _reactor
         self.working = False
         self.done = False
@@ -96,7 +95,7 @@ class MockReactorThread(Thread):
                 self.reactor.runUntilCurrent()
                 self.reactor.doIteration(timeout)
             except Exception as e:
-                print "Unexpected error in main loop:", e.message
+                print("Unexpected error in main loop:", e.message)
         self.done = True
 
 
@@ -112,7 +111,7 @@ class TestWithReactor(unittest.TestCase):
             cls.reactor_thread = MockReactorThread(_reactor)
             cls.reactor_thread.start()
         except Exception as e:
-            print "Reactor exception: ", e
+            print("Reactor exception: ", e)
 
     @classmethod
     def tearDownClass(cls):

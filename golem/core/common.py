@@ -8,7 +8,7 @@ from datetime import datetime
 import pytz
 from pathlib import Path
 
-TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
+TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
 
 
@@ -48,7 +48,10 @@ def to_unicode(value):
     if value is None:
         return None
     try:
-        return unicode(value)
+        if isinstance(value, bytes):
+            return value.decode('utf-8')
+        else:
+            return str(value)
     except UnicodeDecodeError:
         return value
 
@@ -61,7 +64,7 @@ def update_dict(target, *updates):
     :return: updated target dictionary
     """
     for update in updates:
-        for key, val in update.iteritems():
+        for key, val in list(update.items()):
             if isinstance(val, collections.Mapping):
                 target[key] = update_dict(target.get(key, {}), val)
             else:
@@ -170,7 +173,7 @@ def config_logging(suffix='', datadir=None):
     if not logdir_path.exists():
         logdir_path.mkdir(parents=True)
 
-    for handler in LOGGING.get('handlers', {}).values():
+    for handler in list(LOGGING.get('handlers', {}).values()):
         if 'filename' in handler:
             handler['filename'] %= {
                 'datadir': datadir,
@@ -180,8 +183,10 @@ def config_logging(suffix='', datadir=None):
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
 
+    import txaio
+    txaio.use_twisted()
     from ethereum import slogging
-    slogging.configure(u':debug')
+    slogging.configure(':debug')
     from twisted.python import log
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()

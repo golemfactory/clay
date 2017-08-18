@@ -2,9 +2,7 @@ import abc
 from twisted.internet.protocol import Factory, Protocol, connectionDone
 
 
-class Network(object):
-    __metaclass__ = abc.ABCMeta
-
+class Network(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def connect(self, connect_info, **kwargs):
         return
@@ -67,9 +65,7 @@ class SessionProtocol(Protocol):
         del self.session
 
 
-class Session(object):
-    __metaclass__ = abc.ABCMeta
-
+class Session(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __init__(self, conn):
         return
