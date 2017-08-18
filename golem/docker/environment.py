@@ -54,7 +54,7 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def IMAGE_ID(cls):
+    def ENV_ID(cls):
         pass
 
     @property
@@ -74,4 +74,4 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
 
     @classmethod
     def get_id(cls):
-        return cls.IMAGE_ID
+        return cls.ENV_ID

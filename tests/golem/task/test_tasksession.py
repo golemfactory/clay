@@ -1,12 +1,12 @@
-import pickle
 import os
+import pickle
 import random
 import unittest
 import uuid
 
-from apps.core.task.coretask import TaskResourceHeader
 from mock import Mock, MagicMock, patch
 
+from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
@@ -30,7 +30,7 @@ from golem.tools.assertlogs import LogTestCase
 class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
-    IMAGE_ID = ""
+    ENV_ID = ""
     APP_DIR = ""
     SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
