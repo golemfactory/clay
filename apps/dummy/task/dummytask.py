@@ -155,10 +155,13 @@ class DummyTaskBuilder(CoreTaskBuilder):
         difficulty = opts.get("difficulty",
                               definition.options.difficulty)
 
-        if not isinstance(sbs, int):
-            raise TypeError("Subtask data size should be int")
-        if not isinstance(difficulty, int):
-            raise TypeError("Difficulty should be int")
+        # TODO uncomment that when GUI will be fixed
+        # if not isinstance(sbs, int):
+        #     raise TypeError("Subtask data size should be int")
+        # if not isinstance(difficulty, int):
+        #     raise TypeError("Difficulty should be int")
+        sbs = int(sbs)
+        difficulty = int(difficulty)
 
         if sbs <= 0:
             raise Exception("Subtask data size should be greater than 0")
