@@ -10,6 +10,7 @@ branches:
 
 env:
     - GETH_VER=geth-darwin-amd64-1.6.4-9c2882b2
+    - HYPERG_VER=0.2.1
 
 cache:
   directories:
@@ -23,9 +24,10 @@ before_install:
   - tar xvf ${GETH_VER}.tar.gz
   - sudo -HE mv ${GETH_VER}/geth /usr/local/bin
 
-  - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
-  - cd golem-hyperdrive && npm install --save && cd ..
-  - node golem-hyperdrive/src/index.js &
+  - wget https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v${HYPERG_VER}/hyperg_${HYPERG_VER}_darwin-x64.tar.gz
+  - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
+  - chmod +x hyperg/hyperg
+  - ./hyperg/hyperg &
 
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
