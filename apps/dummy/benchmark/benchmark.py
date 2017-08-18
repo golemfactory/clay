@@ -19,7 +19,9 @@ class DummyTaskBenchmark(CoreBenchmark):
 
         td = self._task_definition = DummyTaskDefinition(DummyTaskDefaults())
         td.shared_data_files = [join(self.dummy_task_path, x) for x in td.shared_data_files]
-        td.out_file_basename = join(tempfile.gettempdir(), td.out_file_basename)
+        # td.out_file_basename = join(tempfile.gettempdir(), td.out_file_basename)
+        td.out_file_basename = td.out_file_basename
+
         td.task_id = u"{}".format("dummy_benchmark")
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
@@ -27,7 +29,8 @@ class DummyTaskBenchmark(CoreBenchmark):
         v = self.verificator = DummyTaskVerificator()
         v.verification_options = {"difficulty": td.options.difficulty,
                                   "shared_data_files": td.shared_data_files,
-                                  "result_size": td.result_size}
+                                  "result_size": td.result_size,
+                                  "result_extension": DummyTask.RESULT_EXTENSION}
         self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size
 
     @property

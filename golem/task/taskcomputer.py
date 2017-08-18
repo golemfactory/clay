@@ -337,7 +337,8 @@ class TaskComputer(object):
         # TODO very ugly, change that while refactoring benchmarks
         class DummyTaskMod(DummyTask):
             def query_extra_data(self, *args, **kwargs):
-                return self.query_extra_data_for_test_task()
+                ctd = self.query_extra_data_for_test_task()
+                return self.ExtraData(ctd=ctd)
 
         class DummyTaskBuilderMod(DummyTaskBuilder):
             TASK_CLASS = DummyTaskMod
@@ -347,9 +348,10 @@ class TaskComputer(object):
                            node_name, success_callback, error_callback)
 
     def run_benchmarks(self):
-        # Blender benchmark ran only if lux completed successfully
-        self.run_lux_benchmark(lambda _: self.run_blender_benchmark())
-        self.run_dummytask_benchmark()
+        # Benchmarks are run sequentially, via callbacks
+        self.run_dummytask_benchmark(lambda _:
+            self.run_lux_benchmark(lambda _:
+            self.run_blender_benchmark()))
 
     def config_changed(self):
         for l in self.listeners:
