@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 from tests.golem.task.dummy import runner
 
@@ -6,15 +7,18 @@ from tests.golem.task.dummy import runner
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
+    @pytest.mark.slow
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=420)
         self.assertIn(error_msg, [None, "Node exited with return code 0"])
 
+    @pytest.mark.slow
     def test_dummy_task_computation_timeout(self, *mocks):
         error_msg = runner.run_simulation(timeout=5)
         self.assertEqual(error_msg, "Computation timed out")
 
+    @pytest.mark.slow
     def test_dummy_task_computation_subprocess_error(self, *mocks):
         # Make the first computing node fail after approx. 5 secs
         error_msg = runner.run_simulation(

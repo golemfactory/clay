@@ -29,6 +29,10 @@ before_install:
   - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - ./hyperg/hyperg &
 
+  - PR_ID=1262
+  - PR_APPROVAL_COUNT=$(node scripts/github/get-approvals "${PR_ID}")
+  - TEST_MODE=$([ ${PR_APPROVAL_COUNT} >= 2 ] && echo " --runslow" || echo "")
+
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
   - sudo -HE pip3 install -r requirements-test.txt
@@ -39,3 +43,7 @@ script:
 
 after_success:
   - python3 -m codecov
+  - node scripts/github/set-status ${PR_ID} 'success'
+
+after_error:
+  - node scripts/github/set-status ${PR_ID} 'failed'

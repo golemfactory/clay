@@ -37,12 +37,16 @@ dependencies:
     - tar xvf hyperg_0.2.1_linux-x64.tar.gz
     - ./hyperg/hyperg:
         background: true
+    - PR_ID=1262
+    - PR_APPROVAL_COUNT=$(node scripts/github/get-approvals "${PR_ID}")
+    - TEST_MODE=$([ "${PR_APPROVAL_COUNT}" -eq "2" ] && echo " --runslow" || echo "")
 
 test:
   pre:
     - pip3 install coverage codecov
   override:
-    - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml":
+    - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${TEST_MODE}":
         timeout: 1200
   post:
     - codecov
+#    - [ -z "$TEST_MODE" ] && node scripts/github/set-status $PR_ID 'success'

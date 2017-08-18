@@ -84,6 +84,13 @@ install:
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
+  - set PR_ID=1262
+  - node scripts/github/get-approvals %PR_ID% > approvals.txt
+  - set /P PR_APPROVAL_COUNT=< approvals.txt
+  - del approvals.txt
+  - set TEST_MODE=""
+  - if %PR_APPROVAL_COUNT% >= 2 set TEST_MODE=" --runslow"
+
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
@@ -95,7 +102,7 @@ build_script:
 
 test_script:
   - venv\Scripts\activate.bat
-  - pytest --cov=golem
+  - pytest --cov=golem%TEST_MODE%
 
 after_test:
   - venv\Scripts\activate.bat
