@@ -11,7 +11,7 @@ from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner, CoreBenchmark
 from apps.core.task.coretaskstate import TaskDesc
 from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
-from apps.dummy.task.dummytask import DummyTaskBuilder
+from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 from golem.core.common import deadline_to_timeout, to_unicode
@@ -332,7 +332,15 @@ class TaskComputer(object):
         node_name = client.get_node_name()
         datadir = client.datadir
         dummy_benchmark = DummyTaskBenchmark()
-        dummy_builder = DummyTaskBuilder
+
+        class DummyTaskMod(DummyTask):
+            def query_extra_data(self, *args, **kwargs):
+                return self.query_extra_data_for_test_task()
+
+        class DummyTaskBuilderMod(DummyTaskBuilder):
+            TASK_CLASS = DummyTaskMod
+
+        dummy_builder = DummyTaskBuilderMod
         self.run_benchmark(dummy_benchmark , dummy_builder, datadir,
                            node_name, success_callback, error_callback)
 

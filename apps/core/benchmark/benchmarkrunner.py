@@ -30,15 +30,15 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
     def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
-        super(BenchmarkRunner, self).__init__(task,
-                                              root_path,
-                                              success_callback,
-                                              error_callback,
-                                              # ugly lambda, should think of something prettier
-                                              lambda: task.query_extra_data(10000).ctd,
-                                              True,
-                                              BenchmarkRunner.RUNNER_WARNING,
-                                              BenchmarkRunner.RUNNER_SUCCESS)
+        super().__init__(task,
+                         root_path,
+                         success_callback,
+                         error_callback,
+                         # ugly lambda, should think of something prettier
+                         lambda: task.query_extra_data(10000).ctd,
+                         True,
+                         BenchmarkRunner.RUNNER_WARNING,
+                         BenchmarkRunner.RUNNER_SUCCESS)
         # probably this could be done differently
         self.benchmark = benchmark
 

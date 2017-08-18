@@ -45,6 +45,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
         assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
+
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
         new_id = dt._DummyTask__get_new_subtask_id()
@@ -131,7 +132,6 @@ class TestDummyTaskBuilder(TestCase):
 
             return DummyTaskBuilder.build_full_definition(DummyTaskTypeInfo(None, None), dictionary)
 
-
         difficulty = 20
         sbs = 10
         def_ = get_def(difficulty, sbs)
@@ -149,15 +149,15 @@ class TestDummyTaskBuilder(TestCase):
             get_def(16 ** 8 + 1, 10)
         with self.assertRaises(Exception):
             get_def(16 ** 8, 10)
-        # TODO uncomment that when GUI will be fixed
-        # with self.assertRaises(TypeError):
-        #     get_def("aa", .1)
-        # with self.assertRaises(TypeError):
-        #     get_def("aa", 10)
-        # with self.assertRaises(TypeError):
-        #     get_def(.1, -1)
-        # with self.assertRaises(TypeError):
-        #     get_def(.1, .1)
+            # TODO uncomment that when GUI will be fixed
+            # with self.assertRaises(TypeError):
+            #     get_def("aa", .1)
+            # with self.assertRaises(TypeError):
+            #     get_def("aa", 10)
+            # with self.assertRaises(TypeError):
+            #     get_def(.1, -1)
+            # with self.assertRaises(TypeError):
+            #     get_def(.1, .1)
 
 
 class TestDummyTaskTypeInfo(TestCase):

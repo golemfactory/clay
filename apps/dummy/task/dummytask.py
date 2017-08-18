@@ -72,7 +72,7 @@ class DummyTask(CoreTask):
         subtask_id = self.__get_new_subtask_id()
 
         sbs = self.task_definition.options.subtask_data_size
-        # create subtask-specific data, 4 bits go for one char (hex digit)
+        # create subtask-specific data, 4 bits go for one hex digit
         data = "{:128x}".format(random.getrandbits(sbs * 4))
 
         shared_data_files_base = [os.path.basename(x) for x in
@@ -129,7 +129,6 @@ class DummyTask(CoreTask):
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         exd = self._extra_data()
-
         size = self.task_definition.options.subtask_data_size
         char = self.TESTING_CHAR
         exd.extra_data["subtask_data"] = char * size
@@ -139,7 +138,6 @@ class DummyTask(CoreTask):
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
 
-    # TODO types should be somehow validated here
     @classmethod
     def build_dictionary(cls, definition: DummyTaskDefinition):
         dictionary = super().build_dictionary(definition)

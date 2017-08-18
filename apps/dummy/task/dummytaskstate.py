@@ -32,7 +32,7 @@ class DummyTaskDefaults(TaskDefaults):
         self.default_subtasks = 5
         self.code_dir = os.path.join(get_golem_path(),
                                      "apps", "dummy", "resources", "code_dir")
-        self.result_size = 256  # size of subtask result in bytes
+        self.result_size = 256  # length of result hex number
 
         @property
         def full_task_timeout(self):
@@ -58,7 +58,7 @@ class DummyTaskDefinition(TaskDefinition):
                                      "apps", "dummy", "resources", "code_dir")
         self.code_files = []
 
-        self.result_size = 256  # size of subtask result in bytes
+        self.result_size = 256  # length of result hex number
         self.out_file_basename = "out"
 
         if defaults:
@@ -102,7 +102,7 @@ class DummyTaskOptions(Options):
     def __init__(self):
         super(DummyTaskOptions, self).__init__()
         self.environment = DummyTaskEnvironment()
-        self.subtask_data_size = 128  # size of subtask-specific data in bytes
+        self.subtask_data_size = 128  # # length of subtask-specific hex number
 
         # The difficulty is a 4 byte int; 0xffffffff is the greatest
         # and 0x00000000 is the least difficulty.
