@@ -18,8 +18,7 @@ class TestDummyBenchmark(unittest.TestCase):
     def test_task_settings(self):
         self.assertTrue(os.path.isdir(self.db.dummy_task_path))
 
-        self.assertTrue(self.db.task_definition.out_file_basename == \
-                        os.path.join(tempfile.gettempdir(), "out"))
+        self.assertTrue(self.db.task_definition.out_file_basename == "out"))
         self.assertTrue(self.db.task_definition.task_id == u"{}".format("dummy_benchmark"))
 
         self.assertTrue(all(os.path.isfile(x) for x in self.db.task_definition.shared_data_files))
