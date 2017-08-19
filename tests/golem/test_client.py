@@ -755,7 +755,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda *_: 1
         task_computer.run_dummytask_benchmark = Mock()
-        task_computer.run_dummytask_benchmark.side_effect = lambda *_: 1
+        task_computer.run_dummytask_benchmark.side_effect = lambda c: c(1)
 
         task_computer.run_benchmarks()
         assert task_computer.run_lux_benchmark.called
