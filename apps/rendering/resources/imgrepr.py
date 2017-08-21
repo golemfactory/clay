@@ -178,7 +178,7 @@ def load_as_pil(file_):
         return img.to_pil()
 
 
-def load_as_PILImgRepr(file_) -> PILImgRepr():
+def load_as_PILImgRepr(file_) -> PILImgRepr:
     img = load_img(file_)
 
     if isinstance(img, EXRImgRepr):
