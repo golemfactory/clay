@@ -1,7 +1,10 @@
+import hashlib
 import logging
 import os
 
 import requests
+from jsonpickle import json
+
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread
@@ -15,11 +18,16 @@ class TimeoutException(Exception):
 
 
 class DockerTaskThread(TaskThread):
-
     # These files will be placed in the output dir (self.tmp_path)
     # and will contain dumps of the task script's stdout and stderr.
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
+
+    # These files are located in the work dir, they are updated by job.py
+
+    PROGRESS_FILE = "progress_state.txt"  # it contains single number in [0, 1]
+    MESSAGES_IN_DIR = "messages_in"  # it contains list of incoming messages in json
+    MESSAGES_OUT_DIR = "messages_out"  # it contains list outcoming messages in json
 
     docker_manager = None
 
@@ -109,8 +117,35 @@ class DockerTaskThread(TaskThread):
             self._cleanup()
 
     def get_progress(self):
-        # TODO: make the container update some status file?
+        # return float(self.job.read_work_file(self.PROGRESS_FILE))
         return 0.0
+
+    def check_for_messages(self):
+        """
+        :return: list containing list of messages, each of which is a dict
+        """
+        if not self.job:
+            return [{}]
+        msgs = self.job.read_work_files(dir=self.MESSAGES_OUT_DIR)
+        try:
+            msgs = [json.loads(m) for m in msgs]
+        except ValueError:
+            msgs = [{}]
+            logger.warning("ValueError during decoding messages")
+
+        # cleaning messages file, to not read multiple times the same content
+        self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
+
+        return msgs
+
+    # TODO maybe save messages to some dir and read messages from dir, every message in different file
+    def receive_message(self, data):
+        # TODO move hash somewhere else
+        HASH = lambda x: hashlib.md5(x).hexdigest()
+        if self.job:
+            self.job.write_work_file(os.path.join(self.MESSAGES_IN_DIR, HASH(str(data).encode())), json.dumps(data), options="w")
+        else:
+            logger.warning("There is currently no job to receive message")
 
     def end_comp(self):
         try:

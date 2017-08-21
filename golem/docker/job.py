@@ -2,12 +2,14 @@ import atexit
 import logging
 import os
 import posixpath
+import shutil
 import threading
 from os import path
 
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.resource.dirmanager import ls_R
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -21,11 +23,10 @@ container_logger = logging.getLogger(__name__ + ".container")
 
 
 class DockerJob(object):
-
     STATE_NEW = "new"
     STATE_CREATED = "created"  # container created by docker
     STATE_RUNNING = "running"  # docker container running
-    STATE_EXITED = "exited"    # docker container finished running
+    STATE_EXITED = "exited"  # docker container finished running
     STATE_STOPPED = "stopped"
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
@@ -199,7 +200,7 @@ class DockerJob(object):
     def _host_dir_chmod(dst_dir, mod):
         if isinstance(mod, str):
             mod = 0o770 if mod == 'rw' else \
-                  0o550 if mod == 'ro' else 0
+                0o550 if mod == 'ro' else 0
         prev_mod = None
 
         try:
@@ -315,3 +316,36 @@ class DockerJob(object):
         for job in DockerJob.running_jobs:
             logger.info("Killing job {}".format(job.container_id))
             job.kill()
+
+    def read_work_file(self, path, options="r"):
+        try:
+            with open(os.path.join(self.work_dir, path), options) as f:
+                return f.read()
+        except IOError as e:
+            logger.warning("There was a problem with read_work_file. Path: %r, exception: %r", path, e)
+            return ""
+
+    def write_work_file(self, path, content, options="w"):
+        try:
+            with open(os.path.join(self.work_dir, path), options) as f:
+                return f.write(content)
+        except IOError as e:
+            logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
+
+    def read_work_files(self, dir="", options="r"):
+        dir = self._set_dir(dir)
+        contents = []
+        for file in ls_R(dir):
+            contents.append(self.read_work_file(file, options))
+        return contents
+
+    def clean_work_files(self, dir=""):
+        dir = self._set_dir(dir)
+        try:
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+        except IOError as e:
+            logger.warning("There was a problem with clean_work_files. Path: %r, exception: %r", dir, e)
+
+    def _set_dir(self, dir):
+        return self.work_dir if not dir else os.path.join(self.work_dir, dir)

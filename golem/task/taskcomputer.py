@@ -475,6 +475,22 @@ class TaskComputer(object):
         for t in self.current_computations:
             t.end_comp()
 
+    def check_for_messages(self):
+        msgs = []
+        for tt in self.current_computations:
+            subtask_id = tt.subtask_id
+
+            # TODO keep the mapping subtask -> task somewhere instead of computing it every time
+            task_id = [k for k, v in self.task_to_subtask_mapping.items() if subtask_id in v][0]
+            all_subtask_messages_data = tt.check_for_messages()
+            for data in all_subtask_messages_data:
+                msgs.append((task_id, subtask_id, data))
+        return msgs
+
+    def receive_message(self, task_id, subtask_id, data):
+        for tt in self.current_computations:
+            if tt.subtask_id == subtask_id:
+                tt.receive_message(data)
 
 class AssignedSubTask(object):
     def __init__(self, src_code, extra_data, short_desc, owner_address, owner_port):

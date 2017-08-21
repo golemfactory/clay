@@ -4,6 +4,8 @@ import datetime
 import itertools
 import logging
 import os
+from typing import List, Dict, Tuple
+
 from pydispatch import dispatcher
 import time
 
@@ -94,6 +96,10 @@ class TaskServer(PendingConnectionsServer):
         self.send_waiting_payments()
         self.send_waiting_payment_requests()
         self.task_computer.run()
+
+        msgs = self.task_computer.check_for_messages()
+        self.send_task_messages(msgs)
+
         self.task_connections_helper.sync()
         self._sync_forwarded_session_requests()
         self.__remove_old_tasks()
@@ -102,6 +108,10 @@ class TaskServer(PendingConnectionsServer):
         if next(tmp_cycler) == 0:
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
+
+    def send_task_messages(self, all_messages: List[Tuple[str, str, Dict]]):
+        for subtask_id, task_id, data in all_messages:
+            self.task_sessions[subtask_id].send_message_to_requestor(subtask_id, task_id, data)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(env_id)

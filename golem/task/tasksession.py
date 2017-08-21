@@ -1,22 +1,19 @@
-
-
-from ethereum.utils import denoms
-import logging
 import functools
+import logging
 import os
 import struct
 import time
 
+from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.network.transport import message
-from golem.network.transport.session import MiddlemanSafeSession
-from golem.model import db
 from golem.model import Payment
+from golem.model import db
+from golem.network.transport import message
 from golem.network.transport import tcpnetwork
-from golem.core.async import AsyncRequest, async_run
+from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -44,7 +41,9 @@ def dropped_after():
             result = f(self, *args, **kwargs)
             self.dropped()
             return result
+
         return curry
+
     return inner
 
 
@@ -307,7 +306,7 @@ class TaskSession(MiddlemanSafeSession):
             max_resource_size,
             max_memory_size,
             num_cores
-            ):
+    ):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
         :param uuid task_id: if of a task that node wants to compute
@@ -355,7 +354,7 @@ class TaskSession(MiddlemanSafeSession):
             port,
             eth_account,
             node_info
-            ):
+    ):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result
                                               with additional information
@@ -515,8 +514,8 @@ class TaskSession(MiddlemanSafeSession):
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
-        if self._check_ctd_params(msg.compute_task_def)\
-                and self._set_env_params(msg.compute_task_def)\
+        if self._check_ctd_params(msg.compute_task_def) \
+                and self._set_env_params(msg.compute_task_def) \
                 and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
                 msg.compute_task_def.subtask_id, self
@@ -808,6 +807,21 @@ class TaskSession(MiddlemanSafeSession):
             return
         self.inform_worker_about_payment(payment)
 
+    def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):
+        task = self.task_server.task_manager.tasks[msg.task_id]
+        data = task.react_to_message(msg.subtask_id, msg.message_data)
+        new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id, subtask_id=msg.subtask_id, message_data=data)
+        response_sess = self
+        response_sess.send(new_message)
+
+    def send_message_to_requestor(self, task_id, subtask_id, data):
+        new_message = message.MessageSubtaskProvToReq(task_id=task_id, subtask_id=subtask_id, message_data=data)
+        response_sess = self.task_server.task_sessions[subtask_id]
+        response_sess.send(new_message)
+
+    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):
+        self.task_computer.receive_message(msg.task_id, msg.subtask_id, msg.message_data)
+
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
@@ -831,8 +845,8 @@ class TaskSession(MiddlemanSafeSession):
         if not tcpnetwork.SocketAddress.is_proper_address(
                 ctd.return_address,
                 ctd.return_port
-                ):
-            self.err_msg = "Wrong return address {}:{}"\
+        ):
+            self.err_msg = "Wrong return address {}:{}" \
                 .format(ctd.return_address, ctd.return_port)
             return False
         return True
@@ -852,7 +866,7 @@ class TaskSession(MiddlemanSafeSession):
             ctd.src_code = env.get_source_code()
 
         if not ctd.src_code:
-            self.err_msg = "No source code for environment {}"\
+            self.err_msg = "No source code for environment {}" \
                 .format(environment)
             return False
 
@@ -1010,6 +1024,8 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+            message.MessageSubtaskReqToProv.TYPE: self._react_to_requestor_to_provider_msg,
+            message.MessageSubtaskProvToReq.TYPE: self._react_to_provider_to_requestor_msg,
         })
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)

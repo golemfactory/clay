@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 import shutil
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,19 @@ def find_task_script(task_dir, script_name):
     logger.error("Script file {} does not exist!".format(script_file))
 
 
+def ls_R(dir):
+    files = []
+    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
+        for name in filenames:
+            files.append(os.path.join(dirpath, name))
+    return files
+
+
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """
-    def __init__(self, root_path, tmp="tmp", res="resources", output="output", global_resource="golemres", reference_data_dir="reference_data", test="test"):
+
+    def __init__(self, root_path, tmp="tmp", res="resources", output="output", global_resource="golemres",
+                 reference_data_dir="reference_data", test="test"):
         """ Creates new dir manager instance
         :param str root_path: path to the main directory where all other working directories are placed
         :param str tmp: temporary directory name
@@ -48,7 +58,6 @@ class DirManager(object):
     def get_file_extension(self, fullpath):
         filename, file_extension = os.path.splitext(fullpath)
         return file_extension
-
 
     def clear_dir(self, d):
         """ Remove everything from given directory
@@ -204,7 +213,6 @@ class DirManager(object):
 
 
 class DirectoryType(object):
-
     COMPUTED = 0
     DISTRIBUTED = 1
     RECEIVED = 2

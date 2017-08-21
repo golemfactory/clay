@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+from typing import Dict
 
 import enforce
 
@@ -134,6 +135,11 @@ class DummyTask(CoreTask):
         exd.extra_data["subtask_data"] = char * size
         return exd
 
+    def react_to_message(self, subtask_id: str, data: Dict):
+        if "got_messages" in data:
+            return {"got_messages": "aaaa" + data["got_messages"]}
+        else:
+            return {"got_messages": "cccc"}
 
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask

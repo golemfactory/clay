@@ -6,17 +6,7 @@ from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
-
-
-# TODO move it somewhere, but idk where
-
-
-def ls_R(dir):
-    files = []
-    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
-        for name in filenames:
-            files.append(os.path.join(dirpath, name))
-    return files
+from golem.resource.dirmanager import ls_R
 
 
 class DummyTaskDefaults(TaskDefaults):
@@ -44,7 +34,6 @@ class DummyTaskDefaults(TaskDefaults):
 
 
 class DummyTaskDefinition(TaskDefinition):
-
     def __init__(self, defaults=None):
         TaskDefinition.__init__(self)
 

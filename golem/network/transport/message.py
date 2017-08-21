@@ -1141,6 +1141,54 @@ class MessageSubtaskPaymentRequest(Message):
         super(MessageSubtaskPaymentRequest, self).__init__(**kwargs)
 
 
+class MessageSubtaskReqToProv(Message):
+    TYPE = TASK_MSG_BASE + 29
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+        'message_data': 'MESSAGE_DATA',
+        'task_id': "TASK_ID"
+    }
+
+    def __init__(self, task_id=None, subtask_id=None, message_data=None, **kwargs):
+        """Message for communication from R to P during task execution
+
+        :param str subtask_id
+        :param dict message_data: data sent from Requestor to Provider
+
+        Additional params are described in Message().
+        """
+
+        self.task_id = task_id
+        self.subtask_id = subtask_id
+        self.message_data = message_data
+        super().__init__(**kwargs)
+
+
+class MessageSubtaskProvToReq(Message):
+    TYPE = TASK_MSG_BASE + 30
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+        'message_data': 'MESSAGE_DATA',
+        'task_id': "TASK_ID"
+    }
+
+    def __init__(self, task_id=None, subtask_id=None, message_data=None, **kwargs):
+        """Message for communication from P to R during task execution
+        :param str task_id
+        :param str subtask_id
+        :param dict message_data: data sent from Requestor to Provider
+
+        Additional params are described in Message().
+        """
+
+        self.task_id = task_id
+        self.subtask_id = subtask_id
+        self.message_data = message_data
+        super().__init__(**kwargs)
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1282,6 +1330,8 @@ def init_messages():
             MessageSubtaskResultAccepted,
             MessageSubtaskResultRejected,
             MessageDeltaParts,
+            MessageSubtaskProvToReq,
+            MessageSubtaskReqToProv,
 
             # Resource messages
             MessageGetResource,
