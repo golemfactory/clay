@@ -4,7 +4,7 @@ from os import urandom
 import requests
 from mock import patch, Mock
 
-from golem.ethereum.node import NodeProcess, ropsten_faucet_donate
+from golem.ethereum.node import NodeProcess, tETH_faucet_donate
 from golem.testutils import TempDirFixture
 from golem.utils import encode_hex
 
@@ -21,7 +21,7 @@ class RopstenFaucetTest(unittest.TestCase):
         response = Mock(spec=requests.Response)
         response.status_code = 500
         get.return_value = response
-        assert ropsten_faucet_donate(addr) is False
+        assert tETH_faucet_donate(addr) is False
 
     @patch('requests.get')
     def test_error_msg(self, get):
@@ -30,7 +30,7 @@ class RopstenFaucetTest(unittest.TestCase):
         response.status_code = 200
         response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
         get.return_value = response
-        assert ropsten_faucet_donate(addr) is False
+        assert tETH_faucet_donate(addr) is False
 
     @patch('requests.get')
     def test_success(self, get):
@@ -40,7 +40,7 @@ class RopstenFaucetTest(unittest.TestCase):
         response.json.return_value = {'paydate': 1486605259,
                                       'amount': 999999999999999}
         get.return_value = response
-        assert ropsten_faucet_donate(addr) is True
+        assert tETH_faucet_donate(addr) is True
         assert get.call_count == 1
         assert encode_hex(addr)[2:] in get.call_args[0][0]
 

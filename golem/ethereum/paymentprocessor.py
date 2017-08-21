@@ -13,7 +13,7 @@ from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
 from golem.utils import decode_hex, encode_hex
 from .contracts import TestGNT
-from .node import ropsten_faucet_donate
+from .node import tETH_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
@@ -45,7 +45,7 @@ def _encode_payments(payments):
 
 class PaymentProcessor(Service):
     # Default deadline in seconds for new payments.
-    DEFAULT_DEADLINE = 10 * 60
+    DEFAULT_DEADLINE = 10  # todo GG changed to speed up life-tests ;)  10 * 60
 
     # Gas price: 20 shannons, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
@@ -100,8 +100,6 @@ class PaymentProcessor(Service):
             # 10 s since the node was started.
             return self.__sync
         self.__last_sync_check = time.time()
-
-
 
         # TODO: This can be improved now because we use Ethereum Ropsten.
         # Normally we should check the time of latest block, but Golem testnet
@@ -327,7 +325,7 @@ class PaymentProcessor(Service):
         if self.__faucet and self.eth_balance(True) < 10**15:
             log.info("Requesting tETH")
             addr = self.raw_address(self.__privkey)
-            ropsten_faucet_donate(addr)
+            tETH_faucet_donate(addr)
             return False
         return True
 
@@ -345,7 +343,7 @@ class PaymentProcessor(Service):
         return True
 
     def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
-        self.__client.get_logs(from_block=None, to_block=None, address=None, topics=None)
+        self.__client.get_logs(from_block=from_block, to_block=to_block, address=address, topics=topics)
 
     def _run(self):
         if self._waiting_for_faucet:

@@ -4,7 +4,6 @@ import os
 import shutil
 from os import makedirs, path, remove
 
-
 from mock import Mock
 
 from golem.tools.ci import ci_skip
@@ -67,13 +66,13 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
 
-        def set_root_dir(p):
-            return p.replace("$GOLEM_DIR", golem_dir)
+        def set_root_dir(p , new_dir = golem_dir ):
+            return p.replace("$GOLEM_DIR", new_dir)
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
-        task_def.output_file = set_root_dir(task_def.output_file)
+        task_def.output_file = set_root_dir(task_def.output_file , self.tempdir)
         return task_def
 
     def _test_task(self):# -> LuxTask():
@@ -210,21 +209,21 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
-        task.res_y = 300
-        task.res_x = 300
-        task.haltspp = 25
-        # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+        task.res_y = 100
+        task.res_x = 100
+        task.haltspp = 10
+        # to make it deterministic, small cropwindow can generate darker img, this is a know issue in lux
+        task.random_crop_window_for_verification = (0.2, 0.9, 0.1, 0.8)
 
         self._test_luxrender_real_task(task)
 
     def test_luxrender_real_task_exr(self):
         task = self._test_task()
         task.output_format = "exr"
-        task.res_y = 300
-        task.res_x = 300
-        task.haltspp = 25
-        # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
-
+        task.res_y = 100
+        task.res_x = 100
+        task.haltspp = 10
+        task.random_crop_window_for_verification = (0.2, 0.9, 0.1, 0.8) # to make it deterministic
 
         self._test_luxrender_real_task(task)
 

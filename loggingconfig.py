@@ -58,6 +58,10 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'golem.pay': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.ethereum': {
             'level': 'INFO',
             'propagate': True,
