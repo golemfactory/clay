@@ -42,15 +42,12 @@ class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
 
-    def __init__(self, name, definition, defaults, options, task_builder_type,
-                 dialog=None, dialog_controller=None):
+    def __init__(self, name, definition, defaults, options, task_builder_type):
         self.name = name
         self.defaults = defaults
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
-        self.dialog = dialog
-        self.dialog_controller = dialog_controller
         self.output_formats = []
         self.output_file_ext = []
 

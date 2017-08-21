@@ -14,9 +14,6 @@ directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
 task_collector_err = TaskCollectorBuilder().build()
 
-if building_wheel or building_binary:
-    ui_err = generate_ui()
-
 update_variables()
 
 setup(
@@ -80,15 +77,6 @@ setup(
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
             path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
         ]),
-        (path.normpath('../../golem/gui/view/'), [
-            path.normpath('gui/view/nopreview.png')
-        ]),
-        (path.normpath('../../golem/gui/view/img'), [
-            path.normpath('gui/view/img/' + f) for f in [
-                'favicon-256x256.png', 'favicon-48x48.png', 'favicon-32x32.png',
-                'settings.png', 'task.png', 'user.png', 'new.png', 'eye.png'
-            ]
-        ]),
     ]
 )
 
@@ -99,10 +87,8 @@ if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
     DockerManager.pull_images()
 
-if not (building_wheel or building_binary):
-    ui_err = generate_ui()
-elif building_wheel:
+if building_wheel:
     move_wheel()
 
 
-print_errors(ui_err, task_collector_err)
+print_errors(task_collector_err)
