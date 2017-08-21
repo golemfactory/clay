@@ -41,17 +41,9 @@ dependencies:
     - /usr/local/bin/ipfs daemon:
         background: true
 
-    # Slow tests only on develop and PR with >= 2 approvals
-    - echo 'export PR_ID='${CIRCLE_PR_NUMBER} >> ~/.circlerc
-    - echo 'export APPROVALS_REQ=2' >> ~/.circlerc
-    - if [[ -z "${PR_ID}" ]]; then echo 'export PR_APPROVAL_COUNT='${APPROVALS_REQ} >> ~/.circlerc; fi
-    - if [[ -n "${PR_ID}" ]]; then echo 'export PR_APPROVAL_COUNT='$(node scripts/github/get-approvals "${PR_ID}") >> ~/.circlerc; fi
-    - if [[ ${PR_APPROVAL_COUNT} -ge ${APPROVALS_REQ} ]]; then echo 'export TEST_MODE=" --runslow"' >> ~/.circlerc; fi
-    - echo "${PR_ID}"
-    - echo "${PR_APPROVAL_COUNT}"
-    - echo "${APPROVALS_REQ}"
-    - echo "${TEST_MODE}"
-    
+    # Slow tests only on branches and PRs with >= 2 approvals
+    - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
+
     # requirements
     - pip3 install six
     - pip3 install -r requirements-lint.txt
@@ -60,7 +52,7 @@ test:
   pre:
     - pip3 install coverage codecov
   override:
-    - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${TEST_MODE}":
+    - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}":
         timeout: 1200
   post:
     - codecov

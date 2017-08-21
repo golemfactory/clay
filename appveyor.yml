@@ -84,15 +84,10 @@ install:
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
-  # Slow tests only on develop and PR with >= 2 approvals
-  - set APPROVAL_REQ=2
-  - set PR_ID=%APPVEYOR_PULL_REQUEST_NUMBER%
-  - if "%PR_ID%" equ "" echo %APPROVAL_REQ% > approvals.txt # develop = approved
-  - if "%PR_ID%" neq "" node scripts/github/get-approvals %PR_ID% > approvals.txt
-  - set /P PR_APPROVAL_COUNT=< approvals.txt
+  # Slow tests only on branches and PRs with >= 2 approvals
+  - python scripts/get-slow-argument "%APPVEYOR_PULL_REQUEST_NUMBER%" > approvals.txt
+  - set /P ARG_RUNSLOW=< approvals.txt
   - del approvals.txt
-  - set TEST_MODE=
-  - if %PR_APPROVAL_COUNT% geq %APPROVAL_REQ% set TEST_MODE=" --runslow"
 
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
@@ -105,10 +100,8 @@ build_script:
 
 test_script:
   - venv\Scripts\activate.bat
-  # TODO fix
-  #- pytest --cov=golem%TEST_MODE%
-  - if NOT defined TEST_MODE pytest --cov=golem
-  - if defined TEST_MODE pytest --cov=golem --runslow
+  - if NOT ARG_RUNSLOW TEST_MODE pytest --cov=golem
+  - if defined ARG_RUNSLOW pytest --cov=golem --runslow
 
 after_test:
   - venv\Scripts\activate.bat
