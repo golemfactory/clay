@@ -85,7 +85,7 @@ install:
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
   # Slow tests only on branches and PRs with >= 2 approvals
-  - python scripts/get-slow-argument "%APPVEYOR_PULL_REQUEST_NUMBER%" > approvals.txt
+  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > approvals.txt
   - set /P ARG_RUNSLOW=< approvals.txt
   - del approvals.txt
 
@@ -100,7 +100,7 @@ build_script:
 
 test_script:
   - venv\Scripts\activate.bat
-  - if NOT ARG_RUNSLOW TEST_MODE pytest --cov=golem
+  - if NOT defined ARG_RUNSLOW pytest --cov=golem
   - if defined ARG_RUNSLOW pytest --cov=golem --runslow
 
 after_test:

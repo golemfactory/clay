@@ -42,7 +42,7 @@ dependencies:
         background: true
 
     # Slow tests only on branches and PRs with >= 2 approvals
-    - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
+    - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument.py "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
 
     # requirements
     - pip3 install six
@@ -56,4 +56,3 @@ test:
         timeout: 1200
   post:
     - codecov
-#    - [ -z "$TEST_MODE" ] && node scripts/github/set-status $PR_ID 'success'
