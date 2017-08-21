@@ -13,8 +13,15 @@ https.get( options , res => {
 	var body = '';
 	res.on( 'data', a => body += a );
 	res.on( 'end', () => {
-		var jsonBody = JSON.parse( body );
-		var approvals = jsonBody.filter( a => a.state === 'APPROVED' );
-		console.log( approvals.length ) 
+		try {
+			var jsonBody = JSON.parse( body );
+			var approvals = jsonBody.filter( a => a.state === 'APPROVED' );
+			console.log( approvals.length ) 
+		}
+		catch( e )
+		{
+			console.log( body );
+			console.error( e );
+		}
 	} ); 
 } );

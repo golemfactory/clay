@@ -7,6 +7,7 @@ branches:
   only:
     - master
     - develop
+    - slow_test
 
 env:
   global:
@@ -29,9 +30,17 @@ before_install:
   - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - ./hyperg/hyperg &
 
-  - PR_ID=1262
+  # Slow tests only on develop and PR with >= 2 approvals
+  - APPROVALS_REQ=2
+  - PR_ID=${TRAVIS_PULL_REQUEST}
+  - if [[ "${PR_ID}" == "false" ]]; then PR_APPROVAL_COUNT=${APPROVALS_REQ}; fi
+  - if [[ "${PR_ID}" != "false" ]]; then PR_APPROVAL_COUNT=$(node scripts/github/get-approvals "${PR_ID}"); fi
   - PR_APPROVAL_COUNT=$(node scripts/github/get-approvals "${PR_ID}")
-  - TEST_MODE=$([ ${PR_APPROVAL_COUNT} >= 2 ] && echo " --runslow" || echo "")
+  - TEST_MODE=$([ ${PR_APPROVAL_COUNT} -ge ${APPROVALS_REQ} ] && echo " --runslow" || echo "")
+  - echo "${PR_ID}"
+  - echo "${PR_APPROVAL_COUNT}"
+  - echo "${APPROVALS_REQ}"
+  - echo "${TEST_MODE}"
 
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
@@ -39,7 +48,7 @@ before_install:
   - sudo -HE python3 setup.py develop
 
 script:
-  - python3 -m pytest --cov=golem
+  - python3 -m pytest --cov=golem${TEST_MODE}
 
 after_success:
   - python3 -m codecov
