@@ -7,7 +7,7 @@
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
 ; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
-; https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2017 VC_redist.x64.exe
+; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://download.docker.com/win/stable/DockerToolbox.exe
 ; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.6.7-ab5646c5.exe
@@ -51,6 +51,9 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; Add HyperG to the PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
 
+[Setup]
+AlwaysRestart = yes
+
 ; @todo do we need any more languages? It can be confusing
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -64,7 +67,9 @@ Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubd
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.7-ab5646c5.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
+Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
@@ -76,11 +81,12 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 
 [Run]
 ; Install runtime
-Filename: "{tmp}\VC_redist.x64.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime";
+Filename: "{tmp}\vc_redist.x64.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime";
                                      
 ; Install Docker @todo is this check enough
-Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
-; @todo how to install ipfs
+Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/VERYSILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
+
+Filename: "{tmp}\VirtualBox-5.1.26-117224-Win.exe"; Parameters: "--silent"; StatusMsg: "Installing VirtualBox"; Description: "Install VirtualBox";
 
 ; Install geth
 Filename: "{tmp}\geth-windows-amd64-1.6.7-ab5646c5.exe"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
