@@ -54,7 +54,7 @@ class SimpleHash(object):
         :param int block_size: *Default: 2**20* data will be read from file in chunks of this size
         :return str: base64 encoded sha1 of data from file <filename>
         """
-        with open(filename, "r") as f:
+        with open(filename, "rb") as f:
             sha = hashlib.sha1()
 
             while True:

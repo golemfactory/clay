@@ -8,7 +8,7 @@ class TestNtPathToPosixPath(unittest.TestCase):
     def test_path_conversion(self):
         self.assertEqual(nt_path_to_posix_path("c:\\Users\\Golem"),
                          "/c/Users/Golem")
-        self.assertEqual(nt_path_to_posix_path(u"c:\\Users\\Golem"),
+        self.assertEqual(nt_path_to_posix_path("c:\\Users\\Golem"),
                          "/c/Users/Golem")
         self.assertEqual(nt_path_to_posix_path("C:\\Program Files (x86)"),
                          "/c/Program Files (x86)")

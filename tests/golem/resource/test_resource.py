@@ -24,8 +24,8 @@ class TestTaskResourceHeader(TestDirFixture):
     def testBuild(self):
         dir_name = self.dir_manager.get_task_resource_dir("task2")
         header = TaskResourceHeader.build("resource", dir_name)
-        self.assertEquals(len(header.files_data), 2)
-        self.assertEquals(len(header.sub_dir_headers[0].files_data), 1)
+        self.assertEqual(len(header.files_data), 2)
+        self.assertEqual(len(header.sub_dir_headers[0].files_data), 1)
 
     def testBuildFromChosen(self):
         dir_name = self.dir_manager.get_task_resource_dir('task2')
@@ -33,8 +33,8 @@ class TestTaskResourceHeader(TestDirFixture):
         header2 = TaskResourceHeader.build_header_delta_from_header(TaskResourceHeader("resource"), dir_name,
                                                                     [self.file1, self.file3])
         self.assertTrue(header == header2)
-        self.assertEquals(header.dir_name, header2.dir_name)
-        self.assertEquals(header.files_data, header2.files_data)
+        self.assertEqual(header.dir_name, header2.dir_name)
+        self.assertEqual(header.files_data, header2.files_data)
 
         with self.assertRaises(TypeError):
             TaskResourceHeader.build_header_delta_from_chosen(None, None)

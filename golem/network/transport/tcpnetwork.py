@@ -12,14 +12,14 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, T
     TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
-from zope.interface import implements
+from zope.interface import implements, implementer
 
 from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
-from network import Network, SessionProtocol
+from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +54,16 @@ class SocketAddress(object):
         self.ipv6 = False
         try:
             self.__validate()
-        except ValueError, err:
-            raise AddressValueError(err.message)
+        except ValueError as err:
+            raise AddressValueError(err)
 
     def __validate(self):
-        if type(self.address) is unicode:
-            self.address = self.address.encode()
+        if type(self.address) is str:
+            self.address = self.address
         if type(self.address) is not str:
             raise TypeError('Address must be a string, not a ' +
                             type(self.address).__name__)
-        if type(self.port) is not int and type(self.port) is not long:
+        if type(self.port) is not int:
             raise TypeError('Port must be an int, not a ' +
                             type(self.port).__name__)
 
@@ -73,12 +73,12 @@ class SocketAddress(object):
                 # Address with zone index
                 self.address = self.address[:self.address.find("%")]
 
-            IPv6Address(self.address.decode('utf8'))
+            IPv6Address(self.address)
             self.ipv6 = True
         else:
             # If it's all digits then guess it's an IPv4 address
             if self._all_numeric_pattern.match(self.address):
-                IPv4Address(self.address.decode('utf8'))
+                IPv4Address(self.address)
             else:
                 SocketAddress.validate_hostname(self.address)
 
@@ -104,9 +104,6 @@ class SocketAddress(object):
         :param str hostname:
         :returns None
         """
-        if type(hostname) is unicode:
-            hostname = hostname.encode()
-
         if type(hostname) is not str:
             raise TypeError('Expected string argument, not ' +
                             type(hostname).__name__)
@@ -133,8 +130,6 @@ class SocketAddress(object):
         :returns parsed SocketAddress
         :rtype SocketAddress
         """
-        if type(string) is unicode:
-            string = string.encode()
 
         if type(string) is not str:
             raise TypeError('Expected string argument, not ' +
@@ -151,7 +146,7 @@ class SocketAddress(object):
                 addr_str, port_str = string.split(':')
             port = int(port_str)
         except ValueError:
-            raise AddressValueError('Invalid address: port missing or invalid')
+            raise AddressValueError('Invalid address "{}"'.format(string))
 
         return SocketAddress(addr_str, port)
 
@@ -319,7 +314,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ip_address(address.decode())
+            ip = ip_address(address)
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))
@@ -374,7 +369,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, port, **kwargs)
 
     def __listening_failure(self, err_desc, port, max_port, established_callback, failure_callback, **kwargs):
-        err = err_desc.value.message
+        err = str(err_desc.value)
         if port < max_port:
             port += 1
             self.__try_to_listen_on_port(port, max_port, established_callback, failure_callback, **kwargs)
@@ -670,11 +665,10 @@ class MidAndFilesProtocol(FilesProtocol):
 # Producers #
 #############
 
-
+@implementer(IPullProducer)
 class FileProducer(object):
     """ Files producer that helps to send list of files to consumer in chunks"""
 
-    implements(IPullProducer)
 
     def __init__(self, file_list, session, buff_size=BUFF_SIZE, extra_data=None):
         """ Create file producer
@@ -762,9 +756,9 @@ class FileProducer(object):
 
     def _print_progress(self):
         if self.size != 0:
-            print "\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)),
+            print("\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)), end=' ')
         else:
-            print "\rSending progress 100 %                       ",
+            print("\rSending progress 100 %                       ", end=' ')
 
 
 class EncryptFileProducer(FileProducer):
@@ -814,7 +808,7 @@ class FileConsumer(object):
         self.extra_data["result"] = self.final_file_list
 
         self.last_percent = 0
-        self.last_data = ""
+        self.last_data = bytes()
 
     def dataReceived(self, data):
         """ Receive new chunk of data
@@ -830,7 +824,7 @@ class FileConsumer(object):
         self.recv_size += len(loc_data)
         if self.recv_size <= self.file_size:
             self.fh.write(loc_data)
-            self.last_data = ""
+            self.last_data = bytes()
         else:
             last_data = len(loc_data) - (self.recv_size - self.file_size)
             self.fh.write(loc_data[:last_data])
@@ -869,7 +863,7 @@ class FileConsumer(object):
         if percent > 100:
             percent = 100
         if percent > self.last_percent:
-            print "\rFile data receiving {} %                       ".format(percent),
+            print("\rFile data receiving {} %                       ".format(percent), end=' ')
             self.last_percent = percent
 
     def _end_receiving_file(self):
@@ -945,11 +939,10 @@ class DecryptFileConsumer(FileConsumer):
         self.recv_chunk_size = 0
         FileConsumer._end_receiving_file(self)
 
-
+@implementer(IPullProducer)
 class DataProducer(object):
     """ Data producer that helps to receive stream of data in chunks"""
 
-    implements(IPullProducer)
 
     def __init__(self, data_to_send, session, buff_size=BUFF_SIZE, extra_data=None):
         """ Create data producer
@@ -1019,7 +1012,7 @@ class DataProducer(object):
         else:
             percent = 100
         if percent > self.last_percent:
-            print "\rSending progress {} %                       ".format(percent),
+            print("\rSending progress {} %                       ".format(percent), end=' ')
         self.last_percent = percent
 
     def _prepare_init_data(self):
@@ -1080,14 +1073,14 @@ class DataConsumer(object):
         else:
             percent = 100
         if percent > self.last_percent:
-            print "\rFile data receiving {} %                       ".format(percent),
+            print("\rFile data receiving {} %                       ".format(percent), end=' ')
             self.last_percent = percent
 
     def _end_receiving(self):
         self.session.conn.data_mode = False
         self.data_size = -1
         self.recv_size = 0
-        self.extra_data["result"] = "".join(self.loc_data)
+        self.extra_data["result"] = b"".join(self.loc_data)
         self.loc_data = []
         self.session.full_data_received(extra_data=self.extra_data)
 
@@ -1126,7 +1119,7 @@ class DecryptDataConsumer(DataConsumer):
     def __init__(self, session, extra_data):
         self.chunk_size = 0
         self.recv_chunk_size = 0
-        self.last_data = ""
+        self.last_data = bytes()
         DataConsumer.__init__(self, session, extra_data)
 
     def dataReceived(self, data):

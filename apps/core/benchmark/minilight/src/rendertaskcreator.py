@@ -1,5 +1,5 @@
-from randommini import Random
-from renderworker import RenderWorker
+from .randommini import Random
+from .renderworker import RenderWorker
 from threading import Thread, active_count
 
 class ThreadedRenderWorker(Thread):

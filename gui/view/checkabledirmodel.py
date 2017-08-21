@@ -20,12 +20,12 @@ class CheckableDirModel(QtWidgets.QFileSystemModel):
         self.start_files = set(start_files)
 
     def _isStartFile(self, index):
-        if os.path.normpath(unicode(self.filePath(index))) in self.start_files:
+        if os.path.normpath(str(self.filePath(index))) in self.start_files:
             return True
         return False
 
     def _remove_from_start_files(self, index):
-        self.start_files.remove(os.path.normpath(unicode(self.filePath(index))))
+        self.start_files.remove(os.path.normpath(str(self.filePath(index))))
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.CheckStateRole and index.column() == 0:
@@ -65,7 +65,7 @@ class CheckableDirModel(QtWidgets.QFileSystemModel):
         return QtWidgets.QFileSystemModel.setData(self, index, value, role)
 
     def add_checked_files_from_dir(self, dirFilePath, selection):
-        for path, dirs, files in os.walk(unicode(dirFilePath)):
+        for path, dirs, files in os.walk(str(dirFilePath)):
             for filename in files:
                 if self.check_state(self.index(os.path.join(path, filename))) == QtCore.Qt.Checked:
                     selection.append(os.path.normpath(os.path.join(path, filename)))
@@ -74,9 +74,9 @@ class CheckableDirModel(QtWidgets.QFileSystemModel):
         selection = []
         for index in self.checks.keys():
             if self.checks[index] == QtCore.Qt.Checked:
-                if os.path.isfile(unicode(self.filePath(index))):
-                    selection.append(os.path.normpath(unicode(self.filePath(index))))
-                if os.path.isdir(unicode(self.filePath(index))):
+                if os.path.isfile(str(self.filePath(index))):
+                    selection.append(os.path.normpath(str(self.filePath(index))))
+                if os.path.isdir(str(self.filePath(index))):
                     self.add_checked_files_from_dir(self.filePath(index), selection)
 
         return set(selection)

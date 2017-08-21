@@ -38,13 +38,13 @@ class Customizer(object):
             subprocess.call([opener, file_name])
 
     def show_error_window(self, text):
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text),
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", "{}".format(text),
                              QMessageBox.Ok, self.gui.window)
         ms_box.setWindowModality(Qt.WindowModal)
         ms_box.exec_()
 
     def show_warning_window(self, text):
-        ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(text),
+        ms_box = QMessageBox(QMessageBox.Warning, "Warning", "{}".format(text),
                              QMessageBox.Ok, self.gui.window)
         ms_box.setWindowModality(Qt.WindowModal)
         ms_box.exec_()

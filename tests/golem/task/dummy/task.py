@@ -54,7 +54,7 @@ class DummyTask(Task):
         :param DummyTaskParameters params: task parameters
         1024 hashes on average
         """
-        task_id = SimpleAuth.generate_uuid().get_hex()
+        task_id = str(SimpleAuth.generate_uuid())
         owner_address = ''
         owner_port = 0
         owner_key_id = ''
@@ -122,6 +122,9 @@ class DummyTask(Task):
     def short_extra_data_repr(self, perf_index=None):
         return "dummy task " + self.task_id
 
+    def get_trust_mod(self, subtask_id):
+        return 0.
+
     def get_total_tasks(self):
         return self.total_subtasks
 
@@ -143,7 +146,7 @@ class DummyTask(Task):
         :rtype: ComputeTaskDef"""
 
         # create new subtask_id
-        subtask_id = uuid.uuid4().get_hex()
+        subtask_id = str(uuid.uuid4())
 
         with self._lock:
             # check if a task has been assigned to this node
@@ -193,12 +196,12 @@ class DummyTask(Task):
         if self.task_params.difficulty == 0:
             return True
 
-        import computation
         with open(self.shared_data_file, 'r') as f:
             input_data = f.read()
 
         input_data += self.subtask_data[subtask_id]
-        return computation.check_pow(long(result, 16), input_data,
+        from tests.golem.task.dummy import computation
+        return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result, result_type=0):

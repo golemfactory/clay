@@ -61,7 +61,7 @@ class PyInstaller(Command):
 
         for spec in ['golemapp.spec', 'golemcli.spec']:
             cls.banner("Building {}".format(spec))
-            subprocess.check_call(['python', '-m', 'PyInstaller', spec])
+            subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', spec])
 
         print("> Copying taskcollector")
         cls.copy_taskcollector(dist_dir)
@@ -89,7 +89,7 @@ class PyInstaller(Command):
         import shutil
 
         taskcollector_dir = path.join('apps', 'rendering', 'resources',
-                                      'taskcollector', 'Release')
+                                      'taskcollector', 'x64' if is_windows() else '', 'Release')
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
 
@@ -185,6 +185,9 @@ def parse_requirements(my_path):
     dependency_links = []
     for line in open(path.join(my_path, 'requirements.txt')):
         line = line.strip()
+        if line.startswith('-') or line.startswith('#'):
+            continue
+
         m = re.match('.+#egg=(?P<package>.+)$', line)
         if m:
             requirements.append(m.group('package'))
@@ -217,15 +220,16 @@ def generate_ui():
 def update_variables():
     import re
     file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
-    with open(file_, 'rb') as f_:
+    with open(file_, 'r') as f_:
         variables = f_.read()
     version = get_version()
-    variables = re.sub(r"APP_VERSION = \".*\"",
-                       "APP_VERSION = \"{}\"".format(version), variables)
-    with open(file_, 'wb') as f_:
+    variables = re.sub('APP_VERSION = .*',
+                       'APP_VERSION = "{}"'.format(version), variables)
+    with open(file_, 'w') as f_:
         f_.write(variables)
 
 
+# @todo do we really need it?
 def move_wheel():
     from shutil import move
     path_ = path.join(get_golem_path(), 'dist')
@@ -248,8 +252,8 @@ def get_version():
             semantic_version.Version(tag.name)
             versions.append(tag.name)
         except Exception as exc:
-            print "Tag {} is not a valid release version: {}".format(
-                tag, exc)
+            print("Tag {} is not a valid release version: {}".format(
+                  tag, exc))
 
     if not versions:
         raise EnvironmentError("No git version tag found "
@@ -280,11 +284,12 @@ def file_name():
     else:
         raise SystemError("Incorrect platform: {}".format(platform))
     if commit_id != tag_id:  # devel package
-        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name,
+        return "golem-{}-0x{}{}-cp35-none-{}.whl".format(tag.name,
                                                          commit_id[:4],
-                                                         commit_id[-4:], plat)
+                                                         commit_id[-4:],
+                                                         plat)
     else:  # release package
-        return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
+        return "golem-{}-cp35-none-{}.whl".format(tag.name, plat)
 
 
 def get_files():

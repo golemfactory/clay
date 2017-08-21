@@ -10,10 +10,10 @@ options = {
 
 
 def dir_size_to_display(dir_size):
-    if dir_size / (1024 * 1024 * 1024) > 0:
+    if dir_size // (1024 * 1024 * 1024) > 0:
         dir_size = round(float(dir_size) / (1024 * 1024 * 1024), 1)
         index = 2
-    elif dir_size / (1024 * 1024) > 0:
+    elif dir_size // (1024 * 1024) > 0:
         dir_size = round(float(dir_size) / (1024 * 1024), 1)
         index = 1
     else:
@@ -23,11 +23,11 @@ def dir_size_to_display(dir_size):
 
 
 def resource_size_to_display(max_resource_size):
-    if max_resource_size / (1024 * 1024) > 0:
-        max_resource_size /= (1024 * 1024)
+    if max_resource_size // (1024 * 1024) > 0:
+        max_resource_size //= (1024 * 1024)
         index = 2
-    elif max_resource_size / 1024 > 0:
-        max_resource_size /= 1024
+    elif max_resource_size // 1024 > 0:
+        max_resource_size //= 1024
         index = 1
     else:
         index = 0
@@ -36,7 +36,7 @@ def resource_size_to_display(max_resource_size):
 
 def translate_resource_index(index):
     if index in options:
-        return options[ index ]
+        return options[index]
     else:
         logger.error("Wrong memory unit index: {} ".format(index))
         return ''

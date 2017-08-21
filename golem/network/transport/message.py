@@ -46,7 +46,7 @@ class Message(object):
         # treat objects as dictionaries
         elif hasattr(v, '__dict__'):
             return self._sort_dict(v.__dict__, filter_properties=True)
-        elif isinstance(v, basestring):
+        elif isinstance(v, str):
             return to_unicode(v)
         elif isinstance(v, collections.Iterable):
             return v.__class__([self._sort_obj(_v) for _v in v])
@@ -54,8 +54,9 @@ class Message(object):
 
     def _sort_dict(self, dictionary, filter_properties=False):
         result = dict()
-        for k, v in dictionary.iteritems():
-            if filter_properties and (k.startswith('_') or callable(v)):
+        for k, v in dictionary.items():
+            if filter_properties and (k.startswith('_') or
+                                      isinstance(v, collections.Callable)):
                 continue
             result[to_unicode(k)] = self._sort_obj(v)
         return sorted(result.items())
@@ -216,17 +217,17 @@ class MessageHello(Message):
     TYPE = 0
 
     MAPPING = {
-        'proto_id': u"PROTO_ID",
-        'client_ver': u"CLI_VER",
-        'port': u"PORT",
-        'node_name': u"NODE_NAME",
-        'client_key_id': u"CLIENT_KEY_ID",
-        'rand_val': u"RAND_VAL",
-        'node_info': u"NODE_INFO",
-        'solve_challenge': u"SOLVE_CHALLENGE",
-        'challenge': u"CHALLENGE",
-        'difficulty': u"DIFFICULTY",
-        'metadata': u"METADATA",
+        'proto_id': "PROTO_ID",
+        'client_ver': "CLI_VER",
+        'port': "PORT",
+        'node_name': "NODE_NAME",
+        'client_key_id': "CLIENT_KEY_ID",
+        'rand_val': "RAND_VAL",
+        'node_info': "NODE_INFO",
+        'solve_challenge': "SOLVE_CHALLENGE",
+        'challenge': "CHALLENGE",
+        'difficulty': "DIFFICULTY",
+        'metadata': "METADATA",
     }
 
     def __init__(
@@ -277,7 +278,7 @@ class MessageRandVal(Message):
     TYPE = 1
 
     MAPPING = {
-        'rand_val': u"RAND_VAL",
+        'rand_val': "RAND_VAL",
     }
 
     def __init__(self, rand_val=0, **kwargs):
@@ -293,7 +294,7 @@ class MessageDisconnect(Message):
     TYPE = 2
 
     MAPPING = {
-        'reason': u"DISCONNECT_REASON",
+        'reason': "DISCONNECT_REASON",
     }
 
     def __init__(self, reason=-1, **kwargs):
@@ -309,7 +310,7 @@ class MessageChallengeSolution(Message):
     TYPE = 3
 
     MAPPING = {
-        'solution': u"SOLUTION",
+        'solution': "SOLUTION",
     }
 
     def __init__(self, solution="", **kwargs):
@@ -347,7 +348,7 @@ class MessagePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 4
 
     MAPPING = {
-        'peers_array': u"PEERS",
+        'peers_array': "PEERS",
     }
 
     def __init__(self, peers_array=None, **kwargs):
@@ -371,7 +372,7 @@ class MessageTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 6
 
     MAPPING = {
-        'tasks_array': u"TASKS",
+        'tasks_array': "TASKS",
     }
 
     def __init__(self, tasks_array=None, **kwargs):
@@ -389,7 +390,7 @@ class MessageRemoveTask(Message):
     TYPE = P2P_MESSAGE_BASE + 7
 
     MAPPING = {
-        'task_id': u"REMOVE_TASK",
+        'task_id': "REMOVE_TASK",
     }
 
     def __init__(self, task_id=None, **kwargs):
@@ -411,7 +412,7 @@ class MessageResourcePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 9
 
     MAPPING = {
-        'resource_peers': u"RESOURCE_PEERS",
+        'resource_peers': "RESOURCE_PEERS",
     }
 
     def __init__(self, resource_peers=None, **kwargs):
@@ -429,7 +430,7 @@ class MessageDegree(Message):
     TYPE = P2P_MESSAGE_BASE + 10
 
     MAPPING = {
-        'degree': u"DEGREE",
+        'degree': "DEGREE",
     }
 
     def __init__(self, degree=None, **kwargs):
@@ -445,7 +446,7 @@ class MessageGossip(Message):
     TYPE = P2P_MESSAGE_BASE + 11
 
     MAPPING = {
-        'gossip': u"GOSSIP",
+        'gossip': "GOSSIP",
     }
 
     def __init__(self, gossip=None, **kwargs):
@@ -469,8 +470,8 @@ class MessageLocRank(Message):
     TYPE = P2P_MESSAGE_BASE + 13
 
     MAPPING = {
-        'node_id': u"NODE_ID",
-        'loc_rank': u"LOC_RANK",
+        'node_id': "NODE_ID",
+        'loc_rank': "LOC_RANK",
     }
 
     def __init__(self, node_id='', loc_rank='', **kwargs):
@@ -488,7 +489,7 @@ class MessageFindNode(Message):
     TYPE = P2P_MESSAGE_BASE + 14
 
     MAPPING = {
-        'node_key_id': u"NODE_KEY_ID",
+        'node_key_id': "NODE_KEY_ID",
     }
 
     def __init__(self, node_key_id='', **kwargs):
@@ -504,9 +505,9 @@ class MessageWantToStartTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 15
 
     MAPPING = {
-        'node_info': u"NODE_INFO",
-        'conn_id': u"CONN_ID",
-        'super_node_info': u"SUPER_NODE_INFO",
+        'node_info': "NODE_INFO",
+        'conn_id': "CONN_ID",
+        'super_node_info': "SUPER_NODE_INFO",
     }
 
     def __init__(
@@ -531,10 +532,10 @@ class MessageSetTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 16
 
     MAPPING = {
-        'key_id': u"KEY_ID",
-        'node_info': u"NODE_INFO",
-        'conn_id': u"CONN_ID",
-        'super_node_info': u"SUPER_NODE_INFO",
+        'key_id': "KEY_ID",
+        'node_info': "NODE_INFO",
+        'conn_id': "CONN_ID",
+        'super_node_info': "SUPER_NODE_INFO",
     }
 
     def __init__(
@@ -562,10 +563,10 @@ class MessageNatHole(Message):
     TYPE = P2P_MESSAGE_BASE + 17
 
     MAPPING = {
-        'key_id': u"KEY_ID",
-        'address': u"ADDR",
-        'port': u"PORT",
-        'conn_id': u"CONN_ID",
+        'key_id': "KEY_ID",
+        'address': "ADDR",
+        'port': "PORT",
+        'conn_id': "CONN_ID",
     }
 
     def __init__(
@@ -593,7 +594,7 @@ class MessageNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 18
 
     MAPPING = {
-        'conn_id': u"CONN_ID",
+        'conn_id': "CONN_ID",
     }
 
     def __init__(self, conn_id=None, **kwargs):
@@ -609,8 +610,8 @@ class MessageInformAboutNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 19
 
     MAPPING = {
-        'key_id': u"KEY_ID",
-        'conn_id': u"CONN_ID",
+        'key_id': "KEY_ID",
+        'conn_id': "CONN_ID",
     }
 
     def __init__(self, key_id=None, conn_id=None, **kwargs):
@@ -631,13 +632,13 @@ class MessageWantToComputeTask(Message):
     TYPE = TASK_MSG_BASE + 1
 
     MAPPING = {
-        'node_name': u"NODE_NAME",
-        'task_id': u"TASK_ID",
-        'perf_index': u"PERF_INDEX",
-        'max_resource_size': u"MAX_RES",
-        'max_memory_size': u"MAX_MEM",
-        'num_cores': u"NUM_CORES",
-        'price': u"PRICE",
+        'node_name': "NODE_NAME",
+        'task_id': "TASK_ID",
+        'perf_index': "PERF_INDEX",
+        'max_resource_size': "MAX_RES",
+        'max_memory_size': "MAX_MEM",
+        'num_cores': "NUM_CORES",
+        'price': "PRICE",
     }
 
     def __init__(
@@ -673,7 +674,7 @@ class MessageTaskToCompute(Message):
     TYPE = TASK_MSG_BASE + 2
 
     MAPPING = {
-        'compute_task_def': u"COMPUTE_TASK_DEF",
+        'compute_task_def': "COMPUTE_TASK_DEF",
     }
 
     def __init__(self, compute_task_def=None, **kwargs):
@@ -690,8 +691,8 @@ class MessageCannotAssignTask(Message):
     TYPE = TASK_MSG_BASE + 3
 
     MAPPING = {
-        'reason': u"REASON",
-        'task_id': u"TASK_ID",
+        'reason': "REASON",
+        'task_id': "TASK_ID",
     }
 
     def __init__(self, task_id=0, reason="", **kwargs):
@@ -710,16 +711,16 @@ class MessageReportComputedTask(Message):
     TYPE = TASK_MSG_BASE + 4
 
     MAPPING = {
-        'subtask_id': u"SUB_TASK_ID",
-        'result_type': u"RESULT_TYPE",
-        'computation_time': u"COMPUTATION_TIME",
-        'node_name': u"NODE_NAME",
-        'address': u"ADDR",
-        'node_info': u"NODE_INFO",
-        'port': u"PORT",
-        'key_id': u"KEY_ID",
-        'extra_data': u"EXTRA_DATA",
-        'eth_account': u"ETH_ACCOUNT",
+        'subtask_id': "SUB_TASK_ID",
+        'result_type': "RESULT_TYPE",
+        'computation_time': "COMPUTATION_TIME",
+        'node_name': "NODE_NAME",
+        'address': "ADDR",
+        'node_info': "NODE_INFO",
+        'port': "PORT",
+        'key_id': "KEY_ID",
+        'extra_data': "EXTRA_DATA",
+        'eth_account': "ETH_ACCOUNT",
     }
 
     def __init__(
@@ -766,7 +767,7 @@ class MessageGetTaskResult(Message):
     TYPE = TASK_MSG_BASE + 5
 
     MAPPING = {
-        'subtask_id': u"SUB_TASK_ID",
+        'subtask_id': "SUB_TASK_ID",
     }
 
     def __init__(self, subtask_id="", **kwargs):
@@ -782,10 +783,10 @@ class MessageTaskResultHash(Message):
     TYPE = TASK_MSG_BASE + 7
 
     MAPPING = {
-        'subtask_id': u"SUB_TASK_ID",
-        'multihash': u"MULTIHASH",
-        'secret': u"SECRET",
-        'options': u"OPTIONS",
+        'subtask_id': "SUB_TASK_ID",
+        'multihash': "MULTIHASH",
+        'secret': "SECRET",
+        'options': "OPTIONS",
     }
 
     def __init__(
@@ -806,8 +807,8 @@ class MessageGetResource(Message):
     TYPE = TASK_MSG_BASE + 8
 
     MAPPING = {
-        'task_id': u"SUB_TASK_ID",
-        'resource_header': u"RESOURCE_HEADER",
+        'task_id': "SUB_TASK_ID",
+        'resource_header': "RESOURCE_HEADER",
     }
 
     def __init__(self, task_id="", resource_header=None, **kwargs):
@@ -826,8 +827,8 @@ class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
     MAPPING = {
-        'subtask_id': u"SUB_TASK_ID",
-        'reward': u"REWARD",
+        'subtask_id': "SUB_TASK_ID",
+        'reward': "REWARD",
     }
 
     def __init__(self, subtask_id=0, reward=0, **kwargs):
@@ -845,7 +846,7 @@ class MessageSubtaskResultRejected(Message):
     TYPE = TASK_MSG_BASE + 11
 
     MAPPING = {
-        'subtask_id': u"SUB_TASK_ID",
+        'subtask_id': "SUB_TASK_ID",
     }
 
     def __init__(self, subtask_id=0, **kwargs):
@@ -861,13 +862,13 @@ class MessageDeltaParts(Message):
     TYPE = TASK_MSG_BASE + 12
 
     MAPPING = {
-        'task_id': u"TASK_ID",
-        'delta_header': u"DELTA_HEADER",
-        'parts': u"PARTS",
-        'node_name': u"NODE_NAME",
-        'address': u"ADDR",
-        'port': u"PORT",
-        'node_info': u"node info",
+        'task_id': "TASK_ID",
+        'delta_header': "DELTA_HEADER",
+        'parts': "PARTS",
+        'node_name': "NODE_NAME",
+        'address': "ADDR",
+        'port': "PORT",
+        'node_info': "node info",
     }
 
     def __init__(self, task_id=0, delta_header=None, parts=None, node_name='',
@@ -899,8 +900,8 @@ class MessageTaskFailure(Message):
     TYPE = TASK_MSG_BASE + 15
 
     MAPPING = {
-        'subtask_id': u"SUBTASK_ID",
-        'err': u"ERR",
+        'subtask_id': "SUBTASK_ID",
+        'err': "ERR",
     }
 
     def __init__(self, subtask_id="", err="", **kwargs):
@@ -918,7 +919,7 @@ class MessageStartSessionResponse(Message):
     TYPE = TASK_MSG_BASE + 16
 
     MAPPING = {
-        'conn_id': u"CONN_ID",
+        'conn_id': "CONN_ID",
     }
 
     def __init__(self, conn_id=None, **kwargs):
@@ -934,9 +935,9 @@ class MessageMiddleman(Message):
     TYPE = TASK_MSG_BASE + 17
 
     MAPPING = {
-        'asking_node': u"ASKING_NODE",
-        'dest_node': u"DEST_NODE",
-        'ask_conn_id': u"ASK_CONN_ID",
+        'asking_node': "ASKING_NODE",
+        'dest_node': "DEST_NODE",
+        'ask_conn_id': "ASK_CONN_ID",
     }
 
     def __init__(
@@ -962,9 +963,9 @@ class MessageJoinMiddlemanConn(Message):
     TYPE = TASK_MSG_BASE + 18
 
     MAPPING = {
-        'conn_id': u"CONN_ID",
-        'key_id': u"KEY_ID",
-        'dest_node_key_id': u"DEST_NODE_KEY_ID",
+        'conn_id': "CONN_ID",
+        'key_id': "KEY_ID",
+        'dest_node_key_id': "DEST_NODE_KEY_ID",
     }
 
     def __init__(
@@ -1013,9 +1014,9 @@ class MessageNatPunch(Message):
     TYPE = TASK_MSG_BASE + 22
 
     MAPPING = {
-        'asking_node': u"ASKING_NODE",
-        'dest_node': u"DEST_NODE",
-        'ask_conn_id': u"ASK_CONN_ID",
+        'asking_node': "ASKING_NODE",
+        'dest_node': "DEST_NODE",
+        'ask_conn_id': "ASK_CONN_ID",
     }
 
     def __init__(
@@ -1043,7 +1044,7 @@ class MessageWaitForNatTraverse(Message):
     TYPE = TASK_MSG_BASE + 23
 
     MAPPING = {
-        'port': u"PORT",
+        'port': "PORT",
     }
 
     def __init__(self, port=None, **kwargs):
@@ -1071,8 +1072,8 @@ class MessageCannotComputeTask(Message):
     TYPE = TASK_MSG_BASE + 26
 
     MAPPING = {
-        'reason': u"REASON",
-        'subtask_id': u"SUBTASK_ID",
+        'reason': "REASON",
+        'subtask_id': "SUBTASK_ID",
     }
 
     def __init__(self, subtask_id=None, reason=None, **kwargs):
@@ -1143,7 +1144,7 @@ RESOURCE_MSG_BASE = 3000
 
 class AbstractResource(Message):
     MAPPING = {
-        'resource': u'resource',
+        'resource': 'resource',
     }
 
     def __init__(self, resource=None, **kwargs):
@@ -1158,8 +1159,8 @@ class MessagePushResource(AbstractResource):
     TYPE = RESOURCE_MSG_BASE + 1
 
     MAPPING = {
-        'resource': u"resource",
-        'copies': u"copies",
+        'resource': "resource",
+        'copies': "copies",
     }
 
     def __init__(self, copies=0, **kwargs):
@@ -1190,8 +1191,8 @@ class MessagePullAnswer(Message):
     TYPE = RESOURCE_MSG_BASE + 5
 
     MAPPING = {
-        'resource': u"resource",
-        'has_resource': u"has resource",
+        'resource': "resource",
+        'has_resource': "has resource",
     }
 
     def __init__(self, resource=None, has_resource=False, **kwargs):
@@ -1209,8 +1210,8 @@ class MessageResourceList(Message):
     TYPE = RESOURCE_MSG_BASE + 7
 
     MAPPING = {
-        'resources': u"resources",
-        'options': u"options",
+        'resources': "resources",
+        'options': "options",
     }
 
     def __init__(self, resources=None, options=None, **kwargs):

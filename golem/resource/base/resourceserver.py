@@ -1,10 +1,6 @@
-import copy
 import logging
-from collections import namedtuple
-from threading import Lock
-
 from enum import Enum
-from twisted.internet.defer import Deferred
+from threading import Lock
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +103,7 @@ class BaseResourceServer(object):
     def _download_resources(self, async=True):
         pending = dict(self.pending_resources)
 
-        for task_id, entries in pending.iteritems():
+        for task_id, entries in list(pending.items()):
             for entry in list(entries):
                 if entry.status in [TransferStatus.idle, TransferStatus.failed]:
                     entry.status = TransferStatus.transferring

@@ -1,4 +1,4 @@
-from modelbase import BasicModel
+from .modelbase import BasicModel
 
 
 class BasePaymentModel(BasicModel):

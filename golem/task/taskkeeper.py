@@ -1,5 +1,3 @@
-from __future__ import division
-
 import logging
 import math
 import pickle
@@ -74,7 +72,7 @@ class CompTaskKeeper(object):
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
             from pprint import pformat
-            for task in self.active_tasks.values():
+            for task in list(self.active_tasks.values()):
                 logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
@@ -99,7 +97,7 @@ class CompTaskKeeper(object):
 
     def add_request(self, theader, price):
         logger.debug('CT.add_request()')
-        if not type(price) in (int, long):
+        if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
                 " Should be int or long".format(type(price))
@@ -145,7 +143,7 @@ class CompTaskKeeper(object):
     @handle_key_error
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
-        if not type(price) in (int, long):
+        if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
                 " Should be int or long".format(type(price))
@@ -210,7 +208,7 @@ class TaskHeaderKeeper(object):
          Otheriwse first element is False and the second is the string
          describing wrong element
         """
-        if not isinstance(th_dict_repr['deadline'], (int, long, float)):
+        if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
         if th_dict_repr['deadline'] < get_timestamp_utc():
             return False, "Deadline already passed"
@@ -277,7 +275,7 @@ class TaskHeaderKeeper(object):
         """ Return all known tasks
         :return list: list of all known tasks
         """
-        return self.task_headers.values()
+        return list(self.task_headers.values())
 
     def change_config(self, config_desc):
         """Change config options, ie. minimal price that this node may offer
@@ -290,7 +288,7 @@ class TaskHeaderKeeper(object):
             return
         self.min_price = config_desc.min_price
         self.supported_tasks = []
-        for id_, th in self.task_headers.iteritems():
+        for id_, th in self.task_headers.items():
             if self.is_supported(th.__dict__):
                 self.supported_tasks.append(id_)
 
@@ -305,12 +303,12 @@ class TaskHeaderKeeper(object):
         """
         try:
             id_ = th_dict_repr["task_id"]
-            update = id_ in self.task_headers.keys()
+            update = id_ in list(self.task_headers.keys())
             is_correct, err = self.is_correct(th_dict_repr)
             if not is_correct:
                 raise TypeError(err)
 
-            if id_ not in self.removed_tasks.keys():  # not removed recently
+            if id_ not in list(self.removed_tasks.keys()):  # not recent
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                 is_supported = self.is_supported(th_dict_repr)
 
@@ -350,13 +348,13 @@ class TaskHeaderKeeper(object):
             return self.task_headers[task_id]
 
     def remove_old_tasks(self):
-        for t in self.task_headers.values():
+        for t in list(self.task_headers.values()):
             cur_time = get_timestamp_utc()
             if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 
-        for task_id, remove_time in self.removed_tasks.items():
+        for task_id, remove_time in list(self.removed_tasks.items()):
             cur_time = time.time()
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]

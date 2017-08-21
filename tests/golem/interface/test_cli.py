@@ -45,7 +45,7 @@ class MockStdout(mock.Mock):
 
 class TestCLI(unittest.TestCase):
 
-    __raw_input = '__builtin__.raw_input'
+    __input = 'builtins.input'
 
     class MockFormatter(Mock):
         def supports(self, *args, **kwargs):
@@ -65,14 +65,15 @@ class TestCLI(unittest.TestCase):
             return lambda *args, **kwargs: self.return_value
 
     @patch('sys.stdout', new_callable=StringIO)
-    @patch('golem.interface.cli.CLI.process', side_effect=lambda x: (u' '.join(x), Mock()))
+    @patch('golem.interface.cli.CLI.process',
+           side_effect=lambda x: (' '.join(x), Mock()))
     @patch('golem.core.common.config_logging', side_effect=_nop)
     def test_execute(self, _, _process, _out):
 
         client = self.MockClient()
         cli = CLI(client=client, formatters=[self.MockFormatter()])
 
-        with patch(self.__raw_input, return_value=''):
+        with patch(self.__input, return_value='', create=True):
             cli.execute()
 
         _process.assert_called_with(['help'])
@@ -80,7 +81,8 @@ class TestCLI(unittest.TestCase):
 
         _process.called = False
 
-        with patch(self.__raw_input, return_value='invalid_command --invalid-flag'):
+        cmd = 'invalid_command --invalid-flag'
+        with patch(self.__input, return_value=cmd, create=True):
             cli.execute()
 
         self.assertTrue(_process.called)
@@ -94,7 +96,8 @@ class TestCLI(unittest.TestCase):
         client = self.MockClient()
         cli = CLI(client=client, formatters=[self.MockFormatter()])
 
-        with patch(self.__raw_input, return_value='invalid_command --invalid-flag'):
+        cmd = 'invalid_command --invalid-flag'
+        with patch(self.__input, return_value=cmd, create=True):
             with self.assertRaises(Exception):
                 cli.execute()
 
@@ -111,7 +114,8 @@ class TestCLI(unittest.TestCase):
         client = self.MockClient()
         cli = CLI(client=client)
 
-        with patch(self.__raw_input, return_value='invalid_command --invalid-flag'):
+        cmd = 'invalid_command --invalid-flag'
+        with patch(self.__input, return_value=cmd, create=True):
             cli.execute()
             self.assertTrue(_process.called)
             self.assertFalse(_exit.called)
@@ -123,11 +127,11 @@ class TestCLI(unittest.TestCase):
         client = self.MockClient()
         cli = CLI(client=client)
 
-        with patch(self.__raw_input, return_value='exit'):
+        with patch(self.__input, return_value='exit', create=True):
             cli.execute(interactive=True)
             self.assertTrue(_process.called)
 
-    @patch('__builtin__.raw_input')
+    @patch('builtins.input', create=True)
     @patch('golem.interface.cli._exit', side_effect=_nop)
     def test_execute_interactive(self, _exit, _ri):
 
@@ -207,8 +211,10 @@ class TestCLI(unittest.TestCase):
 
             expected = ['test', 'string with spaces', '--flag', 'value']
 
-            with patch(self.__raw_input, return_value='test "string with spaces" --flag "value"'):
-                self.assertEqual(cli._read_arguments(interactive=True), expected)
+            cmd = 'test "string with spaces" --flag "value"'
+            with patch(self.__input, return_value=cmd, create=True):
+                self.assertEqual(cli._read_arguments(interactive=True),
+                                 expected)
 
     def test_build(self):
 
@@ -241,7 +247,7 @@ class TestCLI(unittest.TestCase):
                     pass
 
                 @staticmethod
-                def static_ignored_method():
+                def static_method():
                     pass
 
             @command("outer", root=True)
@@ -263,7 +269,7 @@ class TestCLI(unittest.TestCase):
             def choices(_actions):
                 result = {}
                 for action in _actions:
-                    for choice, subparser in action.choices.items():
+                    for choice, subparser in list(action.choices.items()):
                         result[choice] = subparser
                 return result
 
@@ -271,15 +277,18 @@ class TestCLI(unittest.TestCase):
             cli_choices = choices(cli_actions)
 
             self.assertEqual(len(cli_choices), 2)
-            self.assertIn('mock', cli_choices.keys())
-            self.assertIn('outer', cli_choices.keys())
+            self.assertIn('mock', list(cli_choices.keys()))
+            self.assertIn('outer', list(cli_choices.keys()))
 
             mock_actions = actions(cli_choices['mock'])
             mock_choices = choices(mock_actions)
-            expected_choices = ['arg_method', 'method_2', 'mock_help', 'id_method', 'outer_2', 'renamed_method']
+            expected_choices = ['arg_method', 'method_2', 'mock_help',
+                                'id_method', 'outer_2', 'renamed_method',
+                                'static_method']
 
             self.assertEqual(len(mock_choices), len(expected_choices))
-            self.assertTrue(all([c in mock_choices.keys() for c in expected_choices]))
+            self.assertTrue(all([c in list(mock_choices.keys())
+                                 for c in expected_choices]))
 
             self.assertTrue(any([a.option_strings == ['--test-flag', '-tf'] and
                                  isinstance(a, argparse._StoreTrueAction)
@@ -289,14 +298,18 @@ class TestCLI(unittest.TestCase):
             self.assertIn('--test-flag', string_actions)
             self.assertIn('-tf', string_actions)
 
+            args = mock_choices['id_method']._positionals._actions
             self.assertTrue(any([a.dest == 'some_id' and
                                  a.help == 'Object id' and
                                  isinstance(a, argparse._StoreAction)
-                                 for a in mock_choices['id_method']._positionals._actions]))
+                                 for a in args]))
 
     def test_cli_formatter(self):
         """ Test for setting and getting formatter """
-        from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
+        from golem.interface.formatters import (
+            CommandFormatter, CommandJSONFormatter
+        )
+
         client = self.MockClient()
         cli = CLI(client=client)
         cli.add_formatter(CommandFormatter())

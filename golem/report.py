@@ -82,7 +82,7 @@ def report_call(component, method, stage=None):
         yield
     except BaseException as e:
         # Publish and re-raise exceptions
-        StatusPublisher.publish(component, method, Stage.exception, unicode(e))
+        StatusPublisher.publish(component, method, Stage.exception, str(e))
         raise
     else:
         # Publish a post-execution event

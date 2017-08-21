@@ -20,7 +20,7 @@ from twisted.internet import reactor
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
-from task import DummyTask, DummyTaskParameters
+from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -34,18 +34,18 @@ node_kind = ""
 
 
 def report(msg):
-    print format_msg(node_kind, os.getpid(), msg)
+    print(format_msg(node_kind, os.getpid(), msg))
 
 
 def override_ip_info(*_, **__):
-    from stun import OpenInternet
+    from golem.network.stun.pystun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
 
 
 def create_client(datadir):
     # executed in a subprocess
-    import stun
-    stun.get_ip_info = override_ip_info
+    from golem.network.stun import pystun
+    pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
     return Client(datadir=datadir,
@@ -62,7 +62,11 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     def shutdown():
         client and client.quit()
+        reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
+        if os.path.exists(datadir):
+            shutil.rmtree(datadir)
+
     atexit.register(shutdown)
 
     global node_kind
@@ -101,7 +105,11 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     def shutdown():
         client and client.quit()
+        reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
+        if os.path.exists(datadir):
+            shutil.rmtree(datadir)
+
     atexit.register(shutdown)
 
     global node_kind
@@ -165,7 +173,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     # Start the requesting node in a separate process
     reqdir = path.join(datadir, REQUESTING_NODE_KIND)
     requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks)],
+        [sys.executable, "-u", __file__, REQUESTING_NODE_KIND, reqdir,
+         str(num_subtasks)],
         bufsize=1,  # line buffered
         env=env,
         stdout=subprocess.PIPE)
@@ -175,7 +184,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:
-            print line
+            line = line.decode('utf-8')
+            print(line)
             m = address_re.match(line)
             if m:
                 requestor_address = m.group(1)
@@ -186,7 +196,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     for n in range(0, num_computing_nodes):
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
-            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requestor_address]
+            sys.executable, "-u", __file__, COMPUTING_NODE_KIND,
+            compdir, requestor_address
+        ]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
             cmdline.append(str(node_failure_times[n]))
@@ -209,7 +221,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
-                print line
+                line = line.decode('utf-8')
+                print(line)
             if line == task_finished_status:
                 task_finished = True
 
@@ -235,7 +248,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             time.sleep(1)
         return None
     finally:
-        print "Stopping nodes..."
+        print("Stopping nodes...")
 
         for proc in all_procs:
             if proc.poll() is None:
@@ -244,7 +257,6 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 del proc
 
         time.sleep(1)
-        shutil.rmtree(datadir)
 
 
 def dispatch(args):
@@ -265,7 +277,7 @@ def dispatch(args):
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
                                    timeout=120)
         if error_msg:
-            print "Dummy task computation failed:", error_msg
+            print("Dummy task computation failed:", error_msg)
             sys.exit(1)
 
 

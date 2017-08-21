@@ -1,7 +1,6 @@
 import abc
 import logging
 import time
-from copy import deepcopy
 
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.core.variables import APP_VERSION
@@ -133,7 +132,7 @@ class Task(object):
             self.should_wait = should_wait
             self.ctd = ctd
 
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 setattr(self, key, value)
 
     @classmethod
@@ -188,6 +187,15 @@ class Task(object):
         :return ExtraData
         """
         return  # Implement in derived class
+
+    def create_reference_data_for_task_validation(self):
+        """
+        If task validation requires some reference data, then the overriding methods have to generate it.
+        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
+        The reference results will be used to validate the output given by providers.
+        :return:
+        """
+        pass
 
     @abc.abstractmethod
     def short_extra_data_repr(self, perf_index=None):

@@ -5,8 +5,8 @@
 
 
 from math import pi, tan
-from raytracer import RayTracer
-from vector3f import Vector3f
+from .raytracer import RayTracer
+from .vector3f import Vector3f
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))\s*(\S+)').search
@@ -18,12 +18,12 @@ class Camera(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type(l) == type(u""):
+            if type(l) == type(""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
             if not line.isspace():
-                p, d, a = SEARCH(line).groups()
+                p, d, a = SEARCH(line.decode('utf-8')).groups()
                 self.view_position = Vector3f(p)
                 self.view_direction = Vector3f(d).unitize()
                 if self.view_direction.is_zero():

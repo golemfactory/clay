@@ -17,7 +17,7 @@ def _exit():
 @command(name="help", help="Display this help message", root=True)
 def _help():
     message = \
-u"""To display command details type:
+"""To display command details type:
     command -h"""
     raise ParsingException(message)
 
@@ -61,7 +61,7 @@ class CLI(object):
         self.main_parser = main_parser
 
         if main_parser_options:
-            self.main_options = set({v.get('dest') or k for k, v in main_parser_options.items()})
+            self.main_options = set({v.get('dest') or k for k, v in list(main_parser_options.items())})
         else:
             self.main_options = set()
 
@@ -104,7 +104,7 @@ class CLI(object):
                     cls.working = False
                 else:
                     output.write(result)
-                    output.write(u"\n")
+                    output.write("\n")
                     output.flush()
 
             args = None
@@ -132,19 +132,19 @@ class CLI(object):
         except ParsingException as exc:
             parser = exc.parser or self.parser
 
-            if exc.message:
-                result = u"{}\n\n{}".format(exc or u"Invalid command", parser.format_help())
+            if exc:
+                result = "{}\n\n{}".format(exc or "Invalid command", parser.format_help())
             else:
                 result = parser.format_help()
 
         except CommandException as exc:
-            result = u"{}".format(exc)
+            result = "{}".format(exc)
 
         except TimeoutError:
-            result = ExecutionException(u"Command timed out", u" ".join(args), started)
+            result = ExecutionException("Command timed out", " ".join(args), started)
 
         except Exception as exc:
-            result = ExecutionException(u"Exception: {}".format(exc), u" ".join(args), started)
+            result = ExecutionException("Exception: {}".format(exc), " ".join(args), started)
 
         else:
             output = sys.stdout
@@ -159,7 +159,7 @@ class CLI(object):
             sys.stderr.write("Formatter error: {}".format(exc))
 
         if result is None:
-            return u"Completed in {}s".format(time.time() - started), output
+            return "Completed in {}s".format(time.time() - started), output
         return result, output
 
     def build(self):
@@ -235,7 +235,7 @@ class CLI(object):
     def _build_children(self, parser, parent, children, name):
         subparser = parser.add_subparsers(title=name, metavar=self.METAVAR,
                                           parser_class=ArgumentParser)
-        for child in children.values():
+        for child in list(children.values()):
             self._build_parser(subparser, parent, child)
 
     @staticmethod
@@ -257,7 +257,7 @@ class CLI(object):
     def _read_arguments(cls, interactive):
         if interactive:
             try:
-                line = raw_input('>> ')
+                line = input('>> ')
             except ValueError:
                 cls.working = False
             else:
@@ -274,7 +274,7 @@ class CLI(object):
 
     @classmethod
     def _normalize_namespace(cls, namespace):
-        return {cls._normalize_key(k): v for k, v in namespace.__dict__.iteritems()}
+        return {cls._normalize_key(k): v for k, v in list(namespace.__dict__.items())}
 
     @staticmethod
     def _normalize_key(key):

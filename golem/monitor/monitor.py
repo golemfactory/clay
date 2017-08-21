@@ -2,23 +2,23 @@ from golem.decorators import log_error
 import logging
 from pydispatch import dispatcher
 import threading
-import Queue
+import queue
 
-from model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
-from model.loginlogoutmodel import LoginModel, LogoutModel
-from model.statssnapshotmodel import StatsSnapshotModel, VMSnapshotModel, P2PSnapshotModel
-from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
-from model.paymentmodel import ExpenditureModel, IncomeModel
-from model.statssnapshotmodel import ComputationTime
-from transport.sender import DefaultJSONSender as Sender
+from .model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
+from .model.loginlogoutmodel import LoginModel, LogoutModel
+from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
+from .model.paymentmodel import ExpenditureModel, IncomeModel
+from .transport.sender import DefaultJSONSender as Sender
+from .model import statssnapshotmodel
 
 log = logging.getLogger('golem.monitor')
 
 
 class SenderThread(threading.Thread):
-    def __init__(self, node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout, proto_ver):
+    def __init__(self, node_info, monitor_host, monitor_request_timeout,
+                 monitor_sender_thread_timeout, proto_ver):
         super(SenderThread, self).__init__()
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.stop_request = threading.Event()
         self.node_info = node_info
         self.sender = Sender(monitor_host, monitor_request_timeout, proto_ver)
@@ -32,7 +32,7 @@ class SenderThread(threading.Thread):
             try:
                 msg = self.queue.get(True, self.monitor_sender_thread_timeout)
                 self.sender.send(msg)
-            except Queue.Empty:
+            except queue.Empty:
                 # send ping message
                 self.sender.send(self.node_info)
 
@@ -43,15 +43,27 @@ class SenderThread(threading.Thread):
 
 class SystemMonitor(object):
     def __init__(self, meta_data, monitor_config):
-        if not isinstance(meta_data, NodeMetadataModel):
-            raise TypeError("Incorrect meta_data type {}, should be NodeMetadataModel".format(type(meta_data)))
-
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
-        self.sender_thread = self.create_sender_thread()
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
+
+    @property
+    def sender_thread(self):
+        if not hasattr(self, '_sender_thread'):
+            host = self.config['HOST']
+            request_timeout = self.config['REQUEST_TIMEOUT']
+            sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
+            proto_ver = self.config['PROTO_VERSION']
+            self._sender_thread = SenderThread(
+                self.node_info,
+                host,
+                request_timeout,
+                sender_thread_timeout,
+                proto_ver
+            )
+        return self._sender_thread
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event != 'listening':
@@ -61,18 +73,22 @@ class SystemMonitor(object):
             if not result['success']:
                 status = result['description'].replace('\n', ', ')
                 log.warning('Port status: {}'.format(status))
-                dispatcher.send('golem.p2p', event='unreachable',
-                                port=kwargs['port'], description=result['description'])
-        except:
+                dispatcher.send(
+                    'golem.p2p',
+                    event='unreachable',
+                    port=kwargs['port'],
+                    description=result['description']
+                )
+        except Exception:
             log.exception('Port reachability check error')
 
     def ping_request(self, port):
         import requests
-        timeout = 1 # seconds
+        timeout = 1  # seconds
         try:
             response = requests.post(
                 '%sping-me' % (self.config['HOST'],),
-                data={'port': port,},
+                data={'port': port, },
                 timeout=timeout,
             )
             result = response.json()
@@ -80,13 +96,6 @@ class SystemMonitor(object):
             result = {'success': False, 'description': 'Local error: %s' % e}
         log.debug('ping result %r', result)
         return result
-
-    def create_sender_thread(self):
-        host = self.config['HOST']
-        request_timeout = self.config['REQUEST_TIMEOUT']
-        sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
-        proto_ver = self.config['PROTO_VERSION']
-        return SenderThread(self.node_info, host, request_timeout, sender_thread_timeout, proto_ver)
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):
@@ -122,25 +131,59 @@ class SystemMonitor(object):
         self.sender_thread.send(LoginModel(self.meta_data))
 
     def on_computation_time_spent(self, success, value):
-        self.sender_thread.send(ComputationTime(self.meta_data, success, value))
+        msg = statssnapshotmodel.ComputationTime(
+            self.meta_data,
+            success,
+            value
+        )
+        self.sender_thread.send(msg)
 
     def on_logout(self):
         self.sender_thread.send(LogoutModel(self.meta_data))
 
     def on_stats_snapshot(self, known_tasks, supported_tasks, stats):
-        self.sender_thread.send(StatsSnapshotModel(self.meta_data, known_tasks, supported_tasks, stats))
+        msg = statssnapshotmodel.StatsSnapshotModel(
+            self.meta_data,
+            known_tasks,
+            supported_tasks,
+            stats
+        )
+        self.sender_thread.send(msg)
 
     def on_vm_snapshot(self, vm_data):
-        self.sender_thread.send(VMSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, vm_data))
+        msg = statssnapshotmodel.VMSnapshotModel(
+            self.meta_data.cliid,
+            self.meta_data.sessid,
+            vm_data
+        )
+        self.sender_thread.send(msg)
 
     def on_peer_snapshot(self, p2p_data):
-        self.sender_thread.send(P2PSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, p2p_data))
+        msg = statssnapshotmodel.P2PSnapshotModel(
+            self.meta_data.cliid,
+            self.meta_data.sessid,
+            p2p_data
+        )
+        self.sender_thread.send(msg)
 
     def on_task_computer_snapshot(self, task_computer):
-        self.sender_thread.send(TaskComputerSnapshotModel(self.meta_data, task_computer))
+        msg = TaskComputerSnapshotModel(self.meta_data, task_computer)
+        self.sender_thread.send(msg)
 
     def on_payment(self, addr, value):
-        self.sender_thread.send(ExpenditureModel(self.meta_data.cliid, self.meta_data.sessid, addr, value))
+        msg = ExpenditureModel(
+            self.meta_data.cliid,
+            self.meta_data.sessid,
+            addr,
+            value
+        )
+        self.sender_thread.send(msg)
 
     def on_income(self, addr, value):
-        self.sender_thread.send(IncomeModel(self.meta_data.cliid, self.meta_data.sessid, addr, value))
+        msg = IncomeModel(
+            self.meta_data.cliid,
+            self.meta_data.sessid,
+            addr,
+            value
+        )
+        self.sender_thread.send(msg)

@@ -9,19 +9,17 @@ from PIL import Image
 logger = logging.getLogger("apps.rendering")
 
 
-class ImgRepr(object):
-    __metaclass__ = abc.ABCMeta
-
+class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_from_file(self, file_):
         return
 
     @abc.abstractmethod
-    def get_pixel(self, (i, j)):
+    def get_pixel(self, xy):
         return
 
     @abc.abstractmethod
-    def set_pixel(self, (i, j), color):
+    def set_pixel(self, xy, color):
         return
 
     @abc.abstractmethod
@@ -45,16 +43,33 @@ class PILImgRepr(ImgRepr):
     def load_from_file(self, file_):
         self.img = Image.open(file_)
         self.img = self.img.convert('RGB')
+        self.img.name = os.path.basename(file_)
+
+    def load_from_pil_object(self, pil_img, name="noname.png"):
+        import PIL
+        if not isinstance(pil_img, PIL.Image.Image):
+            raise TypeError("img must be an instance of PIL.Image.Image")
+
+        self.img = pil_img
+        self.img = self.img.convert('RGB')
+        self.img.name = name
+
+    def get_name(self):
+        return self.img.name
 
     def get_size(self):
         return self.img.size
 
-    def get_pixel(self, (i, j)):
-        return list(self.img.getpixel((i, j)))
+    def get_pixel(self, xy):
+        return list(self.img.getpixel(xy))
 
-    def set_pixel(self, (i, j), color):
+    @property
+    def size(self):
+        return self.get_size()
+
+    def set_pixel(self, xy, color):
         color = tuple(int(c) for c in color)
-        self.img.putpixel((i, j), color)
+        self.img.putpixel(xy, color)
 
     def copy(self):
         return deepcopy(self)
@@ -81,18 +96,18 @@ class EXRImgRepr(ImgRepr):
                                     self.img.channel(c, self.pt))
                     for c in "RGB"]
         self.file_path = file_
+        self.name = os.path.basename(file_)
 
     def get_size(self):
         return self.dw.max.x - self.dw.min.x + 1, \
                self.dw.max.y - self.dw.min.y + 1
 
-    def get_pixel(self, (i, j)):
-        return [c.getpixel((i, j)) for c in self.rgb]
+    def get_pixel(self, xy):
+        return [c.getpixel(xy) for c in self.rgb]
 
-    def set_pixel(self, (i, j), color):
+    def set_pixel(self, xy, color):
         for c in range(0, len(self.rgb)):
-            self.rgb[c].putpixel((i, j), max(min(self.max, color[c]),
-                                             self.min))
+            self.rgb[c].putpixel(xy, max(min(self.max, color[c]), self.min))
 
     def get_rgbf_extrema(self):
         extrema = [im.getextrema() for im in self.rgb]
@@ -134,9 +149,9 @@ class EXRImgRepr(ImgRepr):
 def load_img(file_):
     """
     Load image from file path and return ImgRepr
-    :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None 
-    if there was an error 
+    :param str file_: path to the file
+    :return ImgRepr | None: Return ImgRepr for special file type or None
+    if there was an error
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -153,14 +168,26 @@ def load_img(file_):
 
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
-     :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or None 
+     :param str file_: path to the file
+     :return Image.Image | None: return PIL Image represantion or None
      if there was an error
     """
 
     img = load_img(file_)
     if img:
         return img.to_pil()
+
+
+def load_as_PILImgRepr(file_) -> PILImgRepr:
+    img = load_img(file_)
+
+    if isinstance(img, EXRImgRepr):
+        img_pil = PILImgRepr()
+        img_pil. \
+            load_from_pil_object(img.to_pil())
+        img = img_pil
+
+    return img
 
 
 def blend(img1, img2, alpha):
@@ -175,7 +202,7 @@ def blend(img1, img2, alpha):
         for y in range(0, res_y):
             p1 = img1.get_pixel((x, y))
             p2 = img2.get_pixel((x, y))
-            p = map(lambda c1, c2: c1 * (1 - alpha) + c2 * alpha, p1, p2)
+            p = list(map(lambda c1, c2: c1 * (1 - alpha) + c2 * alpha, p1, p2))
             img.set_pixel((x, y), p)
 
     return img

@@ -2,13 +2,17 @@ import mock
 import random
 from unittest import TestCase
 
+from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 
 
-class TestSystemMonitor(TestCase):
+class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = (
+        "golem/monitor/monitor.py",
+    )
     def setUp(self):
         random.seed()
 
@@ -42,7 +46,7 @@ class TestSystemMonitor(TestCase):
         def check(f, msg_type):
             with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
                 f()
-                self.assertEquals(mock_send.call_count, 1)
+                self.assertEqual(mock_send.call_count, 1)
                 result = mock_send.call_args[0][0].dict_repr()
                 for key in ('cliid', 'sessid', 'timestamp', 'metadata'):
                     del result[key]
@@ -66,7 +70,7 @@ class TestSystemMonitor(TestCase):
             post_mock.return_value = response_mock = mock.MagicMock()
             response_mock.json = mock.MagicMock(return_value={'success': True})
             dispatcher.send(signal='golem.p2p', event='no event at all', port=port)
-            self.assertEquals(post_mock.call_count, 0)
+            self.assertEqual(post_mock.call_count, 0)
             dispatcher.send(signal='golem.p2p', event='listening', port=port)
             post_mock.assert_called_once_with(
                 '%sping-me' % (MONITOR_CONFIG['HOST'],),
@@ -81,5 +85,5 @@ class TestSystemMonitor(TestCase):
             response_mock.json = mock.MagicMock(return_value={'success': False, 'description': 'failure'})
             dispatcher.send(signal='golem.p2p', event='listening', port=port)
             signals = [s for s in signals if s[1] != 'listening']
-            self.assertEquals(signals, [('golem.p2p', 'unreachable',
+            self.assertEqual(signals, [('golem.p2p', 'unreachable',
                                          {'description': 'failure', 'port': port})])

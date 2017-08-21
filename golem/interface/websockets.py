@@ -10,7 +10,7 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    def __init__(self, cli, host, port, realm=u'golem', ssl=False):
+    def __init__(self, cli, host, port, realm='golem', ssl=False):
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli

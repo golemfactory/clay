@@ -2,11 +2,14 @@ import time
 from os import path
 from random import random, randint
 
-from golem.core.crypto import ECCx
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float, sha2, sha3
+from devp2p.crypto import ECCx
+
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
+    get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
+from golem.utils import encode_hex, decode_hex
 
 
 class KeysAuthTest(TestWithKeysAuth):
@@ -14,10 +17,12 @@ class KeysAuthTest(TestWithKeysAuth):
     def test_sha(self):
         """ Test sha2 and sha3 methods """
         test_str = "qaz123WSX"
-        expected_sha2 = int("0x47b151cede6e6a05140af0da56cb889c40adaf4fddd9f17435cdeb5381be0a62", 16)
-        expected_sha3 = "a99ad773ebfc9712d00a9b9760b879a3aa05054a182d0ba4136c5252f5a85203"
+        expected_sha2 = int("0x47b151cede6e6a05140af0da56cb889c40adaf4fddd9f1"
+                            "7435cdeb5381be0a62", 16)
+        expected_sha3 = ("a99ad773ebfc9712d00a9b9760b879a3aa05054a182d0ba41"
+                         "36c5252f5a85203")
         self.assertEqual(sha2(test_str), expected_sha2)
-        self.assertEqual(sha3(test_str).encode('hex'), expected_sha3)
+        self.assertEqual(encode_hex(sha3(test_str)), expected_sha3)
 
     def test_keys_dir_default(self):
         km = KeysAuth(self.path)
@@ -56,14 +61,14 @@ class KeysAuthTest(TestWithKeysAuth):
         with self.assertRaises(ArithmeticError):
             get_random(30, 10)
         self.assertEqual(10, get_random(10, 10))
-        for _ in xrange(10):
+        for _ in range(10):
             a = randint(10, 100)
             b = randint(a + 1, 2 * a)
             r = get_random(a, b)
             self.assertGreaterEqual(r, a)
             self.assertGreaterEqual(b, r)
 
-        for _ in xrange(10):
+        for _ in range(10):
             r = get_random_float()
             self.assertGreater(r, 0)
             self.assertGreater(1, r)
@@ -75,13 +80,13 @@ class TestRSAKeysAuth(TestWithKeysAuth):
     def test_sign_verify(self):
         """ Test signing messages """
         km = RSAKeysAuth(self.path)
-        data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
+        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
         signature = km.sign(data)
         self.assertTrue(km.verify(signature, data))
         self.assertTrue(km.verify(signature, data, km.public_key))
         km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
         self.assertTrue(km2.verify(signature, data, km.public_key))
-        data2 = "ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
+        data2 = b"ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
         signature2 = km2.sign(data2)
         self.assertTrue(km.verify(signature2, data2, km2.public_key))
         self.assertFalse(km.verify(signature, data2))
@@ -93,11 +98,11 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         """ Test encryption and decryption with RSAKeysAuth """
         from os import urandom
         km = RSAKeysAuth(self.path)
-        data = "\x00" + urandom(128)
+        data = b"\x00" + urandom(128)
         self.assertEqual(km.decrypt(km.encrypt(data)), data)
         self.assertEqual(km.decrypt(km.encrypt(data, km.public_key)), data)
         km2 = RSAKeysAuth(self.path)
-        data = "\x00" + urandom(128)
+        data = b"\x00" + urandom(128)
         self.assertEqual(km.decrypt(km2.encrypt(data, km.public_key)), data)
 
     def test_save_load_keys_rsa(self):
@@ -118,9 +123,9 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         ek.generate_new(5)
         self.assertNotEqual(ek.get_public_key(), pub_key)
         self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'r') as f:
+        with open(pub_key_file, 'rb') as f:
             self.assertEqual(f.read(), pub_key)
-        with open(priv_key_file, 'r') as f:
+        with open(priv_key_file, 'rb') as f:
             self.assertEqual(f.read(), priv_key)
         self.assertTrue(ek.load_from_file(priv_key_file))
         self.assertEqual(ek.get_public_key().exportKey(), pub_key)
@@ -149,21 +154,21 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
 
     def test_sign_verify_elliptical(self):
         ek = EllipticalKeysAuth(self.path)
-        data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
+        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
         signature = ek.sign(data)
         self.assertTrue(ek.verify(signature, data))
         self.assertTrue(ek.verify(signature, data, ek.key_id))
         ek2 = EllipticalKeysAuth(path.join(self.path, str(random())))
         self.assertTrue(ek2.verify(signature, data, ek.key_id))
-        data2 = "23103"
+        data2 = b"23103"
         sig = ek2.sign(data2)
         self.assertTrue(ek.verify(sig, data2, ek2.key_id))
 
     def test_sign_fail_elliptical(self):
         """ Test incorrect signature or data """
         ek = EllipticalKeysAuth(self.path)
-        data1 = "qaz123WSX./;'[]"
-        data2 = "qaz123WSY./;'[]"
+        data1 = b"qaz123WSX./;'[]"
+        data2 = b"qaz123WSY./;'[]"
         sig1 = ek.sign(data1)
         sig2 = ek.sign(data2)
         self.assertTrue(ek.verify(sig1, data1))
@@ -210,15 +215,20 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                 self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
 
     def test_fixed_sign_verify_elliptical(self):
-        public_key = "cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb07ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934263cc00ed03f9a781444"
-        private_key = "1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee3b4ac6ef078"
-        expected_result = "c76bd0e19f1b3e2587b9ff9c6230fe0eed7d25de95fdfd4719e13c1be4fadcbe405f700743f9d2ff32843bd249891e929e478e716afd4b5aa081c68e732d369901"
+        public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \
+                     b"7ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934" \
+                     b"263cc00ed03f9a781444"
+        private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
+                      b"3b4ac6ef078"
+        expected_result = b"c76bd0e19f1b3e2587b9ff9c6230fe0eed7d25de95fdfd471" \
+                          b"9e13c1be4fadcbe405f700743f9d2ff32843bd249891e929e" \
+                          b"478e716afd4b5aa081c68e732d369901"
 
         EllipticalKeysAuth.set_keys_dir(self.path)
         ek = EllipticalKeysAuth(self.path)
 
-        ek.public_key = public_key.decode('hex')
-        ek._private_key = private_key.decode('hex')
+        ek.public_key = decode_hex(public_key)
+        ek._private_key = decode_hex(private_key)
         ek.key_id = ek.cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
@@ -263,20 +273,20 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertTrue(ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id))
 
         self.assertEqual(type(loaded_l[1]), type(expected_result))
-        self.assertEqual(loaded_l[1], expected_result.decode('hex'))
+        self.assertEqual(loaded_l[1], decode_hex(expected_result))
 
     def test_encrypt_decrypt_elliptical(self):
         """ Test encryption and decryption with EllipticalKeysAuth """
         from os import urandom
         ek = EllipticalKeysAuth(path.join(self.path, str(random())))
-        data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
+        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
         enc = ek.encrypt(data)
         self.assertEqual(ek.decrypt(enc), data)
         ek2 = EllipticalKeysAuth(path.join(self.path, str(random())))
         self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
-        data2 = "23103"
+        data2 = b"23103"
         self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
-        data3 = "\x00" + urandom(1024)
+        data3 = b"\x00" + urandom(1024)
         ek.generate_new(2)
         self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
         with self.assertRaises(TypeError):

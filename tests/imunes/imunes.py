@@ -92,8 +92,8 @@ def prepare_task_resources(task):
 
 
 def start_simulation(network_file):
-    print "Starting simulation, using network topology from {}...".format(
-        network_file)
+    print("Starting simulation, using network topology from {}...".format(
+        network_file))
 
     # Run imunes in the background
     subprocess.check_call(["imunes", "-e", EXPERIMENT_NAME, "-b", network_file])
@@ -107,7 +107,7 @@ def start_simulation(network_file):
     # Give IMUNES some time to set up the network
     time.sleep(2.0)
 
-    print "Imunes experiment '{}' started".format(EXPERIMENT_NAME)
+    print("Imunes experiment '{}' started".format(EXPERIMENT_NAME))
     return node_names
 
 
@@ -115,7 +115,7 @@ def create_node_infos(node_names, args):
     # Get eth0 network address for each node
     node_infos = {}
     peer_addrs = []
-    print "Golem nodes:"
+    print("Golem nodes:")
     for node in node_names:
         if not (node.startswith('pc') or node.startswith('host')):
             continue
@@ -123,16 +123,16 @@ def create_node_infos(node_names, args):
         is_supernode = node in args.supernode
         disable_blender = node in args.disable_blender
         node_infos[node] = NodeInfo(address, is_supernode, disable_blender)
-        print "\t{}: {}{}{}{}{}".format(
+        print("\t{}: {}{}{}{}{}".format(
                 node, address,
                 ", super node" if is_supernode else "",
                 ", seed node" if node in args.seed else "",
                 ", requestor" if node is args.requestor else "",
-                ", blender disabled" if disable_blender else "")
+                ", blender disabled" if disable_blender else ""))
         if node in args.seed:
             peer_addrs.append(address)
 
-    for info in node_infos.values():
+    for info in list(node_infos.values()):
         for addr in peer_addrs:
             if addr != info.address:
                 info.peers.append("{}:{}".format(addr, DEFAULT_PORT))
@@ -141,7 +141,7 @@ def create_node_infos(node_names, args):
 
 
 def stop_simulation():
-    print "Terminating simulation..."
+    print("Terminating simulation...")
     subprocess.check_call(["imunes", "-b", "-e", EXPERIMENT_NAME])
 
 
@@ -169,7 +169,7 @@ def copy_file(node_name, src_file, target_file):
     :param str target_file: absolute path of the target file
     :return:
     """
-    print "Copying file {} to {}:{}".format(src_file, node_name, target_file)
+    print("Copying file {} to {}:{}".format(src_file, node_name, target_file))
 
     # Make sure that the target dir exists
     if target_file.find("/") != -1:
@@ -182,7 +182,7 @@ def copy_file(node_name, src_file, target_file):
 
 
 def start_golem(node_infos, seed_names):
-    print "Starting golem instances..."
+    print("Starting golem instances...")
 
     def start_node(name, info):
         himage_cmd = "python {}/tests/imunes/node.py".format(IMUNES_GOLEM_DIR)
@@ -201,14 +201,14 @@ def start_golem(node_infos, seed_names):
         cmd = "xterm -title '{} ({})' -geom 150x30 -e " \
               "himage {} /bin/sh -c '{} 2>&1 | tee /log/golem.log' &".format(
                   name, himage_cmd, name, himage_cmd)
-        print "Running '{}' on {}...".format(himage_cmd, name)
+        print("Running '{}' on {}...".format(himage_cmd, name))
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
 
     # First start golem on seed nodes, then on the rest
-    [start_node(n, i) for n, i in node_infos.iteritems() if n in seed_names]
+    [start_node(n, i) for n, i in list(node_infos.items()) if n in seed_names]
     time.sleep(2)
-    [start_node(n, i) for n, i in node_infos.iteritems() if n not in seed_names]
+    [start_node(n, i) for n, i in list(node_infos.items()) if n not in seed_names]
 
 
 TASK_ADDED_RE = re.compile(".*Task ([0-9a-f\-]+) added")
@@ -229,7 +229,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
     :param str requestor_name: name of the task requestor node
     :param num_tasks: number of tasks to watch
     """
-    print "Waiting for tasks to complete..."
+    print("Waiting for tasks to complete...")
     with open("/tmp/imunes/" + requestor_name + "/golem.log", 'r') as log_file:
         done = False
         started_tasks = []
@@ -242,7 +242,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_ADDED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print "Task {} added".format(task_id)
+                print("Task {} added".format(task_id))
                 if task_id in started_tasks:
                     raise IllegalStateException(
                         "Task {} already started".format(task_id))
@@ -251,7 +251,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = RESOURCES_SEND_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print "Resources for task {} sent".format(task_id)
+                print("Resources for task {} sent".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))
@@ -259,7 +259,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_ACCEPTED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print "Task {} accepted".format(task_id)
+                print("Task {} accepted".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))
@@ -268,7 +268,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_NOT_ACCEPTED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print "Task {} not accepted".format(task_id)
+                print("Task {} not accepted".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))
@@ -276,14 +276,14 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
                 finished_tasks.append(task_id)
 
             if len(finished_tasks) == num_tasks:
-                print "All tasks completed"
+                print("All tasks completed")
                 return
 
 
 if __name__ == "__main__":
 
     if os.geteuid() != 0:
-        print "Imunes must be started as root. Sorry..."
+        print("Imunes must be started as root. Sorry...")
         sys.exit(1)
 
     parser = argparse.ArgumentParser(
@@ -309,10 +309,10 @@ if __name__ == "__main__":
     task_file = getattr(args, "task_file", None)
 
     if task_file and not args.requestor:
-        print "Task file specified but no requestor node (use --requestor)"
+        print("Task file specified but no requestor node (use --requestor)")
         sys.exit(1)
     if args.requestor and not task_file:
-        print "Requestor node specified but no task file"
+        print("Requestor node specified but no task file")
         sys.exit(1)
 
     # clean up whatever remained from previous experiments
@@ -335,14 +335,14 @@ if __name__ == "__main__":
     infos = create_node_infos(names, args)
 
     if args.requestor and args.requestor not in infos:
-        print "Invalid requestor node specified"
+        print("Invalid requestor node specified")
         sys.exit(1)
 
     if task_file:
         infos[args.requestor].tasks = [converted_task_file]
 
         # Copy resource files to the requestor node
-        for src, dst in files_to_copy.iteritems():
+        for src, dst in list(files_to_copy.items()):
             copy_file(args.requestor, src, dst)
 
     # 3... 2... 1...

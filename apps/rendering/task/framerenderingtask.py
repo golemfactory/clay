@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import logging
 import math
@@ -30,7 +30,7 @@ class FrameRendererOptions(Options):
     def __init__(self):
         super(FrameRendererOptions, self).__init__()
         self.use_frames = True
-        self.frames = range(1, 11)
+        self.frames = list(range(1, 11))
         self.frames_string = "1-10"
 
 
@@ -67,7 +67,7 @@ class FrameRenderingTask(RenderingTask):
         self.frames_subtasks = {}
 
         for frame in self.frames:
-            frame_key = unicode(frame)
+            frame_key = str(frame)
             self.frames_given[frame_key] = {}
             self.frames_state[frame_key] = FrameState()
             self.frames_subtasks[frame_key] = [None] * parts
@@ -111,7 +111,7 @@ class FrameRenderingTask(RenderingTask):
     def get_output_states(self):
         if self.use_frames:
             result = []
-            for k, v in self.frames_state.iteritems():
+            for k, v in self.frames_state.items():
                 insort(result, (k, v.serialize()))
             return result
         return []
@@ -120,7 +120,7 @@ class FrameRenderingTask(RenderingTask):
         if self.task_definition.options.use_frames:
             subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
         else:
-            subtask_ids = self.subtasks_given.iterkeys()
+            subtask_ids = self.subtasks_given.keys()
 
         subtasks = dict()
 
@@ -156,7 +156,7 @@ class FrameRenderingTask(RenderingTask):
     def get_frames_to_subtasks(self):
         frames = OrderedDict((frame_num, []) for frame_num in self.frames)
 
-        for subtask_id, subtask in self.subtasks_given.iteritems():
+        for subtask_id, subtask in self.subtasks_given.items():
             if subtask and subtask['frames']:
                 for frame in subtask['frames']:
                     frames[frame].append(subtask_id)
@@ -166,8 +166,8 @@ class FrameRenderingTask(RenderingTask):
         dictionary = super(FrameRenderingTask, self).to_dictionary()
         frame_count = len(self.frames) if self.use_frames else 1
 
-        return update_dict(dictionary, {u'options': {
-            u'frame_count': frame_count
+        return update_dict(dictionary, {'options': {
+            'frame_count': frame_count
         }})
 
     #########################
@@ -213,9 +213,9 @@ class FrameRenderingTask(RenderingTask):
             counters[subtask['status']] += 1
 
         # Count statuses different from 'finished' and 'failure'
-        computing = len(filter(lambda x: x not in [SubtaskStatus.finished,
-                                                   SubtaskStatus.failure],
-                               counters.keys()))
+        computing = len([x for x in counters.keys()
+                         if x not in [SubtaskStatus.finished,
+                                      SubtaskStatus.failure]])
 
         # Finished if at least n subtasks >= parts were finished
         if counters[SubtaskStatus.finished] >= parts:
@@ -313,12 +313,12 @@ class FrameRenderingTask(RenderingTask):
             collector.finalize().save(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
-                                               self.collected_file_names.values(), "paste")
+                                               list(self.collected_file_names.values()), "paste")
 
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
         output_file_name = os.path.join(directory, self._get_output_name(frame_num))
-        frame_key = unicode(frame_num)
+        frame_key = str(frame_num)
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -327,7 +327,7 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(output_file_name, collected.values(), "paste")
+            self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
 
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
@@ -339,7 +339,7 @@ class FrameRenderingTask(RenderingTask):
         self._update_task_preview()
 
     def _collect_frames(self, num_start, tr_file, frames_list):
-        frame_key = unicode(frames_list[0])
+        frame_key = str(frames_list[0])
         self.frames_given[frame_key][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
@@ -347,7 +347,7 @@ class FrameRenderingTask(RenderingTask):
     def _collect_frame_part(self, num_start, tr_file, parts):
 
         frame_num = self.frames[int((num_start - 1) / parts)]
-        frame_key = unicode(frame_num)
+        frame_key = str(frame_num)
         part = self._count_part(num_start, parts)
         self.frames_given[frame_key][part] = tr_file
 
@@ -398,9 +398,9 @@ def get_frame_name(output_name, ext, frame_num):
     while idl > 0 and output_name[idl] == "#":
         idl -= 1
     if idr > 0:
-        return u"{}.{}".format(output_name[:idl+1] + str(frame_num).zfill(idr-idl) + output_name[idr+1:], ext)
+        return "{}.{}".format(output_name[:idl+1] + str(frame_num).zfill(idr-idl) + output_name[idr+1:], ext)
     else:
-        return u"{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
+        return "{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
@@ -409,7 +409,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def __init__(self, node_name, task_definition, root_path, dir_manager):
         frames = task_definition.options.frames
 
-        if isinstance(frames, basestring):
+        if isinstance(frames, str):
             task_definition = deepcopy(task_definition)
             task_definition.options.frames = self.string_to_frames(frames)
 
@@ -455,7 +455,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'frames'] = definition.options.frames_string
+        dictionary['options']['frames'] = definition.options.frames_string
         return dictionary
 
     @classmethod
@@ -525,13 +525,13 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
                     if len(inter2) == 1:
                         start_frame = int(inter[0])
                         end_frame = int(inter[1]) + 1
-                        frames += range(start_frame, end_frame)
+                        frames += list(range(start_frame, end_frame))
                     # every nth frame (e.g. 10-100,5)
                     elif len(inter2) == 2:
                         start_frame = int(inter[0])
                         end_frame = int(inter2[0]) + 1
                         step = int(inter2[1])
-                        frames += range(start_frame, end_frame, step)
+                        frames += list(range(start_frame, end_frame, step))
                     else:
                         raise ValueError("Wrong frame step")
                 else:

@@ -48,12 +48,12 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 'node': None,
             },
         ]
-        self.assertEquals(self.service.find_node(node_key_id=None), expected)
+        self.assertEqual(self.service.find_node(node_key_id=None), expected)
 
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
         neighbour_node = Node(
-            node_name=u'Syndrom wstrząsu toksycznego',
+            node_name='Syndrom wstrząsu toksycznego',
             key=neighbour_node_key_id,
             prv_addr=random.randint(1, 2**32-1),
             prv_port=random.randint(1, 2**16-1)
@@ -70,7 +70,7 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 'node_name': neighbour_node.node_name,
             },
         ]
-        self.assertEquals(self.service.find_node(node_key_id), expected)
+        self.assertEqual(self.service.find_node(node_key_id), expected)
 
     def test_add_to_peer_keeper(self):
         node = Node()
@@ -91,11 +91,11 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         node2.key = "59"
         self.service.add_to_peer_keeper(node)
         self.service.peers["59"].ping.assert_called_with(0)
-        for i in range(58) + range(60, 100):
+        for i in list(range(58)) + list(range(60, 100)):
             self.service.peers[str(i)].ping.assert_not_called()
         node2.key = None
         self.service.add_to_peer_keeper(node)
-        for i in range(58) + range(60, 100):
+        for i in list(range(58)) + list(range(60, 100)):
             self.service.peers[str(i)].ping.assert_not_called()
         self.service.peers["59"].ping.assert_called_once_with(0)
         m_test2.ping.assert_called_once_with(0)
@@ -193,12 +193,13 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         # try to add more than max, we already have at least 1
         pub_prefix = '2.2.3.'
         prv_prefix = '172.1.2.'
-        for i in xrange(1, MAX_STORED_HOSTS + 6):
+        key_id_str = key_id
+        for i in range(1, MAX_STORED_HOSTS + 6):
             i_str = str(i)
             pub = pub_prefix + i_str
             prv = prv_prefix + i_str
             n = Node(
-                i_str, key_id + i_str,
+                i_str, key_id_str + i_str,
                 pub_addr=pub,
                 prv_addr=prv,
                 pub_port=10000,

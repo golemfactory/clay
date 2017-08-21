@@ -36,8 +36,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': get_some_id(),
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
-            'value': random.randint(10, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
+            'value': random.randint(10, int(SQLITE3_MAX_INT / 2)),
         }
         # Not in blockchain
         self.instance.received(**received_kwargs)
@@ -51,7 +51,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                     get_some_id(),  # sender
                     get_some_id(),  # receiver
                 ],
-                'data': hex(random.randint(1, sys.maxint)),
+                'data': hex(random.randint(1, sys.maxsize)),
             },
         ]
         self.instance.received(**received_kwargs)
@@ -103,7 +103,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': 2147483647,
         }
         self.instance.eth_node.get_logs.return_value = [
@@ -125,7 +125,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': SQLITE3_MAX_INT - 1,
         }
 
@@ -141,7 +141,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ]
 
         self.instance.received(**received_kwargs)
-        self.assertEquals(
+        self.assertEqual(
             1,
             model.Income.select().where(
                 model.Income.subtask == received_kwargs['subtask_id']
@@ -152,7 +152,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         # Try to use the same payment for another subtask
         received_kwargs['subtask_id'] = 's2' + get_some_id()[:-2]
         # Paranoid mode: Make sure subtask_id wasn't used before
-        self.assertEquals(
+        self.assertEqual(
             0,
             model.Income.select().where(
                 model.Income.subtask == received_kwargs['subtask_id']
@@ -162,7 +162,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         )
 
         self.instance.received(**received_kwargs)
-        self.assertEquals(
+        self.assertEqual(
             0,
             model.Income.select().where(
                 model.Income.subtask == received_kwargs['subtask_id']

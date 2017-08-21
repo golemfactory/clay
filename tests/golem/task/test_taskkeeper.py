@@ -52,7 +52,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         task["min_version"] = tk.app_version
         self.assertTrue(tk.is_supported(task))
         task["min_version"] = "abc"
-        with self.assertLogs(logger=logger, level=1):
+        with self.assertLogs(logger=logger, level='WARNING'):
             self.assertFalse(tk.is_supported(task))
 
     def test_check_version_compatibility(self):

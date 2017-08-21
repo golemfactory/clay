@@ -56,7 +56,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def _add_files(self, files, task_id,
                    client=None, client_options=None):
 
-        for f in files.iterkeys():
+        for f in files.keys():
             if not os.path.exists(f):
                 logger.error("Resource manager: file '{}' does not exist"
                              .format(f))
@@ -70,7 +70,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                         client_options=client_options,
                                         obj_id=str(uuid.uuid4()))
 
-        self._cache_response(files.values(), response, task_id)
+        self._cache_response(list(files.values()), response, task_id)
 
     def wrap_file(self, resource):
         resource_path, resource_hash = resource

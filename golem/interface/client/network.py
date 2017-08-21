@@ -64,7 +64,7 @@ class Network(object):
             values.append([
                 str(addr), str(port),
                 Network.__key_id(key, full),
-                unicode(p['node_name'])
+                str(p['node_name'])
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,

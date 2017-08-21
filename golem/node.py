@@ -5,6 +5,7 @@ import click
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
+from golem.core.common import to_unicode
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
@@ -16,7 +17,8 @@ class Node(object):
     """
 
     def __init__(self, datadir=None, peers=None, transaction_system=False,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_monitor=False, use_docker_machine_manager=True,
+                 **config_overrides):
 
         self.client = Client(
             datadir=datadir,
@@ -61,6 +63,8 @@ class Node(object):
 
         try:
             self.client.start()
+            for peer in self._peers:
+                self.client.connect(peer)
         except SystemExit:
             from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)
@@ -122,18 +126,19 @@ class OptNode(Node):
                 return value
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid network address specified: {}".format(e.message))
+                    "Invalid network address specified: {}".format(e))
         return ''
 
     @staticmethod
     def parse_rpc_address(ctx, param, value):
         del ctx, param
+        value = to_unicode(value)
         if value:
             try:
                 return SocketAddress.parse(value)
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid RPC address specified: {}".format(e.message))
+                    "Invalid RPC address specified: {}".format(e))
 
     @staticmethod
     def parse_peer(ctx, param, value):
@@ -144,5 +149,5 @@ class OptNode(Node):
                 addresses.append(SocketAddress.parse(arg))
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid peer address specified: {}".format(e.message))
+                    "Invalid peer address specified: {}".format(e))
         return addresses

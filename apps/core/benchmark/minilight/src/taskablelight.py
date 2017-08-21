@@ -1,11 +1,11 @@
 import time
 
-from taskablerenderer import TaskableRenderer
-from renderworker import RenderWorker
-from img import Img
-from rendertaskcreator import ThreadRenderWorkerPool
+from .taskablerenderer import TaskableRenderer
+from .renderworker import RenderWorker
+from .img import Img
+from .rendertaskcreator import ThreadRenderWorkerPool
 
-import task_data_0
+from . import task_data_0
 
 INPUT_W  = 50
 INPUT_H  = 50
@@ -18,7 +18,7 @@ MAX_CONCURRENT_WORKERS = 25
 
 def save_image(img_name, w, h, data, num_samples):
     if not data:
-        print "No data to write"
+        print("No data to write")
         return False
 
     img = Img(w, h)
@@ -44,13 +44,13 @@ if __name__ == "__main__":
 
         if time.time() - lastPrint > 2.0:
             lastPrint = time.time()
-            print "Active worker count {}".format(pool.activeCount())
+            print("Active worker count {}".format(pool.activeCount()))
             tr.printStats()
 
     pool.joinAll()
 
     tr.printStats()
 
-    print "All tasks finished gracefully"
-    print "Writing result image {}".format(IMG_NAME)
+    print("All tasks finished gracefully")
+    print("Writing result image {}".format(IMG_NAME))
     save_image(IMG_NAME, INPUT_W, INPUT_H, tr.getResult(), SAMPLES)
