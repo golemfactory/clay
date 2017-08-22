@@ -14,10 +14,6 @@ class AsyncRequest(object):
         self.kwargs = kwargs or {}
 
 
-def default_errback(failure):
-    log.error('Caught async exception:\n%s', failure.getTraceback())
-
-
 def async_run(deferred_call, success=None, error=None):
     """Execute a deferred job in a separate thread (Twisted)"""
     deferred = threads.deferToThread(deferred_call.method,
@@ -29,3 +25,13 @@ def async_run(deferred_call, success=None, error=None):
         deferred.addCallback(success)
     deferred.addErrback(error)
     return deferred
+
+  
+def async_callback(func):
+    def callback(result):
+        return async_run(AsyncRequest(func, result))
+    return callback
+
+
+def default_errback(failure):
+    log.error('Caught async exception:\n%s', failure.getTraceback())

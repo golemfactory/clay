@@ -3,20 +3,24 @@ from subprocess import check_call, Popen, PIPE
 from sys import platform
 
 
+def is_windows():
+    return platform.startswith('win') or platform.startswith('nt')
+
+
 class TaskCollectorBuilder:
     """ Class for building Task Collector """
 
     def __init__(self):
         self.golem_path = dirname(abspath(dirname(__file__)))
-        self.task_collector_path = join(self.golem_path, 'apps/rendering/resources/taskcollector/')
-        self.build_path = join(self.task_collector_path, 'Release/taskcollector')
+        self.task_collector_path = join(self.golem_path, 'apps', 'rendering', 'resources', 'taskcollector')
+        self.build_path = join(self.task_collector_path, 'x64' if is_windows() else '', 'Release', 'taskcollector')
 
     def build(self):
         """
         Try to build taskcollector
         :return: None if taskcollector is built. Error message otherwise
         """
-        if platform.startswith('win') or platform.startswith('nt'):
+        if is_windows():
             return self.__build_on_windows()
         elif platform.startswith('linux') or platform.startswith("darwin"):
             return self.__build_on_unix()
