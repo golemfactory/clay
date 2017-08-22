@@ -332,7 +332,7 @@ with open("../resources/in.txt", "r") as f:
     text = f.read()
 
 with open("../output/out.txt", "w") as f:
-    f.write(text)
+    f.write(text)     
 """
         sample_text = "Adventure Time!\n"
 
@@ -397,3 +397,140 @@ with open("../output/out.txt", "w") as f:
 
         DockerJob.kill_jobs()
         assert kill.call_count == 2
+
+    def test_read_work_file(self):
+        sample_text = "And what do the birds say?"
+        script = """
+with open("../work/out.txt", "w") as f:
+    f.write("{}")
+""".format(sample_text)
+
+        with self._create_test_job(script=script) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            time.sleep(1)
+            text = job.read_work_file("out.txt")
+            self.assertEqual(text, sample_text)
+
+            no_text = job.read_work_file("out2.txt")
+            self.assert_(mock.called)
+            self.assertEqual(no_text, "")
+
+            job.wait()
+
+    def test_write_work_file(self):
+
+        script = """
+import time
+time.sleep(3)
+with open("../work/in.txt", "r") as f:
+    text = f.read()
+with open("../output/out.txt", "w") as f:
+    f.write(text)
+"""
+        sample_text = "The cake is a lie"
+
+        with self._create_test_job(script=script) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            job.write_work_file("in.txt", sample_text)
+            job.wait()
+
+        outfile = path.join(self.output_dir, "out.txt")
+        self.assertTrue(path.isfile(outfile))
+        with open(outfile, "r") as f:
+            text = f.read()
+        self.assertEqual(text, sample_text)
+
+        with self._create_test_job(script=script) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            job.write_work_file("a/b/c.txt", sample_text)
+            job.wait()
+
+        self.assert_(mock.called)
+
+    def test_read_work_files(self):
+        letters = ["a", "b", "c"]
+        letters2 = ["e", "f", "g"]
+
+        script = """
+import os
+os.mkdir("../work/old")
+with open("../work/old/out1.txt", "w") as f:
+    f.write("{}")
+with open("../work/old/out2.txt", "w") as f:
+    f.write("{}")
+with open("../work/old/out3.txt", "w") as f:
+    f.write("{}")
+""".format(*letters)
+
+        script2 = """import os
+os.mkdir("../work/old/new")
+with open("../work/old/new/out1.txt", "w") as f:
+    f.write("{}")
+with open("../work/old/new/out2.txt", "w") as f:
+    f.write("{}")
+with open("../work/old/new/out3.txt", "w") as f:
+    f.write("{}")
+""".format(*letters2)
+
+        with self._create_test_job(script=script) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            time.sleep(1)
+            texts = job.read_work_files("old")
+            self.assertEqual(set(letters), set(texts.values()))
+            self.assertEqual({("out%s.txt" % str(i)) for i in [1,2,3]}, {os.path.basename(x) for x in texts.keys()})
+
+            job.wait()
+
+        with self._create_test_job(script=script2) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            time.sleep(1)
+
+            texts = job.read_work_files()
+            # it also reads script data and (empty) params.py
+            self.assertEqual(set(letters) | set(letters2) | {script2, ""}, set(texts.values()))
+            self.assertEqual({("out%s.txt" % str(i)) for i in [1,2,3]} | {"params.py", "job.py"},
+                             {os.path.basename(x) for x in texts.keys()})
+
+            texts2 = job.read_work_files("old/new")
+            self.assertEqual(set(letters2), set(texts2.values()))
+            self.assertEqual({("out%s.txt" % str(i)) for i in [1,2,3]},
+                             {os.path.basename(x) for x in texts2.keys()})
+
+            no_text = job.read_work_files("out2.txt")
+            self.assert_(mock.called)
+            self.assertEqual(no_text, {})
+
+            mock.called = False
+            no_text = job.read_work_files("new/new/")
+            self.assert_(mock.called)
+            self.assertEqual(no_text, {})
+
+            job.wait()
+
+    def test_clean_work_files(self):
+
+        script = """
+import os
+os.mkdir("../work/old")
+
+with open("../work/old/out1.txt", "w") as f:
+    f.write("aba")
+with open("../work/old/out2.txt", "w") as f:
+    f.write("aba")
+"""
+
+        with self._create_test_job(script=script) as job, patch('logging.Logger.warning') as mock:
+            job.start()
+            time.sleep(1)
+            texts = job.read_work_files("old")
+            self.assertEqual(set(os.path.basename(x) for x in texts.keys()), {"out1.txt", "out2.txt"})
+            job.clean_work_files("old")
+            time.sleep(1)
+            os.path.exists(os.path.join(self.work_dir, "old"))
+            texts = job.read_work_files("old")
+            self.assertEqual(set(texts.keys()), set())
+
+            job.clean_work_files("old/new/")
+            self.assert_(mock.called)
+
+            job.wait()

@@ -511,6 +511,56 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             block_number=block_number
         )
 
+    def test_react_to_requestor_to_provider_msg(self):
+        msg = message.MessageSubtaskReqToProv("a", "b", {})
+        conn = Mock()
+        ts = TaskSession(conn)
+        ts.task_computer = MagicMock()
+        ts.task_computer.receive_message = MagicMock()
+        ts._react_to_requestor_to_provider_msg(msg)
+        ts.task_computer.receive_message.assert_called_with(
+            msg.task_id, msg.subtask_id, msg.message_data)
+
+    def test_send_message_to_requestor(self):
+        tid = "a"
+        sid = "b"
+        data = {}
+        msg = message.MessageSubtaskReqToProv(tid, sid, data)
+
+        ts = TaskSession(MagicMock())
+
+        ts.task_server = MagicMock()
+
+        sess_mock = MagicMock()
+        sess_mock.send = MagicMock()
+        ts.task_server.task_sessions = {sid: sess_mock}
+
+        ts.send_message_to_requestor(tid, sid, data)
+        assert ts.task_server.task_sessions[sid].send.called
+        args, _ = ts.task_server.task_sessions[sid].send.call_args
+        self.assertEqual(args[0].dict_repr(), msg.dict_repr())
+
+    def test_react_to_provider_to_requestor_msg(self):
+        tid = "a"
+        sid = "b"
+        data = {"a": 1}
+
+        msg = message.MessageSubtaskProvToReq(task_id=tid, subtask_id=sid, message_data=data)
+        ts = TaskSession(MagicMock())
+        ts.send = MagicMock()
+        ts.task_server = MagicMock()
+        task_mock = MagicMock()
+        task_mock.react_to_message = lambda _, x: {"a": x["a"] + 1, "subtask": "b"}
+        ts.task_server.task_manager.tasks = {tid: task_mock}
+
+        ts._react_to_provider_to_requestor_msg(msg)
+
+        new_message = message.MessageSubtaskReqToProv(task_id=tid,
+                                                      subtask_id=sid,
+                                                      message_data={"a": 2, "subtask": "b"})
+        args, _ = ts.send.call_args
+        self.assertEqual(args[0].dict_repr(), new_message.dict_repr())
+
 
 class TestSessionWithDB(testutils.DatabaseFixture):
     def setUp(self):

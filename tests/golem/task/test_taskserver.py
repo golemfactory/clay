@@ -894,3 +894,23 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         ccd.estimated_lux_performance = 2000.0
         ccd.estimated_blender_performance = 2000.0
         return ccd
+
+    def test_send_task_messages(self):
+        subtask_ids = list(range(10))
+        called_ids = [1,3,9]
+        task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
+                                 self.client, use_docker_machine_manager=False)
+        for i in subtask_ids:
+            m = MagicMock()
+            m.send_message_to_requestor = MagicMock()
+            task_server.task_sessions[str(i)] = m
+
+        messages = [("a", str(i), {}) for i in called_ids]
+
+        task_server.send_task_messages(messages)
+
+        for i in subtask_ids:
+            if i in called_ids:
+                assert task_server.task_sessions[str(i)].send_message_to_requestor.called
+            else:
+                assert not task_server.task_sessions[str(i)].send_message_to_requestor.called

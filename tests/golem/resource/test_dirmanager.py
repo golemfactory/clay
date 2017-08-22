@@ -2,7 +2,7 @@ import os
 import shutil
 
 from golem.core.common import is_windows
-from golem.resource.dirmanager import DirManager, find_task_script, logger
+from golem.resource.dirmanager import DirManager, find_task_script, logger, ls_R
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -191,3 +191,22 @@ class TestFindTaskScript(TestDirFixture, LogTestCase):
         self.assertEqual(os.path.basename(path), "bla")
         with self.assertLogs(logger, level="ERROR"):
             find_task_script(self.path, "notexisting")
+
+class TestUtilityFunction(TestDirFixture):
+    def test_ls_R(self):
+        os.makedirs(os.path.join(self.tempdir, "aaa", "bbb", "ccc"))
+        os.makedirs(os.path.join(self.tempdir, "ddd", "bbb", "ccc"))
+        os.makedirs(os.path.join(self.tempdir, "eee", "fff"))
+
+        with open(os.path.join(self.tempdir, "eee", "f1"), "w") as f:
+            f.write("content")
+        with open(os.path.join(self.tempdir, "f2"), "w") as f:
+            f.write("content")
+        with open(os.path.join(self.tempdir, "aaa", "bbb", "f3"), "w") as f:
+            f.write("content")
+
+        os.symlink(os.path.join(self.tempdir, "f2"), os.path.join(self.tempdir, "eee", "fff", "f4"))
+        dirs = ls_R(self.tempdir)
+
+        self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
+            [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"], ["eee", "fff", "f4"]]})

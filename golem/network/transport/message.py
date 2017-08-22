@@ -1158,7 +1158,7 @@ class MessageSubtaskReqToProv(Message):
     TYPE = TASK_MSG_BASE + 29
 
     MAPPING = {
-        'subtask_id': 'SUB_TASK_ID',
+        'subtask_id': 'SUBTASK_ID',
         'message_data': 'MESSAGE_DATA',
         'task_id': "TASK_ID"
     }
@@ -1182,7 +1182,7 @@ class MessageSubtaskProvToReq(Message):
     TYPE = TASK_MSG_BASE + 30
 
     MAPPING = {
-        'subtask_id': 'SUB_TASK_ID',
+        'subtask_id': 'SUBTASK_ID',
         'message_data': 'MESSAGE_DATA',
         'task_id': "TASK_ID"
     }

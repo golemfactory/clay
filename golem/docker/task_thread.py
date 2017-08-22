@@ -25,7 +25,6 @@ class DockerTaskThread(TaskThread):
     STDERR_FILE = "stderr.log"
 
     # These files are located in the work dir, they are updated by job.py
-    # PROGRESS_FILE = "progress_state.txt"  # it contains single float number in [0, 1]
     MESSAGES_IN_DIR = "messages_in"  # it contains list of incoming messages in json
     MESSAGES_OUT_DIR = "messages_out"  # it contains list outcoming messages in json
 
@@ -117,7 +116,6 @@ class DockerTaskThread(TaskThread):
             self._cleanup()
 
     def get_progress(self):
-        # return float(self.job.read_work_file(self.PROGRESS_FILE))
         return 0.0
 
     def check_for_new_messages(self) -> List[Dict]:
@@ -128,12 +126,12 @@ class DockerTaskThread(TaskThread):
             return [{}]
         msgs = self.job.read_work_files(dir=self.MESSAGES_OUT_DIR)
         msgs_decoded = []
-        for m in msgs:
+        for filename, content in msgs.items():
             try:
-                msgs_decoded.append(json.loads(m))
+                msgs_decoded.append({"content": json.loads(content), "filename": filename})
             except ValueError:
                 msgs_decoded.append({})
-                logger.warning("ValueError during decoding message %r", str(m))
+                logger.warning("ValueError during decoding message %r", str(content))
 
         # cleaning messages files, to not read multiple times the same content
         self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
@@ -150,11 +148,13 @@ class DockerTaskThread(TaskThread):
         # although it is not very important
         # messages names don't matter at all
         # it's just that they should be unique
-        HASH = lambda x: hashlib.md5(x).hexdigest()
+        HASH = lambda x: hashlib.md5(x.encode()).hexdigest()
         if self.job:
-            msg_filename = HASH(str(data).encode())
+            data_dump = json.dumps(data)
+
+            msg_filename = HASH(data_dump)
             msg_path = os.path.join(self.MESSAGES_IN_DIR, msg_filename)
-            self.job.write_work_file(msg_path, json.dumps(data), options="w")
+            self.job.write_work_file(msg_path, data_dump, options="w")
         else:
             logger.warning("There is currently no job to receive message")
 

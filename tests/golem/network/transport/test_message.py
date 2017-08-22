@@ -468,3 +468,27 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         with self.assertRaises(RuntimeError):
             message.init_messages()
         message.Message.registered_message_types = copy_registered
+
+    def test_message_subtask_provider_to_requestor(self):
+        subtask_id = "SUB1"
+        task_id = "TASK1"
+        message_data = {"content": "aaa"}
+        msg = message.MessageSubtaskProvToReq(task_id=task_id, subtask_id=subtask_id, message_data=message_data)
+        expected = {
+            'SUBTASK_ID': subtask_id,
+            'MESSAGE_DATA': message_data,
+            'TASK_ID': task_id
+        }
+        self.assertEqual(expected, msg.dict_repr())
+
+    def test_message_subtask_requestor_to_provider(self):
+        subtask_id = "SUB1"
+        task_id = "TASK1"
+        message_data = {"content": "aaa"}
+        msg = message.MessageSubtaskReqToProv(task_id=task_id, subtask_id=subtask_id, message_data=message_data)
+        expected = {
+            'SUBTASK_ID': subtask_id,
+            'MESSAGE_DATA': message_data,
+            'TASK_ID': task_id
+        }
+        self.assertEqual(expected, msg.dict_repr())

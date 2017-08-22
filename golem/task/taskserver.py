@@ -110,7 +110,7 @@ class TaskServer(PendingConnectionsServer):
             logger.debug('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
 
     def send_task_messages(self, all_messages: List[Tuple[str, str, Dict]]):
-        for subtask_id, task_id, data in all_messages:
+        for task_id, subtask_id, data in all_messages:
             self.task_sessions[subtask_id].send_message_to_requestor(subtask_id, task_id, data)
 
     def get_environment_by_id(self, env_id):

@@ -338,14 +338,17 @@ class DockerJob(object):
         except IOError as e:
             logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
 
-    def read_work_files(self, dir="", options="r") -> List[str]:
+    def read_work_files(self, dir="", options="r") -> Dict[str, str]:
         dir = os.path.join(self.work_dir, dir)
-        contents = []
-        for file in ls_R(dir):
-            contents.append(self.read_work_file(file, options))
+        contents = {}
+        if os.path.isdir(dir):
+            for file in ls_R(dir):
+                contents[file] = self.read_work_file(file, options)
+        else:
+            logger.warning("%r is not a directory", dir)
         return contents
 
-    def clean_work_files(self, dir=""):
+    def clean_work_files(self, dir):
         dir = os.path.join(self.work_dir, dir)
         try:
             for f in os.listdir(dir):

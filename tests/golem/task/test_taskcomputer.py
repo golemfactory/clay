@@ -1,15 +1,16 @@
-import mock
 import os
 import random
 import time
+
+import mock
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
-from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -110,7 +111,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
+        tc.task_server.request_resource.assert_called_with("xyz", tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
         assert tc.task_resource_collected("xyz")
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
@@ -151,7 +152,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline, timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
+        tc.task_server.request_resource.assert_called_with("xyz", tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
@@ -236,6 +237,48 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         with self.assertLogs(logger, level="INFO"):
             tc.task_request_rejected("xyz", "my rejection reason")
 
+    def test_check_for_new_messages(self):
+        task_server = mock.MagicMock()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+        self.assertEqual(tc.check_for_new_messages(), [])
+
+        subtasks_ids = list(range(10))
+        task_id = 3
+        data = [{"filename": "a", "content": "b"}]
+        for i in subtasks_ids:
+            tt = mock.MagicMock()
+            tt.check_for_new_messages = lambda: data
+            tt.subtask_id = i
+            tc.current_computations.append(tt)
+
+        tc.task_to_subtask_mapping = {task_id: subtasks_ids}
+
+        new_messages = tc.check_for_new_messages()
+        self.assertEqual(sorted(new_messages), sorted([(task_id, sid, data[0]) for sid in subtasks_ids]))
+
+    def test_receive_message(self):
+
+        task_server = mock.MagicMock()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+        for i in range(10):
+            tt = mock.MagicMock()
+            tt.receive_message = mock.MagicMock()
+            tt.subtask_id = i
+            tc.current_computations.append(tt)
+
+        data = {"a": "a"}
+        task_id = 0
+        subtask_id = 5
+        tc.receive_message(task_id, subtask_id, data)
+        subtask_id = 8
+        tc.receive_message(task_id, subtask_id, data)
+
+        for i in range(10):
+            if i not in [5, 8]:
+                assert not tc.current_computations[i].receive_message.called
+            else:
+                assert tc.current_computations[i].receive_message.called
+
 
 @ci_skip
 class TestTaskThread(TestDirFixture):
@@ -260,7 +303,8 @@ class TestTaskMonitor(TestDirFixture):
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", config_desc()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", config_desc()),
+                                MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = config_desc()
         task = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
