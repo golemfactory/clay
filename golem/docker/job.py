@@ -5,6 +5,7 @@ import posixpath
 import shutil
 import threading
 from os import path
+from typing import List
 
 import docker.errors
 
@@ -317,7 +318,7 @@ class DockerJob(object):
             logger.info("Killing job {}".format(job.container_id))
             job.kill()
 
-    def read_work_file(self, path, options="r"):
+    def read_work_file(self, path: str, options="r") -> str:
         try:
             with open(os.path.join(self.work_dir, path), options) as f:
                 return f.read()
@@ -332,20 +333,17 @@ class DockerJob(object):
         except IOError as e:
             logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
 
-    def read_work_files(self, dir="", options="r"):
-        dir = self._set_dir(dir)
+    def read_work_files(self, dir="", options="r") -> List[str]:
+        dir = os.path.join(self.work_dir, dir)
         contents = []
         for file in ls_R(dir):
             contents.append(self.read_work_file(file, options))
         return contents
 
     def clean_work_files(self, dir=""):
-        dir = self._set_dir(dir)
+        dir = os.path.join(self.work_dir, dir)
         try:
             for f in os.listdir(dir):
                 os.remove(os.path.join(dir, f))
         except IOError as e:
             logger.warning("There was a problem with clean_work_files. Path: %r, exception: %r", dir, e)
-
-    def _set_dir(self, dir):
-        return self.work_dir if not dir else os.path.join(self.work_dir, dir)

@@ -810,17 +810,23 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):
         task = self.task_server.task_manager.tasks[msg.task_id]
         data = task.react_to_message(msg.subtask_id, msg.message_data)
-        new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id, subtask_id=msg.subtask_id, message_data=data)
+        new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id,
+                                                      subtask_id=msg.subtask_id,
+                                                      message_data=data)
         response_sess = self
         response_sess.send(new_message)
 
+    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):
+        self.task_computer.receive_message(msg.task_id,
+                                           msg.subtask_id,
+                                           msg.message_data)
+
     def send_message_to_requestor(self, task_id, subtask_id, data):
-        new_message = message.MessageSubtaskProvToReq(task_id=task_id, subtask_id=subtask_id, message_data=data)
+        new_message = message.MessageSubtaskProvToReq(task_id=task_id,
+                                                      subtask_id=subtask_id,
+                                                      message_data=data)
         response_sess = self.task_server.task_sessions[subtask_id]
         response_sess.send(new_message)
-
-    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):
-        self.task_computer.receive_message(msg.task_id, msg.subtask_id, msg.message_data)
 
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:

@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+from typing import List, Dict
 
 import requests
 from jsonpickle import json
@@ -24,8 +25,7 @@ class DockerTaskThread(TaskThread):
     STDERR_FILE = "stderr.log"
 
     # These files are located in the work dir, they are updated by job.py
-
-    PROGRESS_FILE = "progress_state.txt"  # it contains single number in [0, 1]
+    # PROGRESS_FILE = "progress_state.txt"  # it contains single float number in [0, 1]
     MESSAGES_IN_DIR = "messages_in"  # it contains list of incoming messages in json
     MESSAGES_OUT_DIR = "messages_out"  # it contains list outcoming messages in json
 
@@ -43,7 +43,7 @@ class DockerTaskThread(TaskThread):
 
         # Find available image
         self.image = None
-        logger.debug("Chechking docker images %s", docker_images)
+        logger.debug("Checking docker images %s", docker_images)
         for img in docker_images:
             if img.is_available():
                 self.image = img
@@ -120,30 +120,36 @@ class DockerTaskThread(TaskThread):
         # return float(self.job.read_work_file(self.PROGRESS_FILE))
         return 0.0
 
-    def check_for_messages(self):
+    def check_for_messages(self) -> List[Dict]:
         """
         :return: list containing list of messages, each of which is a dict
         """
         if not self.job:
             return [{}]
         msgs = self.job.read_work_files(dir=self.MESSAGES_OUT_DIR)
-        try:
-            msgs = [json.loads(m) for m in msgs]
-        except ValueError:
-            msgs = [{}]
-            logger.warning("ValueError during decoding messages")
+        msgs_decoded = []
+        for m in msgs:
+            try:
+                msgs_decoded.append(json.loads(m))
+            except ValueError:
+                msgs_decoded.append({})
+                logger.warning("ValueError during decoding message %r", str(m))
 
-        # cleaning messages file, to not read multiple times the same content
+        # cleaning messages files, to not read multiple times the same content
         self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
 
-        return msgs
+        return msgs_decoded
 
-    # TODO maybe save messages to some dir and read messages from dir, every message in different file
     def receive_message(self, data):
-        # TODO move hash somewhere else
+        # TODO consider moving hash somewhere else
+        # although it is not very important
+        # messages names don't matter at all
+        # it's just that they should be unique
         HASH = lambda x: hashlib.md5(x).hexdigest()
         if self.job:
-            self.job.write_work_file(os.path.join(self.MESSAGES_IN_DIR, HASH(str(data).encode())), json.dumps(data), options="w")
+            msg_filename = HASH(str(data).encode())
+            msg_path = os.path.join(self.MESSAGES_IN_DIR, msg_filename)
+            self.job.write_work_file(msg_path, json.dumps(data), options="w")
         else:
             logger.warning("There is currently no job to receive message")
 
