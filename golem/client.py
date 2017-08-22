@@ -877,20 +877,16 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        # TODO: move benchmarks to environments
-        from apps.blender.blenderenvironment import BlenderEnvironment
-        from apps.lux.luxenvironment import LuxRenderEnvironment
 
         deferred = Deferred()
 
-        if env_id == BlenderEnvironment.get_id():
-            self.task_server.task_computer.run_blender_benchmark(
-                deferred.callback, deferred.errback
-            )
-        elif env_id == LuxRenderEnvironment.get_id():
-            self.task_server.task_computer.run_lux_benchmark(
-                deferred.callback, deferred.errback
-            )
+        task_computer = self.task_server.task_computer
+
+        benchmark_data = self.task_server.benchmarks.get(env_id)
+        if benchmark_data:
+            task_computer.run_benchmark(benchmark_data[0], benchmark_data[1],
+                                        env_id, deferred.callback,
+                                        deferred.errback)
         else:
             raise Exception("Unknown environment: {}".format(env_id))
 

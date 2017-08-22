@@ -6,13 +6,9 @@ from threading import Lock
 
 from pydispatch import dispatcher
 
-from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
-from apps.lux.benchmark.benchmark import LuxBenchmark
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.core.common import deadline_to_timeout, to_unicode
+from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -245,74 +241,46 @@ class TaskComputer(object):
             return False
         return True
 
-    def run_benchmark(self, benchmark, task_builder, datadir, node_name, success_callback, error_callback):
+    def run_benchmark(self, benchmark, task_builder, env_id, success=None,
+                      error=None):
+
+        def success_callback(performance):
+            try:
+                perf = Performance.get(Performance.environment_id == env_id)
+                perf.value = performance
+                perf.save()
+            except Performance.DoesNotExist:
+                perf = Performance(environment_id=env_id, value=performance)
+                perf.save()
+            if success:
+                success(performance)
+
+        def error_callback(err_msg):
+            logger.error("Unable to run {} benchmark: {}".format(env_id,
+                                                                 err_msg))
+            if error:
+                error(err_msg)
+
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-        builder = task_builder(node_name, task_state.definition, datadir, self.dir_manager)
+        builder = task_builder(self.node_name, task_state.definition,
+                               self.task_server.client.datadir,
+                               self.dir_manager)
         t = Task.build_task(builder)
-        br = BenchmarkRunner(t, datadir, success_callback, error_callback, benchmark)
+        br = BenchmarkRunner(t, self.task_server.client.datadir,
+                             success_callback, error_callback,
+                             benchmark)
         br.run()
 
-    def run_lux_benchmark(self, success=None, error=None):
-
-        def success_callback(performance):
-            env_id = "LUXRENDER"
-            try:
-                perf = Performance.get(Performance.environment_id == env_id)
-                perf.value = performance
-                perf.save()
-            except Performance.DoesNotExist:
-                perf = Performance(environment_id=env_id, value=performance)
-                perf.save()
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run lux benchmark: {}".format(err_msg))
-            if error:
-                error(to_unicode(err_msg))
-
-        client = self.task_server.client
-        node_name = client.get_node_name()
-        datadir = client.datadir
-
-        lux_benchmark = LuxBenchmark()
-        lux_builder = LuxRenderTaskBuilder
-        self.run_benchmark(lux_benchmark, lux_builder, datadir,
-                           node_name, success_callback, error_callback)
-
-    def run_blender_benchmark(self, success=None, error=None):
-
-        def success_callback(performance):
-            env_id = "BLENDER"
-            try:
-                perf = Performance.get(Performance.environment_id == env_id)
-                perf.value = performance
-                perf.save()
-            except Performance.DoesNotExist:
-                perf = Performance(environment_id=env_id, value=performance)
-                perf.save()
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run blender benchmark: {}".format(err_msg))
-            if error:
-                error(to_unicode(err_msg))
-
-        client = self.task_server.client
-        node_name = client.get_node_name()
-        datadir = client.datadir
-        blender_benchmark = BlenderBenchmark()
-        blender_builder = BlenderRenderTaskBuilder
-        self.run_benchmark(blender_benchmark, blender_builder, datadir,
-                           node_name, success_callback, error_callback)
-
-    def run_benchmarks(self):
-        # Blender benchmark ran only if lux completed successfully
-        self.run_lux_benchmark(lambda _: self.run_blender_benchmark())
+    def run_benchmarks(self, benchmarks):
+        # Next benchmark ran only if previous completed successfully
+        if not benchmarks:
+            return
+        env_id, (benchmark, builder_class) = benchmarks.popitem()
+        self.run_benchmark(benchmark, builder_class, env_id,
+                           lambda _: self.run_benchmarks(benchmarks))
 
     def config_changed(self):
         for l in self.listeners:
@@ -323,7 +291,7 @@ class TaskComputer(object):
         dm.build_config(config_desc)
 
         if not dm.docker_machine and run_benchmarks:
-            self.run_benchmarks()
+            self.run_benchmarks(self.task_server.run_benchmarks)
             return
         
         if dm.docker_machine and self.use_docker_machine_manager:
@@ -335,7 +303,7 @@ class TaskComputer(object):
 
             def done_callback():
                 if run_benchmarks:
-                    self.run_benchmarks()
+                    self.run_benchmarks(self.task_server.benchmarks)
                 logger.debug("Resuming new task computation")
                 self.lock_config(False)
                 self.runnable = True

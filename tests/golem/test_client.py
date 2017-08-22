@@ -1,3 +1,4 @@
+from copy import copy
 import os
 import time
 import unittest
@@ -711,40 +712,38 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.blender.benchmark.benchmark import BlenderBenchmark
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.lux.benchmark.benchmark import LuxBenchmark
 
         task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_benchmark = Mock()
+        task_computer.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
+            c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
-        assert task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        assert task_computer.run_benchmark.call_count == 1
+        assert isinstance(task_computer.run_benchmark.call_args[0][0],
+                          BlenderBenchmark)
 
         sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert task_computer.run_lux_benchmark.called
+        assert task_computer.run_benchmark.call_count == 2
+        assert isinstance(task_computer.run_benchmark.call_args[0][0],
+                          LuxBenchmark)
 
-    def test_run_benchmarks(self, *_):
+    @patch("golem.task.taskcomputer.BenchmarkRunner")
+    def test_run_benchmarks(self, br_mock, *_):
         task_computer = self.client.task_server.task_computer
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda *_: 1
-
-        task_computer.run_benchmarks()
-        assert task_computer.run_lux_benchmark.called
-        assert task_computer.run_blender_benchmark.called
+        benchmarks = copy(self.client.task_server.benchmarks)
+        task_computer.run_benchmarks(benchmarks)
+        f = br_mock.call_args[0][2]  # get success callback
+        f(1)
+        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
