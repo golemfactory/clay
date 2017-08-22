@@ -1,6 +1,8 @@
+import abc
 import collections
 import logging
 import time
+from typing import Dict
 
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
@@ -14,11 +16,22 @@ logger = logging.getLogger('golem.network.transport.message')
 # TODO: Separate class logic from payload by implementing dict interface.
 #       All message payload should be stored as dict not as instance
 #       attributes.
-class Message(object):
+class Message(object, metaclass=abc.ABCMeta):
     """ Communication message that is sent in all networks """
 
     # Message types that are allowed to be sent in the network
     registered_message_types = {}
+
+    # TODO may not work properly, check it
+    @property
+    @abc.abstractmethod
+    def TYPE(self) -> int:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def MAPPING(self) -> Dict:
+        pass
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message"""
@@ -203,10 +216,10 @@ class Message(object):
 
     def dict_repr(self):
         """Returns dictionary/list representation of  any subclass message"""
-        return dict(
-            (self.MAPPING[attr_name], getattr(self, attr_name))
+        return {
+            self.MAPPING[attr_name]: getattr(self, attr_name)
             for attr_name in self.MAPPING
-        )
+        }
 
 
 ##################

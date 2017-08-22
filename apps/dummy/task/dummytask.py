@@ -19,6 +19,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.dummy")
 
 
+@enforce.runtime_validation(group="dummy")
 class DummyTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super().__init__(

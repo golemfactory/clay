@@ -97,7 +97,7 @@ class TaskServer(PendingConnectionsServer):
         self.send_waiting_payment_requests()
         self.task_computer.run()
 
-        msgs = self.task_computer.check_for_messages()
+        msgs = self.task_computer.check_for_new_messages()
         self.send_task_messages(msgs)
 
         self.task_connections_helper.sync()

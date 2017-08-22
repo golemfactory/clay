@@ -3,6 +3,7 @@ import os
 import time
 import uuid
 from threading import Lock
+from typing import Dict, Tuple, List
 
 from pydispatch import dispatcher
 
@@ -475,19 +476,19 @@ class TaskComputer(object):
         for t in self.current_computations:
             t.end_comp()
 
-    def check_for_messages(self):
+    def check_for_new_messages(self) -> List[Tuple[str, str, Dict]]:
         msgs = []
         for tt in self.current_computations:
             subtask_id = tt.subtask_id
 
             # TODO keep the mapping subtask -> task somewhere instead of computing it every time
             task_id = [k for k, v in self.task_to_subtask_mapping.items() if subtask_id in v][0]
-            all_subtask_messages_data = tt.check_for_messages()
+            all_subtask_messages_data = tt.check_for_new_messages()
             for data in all_subtask_messages_data:
                 msgs.append((task_id, subtask_id, data))
         return msgs
 
-    def receive_message(self, task_id, subtask_id, data):
+    def receive_message(self, task_id, subtask_id, data: Dict):
         for tt in self.current_computations:
             if tt.subtask_id == subtask_id:
                 tt.receive_message(data)

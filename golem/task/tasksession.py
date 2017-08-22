@@ -3,6 +3,7 @@ import logging
 import os
 import struct
 import time
+from typing import Dict
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
@@ -821,14 +822,14 @@ class TaskSession(MiddlemanSafeSession):
                                            msg.subtask_id,
                                            msg.message_data)
 
-    def send_message_to_requestor(self, task_id, subtask_id, data):
+    def send_message_to_requestor(self, task_id: str, subtask_id: str, data: Dict):
         new_message = message.MessageSubtaskProvToReq(task_id=task_id,
                                                       subtask_id=subtask_id,
                                                       message_data=data)
         response_sess = self.task_server.task_sessions[subtask_id]
         response_sess.send(new_message)
 
-    def send(self, msg, send_unverified=False):
+    def send(self, msg: message.Message, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
             return
@@ -841,7 +842,7 @@ class TaskSession(MiddlemanSafeSession):
             self.port
         )
 
-    def _check_ctd_params(self, ctd):
+    def _check_ctd_params(self, ctd: ComputeTaskDef):
         if not isinstance(ctd, ComputeTaskDef):
             self.err_msg = "Received task is not a ComputeTaskDef instance"
             return False
@@ -857,7 +858,7 @@ class TaskSession(MiddlemanSafeSession):
             return False
         return True
 
-    def _set_env_params(self, ctd):
+    def _set_env_params(self, ctd: ComputeTaskDef):
         environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
         env = self.task_server.get_environment_by_id(environment)
         if not env:
@@ -878,7 +879,7 @@ class TaskSession(MiddlemanSafeSession):
 
         return True
 
-    def __check_docker_images(self, ctd, env):
+    def __check_docker_images(self, ctd: ComputeTaskDef, env: DockerEnvironment):
         for image in ctd.docker_images:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):

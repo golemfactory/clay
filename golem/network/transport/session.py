@@ -265,7 +265,7 @@ class MiddlemanSafeSession(BasicSafeSession):
         self.open_session = None  # transfer data to that session in middleman mode
         self.middleman_conn_data = None
 
-    def send(self, message, send_unverified=False):
+    def send(self, message: message.Message, send_unverified=False):
         """ Send given message if connection was verified or send_unverified option is set to True.
         :param Message message: message to be sent.
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
@@ -275,7 +275,7 @@ class MiddlemanSafeSession(BasicSafeSession):
         else:
             BasicSession.send(self, message)
 
-    def interpret(self, msg):
+    def interpret(self, msg: message.Message):
         """ React to specific message. Disconnect, if message type is unknown for that session.
         In middleman mode doesn't react to message, just sends it to other open session.
         :param Message msg: Message to interpret and react to.
@@ -302,7 +302,7 @@ class MiddlemanSafeSession(BasicSafeSession):
             open_session.dropped()
         BasicSafeSession.dropped(self)
 
-    def _check_msg(self, msg):
+    def _check_msg(self, msg: message.Message):
         if not self.is_middleman:
             return BasicSafeSession._check_msg(self, msg)
         else:

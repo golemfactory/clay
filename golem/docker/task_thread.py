@@ -120,7 +120,7 @@ class DockerTaskThread(TaskThread):
         # return float(self.job.read_work_file(self.PROGRESS_FILE))
         return 0.0
 
-    def check_for_messages(self) -> List[Dict]:
+    def check_for_new_messages(self) -> List[Dict]:
         """
         :return: list containing list of messages, each of which is a dict
         """
@@ -140,7 +140,12 @@ class DockerTaskThread(TaskThread):
 
         return msgs_decoded
 
-    def receive_message(self, data):
+    def receive_message(self, data: Dict):
+        """
+        Takes a message from network and puts it in a new file in MESSAGES_IN_DIR
+        :param data: Message data
+        :return:
+        """
         # TODO consider moving hash somewhere else
         # although it is not very important
         # messages names don't matter at all

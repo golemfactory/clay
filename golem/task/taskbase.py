@@ -2,7 +2,7 @@ import abc
 import enum
 import logging
 import time
-from typing import List, Tuple, Union, Type
+from typing import List, Tuple, Union, Type, Dict
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
@@ -423,3 +423,11 @@ class Task(metaclass=abc.ABCMeta):
         :return list:
         """
         return []
+
+    def react_to_message(self, subtask_id, data: Dict) -> Dict:
+        """ Reacts to a message from provider
+        :param subtask_id:
+        :param data: Message data in dict
+        :return: Response in dict
+        """
+        return {}
