@@ -18,8 +18,8 @@ a = Analysis(['golemcli.py'],
              binaries=[],
              datas=[],
              runtime_hooks=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
+             win_no_prefer_redirects=True,
+             win_private_assemblies=True,
              cipher=block_cipher)
 
 pyz = PYZ(a.pure,
