@@ -62,10 +62,6 @@ class EthereumClientTest(TempDirFixture):
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
-        client.node.start()
-        assert client.node.is_running()
-        client.node.stop()
-        assert not client.node.is_running()
 
     def test_get_logs(self):
         addr = encode_hex(zpad(b'deadbeef', 32))
