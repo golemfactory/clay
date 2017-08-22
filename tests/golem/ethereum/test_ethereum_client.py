@@ -79,8 +79,14 @@ class EthereumClientTest(TempDirFixture):
         my_address = '0x000000000000000000000000aa4abfaaa535087386e9c5bc82b7c858224988bf'
 
         LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
-        logs2 = client.get_logs(from_block=753335,
-                                to_block=753335,
+
+        block_num = 753335
+        block_hash ='0xa435eda52586183f1362dcebb42b3ccf15ee4e033d2420543fa5be1130644f27'
+
+        block_info = client.web3.eth.getBlock(block_hash)
+
+        logs2 = client.get_logs(from_block=block_num,
+                                to_block=block_num,
                                 topics=[LOG_ID, None, my_address])
 
         pass
