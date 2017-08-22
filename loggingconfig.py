@@ -67,6 +67,11 @@ LOGGING = {
             'propagate': True,
             'handlers': ['console', 'file', ],
         },
+        'resourcesmanager': {
+            'level': 'DEBUG',
+            'propagate': True,
+            'handlers': ['console', 'file', ],
+        },
         'golem.rpc.crossbar': {
             'level': 'INFO',
             'propagate': True,
