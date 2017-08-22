@@ -68,24 +68,31 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
-    @mock.patch("gevent.Greenlet.join")
     @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
-    def test_run_requesting_node(self, mock_reactor, enqueue_new_task, join):
-        client = runner.run_requesting_node(self.path, 3)
-        self.assertTrue(enqueue_new_task.called)
-        client.quit()
+    def test_run_requesting_node(self, mock_reactor, enqueue_new_task):
+        import gevent
+        def test():
+            client = runner.run_requesting_node(self.path, 3)
+            self.assertTrue(enqueue_new_task.called)
+            client.quit()
 
-    @mock.patch("gevent.Greenlet.join")
+        gevent.spawn(test)
+
     @mock.patch("tests.golem.task.dummy.runner.reactor")
-    def test_run_computing_node(self, mock_reactor, join):
-        client = runner.run_computing_node(self.path,
-                                           SocketAddress("127.0.0.1", 40102),
-                                           "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8")
-        environments = list(client.environments_manager.environments)
-        self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
-                            for env in environments))
-        client.quit()
+    def test_run_computing_node(self, mock_reactor):
+        import gevent
+
+        def test():
+            client = runner.run_computing_node(self.path,
+                                               SocketAddress("127.0.0.1", 40102),
+                                               "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8")
+            environments = list(client.environments_manager.environments)
+            self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
+                                for env in environments))
+            client.quit()
+
+        gevent.spawn(test)
 
     @mock.patch("subprocess.Popen")
     def test_run_simulation(self, mock_popen):
