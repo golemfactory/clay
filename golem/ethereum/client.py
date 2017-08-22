@@ -167,6 +167,8 @@ class Client(object):
         :param address: Contract address or a list of addresses from which logs should originate
         :param topics: Array of 32 Bytes DATA topics. Topics are order-dependent.
         Each topic can also be an array of DATA with "or" options
+        topic[hash, from, to]
+        The first topic is the hash of the signature of the event (e.g. Deposit(address,bytes32,uint256)), except you declared the event with the anonymous specifier.)
         :return: Returns log entries described by filter options
         """
         for i in range(len(topics)):

@@ -105,5 +105,10 @@ class TestEthereumAddress(LogTestCase):
         addr = EthereumAddress("7b82fd1672b8020415d269c53cd1a2230fde9386")
         assert addr
 
+        a = EthereumAddress(addr.get_str_addr())
+
         addr = EthereumAddress("Invalid")
         assert not addr
+
+
+        addr = EthereumAddress("0x000000000000000000000000aa4abfaaa535087386e9c5bc82b7c858224988bf")

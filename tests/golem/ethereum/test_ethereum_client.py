@@ -75,6 +75,16 @@ class EthereumClientTest(TempDirFixture):
                                topics=[log_id, addr])
         assert logs == []
 
+        my_address2 = '0xaa4abfaaa535087386e9c5bc82b7c858224988bf'
+        my_address = '0x000000000000000000000000aa4abfaaa535087386e9c5bc82b7c858224988bf'
+
+        LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
+        logs2 = client.get_logs(from_block=753335,
+                                to_block=753335,
+                                topics=[LOG_ID, None, my_address])
+
+        pass
+
     def test_filters(self):
         """ Test creating filter and getting logs """
         client = self.client

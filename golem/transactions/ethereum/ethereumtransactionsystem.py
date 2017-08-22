@@ -11,7 +11,6 @@ from golem.transactions.ethereum.ethereumpaymentskeeper \
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.transactionsystem import TransactionSystem
-from golem.utils import encode_hex
 
 log = logging.getLogger('golem.pay')
 

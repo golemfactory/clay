@@ -126,6 +126,17 @@ class PaymentProcessor(Service):
     def eth_address(self, zpad=True):
         return self.enc_address(self.__privkey, zpad)
 
+
+    def eth_address_new(self, zpad=True):
+        from ethereum.utils import privtoaddr
+        from golem.transactions.ethereum.ethereumpaymentskeeper \
+            import EthereumAddress
+
+        node_address = privtoaddr(self.__privkey)
+        eth_adr = EthereumAddress(node_address)
+        return eth_adr
+
+
     def enc_address(self, privkey, zpad=True):
         raw = self.raw_address(privkey)
         # TODO: Hack RPC client to allow using raw address.

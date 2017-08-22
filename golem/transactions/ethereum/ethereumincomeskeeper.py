@@ -33,6 +33,9 @@ class EthereumIncomesKeeper(IncomesKeeper):
         my_address = self.processor.eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
 
+        my_address2 =self.processor.eth_address_new()
+
+
         incomes = self.processor.get_logs(
             from_block=block_number,
             to_block=block_number,
