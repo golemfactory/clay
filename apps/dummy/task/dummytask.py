@@ -136,11 +136,12 @@ class DummyTask(CoreTask):
         exd.extra_data["subtask_data"] = char * size
         return exd
 
-    def react_to_message(self, subtask_id: str, data: Dict):
-        if "content" in data:
-            return {"content": {"got_messages": "aaaa" + data["got_messages"]}}
-        else:
-            return {"content": {"got_messages": "bbbb"}}
+    # Temporary testing for communications
+    # def react_to_message(self, subtask_id: str, data: Dict):
+    #     if "content" in data:
+    #         return {"content": {"got_messages": "aaaa" + data["got_messages"]}}
+    #     else:
+    #         return {"content": {"got_messages": "bbbb"}}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):
