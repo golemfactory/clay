@@ -27,10 +27,10 @@ class EthereumTransactionSystem(TransactionSystem):
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
-        if not isinstance(node_priv_key, str)\
-                or len(node_priv_key) != 64:
-            raise ValueError("Invalid private key: {}".format(node_priv_key))
-        self.__node_address = b'0x' + privtoaddr(node_priv_key)
+        try:
+            self.__node_address_raw = privtoaddr(node_priv_key)
+        except AssertionError:
+            raise ValueError("not a valid private key")
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         self.__eth_node = self.incomes_keeper.eth_node = Client(datadir)
@@ -58,7 +58,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
-        return '0x' + encode_hex(self.__node_address)
+        return '0x' + encode_hex(self.__node_address_raw)
 
     def get_balance(self):
         if not self.__proc.balance_known():

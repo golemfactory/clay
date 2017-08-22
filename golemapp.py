@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+
 import sys
 import click
 from multiprocessing import freeze_support
@@ -88,7 +91,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
 
         node = OptNode(peers=peer, node_address=node_address,
-		               use_monitor=monitor, **config)
+                       use_monitor=monitor, **config)
         node.run(use_rpc=True)
 
 

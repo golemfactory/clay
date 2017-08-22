@@ -1,3 +1,4 @@
+import logging
 import json
 
 import requests
@@ -9,6 +10,7 @@ class HyperdriveClient(IClient):
 
     CLIENT_ID = 'hyperg'
     VERSION = 1.0
+    log = logging.getLogger("hyperg")
 
     def __init__(self, port=3292, host='localhost', timeout=None):
         super(HyperdriveClient, self).__init__()
@@ -71,10 +73,13 @@ class HyperdriveClient(IClient):
         return response['hash']
 
     def _request(self, **data):
+        datajson = json.dumps(data)
+        self.log.info("request: {}".format(datajson))
         response = requests.post(url=self._url,
                                  headers=self._headers,
-                                 data=json.dumps(data),
+                                 data=datajson,
                                  timeout=self.timeout)
+        self.log.info("request: {}; response: {}".format(datajson, response))
         response.raise_for_status()
 
         if response.content:

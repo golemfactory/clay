@@ -152,7 +152,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key
             )
         else:
             self.transaction_system = None
@@ -1133,8 +1133,9 @@ class Client(HardwarePresetsMixin):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
             msg = "Computing {} subtask(s):".format(len(progress))
-            for k, v in list(progress.items()):
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
+            for key, value in list(progress.items()):
+                msg = "{} \n {} ({}%)\n".format(msg, key,
+                                                value.get_progress() * 100)
         elif self.config_desc.accept_tasks:
             msg = "Waiting for tasks...\n"
         else:
