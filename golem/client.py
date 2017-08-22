@@ -258,14 +258,19 @@ class Client(HardwarePresetsMixin):
             self.daemon_manager = HyperdriveDaemonManager(self.datadir)
             self.daemon_manager.start()
 
+        hyperdrive_addrs = self.daemon_manager.public_addresses(
+            self.node.pub_addr)
+        hyperdrive_ports = self.daemon_manager.ports()
+
         if not self.resource_server:
-            resource_manager = HyperdriveResourceManager(dir_manager)
+            resource_manager = HyperdriveResourceManager(dir_manager,
+                                                         hyperdrive_addrs)
             self.resource_server = BaseResourceServer(resource_manager,
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        def connect(xxx_todo_changeme):
-            (p2p_port, task_port) = xxx_todo_changeme
+        def connect(ports):
+            p2p_port, task_port = ports
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
@@ -293,7 +298,6 @@ class Client(HardwarePresetsMixin):
 
         task = Deferred()
         p2p = Deferred()
-        hyperdrive_ports = self.daemon_manager.ports()
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)

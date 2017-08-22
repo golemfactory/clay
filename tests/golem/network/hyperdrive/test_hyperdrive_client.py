@@ -21,7 +21,7 @@ class TestHyperdriveClient(unittest.TestCase):
         options = HyperdriveClient.build_options(node_id)
         assert options.client_id == HyperdriveClient.CLIENT_ID
         assert options.version == HyperdriveClient.VERSION
-        assert not options.options
+        assert options.options['peers'] is None
 
     def test_diagnostics(self):
         client = HyperdriveClient()

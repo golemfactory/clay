@@ -11,15 +11,22 @@ logger = logging.getLogger(__name__)
 
 class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
 
-    def __init__(self, dir_manager, config=None, resource_dir_method=None):
+    def __init__(self, dir_manager, daemon_pub_addresses=None,
+                 config=None, **kwargs):
+
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
-        AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
+        AbstractResourceManager.__init__(self, dir_manager, **kwargs)
+
+        self._daemon_pub_addresses = daemon_pub_addresses
 
     def new_client(self):
         return HyperdriveClient(**self.config.client)
 
     def build_client_options(self, node_id, **kwargs):
-        return HyperdriveClient.build_options(node_id, **kwargs)
+        return HyperdriveClient.build_options(
+            node_id,
+            peers=[self._daemon_pub_addresses], **kwargs
+        )
 
     def to_wire(self, resources):
         return [[r.hash, r.files_split]
@@ -33,8 +40,8 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                   absolute_path=False, client=None, client_options=None):
 
         if not files:
-            logger.warn("Resource manager: trying to add an empty file collection for task {}"
-                        .format(task_id))
+            logger.warning("Resource manager: trying to add an empty file "
+                           "collection for task {}".format(task_id))
             return
 
         files = {path: self.storage.relative_path(path, task_id)

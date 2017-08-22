@@ -1,4 +1,5 @@
 import atexit
+import copy
 import logging
 import os
 import subprocess
@@ -28,7 +29,13 @@ class HyperdriveDaemonManager(object):
         self._monitor.add_callbacks(self._start)
 
         self._dir = os.path.join(datadir, self._executable)
-        self._command = [self._executable, '--db', self._dir]
+        self._log_file = os.path.join(datadir, 'hyperg.log')
+
+        self._command = [
+            self._executable,
+            '--db', self._dir,
+            '--logfile', self._log_file
+        ]
 
         atexit.register(self.stop)
 
@@ -39,6 +46,15 @@ class HyperdriveDaemonManager(object):
             return self._addresses
         except ConnectionError:
             return dict()
+
+    def public_addresses(self, ip, addresses=None):
+        if addresses is None:
+            addresses = copy.deepcopy(self.addresses()) or dict()
+
+        for protocol, entry in addresses.items():
+            entry['address'] = ip
+
+        return addresses
 
     def ports(self, addresses=None):
         if addresses is None:

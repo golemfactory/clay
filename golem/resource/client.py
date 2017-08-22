@@ -13,6 +13,7 @@ import base58
 import multihash
 import requests
 import twisted
+from copy import deepcopy
 from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
     ReadTimeoutError, ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
@@ -46,14 +47,33 @@ def file_multihash(file_path):
 
 class IClient(object):
 
+    CLIENT_ID = None
+
     @classmethod
     def build_options(cls, node_id, **kwargs):
         raise NotImplementedError
 
+    @classmethod
+    def filter_options(cls, client_options):
+        if not client_options:
+            pass
+
+        elif client_options.client_id != cls.CLIENT_ID:
+            log.warning('Resource client: unsupported client id: %s',
+                        client_options.client_id)
+
+        elif not isinstance(client_options.version, float):
+            log.warning('Resource client: invalid version format: %s',
+                        client_options.version)
+        else:
+            return client_options.clone()
+
+        return None
+
     def add(self, files, recursive=False, client_options=None, **kwargs):
         raise NotImplementedError
 
-    def get_file(self, multihash, client_options=None, **kwargs):
+    def get_file(self, content_hash, client_options=None, **kwargs):
         raise NotImplementedError
 
     def id(self, client_options=None, *args, **kwargs):
@@ -132,6 +152,13 @@ class ClientOptions(object):
             raise ClientError("Invalid client version '{}' (expected: '{}')"
                               .format(version, self.version))
         return self.options.get(option, None)
+
+    def clone(self):
+        return ClientOptions(
+            self.client_id,
+            self.version,
+            options=deepcopy(self.options)
+        )
 
     @staticmethod
     def from_kwargs(kwargs):
