@@ -127,6 +127,7 @@ class PaymentProcessor(Service):
         return self.enc_address(self.__privkey, zpad)
 
 
+    # todo GG - to be deleted
     def eth_address_new(self, zpad=True):
         from ethereum.utils import privtoaddr
         from golem.transactions.ethereum.ethereumpaymentskeeper \

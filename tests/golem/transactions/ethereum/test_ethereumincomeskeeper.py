@@ -8,6 +8,8 @@ from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper\
     import EthereumIncomesKeeper
 
+from golem.ethereum.paymentprocessor import PaymentProcessor
+from ethereum import tester
 
 SQLITE3_MAX_INT = 2**31 - 1
 
@@ -15,21 +17,37 @@ SQLITE3_MAX_INT = 2**31 - 1
 def get_some_id():
     return str(uuid.uuid4())
 
+def get_receiver_id():
+    return '0x0000000000000000000000007d577a597b2742b498cb5cf0c26cdcd726d39e6e'
 
 class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/transactions/ethereum/ethereumincomeskeeper.py',
     ]
 
-    def setUp(self):
+
+
+    def setUp(self, ):
         super(TestEthereumIncomesKeeper, self).setUp()
         random.seed()
-        processor = mock.MagicMock()
-        processor.eth_address.return_value = get_some_id()
-        eth_node = mock.MagicMock()
+        processor_old = mock.MagicMock()
+        processor_old.eth_address.return_value = get_receiver_id()
+        processor_old.synchronized.return_value = True
+        self.instance = EthereumIncomesKeeper(processor_old)
 
-        self.instance = EthereumIncomesKeeper(processor)
 
+        # client = mock.MagicMock()
+        # client.get_peer_count.return_value = 4
+        # client.is_syncing = False
+        #
+        # PRIV_KEY = tester.k1
+        # processor = PaymentProcessor(client=client, privkey=PRIV_KEY)
+        #
+        # self.instance = EthereumIncomesKeeper(processor)
+
+    # def test_received(self, super_received_mock, mock_payment_processor_synchronized):
+    # import mock
+    # @mock.patch('golem.ethereum.paymentprocessor.PaymentProcessor.synchronized', new_callable=mock.PropertyMock)
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
         received_kwargs = {
@@ -40,6 +58,11 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': random.randint(10, int(SQLITE3_MAX_INT / 2)),
         }
+        # mock_payment_processor_synchronized().return_value = True
+        hmm = self.instance.processor.synchronized()
+        # hmm2 = self.instance.processor.synchronized()
+        # # todo GG clean up
+
         # Not in blockchain
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()

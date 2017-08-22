@@ -966,6 +966,7 @@ class TaskServer(PendingConnectionsServer):
             elems_set.remove(elem)
 
     def send_waiting_payment_requests(self):
+        # inform requestor that you are waiting for payment from him
         self._send_waiting(
             elems_set=self.payment_requests_to_send,
             subtask_id_getter=lambda expected_income: expected_income.subtask,
@@ -975,6 +976,7 @@ class TaskServer(PendingConnectionsServer):
         )
 
     def send_waiting_payments(self):
+
         self._send_waiting(
             elems_set=self.payments_to_send,
             subtask_id_getter=lambda payment: payment.subtask,

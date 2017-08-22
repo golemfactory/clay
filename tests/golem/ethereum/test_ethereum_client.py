@@ -75,6 +75,7 @@ class EthereumClientTest(TempDirFixture):
                                topics=[log_id, addr])
         assert logs == []
 
+        # GG todo
         my_address2 = '0xaa4abfaaa535087386e9c5bc82b7c858224988bf'
         my_address = '0x000000000000000000000000aa4abfaaa535087386e9c5bc82b7c858224988bf'
 
@@ -82,6 +83,17 @@ class EthereumClientTest(TempDirFixture):
 
         block_num = 753335
         block_hash ='0xa435eda52586183f1362dcebb42b3ccf15ee4e033d2420543fa5be1130644f27'
+
+        from time import sleep
+        syncing = True
+        while syncing:
+            try:
+                syncing = client.is_syncing()
+            except Exception as e:
+                syncing = False
+            else:
+                sleep(0.5)
+
 
         block_info = client.web3.eth.getBlock(block_hash)
 

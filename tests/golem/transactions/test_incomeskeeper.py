@@ -83,6 +83,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
         value = random.randint(1, 10**5)
+        # todo GG check bignumbers
         transaction_id = generate_some_id('transaction_id')
 
         expected_income = self.incomes_keeper.expect(
