@@ -67,7 +67,7 @@ LOGGING = {
             'propagate': True,
             'handlers': ['console', 'file', ],
         },
-        'resourcesmanager': {
+        'golem.resource.base.resourcesmanager': {
             'level': 'DEBUG',
             'propagate': True,
             'handlers': ['console', 'file', ],
