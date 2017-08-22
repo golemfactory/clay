@@ -1,6 +1,7 @@
 """Compute Node"""
 
 import click
+import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -46,6 +47,7 @@ class Node(object):
                 self._run()
 
             reactor.run()
+            gevent.get_hub().join()
         except Exception as exc:
             self.logger.error("Application error: {}".format(exc))
         finally:

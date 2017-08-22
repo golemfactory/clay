@@ -91,8 +91,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem
     elif gui:
         from gui.startapp import start_app
-        g = gevent.spawn(start_app, rendering=True, use_monitor=monitor, **config)
-        gevent.get_hub().join()
+        start_app(rendering=True, use_monitor=monitor, **config)
 
     # Golem headless
     else:
@@ -101,8 +100,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         node = OptNode(peers=peer, node_address=node_address,
 	        use_monitor=monitor, **config)
-        g = gevent.spawn(node.run, use_rpc=True)
-        gevent.get_hub().join()
+        node.run(use_rpc=True)
 
 
 def delete_reactor():

@@ -136,6 +136,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
 
     try:
         reactor.run()
+        gevent.get_hub().join()
     except ReactorAlreadyRunning:
         logger.debug("Client process: reactor is already running")
 

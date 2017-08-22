@@ -230,6 +230,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
 
+    @patch('gevent.hub.Hub.join')
     @patch('golem.docker.image.DockerImage')
     def test_setup_without_docker(self, *_):
         exampleNodeID = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3\
@@ -251,6 +252,7 @@ class TestOptNode(TempDirFixture):
         assert not self.node._setup_docker.called
         self.node.client.connect.assert_called_with(self.parsed_peer[0])
 
+    @patch('gevent.hub.Hub.join')
     @patch('golem.docker.image.DockerImage')
     def test_setup_with_docker(self, docker_manager, *_):
         docker_manager.return_value = docker_manager
