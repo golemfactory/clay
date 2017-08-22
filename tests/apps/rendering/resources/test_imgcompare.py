@@ -2,6 +2,7 @@ import os
 
 from PIL import Image
 
+from apps.rendering.resources.imgcompare import *
 
 from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  check_size, compare_exr_imgs,
@@ -11,14 +12,19 @@ from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  calculate_psnr, logger)
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
 
 
-class TestCompareImgFunctions(TempDirFixture, LogTestCase):
+
+class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/resources/imgcompare.py',
+    ]
+
     def test_check_size(self):
         file1 = self.temp_file_name('img.png')
         for y in [10, 11]:
@@ -149,14 +155,18 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         assert calculate_mse(img1, img2, box=(5, 5)) == 0
         assert calculate_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
 
+        with self.assertRaises(ValueError):
+            calculate_mse(img1, img2)
+
         img2 = get_pil_img_repr(img2_path, (10, 10), (253, 0, 0))
-        assert int(calculate_mse(img1, img2)) == 1
+        assert calculate_mse(img1, img2) == 1.3333333333333333
 
         img2 = get_pil_img_repr(img2_path, (10, 10))
         img2.set_pixel((0, 0), (0, 0, 0))
-        assert int(calculate_mse(img1, img2)) == 216
+        assert calculate_mse(img1, img2) == 216.75
 
         assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
+
 
     def test_compare_imgs(self):
         img1_path = self.temp_file_name("img1.png")

@@ -362,9 +362,14 @@ class TestDockerManager(unittest.TestCase):
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
-        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance'):
+        pythoncom = mock.MagicMock()
+
+        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance'), \
+            mock.patch.dict('sys.modules', {'pythoncom': pythoncom}):
+
             dmm.check_environment()
 
+            assert pythoncom.CoInitialize.called
             assert dmm.docker_machine == MACHINE_NAME
             assert not dmm.hypervisor.create.called
             assert dmm.start_docker_machine.called

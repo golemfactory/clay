@@ -1,5 +1,3 @@
-
-
 import atexit
 import logging
 import os
@@ -20,6 +18,7 @@ from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
 from golem.environments.utils import find_program
+from golem.report import report_calls, Component
 from golem.utils import encode_hex, decode_hex, find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
@@ -99,6 +98,7 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
+    @report_calls(Component.ethereum, 'node.start')
     def start(self, port=None):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
@@ -171,6 +171,7 @@ class NodeProcess(object):
 
         log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
 
+    @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
         if self.__ps:
             start_time = time.clock()

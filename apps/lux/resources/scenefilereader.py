@@ -1,6 +1,7 @@
 import re
 
 from golem.core.common import to_unicode
+from apps.rendering.resources.ImgVerificator import ImgVerificator
 
 def make_scene_analysis(scene_file_src, return_data):
     resolution = get_resolution(scene_file_src)
@@ -47,3 +48,21 @@ def get_haltspp(scene_file_src):
                         re.MULTILINE)
     if haltspp:
         return int(haltspp.group(1))
+
+def get_random_crop_window_for_verification(source_lux_config_file_lxs):
+    if "float cropwindow" in source_lux_config_file_lxs:
+        start = source_lux_config_file_lxs.find('float cropwindow')
+        start_bracket = source_lux_config_file_lxs.find('[', start)
+        end_bracket = source_lux_config_file_lxs.find(']', start)
+        line = source_lux_config_file_lxs[start_bracket + 1: end_bracket]
+        window = [float(w) for w in line.split()]
+
+        # make smaller_window from window for verification
+        crop_window = \
+            ImgVerificator().get_random_crop_window(
+                coverage=0.5,
+                window=window)
+        return crop_window
+
+    crop_window = ImgVerificator().get_random_crop_window()
+    return crop_window

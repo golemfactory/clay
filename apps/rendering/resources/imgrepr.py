@@ -43,12 +43,29 @@ class PILImgRepr(ImgRepr):
     def load_from_file(self, file_):
         self.img = Image.open(file_)
         self.img = self.img.convert('RGB')
+        self.img.name = os.path.basename(file_)
+
+    def load_from_pil_object(self, pil_img, name="noname.png"):
+        import PIL
+        if not isinstance(pil_img, PIL.Image.Image):
+            raise TypeError("img must be an instance of PIL.Image.Image")
+
+        self.img = pil_img
+        self.img = self.img.convert('RGB')
+        self.img.name = name
+
+    def get_name(self):
+        return self.img.name
 
     def get_size(self):
         return self.img.size
 
     def get_pixel(self, xy):
         return list(self.img.getpixel(xy))
+
+    @property
+    def size(self):
+        return self.get_size()
 
     def set_pixel(self, xy, color):
         color = tuple(int(c) for c in color)
@@ -79,6 +96,7 @@ class EXRImgRepr(ImgRepr):
                                     self.img.channel(c, self.pt))
                     for c in "RGB"]
         self.file_path = file_
+        self.name = os.path.basename(file_)
 
     def get_size(self):
         return self.dw.max.x - self.dw.min.x + 1, \
@@ -131,9 +149,9 @@ class EXRImgRepr(ImgRepr):
 def load_img(file_):
     """
     Load image from file path and return ImgRepr
-    :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None 
-    if there was an error 
+    :param str file_: path to the file
+    :return ImgRepr | None: Return ImgRepr for special file type or None
+    if there was an error
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -150,14 +168,26 @@ def load_img(file_):
 
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
-     :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or None 
+     :param str file_: path to the file
+     :return Image.Image | None: return PIL Image represantion or None
      if there was an error
     """
 
     img = load_img(file_)
     if img:
         return img.to_pil()
+
+
+def load_as_PILImgRepr(file_) -> PILImgRepr:
+    img = load_img(file_)
+
+    if isinstance(img, EXRImgRepr):
+        img_pil = PILImgRepr()
+        img_pil. \
+            load_from_pil_object(img.to_pil())
+        img = img_pil
+
+    return img
 
 
 def blend(img1, img2, alpha):
