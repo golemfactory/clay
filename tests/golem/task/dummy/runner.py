@@ -226,11 +226,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
             sys.executable, "-u", __file__, COMPUTING_NODE_KIND,
-<<<<<<< HEAD
             compdir, requestor_address, node_id
-=======
-            compdir, requestor_address
->>>>>>> develop
         ]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node

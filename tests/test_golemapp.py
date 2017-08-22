@@ -45,7 +45,6 @@ class TestGolemApp(TempDirFixture):
     @ci_skip
     @patch('golemapp.install_reactor')
     @patch.object(startapp, 'start_app')
-    @patch('gevent.wait')
     def test_start_gui(self, start_app, *_):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
