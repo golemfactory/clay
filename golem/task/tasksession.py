@@ -822,7 +822,7 @@ class TaskSession(MiddlemanSafeSession):
                                            msg.subtask_id,
                                            msg.message_data)
 
-    def send_message_to_requestor(self, task_id: str, subtask_id: str, data: Dict):
+    def send_message_to_requestor(self, task_id: str, subtask_id: str, data: Dict):  # noqa
         new_message = message.MessageSubtaskProvToReq(task_id=task_id,
                                                       subtask_id=subtask_id,
                                                       message_data=data)
