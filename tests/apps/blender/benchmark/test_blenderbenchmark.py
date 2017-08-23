@@ -6,7 +6,7 @@ import mock
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask
 from apps.core.task.coretaskstate import TaskDesc
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.benchmark.benchmark import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils

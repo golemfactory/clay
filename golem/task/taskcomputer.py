@@ -9,7 +9,7 @@ from pydispatch import dispatcher
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner, CoreBenchmark
+from apps.core.benchmark.benchmark import BenchmarkRunner, CoreBenchmark
 from apps.core.task.coretaskstate import TaskDesc
 from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask

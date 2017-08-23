@@ -3,7 +3,7 @@ import logging
 import os.path
 from PIL import Image
 
-from apps.core.benchmark.benchmarkrunner import CoreBenchmark
+from apps.core.benchmark.benchmark import CoreBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger("apps.core")

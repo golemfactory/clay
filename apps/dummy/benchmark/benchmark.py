@@ -2,7 +2,7 @@ import os
 import tempfile
 from os.path import join
 
-from apps.core.benchmark.benchmarkrunner import CoreBenchmark
+from apps.core.benchmark.benchmark import CoreBenchmark
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskDefaults

@@ -74,3 +74,11 @@ venv/*
 # luxrender test files
 luxrender-output.exr
 luxrender-output.png
+
+# linters - temporary
+lintdiff.sh
+linters_run.sh
+pylintrc.txt
+setup.cfg
+
+ 
