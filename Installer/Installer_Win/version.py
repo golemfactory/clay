@@ -1,3 +1,4 @@
+from os import linesep
 from os.path import abspath, dirname, join, sep
 from sys import platform
 
@@ -18,21 +19,9 @@ def get_tag():
     :return: Name for wheel
     """
     repo = Repo(get_golem_path())
-    tag = repo.tags[-2]  # get latest tag
+    tag = repo.tags[-1]  # get latest tag
     tag_id = tag.commit.hexsha  # get commit id from tag
     commit_id = repo.head.commit.hexsha  # get last commit id
-    if platform.startswith('linux'):
-        from platform import architecture
-        if architecture()[0].startswith('64'):
-            plat = "linux_x86_64"
-        else:
-            plat = "linux_i386"
-    elif platform.startswith('win'):
-        plat = "win32"
-    elif platform.startswith('darwin'):
-        plat = "macosx_10_12_x86_64"
-    else:
-        raise SystemError("Incorrect platform: {}".format(platform))
     if commit_id != tag_id:  # devel package
         return "{}-0x{}{}".format(tag.name, commit_id[:4], commit_id[-4:])
     else:  # release package
@@ -45,7 +34,8 @@ def update_ini():
     """
     version_file = join(get_golem_path(), '.version.ini')
     repo_tag = get_tag().split('-')
-    version = "[version]\nversion = {}{}\n".format(repo_tag[0], ("-" + repo_tag[1]) if len(repo_tag) > 1 else "")
+    version = "[version]{0}version = {1}{2}{0}".format(linesep, repo_tag[0],
+                                                       ("-" + repo_tag[1]) if len(repo_tag) > 1 else "")
     with open(version_file, 'wb') as f_:
         f_.write(version.encode('ascii'))
 
