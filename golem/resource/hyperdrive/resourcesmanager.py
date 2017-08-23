@@ -22,19 +22,19 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def new_client(self):
         return HyperdriveClient(**self.config.client)
 
-    def build_client_options(self, node_id, **kwargs):
-        return HyperdriveClient.build_options(
-            node_id,
-            peers=[self._daemon_pub_addresses], **kwargs
-        )
+    def build_client_options(self, node_id, known_peers=None, **kwargs):
+        peers = [self._daemon_pub_addresses]
+        if known_peers:
+            peers += known_peers
+        return HyperdriveClient.build_options(node_id, peers=peers, **kwargs)
 
     def to_wire(self, resources):
-        return [[r.hash, r.files_split]
-                for r in resources]
+        iterator = filter(None, resources)
+        return list([r.hash, r.files_split] for r in iterator)
 
     def from_wire(self, resources):
-        return [[r[0], [os.path.join(*x) for x in r[1]]]
-                for r in resources]
+        iterator = filter(lambda x: x and len(x) > 1, resources)
+        return list([r[0], [os.path.join(*x) for x in r[1]]] for r in iterator)
 
     def add_files(self, files, task_id,
                   absolute_path=False, client=None, client_options=None):

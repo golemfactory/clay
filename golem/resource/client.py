@@ -47,28 +47,9 @@ def file_multihash(file_path):
 
 class IClient(object):
 
-    CLIENT_ID = None
-
     @classmethod
     def build_options(cls, node_id, **kwargs):
         raise NotImplementedError
-
-    @classmethod
-    def filter_options(cls, client_options):
-        if not client_options:
-            pass
-
-        elif client_options.client_id != cls.CLIENT_ID:
-            log.warning('Resource client: unsupported client id: %s',
-                        client_options.client_id)
-
-        elif not isinstance(client_options.version, float):
-            log.warning('Resource client: invalid version format: %s',
-                        client_options.version)
-        else:
-            return client_options.clone()
-
-        return None
 
     def add(self, files, recursive=False, client_options=None, **kwargs):
         raise NotImplementedError
@@ -140,6 +121,9 @@ class ClientOptions(object):
     Runtime parameters for classes implementing the IClient interface
     """
     def __init__(self, client_id, version, options=None):
+        assert isinstance(client_id, str), 'Client id must be a string'
+        assert isinstance(version, float), 'Version must be a fp number'
+
         self.client_id = client_id
         self.version = version
         self.options = options
@@ -152,6 +136,17 @@ class ClientOptions(object):
             raise ClientError("Invalid client version '{}' (expected: '{}')"
                               .format(version, self.version))
         return self.options.get(option, None)
+
+    def filtered(self, client_id, version):
+        if self.client_id != client_id:
+            log.warning('Resource client: invalid client id: %s',
+                        self.client_id)
+        elif not isinstance(self.version, float):
+            log.warning('Resource client: invalid version format: %s',
+                        self.version)
+        else:
+            return self.clone()
+        return None
 
     def clone(self):
         return ClientOptions(
