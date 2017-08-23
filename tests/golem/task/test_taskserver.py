@@ -343,6 +343,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.task_keeper = Mock()
         ts.task_connections_helper = Mock()
         ts._add_pending_request = Mock()
+        ts.send_task_messages = Mock()
 
         subtask_id = 'xxyyzz'
 

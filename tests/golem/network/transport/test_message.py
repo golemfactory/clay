@@ -17,6 +17,7 @@ import mock
 
 class FailingMessage(message.Message):
     TYPE = -1
+    MAPPING = {}
 
     def __init__(self, *args, **kwargs):
         message.Message.__init__(self, *args, **kwargs)

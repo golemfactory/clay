@@ -808,7 +808,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         self.inform_worker_about_payment(payment)
 
-    def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):
+    def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):  # noqa
         task = self.task_server.task_manager.tasks[msg.task_id]
         data = task.react_to_message(msg.subtask_id, msg.message_data)
         new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id,
@@ -817,7 +817,7 @@ class TaskSession(MiddlemanSafeSession):
         response_sess = self
         response_sess.send(new_message)
 
-    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):
+    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):  # noqa
         self.task_computer.receive_message(msg.task_id,
                                            msg.subtask_id,
                                            msg.message_data)
@@ -879,7 +879,7 @@ class TaskSession(MiddlemanSafeSession):
 
         return True
 
-    def __check_docker_images(self, ctd: ComputeTaskDef, env: DockerEnvironment):
+    def __check_docker_images(self, ctd: ComputeTaskDef, env: DockerEnvironment):  # noqa
         for image in ctd.docker_images:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
@@ -1031,8 +1031,8 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
-            message.MessageSubtaskReqToProv.TYPE: self._react_to_requestor_to_provider_msg,
-            message.MessageSubtaskProvToReq.TYPE: self._react_to_provider_to_requestor_msg,
+            message.MessageSubtaskReqToProv.TYPE: self._react_to_requestor_to_provider_msg,  # noqa
+            message.MessageSubtaskProvToReq.TYPE: self._react_to_provider_to_requestor_msg,  # noqa
         })
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
