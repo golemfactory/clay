@@ -7,7 +7,7 @@ import jsonpickle as json
 from ethereum.utils import denoms
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     DateTimeField, TextField, CompositeKey, BooleanField,
-                    SmallIntegerField)
+                    SmallIntegerField, DecimalField)
 
 from golem.utils import encode_hex, decode_hex
 
@@ -193,6 +193,9 @@ class Income(BaseModel):
     transaction = CharField()
     block_number = BigIntegerField()
     value = BigIntegerField()
+
+    # GG todo
+    #value = DecimalField(max_digits=36, decimal_places=18) # wei -> max_digits=19, decimal_places=18
 
     class Meta:
         database = db
