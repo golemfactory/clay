@@ -15,6 +15,7 @@ from golem.ranking.helper.trust import Trust
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -383,7 +384,7 @@ class TaskServer(PendingConnectionsServer):
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, account_info):
+    def accept_result(self, subtask_id, account_info: EthAccountInfo):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         Trust.COMPUTED.increase(account_info.key_id, mod)
 

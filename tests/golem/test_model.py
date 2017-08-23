@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import (Payment, PaymentStatus, ReceivedPayment, LocalRank,
+from golem.model import (Payment, PaymentStatus, LocalRank,
                          GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
                          TaskPreset)
 from golem.testutils import DatabaseFixture, TempDirFixture
@@ -70,28 +70,6 @@ class TestPayment(DatabaseFixture):
         value = 10000 * 10**18
         assert value > 2**64
         Payment.create(payee="me", subtask="T1000", value=value, status=PaymentStatus.sent)
-
-
-class TestReceivedPayment(DatabaseFixture):
-
-    def test_default_fields(self):
-        r = ReceivedPayment()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
-
-    def test_create(self):
-        r = ReceivedPayment(from_node_id="DEF", task="xyz", val=4, expected_val=3131,
-                            state="SOMESTATE")
-        self.assertEqual(r.save(force_insert=True), 1)
-        with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(from_node_id="DEF", task="xyz", val=5, expected_val=3132,
-                                   state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val=5, expected_val=3132,
-                               state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val=5, expected_val=3132,
-                               state="SOMESTATEX")
-
-        self.assertEqual(3, len([payment for payment in ReceivedPayment.select()]))
 
 
 class TestLocalRank(DatabaseFixture):

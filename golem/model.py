@@ -54,7 +54,6 @@ class Database:
             LocalRank,
             NeighbourLocRank,
             Payment,
-            ReceivedPayment,
             Stats,
             TaskPreset,
         ]
@@ -207,21 +206,6 @@ class Income(BaseModel):
                 self.transaction,
                 self.block_number
             )
-
-
-class ReceivedPayment(BaseModel):
-    """ Represent payments that nodes on this machine receive from other nodes
-    """
-    from_node_id = CharField()
-    task = CharField()
-    val = BigIntegerField()
-    expected_val = BigIntegerField()
-    state = CharField()
-    details = CharField(default="")
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('from_node_id', 'task')
 
 
 ##################

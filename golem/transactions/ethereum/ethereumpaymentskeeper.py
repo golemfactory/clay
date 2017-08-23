@@ -2,21 +2,26 @@ import logging
 
 from ethereum.utils import normalize_address
 
-from golem.transactions.paymentskeeper import AccountInfo
+
 from golem.utils import encode_hex
 
 logger = logging.getLogger(__name__)
 
 
-class EthAccountInfo(AccountInfo):
+class EthAccountInfo(object):
     """ Information about node's payment account and Ethereum account. """
     def __init__(self, key_id, port, addr, node_name, node_info, eth_account):
-        AccountInfo.__init__(self, key_id, port, addr, node_name, node_info)
+        self.key_id = key_id
+        self.port = port
+        self.addr = addr
+        self.node_name = node_name
+        self.node_info = node_info
         self.eth_account = EthereumAddress(eth_account)
 
     def __eq__(self, other):
         ethereum_eq = self.eth_account == other.eth_account
-        account_eq = AccountInfo.__eq__(self, other)
+        account_eq = self.key_id == other.key_id
+
         return ethereum_eq and account_eq
 
 

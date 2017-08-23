@@ -7,13 +7,15 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, 
                                                                 logger)
 from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.testutils import TempDirFixture
+from golem.testutils import (TempDirFixture, PEP8MixIn)
+
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.network.p2p.node import Node
 
 
-class TestEthereumPaymentsKeeper(TestWithDatabase):
+class TestEthereumPaymentsKeeper(TestWithDatabase,  PEP8MixIn):
+    PEP8_FILES = ['golem/transactions/ethereum/ethereumpaymentskeeper.py', ]
     def test_get_list_of_payment(self):
         e = PaymentsKeeper()
 

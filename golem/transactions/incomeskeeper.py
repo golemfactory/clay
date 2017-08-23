@@ -14,6 +14,13 @@ logger = logging.getLogger("golem.transactions.incomeskeeper")
 class IncomesKeeper(object):
     """Keeps information about payments received from other nodes
     """
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
     def run_once(self):
         delta = datetime.datetime.now() - datetime.timedelta(minutes=10)
         with db.atomic():
