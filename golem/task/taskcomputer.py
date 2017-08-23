@@ -100,7 +100,11 @@ class TaskComputer(object):
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
+
+        # TODO consider using bidict package
         self.task_to_subtask_mapping = {}
+        self.subtask_to_task_mapping = {}
+
         self.max_assigned_tasks = 1
 
         self.delta = None
@@ -113,6 +117,7 @@ class TaskComputer(object):
             self.wait(ttl=self.waiting_for_task_timeout)
             self.assigned_subtasks[ctd.subtask_id] = ctd
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
+            self.subtask_to_task_mapping[ctd.subtask_id] = ctd.task_id
             self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id),
                                     ctd.return_address, ctd.return_port, ctd.key_id, ctd.task_owner)
             return True
@@ -431,7 +436,10 @@ class TaskComputer(object):
     def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
         self.last_checking = time.time()
         self.wait(ttl=self.waiting_for_task_timeout)
-        self.waiting_for_task = self.task_server.request_resource(task_id, resource_header, return_address, return_port,
+        self.waiting_for_task = self.task_server.request_resource(task_id,
+                                                                  resource_header,
+                                                                  return_address,
+                                                                  return_port,
                                                                   key_id,
                                                                   task_owner)
 
@@ -463,9 +471,14 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtasks.pop(subtask_id)
-            self.task_server.send_task_failed(subtask_id, subtask.task_id, "Host direct task not supported",
-                                              subtask.return_address, subtask.return_port, subtask.key_id,
-                                              subtask.task_owner, self.node_name)
+            self.task_server.send_task_failed(subtask_id,
+                                              subtask.task_id,
+                                              "Host direct task not supported",
+                                              subtask.return_address,
+                                              subtask.return_port,
+                                              subtask.key_id,
+                                              subtask.task_owner,
+                                              self.node_name)
             self.counting_task = None
             return
 
@@ -481,9 +494,12 @@ class TaskComputer(object):
         for tt in self.current_computations:
             subtask_id = tt.subtask_id
 
-            # TODO keep the mapping subtask -> task somewhere instead of computing it every time
-            task_id = [k for k, v in self.task_to_subtask_mapping.items() if subtask_id in v][0]
+            # TODO keep the mapping subtask -> task somewhere
+            # instead of computing it every time
+            task_id = [k for k, v in self.task_to_subtask_mapping.items()
+                       if subtask_id in v][0]
             all_subtask_messages_data = tt.check_for_new_messages()
+            # TODO make the structure of msgs tuple explicit somewhere
             for data in all_subtask_messages_data:
                 msgs.append((task_id, subtask_id, data))
         return msgs
@@ -492,6 +508,7 @@ class TaskComputer(object):
         for tt in self.current_computations:
             if tt.subtask_id == subtask_id:
                 tt.receive_message(data)
+
 
 class AssignedSubTask(object):
     def __init__(self, src_code, extra_data, short_desc, owner_address, owner_port):

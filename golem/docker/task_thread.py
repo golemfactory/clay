@@ -17,22 +17,42 @@ logger = logging.getLogger(__name__)
 class TimeoutException(Exception):
     pass
 
-
+# TODO change the way OUTPUT_DIR and WORK_DIR are handled
+# now there is duplication of declarations in DockerJob and here
+# plus, there is GOLEM_BASE_PATH hardcoded here
 class DockerTaskThread(TaskThread):
+
+    GOLEM_BASE_PATH = "/golem"
+
+    OUTPUT_DIR = "output"
+    WORK_DIR = "work"
+    RESOURCES_DIR = "resources"
+
     # These files will be placed in the output dir (self.tmp_path)
     # and will contain dumps of the task script's stdout and stderr.
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
 
     # These files are located in the work dir, they are updated by job.py
-    MESSAGES_IN_DIR = "messages_in"  # it contains list of incoming messages in json
-    MESSAGES_OUT_DIR = "messages_out"  # it contains list outcoming messages in json
+    # it contains list of incoming messages in json
+    MESSAGES_IN_DIR = os.path.join(WORK_DIR, "messages_in")
+    # it contains list outcoming messages in json
+    MESSAGES_OUT_DIR = os.path.join(WORK_DIR, "messages_out")
 
     docker_manager = None
 
-    def __init__(self, task_computer, subtask_id, docker_images,
-                 orig_script_dir, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout, check_mem=False):
+    def __init__(self,
+                 task_computer: 'TaskComputer',
+                 subtask_id: str,
+                 docker_images: 'List[DockerImage]',
+                 orig_script_dir: str,
+                 src_code: str,
+                 extra_data: Dict,
+                 short_desc: str,
+                 res_path: str,
+                 tmp_path: str,
+                 timeout,
+                 check_mem=False):
 
         if not docker_images:
             raise AttributeError("docker images is None")
@@ -60,13 +80,29 @@ class DockerTaskThread(TaskThread):
         try:
             if self.use_timeout and self.task_timeout < 0:
                 raise TimeoutException
-            work_dir = os.path.join(self.tmp_path, "work")
-            output_dir = os.path.join(self.tmp_path, "output")
+            work_dir = os.path.join(self.tmp_path, self.WORK_DIR)
+            output_dir = os.path.join(self.tmp_path, self.OUTPUT_DIR)
 
             if not os.path.exists(work_dir):
                 os.mkdir(work_dir)
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
+
+            messages_dirs = [os.path.join(self.tmp_path, self.MESSAGES_IN_DIR),
+                             os.path.join(self.tmp_path, self.MESSAGES_OUT_DIR)]
+            for m in messages_dirs:
+                if not os.path.exists(m):
+                    os.mkdir(m)
+
+            paths_params = {k: os.path.join(self.GOLEM_BASE_PATH, v) for k, v in
+                            {
+                                "RESOURCES_DIR": self.RESOURCES_DIR,
+                                "WORK_DIR": self.WORK_DIR,
+                                "OUTPUT_DIR": self.OUTPUT_DIR,
+                                "MESSAGES_IN_DIR": self.MESSAGES_IN_DIR,
+                                "MESSAGES_OUT_DIR": self.MESSAGES_OUT_DIR
+                            }.items()}
+            self.extra_data.update(paths_params)
 
             if self.docker_manager:
                 host_config = self.docker_manager.container_host_config
@@ -118,8 +154,10 @@ class DockerTaskThread(TaskThread):
     def get_progress(self):
         return 0.0
 
+    # TODO make the structure of msgs_decoded explicit somewhere
+    # instead of "content": ..., "filename": ... hardcoded here
     def check_for_new_messages(self) -> List[Dict]:
-        """
+        """ Check is the script produced any new messages
         :return: list containing list of messages, each of which is a dict
         """
         if not self.job:
@@ -128,10 +166,13 @@ class DockerTaskThread(TaskThread):
         msgs_decoded = []
         for filename, content in msgs.items():
             try:
-                msgs_decoded.append({"content": json.loads(content), "filename": filename})
+                msgs_decoded.append({
+                    "content": json.loads(content),
+                    "filename": filename
+                })
             except ValueError:
                 msgs_decoded.append({})
-                logger.warning("ValueError during decoding message %r", str(content))
+                logger.warning("ValueError during decoding message %r", str(content))  # noqa
 
         # cleaning messages files, to not read multiple times the same content
         self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
@@ -140,7 +181,7 @@ class DockerTaskThread(TaskThread):
 
     def receive_message(self, data: Dict):
         """
-        Takes a message from network and puts it in a new file in MESSAGES_IN_DIR
+        Takes a message from network and puts it in new file in MESSAGES_IN_DIR
         :param data: Message data
         :return:
         """

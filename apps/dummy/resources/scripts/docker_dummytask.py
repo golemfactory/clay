@@ -22,14 +22,17 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     data_file = os.path.join(RESOURCES_DIR, "data", data_files[0])
     result_path = os.path.join(OUTPUT_DIR, result_file)
 
-    solution = computing.run_dummy_task(data_file, subtask_data, difficulty, result_size)
+    solution = computing.run_dummy_task(data_file,
+                                        subtask_data,
+                                        difficulty,
+                                        result_size)
 
     with open(result_path, "w") as f:  # TODO try catch and log errors
         f.write("{}".format(solution))
 
-    # --------------------------------------------------------------------------------------------- #
+    # -------------------------------------------------------------------
     # Temporary testing for communications
-    #################################################################################################
+    #####################################################################
 
     # os.makedirs(MESSAGES_IN)
     # os.makedirs(MESSAGES_OUT)
@@ -45,10 +48,14 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     # if difficulty != 0xffff0000:
     #     for _ in range(240):
     #         time.sleep(1)
-    #         for filename in os.listdir(MESSAGES_IN):
-    #             with open(os.path.join(MESSAGES_IN, filename), "r") as f:
+    #         for fname in os.listdir(MESSAGES_IN):
+    #             with open(os.path.join(MESSAGES_IN, fname), "r") as f:
     #                 x = json.load(f)
-    #             with open(os.path.join(MESSAGES_OUT, filename + "out"), "w+") as f:
+    #             with open(os.path.join(MESSAGES_OUT, fname + "out"), "w+") as f:
     #                 json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
 
-run(params.data_files, params.subtask_data, params.difficulty, params.result_size, params.result_file)
+run(params.data_files,
+    params.subtask_data,
+    params.difficulty,
+    params.result_size,
+    params.result_file)
