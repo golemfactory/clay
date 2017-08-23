@@ -63,7 +63,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_query_extra_data_for_test_task(self):
         dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
-        data2 = dt._extra_data()
+        data2 = dt._DummyTask__extra_data()
         data1.deadline = data2.deadline = 0
         assert data1.extra_data["subtask_data"] == DummyTask.TESTING_CHAR * td.options.subtask_data_size
         data1.extra_data["subtask_data"] = data2.extra_data["subtask_data"] = ""

@@ -39,7 +39,6 @@ class DummyTask(CoreTask):
     VERIFICATOR_CLASS = DummyTaskVerificator
 
     RESULT_EXTENSION = ".result"
-    TESTING_CHAR = "a"
 
     def __init__(self,
                  total_tasks: int,
@@ -70,7 +69,7 @@ class DummyTask(CoreTask):
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
 
-    def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
+    def __extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.__get_new_subtask_id()
 
         sbs = self.task_definition.options.subtask_data_size
@@ -99,7 +98,7 @@ class DummyTask(CoreTask):
                          num_cores=1,
                          node_id: str = None,
                          node_name: str = None) -> Task.ExtraData:
-        ctd = self._extra_data(perf_index)
+        ctd = self.__extra_data(perf_index)
         sid = ctd.subtask_id
 
         self.subtasks_given[sid] = ctd.extra_data
@@ -130,11 +129,14 @@ class DummyTask(CoreTask):
                                self.RESULT_EXTENSION)
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        exd = self._extra_data()
+        exd = self.__extra_data()
         size = self.task_definition.options.subtask_data_size
-        char = self.TESTING_CHAR
+        char = self.__get_testing_char()
         exd.extra_data["subtask_data"] = char * size
         return exd
+
+    def __get_testing_char(self):
+        return "a"
 
     # Temporary testing for communications
     # def react_to_message(self, subtask_id: str, data: Dict):
