@@ -5,6 +5,7 @@ import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
+from golem.core.async import async_callback
 from golem.core.common import to_unicode
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -58,6 +59,8 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
+        for peer in self._peers:
+            self.client.connect(peer)
         self.client.sync()
 
         try:
@@ -107,7 +110,8 @@ class Node(object):
         self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
 
     def _rpc_router_ready(self, *_):
-        self.rpc_session.connect().addCallbacks(self._run, self._rpc_error)
+        self.rpc_session.connect().addCallbacks(async_callback(self._run),
+                                                self._rpc_error)
 
     def _rpc_error(self, err):
         self.logger.error("RPC error: {}".format(err))

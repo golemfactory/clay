@@ -25,7 +25,6 @@ cbor2==3.0.4
 multihash
 base58
 ndg-httpsclient
-ovh
 certifi
 tabulate
 PyYAML>=3.12

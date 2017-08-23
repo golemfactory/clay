@@ -202,6 +202,13 @@ class TestNode(TestWithDatabase):
         gevent.spawn(test)
 
 
+def mock_async_callback(call):
+    def callback(result):
+        return call(result)
+    return callback
+
+
+@patch('golem.node.async_callback', mock_async_callback)
 @patch('golem.rpc.router.CrossbarRouter', create=True)
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
@@ -211,7 +218,7 @@ class TestOptNode(TempDirFixture):
             self.node.client.quit()
         super(TestOptNode, self).tearDown()
 
-    def test_start_rpc_router(self, reactor, router):
+    def test_start_rpc_router(self, reactor, router, *_):
         from golem.rpc.session import WebSocketAddress
 
         self.node = OptNode(self.path, use_docker_machine_manager=False,

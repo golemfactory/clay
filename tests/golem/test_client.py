@@ -16,6 +16,7 @@ from golem.core.simpleserializer import DictSerializer
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
@@ -847,6 +848,25 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # status with peers
         self.assertTrue(c.connection_status().startswith("Connected"))
+
+        # status without ports
+        c.p2pservice.cur_port = 0
+        self.assertTrue(c.connection_status().startswith("Application not listening"))
+
+    def test_golem_status(self, *_):
+        status = 'component', 'method', 'stage', 'data'
+
+        # no statuses published
+        assert not self.client.get_golem_status()
+
+        # status published, no rpc publisher
+        StatusPublisher.publish(*status)
+        assert not self.client.get_golem_status()
+
+        # status published, with rpc publisher
+        StatusPublisher._rpc_publisher = Mock()
+        StatusPublisher.publish(*status)
+        assert self.client.get_golem_status() == status
 
     def test_port_status(self, *_):
         from pydispatch import dispatcher
