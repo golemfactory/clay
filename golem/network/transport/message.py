@@ -1163,11 +1163,7 @@ class MessageSubtaskReqToProv(Message):
         'task_id': "TASK_ID"
     }
 
-    def __init__(self,
-                 task_id=None,
-                 subtask_id=None,
-                 message_data=None,
-                 **kwargs):
+    def __init__(self, task_id=None, subtask_id=None, message_data=None, **kwargs):
         """Message for communication from R to P during task execution
 
         :param str subtask_id
@@ -1191,15 +1187,11 @@ class MessageSubtaskProvToReq(Message):
         'task_id': "TASK_ID"
     }
 
-    def __init__(self,
-                 task_id=None,
-                 subtask_id=None,
-                 message_data=None,
-                 **kwargs):
+    def __init__(self, task_id=None, subtask_id=None, message_data=None, **kwargs):
         """Message for communication from P to R during task execution
         :param str task_id
         :param str subtask_id
-        :param dict message_data: data sent from Providr to Requestor
+        :param dict message_data: data sent from Requestor to Provider
 
         Additional params are described in Message().
         """

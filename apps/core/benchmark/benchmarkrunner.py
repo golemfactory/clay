@@ -29,11 +29,7 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
-    def __init__(self, task: Task,
-                 root_path,
-                 success_callback,
-                 error_callback,
-                 benchmark: CoreBenchmark):
+    def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
         super().__init__(task,
                          root_path,
                          success_callback,
@@ -66,11 +62,10 @@ class BenchmarkRunner(LocalComputer):
 
     def computation_success(self, task_thread):
         res, _ = task_thread.result
-        norm_const = self.benchmark.normalization_constant
         try:
-            benchmark_value = norm_const / self._get_time_spent()
+            benchmark_value = self.benchmark.normalization_constant / self._get_time_spent()
             if benchmark_value < 0:
                 raise ZeroDivisionError
         except ZeroDivisionError:
-            benchmark_value =  norm_const / 1e-10
+            benchmark_value = self.benchmark.normalization_constant / 1e-10
         self.success_callback(benchmark_value)

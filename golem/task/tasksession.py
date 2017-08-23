@@ -12,36 +12,8 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
+from golem.network.transport import message
 from golem.network.transport import tcpnetwork
-from golem.network.transport.message import (MessageSubtaskProvToReq,
-                                             Message,
-                                             MessageSubtaskReqToProv,
-                                             MessageTaskToCompute,
-                                             MessageWaitingForResults,
-                                             MessageCannotAssignTask,
-                                             MessageSubtaskResultAccepted,
-                                             MessageSubtaskPayment,
-                                             MessageSubtaskPaymentRequest,
-                                             MessageWantToComputeTask,
-                                             MessageGetResource,
-                                             MessageReportComputedTask,
-                                             MessageTaskFailure,
-                                             MessageSubtaskResultRejected,
-                                             MessageHello,
-                                             MessageStartSessionResponse,
-                                             MessageMiddleman,
-                                             MessageJoinMiddlemanConn,
-                                             MessageNatPunch,
-                                             MessageCannotComputeTask,
-                                             MessageGetTaskResult,
-                                             MessageResourceList,
-                                             MessageRandVal,
-                                             MessageBeingMiddlemanAccepted,
-                                             MessageMiddlemanAccepted,
-                                             MessageMiddlemanReady,
-                                             MessageWaitForNatTraverse,
-                                             MessageDeltaParts,
-                                             MessageTaskResultHash)
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
@@ -297,7 +269,7 @@ class TaskSession(MiddlemanSafeSession):
             return
 
         self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(MessageSubtaskResultAccepted(subtask_id=subtask_id))
+        self.send(message.MessageSubtaskResultAccepted(subtask_id=subtask_id))
 
     @log_error()
     def inform_worker_about_payment(self, payment):
@@ -306,7 +278,7 @@ class TaskSession(MiddlemanSafeSession):
             logger.debug('payment.details: %r', payment.details)
         transaction_id = payment.details.get('tx', None)
         block_number = payment.details.get('block_number', None)
-        msg = MessageSubtaskPayment(
+        msg = message.MessageSubtaskPayment(
             subtask_id=payment.subtask,
             reward=payment.value,
             transaction_id=transaction_id,
@@ -317,7 +289,7 @@ class TaskSession(MiddlemanSafeSession):
     @log_error()
     def request_payment(self, expected_income):
         logger.debug('request_payment(%r)', expected_income)
-        msg = MessageSubtaskPaymentRequest(
+        msg = message.MessageSubtaskPaymentRequest(
             subtask_id=expected_income.subtask
         )
         self.send(msg)
@@ -347,7 +319,7 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         self.send(
-            MessageWantToComputeTask(
+            message.MessageWantToComputeTask(
                 node_name=node_name,
                 task_id=task_id,
                 perf_index=performance_index,
@@ -368,7 +340,7 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         self.send(
-            MessageGetResource(
+            message.MessageGetResource(
                 task_id=task_id,
                 resource_header=resource_header
             )
@@ -405,7 +377,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(MessageReportComputedTask(
+        self.send(message.MessageReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
             computation_time=task_result.computing_time,
@@ -423,7 +395,7 @@ class TaskSession(MiddlemanSafeSession):
         :param err_msg: error message that occurred during computation
         """
         self.send(
-            MessageTaskFailure(
+            message.MessageTaskFailure(
                 subtask_id=subtask_id,
                 err=err_msg
             )
@@ -433,12 +405,12 @@ class TaskSession(MiddlemanSafeSession):
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(MessageSubtaskResultRejected(subtask_id=subtask_id))
+        self.send(message.MessageSubtaskResultRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
         self.send(
-            MessageHello(
+            message.MessageHello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
                 proto_id=TASK_PROTOCOL_ID
@@ -451,7 +423,7 @@ class TaskSession(MiddlemanSafeSession):
            to start task session
         :param uuid conn_id: connection id for reference
         """
-        self.send(MessageStartSessionResponse(conn_id=conn_id))
+        self.send(message.MessageStartSessionResponse(conn_id=conn_id))
 
     # TODO Maybe dest_node is not necessary?
     def send_middleman(self, asking_node, dest_node, ask_conn_id):
@@ -463,7 +435,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.asking_node_key_id = asking_node.key
         self.send(
-            MessageMiddleman(
+            message.MessageMiddleman(
                 asking_node=asking_node,
                 dest_node=dest_node,
                 ask_conn_id=ask_conn_id
@@ -480,7 +452,7 @@ class TaskSession(MiddlemanSafeSession):
                                  the middleman connection
         """
         self.send(
-            MessageJoinMiddlemanConn(
+            message.MessageJoinMiddlemanConn(
                 key_id=key_id,
                 conn_id=conn_id,
                 dest_node_key_id=dest_node_key_id
@@ -500,7 +472,7 @@ class TaskSession(MiddlemanSafeSession):
         """
         self.asking_node_key_id = asking_node.key
         self.send(
-            MessageNatPunch(
+            message.MessageNatPunch(
                 asking_node=asking_node,
                 dest_node=dest_node,
                 ask_conn_id=ask_conn_id
@@ -522,19 +494,19 @@ class TaskSession(MiddlemanSafeSession):
 
         if wrong_task:
             self.send(
-                MessageCannotAssignTask(
+                message.MessageCannotAssignTask(
                     task_id=msg.task_id,
                     reason="Not my task  {}".format(msg.task_id)
                 )
             )
             self.dropped()
         elif ctd:
-            self.send(MessageTaskToCompute(compute_task_def=ctd))
+            self.send(message.MessageTaskToCompute(compute_task_def=ctd))
         elif wait:
-            self.send(MessageWaitingForResults())
+            self.send(message.MessageWaitingForResults())
         else:
             self.send(
-                MessageCannotAssignTask(
+                message.MessageCannotAssignTask(
                     task_id=msg.task_id,
                     reason="No more subtasks in {}".format(msg.task_id)
                 )
@@ -545,15 +517,14 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_task_to_compute(self, msg):
         if self._check_ctd_params(msg.compute_task_def) \
                 and self._set_env_params(msg.compute_task_def) \
-                and self.task_manager.comp_task_keeper.receive_subtask(
-                    msg.compute_task_def):  # noqa
+                and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
                 msg.compute_task_def.subtask_id, self
             )
             self.task_computer.task_given(msg.compute_task_def)
         else:
             self.send(
-                MessageCannotComputeTask(
+                message.MessageCannotComputeTask(
                     subtask_id=msg.compute_task_def.subtask_id,
                     reason=self.err_msg
                 )
@@ -567,8 +538,7 @@ class TaskSession(MiddlemanSafeSession):
             self.disconnect(self.DCRNoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.task_manager.get_node_id_for_subtask(
-                msg.subtask_id) == self.key_id:  # noqa
+        if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -595,7 +565,7 @@ class TaskSession(MiddlemanSafeSession):
                 msg.node_info,
                 msg.eth_account
             )
-            self.send(MessageGetTaskResult(subtask_id=msg.subtask_id))
+            self.send(message.MessageGetTaskResult(subtask_id=msg.subtask_id))
         else:
             self.dropped()
 
@@ -663,15 +633,14 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        resource_manager = \
-            self.task_server.client.resource_server.resource_manager  # noqa
+        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         client_options = resource_manager.build_client_options(
             self.task_server.get_key_id()
         )
         res = resource_manager.get_resources(msg.task_id)
         res = resource_manager.to_wire(res)
         self.send(
-            MessageResourceList(
+            message.MessageResourceList(
                 resources=res,
                 options=client_options
             )
@@ -701,8 +670,7 @@ class TaskSession(MiddlemanSafeSession):
         )
 
     def _react_to_resource_list(self, msg):
-        resource_manager = \
-            self.task_server.client.resource_server.resource_manager  # noqa
+        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
         client_options = msg.options
 
@@ -734,7 +702,7 @@ class TaskSession(MiddlemanSafeSession):
         if send_hello:
             self.send_hello()
         self.send(
-            MessageRandVal(rand_val=msg.rand_val),
+            message.MessageRandVal(rand_val=msg.rand_val),
             send_unverified=True
         )
 
@@ -752,7 +720,7 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
     def _react_to_middleman(self, msg):
-        self.send(MessageBeingMiddlemanAccepted())
+        self.send(message.MessageBeingMiddlemanAccepted())
         self.task_server.be_a_middleman(
             self.key_id,
             self,
@@ -768,7 +736,7 @@ class TaskSession(MiddlemanSafeSession):
             'conn_id': msg.conn_id,
             'dest_node_key_id': msg.dest_node_key_id,
         }
-        self.send(MessageMiddlemanAccepted())
+        self.send(message.MessageMiddlemanAccepted())
 
     def _react_to_middleman_ready(self, msg):
         key_id = self.middleman_conn_data.get('key_id')
@@ -785,7 +753,7 @@ class TaskSession(MiddlemanSafeSession):
         self.key_id = self.asking_node_key_id
 
     def _react_to_middleman_accepted(self, msg):
-        self.send(MessageMiddlemanReady())
+        self.send(message.MessageMiddlemanReady())
         self.is_middleman = True
         self.open_session.is_middleman = True
 
@@ -798,7 +766,7 @@ class TaskSession(MiddlemanSafeSession):
             msg.dest_node,
             msg.ask_conn_id
         )
-        self.send(MessageWaitForNatTraverse(port=self.port))
+        self.send(message.MessageWaitForNatTraverse(port=self.port))
         self.dropped()
 
     def _react_to_wait_for_nat_traverse(self, msg):
@@ -840,29 +808,28 @@ class TaskSession(MiddlemanSafeSession):
             return
         self.inform_worker_about_payment(payment)
 
-    def _react_to_provider_to_requestor_msg(self, msg: MessageSubtaskProvToReq):
+    def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):
         task = self.task_server.task_manager.tasks[msg.task_id]
         data = task.react_to_message(msg.subtask_id, msg.message_data)
-        new_message = MessageSubtaskReqToProv(task_id=msg.task_id,
-                                              subtask_id=msg.subtask_id,
-                                              message_data=data)
+        new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id,
+                                                      subtask_id=msg.subtask_id,
+                                                      message_data=data)
         response_sess = self
         response_sess.send(new_message)
 
-    def _react_to_requestor_to_provider_msg(self, msg: MessageSubtaskReqToProv):
+    def _react_to_requestor_to_provider_msg(self, msg: message.MessageSubtaskReqToProv):
         self.task_computer.receive_message(msg.task_id,
                                            msg.subtask_id,
                                            msg.message_data)
 
-    def send_message_to_requestor(self, task_id: str, subtask_id: str,
-                                  data: Dict):
-        new_message = MessageSubtaskProvToReq(task_id=task_id,
-                                              subtask_id=subtask_id,
-                                              message_data=data)
+    def send_message_to_requestor(self, task_id: str, subtask_id: str, data: Dict):
+        new_message = message.MessageSubtaskProvToReq(task_id=task_id,
+                                                      subtask_id=subtask_id,
+                                                      message_data=data)
         response_sess = self.task_server.task_sessions[subtask_id]
         response_sess.send(new_message)
 
-    def send(self, msg: Message, send_unverified=False):
+    def send(self, msg: message.Message, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
             return
@@ -892,8 +859,7 @@ class TaskSession(MiddlemanSafeSession):
         return True
 
     def _set_env_params(self, ctd: ComputeTaskDef):
-        environment = self.task_manager.comp_task_keeper.get_task_env(
-            ctd.task_id)  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
         env = self.task_server.get_environment_by_id(environment)
         if not env:
             self.err_msg = "Wrong environment {}".format(environment)
@@ -913,8 +879,7 @@ class TaskSession(MiddlemanSafeSession):
 
         return True
 
-    def __check_docker_images(self, ctd: ComputeTaskDef,
-                              env: DockerEnvironment):
+    def __check_docker_images(self, ctd: ComputeTaskDef, env: DockerEnvironment):
         for image in ctd.docker_images:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
@@ -952,7 +917,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         delta_header, parts_list = res
 
-        self.send(MessageDeltaParts(
+        self.send(message.MessageDeltaParts(
             task_id=self.task_id,
             delta_header=delta_header,
             parts=parts_list,
@@ -980,7 +945,7 @@ class TaskSession(MiddlemanSafeSession):
             )
 
             self.send(
-                MessageTaskResultHash(
+                message.MessageTaskResultHash(
                     subtask_id=subtask_id,
                     multihash=result_hash,
                     secret=secret,
@@ -1027,8 +992,7 @@ class TaskSession(MiddlemanSafeSession):
             "data_type": "result"
         }
         output_dir = self.task_manager.dir_manager.get_task_temporary_dir(
-            self.task_manager.get_task_id(msg.subtask_id),
-            create=False
+            self.task_manager.get_task_id(msg.subtask_id), create=False
         )
         self.conn.consumer = tcpnetwork.DecryptFileConsumer(
             msg.extra_data,
@@ -1041,36 +1005,36 @@ class TaskSession(MiddlemanSafeSession):
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            MessageWantToComputeTask.TYPE: self._react_to_want_to_compute_task,  # noqa
-            MessageTaskToCompute.TYPE: self._react_to_task_to_compute,
-            MessageCannotAssignTask.TYPE: self._react_to_cannot_assign_task,  # noqa
-            MessageCannotComputeTask.TYPE: self._react_to_cannot_compute_task,  # noqa
-            MessageReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
-            MessageGetTaskResult.TYPE: self._react_to_get_task_result,
-            MessageTaskResultHash.TYPE: self._react_to_task_result_hash,  # noqa
-            MessageGetResource.TYPE: self._react_to_get_resource,
-            MessageResourceList.TYPE: self._react_to_resource_list,
-            MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
-            MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
-            MessageTaskFailure.TYPE: self._react_to_task_failure,
-            MessageDeltaParts.TYPE: self._react_to_delta_parts,
-            MessageHello.TYPE: self._react_to_hello,
-            MessageRandVal.TYPE: self._react_to_rand_val,
-            MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            MessageMiddleman.TYPE: self._react_to_middleman,
-            MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
-            MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
-            MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
-            MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
-            MessageNatPunch.TYPE: self._react_to_nat_punch,
-            MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
-            MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
-            MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
-            MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
-            MessageSubtaskReqToProv.TYPE: self._react_to_requestor_to_provider_msg,
-            MessageSubtaskProvToReq.TYPE: self._react_to_provider_to_requestor_msg,
+            message.MessageWantToComputeTask.TYPE: self._react_to_want_to_compute_task,  # noqa
+            message.MessageTaskToCompute.TYPE: self._react_to_task_to_compute,
+            message.MessageCannotAssignTask.TYPE: self._react_to_cannot_assign_task,  # noqa
+            message.MessageCannotComputeTask.TYPE: self._react_to_cannot_compute_task,  # noqa
+            message.MessageReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
+            message.MessageGetTaskResult.TYPE: self._react_to_get_task_result,
+            message.MessageTaskResultHash.TYPE: self._react_to_task_result_hash,  # noqa
+            message.MessageGetResource.TYPE: self._react_to_get_resource,
+            message.MessageResourceList.TYPE: self._react_to_resource_list,
+            message.MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
+            message.MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
+            message.MessageTaskFailure.TYPE: self._react_to_task_failure,
+            message.MessageDeltaParts.TYPE: self._react_to_delta_parts,
+            message.MessageHello.TYPE: self._react_to_hello,
+            message.MessageRandVal.TYPE: self._react_to_rand_val,
+            message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
+            message.MessageMiddleman.TYPE: self._react_to_middleman,
+            message.MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
+            message.MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
+            message.MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
+            message.MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
+            message.MessageNatPunch.TYPE: self._react_to_nat_punch,
+            message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
+            message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
+            message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+            message.MessageSubtaskReqToProv.TYPE: self._react_to_requestor_to_provider_msg,
+            message.MessageSubtaskProvToReq.TYPE: self._react_to_provider_to_requestor_msg,
         })
 
-        # self.can_be_not_encrypted.append(MessageHello.TYPE)
-        self.can_be_unsigned.append(MessageHello.TYPE)
-        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE])  # noqa
+        # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
+        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE])  # noqa

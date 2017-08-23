@@ -1,75 +1,25 @@
 # -*- encoding: utf-8 -*-
 
+from copy import copy
 import os
 import random
 import time
 import unittest
 import uuid
-from copy import copy
-
-import mock
 
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
-from golem.network.transport.message import (Message,
-                                             MessageWantToComputeTask,
-                                             MessageReportComputedTask,
-                                             MessageHello,
-                                             MessageRandVal,
-                                             MessageChallengeSolution,
-                                             MessagePing,
-                                             MessagePong,
-                                             MessageGetPeers,
-                                             MessageGetTasks,
-                                             MessageGetResourcePeers,
-                                             MessageStopGossip,
-                                             MessageBeingMiddlemanAccepted,
-                                             MessageMiddlemanAccepted,
-                                             MessageMiddlemanReady,
-                                             MessageNatPunchFailure,
-                                             MessageWaitingForResults,
-                                             MessagePeers,
-                                             MessageTasks,
-                                             MessageResourcePeers,
-                                             MessageGossip,
-                                             MessageDisconnect,
-                                             MessageDegree,
-                                             MessageWaitForNatTraverse,
-                                             MessageRemoveTask,
-                                             MessageFindNode,
-                                             MessageNatTraverseFailure,
-                                             MessageGetTaskResult,
-                                             MessageStartSessionResponse,
-                                             MessageHasResource,
-                                             MessageWantsResource,
-                                             MessagePullResource,
-                                             MessageLocRank,
-                                             MessageWantToStartTaskSession,
-                                             MessageSetTaskSession,
-                                             MessageNatHole,
-                                             MessageInformAboutNatTraverseFailure,
-                                             MessageGetResource,
-                                             MessageDeltaParts,
-                                             MessageTaskFailure,
-                                             MessageMiddleman,
-                                             MessageJoinMiddlemanConn,
-                                             MessageNatPunch,
-                                             MessageCannotComputeTask,
-                                             MessagePushResource,
-                                             MessagePullAnswer,
-                                             MessageResourceList,
-                                             MessageSubtaskProvToReq,
-                                             MessageSubtaskReqToProv)
 from golem.task.taskbase import ResultType
 from golem.testutils import PEP8MixIn
+import mock
 
 
-class FailingMessage(Message):
+class FailingMessage(message.Message):
     TYPE = -1
 
     def __init__(self, *args, **kwargs):
-        Message.__init__(self, *args, **kwargs)
+        message.Message.__init__(self, *args, **kwargs)
 
     def dict_repr(self):
         raise Exception()
@@ -87,10 +37,10 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
         perf_index = random.random() * 1000
         price = random.random() * 1000
-        max_resource_size = random.randint(1, 2 ** 10)
-        max_memory_size = random.randint(1, 2 ** 10)
-        num_cores = random.randint(1, 2 ** 5)
-        msg = MessageWantToComputeTask(
+        max_resource_size = random.randint(1, 2**10)
+        max_memory_size = random.randint(1, 2**10)
+        num_cores = random.randint(1, 2**5)
+        msg = message.MessageWantToComputeTask(
             node_name=node_id,
             task_id=task_id,
             perf_index=perf_index,
@@ -110,11 +60,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(expected, msg.dict_repr())
 
     def test_message_report_computed_task(self):
-        m = MessageReportComputedTask()
-        self.assertIsInstance(m, MessageReportComputedTask)
-        m = MessageReportComputedTask("xxyyzz", ResultType.DATA, 12034,
-                                      "ABC", "10.10.10.1", 1023,
-                                      "KEY_ID", "NODE", "ETH", {})
+        m = message.MessageReportComputedTask()
+        self.assertIsInstance(m, message.MessageReportComputedTask)
+        m = message.MessageReportComputedTask("xxyyzz", ResultType.DATA, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         self.assertEqual(m.subtask_id, "xxyyzz")
         self.assertEqual(m.result_type, ResultType.DATA)
         self.assertEqual(m.extra_data, {})
@@ -125,9 +73,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.key_id, "KEY_ID")
         self.assertEqual(m.eth_account, "ETH")
         self.assertEqual(m.node_info, "NODE")
-        self.assertEqual(m.TYPE, MessageReportComputedTask.TYPE)
+        self.assertEqual(m.TYPE, message.MessageReportComputedTask.TYPE)
         dict_repr = m.dict_repr()
-        m2 = MessageReportComputedTask(dict_repr=dict_repr)
+        m2 = message.MessageReportComputedTask(dict_repr=dict_repr)
         self.assertEqual(m.subtask_id, m2.subtask_id)
         self.assertEqual(m.result_type, m2.result_type)
         self.assertEqual(m.extra_data, m2.extra_data)
@@ -141,19 +89,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.TYPE, m2.TYPE)
 
     def test_message_hash(self):
-        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC",
-                                      "10.10.10.1", 1023, "KEY_ID",
-                                      "NODE", "ETH",
-                                      extra_data=MessageWantToComputeTask(
-                                          "ABC", "xyz", 1000, 20, 4, 5,
-                                          3)
-                                      )
+        m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
+                                              extra_data=message.MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3))
         assert m.get_short_hash()
 
     def test_serialization(self):
-        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC",
-                                      "10.10.10.1", 1023, "KEY_ID",
-                                      "NODE", "ETH", {})
+        m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         assert m.serialize()
 
         m = FailingMessage()
@@ -164,7 +105,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         except:
             pass
         assert not serialized
-        assert not Message.deserialize_message(None)
+        assert not message.Message.deserialize_message(None)
 
     def test_unicode(self):
         source = str("test string")
@@ -196,13 +137,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
-        m = MessageHello(timestamp=epoch_t)
+        m = message.MessageHello(timestamp=epoch_t)
         db = DataBuffer()
         m.serialize_to_buffer(db)
         set_tz('US/Eastern')
         server = mock.Mock()
         server.decrypt = lambda x: x
-        msgs = Message.decrypt_and_deserialize(db, server)
+        msgs = message.Message.decrypt_and_deserialize(db, server)
         assert len(msgs) == 1
         newyork_time = time.localtime(msgs[0].timestamp)
         assert warsaw_time != newyork_time
@@ -214,19 +155,17 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         n_messages = 10
 
         def serialize_messages(_b):
-            for m in [MessageHello() for _ in range(0, n_messages)]:
+            for m in [message.MessageHello() for _ in range(0, n_messages)]:
                 m.serialize_to_buffer(_b)
 
         serialize_messages(db)
         server.decrypt = lambda x: x
-        assert len(
-            Message.decrypt_and_deserialize(db, server)) == n_messages
+        assert len(message.Message.decrypt_and_deserialize(db, server)) == n_messages
 
-        patch_method = 'golem.network.transport.Message' \
-                       '.deserialize_message'
+        patch_method = 'golem.network.transport.message.Message.deserialize_message'
         with mock.patch(patch_method, side_effect=lambda x: None):
             serialize_messages(db)
-            assert len(Message.decrypt_and_deserialize(db, server)) == 0
+            assert len(message.Message.decrypt_and_deserialize(db, server)) == 0
 
         def raise_assertion(*_):
             raise AssertionError()
@@ -237,7 +176,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         server.decrypt = raise_assertion
         serialize_messages(db)
 
-        result = Message.decrypt_and_deserialize(db, server)
+        result = message.Message.decrypt_and_deserialize(db, server)
 
         assert len(result) == n_messages
         assert all(not m.encrypted for m in result)
@@ -245,12 +184,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         server.decrypt = raise_error
         serialize_messages(db)
 
-        result = Message.decrypt_and_deserialize(db, server)
+        result = message.Message.decrypt_and_deserialize(db, server)
 
         assert len(result) == 0
 
     def test_message_errors(self):
-        m = MessageReportComputedTask()
+        m = message.MessageReportComputedTask()
         with self.assertRaises(TypeError):
             m.serialize_to_buffer("not a db")
         with self.assertRaises(TypeError):
@@ -260,54 +199,15 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_message_randval(self):
         rand_val = random.random()
-        msg = MessageRandVal(rand_val=rand_val)
+        msg = message.MessageRandVal(rand_val=rand_val)
         expected = {
             'RAND_VAL': rand_val,
         }
         self.assertEqual(expected, msg.dict_repr())
 
     def test_message_challenge_solution(self):
-        solution = 'O gajach świętych, z których i drew zwalonych wichrem ' \
-                   'uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), ' \
-                   'że świętymi były i zwierzęta chroniące się w nich, ' \
-                   'tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych ' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   'lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro ' \
-                   'zważymy, że dla Litwina gaje takie były rzeczywiście ' \
-                   'nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić ' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   'lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż ' \
-                   'samo donosi w starożytności Strabon o Henetach: były u ' \
-                   'nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły ' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   '' \
-                   'się zwierzęta i jelenie z wilkami się kupiły; gdy się ' \
-                   'ludzie zbliżali i dotykali ich, nie uciekały; skoro ' \
-                   'gonione od psów tu się schroniły, ustawała pogoń”. I ' \
-                   'bardzo trzeźwi mitografowie uznawali w tych gajach ' \
-                   'heneckich tylko symbole, „pojęcia o kraju bogów i o ' \
-                   'czasach rajskich”; przykład litewski poucza zaś ' \
-                   'dostatecznie, że podanie to, jak tyle innych, ' \
-                   'które najmylniej symbolicznie tłumaczą, należy rozumieć ' \
-                   'dosłownie, o prawdziwych gajach i zwierzętach, ' \
-                   'nie o jakimś raju i towarzyszach Adama; przesada w ' \
-                   'podaniu naturalnie razić nie może. Badania mitologiczne ' \
-                   'byłyby już od dawna o wiele głębiej dotarły, gdyby mania ' \
-                   'symbolizowania wszelkich szczegółów, i dziś jeszcze nie ' \
-                   'wykorzeniona, nie odwracała ich na manowce.\n-- ' \
-                   'Aleksander Brückner "Starożytna Litwa"'
-        msg = MessageChallengeSolution(solution=solution)
+        solution = 'O gajach świętych, z których i drew zwalonych wichrem uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), że świętymi były i zwierzęta chroniące się w nich, tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro zważymy, że dla Litwina gaje takie były rzeczywiście nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż samo donosi w starożytności Strabon o Henetach: były u nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły się zwierzęta i jelenie z wilkami się kupiły; gdy się ludzie zbliżali i dotykali ich, nie uciekały; skoro gonione od psów tu się schroniły, ustawała pogoń”. I bardzo trzeźwi mitografowie uznawali w tych gajach heneckich tylko symbole, „pojęcia o kraju bogów i o czasach rajskich”; przykład litewski poucza zaś dostatecznie, że podanie to, jak tyle innych, które najmylniej symbolicznie tłumaczą, należy rozumieć dosłownie, o prawdziwych gajach i zwierzętach, nie o jakimś raju i towarzyszach Adama; przesada w podaniu naturalnie razić nie może. Badania mitologiczne byłyby już od dawna o wiele głębiej dotarły, gdyby mania symbolizowania wszelkich szczegółów, i dziś jeszcze nie wykorzeniona, nie odwracała ich na manowce.\n-- Aleksander Brückner "Starożytna Litwa"'
+        msg = message.MessageChallengeSolution(solution=solution)
         expected = {
             'SOLUTION': solution,
         }
@@ -315,29 +215,29 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_no_payload_messages(self):
         for message_class in (
-                MessagePing,
-                MessagePong,
-                MessageGetPeers,
-                MessageGetTasks,
-                MessageGetResourcePeers,
-                MessageStopGossip,
-                MessageBeingMiddlemanAccepted,
-                MessageMiddlemanAccepted,
-                MessageMiddlemanReady,
-                MessageNatPunchFailure,
-                MessageWaitingForResults,
-        ):
+                message.MessagePing,
+                message.MessagePong,
+                message.MessageGetPeers,
+                message.MessageGetTasks,
+                message.MessageGetResourcePeers,
+                message.MessageStopGossip,
+                message.MessageBeingMiddlemanAccepted,
+                message.MessageMiddlemanAccepted,
+                message.MessageMiddlemanReady,
+                message.MessageNatPunchFailure,
+                message.MessageWaitingForResults,
+                ):
             msg = message_class()
             expected = {}
             self.assertEqual(expected, msg.dict_repr())
 
     def test_list_messages(self):
         for message_class, key in (
-                (MessagePeers, 'PEERS'),
-                (MessageTasks, 'TASKS'),
-                (MessageResourcePeers, 'RESOURCE_PEERS'),
-                (MessageGossip, 'GOSSIP'),
-        ):
+                (message.MessagePeers, 'PEERS'),
+                (message.MessageTasks, 'TASKS'),
+                (message.MessageResourcePeers, 'RESOURCE_PEERS'),
+                (message.MessageGossip, 'GOSSIP'),
+                ):
             msg = message_class()
             expected = {
                 key: [],
@@ -346,11 +246,11 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_int_messages(self):
         for message_class, param_name, key in (
-                (MessageDisconnect, 'reason', 'DISCONNECT_REASON'),
-                (MessageDegree, 'degree', 'DEGREE'),
-                (MessageWaitForNatTraverse, 'port', 'PORT'),
-        ):
-            value = random.randint(-10 ** 10, 10 ** 10)
+                    (message.MessageDisconnect, 'reason', 'DISCONNECT_REASON'),
+                    (message.MessageDegree, 'degree', 'DEGREE'),
+                    (message.MessageWaitForNatTraverse, 'port', 'PORT'),
+                ):
+            value = random.randint(-10**10, 10**10)
             msg = message_class(**{param_name: value})
             expected = {
                 key: value,
@@ -359,15 +259,15 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_uuid_messages(self):
         for message_class, param_name, key in (
-                (MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
-                (MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
-                (MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
-                (MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
-                (MessageStartSessionResponse, 'conn_id', 'CONN_ID'),
-                (MessageHasResource, 'resource', 'resource'),
-                (MessageWantsResource, 'resource', 'resource'),
-                (MessagePullResource, 'resource', 'resource'),
-        ):
+                (message.MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
+                (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
+                (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
+                (message.MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
+                (message.MessageStartSessionResponse, 'conn_id', 'CONN_ID'),
+                (message.MessageHasResource, 'resource', 'resource'),
+                (message.MessageWantsResource, 'resource', 'resource'),
+                (message.MessagePullResource, 'resource', 'resource'),
+                ):
             value = 'test-{}'.format(uuid.uuid4())
             msg = message_class(**{param_name: value})
             expected = {
@@ -377,8 +277,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_message_loc_rank(self):
         node_id = 'test-{}'.format(uuid.uuid4())
-        loc_rank = random.randint(-10 ** 10, 10 ** 10)
-        msg = MessageLocRank(node_id=node_id, loc_rank=loc_rank)
+        loc_rank = random.randint(-10**10, 10**10)
+        msg = message.MessageLocRank(node_id=node_id, loc_rank=loc_rank)
         expected = {
             'LOC_RANK': loc_rank,
             'NODE_ID': node_id,
@@ -389,9 +289,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
-        msg = MessageWantToStartTaskSession(node_info=node_info,
-                                            conn_id=conn_id,
-                                            super_node_info=super_node_info)
+        msg = message.MessageWantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
         expected = {
             'NODE_INFO': node_info,
             'CONN_ID': conn_id,
@@ -404,9 +302,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
-        msg = MessageSetTaskSession(key_id=key_id, node_info=node_info,
-                                    conn_id=conn_id,
-                                    super_node_info=super_node_info)
+        msg = message.MessageSetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
         expected = {
             'KEY_ID': key_id,
             'NODE_INFO': node_info,
@@ -419,9 +315,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         address = '8.8.8.8'
-        port = random.randint(0, 2 ** 16) + 1
-        msg = MessageNatHole(key_id=key_id, conn_id=conn_id,
-                             address=address, port=port)
+        port = random.randint(0, 2**16) + 1
+        msg = message.MessageNatHole(key_id=key_id, conn_id=conn_id, address=address, port=port)
         expected = {
             'KEY_ID': key_id,
             'ADDR': address,
@@ -433,8 +328,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_message_inform_about_nat_traverse_failure(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = MessageInformAboutNatTraverseFailure(key_id=key_id,
-                                                   conn_id=conn_id)
+        msg = message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id)
         expected = {
             'KEY_ID': key_id,
             'CONN_ID': conn_id,
@@ -444,8 +338,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_message_get_resource(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
         resource_header = 'test-rh-{}'.format(uuid.uuid4())
-        msg = MessageGetResource(task_id=task_id,
-                                 resource_header=resource_header)
+        msg = message.MessageGetResource(task_id=task_id, resource_header=resource_header)
         expected = {
             'SUB_TASK_ID': task_id,
             'RESOURCE_HEADER': resource_header,
@@ -459,8 +352,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         node_name = 'test-nn-{}'.format(uuid.uuid4())
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         address = '8.8.8.8'
-        port = random.randint(0, 2 ** 16) + 1
-        msg = MessageDeltaParts(
+        port = random.randint(0, 2**16) + 1
+        msg = message.MessageDeltaParts(
             task_id=task_id,
             delta_header=delta_header,
             parts=parts,
@@ -481,10 +374,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_message_task_failure(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
-        err = 'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko ' \
-              'symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
+        err = 'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
 
-        msg = MessageTaskFailure(subtask_id=subtask_id, err=err)
+        msg = message.MessageTaskFailure(subtask_id=subtask_id, err=err)
         expected = {
             'SUBTASK_ID': subtask_id,
             'ERR': err,
@@ -495,9 +387,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = MessageMiddleman(asking_node=asking_node,
-                               dest_node=dest_node,
-                               ask_conn_id=ask_conn_id)
+        msg = message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
         expected = {
             'ASKING_NODE': asking_node,
             'DEST_NODE': dest_node,
@@ -509,8 +399,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id,
-                                       dest_node_key_id=dest_node)
+        msg = message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node)
         expected = {
             'CONN_ID': conn_id,
             'KEY_ID': key_id,
@@ -522,9 +411,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = MessageNatPunch(asking_node=asking_node,
-                              dest_node=dest_node,
-                              ask_conn_id=ask_conn_id)
+        msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
         expected = {
             'ASKING_NODE': asking_node,
             'DEST_NODE': dest_node,
@@ -534,24 +421,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_message_cannot_compute_task(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
-        reason = "Opowiada Hieronim praski o osobliwszej czci, jaką w głębi " \
-                 "Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki " \
-                 "" \
-                 "" \
-                 "" \
-                 "" \
-                 "" \
-                 "zodiaka” rozbiły nim wieżę, w której potężny król słońce " \
-                 "więził; należy się więc cześć narzędziu, co nam światło " \
-                 "odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (" \
-                 "kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w " \
-                 "Skandynawii dla czarów jeszcze w nowszych czasach; " \
-                 "znajdujemy po grobach srebrne młoteczki jako amulety; hr. " \
-                 "Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił " \
-                 "własności „kopalnego” młota (zeskrobany proszek z wodą " \
-                 "przeciw chorobom służył itd.)."
-        msg = MessageCannotComputeTask(subtask_id=subtask_id,
-                                       reason=reason)
+        reason = "Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
+        msg = message.MessageCannotComputeTask(subtask_id=subtask_id, reason=reason)
         expected = {
             'REASON': reason,
             'SUBTASK_ID': subtask_id,
@@ -560,8 +431,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_message_push(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
-        copies = random.randint(-10 ** 10, 10 ** 10)
-        msg = MessagePushResource(resource=resource, copies=copies)
+        copies = random.randint(-10**10, 10**10)
+        msg = message.MessagePushResource(resource=resource, copies=copies)
         expected = {
             'resource': resource,
             'copies': copies,
@@ -571,8 +442,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_message_pull_answer(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
         for has_resource in (True, False):
-            msg = MessagePullAnswer(resource=resource,
-                                    has_resource=has_resource)
+            msg = message.MessagePullAnswer(resource=resource, has_resource=has_resource)
             expected = {
                 'resource': resource,
                 'has resource': has_resource,
@@ -582,35 +452,43 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_message_resource_list(self):
         resources = 'test-rs-{}'.format(uuid.uuid4())
         options = 'test-clientoptions-{}'.format(uuid.uuid4())
-        msg = MessageResourceList(resources=resources, options=options)
+        msg = message.MessageResourceList(resources=resources, options=options)
         expected = {
             'resources': resources,
             'options': options,
         }
         self.assertEqual(expected, msg.dict_repr())
 
-    @mock.patch("golem.network.transport.MessageRandVal")
+    @mock.patch("golem.network.transport.message.MessageRandVal")
     def test_init_messages_error(self, mock_message_rand_val):
-        copy_registered = copy(Message.registered_message_types)
-        Message.registered_message_types = dict()
+        copy_registered = copy(message.Message.registered_message_types)
+        message.Message.registered_message_types = dict()
         mock_message_rand_val.__name__ = "randvalmessage"
-        mock_message_rand_val.TYPE = MessageHello.TYPE
+        mock_message_rand_val.TYPE = message.MessageHello.TYPE
         with self.assertRaises(RuntimeError):
             message.init_messages()
-        Message.registered_message_types = copy_registered
+        message.Message.registered_message_types = copy_registered
 
-    def test_message_subtask_provider_and_requestor(self):
-        for msg_type in (MessageSubtaskProvToReq,
-                         MessageSubtaskReqToProv):
-            subtask_id = "SUB1"
-            task_id = "TASK1"
-            message_data = {"content": "aaa"}
-            msg = msg_type(task_id=task_id,
-                           subtask_id=subtask_id,
-                           message_data=message_data)
-            expected = {
-                'SUBTASK_ID': subtask_id,
-                'MESSAGE_DATA': message_data,
-                'TASK_ID': task_id
-            }
-            self.assertEqual(expected, msg.dict_repr())
+    def test_message_subtask_provider_to_requestor(self):
+        subtask_id = "SUB1"
+        task_id = "TASK1"
+        message_data = {"content": "aaa"}
+        msg = message.MessageSubtaskProvToReq(task_id=task_id, subtask_id=subtask_id, message_data=message_data)
+        expected = {
+            'SUBTASK_ID': subtask_id,
+            'MESSAGE_DATA': message_data,
+            'TASK_ID': task_id
+        }
+        self.assertEqual(expected, msg.dict_repr())
+
+    def test_message_subtask_requestor_to_provider(self):
+        subtask_id = "SUB1"
+        task_id = "TASK1"
+        message_data = {"content": "aaa"}
+        msg = message.MessageSubtaskReqToProv(task_id=task_id, subtask_id=subtask_id, message_data=message_data)
+        expected = {
+            'SUBTASK_ID': subtask_id,
+            'MESSAGE_DATA': message_data,
+            'TASK_ID': task_id
+        }
+        self.assertEqual(expected, msg.dict_repr())

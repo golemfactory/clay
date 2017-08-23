@@ -12,7 +12,7 @@ from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.task.coretaskstate import TaskDesc
-from apps.core.benchmark.benchmark import BenchmarkRunner
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.minilight.src.minilight import makePerfTest
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv

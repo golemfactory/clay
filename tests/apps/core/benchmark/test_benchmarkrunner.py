@@ -2,7 +2,7 @@ import time
 
 import mock
 
-from apps.core.benchmark import benchmark
+from apps.core.benchmark import benchmarkrunner
 from golem.task.taskbase import Task
 from golem.testutils import TempDirFixture
 
@@ -13,7 +13,7 @@ class BenchmarkRunnerTest(TempDirFixture):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.benchmark = mock.MagicMock()
-        self.instance = benchmark.BenchmarkRunner(
+        self.instance = benchmarkrunner.BenchmarkRunner(
             task=Task(None, None, None),
             root_path=self.tempdir,
             success_callback=lambda: self._success(),
@@ -180,7 +180,7 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
 
     def test_run_with_error(self):
         benchmark = mock.MagicMock()
-        instance = benchmark.BenchmarkRunner(
+        instance = benchmarkrunner.BenchmarkRunner(
             task=WrongTask(None, None, None),
             root_path=self.tempdir,
             success_callback=mock.Mock(),
