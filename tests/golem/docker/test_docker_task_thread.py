@@ -31,12 +31,12 @@ class TestDockerTaskThread(TestDockerJob):
 
         with self.assertRaises(AttributeError):
             DockerTaskThread(task_computer, "subtask_id", None,
-                             self.work_dir, script, None, "test task thread",
+                             self.work_dir, script, {}, "test task thread",
                              self.resources_dir, self.output_dir, timeout=30)
 
         def test():
             tt = DockerTaskThread(task_computer, "subtask_id", [image],
-                                  self.work_dir, script, None, "test task thread",
+                                  self.work_dir, script, {}, "test task thread",
                                   self.resources_dir, self.output_dir, timeout=30)
             task_computer.current_computations.append(tt)
             task_computer.counting_task = True
