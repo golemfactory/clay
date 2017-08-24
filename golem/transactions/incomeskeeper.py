@@ -50,21 +50,35 @@ class IncomesKeeper(object):
 
     def received(self, sender_node_id, task_id, subtask_id, transaction_id,
                  block_number, value):
+
         try:
             with db.transaction():
-                expected_income = ExpectedIncome.get(subtask=subtask_id)
-        except ExpectedIncome.DoesNotExist:
-            expected_income = None
-        try:
-            with db.transaction():
-                return Income.create(
+                income = Income.create(
                     sender_node=sender_node_id,
                     task=task_id,
                     subtask=subtask_id,
                     transaction=transaction_id,
                     block_number=block_number,
-                    value=value
-                )
+                    value=value)
+
+                try:
+                    with db.transaction():
+                        expected_income = \
+                            ExpectedIncome.get(sender_node=sender_node_id,
+                                               task=task_id,
+                                               subtask=subtask_id)
+                        expected_income.delete_instance()
+
+                except ExpectedIncome.DoesNotExist:
+                    logger.info("Unexpected income received :) "
+                                "(%r, %r, %r, %r) ",
+                                sender_node_id,
+                                task_id,
+                                subtask_id,
+                                value)
+
+                return income
+
         except peewee.IntegrityError:
             db_income = Income.get(
                 sender_node=sender_node_id,
@@ -77,8 +91,6 @@ class IncomesKeeper(object):
                 transaction_id,
                 db_income.transaction
             )
-        if expected_income:
-            expected_income.delete()
 
     def expect(self, sender_node_id, p2p_node, task_id, subtask_id, value):
         logger.debug(

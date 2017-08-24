@@ -26,11 +26,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         random.seed()
         self.incomes_keeper = IncomesKeeper()
 
-    def test_expect(self):
-        sender_node_id = generate_some_id('sender_node_id')
-        task_id = generate_some_id('task_id')
-        subtask_id = generate_some_id('subtask_id')
-        value = random.randint(1, 10**5)
+    def _test_expect_income(self, sender_node_id, task_id, subtask_id, value):
         self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
             task_id=task_id,
@@ -46,10 +42,18 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         sender_node_id = generate_some_id('sender_node_id')
         task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(1, 10**5)
+        value = random.randint(2**2048, 2**4096)
+
+        self.assertEqual(ExpectedIncome.select().count(), 0)
+        self._test_expect_income(sender_node_id=sender_node_id,
+                                 task_id=task_id,
+                                 subtask_id=subtask_id,
+                                 value=value
+                                 )
+        self.assertEqual(ExpectedIncome.select().count(), 1)
+
         transaction_id = generate_some_id('transaction_id')
         block_number = random.randint(0, sys.maxsize)
-
         income = self.incomes_keeper.received(
             sender_node_id=sender_node_id,
             task_id=task_id,
@@ -58,6 +62,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             block_number=block_number,
             value=value
         )
+        self.assertEqual(ExpectedIncome.select().count(), 0)
         self.assertIsNotNone(income)
 
         with db.atomic():
@@ -66,8 +71,9 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.assertEqual(income.transaction, transaction_id)
         self.assertEqual(income.block_number, block_number)
 
+        # try to duplicate key - same sender cannot pay for the same subtask twice
         new_transaction = generate_some_id('transaction_id2')
-        new_value = random.randint(1, 10**5)
+        new_value = random.randint(2**2048, 2**4096)
         income = self.incomes_keeper.received(
             sender_node_id=sender_node_id,
             task_id=task_id,
@@ -82,8 +88,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         sender_node_id = generate_some_id('sender_node_id')
         task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(1, 10**5)
-        # todo GG check bignumbers
+        value = random.randint(2**2048, 2**4096)
         transaction_id = generate_some_id('transaction_id')
 
         expected_income = self.incomes_keeper.expect(
@@ -93,35 +98,44 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             subtask_id=subtask_id,
             value=value
         )
+
+
+        # expected payment written to DB
+        self.assertEqual(ExpectedIncome.select().count(), 1)
+
+
+        # Time is right but no matching payment received
         with db.atomic():
-            self.assertEqual(ExpectedIncome.select().count(), 1)
             expected_income.modified_date = datetime.datetime.now() - datetime.timedelta(hours=1)
             expected_income.save()
 
         self.incomes_keeper.run_once()
-        with db.atomic():
-            # No matching received
-            self.assertEqual(ExpectedIncome.select().count(), 1)
+        self.assertEqual(ExpectedIncome.select().count(), 1)
 
+
+        # Matching received but too early to check
+        income = Income.create(
+            sender_node=sender_node_id,
+            task=task_id,
+            subtask=subtask_id,
+            transaction=transaction_id,
+            block_number=random.randint(0, sys.maxsize),
+            value=value)
+
+        with db.atomic():
+            self.assertEqual(ExpectedIncome.select().count(), 1)
             expected_income.modified_date = datetime.datetime.now() + datetime.timedelta(hours=1)
             expected_income.save()
 
-        self.incomes_keeper.received(
-            sender_node_id=sender_node_id,
-            task_id=task_id,
-            subtask_id=subtask_id,
-            transaction_id=transaction_id,
-            block_number=random.randint(0, sys.maxsize),
-            value=value
-        )
-        with db.atomic():
-            # Matching received but too early to check
-            self.assertEqual(ExpectedIncome.select().count(), 1)
+        self.incomes_keeper.run_once()
+        self.assertEqual(ExpectedIncome.select().count(), 1)
 
+
+        # Match
+        with db.atomic():
             expected_income.modified_date = datetime.datetime.now() - datetime.timedelta(hours=1)
             expected_income.save()
 
         self.incomes_keeper.run_once()
         with db.atomic():
-            # Match
             self.assertEqual(ExpectedIncome.select().count(), 0)

@@ -126,18 +126,6 @@ class PaymentProcessor(Service):
     def eth_address(self, zpad=True):
         return self.enc_address(self.__privkey, zpad)
 
-
-    # todo GG - to be deleted
-    def eth_address_new(self, zpad=True):
-        from ethereum.utils import privtoaddr
-        from golem.transactions.ethereum.ethereumpaymentskeeper \
-            import EthereumAddress
-
-        node_address = privtoaddr(self.__privkey)
-        eth_adr = EthereumAddress(node_address)
-        return eth_adr
-
-
     def enc_address(self, privkey, zpad=True):
         raw = self.raw_address(privkey)
         # TODO: Hack RPC client to allow using raw address.
@@ -355,7 +343,7 @@ class PaymentProcessor(Service):
         return True
 
     def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
-        self.__client.get_logs(from_block=from_block, to_block=to_block, address=address, topics=topics)
+        return self.__client.get_logs(from_block=from_block, to_block=to_block, address=address, topics=topics)
 
     def _run(self):
         if self._waiting_for_faucet:
@@ -375,4 +363,3 @@ class PaymentProcessor(Service):
     def stop(self):
         super(PaymentProcessor, self).stop()
         self.__client._kill_node()
-        # Client._kill_node()

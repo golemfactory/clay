@@ -92,7 +92,7 @@ class RawCharField(CharField):
 
 
 class BigIntegerField(CharField):
-    """ Standard Integer field is limited to 2^63-1. This field extends the
+    """ Standard BigIntegerField field is limited to 2^63-1. This field extends the
         range by storing the numbers as hex-encoded char strings.
     """
 
@@ -193,9 +193,6 @@ class Income(BaseModel):
     transaction = CharField()
     block_number = BigIntegerField()
     value = BigIntegerField()
-
-    # GG todo
-    #value = DecimalField(max_digits=36, decimal_places=18) # wei -> max_digits=19, decimal_places=18
 
     class Meta:
         database = db
