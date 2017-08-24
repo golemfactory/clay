@@ -5,9 +5,9 @@ from sys import argv
 from setuptools import setup
 
 from setup_util.setup_commons import (
-    path, parse_requirements, generate_ui, platform, update_variables,
-    get_version, get_long_description, find_required_packages, PyTest,
-    PyInstaller, move_wheel, print_errors)
+    path, parse_requirements, platform, update_variables, get_version,
+    get_long_description, find_required_packages, PyTest, PyInstaller,
+    move_wheel, print_errors)
 from setup_util.taskcollector_builder import TaskCollectorBuilder
 
 from golem.docker.manager import DockerManager
