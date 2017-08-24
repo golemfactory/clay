@@ -32,8 +32,6 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--qt', is_flag=True, default=False,
-              help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
