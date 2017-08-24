@@ -5,6 +5,7 @@ import unittest
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
+from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, logger, P2P_PROTOCOL_ID,
@@ -37,7 +38,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         expected = {
             'CHALLENGE': None,
             'CLIENT_KEY_ID': key_id,
-            'CLI_VER': '0.7.1',
+            'CLI_VER': APP_VERSION,
             'DIFFICULTY': 0,
             'METADATA': metadata,
             'NODE_INFO': node,
