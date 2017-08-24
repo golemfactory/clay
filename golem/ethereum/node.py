@@ -1,5 +1,3 @@
-
-
 import atexit
 import logging
 import os
@@ -85,7 +83,8 @@ class NodeProcess(object):
             **self.SUBPROCESS_PIPES
         ).communicate()
 
-        match = re.search("Version: (\d+\.\d+\.\d+)", str(output,'utf-8')).group(1)
+        match = re.search("Version: (\d+\.\d+\.\d+)",
+                          str(output, 'utf-8')).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
             e_description =\
@@ -100,7 +99,7 @@ class NodeProcess(object):
         return self.__ps is not None
 
     @report_calls(Component.ethereum, 'node.start')
-    def start(self):
+    def start(self, port=None):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
@@ -127,7 +126,8 @@ class NodeProcess(object):
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
-        port = find_free_net_port()
+        if port is None:
+            port = find_free_net_port()
 
         # Build unique IPC/socket path. We have to use system temp dir to
         # make sure the path has length shorter that ~100 chars.
