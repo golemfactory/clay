@@ -42,7 +42,8 @@ class TaskServer(PendingConnectionsServer):
                                         tasks_dir=os.path.join(client.datadir, 'tasks'))
         self.benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
-                                          use_docker_machine_manager=use_docker_machine_manager)
+                                          use_docker_machine_manager=use_docker_machine_manager,
+                                          benchmarks=self.benchmarks)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}

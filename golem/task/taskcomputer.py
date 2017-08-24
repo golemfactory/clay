@@ -40,7 +40,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
+    def __init__(self, node_name, task_server, use_docker_machine_manager=True, benchmarks=None):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -70,12 +70,7 @@ class TaskComputer(object):
         if use_docker_machine_manager:
             self.docker_manager.check_environment()
 
-        try:
-            _ = Performance.get(environment_id="LUXRENDER")
-            _ = Performance.get(environment_id="BLENDER")
-            run_benchmarks = False
-        except Performance.DoesNotExist:
-            run_benchmarks = True
+        run_benchmarks = self.___check_if_benchmark_is_needed(benchmarks)
 
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
@@ -403,6 +398,17 @@ class TaskComputer(object):
     def quit(self):
         for t in self.current_computations:
             t.end_comp()
+
+    @staticmethod
+    def ___check_if_benchmark_is_needed(benchmarks):
+        run_benchmarks = False
+        if benchmarks:
+            for env_id in benchmarks.keys():
+                try:
+                    _ = Performance.get(environment_id=env_id)
+                except Performance.DoesNotExist:
+                    run_benchmarks = True
+        return run_benchmarks
 
 
 class AssignedSubTask(object):
