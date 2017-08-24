@@ -469,51 +469,6 @@ class TestTasks(TempDirFixture):
         yield
         TaskTester.run = run
 
-    def test_load(self):
-        client = self.client
-        task_file_name = self._create_blender_task(client.get_dir_manager())
-
-        def run_success(instance):
-            instance.success_callback()
-
-        def run_error(instance):
-            instance.error_callback()
-
-        with client_ctx(Tasks, client):
-
-            with self._run_context(run_success):
-
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-                tasks.load(task_file_name, True)
-
-                call_args = client.create_task.call_args[0]
-                assert len(call_args) == 1
-                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
-
-            with self._run_context(run_error):
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-                tasks.load(task_file_name, True)
-
-                call_args = client.create_task.call_args[0]
-
-                assert len(call_args) == 1
-                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
-
-            with self._run_context(run_error):
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-
-                with self.assertRaises(CommandException):
-                    tasks.load(task_file_name, False)
-
     def _create_blender_task(self, dir_manager):
 
         definition = RenderingTaskDefinition()

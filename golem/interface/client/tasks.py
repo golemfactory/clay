@@ -118,59 +118,6 @@ class Tasks(object):
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
-    @command(arguments=(file_name, skip_test), help="Load a task from file")
-    def load(self, file_name, skip_test):
-
-        try:
-            definition = self.__read_from_file(file_name)
-        except Exception as exc:
-            return CommandResult(error="Error reading task from file '{}': {}"
-                                       .format(file_name, exc))
-
-        if hasattr(definition, 'resources'):
-            definition.resources = {os.path.normpath(res)
-                                    for res in definition.resources}
-        datadir = sync_wait(Tasks.client.get_datadir())
-
-        # TODO: unify GUI and CLI logic
-
-        rendering_task_state = TaskDesc()
-        rendering_task_state.definition = definition
-        rendering_task_state.task_state.status = TaskStatus.starting
-
-        if not Tasks.application_logic:
-            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client,
-                                                                  datadir)
-
-        task_builder = Tasks.application_logic.get_builder(rendering_task_state)
-        task = Task.build_task(task_builder)
-        rendering_task_state.task_state.outputs = task.get_output_names()
-        rendering_task_state.task_state.total_subtasks = task.get_total_tasks()
-        task.header.task_id = str(uuid.uuid4())
-
-        if not skip_test:
-
-            test_task = Task.build_task(task_builder)
-            test_task.header.task_id = str(uuid.uuid4())
-            queue = Queue()
-
-            TaskTester(
-                test_task, datadir,
-                success_callback=lambda *a, **kw: queue.put(True),
-                error_callback=lambda *a, **kw: queue.put(a)
-            ).run()
-
-            test_result = queue.get()
-            if test_result is not True:
-                return CommandResult(error="Test failed: {}"
-                                           .format(test_result))
-
-        task_dict = DictSerializer.dump(task)
-        task_def = task_dict['task_definition']
-        task_def['resources'] = list(task_def.get('task_definition', []))
-        deferred = Tasks.client.create_task(task_dict)
-        return sync_wait(deferred, timeout=1800)
-
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
@@ -208,11 +155,6 @@ class Tasks(object):
         elif isinstance(progress, str) and progress.endswith('%'):
             return progress
         return '{:.2f} %'.format(progress * 100.0)
-
-    @staticmethod
-    def __read_from_file(file_name):
-        with open(file_name) as task_file:
-            return jsonpickle.loads(task_file.read())
 
 
 @group(help="Manage subtasks")
