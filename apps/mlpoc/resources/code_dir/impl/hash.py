@@ -1,8 +1,7 @@
 # from keras.models import Sequential
 from torch import nn
 
-from impl.config import HASHING_ALGORITHM
-# from impl.model import ComputationState it is needed for type annotation, but there is cycle in dependencies...
+from .config import HASHING_ALGORITHM
 
 
 class Hash(object):
@@ -43,7 +42,7 @@ class StateHash(Hash):
     def __init__(self, value):
         super().__init__(value)
 
-    def _compute_hash(self, value):
+    def _compute_hash(self, value: 'ComputationState'):
         # for state
         start_model, end_model = value.get_start_end()
         hh = lambda x: str(PyTorchHash(x.net))

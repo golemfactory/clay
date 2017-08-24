@@ -13,6 +13,9 @@ class MLPOCTaskVerificator(CoreVerificator):
     # it is set in the query_extra_data
     def _verify_result(self, _subtask_id, subtask_info, file, _task):
 
+        if self.verification_options["no_verification"]:
+            return True
+
         root, ext = os.path.splitext(file)
         ext = ext.lower()
         if ext != self.verification_options["result_extension"]:

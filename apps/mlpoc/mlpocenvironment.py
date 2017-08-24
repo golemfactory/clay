@@ -9,7 +9,7 @@ class MLPOCTaskEnvironment(DockerEnvironment):
     DOCKER_TAG = "1.0"
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
-    SCRIPT_NAME = "docker_mlpoc.py"
+    SCRIPT_NAME = "provider_main.py"
     SHORT_DESCRIPTION = "Example machine learning POC task, searching for " \
                         "best neural network hyperparameters using bayesian " \
                         "optimization"

@@ -1,16 +1,18 @@
 import logging
 import os
 import random
-from typing import Dict, Type, Tuple
+from typing import Dict, Tuple
 
 import enforce
-from apps.mlpoc.resources.mlpoc_message import MLPOCBlackBoxAnswerMessage
 
 from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
 from apps.mlpoc.mlpocenvironment import MLPOCTaskEnvironment
+from apps.mlpoc.resources.code_dir.impl.batchmanager import IrisBatchManager
+from apps.mlpoc.resources.code_dir.impl.box import CountingBlackBox
+from apps.mlpoc.resources.code_dir.messages import MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefaults, MLPOCTaskOptions
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
@@ -41,8 +43,8 @@ class MLPOCTask(CoreTask):
     VERIFICATOR_CLASS = MLPOCTaskVerificator
 
     RESULT_EXTENSION = ".result"
-    BLACK_BOX = None  # black box class, not instance
-    BATCH_MANAGER = None  # batch manager class, not instace
+    BLACK_BOX = CountingBlackBox  # black box class, not instance
+    BATCH_MANAGER = IrisBatchManager  # batch manager class, not instace
 
     def __init__(self,
                  total_tasks: int,
@@ -65,23 +67,29 @@ class MLPOCTask(CoreTask):
         )
 
         ver_opts = self.verificator.verification_options
-        ver_opts["shared_data_files"] = self.task_definition.shared_data_files
-        ver_opts["result_extension"] = self.RESULT_EXTENSION
+        ver_opts["no_verification"] = True
+        # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
+        # ver_opts["result_extension"] = self.RESULT_EXTENSION
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
 
     def __get_next_network_config(self):
-        # TODO here happens magic with local docker thread
-        # and Spearmint inside
-        pass
+        return {"HIDDEN_SIZE": 10,
+                "INPUT_SIZE": 10,
+                "NUM_CLASSES": 3,
+                "NUM_EPOCHS": self.task_definition.options.number_of_epochs
+                }
 
     def _extra_data(self, perf_index=0.0) -> Tuple[
-        Type[BLACK_BOX], Type[BATCH_MANAGER], ComputeTaskDef]:
+        BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
 
-        black_box = self.BLACK_BOX()
-        batch_manager = self.BATCH_MANAGER()
+        black_box = self.BLACK_BOX(
+            self.task_definition.options.probability_of_save,
+            self.task_definition.options.number_of_epochs
+        )
+        batch_manager = self.BATCH_MANAGER(self.shared_data_files)
 
         network_conf = self.__get_next_network_config()
 
@@ -91,12 +99,13 @@ class MLPOCTask(CoreTask):
         extra_data = {
             "data_files": shared_data_files_base,
             "network_configuration": network_conf,
-            "order_of_batches": batch_manager.order_of_batches()
+            "order_of_batches": batch_manager.get_order_of_batches()
         }
 
-        return (black_box, batch_manager, self._new_compute_task_def(subtask_id,
-                                                                     extra_data,
-                                                                     perf_index=perf_index))
+        return (black_box, batch_manager,
+                self._new_compute_task_def(subtask_id,
+                                           extra_data,
+                                           perf_index=perf_index))
 
     @coretask.accepting
     def query_extra_data(self,
@@ -138,10 +147,6 @@ class MLPOCTask(CoreTask):
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         black_box, batch_manager, exd = self._extra_data()
-        exd.extra_data["network_configuration"] = {"hidden_size": 10,
-                                                   "input_size": 10,
-                                                   "num_classes": 3,
-                                                   "num_epochs": 1}
         self.test_black_box = black_box
         self.test_batch_manager = batch_manager
         return exd
@@ -169,6 +174,7 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
     # with metadata about dataset and network configuration
 
     # also, a second file, which will be a configuration file for spearmint
+
 
 # comment that line to enable type checking
 enforce.config({'groups': {'set': {'mlpoc': False}}})

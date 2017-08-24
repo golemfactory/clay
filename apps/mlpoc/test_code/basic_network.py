@@ -1,4 +1,4 @@
-# TODO this is a very basic, 2 layer network for testing purposes
+# this is a very basic, 2 layer network for testing purposes
 
 from torch import nn
 

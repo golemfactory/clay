@@ -5,11 +5,21 @@
 # from code path
 # from impl import config
 # from impl.model import ModelRunner
+import imp
+import os
+
+import params
 
 
-runner = ModelRunner(config.SHARED_PATH,
-                     probability=1,
-                     verbose=0,
-                     save_model_as_dict=config.SAVE_MODEL_AS_DICT)
+def run():
+    code_file = os.path.join(params.RESOURCES_DIR, "code", "model.py")
+    model = imp.load_source("code", code_file)
 
-runner.run_full_training()
+    runner = model.ModelRunner(params.OUTPUT_DIR,
+                               probability=1,
+                               verbose=0)
+
+    runner.run_full_training()
+
+
+run()

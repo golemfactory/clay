@@ -8,12 +8,17 @@ import numpy as np
 from torch import nn, torch, from_numpy
 from torch.autograd import Variable
 
-from impl import config
-from impl.batchmanager import IrisBatchManager
-from impl.box import SimpleBlackBox
-from impl.hash import PyTorchHash, StateHash
-from impl.net import Net
-from impl.utils import derandom
+from .box_callback import BlackBoxFileCallback
+from .config import (BATCH_SIZE,
+                     NUM_EPOCHS,
+                     HIDDEN_SIZE,
+                     NUM_CLASSES,
+                     LEARNING_RATE,
+                     STEPS_PER_EPOCH)
+from .batchmanager import IrisBatchManager
+from .hash import PyTorchHash, StateHash
+from .net import Net
+from .utils import derandom
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -51,10 +56,10 @@ class IrisSimpleModel(Model):
 
     def run_one_batch(self, x: np.ndarray, y: np.ndarray):
         derandom()
-        x = Variable(from_numpy(x).view(config.BATCH_SIZE, -1).type(torch.FloatTensor))
+        x = Variable(from_numpy(x).view(BATCH_SIZE, -1).type(torch.FloatTensor))
 
         y = np.argmax(y, axis=1)
-        y = Variable(from_numpy(y).view(config.BATCH_SIZE).type(torch.LongTensor))
+        y = Variable(from_numpy(y).view(BATCH_SIZE).type(torch.LongTensor))
 
         self.optimizer.zero_grad()
         outputs = self.net(x)
@@ -154,15 +159,15 @@ class HonestModelRunner(object):
                  shared_path: str,
                  probability_of_bb_saving,
                  save_model_as_dict=True,
-                 number_of_epochs=config.NUM_EPOCHS):
+                 number_of_epochs=NUM_EPOCHS):
 
-        self.black_box = SimpleBlackBox(probability_of_bb_saving)
+        self.black_box = BlackBoxFileCallback()
         self.batch_manager = IrisBatchManager()
 
         self.model = IrisSimpleModel(self.batch_manager.get_input_size(),
-                                     config.HIDDEN_SIZE,
-                                     config.NUM_CLASSES,
-                                     config.LEARNING_RATE)
+                                     HIDDEN_SIZE,
+                                     NUM_CLASSES,
+                                     LEARNING_RATE)
 
         self.serializer = ModelSerializer(self.model, shared_path, save_model_as_dict)
         self.state = ComputationState(self.model, self.model)
@@ -172,7 +177,7 @@ class HonestModelRunner(object):
         for epoch in range(self.num_epochs):
             self.state.update_before(deepcopy(self.model))
 
-            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, config.STEPS_PER_EPOCH)):
+            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
                 self.model.run_one_batch(x, y)
 
             self.state.update_after(deepcopy(self.model))
@@ -194,7 +199,7 @@ class SkippingDishonestModelRunner(HonestModelRunner):
         for epoch in range(self.num_epochs):
             self.state.update_before(deepcopy(self.model))
 
-            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, config.STEPS_PER_EPOCH)):
+            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
                 # with some probability, we we'll skip a step of computation
                 if np.random.rand() < self.probability_of_cheating:
                     self.model.run_one_batch(x, y)
@@ -222,7 +227,7 @@ class CyclicBufferDishonestModelRunner(HonestModelRunner):
             else:
                 self.state.update_before(deepcopy(self.model))  # deepcopy needed
 
-                for i, (x, y) in enumerate(itertools.islice(self.batch_manager, config.STEPS_PER_EPOCH)):
+                for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
                     self.model.run_one_batch(x, y)
 
                 self.state.update_after(deepcopy(self.model))
