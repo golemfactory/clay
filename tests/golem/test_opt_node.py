@@ -71,7 +71,9 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(node_address=node_address,
                                        datadir=self.path,
                                        transaction_system=True,
-                                       use_docker_machine_manager=True)
+                                       use_docker_machine_manager=True,
+                                       geth_port=None,
+                                       use_monitor=True)
 
     def test_node_address_invalid(self, *_):
         runner = CliRunner()

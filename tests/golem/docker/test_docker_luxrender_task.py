@@ -4,7 +4,6 @@ import os
 import shutil
 from os import makedirs, path, remove
 
-
 from mock import Mock
 
 from golem.tools.ci import ci_skip
@@ -20,7 +19,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 
@@ -67,13 +66,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
 
-        def set_root_dir(p):
-            return p.replace("$GOLEM_DIR", golem_dir)
+        def set_root_dir(p, new_root_dir=golem_dir):
+            return p.replace("$GOLEM_DIR", new_root_dir)
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
-        task_def.output_file = set_root_dir(task_def.output_file)
+        task_def.output_file = set_root_dir(task_def.output_file, self.tempdir)
+
         return task_def
 
     def _test_task(self):# -> LuxTask():
@@ -194,7 +194,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         new_flm_file =  self._change_file_location(test_file,
                                                    path.join(new_file_dir, "newflmfile.flm"))
 
-
         if task.output_format == "exr":
             new_file = self._change_file_location(exr,
                                                path.join(new_file_dir, "newexrfile.exr"))
@@ -202,29 +201,30 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             new_file = self._change_file_location(png,
                                                path.join(new_file_dir, "newpngfile.png"))
 
-
-
         return new_flm_file, new_file
-
 
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
-        task.res_y = 100
-        task.res_x = 100
-        task.haltspp = 25
-        task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
-
+        task.res_y = 200
+        task.res_x = 200
+        task.haltspp = 20
+        # 1) to make it deterministic,
+        # 2) depending on the kernel, small cropwindow can generate darker img, this is a know issue in lux:
+        # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
+        task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95) # to make it deterministic
         self._test_luxrender_real_task(task)
 
     def test_luxrender_real_task_exr(self):
         task = self._test_task()
         task.output_format = "exr"
-        task.res_y = 100
-        task.res_x = 100
-        task.haltspp = 25
-        task.random_crop_window_for_verification = (0, 1, 0, 1) # to make it deterministic
-
+        task.res_y = 200
+        task.res_x = 200
+        task.haltspp = 20
+        # 1) to make it deterministic,
+        # 2) depending on the kernel, small cropwindow can generate darker img, this is a know issue in lux:
+        # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
+        task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95) # to make it deterministic
         self._test_luxrender_real_task(task)
 
     def _test_luxrender_real_task(self, task):
@@ -263,53 +263,53 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
 
-
     def test_run_stats(self):
-        pass
+        results = []
+        return
 
-        # results = []
-        # for i in range(0, 10):
-        #     task = self._test_task()
-        #     task.res_y = 250
-        #     task.res_x = 250
-        #     task.haltspp = 1
-        #     task.output_format = "exr"
-        #     task.random_crop_window_for_verification = (0, 0.7, 0, 0.7)  # to make it deterministic
-        #     ctd = task.query_extra_data(10000).ctd
-        #
-        #     ## act
-        #     computer = LocalComputer(
-        #         task,
-        #         self.tempdir,
-        #         Mock(),
-        #         Mock(),
-        #         lambda: ctd,
-        #     )
-        #
-        #     computer.run()
-        #     computer.tt.join()
-        #
-        #     new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
-        #
-        #     task.create_reference_data_for_task_validation()
-        #
-        #     ## assert good results - should pass
-        #     self.assertEqual(task.num_tasks_received, 0)
-        #     task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
-        #                               result_type=ResultType.files)
-        #
-        #     result = task.verify_subtask(ctd.subtask_id)
-        #     # self.assertEqual(task.num_tasks_received, 1)
-        #     # print i, task.num_tasks_received
-        #     results.append(result)
-        #     print(i, result)
-        #
-        # from collections import Counter
-        # stats = Counter(results)
-        # print (results)
-        # print (stats)
-        # pass
+        for i in range(0, 10):
+            task = self._test_task()
+            task.output_format = "png"
+            task.res_y = 200
+            task.res_x = 200
+            task.haltspp = 20
+            # 1) to make it deterministic,
+            # 2) depending on the kernel, small cropwindow can generate darker img, this is a know issue in lux:
+            # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
+            task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)  # to make it deterministic
+            ctd = task.query_extra_data(10000).ctd
 
+            ## act
+            computer = LocalComputer(
+                task,
+                self.tempdir,
+                Mock(),
+                Mock(),
+                lambda: ctd,
+            )
+
+            computer.run()
+            computer.tt.join()
+
+            new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
+
+            task.create_reference_data_for_task_validation()
+
+            ## assert good results - should pass
+            self.assertEqual(task.num_tasks_received, 0)
+            task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
+                                      result_type=result_types["files"])
+
+            result = task.verify_subtask(ctd.subtask_id)
+            # self.assertEqual(task.num_tasks_received, 1)
+            # print i, task.num_tasks_received
+            results.append(result)
+            print(i, result)
+
+        from collections import Counter
+        stats = Counter(results)
+        print (results)
+        print (stats)
 
     def test_luxrender_TaskTester_should_pass(self):
         task = self._test_task()
