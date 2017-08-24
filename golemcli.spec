@@ -6,7 +6,7 @@ block_cipher = None
 icon = None
 
 if sys.platform == 'win32':
-    icon = os.path.join(os.getcwdu(), 'Installer', 'favicon.ico')
+    icon = os.path.join(os.getcwd(), 'Installer', 'favicon.ico')
 
 a = Analysis(['golemcli.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
@@ -18,8 +18,8 @@ a = Analysis(['golemcli.py'],
              binaries=[],
              datas=[],
              runtime_hooks=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
+             win_no_prefer_redirects=True,
+             win_private_assemblies=True,
              cipher=block_cipher)
 
 pyz = PYZ(a.pure,
