@@ -85,9 +85,10 @@ install:
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
   # Slow tests only on branches and PRs with >= 2 approvals
-  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > approvals.txt
-  - set /P ARG_RUNSLOW=< approvals.txt
-  - del approvals.txt
+  - set TMP_FILE="approvals.txt"
+  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
+  - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0
+  - del %TMP_FILE%
 
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
