@@ -29,6 +29,8 @@ class HyperdriveDaemonManager(object):
 
         self._dir = os.path.join(datadir, self._executable)
         self._command = [self._executable, '--db', self._dir]
+        from subprocess import check_output
+        self.version = check_output([self._executable, '--version'])
 
         atexit.register(self.stop)
 

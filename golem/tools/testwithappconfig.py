@@ -8,6 +8,8 @@ class TestWithKeysAuth(TestDirFixture):
     def setUp(self):
         super(TestWithKeysAuth, self).setUp()
         self.client = Mock()
+        self.client.daemon_manager = Mock()
+        self.client.daemon_manager.version = ""
         type(self.client).datadir = path.join(self.path, "datadir")
 
     def tearDown(self):
