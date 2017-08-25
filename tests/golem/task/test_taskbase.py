@@ -13,7 +13,7 @@ from golem.tools.assertlogs import LogTestCase
 class TestTaskBase(LogTestCase):
 
     def test_header_serialization(self):
-        node = dict(node_name="test node")
+        node = Node(node_name="test node")
         docker_images = [
             dict(
                 repository="repo_{}".format(i),

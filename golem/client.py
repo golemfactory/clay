@@ -516,7 +516,7 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.delete_task(task_id)
 
     def get_node(self):
-        return DictSerializer.dump(self.node)
+        return self.node.to_dict()
 
     def get_node_name(self):
         name = self.config_desc.node_name

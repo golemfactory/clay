@@ -2,6 +2,7 @@ import datetime
 import logging
 from enum import Enum
 from os import path
+from typing import Optional
 
 import jsonpickle as json
 from ethereum.utils import denoms
@@ -10,6 +11,7 @@ from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     SmallIntegerField)
 
 from golem.utils import encode_hex, decode_hex
+from golem.network.p2p.node import Node
 
 log = logging.getLogger('golem.db')
 
@@ -133,6 +135,17 @@ class JsonField(TextField):
         return json.loads(value)
 
 
+class NodeField(TextField):
+    """ Database field that stores a Node in JSON format. """
+    def db_value(self, value: Optional[Node]):
+        if value is None:
+            return json.dumps(None)
+        return json.dumps(value.to_dict())
+
+    def python_value(self, value):
+        return Node(json.loads(value))
+
+
 class PaymentStatus(Enum):
     """ The status of a payment. """
     awaiting = 1    # Created but not introduced to the payment network.
@@ -173,7 +186,7 @@ class Payment(BaseModel):
 
 class ExpectedIncome(BaseModel):
     sender_node = CharField()
-    sender_node_details = JsonField()  # golem.network.p2p.node.Node()
+    sender_node_details = NodeField()
     task = CharField()
     subtask = CharField()
     value = BigIntegerField()

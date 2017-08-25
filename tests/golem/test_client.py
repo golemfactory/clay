@@ -26,6 +26,7 @@ from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 
 
@@ -71,7 +72,7 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase):
+class TestClient(TestWithDatabase, TestWithReactor):
 
     def tearDown(self):
         if hasattr(self, 'client'):
@@ -126,7 +127,7 @@ class TestClient(TestWithDatabase):
         incomes = [
             ExpectedIncome(
                 sender_node=random_hex_str(),
-                sender_node_details={},
+                sender_node_details=Node(),
                 task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10 ** 18,
@@ -297,7 +298,6 @@ class TestClient(TestWithDatabase):
         self.client.db = None
         self.client.quit()
 
-    @patch('twisted.internet.reactor', create=True)
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
@@ -550,7 +550,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth = EllipticalKeysAuth(self.path)
 
         self.assertIsInstance(c.get_node(), dict)
-        self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
         self.assertIsInstance(c.get_node_key(), str)
         self.assertIsNotNone(c.get_node_key())

@@ -50,14 +50,17 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ]
         self.assertEqual(self.service.find_node(node_key_id=None), expected)
 
+        def randaddr():
+            return random.randint(1, 255)
+
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
         neighbour_node = Node(
             node_name='Syndrom wstrząsu toksycznego',
-            key=neighbour_node_key_id,
-            prv_addr=random.randint(1, 2**32-1),
-            prv_port=random.randint(1, 2**16-1)
-        )
+            key=str(neighbour_node_key_id),
+            prv_addr='{}.{}.{}.{}'.format(randaddr(), randaddr(),
+                                          randaddr(), randaddr()),
+            prv_port=random.randint(1, 2**16 - 1))
         self.service.peer_keeper.neighbours = mock.MagicMock(return_value=[
             neighbour_node,
         ])
@@ -158,7 +161,7 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
-            'super_node', key_id,
+            node_name='super_node', key=str(key_id),
             pub_addr='1.2.3.4',
             prv_addr='1.2.3.4',
             pub_port=10000,
@@ -199,7 +202,7 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
             pub = pub_prefix + i_str
             prv = prv_prefix + i_str
             n = Node(
-                i_str, key_id_str + i_str,
+                node_name=i_str, key=key_id_str + i_str,
                 pub_addr=pub,
                 prv_addr=prv,
                 pub_port=10000,

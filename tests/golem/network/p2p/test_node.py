@@ -1,5 +1,6 @@
 import unittest
 from golem.network.p2p.node import Node
+import json
 
 
 def is_ip_address(address):
@@ -35,3 +36,14 @@ class TestNode(unittest.TestCase):
         assert is_ip_address(node.prv_addr)
         for address in node.prv_addresses:
             assert is_ip_address(address)
+
+    def test_json(self) -> None:
+        "Test serialization and deserialization"
+        n = Node(node_name="Blabla", key="ABC")
+        json_dict = n.to_dict()
+        json_str = json.dumps(json_dict)
+        print(json_str)
+        deser_dict = json.loads(json_str)
+        print(deser_dict)
+        n_deser = Node.from_dict(deser_dict)
+        self.assertEqual(n.__dict__, n_deser.__dict__)
