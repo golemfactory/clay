@@ -17,10 +17,10 @@ while getopts "b:" opt; do
 		b)
 			REF_BRANCH=$OPTARG
 			;;
-        *)
+		*) ;;
 	esac
 done
-shift $((OPTIND-1))
+shift $((OPTIND - 1))
 
 # get new changes from develop, GitHub doesn't integrate them on its own
 echo "Fetching new changes from develop..."
@@ -37,7 +37,7 @@ echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo "$@"
 "$@" >$CURRENT_OUT
 
-git checkout $REF_BRANCH || exit 1
+git checkout "$REF_BRANCH" || exit 1
 commit=$(git rev-parse HEAD)
 # We need to take files responsible for the linting configuration from
 # the new commit.
@@ -53,8 +53,8 @@ cleanup_artifacts
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
-	echo "New findings!"
-	echo "$diff"
+	echo "New findings! The error diff is:"
+	diff --unified --color $REF_OUT $CURRENT_OUT
 	exit 1
 else
 	echo "Check OK, no new findings..."
