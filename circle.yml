@@ -24,6 +24,7 @@ dependencies:
 
     - pip3 install six
     - pip3 install -r requirements.txt
+    - pip3 install -r requirements-lint.txt
 
     - if [ ! -e /usr/local/bin/ipfs ]; then wget https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.5_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
     - /usr/local/bin/ipfs config --json Bootstrap "[]"
@@ -41,6 +42,9 @@ test:
   pre:
     - pip3 install coverage codecov
   override:
+    - ./lintdiff.sh pylint apps golem gui scripts setup_util tests *.py
+    - ./lintdiff.sh pycodestyle
+    - ./lintdiff.sh mypy apps golem gui scripts setup_util tests *.py
     - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml":
         timeout: 1200
   post:
