@@ -48,7 +48,7 @@ def get_mock_task(task_id, subtask_id):
     task_mock = Mock()
     task_mock.header = TaskHeader.from_dict(get_example_task_header())
     task_mock.header.task_id = task_id
-    task_mock.header.max_price = 10000
+    task_mock.header.max_price = 1010
     task_mock.query_extra_data.return_value.ctd.task_id = task_id
     task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
     return task_mock
@@ -837,7 +837,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
                                                                      "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
-        expected_value = ceil(1031 * 10 / 3600)
+        expected_value = ceil(1031 * 1010 / 3600)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, expected_value)
         account_info = Mock()
         account_info.key_id = "key"

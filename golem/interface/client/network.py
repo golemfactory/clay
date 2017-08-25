@@ -8,7 +8,7 @@ class Network(object):
 
     client = None
 
-    node_table_headers = ['ip', 'port', 'id']
+    node_table_headers = ['ip', 'port', 'id', 'version']
 
     ip_arg = Argument('ip', help='Remote IP address')
     port_arg = Argument('port', help='Remote port address')
