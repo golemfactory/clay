@@ -50,22 +50,6 @@ if is_windows:
 
     hidden_imports += ['vboxapi']
 
-    # @todo it should be done better (I mean - really better).
-    # We don't need to pack all of it, but can be as a temporary solution
-    # But when everything calms down, we really HAVE TO fix this
-    dir_ = site.getsitepackages()
-    package = ""
-    for d in dir_:
-        if d.endswith('site-packages'):
-            package = d
-            break
-
-    data = tree(package)
-    for entry in data:
-        el = entry[0]
-        if el.endswith('.pyc') or el.endswith('.pyd') or el.endswith('.dll') or el.endswith('.so'):
-            binaries.append((el, os.path.dirname(el.replace(package, '')[1:])))
-
 
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
@@ -74,8 +58,8 @@ a = Analysis(['golemapp.py'],
              binaries=binaries,
              datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark'),
              runtime_hooks=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
+             win_no_prefer_redirects=True,
+             win_private_assemblies=True,
              cipher=block_cipher)
 
 pyz = PYZ(a.pure,

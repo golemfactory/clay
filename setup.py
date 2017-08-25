@@ -4,8 +4,14 @@ from sys import argv
 
 from setuptools import setup
 
-from setup.setup_commons import *
-from setup.taskcollector_builder import TaskCollectorBuilder
+from setup_util.setup_commons import (
+    path, parse_requirements, generate_ui, platform, update_variables,
+    get_version, get_long_description, find_required_packages, PyTest,
+    PyInstaller, move_wheel, print_errors)
+from setup_util.taskcollector_builder import TaskCollectorBuilder
+
+from golem.docker.manager import DockerManager
+from golem.tools.ci import in_appveyor, in_travis
 
 building_wheel = 'bdist_wheel' in argv
 building_binary = 'pyinstaller' in argv
@@ -91,9 +97,6 @@ setup(
         ]),
     ]
 )
-
-from golem.docker.manager import DockerManager
-from golem.tools.ci import in_appveyor, in_travis
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):

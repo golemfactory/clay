@@ -82,8 +82,6 @@ class TaskManager(TaskEventListener):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        # resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
-        #                                                  resource_dir_method=self.dir_manager.get_task_temporary_dir)
         resource_manager = HyperdriveResourceManager(self.dir_manager,
                                                      resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
@@ -688,12 +686,13 @@ class TaskManager(TaskEventListener):
             logger.exception("Cannot estimate price, wrong params")
             return None
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, comp_price,
+                                      ctd, address):
 
-        if ctd.task_id not in self.tasks_states:
-            raise RuntimeError("Should never be here!")
+        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
+                     node_name, node_id, comp_price, ctd, address)
 
-        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)', node_name, node_id, price, ctd, address)
+        price = self.tasks[ctd.task_id].header.max_price
 
         ss = SubtaskState()
         ss.computer.node_id = node_id
