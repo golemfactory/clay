@@ -9,6 +9,7 @@ branches:
     - develop
 
 env:
+  global:
     - GEVENT_LOOP=tulipcore.Loop
     - GETH_VER=geth-darwin-amd64-1.6.4-9c2882b2
 
