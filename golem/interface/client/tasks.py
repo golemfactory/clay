@@ -2,8 +2,6 @@ import os
 import uuid
 from queue import Queue
 
-import jsonpickle
-
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDesc
 from golem.core.deferred import sync_wait

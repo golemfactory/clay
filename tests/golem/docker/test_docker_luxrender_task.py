@@ -1,4 +1,4 @@
-import jsonpickle as json
+import json
 import logging
 import os
 import shutil
@@ -11,6 +11,7 @@ from .test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
+from golem.core.simpleserializer import DictSerializer
 from golem.node import OptNode
 
 from golem.task.taskbase import result_types
@@ -61,7 +62,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = json.decode(f.read())
+            task_def = DictSerializer.load(json.loads(f.read()))
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()

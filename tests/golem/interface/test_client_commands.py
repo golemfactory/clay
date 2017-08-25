@@ -4,7 +4,6 @@ import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 
-import jsonpickle
 from ethereum.utils import denoms
 from mock import Mock
 
@@ -472,24 +471,6 @@ class TestTasks(TempDirFixture):
         TaskTester.run = method
         yield
         TaskTester.run = run
-
-    def _create_blender_task(self, dir_manager):
-
-        definition = RenderingTaskDefinition()
-        definition.options = BlenderRendererOptions()
-        definition.options.use_frames = True
-        definition.options.frames = [1, 2, 3, 4, 5, 6]
-        definition.options.frames_string = "1-6"
-        definition.total_subtasks = 6
-        definition.task_id = "deadbeef"
-        definition.task_type = "Blender"
-
-        task_file_name = os.path.join(self.path, 'task_file.gt')
-
-        with open(task_file_name, 'wb') as task_file:
-            task_file.write(jsonpickle.dumps(definition).encode())
-
-        return task_file_name
 
 
 class TestSubtasks(unittest.TestCase):
