@@ -2,9 +2,9 @@ import datetime
 import logging
 from enum import Enum
 from os import path
-from typing import Optional
+from typing import Optional, Type, TypeVar, Generic
 
-import jsonpickle as json
+import json
 from ethereum.utils import denoms
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     DateTimeField, TextField, CompositeKey, BooleanField,
@@ -12,6 +12,7 @@ from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
 
 from golem.utils import encode_hex, decode_hex
 from golem.network.p2p.node import Node
+from golem.core.simpleserializer import DictSerializable
 
 log = logging.getLogger('golem.db')
 
@@ -135,15 +136,17 @@ class JsonField(TextField):
         return json.loads(value)
 
 
-class NodeField(TextField):
+class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    def db_value(self, value: Optional[Node]):
+    objtype = None  # type: Type[DictSerializable]
+
+    def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
             return json.dumps(None)
         return json.dumps(value.to_dict())
 
-    def python_value(self, value):
-        return Node(json.loads(value))
+    def python_value(self, value: str) -> DictSerializable:
+        return self.objtype.from_dict(json.loads(value))
 
 
 class PaymentStatus(Enum):
@@ -153,6 +156,52 @@ class PaymentStatus(Enum):
     confirmed = 3   # Confirmed on the payment network.
 
 
+class PaymentDetails(DictSerializable):
+    def __init__(self,
+                 node_info: Optional[Node] = None,
+                 fee: Optional[int] = None,
+                 block_hash: Optional[str] = None,
+                 block_number: Optional[int] = None,
+                 check: Optional[bool] = None,
+                 tx: Optional[str] = None) -> None:
+        self.node_info = node_info
+        self.fee = fee
+        self.block_hash = block_hash
+        self.block_number = block_number
+        self.check = check
+        self.tx = tx
+
+    def to_dict(self) -> dict:
+        d = self.__dict__.copy()
+        if self.node_info:
+            d['node_info'] = self.node_info.to_dict()
+        return d
+
+    @staticmethod
+    def from_dict(data: dict) -> 'PaymentDetails':
+        det = PaymentDetails()
+        det.__dict__.update(data)
+        det.__dict__['node_info'] = Node.from_dict(data['node_info'])
+        return det
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PaymentDetails):
+            raise TypeError(
+                "Mismatched types: expected PaymentDetails, got {}".format(
+                    type(other)))
+        return self.__dict__ == other.__dict__
+
+
+class NodeField(DictSerializableJSONField):
+    """ Database field that stores a Node in JSON format. """
+    objtype = Node
+
+
+class PaymentDetailsField(DictSerializableJSONField):
+    """ Database field that stores a PaymentDetails in JSON format. """
+    objtype = PaymentDetails
+
+
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
@@ -160,17 +209,17 @@ class Payment(BaseModel):
     status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
-    details = JsonField()
+    details = PaymentDetailsField()
 
     def __init__(self, *args, **kwargs):
         super(Payment, self).__init__(*args, **kwargs)
         # For convenience always have .details as a dictionary
         if self.details is None:
-            self.details = {}
+            self.details = PaymentDetails()
 
-    def __repr__(self):
-        tx = self.details.get('tx', None)
-        bn = self.details.get('block_number', None)
+    def __repr__(self) -> str:
+        tx = self.details.tx
+        bn = self.details.block_number
         return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
             .format(
                 self.subtask,
@@ -180,8 +229,8 @@ class Payment(BaseModel):
                 bn
             )
 
-    def get_sender_node(self):
-        return self.details.get('node_info', None)
+    def get_sender_node(self) -> Optional[Node]:
+        return self.details.node_info
 
 
 class ExpectedIncome(BaseModel):

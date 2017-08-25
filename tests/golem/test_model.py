@@ -3,7 +3,8 @@ from datetime import datetime
 from peewee import IntegrityError
 from golem.model import (Payment, PaymentStatus, ReceivedPayment, LocalRank,
                          GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
-                         TaskPreset)
+                         TaskPreset, PaymentDetails)
+from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture, TempDirFixture
 
 
@@ -59,18 +60,26 @@ class TestPayment(DatabaseFixture):
         self.assertNotEqual(p1.payee, p2.payee)
         self.assertNotEqual(p1.subtask, p2.subtask)
         self.assertNotEqual(p1.value, p2.value)
-        self.assertEqual(p1.details, {})
+        self.assertEqual(p1.details, PaymentDetails())
         self.assertEqual(p1.details, p2.details)
         self.assertIsNot(p1.details, p2.details)
-        p1.details['check'] = True
-        self.assertTrue(p1.details['check'])
-        self.assertNotIn('check', p2.details)
+        p1.details.check = True
+        self.assertTrue(p1.details.check)
+        self.assertEqual(p2.details.check, None)
 
     def test_payment_big_value(self):
         value = 10000 * 10**18
         assert value > 2**64
         Payment.create(payee="me", subtask="T1000", value=value, status=PaymentStatus.sent)
 
+    def test_payment_details_serialization(self):
+        p = PaymentDetails(node_info=Node(node_name="bla", key="xxx"), fee=700)
+        dct = p.to_dict()
+        self.assertIsInstance(dct, dict)
+        self.assertIsInstance(dct['node_info'], dict)
+        pd = PaymentDetails.from_dict(dct)
+        self.assertIsInstance(pd.node_info, Node)
+        self.assertEqual(p, pd)
 
 class TestReceivedPayment(DatabaseFixture):
 

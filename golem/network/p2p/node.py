@@ -2,11 +2,12 @@ import logging
 from typing import Optional, List
 
 from golem.core.hostaddress import get_host_address, get_external_address, get_host_addresses
+from golem.core.simpleserializer import DictSerializable
 
 logger = logging.getLogger(__name__)
 
 
-class Node:
+class Node(DictSerializable):
     def __init__(self,
                  node_name: Optional[str] = None,
                  key: Optional[str] = None,
@@ -53,7 +54,7 @@ class Node:
                         "network addresses: {}".format(self.prv_addr,
                                                        self.prv_addresses))
 
-    def is_super_node(self):
+    def is_super_node(self) -> bool:
         if self.pub_addr is None or self.prv_addr is None:
             return False
         return self.pub_addr == self.prv_addr
@@ -62,10 +63,18 @@ class Node:
         return "Node {}, (key: {})".format(self.node_name, self.key)
 
     def to_dict(self) -> dict:
-        return self.__dict__
+        return self.__dict__.copy()
 
     @staticmethod
-    def from_dict(d: dict) -> 'Node':
+    def from_dict(d: Optional[dict]) -> 'Node':
         n = Node()
-        n.__dict__.update(d)
+        if d:
+            n.__dict__.update(d)
         return n
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Node):
+            raise TypeError(
+                "Mismatched types: expected Node, got {}".format(type(other))
+            )
+        return self.__dict__ == other.__dict__

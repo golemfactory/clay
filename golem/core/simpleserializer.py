@@ -4,7 +4,8 @@ import json
 import logging
 import sys
 import types
-from typing import Type
+from abc import ABCMeta, abstractmethod
+from typing import Type, TypeVar, Optional
 
 import cbor2
 import pytz
@@ -195,3 +196,14 @@ class CBORSerializer(object):
     @classmethod
     def dumps(cls, obj):
         return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
+
+
+class DictSerializable(metaclass=ABCMeta):
+    @abstractmethod
+    def to_dict(self) -> dict:
+        "Converts the object to a dict containing only primitive types"
+
+    @staticmethod
+    @abstractmethod
+    def from_dict(data: Optional[dict]) -> 'DictSerializable':
+        "Converts the object to a dict containing only primitive types"
