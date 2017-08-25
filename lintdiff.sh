@@ -7,20 +7,35 @@ CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD)
 REF_OUT=/tmp/ref-lint.out
 CURRENT_OUT=/tmp/current-lint.out
 
+usage() {
+	echo "Usage: $0 [-b reference-branch] command"
+	exit 1
+}
+
+while getopts "b:" opt; do
+	case $opt in
+		b)
+			REF_BRANCH=$OPTARG
+			;;
+        *)
+	esac
+done
+shift $((OPTIND-1))
+
 # get new changes from develop, GitHub doesn't integrate them on its own
 echo "Fetching new changes from develop..."
 git fetch origin || exit 1
 
 cleanup_artifacts() {
-    git reset --hard HEAD
-    git checkout "$CURRENT_BRANCH" || exit 1
+	git reset --hard HEAD
+	git checkout "$CURRENT_BRANCH" || exit 1
 }
 trap cleanup_artifacts EXIT
 
 commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo "$@"
-"$@" > $CURRENT_OUT
+"$@" >$CURRENT_OUT
 
 git checkout $REF_BRANCH || exit 1
 commit=$(git rev-parse HEAD)
@@ -29,7 +44,7 @@ commit=$(git rev-parse HEAD)
 git checkout "$CURRENT_BRANCH" .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo "$@"
-"$@" > $REF_OUT
+"$@" >$REF_OUT
 
 # Remove the trap
 trap - EXIT
@@ -38,9 +53,9 @@ cleanup_artifacts
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
-    echo "New findings!"
-    echo "$diff"
-    exit 1
+	echo "New findings!"
+	echo "$diff"
+	exit 1
 else
-    echo "Check OK, no new findings..."
+	echo "Check OK, no new findings..."
 fi
