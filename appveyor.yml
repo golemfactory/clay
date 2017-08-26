@@ -101,7 +101,7 @@ build_script:
 
 test_script:
   - venv\Scripts\activate.bat
-  - if NOT defined ARG_RUNSLOW pytest --cov=golem; echo "Not enough approvals." && exit 1
+  - if NOT defined ARG_RUNSLOW pytest --cov=golem && echo "Not enough approvals." && exit 1
   - if defined ARG_RUNSLOW pytest --cov=golem --runslow
 
 after_test:
