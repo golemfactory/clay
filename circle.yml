@@ -54,5 +54,6 @@ test:
   override:
     - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}":
         timeout: 1200
+    - if [[ -z "${ARG_RUNSLOW}" ]]; then echo "Not enough approvals."; exit 1; fi
   post:
     - codecov
