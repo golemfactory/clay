@@ -20,7 +20,7 @@ trap cleanup_artifacts EXIT
 commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo "$@"
-"$@" > $CURRENT_OUT
+$@ > $CURRENT_OUT
 
 git checkout $REF_BRANCH || exit 1
 commit=$(git rev-parse HEAD)
@@ -29,7 +29,7 @@ commit=$(git rev-parse HEAD)
 git checkout "$CURRENT_BRANCH" .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo "$@"
-"$@" > $REF_OUT
+$@ > $REF_OUT
 
 # Remove the trap
 trap - EXIT
