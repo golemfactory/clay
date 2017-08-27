@@ -302,9 +302,10 @@ class Client(HardwarePresetsMixin):
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
         log.info("Starting p2p server ...")
+        resource_manager = self.resource_server.resource_manager
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(self)
+        self.p2pservice.set_metadata_manager(resource_manager.peer_manager)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
@@ -1114,24 +1115,6 @@ class Client(HardwarePresetsMixin):
                             "check seed parameters.")
 
         return ' '.join(messages)
-
-    def get_metadata(self):
-        metadata = dict()
-        # if self.ipfs_manager:
-        #     metadata.update(self.ipfs_manager.get_metadata())
-        return metadata
-
-    def interpret_metadata(self, metadata, address, port, node_info):
-        pass
-        # if self.config_desc and node_info and metadata:
-        #     seed_addresses = self.p2pservice.get_seeds()
-        #     node_addresses = [
-        #         (address, port),
-        #         (node_info.pub_addr, node_info.pub_port)
-        #     ]
-        #     self.ipfs_manager.interpret_metadata(metadata,
-        #                                          seed_addresses,
-        #                                          node_addresses)
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()

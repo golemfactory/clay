@@ -2,7 +2,8 @@ import logging
 import os
 import uuid
 
-from golem.network.hyperdrive.client import HyperdriveClient
+from golem.network.hyperdrive.client import HyperdriveClient, \
+    HyperdriveClientOptions
 from golem.resource.base.resourcesmanager import AbstractResourceManager, ResourceBundle
 from golem.resource.client import ClientHandler, ClientConfig, ClientCommands
 
@@ -11,21 +12,17 @@ logger = logging.getLogger(__name__)
 
 class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
 
-    def __init__(self, dir_manager, daemon_pub_addresses=None,
-                 config=None, **kwargs):
+    def __init__(self, dir_manager, daemon_address=None, config=None, **kwargs):
 
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
         AbstractResourceManager.__init__(self, dir_manager, **kwargs)
 
-        self._peers = [daemon_pub_addresses]
+        self.peer_manager = HyperdrivePeerManager(daemon_address)
 
     def new_client(self):
         return HyperdriveClient(**self.config.client)
 
-    def build_client_options(self, node_id, known_peers=None, **kwargs):
-        peers = list(self._peers)
-        if known_peers:
-            peers += known_peers
+    def build_client_options(self, node_id, peers=None, **kwargs):
         return HyperdriveClient.build_options(node_id, peers=peers, **kwargs)
 
     def to_wire(self, resources):
@@ -92,3 +89,50 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def _cache_response(self, resources, resource_hash, task_id):
         res = self._wrap_resource((resource_hash, resources), task_id)
         self._cache_resource(res)
+
+
+class HyperDriveMetadataManager(object):
+
+    def __init__(self, daemon_address):
+        self._daemon_address = daemon_address
+        self._peers = dict()
+
+    def get_metadata(self):
+        return dict(hyperg=self._daemon_address)
+
+    def interpret_metadata(self, metadata, address, port, node):
+        address = metadata.get('hyperg')
+        address = HyperdriveClientOptions.filter_peer(address)
+        if address:
+            self._peers[node.key] = address
+
+
+class HyperdrivePeerManager(HyperDriveMetadataManager):
+
+    def __init__(self, daemon_address):
+        super(HyperdrivePeerManager, self).__init__(daemon_address)
+        self._tasks = dict()
+
+    def add(self, task_id, key_id):
+        entry = self._peers.get(key_id)
+        if not entry:
+            return logger.debug('Unknown peer: %s', key_id)
+
+        if task_id not in self._tasks:
+            self._tasks[task_id] = dict()
+        self._tasks[task_id][key_id] = entry
+
+    def remove(self, task_id, key_id):
+        try:
+            self._peers.pop(key_id)
+            return self._tasks[task_id].pop(key_id)
+        except KeyError:
+            return None
+
+    def get(self, task_id):
+        peers = [self._daemon_address]
+        known_peers = self._tasks.get(task_id)
+
+        if known_peers:
+            return peers + [v for v in known_peers.values()]
+        return peers

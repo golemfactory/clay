@@ -221,15 +221,6 @@ class TestClient(TestWithDatabase):
         with self.assertRaises(IOError):
             Client(datadir=datadir)
 
-    def test_metadata(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
-
-        meta = self.client.get_metadata()
-        self.assertIsNotNone(meta)
-        self.assertEqual(meta, dict())
-
     def test_description(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False, use_docker_machine_manager=False,
@@ -239,28 +230,6 @@ class TestClient(TestWithDatabase):
         desc = "ADVANCE DESCRIPTION\n\tSOME TEXT"
         self.client.change_description(desc)
         self.assertEqual(self.client.get_description(), desc)
-
-    @unittest.skip('IPFS metadata is currently disabled')
-    def test_interpret_metadata(self, *_):
-        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-        from golem.network.p2p.p2pservice import P2PService
-
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False)
-
-        self.client.p2pservice = P2PService(MagicMock(), self.client.config_desc, self.client.keys_auth)
-        self.client.ipfs_manager = IPFSDaemonManager()
-        meta = self.client.get_metadata()
-        assert meta and meta['ipfs']
-
-        ip = '127.0.0.1'
-        port = 40102
-
-        node = MagicMock()
-        node.prv_addr = ip
-        node.prv_port = port
-
-        self.client.interpret_metadata(meta, ip, port, node)
 
     def test_get_status(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,

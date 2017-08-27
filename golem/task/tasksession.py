@@ -633,18 +633,26 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
-        res = resource_manager.get_resources(msg.task_id)
+        if msg.task_id != self.task_id:
+            return self.dropped()
+
+        key_id = self.task_server.get_key_id()
+        task_id = self.task_id
+
+        resource_server = self.task_server.client.resource_server
+        resource_manager = resource_server.resource_manager
+        peer_manager = resource_manager.peer_manager
+
+        res = resource_manager.get_resources(task_id)
         res = resource_manager.to_wire(res)
-        self.send(
-            message.MessageResourceList(
-                resources=res,
-                options=client_options
-            )
-        )
+
+        peers = peer_manager.get(task_id)
+        client_options = resource_manager.build_client_options(key_id, peers)
+
+        self.send(message.MessageResourceList(
+            resources=res,
+            options=client_options
+        ))
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
