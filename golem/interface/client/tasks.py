@@ -262,7 +262,7 @@ class Tasks:
         # validate output_format & output_file
         if definition.output_format:
             # TODO: check values
-            print "Validate: {}".format(definition.output_format)
+            print("Validate: {}".format(definition.output_format))
         else:
             # set default output_format
             # TODO: find the default for task type.
