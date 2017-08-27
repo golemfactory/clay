@@ -17,13 +17,13 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
         AbstractResourceManager.__init__(self, dir_manager, **kwargs)
 
-        self._daemon_pub_addresses = daemon_pub_addresses
+        self._peers = [daemon_pub_addresses]
 
     def new_client(self):
         return HyperdriveClient(**self.config.client)
 
     def build_client_options(self, node_id, known_peers=None, **kwargs):
-        peers = [self._daemon_pub_addresses]
+        peers = list(self._peers)
         if known_peers:
             peers += known_peers
         return HyperdriveClient.build_options(node_id, peers=peers, **kwargs)

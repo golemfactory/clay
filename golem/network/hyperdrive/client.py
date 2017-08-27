@@ -43,7 +43,12 @@ class HyperdriveClient(IClient):
 
     def addresses(self):
         response = self._request(command='addresses')
-        return response['addresses']
+        addresses = response['addresses']
+
+        for proto, entry in addresses.items():
+            addresses[proto] = (entry['address'], entry['port'])
+
+        return addresses
 
     def add(self, files, client_options=None, **kwargs):
         response = self._request(
@@ -100,6 +105,8 @@ class HyperdriveClient(IClient):
 
 class HyperdriveClientOptions(ClientOptions):
 
+    max_peers = 64
+
     def filtered(self,
                  client_id=HyperdriveClient.CLIENT_ID,
                  version=HyperdriveClient.VERSION):
@@ -109,7 +116,7 @@ class HyperdriveClientOptions(ClientOptions):
         if not opts:
             pass
 
-        elif opts.version < version:
+        elif opts.version < 1.0:
             log.warning('Resource client: incompatible version: %s',
                         type(opts.version))
 
@@ -135,29 +142,33 @@ class HyperdriveClientOptions(ClientOptions):
     @classmethod
     def filter_peers(cls, peers):
         result = list()
-        for peer in peers:
+
+        for peer in filter(None, peers):
             entry = cls.filter_peer(peer)
-            if entry:
-                result.append(entry)
+            if not entry:
+                continue
+
+            result.append(entry)
+            if len(result) == cls.max_peers:
+                break
+
         return result
 
     @classmethod
     def filter_peer(cls, peer):
-        if not peer:
-            return None
-
         new_entry = dict()
+
         for protocol, entry in peer.items():
             try:
-                address = ip_address(entry['address'])
-                port = int(entry['port'])
+                address = ip_address(entry[0])
+                port = int(entry[1])
 
                 if address.is_private:
                     raise ValueError('address {} is private'.format(address))
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'.format(port))
 
-            except (AttributeError, ValueError, AddressValueError) as err:
+            except (ValueError, TypeError, AddressValueError) as err:
                 log.warning('Resource client: %s', err)
             else:
                 new_entry[protocol] = entry
