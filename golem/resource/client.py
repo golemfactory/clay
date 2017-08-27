@@ -107,7 +107,7 @@ class ClientConfig(object):
     """
     Initial configuration for classes implementing the IClient interface
     """
-    def __init__(self, max_concurrent_downloads=3, max_retries=8, timeout=None):
+    def __init__(self, max_concurrent_downloads=3, max_retries=3, timeout=None):
 
         self.max_concurrent_downloads = max_concurrent_downloads
         self.max_retries = max_retries
