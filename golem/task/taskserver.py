@@ -27,7 +27,54 @@ logger = logging.getLogger('golem.task.taskserver')
 tmp_cycler = itertools.cycle(list(range(550)))
 
 
-class TaskServer(PendingConnectionsServer):
+class TaskResourcesMixin(object):
+
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
+
+    def get_resource_peers(self, task_id):
+        peer_manager = self._get_peer_manager()
+        return peer_manager.get(task_id)
+
+    def remove_resource_peer(self, task_id, key_id):
+        peer_manager = self._get_peer_manager()
+        return peer_manager.remove(task_id, key_id)
+
+    def get_resources(self, task_id):
+        resource_manager = self._get_resource_manager()
+        resources = resource_manager.get_resources(task_id)
+        return resource_manager.to_wire(resources)
+
+    def get_resource_options(self, task_id, key_id):
+        resource_manager = self._get_resource_manager()
+        peers = self.get_resource_peers(task_id)
+        return resource_manager.build_client_options(key_id, peers)
+
+    def request_resource(self, subtask_id, resource_header,
+                         address, port, key_id, task_owner):
+
+        if subtask_id in self.task_sessions:
+            session = self.task_sessions[subtask_id]
+            session.request_resource(subtask_id, resource_header)
+        else:
+            logger.error("Cannot map subtask_id {} to session"
+                         .format(subtask_id))
+        return subtask_id
+
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.client.pull_resources(task_id, resources,
+                                   client_options=client_options)
+
+    def _get_resource_manager(self):
+        resource_server = self.client.resource_server
+        return resource_server.resource_manager
+
+    def _get_peer_manager(self):
+        resource_manager = self._get_resource_manager()
+        return resource_manager.peer_manager
+
+
+class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def __init__(self, node, config_desc, keys_auth, client,
                  use_ipv6=False, use_docker_machine_manager=True):
         self.client = client
@@ -135,17 +182,6 @@ class TaskServer(PendingConnectionsServer):
         except Exception as err:
             logger.warning("Cannot send request for task: {}".format(err))
             self.task_keeper.remove_task_header(theader.task_id)
-
-    def request_resource(self, subtask_id, resource_header, address, port, key_id, task_owner):
-        if subtask_id in self.task_sessions:
-            session = self.task_sessions[subtask_id]
-            session.request_resource(subtask_id, resource_header)
-        else:
-            logger.error("Cannot map subtask_id {} to session".format(subtask_id))
-        return subtask_id
-
-    def pull_resources(self, task_id, resources, client_options=None):
-        self.client.pull_resources(task_id, resources, client_options=client_options)
 
     def send_results(self, subtask_id, task_id, result, computing_time,
                      owner_address, owner_port, owner_key_id, owner,
@@ -294,9 +330,6 @@ class TaskServer(PendingConnectionsServer):
 
     def get_subtask_ttl(self, task_id):
         return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
