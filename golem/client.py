@@ -29,6 +29,7 @@ from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.ethereum.password import get_saved_password
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -150,12 +151,10 @@ class Client(HardwarePresetsMixin):
 
         if transaction_system:
             # Bootstrap transaction system if enabled.
-            # TODO: Transaction system (and possible other modules) should be
-            #       modeled as a Service that run independently.
-            #       The Client/Application should be a collection of services.
+            password = get_saved_password(datadir)
             self.transaction_system = EthereumTransactionSystem(
                 datadir,
-                self.keys_auth._private_key,
+                password,
                 geth_port)
         else:
             self.transaction_system = None

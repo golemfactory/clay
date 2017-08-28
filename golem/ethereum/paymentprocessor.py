@@ -2,7 +2,9 @@ import logging
 import sys
 import time
 import json
+from os import path
 
+from .accounts import Account
 from .contracts import TestGNT
 from .node import tETH_faucet_donate
 
@@ -44,7 +46,8 @@ def _encode_payments(payments):
         pair = v + to
         if len(pair) != 32:
             raise ValueError(
-                "Incorrect pair length: {}. Should be 32".format(len(pair)))
+                "Incorrect pair length: {}. Should be 32".format(len(pair))
+            )
         args.append(pair)
     return args, value
 
@@ -69,9 +72,8 @@ class PaymentProcessor(Service):
 
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, client: Client, privkey, faucet=False) -> None:
+    def __init__(self, client: Client, account_password: bytes, faucet=False) -> None:
         self.__client = client
-        self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
         self.__gnt_reserved = 0
@@ -86,6 +88,16 @@ class PaymentProcessor(Service):
         self.deadline = sys.maxsize
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
+
+        keystore_file = path.join(client.node.datadir,
+                                  'golem_ethereum_account.json')
+        if path.exists(keystore_file):
+            self.account = Account.load(keystore_file, account_password)
+        else:
+            self.account = Account.new(account_password, path=keystore_file)
+            self.account.save()
+        log.info("Account {} unlocked ({})".format(self.account.address.hex(),
+                                                   self.account.path))
 
     def wait_until_synchronized(self):
         is_synchronized = False
