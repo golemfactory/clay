@@ -79,10 +79,5 @@ def tee_target(prefix, proc, path):
             for stream_prefix, in_, out in channels:
                 line = in_.readline()
                 if line:
-<<<<<<< 3c35b06adbe734ae2b2ee515d89bb4de4956313a
                     out.write(prefix + str(line))
                     log_f.write(stream_prefix + str(line))
-=======
-                    out.write(prefix + line)
-                    log_f.write(stream_prefix + line)
->>>>>>> Capture geth logs in tee-thread
