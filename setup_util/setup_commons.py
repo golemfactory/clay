@@ -39,16 +39,17 @@ class PyTest(test):
 
 class PyInstaller(Command):
     description = "run pyinstaller and packaging actions"
-    user_options = []
+    user_options = [
+        ('package-path=', None, 'save generated gzipped tarball at this path'),
+    ]
 
     def initialize_options(self):
-        pass
+        self.package_path = None
 
     def finalize_options(self):
         pass
 
-    @classmethod
-    def run(cls):
+    def run(self):
         import subprocess
         import shutil
 
@@ -60,32 +61,30 @@ class PyInstaller(Command):
                 shutil.rmtree(directory)
 
         for spec in ['golemapp.spec', 'golemcli.spec']:
-            cls.banner("Building {}".format(spec))
+            self.banner("Building {}".format(spec))
             subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', spec])
 
         print("> Copying taskcollector")
-        cls.copy_taskcollector(dist_dir)
+        self.copy_taskcollector(dist_dir)
 
         print("> Copying examples")
-        cls.copy_examples(dist_dir)
+        self.copy_examples(dist_dir)
 
         print("> Copying chain")
-        cls.copy_chain(dist_dir)
+        self.copy_chain(dist_dir)
 
         if not is_windows():
             print("> Compressing distribution")
-            tar_dir = cls.move(dist_dir)
-            tar_file = cls.compress(tar_dir, dist_dir)
+            tar_dir = self.move(dist_dir)
+            tar_file = self.compress(tar_dir, dist_dir)
             print("> Archive saved: '{}'".format(tar_file))
 
-    @classmethod
-    def banner(cls, msg):
+    def banner(self, msg):
         print("\n> --------------------------------")
         print("> {}".format(msg))
         print("> --------------------------------\n")
 
-    @classmethod
-    def copy_taskcollector(cls, dist_dir):
+    def copy_taskcollector(self, dist_dir):
         import shutil
 
         taskcollector_dir = path.join('apps', 'rendering', 'resources',
@@ -93,8 +92,7 @@ class PyInstaller(Command):
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
 
-    @classmethod
-    def copy_chain(cls, dist_dir):
+    def copy_chain(self, dist_dir):
         from shutil import copy
         from os import makedirs
 
@@ -103,8 +101,7 @@ class PyInstaller(Command):
         makedirs(dist_dir)
         copy(chain_files, dist_dir)
 
-    @classmethod
-    def copy_examples(cls, dist_dir):
+    def copy_examples(self, dist_dir):
         import shutil
 
         examples_dir = path.join(dist_dir, 'examples')
@@ -121,8 +118,7 @@ class PyInstaller(Command):
         shutil.copy(blender_example, blender_dir)
         shutil.copytree(lux_example, lux_dir)
 
-    @classmethod
-    def move(cls, dist_dir):
+    def move(self, dist_dir):
         import shutil
 
         version = get_version()
@@ -139,9 +135,17 @@ class PyInstaller(Command):
 
         return ver_dir
 
-    @classmethod
-    def compress(cls, src_dir, dist_dir):
+    def compress(self, src_dir, dist_dir):
         import tarfile
+
+        tar_file = self.get_tarball_path(dist_dir)
+        with tarfile.open(tar_file, "w:gz") as tar:
+            tar.add(src_dir, arcname=path.basename(src_dir))
+        return tar_file
+
+    def get_tarball_path(self, dist_dir):
+        if self.package_path:
+            return self.package_path
 
         if is_osx():
             sys_name = 'macos'
@@ -151,12 +155,8 @@ class PyInstaller(Command):
             raise EnvironmentError("Unsupported OS: {}".format(sys.platform))
 
         version = get_version()
-        tar_file = path.join(dist_dir,
-                             'golem-{}-{}.tar.gz'.format(sys_name, version))
-
-        with tarfile.open(tar_file, "w:gz") as tar:
-            tar.add(src_dir, arcname=path.basename(src_dir))
-        return tar_file
+        return path.join(dist_dir,
+                         'golem-{}-{}.tar.gz'.format(sys_name, version))
 
 
 def get_long_description(my_path):

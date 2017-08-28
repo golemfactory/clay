@@ -18,6 +18,7 @@ from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
 from golem.environments.utils import find_program
+from golem.report import report_calls, Component
 from golem.utils import encode_hex, decode_hex
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
@@ -84,7 +85,8 @@ class NodeProcess(object):
             **self.SUBPROCESS_PIPES
         ).communicate()
 
-        match = re.search("Version: (\d+\.\d+\.\d+)", str(output,'utf-8')).group(1)
+        match = re.search("Version: (\d+\.\d+\.\d+)",
+                          str(output, 'utf-8')).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
             e_description =\
@@ -98,7 +100,8 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
-    def start(self):
+    @report_calls(Component.ethereum, 'node.start')
+    def start(self, port=None):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
@@ -128,7 +131,8 @@ class NodeProcess(object):
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
-        port = find_free_net_port()
+        if port is None:
+            port = find_free_net_port()
 
         # Build unique IPC/socket path. We have to use system temp dir to
         # make sure the path has length shorter that ~100 chars.
@@ -182,6 +186,7 @@ class NodeProcess(object):
 
         log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
 
+    @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
         if self.__ps:
             start_time = time.clock()

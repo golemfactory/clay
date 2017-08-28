@@ -1,5 +1,7 @@
 class Golem(object):
-    evt_component_state     = 'evt.component.state'
+    status                  = 'golem.status'
+
+    evt_golem_status        = 'evt.golem.status'
 
 
 class Environment(object):

@@ -17,7 +17,7 @@ log = logging.getLogger('golem.pay')
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(self, datadir, node_priv_key):
+    def __init__(self, datadir, node_priv_key, port=None):
         """ Create new transaction system instance for node with given id
         :param node_priv_key str: node's private key for Ethereum account (32b)
         """
@@ -33,7 +33,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__node_address = b'0x' + privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self.__eth_node = self.incomes_keeper.eth_node = Client(datadir)
+        self.__eth_node = self.incomes_keeper.eth_node = Client(datadir, port)
         payment_processor = PaymentProcessor(
             self.__eth_node,
             node_priv_key,

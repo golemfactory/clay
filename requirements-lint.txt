@@ -1,0 +1,4 @@
+PyInstaller
+pylint
+mypy
+pycodestyle

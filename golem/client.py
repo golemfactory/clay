@@ -40,7 +40,7 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
-from golem.report import Component, Stage, StatePublisher, report_calls
+from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
@@ -79,6 +79,7 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
+            geth_port=None,
             **config_overrides):
 
         if not datadir:
@@ -152,8 +153,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key)
-            )
+                datadir, encode_hex(self.keys_auth._private_key), geth_port)
         else:
             self.transaction_system = None
 
@@ -186,7 +186,7 @@ class Client(HardwarePresetsMixin):
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
-        StatePublisher.set_publisher(self.rpc_publisher)
+        StatusPublisher.set_publisher(self.rpc_publisher)
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event != 'unreachable':
@@ -281,14 +281,14 @@ class Client(HardwarePresetsMixin):
                                            self.monitor.on_peer_snapshot)
                 self.monitor.on_login()
 
-            StatePublisher.publish(Component.client, 'start',
-                                   stage=Stage.post)
+            StatusPublisher.publish(Component.client, 'start',
+                                    stage=Stage.post)
 
         def terminate(*exceptions):
             log.error("Golem cannot listen on ports: %s", exceptions)
-            StatePublisher.publish(Component.client, 'start',
-                                   stage=Stage.exception,
-                                   data=[to_unicode(e) for e in exceptions])
+            StatusPublisher.publish(Component.client, 'start',
+                                    stage=Stage.exception,
+                                    data=[to_unicode(e) for e in exceptions])
             sys.exit(1)
 
         task = Deferred()
@@ -1144,6 +1144,10 @@ class Client(HardwarePresetsMixin):
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
+
+    @staticmethod
+    def get_golem_status():
+        return StatusPublisher.last_status()
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
