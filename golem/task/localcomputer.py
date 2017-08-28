@@ -5,7 +5,6 @@ from threading import Lock
 import time
 from typing import Callable
 
-from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
@@ -14,7 +13,11 @@ from golem.task.taskbase import Task, ResourceType, ComputeTaskDef
 
 logger = logging.getLogger("golem.task")
 
-
+# TODO remove task from localcomputer init
+# it is not used anywhere except
+# - calling get_resources (only if use_task_resources is set)
+# - in tasktester, to run after_task method (can be refactored away)
+# task can be then optional, task=None
 class LocalComputer(object):
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
@@ -30,9 +33,9 @@ class LocalComputer(object):
                  comp_success_message=DEFAULT_SUCCESS,
                  use_task_resources=True,
                  additional_resources=None):
-        # TODO remove this isinstance
-        if not isinstance(task, Task):
-            raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
+        # TODO as TODO on the top of the class says
+        # if not isinstance(task, Task):
+        #     raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
         self.task = task
         self.res_path = None
         self.tmp_dir = None

@@ -5,8 +5,8 @@ from golem.docker.environment import DockerEnvironment
 
 
 class MLPOCTaskEnvironment(DockerEnvironment):
-    DOCKER_IMAGE = "golemfactory/mlpoc"
-    DOCKER_TAG = "1.0"
+    DOCKER_IMAGE = "jacekjacekjacekg/mlbase"
+    DOCKER_TAG = "latest"
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
     SCRIPT_NAME = "provider_main.py"

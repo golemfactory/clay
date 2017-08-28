@@ -93,7 +93,7 @@ class ComputationState(object):
         self.end_model = model
 
     def add_perturbation(self, eps: float):
-        derandom()  # TODO keep track of all derandomization
+        derandom()  # TODO keep track of all derandomizations
         for model in [self.start_model, self.end_model]:
             for v in model.net.parameters():
                 numpy_form = v.data.numpy()

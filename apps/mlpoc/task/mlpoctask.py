@@ -78,7 +78,8 @@ class MLPOCTask(CoreTask):
         return {"HIDDEN_SIZE": 10,
                 "INPUT_SIZE": 10,
                 "NUM_CLASSES": 3,
-                "NUM_EPOCHS": self.task_definition.options.number_of_epochs
+                "NUM_EPOCHS": self.task_definition.options.number_of_epochs,
+                "STEPS_PER_EPOCH": self.task_definition.options.steps_per_epoch
                 }
 
     def _extra_data(self, perf_index=0.0) -> Tuple[
