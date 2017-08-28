@@ -56,9 +56,9 @@ Golem communicates with external technologies some of them may be downloaded and
 * [SQLite3](https://sqlite.org/index.html)
 
 Benchmarks:
-* General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
-* Blender: [scene-BMW](https://www.blender.org/download/demo-files/)
-* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche
+* General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.
+* Blender: [scene-BMW](https://www.blender.org/download/demo-files/).
+* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche.
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.
