@@ -315,10 +315,14 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __trust_to_config_trust(self, trust):
         try:
-            trust = max(min(float(trust) / 100.0, 1.0), -1.0)
+            from golem.ranking.helper.trust_const import \
+                MIN_TRUST, \
+                MAX_TRUST
+
+            trust = max(min(float(trust) / 100.0, MAX_TRUST), MIN_TRUST)
         except ValueError:
             logger.error("Wrong trust value {}".format(trust))
-            trust = -1
+            trust = MIN_TRUST
         return trust
 
     def __read_trust(self, line_edit, slider):
