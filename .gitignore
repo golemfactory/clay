@@ -70,7 +70,3 @@ Installer/Installer_Win/golem-*
 
 # virtualenv
 venv/*
-
-# luxrender test files
-luxrender-output.exr
-luxrender-output.png
