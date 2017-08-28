@@ -107,6 +107,8 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
+            if self.key_id:
+                self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -639,19 +641,12 @@ class TaskSession(MiddlemanSafeSession):
         key_id = self.task_server.get_key_id()
         task_id = self.task_id
 
-        resource_server = self.task_server.client.resource_server
-        resource_manager = resource_server.resource_manager
-        peer_manager = resource_manager.peer_manager
-
-        res = resource_manager.get_resources(task_id)
-        res = resource_manager.to_wire(res)
-
-        peers = peer_manager.get(task_id)
-        client_options = resource_manager.build_client_options(key_id, peers)
+        resources = self.task_server.get_resources(task_id)
+        options = self.task_server.get_resource_options(task_id, key_id)
 
         self.send(message.MessageResourceList(
-            resources=res,
-            options=client_options
+            resources=resources,
+            options=options
         ))
 
     def _react_to_subtask_result_accepted(self, msg):
