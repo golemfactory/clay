@@ -42,9 +42,9 @@ test:
   pre:
     - pip3 install coverage codecov
   override:
-    - ./lintdiff.sh pylint apps golem gui scripts setup_util tests *.py
+    - ./lintdiff.sh 'pylint apps golem gui scripts setup_util tests *.py'
     - ./lintdiff.sh pycodestyle
-    - ./lintdiff.sh mypy apps golem gui scripts setup_util tests *.py
+    - ./lintdiff.sh 'mypy apps golem gui scripts setup_util tests *.py'
     - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml":
         timeout: 1200
   post:
