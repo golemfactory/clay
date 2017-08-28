@@ -30,7 +30,7 @@ class HyperdriveClient(IClient):
         self._headers = {'content-type': 'application/json'}
 
     @classmethod
-    def build_options(cls, node_id, peers=None, **kwargs):
+    def build_options(cls, peers=None, **kwargs):
         return HyperdriveClientOptions(cls.CLIENT_ID, cls.VERSION,
                                        options=dict(peers=peers))
 
@@ -126,7 +126,7 @@ class HyperdriveClientOptions(ClientOptions):
 
         elif opts.version < 1.0:
             log.warning('Resource client: incompatible version: %s',
-                        type(opts.version))
+                        opts.version)
 
         elif not isinstance(opts.options, dict):
             log.warning('Resource client: invalid type: %s; dict expected',
@@ -165,7 +165,8 @@ class HyperdriveClientOptions(ClientOptions):
 
         for protocol, entry in peer.items():
             try:
-                ip = ip_address(entry[0])
+                ip_str = entry[0]
+                ip = ip_address(ip_str)
                 port = int(entry[1])
 
                 if ip.is_private:
@@ -177,15 +178,15 @@ class HyperdriveClientOptions(ClientOptions):
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'
                                      .format(port))
-                if forced_ip and ip != forced_ip:
+                if forced_ip and ip_str != forced_ip:
                     log.warning("Replacing provider's IP address %s with %s",
                                 ip, forced_ip)
-                    entry[0] = forced_ip
+                    ip_str = forced_ip
 
             except (ValueError, TypeError, AddressValueError) as err:
-                log.warning('Resource client: %s', err)
+                log.warning('Resource client: %s %s', err, peer)
             else:
-                new_entry[protocol] = entry
+                new_entry[protocol] = (ip_str, port)
 
         if new_entry:
             return new_entry

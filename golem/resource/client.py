@@ -48,7 +48,7 @@ def file_multihash(file_path):
 class IClient(object):
 
     @classmethod
-    def build_options(cls, node_id, **kwargs):
+    def build_options(cls, **kwargs):
         raise NotImplementedError
 
     def add(self, files, recursive=False, client_options=None, **kwargs):
@@ -271,5 +271,5 @@ class TestClient(IClient):
         return self._id
 
     @classmethod
-    def build_options(cls, node_id, **kwargs):
+    def build_options(cls, **kwargs):
         return ClientOptions(cls._id, 1)

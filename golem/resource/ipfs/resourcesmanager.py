@@ -45,5 +45,5 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
                                     self.commands.pin_rm,
                                     multihash)
 
-    def build_client_options(self, node_id, peers=None, **kwargs):
-        return IPFSClient.build_options(node_id, **kwargs)
+    def build_client_options(self, peers=None, **kwargs):
+        return IPFSClient.build_options(**kwargs)

@@ -583,7 +583,7 @@ class TaskSession(MiddlemanSafeSession):
         secret = msg.secret
         multihash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -636,10 +636,10 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
         key_id = self.task_server.get_key_id()
-        task_id = self.task_id
+        task_id = msg.task_id
 
         resources = self.task_server.get_resources(task_id)
-        options = self.task_server.get_resource_options(task_id, key_id)
+        options = self.task_server.get_share_options(task_id, key_id)
 
         self.send(message.MessageResourceList(
             resources=resources,
@@ -908,9 +908,7 @@ class TaskSession(MiddlemanSafeSession):
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
+        client_options = resource_manager.build_client_options()
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()

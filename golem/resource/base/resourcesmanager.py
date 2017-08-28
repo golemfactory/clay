@@ -284,7 +284,7 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             self.commands = ClientCommands
 
     @abc.abstractmethod
-    def build_client_options(self, node_id, **kwargs):
+    def build_client_options(self, **kwargs):
         pass
 
     def index_resources(self, dir_name, client=None, client_options=None):
@@ -576,8 +576,8 @@ class TestResourceManager(AbstractResourceManager, ClientHandler):
         AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
         ClientHandler.__init__(self, ClientCommands, ClientConfig())
 
-    def build_client_options(self, node_id, **kwargs):
-        return TestClient.build_options(node_id, **kwargs)
+    def build_client_options(self, **kwargs):
+        return TestClient.build_options(**kwargs)
 
     def new_client(self):
         return TestClient()

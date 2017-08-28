@@ -32,10 +32,16 @@ class TaskResourcesMixin(object):
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
+    def get_resource_peer(self, key_id):
+        peer_manager = self._get_peer_manager()
+        if peer_manager:
+            return peer_manager.get(key_id)
+        return None
+
     def get_resource_peers(self, task_id):
         peer_manager = self._get_peer_manager()
         if peer_manager:
-            return peer_manager.get(task_id)
+            return peer_manager.get_for_task(task_id)
         return []
 
     def remove_resource_peer(self, task_id, key_id):
@@ -49,10 +55,16 @@ class TaskResourcesMixin(object):
         resources = resource_manager.get_resources(task_id)
         return resource_manager.to_wire(resources)
 
-    def get_resource_options(self, task_id, key_id):
+    def get_download_options(self, key_id):
+        resource_manager = self._get_resource_manager()
+        peer = self.get_resource_peer(key_id)
+        peers = [peer] if peer else []
+        return resource_manager.build_client_options(peers=peers)
+
+    def get_share_options(self, task_id, key_id):
         resource_manager = self._get_resource_manager()
         peers = self.get_resource_peers(task_id)
-        return resource_manager.build_client_options(key_id, peers=peers)
+        return resource_manager.build_client_options(peers=peers)
 
     def request_resource(self, subtask_id, resource_header,
                          address, port, key_id, task_owner):

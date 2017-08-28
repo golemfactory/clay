@@ -410,9 +410,7 @@ class Client(HardwarePresetsMixin):
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        key_id = self.keys_auth.key_id
-
-        options = resource_manager.build_client_options(key_id)
+        options = resource_manager.build_client_options()
         files = task.get_resources(None, resource_types["hashes"])
 
         def add_task(_):

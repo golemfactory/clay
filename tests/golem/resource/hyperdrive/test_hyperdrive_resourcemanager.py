@@ -34,25 +34,25 @@ class TestHyperdrivePeerManager(TestCase):
 
         assert len(peer_manager._peers) == 1
         assert len(peer_manager._tasks) == 0
-        assert len(peer_manager.get(task_id)) == 1
+        assert len(peer_manager.get_for_task(task_id)) == 1
 
         peer_manager.interpret_metadata(metadata, None, None, node)
 
         assert len(peer_manager._peers) == 1
         assert len(peer_manager._tasks) == 0
-        assert len(peer_manager.get(task_id)) == 1
+        assert len(peer_manager.get_for_task(task_id)) == 1
 
         peer_manager.add(task_id, node.key)
 
         assert len(peer_manager._peers) == 1
         assert len(peer_manager._tasks) == 1
-        assert len(peer_manager.get(task_id)) == 2
+        assert len(peer_manager.get_for_task(task_id)) == 2
 
         peer_manager.remove(task_id, node.key)
 
         assert len(peer_manager._peers) == 0
         assert len(peer_manager._tasks) == 1
-        assert len(peer_manager.get(task_id)) == 1
+        assert len(peer_manager.get_for_task(task_id)) == 1
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")

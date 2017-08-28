@@ -23,8 +23,8 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def new_client(self):
         return HyperdriveClient(**self.config.client)
 
-    def build_client_options(self, node_id, peers=None, **kwargs):
-        return HyperdriveClient.build_options(node_id, peers=peers, **kwargs)
+    def build_client_options(self, peers=None, **kwargs):
+        return HyperdriveClient.build_options(peers=peers, **kwargs)
 
     def to_wire(self, resources):
         iterator = filter(None, resources)
@@ -137,6 +137,9 @@ class HyperdrivePeerManager(HyperDriveMetadataManager):
         except KeyError:
             return None
 
-    def get(self, task_id):
+    def get(self, key_id):
+        return self._peers.get(key_id)
+
+    def get_for_task(self, task_id):
         peers = self._tasks.get(task_id, dict())
         return [self._daemon_address] + list(peers.values())
