@@ -108,8 +108,10 @@ class HyperDriveMetadataManager(object):
             return
 
         metadata_peer = metadata.get(self.METADATA_KEY)
-        peer = HyperdriveClientOptions.filter_peer(metadata_peer)
+        peer = HyperdriveClientOptions.filter_peer(metadata_peer,
+                                                   forced_ip=address)
         if peer:
+
             self._peers[node.key] = peer
 
 

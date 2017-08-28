@@ -224,4 +224,11 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         ), excluded_ips=['1.2.3.4']) is None
 
         assert HyperdriveClientOptions.filter_peer(
+            valid_addresses, forced_ip='2.3.4.5'
+        ) == dict(
+            TCP=('2.3.4.5', 1234),
+            uTP=('2.3.4.5', 1234)
+        )
+
+        assert HyperdriveClientOptions.filter_peer(
             valid_addresses) == valid_addresses
