@@ -49,7 +49,7 @@ class TestDummyTaskVerificator(TempDirFixture):
         assert ver_opts["difficulty"] == td.options.difficulty
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
+        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
 
         subtask_data = {"subtask_data": "0" * 128}
 

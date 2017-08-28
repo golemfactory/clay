@@ -182,8 +182,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ## copy to new location
         new_file_dir = path.join(path.dirname(result), subtask_id)
 
-        new_result = self._change_file_location(result,
-                                                path.join(new_file_dir, "new.result"))
+        new_result = self._change_file_location(result, path.join(new_file_dir, "new.result"))
 
         return new_result
 
@@ -247,11 +246,9 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         result = task_thread.result
         self.assertEqual(result["result_type"], ResultType.FILES)
         self.assertGreaterEqual(len(result["data"]), 3)
-        self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDOUT_FILE
-                for f in result["data"]))
-        self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDERR_FILE
-                for f in result["data"]))
-        self.assertTrue(
-            any(f.endswith(DummyTask.RESULT_EXTENSION) and "out" in f for f in result["data"]))
+        self.assertTrue(any(path.basename(f) == DockerTaskThread.STDOUT_FILE
+                            for f in result["data"]))
+        self.assertTrue(any(path.basename(f) == DockerTaskThread.STDERR_FILE
+                            for f in result["data"]))
+        self.assertTrue(any(f.endswith(DummyTask.RESULT_EXT) and "out" in f
+                            for f in result["data"]))

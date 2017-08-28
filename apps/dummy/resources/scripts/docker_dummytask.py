@@ -32,7 +32,7 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
 
     # -------------------------------------------------------------------
     # Temporary testing for communications
-    #####################################################################
+    # -------------------------------------------------------------------
 
     # os.makedirs(MESSAGES_IN)
     # os.makedirs(MESSAGES_OUT)
@@ -51,7 +51,8 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     #         for fname in os.listdir(MESSAGES_IN):
     #             with open(os.path.join(MESSAGES_IN, fname), "r") as f:
     #                 x = json.load(f)
-    #             with open(os.path.join(MESSAGES_OUT, fname + "out"), "w+") as f:
+    #             with open(os.path.join(MESSAGES_OUT, fname + "out"),
+    #                       "w+") as f:
     #                 json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
 
 run(params.data_files,

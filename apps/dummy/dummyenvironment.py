@@ -10,7 +10,7 @@ class DummyTaskEnvironment(DockerEnvironment):
     ENV_ID = "DUMMYPOW"
     APP_DIR = path.join(get_golem_path(), 'apps', 'dummy')
     SCRIPT_NAME = "docker_dummytask.py"
-    SHORT_DESCRIPTION = "Dummy task (example app calculating proof-of-work hash)"
+    SHORT_DESCRIPTION = "Dummy task - calculating proof-of-work hash"
 
     def get_performance(self, cfg_desc):
         return cfg_desc.estimated_dummytask_performance

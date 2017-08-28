@@ -42,7 +42,7 @@ class MLPOCTask(CoreTask):
     ENVIRONMENT_CLASS = MLPOCTaskEnvironment
     VERIFICATOR_CLASS = MLPOCTaskVerificator
 
-    RESULT_EXTENSION = ".result"
+    RESULT_EXT = ".result"
     BLACK_BOX = CountingBlackBox  # black box class, not instance
     BATCH_MANAGER = IrisBatchManager  # batch manager class, not instace
 
@@ -69,7 +69,7 @@ class MLPOCTask(CoreTask):
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
         # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
-        # ver_opts["result_extension"] = self.RESULT_EXTENSION
+        # ver_opts["result_extension"] = self.RESULT_EXT
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
@@ -103,7 +103,8 @@ class MLPOCTask(CoreTask):
             "order_of_batches": batch_manager.get_order_of_batches()
         }
 
-        return (black_box, batch_manager,
+        return (black_box,
+                batch_manager,
                 self._new_compute_task_def(subtask_id,
                                            extra_data,
                                            perf_index=perf_index))
@@ -144,7 +145,7 @@ class MLPOCTask(CoreTask):
 
     def __get_result_file_name(self, subtask_id: str) -> str:
         return "{}{}".format(subtask_id[0:6],
-                             self.RESULT_EXTENSION)
+                             self.RESULT_EXT)
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         black_box, batch_manager, exd = self._extra_data()
@@ -174,6 +175,46 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
     # or maybe I should do that by creating config file
     # with metadata about dataset and network configuration
 
+    @classmethod
+    def build_dictionary(cls, definition: MLPOCTaskDefinition):
+        dictionary = super().build_dictionary(definition)
+        opts = dictionary['options']
+
+        opts["number_of_epochs"] = int(definition.options.number_of_epochs)
+        opts["steps_per_epoch"] = int(definition.options.steps_per_epoch)
+
+        return dictionary
+
+    # TODO do the checking in some @enforce
+    @classmethod
+    def build_full_definition(cls, task_type: MLPOCTaskTypeInfo, dictionary):
+        # dictionary comes from GUI
+        opts = dictionary["options"]
+
+        definition = super().build_full_definition(task_type, dictionary)
+
+        steps_per_epoch = opts.get("steps_per_epoch",
+                       definition.options.steps_per_epoch)
+        number_of_epochs = opts.get("number_of_epochs",
+                              definition.options.number_of_epochs)
+
+        # TODO uncomment that when GUI will be fixed
+        # if not isinstance(steps_per_epoch, int):
+        #     raise TypeError("Num of steps per epoch should be int")
+        # if not isinstance(number_of_epochs, int):
+        #     raise TypeError("Num of epochs should be int")
+        steps_per_epoch = int(steps_per_epoch)
+        number_of_epochs = int(number_of_epochs)
+
+        if steps_per_epoch <= 0:
+            raise Exception("Num of steps per epoch should be greater than 0")
+        if number_of_epochs < 0:
+            raise Exception("Num of epochs should be greater than 0")
+
+        definition.options.number_of_epochs = number_of_epochs
+        definition.options.steps_per_epoch = steps_per_epoch
+
+        return definition
     # also, a second file, which will be a configuration file for spearmint
 
 

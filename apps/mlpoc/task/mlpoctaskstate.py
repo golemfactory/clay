@@ -72,3 +72,5 @@ class MLPOCTaskOptions(Options):
     def __init__(self):
         super(MLPOCTaskOptions, self).__init__()
         self.environment = MLPOCTaskEnvironment()
+        self.steps_per_epoch = 0
+        self.number_of_epochs = 0

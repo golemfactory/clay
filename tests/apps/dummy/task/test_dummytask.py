@@ -34,7 +34,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_constants(self):
         assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
-        assert DummyTask.RESULT_EXTENSION == ".result"
+        assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):
         dt, td = self._get_new_dummy()
@@ -44,7 +44,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert ver_opts["difficulty"] == td.options.difficulty
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
+        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
 
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
@@ -57,7 +57,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         name = dt._DummyTask__get_result_file_name(subtask_id)
         assert name == "{}{}{}".format(td.out_file_basename,
                                        subtask_id[0:6],
-                                       dt.RESULT_EXTENSION)
+                                       dt.RESULT_EXT)
 
     @patch("random.getrandbits", lambda x: 0)
     def test_query_extra_data_for_test_task(self):

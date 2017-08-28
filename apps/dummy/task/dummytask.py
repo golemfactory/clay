@@ -38,7 +38,7 @@ class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFICATOR_CLASS = DummyTaskVerificator
 
-    RESULT_EXTENSION = ".result"
+    RESULT_EXT = ".result"
 
     def __init__(self,
                  total_tasks: int,
@@ -64,7 +64,7 @@ class DummyTask(CoreTask):
         ver_opts["difficulty"] = self.task_definition.options.difficulty
         ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         ver_opts["result_size"] = self.task_definition.result_size
-        ver_opts["result_extension"] = self.RESULT_EXTENSION
+        ver_opts["result_extension"] = self.RESULT_EXT
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -126,7 +126,7 @@ class DummyTask(CoreTask):
     def __get_result_file_name(self, subtask_id: str) -> str:
         return "{}{}{}".format(self.task_definition.out_file_basename,
                                subtask_id[0:6],
-                               self.RESULT_EXTENSION)
+                               self.RESULT_EXT)
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         exd = self.__extra_data()
