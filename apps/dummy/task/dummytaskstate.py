@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 from copy import deepcopy
 
@@ -8,15 +9,30 @@ from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
 
 
-# TODO move it somewhere, but idk where
-
-
+# moved it to dir_manager and created tests, in PR#1297
 def ls_R(dir):
     files = []
     for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
         for name in filenames:
             files.append(os.path.join(dirpath, name))
     return files
+
+
+# copied from docker_luxtask.py - difficult to refactor, since
+# docker_luxtask.py can't use external dependencies
+# the solution would be to replicate code_dir behaviour from dummytask
+# in lux task
+def symlink_or_copy(source, target):
+    try:
+        os.symlink(source, target)
+    except OSError:
+        if os.path.isfile(source):
+            if os.path.exists(target):
+                os.remove(target)
+            shutil.copy(source, target)
+        else:
+            from distutils import dir_util
+            dir_util.copy_tree(source, target, update=1)
 
 
 class DummyTaskDefaults(TaskDefaults):
@@ -44,7 +60,6 @@ class DummyTaskDefaults(TaskDefaults):
 
 
 class DummyTaskDefinition(TaskDefinition):
-
     def __init__(self, defaults=None):
         TaskDefinition.__init__(self)
 
@@ -77,7 +92,7 @@ class DummyTaskDefinition(TaskDefinition):
         self.shared_data_files = list(self.resources)
         self.code_files = ls_R(self.code_dir)
 
-        os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
+        symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
 
         # makes sense when len(..) > 1
         # common_data_path = os.path.commonpath(self.shared_data_files)
