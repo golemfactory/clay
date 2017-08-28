@@ -393,7 +393,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @staticmethod
     def recount_performance(num_cores):
-        test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')
+        test_file = os.path.join(get_golem_path(), 'apps', 'rendering', 'benchmark', 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
