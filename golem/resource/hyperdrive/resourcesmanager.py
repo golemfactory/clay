@@ -135,5 +135,5 @@ class HyperdrivePeerManager(HyperDriveMetadataManager):
         known_peers = self._tasks.get(task_id)
 
         if known_peers:
-            return peers + known_peers.values()
+            return peers + list(known_peers.values())
         return peers
