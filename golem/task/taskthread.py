@@ -78,6 +78,12 @@ class TaskThread(Thread):
             self.vm.end_comp()
 
     def _fail(self, error_obj):
+        # Preserves the original cause of failure
+        if self.error:
+            return
+        # Terminate computation (if any)
+        self.end_comp()
+
         logger.error("Task computing error: {}".format(error_obj))
         self.error = True
         self.error_msg = str(error_obj)

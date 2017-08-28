@@ -16,7 +16,7 @@ class PeerSessionInfo(object):
         'address', 'port',
         'verified', 'degree', 'key_id',
         'node_name', 'node_info',
-        'listen_port', 'conn_id'
+        'listen_port', 'conn_id', 'client_ver'
     ]
 
     def __init__(self, session):
@@ -53,6 +53,7 @@ class PeerSession(BasicSafeSession):
         self.degree = 0
         self.node_name = ""
         self.node_info = None
+        self.client_ver = None
         self.listen_port = None
 
         self.conn_id = None
@@ -334,6 +335,7 @@ class PeerSession(BasicSafeSession):
     def _react_to_hello(self, msg):
         self.node_name = msg.node_name
         self.node_info = msg.node_info
+        self.client_ver = msg.client_ver
         self.listen_port = msg.port
 
         next_hello = self.key_id == msg.client_key_id
@@ -533,9 +535,9 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePong())
 
     def __send_hello(self):
-        self.solve_challenge = self.key_id \
-                               and self.p2p_service.should_solve_challenge \
-                               or False
+        from golem.core.variables import APP_VERSION
+        self.solve_challenge = self.key_id and \
+            self.p2p_service.should_solve_challenge or False
         challenge_kwargs = {}
         if self.solve_challenge:
             challenge = self.p2p_service._get_challenge(self.key_id)
@@ -548,6 +550,7 @@ class PeerSession(BasicSafeSession):
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
+            client_ver=APP_VERSION,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,

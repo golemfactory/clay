@@ -240,18 +240,52 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 @ci_skip
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
-        files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
         ts = mock.MagicMock()
         ts.config_desc = config_desc()
         tc = TaskComputer("ABC", ts, use_docker_machine_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
-        tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},
-                          "hello thread", os.path.dirname(files_[0]), os.path.dirname(files_[1]), 20)
+        tt = self._new_task_thread(tc)
+
         tt.run()
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
         self.assertTrue(tc.counting_task)
+
+    def test_fail(self):
+        first_error_msg = "First error message"
+        second_error_msg = "Second error message"
+
+        tt = self._new_task_thread(mock.Mock())
+        tt._fail(first_error_msg)
+
+        assert tt.error is True
+        assert tt.done is True
+        assert tt.error_msg == first_error_msg
+
+        tt._fail(second_error_msg)
+        assert tt.error is True
+        assert tt.done is True
+        assert tt.error_msg == first_error_msg
+
+    def _new_task_thread(self, task_computer):
+        files = self.additional_dir_content([0, [1], [1], [1], [1]])
+        src_code = """
+                   cnt = 0
+                   for i in range(1000000):
+                       cnt += 1
+                   output = cnt
+                   """
+
+        return PyTaskThread(task_computer,
+                            subtask_id="xxyyzz",
+                            working_directory=self.path,
+                            src_code=src_code,
+                            extra_data={},
+                            short_desc="hello thread",
+                            res_path=os.path.dirname(files[0]),
+                            tmp_path=os.path.dirname(files[1]),
+                            timeout=20)
 
 
 class TestTaskMonitor(TestDirFixture):
