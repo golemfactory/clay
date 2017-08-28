@@ -17,7 +17,7 @@ class ProcessService:
     adequate numbers that may be used to combine them with proper configuration
     options."""
 
-    def __init__(self, ctl_file_name: str = DEFAULT_PROC_FILE) -> None:
+    def __init__(self, ctl_file_name=DEFAULT_PROC_FILE):
         """ Create new process service instance
         :param ctl_file_name: process working file where information
             about active applications is written
@@ -27,7 +27,7 @@ class ProcessService:
         self.maxFileSize = MAX_PROC_FILE_SIZE
         self.fd = -1
         self.ctl_file = ctl_file
-        self.state = {}
+        self.state = {}  # type: Dict[int, Tuple[float, int, NoneType]]
 
         if not os.path.exists(ctl_file) or os.path.getsize(ctl_file) < 2:
             if self.__acquire_lock():
@@ -50,11 +50,11 @@ class ProcessService:
         if self.fd > 0:
             self.__write_state_snapshot()
 
-    def register_self(self, extra_data=None) -> None:
+    def register_self(self, extra_data=None) -> int:
         """ Register new application instance in process control file.
         Remove inactive process and get earliest available number
         :param extra_data: additional information that should be saved
-        :return int: process number
+        :return: process number
         """
         spid = int(os.getpid())
         timestamp = time.time()

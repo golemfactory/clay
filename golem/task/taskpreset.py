@@ -1,4 +1,6 @@
 import logging
+from typing import Dict, Union
+import enforce
 
 from peewee import IntegrityError
 
@@ -7,7 +9,8 @@ from golem.model import TaskPreset
 logger = logging.getLogger("golem.task")
 
 
-def save_task_preset(preset_name, task_type, data):
+@enforce.runtime_validation
+def save_task_preset(preset_name: str, task_type: str, data: Union[str, dict]) -> None:
     try:
         try:
             TaskPreset.create(name=preset_name,
@@ -21,14 +24,14 @@ def save_task_preset(preset_name, task_type, data):
         logger.exception("Cannot save preset")
 
 
-def get_task_presets(task_type):
+def get_task_presets(task_type: str) -> Dict[str, Union[str, dict]]:
     task_presets = TaskPreset.select().where(TaskPreset.task_type == task_type)
     proper_presets = {task_preset.name: task_preset.data
                       for task_preset in task_presets}
     return proper_presets
 
 
-def delete_task_preset(task_type, name):
+def delete_task_preset(task_type: str, name: str) -> None:
     try:
         query = TaskPreset.delete().where(_is_same_task_preset(task_type, name))
         query.execute()
@@ -37,5 +40,5 @@ def delete_task_preset(task_type, name):
                                                                    name)))
 
 
-def _is_same_task_preset(task_type, name):
+def _is_same_task_preset(task_type: str, name: str) -> bool:
     return (TaskPreset.task_type == task_type) & (TaskPreset.name == name)

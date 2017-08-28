@@ -1,18 +1,18 @@
-import datetime
+import datetime; import enforce
+import json
 import logging
 from enum import Enum
 from os import path
-from typing import Optional, Type, TypeVar, Generic
+from typing import Optional, Type
 
-import json
 from ethereum.utils import denoms
-from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField,
-                    SmallIntegerField)
+from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
+                    FloatField, IntegerField, Model, SmallIntegerField,
+                    SqliteDatabase, TextField)
 
-from golem.utils import encode_hex, decode_hex
-from golem.network.p2p.node import Node
 from golem.core.simpleserializer import DictSerializable
+from golem.network.p2p.node import Node
+from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
@@ -20,11 +20,8 @@ NEUTRAL_TRUST = 0.0
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-
-db = SqliteDatabase(
-    None,
-    threadlocals=True,
-    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = SqliteDatabase(None, threadlocals=True,
+                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
 
 class Database:
@@ -39,15 +36,15 @@ class Database:
         self.create_database()
 
     @staticmethod
-    def _get_user_version():
-        return db.execute_sql('PRAGMA user_version').fetchone()[0]
+    def _get_user_version() -> int:
+        return int(db.execute_sql('PRAGMA user_version').fetchone()[0])
 
     @staticmethod
-    def _set_user_version(version):
+    def _set_user_version(version: int) -> None:
         db.execute_sql('PRAGMA user_version = {}'.format(version))
 
     @staticmethod
-    def create_database():
+    def create_database() -> None:
         tables = [
             Account,
             ExpectedIncome,
@@ -388,7 +385,7 @@ class HardwarePreset(BaseModel):
             'disk': self.disk
         }
 
-    def apply(self, dictionary):
+    def apply(self, dictionary: dict) -> None:
         self.cpu_cores = dictionary['cpu_cores']
         self.memory = dictionary['memory']
         self.disk = dictionary['disk']

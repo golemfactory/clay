@@ -5,7 +5,7 @@ import logging
 import sys
 import types
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar, Union
 
 import cbor2
 import pytz
@@ -15,7 +15,7 @@ from golem.core.common import to_unicode
 logger = logging.getLogger('golem.core.simpleserializer')
 
 
-class DictCoder(object):
+class DictCoder:
     cls_key = 'py/object'
     deep_serialization = True
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
@@ -142,7 +142,7 @@ class CBORCoder(DictCoder):
 class DictSerializer(object):
     """ Serialize and deserialize objects to a dictionary"""
     @staticmethod
-    def dump(obj, typed: bool = True) -> str:
+    def dump(obj, typed=True):
         """
         Serialize obj to dictionary
         :param obj: object to be serialized
@@ -195,7 +195,7 @@ class DictSerializable(metaclass=ABCMeta):
 
 class JSONDictSerializer:
     @staticmethod
-    def loads(data: str, key_type: Type) -> dict:
+    def loads(data: Union[bytes, str], key_type: Type) -> dict:
         """
         Creates a dict from the JSON formatted data.
         :param data: the JSON data
