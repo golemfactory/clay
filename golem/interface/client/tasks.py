@@ -1,18 +1,9 @@
-import os
-import uuid
-from queue import Queue
-
 from apps.appsmanager import AppsManager
-from apps.core.task.coretaskstate import TaskDesc
 from golem.core.deferred import sync_wait
 
-from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskStatus
-from golem.task.tasktester import TaskTester
 
 
 class CommandAppLogic(AppLogic):

@@ -1,9 +1,11 @@
-import datetime; import enforce
+import datetime
 import json
 import logging
 from enum import Enum
 from os import path
-from typing import Optional, Type
+# Type is used for old-style (pre Python 3.6) type annotation
+from typing import Optional, Type  # pylint: disable=unused-import
+
 
 from ethereum.utils import denoms
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,

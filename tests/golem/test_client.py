@@ -324,7 +324,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         # Test if method exits if p2pservice is not present
         c.p2pservice = None
         c.config_desc.send_pings = False
-        c._Client__do_work()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__do_work()  # pylint: disable=no-member
 
         assert not log.exception.called
         assert not c.check_payments.called
@@ -335,7 +337,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
             str(uuid.uuid4()): Mock()
         }
 
-        c._Client__do_work()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__do_work()  # pylint: disable=no-member
 
         assert not c.p2pservice.ping_peers.called
         assert not log.exception.called
@@ -358,7 +362,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.ranking.sync_network = raise_exc
         c.check_payments = raise_exc
 
-        c._Client__do_work()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__do_work()  # pylint: disable=no-member
 
         assert c.p2pservice.ping_peers.called
         assert log.exception.call_count == 5
@@ -407,7 +413,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_balance_time = future_time
         c.last_tasks_time = future_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert not send.called
         assert not log.debug.called
@@ -418,7 +426,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert not log.debug.called
         assert send.call_count == 2
@@ -436,7 +446,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert log.debug.called
         assert send.call_count == 2

@@ -141,10 +141,10 @@ class ProcessService:
 
         self.state = updated_state
 
-        if len(ids) > 0:
+        if ids:
             sids = sorted(ids, key=int)
-            for i in range(len(sids)):
-                if i < sids[i]:
+            for i, el in enumerate(sids):
+                if i < el:
                     return i
 
         return len(ids)
