@@ -56,9 +56,9 @@ MAX_PRICE = int(5.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
 
-REQUESTING_TRUST = -1.0
-COMPUTING_TRUST = -1.0
-
+from golem.ranking.helper.trust_const import \
+    REQUESTING_TRUST, \
+    COMPUTING_TRUST
 
 # FIXME: deprecated
 class CommonConfig:

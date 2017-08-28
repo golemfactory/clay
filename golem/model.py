@@ -14,8 +14,6 @@ from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
 log = logging.getLogger('golem.db')
 
-NEUTRAL_TRUST = 0.0
-
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 
