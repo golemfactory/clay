@@ -28,8 +28,8 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
                 task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
                 self._add_task(dir_files(task_root_dir), task_id)
             except Exception as e:
-                logger.warn("Couldn't load task resources ({}): {}"
-                            .format(task_id, e))
+                logger.warning("Couldn't load task resources ({}): {}"
+                               .format(task_id, e))
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:
@@ -45,5 +45,5 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
                                     self.commands.pin_rm,
                                     multihash)
 
-    def build_client_options(self, node_id, **kwargs):
+    def build_client_options(self, node_id, peers=None, **kwargs):
         return IPFSClient.build_options(node_id, **kwargs)

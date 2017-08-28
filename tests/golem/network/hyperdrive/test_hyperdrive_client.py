@@ -201,17 +201,17 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=(None, 12345),
             uTP=('test string', 12345)
-        )) == dict()
+        )) is None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('192.168.0.1', 12345),
             uTP=('::1', 12345)
-        )) == dict()
+        )) is None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('::1.2.3.4', -1),
             uTP=('1.2.3.4', None)
-        )) == dict()
+        )) is None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=(None, 12345),
@@ -221,7 +221,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=(None, 12345),
             uTP=valid_v4
-        ), excluded_ips=['1.2.3.4']) == dict()
+        ), excluded_ips=['1.2.3.4']) is None
 
         assert HyperdriveClientOptions.filter_peer(
             valid_addresses) == valid_addresses

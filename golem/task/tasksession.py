@@ -635,9 +635,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        if msg.task_id != self.task_id:
-            return self.dropped()
-
         key_id = self.task_server.get_key_id()
         task_id = self.task_id
 

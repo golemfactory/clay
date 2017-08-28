@@ -145,7 +145,7 @@ class HyperdriveClientOptions(ClientOptions):
     def filter_peers(cls, peers, excluded_ips=None):
         result = list()
 
-        for peer in filter(None, peers):
+        for peer in peers:
             entry = cls.filter_peer(peer, excluded_ips)
             if not entry:
                 continue
@@ -158,6 +158,9 @@ class HyperdriveClientOptions(ClientOptions):
 
     @classmethod
     def filter_peer(cls, peer, excluded_ips=None):
+        if not isinstance(peer, dict):
+            return
+
         new_entry = dict()
 
         for protocol, entry in peer.items():
@@ -169,7 +172,7 @@ class HyperdriveClientOptions(ClientOptions):
                     raise ValueError('address {} is private'
                                      .format(address))
                 if excluded_ips and entry[0] in excluded_ips:
-                    raise ValueError('address {} was excluded by request'
+                    raise ValueError('address {} was excluded'
                                      .format(address))
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'
@@ -180,4 +183,5 @@ class HyperdriveClientOptions(ClientOptions):
             else:
                 new_entry[protocol] = entry
 
-        return new_entry
+        if new_entry:
+            return new_entry

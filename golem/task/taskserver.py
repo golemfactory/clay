@@ -34,11 +34,15 @@ class TaskResourcesMixin(object):
 
     def get_resource_peers(self, task_id):
         peer_manager = self._get_peer_manager()
-        return peer_manager.get(task_id)
+        if peer_manager:
+            return peer_manager.get(task_id)
+        return []
 
     def remove_resource_peer(self, task_id, key_id):
         peer_manager = self._get_peer_manager()
-        return peer_manager.remove(task_id, key_id)
+        if peer_manager:
+            return peer_manager.remove(task_id, key_id)
+        return None
 
     def get_resources(self, task_id):
         resource_manager = self._get_resource_manager()
@@ -48,7 +52,7 @@ class TaskResourcesMixin(object):
     def get_resource_options(self, task_id, key_id):
         resource_manager = self._get_resource_manager()
         peers = self.get_resource_peers(task_id)
-        return resource_manager.build_client_options(key_id, peers)
+        return resource_manager.build_client_options(key_id, peers=peers)
 
     def request_resource(self, subtask_id, resource_header,
                          address, port, key_id, task_owner):
@@ -71,7 +75,7 @@ class TaskResourcesMixin(object):
 
     def _get_peer_manager(self):
         resource_manager = self._get_resource_manager()
-        return resource_manager.peer_manager
+        return getattr(resource_manager, 'peer_manager', None)
 
 
 class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
