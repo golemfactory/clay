@@ -41,12 +41,11 @@ def mock_async_run(req, success, error):
             success(result)
 
 
-def random_hex_str():
+def random_hex_str() -> str:
     return str(uuid.uuid4()).replace('-', '')
 
 
-class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/client.py', ]
+class TestCreateClient(TestDirFixture):
 
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
@@ -367,9 +366,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.log')
     @patch('golem.client.dispatcher.send')
     def test_publish_events(self, send, log, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         c = self.client
 
         def get_balance(*_):
@@ -876,7 +879,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # status without ports
         c.p2pservice.cur_port = 0
-        self.assertTrue(c.connection_status().startswith("Application not listening"))
+        self.assertTrue(
+            c.connection_status().startswith("Application not listening")
+        )
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'

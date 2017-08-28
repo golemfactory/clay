@@ -23,8 +23,10 @@ class TestTaskBase(LogTestCase):
             for i in range(4)
         ]
 
-        task_header = TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
-                                 task_owner=node, docker_images=docker_images)
+        task_header = TaskHeader(
+            "ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
+            task_owner=node, docker_images=docker_images
+        )
         # ignore dynamic properties
         task_header.last_checking = 0
 
@@ -38,7 +40,10 @@ class TestTaskBase(LogTestCase):
 
         assert task_header_from_dict.to_dict() == task_header_dict
         assert isinstance(task_header_from_dict.task_owner, Node)
-        assert all([isinstance(di, DockerImage) for di in task_header_from_dict.docker_images])
+        assert all([
+            isinstance(di, DockerImage)
+            for di in task_header_from_dict.docker_images
+        ])
 
         task_header_bin = task_header.to_binary()
         bin_serialized = CBORSerializer.dumps(task_header_bin)
@@ -48,5 +53,5 @@ class TestTaskBase(LogTestCase):
 
 
 class TestTaskBuilder(TestCase):
-    def test_build_definition(self):
+    def test_build_definition(self) -> None:
         TaskBuilder.build_definition("testtask", {"resources": []})

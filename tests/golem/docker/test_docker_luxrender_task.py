@@ -6,23 +6,22 @@ from os import makedirs, path, remove
 
 from mock import Mock
 
-from golem.tools.ci import ci_skip
-from .test_docker_image import DockerTestCase
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
 from golem.node import OptNode
-
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.resource.dirmanager import DirManager
-from golem.task.localcomputer import LocalComputer
+from .test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
@@ -77,7 +76,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return task_def
 
-    def _test_task(self):# -> LuxTask():
+    def _test_task(self) -> LuxTask:
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
@@ -145,7 +144,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _change_file_location(self, filepath, newfilepath ):
+    def _change_file_location(self, filepath, newfilepath):
         if os.path.exists(newfilepath):
             os.remove(newfilepath)
 
@@ -189,7 +188,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
 
-        ## copy to new location
+        # copy to new location
         new_file_dir = path.join(path.dirname(test_file),subtask_id)
 
         new_flm_file =  self._change_file_location(test_file,

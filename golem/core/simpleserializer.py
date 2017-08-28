@@ -5,7 +5,7 @@ import logging
 import sys
 import types
 from abc import ABCMeta, abstractmethod
-from typing import Type, TypeVar, Optional
+from typing import Optional, Type, TypeVar
 
 import cbor2
 import pytz
@@ -15,30 +15,9 @@ from golem.core.common import to_unicode
 logger = logging.getLogger('golem.core.simpleserializer')
 
 
-class JSONDictSerializer:
-    @staticmethod
-    def loads(data: str, key_type: Type) -> dict:
-        """
-        Creates a dict from the JSON formatted data.
-        :param data: the JSON data
-        :param key_type: the type the keys should be converted to
-        """
-        deserialized = json.loads(data)
-        return {key_type(k): v for k, v in deserialized.items()}
-
-    @staticmethod
-    def dumps(obj) -> str:
-        """
-        Dumps the object obj to JSON, if can be easily serialied
-        """
-        return json.dumps(obj)
-
-
 class DictCoder(object):
-
     cls_key = 'py/object'
     deep_serialization = True
-
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
@@ -163,12 +142,12 @@ class CBORCoder(DictCoder):
 class DictSerializer(object):
     """ Serialize and deserialize objects to a dictionary"""
     @staticmethod
-    def dump(obj, typed=True):
+    def dump(obj, typed: bool = True) -> str:
         """
         Serialize obj to dictionary
         :param obj: object to be serialized
-        :param bool typed: simple serialization does not include type information
-        :return str: serialized object in json format
+        :param typed: simple serialization does not include type information
+        :return: serialized object in json format
         """
         return DictCoder.to_dict(obj, typed=typed)
 
@@ -195,7 +174,12 @@ class CBORSerializer(object):
 
     @classmethod
     def dumps(cls, obj):
-        return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
+        return cbor2.dumps(
+            obj,
+            encoders=cls.encoders,
+            datetime_as_timestamp=True,
+            timezone=pytz.utc
+        )
 
 
 class DictSerializable(metaclass=ABCMeta):
@@ -207,3 +191,22 @@ class DictSerializable(metaclass=ABCMeta):
     @abstractmethod
     def from_dict(data: Optional[dict]) -> 'DictSerializable':
         "Converts the object to a dict containing only primitive types"
+
+
+class JSONDictSerializer:
+    @staticmethod
+    def loads(data: str, key_type: Type) -> dict:
+        """
+        Creates a dict from the JSON formatted data.
+        :param data: the JSON data
+        :param key_type: the type the keys should be converted to
+        """
+        deserialized = json.loads(data)
+        return {key_type(k): v for k, v in deserialized.items()}
+
+    @staticmethod
+    def dumps(obj) -> str:
+        """
+        Dumps the object obj to JSON, if can be easily serialied
+        """
+        return json.dumps(obj)

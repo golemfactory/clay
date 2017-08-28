@@ -21,9 +21,10 @@ NEUTRAL_TRUST = 0.0
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 
-
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = SqliteDatabase(
+    None,
+    threadlocals=True,
+    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
 
 class Database:
@@ -77,6 +78,7 @@ class Database:
 class BaseModel(Model):
     class Meta:
         database = db
+
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
 
@@ -84,6 +86,7 @@ class BaseModel(Model):
 ##################
 # PAYMENT MODELS #
 ##################
+
 
 class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
@@ -151,9 +154,9 @@ class DictSerializableJSONField(TextField):
 
 class PaymentStatus(Enum):
     """ The status of a payment. """
-    awaiting = 1    # Created but not introduced to the payment network.
-    sent = 2        # Sent to the payment network.
-    confirmed = 3   # Confirmed on the payment network.
+    awaiting = 1  # Created but not introduced to the payment network.
+    sent = 2  # Sent to the payment network.
+    confirmed = 3  # Confirmed on the payment network.
 
 
 class PaymentDetails(DictSerializable):
@@ -206,7 +209,8 @@ class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    status = EnumField(
+        enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
@@ -334,6 +338,7 @@ class NeighbourLocRank(BaseModel):
 # NETWORK MODELS #
 ##################
 
+
 class KnownHosts(BaseModel):
     ip_address = CharField()
     port = IntegerField()
@@ -350,6 +355,7 @@ class KnownHosts(BaseModel):
 ##################
 # ACCOUNT MODELS #
 ##################
+
 
 class Account(BaseModel):
     node_id = CharField(unique=True)

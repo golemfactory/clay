@@ -12,13 +12,15 @@ from .variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
 logger = logging.getLogger(__name__)
 
 
-class ProcessService(object):
-    """ Keeps information about active application instances and gives them adequate numbers that may be used
-    to combine them with proper configuration options."""
+class ProcessService:
+    """ Keeps information about active application instances and gives them
+    adequate numbers that may be used to combine them with proper configuration
+    options."""
 
-    def __init__(self, ctl_file_name=DEFAULT_PROC_FILE):
+    def __init__(self, ctl_file_name: str = DEFAULT_PROC_FILE) -> None:
         """ Create new process service instance
-        :param str ctl_file_name: process working file were information about active applications is written
+        :param ctl_file_name: process working file where information
+            about active applications is written
         """
         ctl_file = SimpleEnv.env_file_name(ctl_file_name)
 
@@ -48,9 +50,9 @@ class ProcessService(object):
         if self.fd > 0:
             self.__write_state_snapshot()
 
-    def register_self(self, extra_data=None):
-        """ Register new application instance in process control file. Remove inactive process and get earliest
-        available number
+    def register_self(self, extra_data=None) -> None:
+        """ Register new application instance in process control file.
+        Remove inactive process and get earliest available number
         :param extra_data: additional information that should be saved
         :return int: process number
         """
@@ -61,7 +63,10 @@ class ProcessService(object):
             id_ = self.__update_state()
             self.state[spid] = [timestamp, id_, extra_data]
             self.unlock_state()
-            logger.info("Registering new process - PID {} at time {} at location {}".format(spid, timestamp, id_))
+            logger.info(
+                "Registering new process - PID {} at time {} at location {}"
+                .format(spid, timestamp, id_)
+            )
 
             return id_
 
@@ -114,7 +119,8 @@ class ProcessService(object):
 
         os.lseek(self.fd, 0, 0)
 
-        # FIXME: one hell of a hack but its pretty hard to truncate a file on Windows using low level API
+        # FIXME: one hell of a hack but its pretty hard
+        # to truncate a file on Windows using low level API
         hack = os.fdopen(self.fd, "w")
         hack.truncate(len(data))
         os.write(self.fd, data)

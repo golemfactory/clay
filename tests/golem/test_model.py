@@ -9,7 +9,7 @@ from golem.testutils import DatabaseFixture, TempDirFixture
 
 
 class TestDatabase(TempDirFixture):
-    def test_init(self):
+    def test_init(self) -> None:
         db = Database(self.path)
         self.assertFalse(db.db.is_closed())
         db.db.close()
@@ -27,7 +27,6 @@ class TestDatabase(TempDirFixture):
 
 
 class TestPayment(DatabaseFixture):
-
     def test_default_fields(self):
         p = Payment()
         self.assertGreaterEqual(datetime.now(), p.created_date)
@@ -81,6 +80,7 @@ class TestPayment(DatabaseFixture):
         self.assertIsInstance(pd.node_info, Node)
         self.assertEqual(p, pd)
 
+
 class TestReceivedPayment(DatabaseFixture):
 
     def test_default_fields(self):
@@ -89,18 +89,40 @@ class TestReceivedPayment(DatabaseFixture):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
 
     def test_create(self):
-        r = ReceivedPayment(from_node_id="DEF", task="xyz", val=4, expected_val=3131,
-                            state="SOMESTATE")
+        r = ReceivedPayment(
+            from_node_id="DEF",
+            task="xyz",
+            val=4,
+            expected_val=3131,
+            state="SOMESTATE"
+        )
         self.assertEqual(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(from_node_id="DEF", task="xyz", val=5, expected_val=3132,
-                                   state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF", task="xyz2", val=5, expected_val=3132,
-                               state="SOMESTATEX")
-        ReceivedPayment.create(from_node_id="DEF2", task="xyz", val=5, expected_val=3132,
-                               state="SOMESTATEX")
+            ReceivedPayment.create(
+                from_node_id="DEF",
+                task="xyz",
+                val=5,
+                expected_val=3132,
+                state="SOMESTATEX"
+            )
+        ReceivedPayment.create(
+            from_node_id="DEF",
+            task="xyz2",
+            val=5,
+            expected_val=3132,
+            state="SOMESTATEX"
+        )
+        ReceivedPayment.create(
+            from_node_id="DEF2",
+            task="xyz",
+            val=5,
+            expected_val=3132,
+            state="SOMESTATEX"
+        )
 
-        self.assertEqual(3, len([payment for payment in ReceivedPayment.select()]))
+        self.assertEqual(
+            len([payment for payment in ReceivedPayment.select()]), 3
+        )
 
 
 class TestLocalRank(DatabaseFixture):
