@@ -190,6 +190,14 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.monitor = None
         self.session_id = str(uuid.uuid4())
 
+        for service in Client.services:
+            assert issubclass(service, BaseService)
+            assert service.name not in self.services
+            service.register_with_app(self)
+            assert hasattr(self.services, service.name)
+
+        BaseApp.start(self)
+
         dispatcher.connect(
             self.p2p_listener,
             signal='golem.p2p'
@@ -271,12 +279,6 @@ class Client(BaseApp, HardwarePresetsMixin):
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        for service in Client.services:
-            assert issubclass(service, BaseService)
-            assert service.name not in self.services
-            service.register_with_app(self)
-            assert hasattr(self.services, service.name)
-
         self.services.golemservice.set_task_server(self.task_server)
 
         def connect(tuple_param):
@@ -307,7 +309,6 @@ class Client(BaseApp, HardwarePresetsMixin):
         log.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
-        BaseApp.start(self)
 
     def stop_network(self):
         if self.task_server:

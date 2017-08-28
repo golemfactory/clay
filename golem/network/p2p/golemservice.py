@@ -16,6 +16,7 @@ class GolemService(WiredService):
         self.node = client.node
         self.suggested_conn_reverse = {}
         self.suggested_address = {}
+        self.task_server = None
         super(GolemService, self).__init__(client)
 
     def on_wire_protocol_start(self, proto):
@@ -48,6 +49,8 @@ class GolemService(WiredService):
                    'get_tasks' )
 
     def on_receive_get_tasks(self, proto):
+        if not self.task_server:
+            return
         l = self.task_server.get_tasks_headers()
         if len(l) > 0:
             proto.send_task_headers(l)
