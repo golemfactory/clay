@@ -31,8 +31,8 @@ class HyperdriveClient(IClient):
 
     @classmethod
     def build_options(cls, node_id, peers=None, **kwargs):
-        return ClientOptions(cls.CLIENT_ID, cls.VERSION,
-                             options=dict(peers=peers))
+        return HyperdriveClientOptions(cls.CLIENT_ID, cls.VERSION,
+                                       options=dict(peers=peers))
 
     def diagnostics(self, *args, **kwargs):
         raise NotImplementedError()
@@ -107,9 +107,17 @@ class HyperdriveClientOptions(ClientOptions):
 
     max_peers = 64
 
+    def clone(self):
+        return HyperdriveClientOptions(
+            self.client_id,
+            self.version,
+            options=deepcopy(self.options)
+        )
+
     def filtered(self,
                  client_id=HyperdriveClient.CLIENT_ID,
-                 version=HyperdriveClient.VERSION):
+                 version=HyperdriveClient.VERSION,
+                 excluded_ips=None):
 
         opts = super(HyperdriveClientOptions, self).filtered(client_id, version)
 
@@ -129,22 +137,16 @@ class HyperdriveClientOptions(ClientOptions):
             log.warning('Resource client: peers not provided')
 
         else:
-            opts.options['peers'] = self.filter_peers(opts.options['peers'])
+            opts.options['peers'] = self.filter_peers(opts.options['peers'],
+                                                      excluded_ips)
             return opts
 
-    def clone(self):
-        return HyperdriveClientOptions(
-            self.client_id,
-            self.version,
-            options=deepcopy(self.options)
-        )
-
     @classmethod
-    def filter_peers(cls, peers):
+    def filter_peers(cls, peers, excluded_ips=None):
         result = list()
 
         for peer in filter(None, peers):
-            entry = cls.filter_peer(peer)
+            entry = cls.filter_peer(peer, excluded_ips)
             if not entry:
                 continue
 
@@ -155,7 +157,7 @@ class HyperdriveClientOptions(ClientOptions):
         return result
 
     @classmethod
-    def filter_peer(cls, peer):
+    def filter_peer(cls, peer, excluded_ips=None):
         new_entry = dict()
 
         for protocol, entry in peer.items():
@@ -164,9 +166,14 @@ class HyperdriveClientOptions(ClientOptions):
                 port = int(entry[1])
 
                 if address.is_private:
-                    raise ValueError('address {} is private'.format(address))
+                    raise ValueError('address {} is private'
+                                     .format(address))
+                if excluded_ips and entry[0] in excluded_ips:
+                    raise ValueError('address {} was excluded by request'
+                                     .format(address))
                 if not 0 < port < 65536:
-                    raise ValueError('port {} is invalid'.format(port))
+                    raise ValueError('port {} is invalid'
+                                     .format(port))
 
             except (ValueError, TypeError, AddressValueError) as err:
                 log.warning('Resource client: %s', err)

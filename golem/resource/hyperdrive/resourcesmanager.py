@@ -1,6 +1,7 @@
 import logging
 import os
 import uuid
+from collections import OrderedDict
 
 from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions
@@ -119,7 +120,7 @@ class HyperdrivePeerManager(HyperDriveMetadataManager):
             return logger.debug('Unknown peer: %s', key_id)
 
         if task_id not in self._tasks:
-            self._tasks[task_id] = dict()
+            self._tasks[task_id] = OrderedDict()
         self._tasks[task_id][key_id] = entry
 
     def remove(self, task_id, key_id):

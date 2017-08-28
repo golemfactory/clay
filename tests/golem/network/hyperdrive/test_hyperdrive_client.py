@@ -218,5 +218,10 @@ class TestHyperdriveClientOptions(unittest.TestCase):
             uTP=valid_v4
         )) == dict(uTP=valid_v4)
 
+        assert HyperdriveClientOptions.filter_peer(dict(
+            TCP=(None, 12345),
+            uTP=valid_v4
+        ), excluded_ips=['1.2.3.4']) == dict()
+
         assert HyperdriveClientOptions.filter_peer(
             valid_addresses) == valid_addresses
