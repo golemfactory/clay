@@ -1,8 +1,6 @@
 import imp
 import itertools
 import os
-import sys
-import traceback
 
 import numpy as np
 import params
@@ -54,10 +52,10 @@ def find_file_with_ext(ext, dir):
 if __name__ == "__main__":
 
     code_file = os.path.join(params.RESOURCES_DIR, "code", "impl")
-    model = imp.load_source("code", code_file)
+    impl = imp.load_source("code", code_file)
 
     equals = []
-    serializer = impl.ModelSerializer
+    serializer = impl.model.ModelSerializer
 
     for checkpointdir in os.listdir(params.RESOURCES_DIR):
         # loading models
@@ -74,10 +72,10 @@ if __name__ == "__main__":
                 startmodel)) == _get_hash_from_name(
                 startmodel_name))
         assert (
-        str(serializer.get_model_hash(endmodel)) == _get_hash_from_name(
-            endmodel_name))
+            str(serializer.get_model_hash(endmodel)) == _get_hash_from_name(
+                endmodel_name))
 
-        batch_manager = impl.IrisBatchManager()
+        batch_manager = impl.batchmanager.IrisBatchManager(params.data_file)
 
         # one epoch of training
         for i, (x, y) in enumerate(
@@ -88,13 +86,3 @@ if __name__ == "__main__":
         compare_weights(startmodel, endmodel)
 
         # print(utils.bcolors.BOLD + utils.bcolors.OKGREEN + "All test
-        # passed" + utils.bcolors.ENDC)
-        # success()
-        # except AssertionError:
-        #     _, _, tb = sys.exc_info()
-        #     traceback.print_tb(tb)  # Fixed format
-        #     tb_info = traceback.extract_tb(tb)
-        #     filename, line, func, text = tb_info[-1]
-        #
-        #     failure('An error occurred on line {} in statement {}'.format(line,
-        #                                                                   text))

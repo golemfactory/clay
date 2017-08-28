@@ -8,17 +8,18 @@ import numpy as np
 from torch import nn, torch, from_numpy
 from torch.autograd import Variable
 
+from .batchmanager import IrisBatchManager
 from .box_callback import BlackBoxFileCallback
 from .config import (BATCH_SIZE,
-                     NUM_EPOCHS,
-                     HIDDEN_SIZE,
-                     NUM_CLASSES,
-                     LEARNING_RATE,
-                     STEPS_PER_EPOCH)
-from .batchmanager import IrisBatchManager
+                     LEARNING_RATE)
 from .hash import PyTorchHash, StateHash
 from .net import Net
 from .utils import derandom
+from ..params import (NUM_EPOCHS,
+                      HIDDEN_SIZE,
+                      NUM_CLASSES,
+                      STEPS_PER_EPOCH
+                      )
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -40,7 +41,8 @@ class Model(metaclass=abc.ABCMeta):
 
 
 class IrisSimpleModel(Model):
-    def __init__(self, input_size: int, hidden_size: int, num_classes: int, learning_rate: int):
+    def __init__(self, input_size: int, hidden_size: int, num_classes: int,
+                 learning_rate: int):
         self._kwargs = {}
         self._kwargs["input_size"] = input_size
         self._kwargs["hidden_size"] = hidden_size
@@ -52,7 +54,8 @@ class IrisSimpleModel(Model):
                        num_classes=num_classes)
 
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=learning_rate)
+        self.optimizer = torch.optim.SGD(self.net.parameters(),
+                                         lr=learning_rate)
 
     def run_one_batch(self, x: np.ndarray, y: np.ndarray):
         derandom()
@@ -77,7 +80,8 @@ class IrisSimpleModel(Model):
 
 
 class ComputationState(object):
-    def __init__(self, start_model: IrisSimpleModel, end_model: IrisSimpleModel):
+    def __init__(self, start_model: IrisSimpleModel,
+                 end_model: IrisSimpleModel):
         self.start_model = start_model
         self.end_model = end_model
 
@@ -102,7 +106,8 @@ class ComputationState(object):
 
 
 class ModelSerializer():
-    def __init__(self, model: IrisSimpleModel, shared_path: str, save_model_as_dict):
+    def __init__(self, model: IrisSimpleModel, shared_path: str,
+                 save_model_as_dict):
         self.model = model
         self.save_model_as_dict = save_model_as_dict
         self.shared_path = shared_path
@@ -123,7 +128,6 @@ class ModelSerializer():
 
         filename = str(model.get_hash()) + "." + ext
         return os.path.join(dir, filename)
-
 
     def save(self, epoch, state):
         for mdl, ext in zip(state.get_start_end(), ["begin", "end"]):
@@ -157,19 +161,20 @@ class ModelSerializer():
 class HonestModelRunner(object):
     def __init__(self,
                  shared_path: str,
-                 probability_of_bb_saving,
+                 data_file: str,
                  save_model_as_dict=True,
                  number_of_epochs=NUM_EPOCHS):
 
         self.black_box = BlackBoxFileCallback()
-        self.batch_manager = IrisBatchManager()
+        self.batch_manager = IrisBatchManager(data_file)
 
         self.model = IrisSimpleModel(self.batch_manager.get_input_size(),
                                      HIDDEN_SIZE,
                                      NUM_CLASSES,
                                      LEARNING_RATE)
 
-        self.serializer = ModelSerializer(self.model, shared_path, save_model_as_dict)
+        self.serializer = ModelSerializer(self.model, shared_path,
+                                          save_model_as_dict)
         self.state = ComputationState(self.model, self.model)
         self.num_epochs = number_of_epochs
 
@@ -177,7 +182,8 @@ class HonestModelRunner(object):
         for epoch in range(self.num_epochs):
             self.state.update_before(deepcopy(self.model))
 
-            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
+            for i, (x, y) in enumerate(
+                    itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
                 self.model.run_one_batch(x, y)
 
             self.state.update_after(deepcopy(self.model))
@@ -189,49 +195,52 @@ class HonestModelRunner(object):
         if box_decision:
             self.serializer.save(epoch, state)
 
-
-class SkippingDishonestModelRunner(HonestModelRunner):
-    def __init__(self, probability_of_cheating: float, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.probability_of_cheating = probability_of_cheating
-
-    def run_full_training(self):
-        for epoch in range(self.num_epochs):
-            self.state.update_before(deepcopy(self.model))
-
-            for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
-                # with some probability, we we'll skip a step of computation
-                if np.random.rand() < self.probability_of_cheating:
-                    self.model.run_one_batch(x, y)
-                else:
-                    pass
-
-            self.state.update_before(deepcopy(self.model))
-            self.call_box(epoch, self.state)
-
-
-class CyclicBufferDishonestModelRunner(HonestModelRunner):
-    def __init__(self, lenght_of_cb: int, added_eps: float, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.lenght_of_cb = lenght_of_cb
-        self.added_eps = added_eps
-
-    def run_full_training(self):
-        buffer = []
-        buffer_cur_pos = 0
-
-        for epoch in range(self.num_epochs):
-            if len(buffer) == self.lenght_of_cb:
-                self.call_box(epoch, buffer[buffer_cur_pos])
-                buffer_cur_pos = (buffer_cur_pos + 1) % self.lenght_of_cb
-            else:
-                self.state.update_before(deepcopy(self.model))  # deepcopy needed
-
-                for i, (x, y) in enumerate(itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
-                    self.model.run_one_batch(x, y)
-
-                self.state.update_after(deepcopy(self.model))
-
-                self.state.add_perturbation(self.added_eps)  # deepcopy needed
-                buffer.append(copy(self.state))  # normal copy suffices
-                self.call_box(epoch, self.state)
+# for tests
+# class SkippingDishonestModelRunner(HonestModelRunner):
+#     def __init__(self, probability_of_cheating: float, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.probability_of_cheating = probability_of_cheating
+#
+#     def run_full_training(self):
+#         for epoch in range(self.num_epochs):
+#             self.state.update_before(deepcopy(self.model))
+#
+#             for i, (x, y) in enumerate(
+#                     itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
+#                 # with some probability, we we'll skip a step of computation
+#                 if np.random.rand() < self.probability_of_cheating:
+#                     self.model.run_one_batch(x, y)
+#                 else:
+#                     pass
+#
+#             self.state.update_before(deepcopy(self.model))
+#             self.call_box(epoch, self.state)
+#
+#
+# class CyclicBufferDishonestModelRunner(HonestModelRunner):
+#     def __init__(self, lenght_of_cb: int, added_eps: float, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.lenght_of_cb = lenght_of_cb
+#         self.added_eps = added_eps
+#
+#     def run_full_training(self):
+#         buffer = []
+#         buffer_cur_pos = 0
+#
+#         for epoch in range(self.num_epochs):
+#             if len(buffer) == self.lenght_of_cb:
+#                 self.call_box(epoch, buffer[buffer_cur_pos])
+#                 buffer_cur_pos = (buffer_cur_pos + 1) % self.lenght_of_cb
+#             else:
+#                 self.state.update_before(
+#                     deepcopy(self.model))  # deepcopy needed
+#
+#                 for i, (x, y) in enumerate(
+#                         itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
+#                     self.model.run_one_batch(x, y)
+#
+#                 self.state.update_after(deepcopy(self.model))
+#
+#                 self.state.add_perturbation(self.added_eps)  # deepcopy needed
+#                 buffer.append(copy(self.state))  # normal copy suffices
+#                 self.call_box(epoch, self.state)

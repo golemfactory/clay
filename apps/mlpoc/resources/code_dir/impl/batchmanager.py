@@ -37,7 +37,7 @@ class BatchManager(metaclass=ABCMeta):
 
 class IrisBatchManager(BatchManager):
 
-    def __init__(self, datafile="/home/jacek/datasets/IRIS.csv", derandom_seed=0):
+    def __init__(self, datafile, derandom_seed=0):
         self.datafile = datafile
 
         data = pd.read_csv(datafile, header=None)

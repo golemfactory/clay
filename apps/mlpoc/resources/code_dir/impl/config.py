@@ -11,7 +11,6 @@ TEST_SIZE = 0.2
 # neural net config
 LEARNING_RATE = 0.01
 NUM_EPOCHS = 10
-HIDDEN_SIZE = 10
 ARCH = "CPU"
 
 # hashing config
