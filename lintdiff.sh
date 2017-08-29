@@ -31,17 +31,6 @@ if [ $# -eq 0 ]; then
     usage
 fi
 
-# Check if diff supports colored output
-# Ubuntu Trusty has an ancient version of diffutils, 3.3,
-# which doesn't handle that yet
-if diff --color /dev/null /dev/null &>/dev/null; then
-    DIFF="diff --color"
-elif which colordiff &>/dev/null; then
-    DIFF=colordiff
-else
-    DIFF=diff
-fi
-
 while getopts "b:of:h" opt; do
     case $opt in
         b)
@@ -96,10 +85,9 @@ $@ >$CURRENT_OUT
 check_errcode $?
 
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
-# There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
-    echo "New findings! The error diff is:"
-    $DIFF --unified $REF_OUT $CURRENT_OUT
+    echo -e "New findings:\n"
+    echo "$diff"
     exit 1
 else
     echo "Check OK, no new findings..."

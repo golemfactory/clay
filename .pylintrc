@@ -74,7 +74,7 @@ evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / stateme
 
 # Template used to display messages. This is a python new-style format string
 # used to format the message information. See doc for all details
-#msg-template=
+msg-template={C}: {path}:{line}:{column}: {msg} ({symbol})
 
 # Set the output format. Available formats are text, parseable, colorized, json
 # and msvs (visual studio).You can also give a reporter class, eg
