@@ -18,6 +18,15 @@ usage() {
     exit 1
 }
 
+check_errcode() {
+    # Exitcodes >= 126 have special meaning:
+    # http://www.tldp.org/LDP/abs/html/exitcodes.html
+    if [ "$1" -ge 126 ]; then
+        echo "Fatal: command exited with code: $1. Aborting!"
+        exit 1
+    fi
+}
+
 if [ $# -eq 0 ]; then
     usage
 fi
@@ -73,6 +82,7 @@ git checkout "$CURRENT_BRANCH" .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo $@
 $@ >$REF_OUT
+check_errcode $?
 
 # Now take back the checked out config, go back to the new branch
 git reset --hard HEAD
@@ -83,6 +93,7 @@ commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo $@
 $@ >$CURRENT_OUT
+check_errcode $?
 
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
