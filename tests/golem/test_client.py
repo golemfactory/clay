@@ -80,9 +80,9 @@ class TestCreateClient(TestDirFixture):
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
-    def __init__(self) -> None:
-        self.client = Client()
-        super().__init__()
+    # FIXME: if we someday decide to run parallel tests,
+    # this may completely break
+    # pylint: disable=attribute-defined-outside-init
 
     def tearDown(self):
         if hasattr(self, 'client'):
