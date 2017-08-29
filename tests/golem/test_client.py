@@ -6,7 +6,6 @@ import uuid
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
-from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
@@ -34,6 +33,7 @@ from golem.utils import decode_hex, encode_hex
 def mock_async_run(req, success, error):
     try:
         result = req.method(*req.args, **req.kwargs)
+    # pylint: disable=broad-except
     except Exception as e:
         error(e)
     else:
@@ -73,6 +73,10 @@ class TestCreateClient(TestDirFixture):
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
+
+    def __init__(self) -> None:
+        self.client = Client()
+        super().__init__()
 
     def tearDown(self):
         if hasattr(self, 'client'):
@@ -154,9 +158,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
                              str(incomes[n - i].value))
 
     def test_payment_address(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         payment_address = self.client.get_payment_address()
         self.assertIsInstance(payment_address, str)
@@ -165,9 +173,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
            'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         self.client.sync()
         # TODO: assertTrue when re-enabled
         self.assertFalse(self.client.transaction_system.sync.called)
@@ -245,10 +257,18 @@ class TestClient(TestWithDatabase, TestWithReactor):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager
         from golem.network.p2p.p2pservice import P2PService
 
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False
+        )
 
-        self.client.p2pservice = P2PService(MagicMock(), self.client.config_desc, self.client.keys_auth)
+        self.client.p2pservice = P2PService(
+            MagicMock(),
+            self.client.config_desc,
+            self.client.keys_auth
+        )
         self.client.ipfs_manager = IPFSDaemonManager()
         meta = self.client.get_metadata()
         assert meta and meta['ipfs']
@@ -263,9 +283,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.interpret_metadata(meta, ip, port, node)
 
     def test_get_status(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         c = self.client
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
@@ -279,7 +303,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         mock1.get_progress.return_value = 0.25
         mock2 = MagicMock()
         mock2.get_progress.return_value = 0.33
-        c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
+        c.task_server.task_computer.get_progresses.return_value = \
+            {"id1": mock1, "id2": mock2}
         c.p2pservice.get_peers.return_value = []
         status = c.get_status()
         self.assertIn("Computing 2 subtask(s)", status)
@@ -356,11 +381,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
         def raise_exc():
             raise Exception('Test exception')
 
-        c.p2pservice.sync_network = raise_exc
-        c.task_server.sync_network = raise_exc
-        c.resource_server.sync_network = raise_exc
-        c.ranking.sync_network = raise_exc
-        c.check_payments = raise_exc
+        # FIXME: https://github.com/PyCQA/pylint/issues/1645
+        c.p2pservice.sync_network = raise_exc  # pylint: disable=no-member
+        c.task_server.sync_network = raise_exc  # pylint: disable=no-member
+        c.resource_server.sync_network = raise_exc  # pylint: disable=no-member
+        c.ranking.sync_network = raise_exc  # pylint: disable=no-member
+        c.check_payments = raise_exc  # pylint: disable=no-member
 
         # FIXME: Pylint doesn't handle mangled members well:
         # https://github.com/PyCQA/pylint/issues/1643
