@@ -50,15 +50,15 @@ Golem communicates with external technologies some of them may be downloaded and
 * [IPFS](https://ipfs.io/)
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
-* [Python2.7](https://www.python.org/)
+* [Python3](https://www.python.org/)
 * [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
 * [Qt5](https://www.qt.io/)
 * [SQLite3](https://sqlite.org/index.html)
 
 Benchmarks:
-* General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
-* Blender: [scene-BMW](https://www.blender.org/download/demo-files/)
-* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche
+* General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.
+* Blender: [scene-BMW](https://www.blender.org/download/demo-files/).
+* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche.
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.

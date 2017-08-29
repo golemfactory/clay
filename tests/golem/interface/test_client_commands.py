@@ -153,7 +153,8 @@ class TestNetwork(unittest.TestCase):
                 address='10.0.0.{}'.format(i),
                 port='2500{}'.format(i),
                 key_id='deadbeef0{}'.format(i) * 8,
-                node_name='node_{}'.format(i)
+                node_name='node_{}'.format(i),
+                client_ver='0.0.0'
             ) for i in range(1, 1 + 6)
         ]
 
@@ -215,14 +216,17 @@ class TestNetwork(unittest.TestCase):
             '10.0.0.1',
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
-            'node_1'
+            'node_1',
+            '0.0.0'
+
         ]
 
         assert result_2.data[1][0] == [
             '10.0.0.1',
             '25001',
             'deadbeef01' * 8,
-            'node_1'
+            'node_1',
+            '0.0.0'
         ]
 
         assert isinstance(result_1, CommandResult)
