@@ -96,7 +96,6 @@ $@ >$CURRENT_OUT
 check_errcode $?
 
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
-# There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
     echo "New findings! The error diff is:"
     $DIFF --unified $REF_OUT $CURRENT_OUT
