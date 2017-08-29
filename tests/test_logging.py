@@ -10,10 +10,10 @@ import unittest
 config_logging(suffix='_test_logging')
 logger = logging.getLogger('test.logging')
 
-class TestLogging(unittest.TestCase, PEP8MixIn):
-    PEP8_FILES = [
-        "golem/utils.py",
-    ]
+class TestLogging(unittest.TestCase):
+    # PEP8_FILES = [
+    #     "golem/utils.py",
+    # ]
     @mock.patch('logging.Handler.handleError')
     def test_unicode_formatter(self, handleError_mock):
         problematic_s = '\xe9\x01\x03'
