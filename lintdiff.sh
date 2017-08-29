@@ -25,9 +25,9 @@ fi
 # Check if diff supports colored output
 # Ubuntu Trusty has an ancient version of diffutils, 3.3,
 # which doesn't handle that yet
-if diff --color /dev/null /dev/null &> /dev/null; then
+if diff --color /dev/null /dev/null &>/dev/null; then
     DIFF="diff --color"
-elif which colordiff; then
+elif which colordiff &>/dev/null; then
     DIFF=colordiff
 else
     DIFF=diff
@@ -71,8 +71,8 @@ commit=$(git rev-parse HEAD)
 # the new commit.
 git checkout "$CURRENT_BRANCH" .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
-echo "$@"
-"$@" || exit 1 >$REF_OUT
+echo $@
+$@ >$REF_OUT
 
 # Now take back the checked out config, go back to the new branch
 git reset --hard HEAD
@@ -81,8 +81,8 @@ git checkout "$CURRENT_BRANCH" || exit 1
 trap - EXIT
 commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
-echo "$@"
-"$@" || exit 1 >$CURRENT_OUT
+echo $@
+$@ >$CURRENT_OUT
 
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
