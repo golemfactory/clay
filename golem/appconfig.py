@@ -1,7 +1,6 @@
 import logging
 from os import path
 
-from typing import Set
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -119,7 +118,7 @@ class NodeConfig:
 
 
 class AppConfig:
-    __loaded_configs = set()  # type: Set[str]
+    __loaded_configs = set()
 
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
