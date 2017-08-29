@@ -1,13 +1,11 @@
 import os
 
-
 from apps.rendering.resources.ImgVerificator import ImgStatistics, \
     ImgVerificator
 
 from apps.core.task.verificator import \
     SubtaskVerificationState as VerificationState
 from apps.rendering.resources.imgrepr import PILImgRepr
-
 
 from golem.tools.assertlogs import LogTestCase
 from golem import testutils
@@ -16,7 +14,10 @@ from golem.core.common import get_golem_path
 
 # to run from console: go to the folder with images and type:
 # $ pyssim base_img_name.png '*.png'
-# !!! WARNING !!! PILImgRepr().load_from_file() runs self.img = self.img.convert('RGB') which may change the result!!!
+# !!! WARNING !!!
+# PILImgRepr().load_from_file() runs
+# self.img = self.img.convert('RGB') which may change the result!!!
+
 # you can always check the file's color map by typing:
 # $ file myImage.png
 # myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
@@ -33,9 +34,9 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
             ImgVerificator().get_random_crop_window(coverage=0.1,
                                                     window=(0, 1, 0, 1))
 
-        assert random_crop_window_for_verification == \
-               (0.57739221584148, 0.8936199818583179,
-                0.5182681753558643, 0.8344959413727022)
+        assert random_crop_window_for_verification == (
+            0.57739221584148, 0.8936199818583179,
+            0.5182681753558643, 0.8344959413727022)
 
     def test_pilcrop_vs_luxrender_croppingwindow(self):
         # arrange
