@@ -1,11 +1,12 @@
 import unittest
-from os import urandom
+from os import urandom, path
 
 import requests
 from mock import patch, Mock
 
-from golem.ethereum.node import NodeProcess, tETH_faucet_donate
-from golem.testutils import TempDirFixture
+from golem.ethereum.node import log, NodeProcess, tETH_faucet_donate
+from golem.testutils import PEP8MixIn, TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
 
 
@@ -14,7 +15,9 @@ class MockPopen(Mock):
         return "Version: 1.6.2", Mock()
 
 
-class RopstenFaucetTest(unittest.TestCase):
+class RopstenFaucetTest(unittest.TestCase, PEP8MixIn):
+    PEP8_FILES = ["golem/ethereum/node.py"]
+
     @patch('requests.get')
     def test_error_code(self, get):
         addr = urandom(20)
@@ -45,7 +48,7 @@ class RopstenFaucetTest(unittest.TestCase):
         assert encode_hex(addr)[2:] in get.call_args[0][0]
 
 
-class EthereumNodeTest(TempDirFixture):
+class EthereumNodeTest(TempDirFixture, LogTestCase):
     def test_ethereum_node(self):
         np = NodeProcess(self.tempdir)
         assert np.is_running() is False
@@ -57,11 +60,22 @@ class EthereumNodeTest(TempDirFixture):
         np.stop()
         assert np.is_running() is False
 
-    @unittest.skip("Ethereum node sharing not supported")
+        # Test different port option
+        port = 8182
+        with self.assertLogs(log, level="INFO") as l:
+            np.start(port)
+            assert any("--port=8182" in log for log in l.output)
+        assert np.is_running() is True
+        np.stop()
+        assert np.is_running() is False
+
     def test_ethereum_node_reuse(self):
         np = NodeProcess(self.tempdir)
         np.start()
-        np1 = NodeProcess(self.tempdir)
+
+        # Reuse but with different directory
+        ndir = path.join(self.tempdir, "ndir")
+        np1 = NodeProcess(ndir)
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True

@@ -28,15 +28,18 @@ from golem.node import OptNode
               help="Network address to use for this node")
 @click.option('--rpc-address', '-r', multiple=False,
               callback=OptNode.parse_rpc_address,
-              help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+              help="RPC server address to use: <ipv4_addr>:<port> or "
+                   "[<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+              help="Connect with given peer: <ipv4_addr>:<port> or "
+                   "[<ipv6_addr>]:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
+@click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
 @click.option('--multiprocessing-fork', nargs=1, expose_value=False)
@@ -48,7 +51,7 @@ from golem.node import OptNode
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m):
+          qt, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -67,7 +70,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
-
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
@@ -80,7 +82,8 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem
     elif gui:
         from gui.startapp import start_app
-        start_app(rendering=True, use_monitor=monitor, **config)
+        start_app(rendering=True, use_monitor=monitor, geth_port=geth_port,
+                  **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
@@ -88,7 +91,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
 
         node = OptNode(peers=peer, node_address=node_address,
-		               use_monitor=monitor, **config)
+                       use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
