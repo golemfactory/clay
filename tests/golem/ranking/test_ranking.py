@@ -10,6 +10,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.testutils import PEP8MixIn
 
+
 class TestRankingDatabase(TestWithDatabase):
     def test_local_rank(self):
         self.assertIsNone(dm.get_local_rank("ABC"))
@@ -105,8 +106,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
     def test_count_trust(self):
         from golem.ranking.helper import min_max_utility
 
-
-        result = min_max_utility.count_trust(600,200)
+        result = min_max_utility.count_trust(600, 200)
         self.assertEqual(result, 0.2)
 
         result = min_max_utility.count_trust(999999999, 1)
@@ -114,7 +114,6 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
 
         result = min_max_utility.count_trust(1, 999999999)
         self.assertGreaterEqual(result, min_max_utility.MIN_TRUST)
-
 
     def test_increase_trust_thread_safety(self):
         c = MagicMock(spec=Client)
@@ -145,7 +144,6 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         result = r.get_computing_trust("ABC")
         self.assertEqual(result, expected)
 
-
     def test_requesting_trust_thread_safety(self):
         c = MagicMock(spec=Client)
         r = Ranking(c)
@@ -175,11 +173,12 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         result = r.get_requesting_trust("ABC")
         self.assertEqual(result, expected)
 
-
     def test_without_reactor(self):
         r = Ranking(MagicMock(spec=Client))
-        r.client.get_neighbours_degree.return_value = {'ABC': 4, 'JKL': 2, 'MNO': 5}
-        r.client.collect_stopped_peers.return_value = set()
+        r.client.get_neighbours_degree.return_value = \
+            {'ABC': 4, 'JKL': 2, 'MNO': 5}
+        r.client.collect_stopped_peers.return_value = \
+            set()
         reactor = MagicMock()
         r.run(reactor)
         assert r.reactor == reactor
@@ -223,7 +222,6 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         assert r.prevRank["XYZ"][0] == 0
         assert r.prevRank["XYZ"][1] == 0
 
-
         r._Ranking__new_round()
         assert set(r.neighbours) == {'ABC', 'JKL', 'MNO'}
         assert r.k == 1
@@ -241,15 +239,19 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
                 assert gossip[1][0][1] == 0.5
         assert found
         assert r.client.send_gossip.called
-        assert r.client.send_gossip.call_args[0][0] == r.received_gossip[0]
-        assert r.client.send_gossip.call_args[0][1][0] in ["ABC", "JKL", "MNO"]
+        assert r.client.send_gossip.call_args[0][0] \
+               == r.received_gossip[0]
+        assert r.client.send_gossip.call_args[0][1][0] \
+               in ["ABC", "JKL", "MNO"]
 
-        r.client.collect_neighbours_loc_ranks.return_value = [['ABC', 'XYZ', [-0.2, -0.5]],
-                                                              ['JKL', 'PQR', [0.8, 0.7]]]
+        r.client.collect_neighbours_loc_ranks.return_value = \
+            [['ABC', 'XYZ', [-0.2, -0.5]],
+             ['JKL', 'PQR', [0.8, 0.7]]]
         r.sync_network()
 
-        r.client.collect_gossip.return_value = [[["MNO", [[0.2, 0.2], [-0.1, 0.3]]],
-                                                ["ABC", [[0.3, 0.5], [0.3, 0.5]]]]]
+        r.client.collect_gossip.return_value = \
+            [[["MNO", [[0.2, 0.2], [-0.1, 0.3]]],
+              ["ABC", [[0.3, 0.5], [0.3, 0.5]]]]]
         r._Ranking__end_round()
         assert len(r.prevRank) == 4
         assert len(r.received_gossip) == 0
