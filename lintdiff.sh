@@ -9,47 +9,47 @@ CURRENT_OUT=/tmp/current-lint.out
 FETCH=true
 
 usage() {
-	echo "Usage: $0 [-b branch] [-o] command"
-	echo "    -b branch			use branch \`branch\` for comparison"
-	echo "    -o 				offline mode, do not fetch origin"
-	exit 1
+    echo "Usage: $0 [-b branch] [-o] command"
+    echo "    -b branch         use branch \`branch\` for comparison"
+    echo "    -o                offline mode, do not fetch origin"
+    exit 1
 }
 
 # Check if diff supports colored output
 # Ubuntu Trusty has an ancient version of diffutils, 3.3,
 # which doesn't handle that yet
 if diff --color /dev/null /dev/null; then
-	DIFF="diff --color"
+    DIFF="diff --color"
 elif which colordiff; then
-	DIFF=colordiff
+    DIFF=colordiff
 else
     DIFF=diff
 fi
 
 while getopts "b:o" opt; do
-	case $opt in
-		b)
-			REF_BRANCH=$OPTARG
-			;;
-		o)
-			FETCH=false
-			;;
-		*)
-			usage
-			;;
-	esac
+    case $opt in
+        b)
+            REF_BRANCH=$OPTARG
+            ;;
+        o)
+            FETCH=false
+            ;;
+        *)
+            usage
+            ;;
+    esac
 done
 shift $((OPTIND - 1))
 
 # get new changes from develop, GitHub doesn't integrate them on its own
 if $FETCH; then
-	echo "Fetching new changes from develop..."
-	git fetch origin || exit 1
+    echo "Fetching new changes from develop..."
+    git fetch origin || exit 1
 fi
 
 cleanup_artifacts() {
-	git reset --hard HEAD
-	git checkout "$CURRENT_BRANCH" || exit 1
+    git reset --hard HEAD
+    git checkout "$CURRENT_BRANCH" || exit 1
 }
 
 # we checkout the reference branch first in case there are
@@ -80,9 +80,9 @@ cleanup_artifacts
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
-	echo "New findings! The error diff is:"
-	$DIFF --unified $REF_OUT $CURRENT_OUT
-	exit 1
+    echo "New findings! The error diff is:"
+    $DIFF --unified $REF_OUT $CURRENT_OUT
+    exit 1
 else
-	echo "Check OK, no new findings..."
+    echo "Check OK, no new findings..."
 fi
