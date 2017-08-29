@@ -7,6 +7,10 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 
+from golem.ranking.helper.trust_const import \
+    REQUESTING_TRUST, \
+    COMPUTING_TRUST
+
 logger = logging.getLogger(__name__)
 
 MIN_DISK_SPACE = 1000 * 1024
@@ -53,10 +57,6 @@ FORWARDED_SESSION_REQUEST_TIMEOUT = 30
 MAX_PRICE = int(5.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
-
-from golem.ranking.helper.trust_const import \
-    REQUESTING_TRUST, \
-    COMPUTING_TRUST
 
 
 # FIXME: deprecated
@@ -194,7 +194,7 @@ class AppConfig:
             raise TypeError(
                 "Incorrect config descriptor type: {}."
                 " Should be ClientConfigDescriptor"
-                    .format(type(cfg_desc))
+                .format(type(cfg_desc))
             )
 
         for var, val in list(vars(cfg_desc).items()):
