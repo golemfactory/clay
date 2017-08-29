@@ -1,7 +1,7 @@
 import collections
 import logging
 import time
-from typing import List, Set, Any
+
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
@@ -17,7 +17,7 @@ class Message(object):
     """ Communication message that is sent in all networks """
 
     # Message types that are allowed to be sent in the network
-    registered_message_types = {}  # type: Set[Any]
+    registered_message_types = {}
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message"""
@@ -56,7 +56,7 @@ class Message(object):
         result = dict()
         for k, v in dictionary.items():
             if filter_properties and (k.startswith('_') or
-                                          isinstance(v, collections.Callable)):
+                                      isinstance(v, collections.Callable)):
                 continue
             result[to_unicode(k)] = self._sort_obj(v)
         return sorted(result.items())
@@ -131,9 +131,8 @@ class Message(object):
         """
         if not isinstance(db_, DataBuffer):
             raise TypeError(
-                "Incorrect db type: "
-                "{}. Should be: DataBuffer"
-                    .format(db_)
+                "Incorrect db type: {}. Should be: DataBuffer"
+                .format(db_)
             )
         messages_ = []
         msg_ = db_.read_len_prefixed_string()
@@ -332,12 +331,12 @@ P2P_MESSAGE_BASE = 1000
 
 class MessagePing(Message):
     TYPE = P2P_MESSAGE_BASE + 1
-    MAPPING = {}  # type: Set[Any]
+    MAPPING = {}
 
 
 class MessagePong(Message):
     TYPE = P2P_MESSAGE_BASE + 2
-    MAPPING = {}  # type: Set[Any]
+    MAPPING = {}
 
 
 class MessageGetPeers(Message):
@@ -1231,72 +1230,72 @@ def init_messages():
         return
     for message_class in \
             (
-                    # Basic messages
-                    MessageHello,
-                    MessageRandVal,
-                    MessageDisconnect,
-                    MessageChallengeSolution,
+            # Basic messages
+            MessageHello,
+            MessageRandVal,
+            MessageDisconnect,
+            MessageChallengeSolution,
 
-                    # P2P messages
-                    MessagePing,
-                    MessagePong,
-                    MessageGetPeers,
-                    MessageGetTasks,
-                    MessagePeers,
-                    MessageTasks,
-                    MessageRemoveTask,
-                    MessageFindNode,
-                    MessageGetResourcePeers,
-                    MessageResourcePeers,
-                    MessageWantToStartTaskSession,
-                    MessageSetTaskSession,
-                    MessageNatHole,
-                    MessageNatTraverseFailure,
-                    MessageInformAboutNatTraverseFailure,
-                    # Ranking messages
-                    MessageDegree,
-                    MessageGossip,
-                    MessageStopGossip,
-                    MessageLocRank,
+            # P2P messages
+            MessagePing,
+            MessagePong,
+            MessageGetPeers,
+            MessageGetTasks,
+            MessagePeers,
+            MessageTasks,
+            MessageRemoveTask,
+            MessageFindNode,
+            MessageGetResourcePeers,
+            MessageResourcePeers,
+            MessageWantToStartTaskSession,
+            MessageSetTaskSession,
+            MessageNatHole,
+            MessageNatTraverseFailure,
+            MessageInformAboutNatTraverseFailure,
+            # Ranking messages
+            MessageDegree,
+            MessageGossip,
+            MessageStopGossip,
+            MessageLocRank,
 
-                    # Task messages
-                    MessageCannotAssignTask,
-                    MessageCannotComputeTask,
-                    MessageTaskToCompute,
-                    MessageWantToComputeTask,
-                    MessageReportComputedTask,
-                    MessageTaskResultHash,
-                    MessageTaskFailure,
-                    MessageGetTaskResult,
-                    MessageStartSessionResponse,
-                    MessageMiddleman,
-                    MessageJoinMiddlemanConn,
-                    MessageBeingMiddlemanAccepted,
-                    MessageMiddlemanAccepted,
-                    MessageMiddlemanReady,
-                    MessageNatPunch,
-                    MessageWaitForNatTraverse,
-                    MessageNatPunchFailure,
-                    MessageWaitingForResults,
-                    MessageSubtaskResultAccepted,
-                    MessageSubtaskResultRejected,
-                    MessageDeltaParts,
+            # Task messages
+            MessageCannotAssignTask,
+            MessageCannotComputeTask,
+            MessageTaskToCompute,
+            MessageWantToComputeTask,
+            MessageReportComputedTask,
+            MessageTaskResultHash,
+            MessageTaskFailure,
+            MessageGetTaskResult,
+            MessageStartSessionResponse,
+            MessageMiddleman,
+            MessageJoinMiddlemanConn,
+            MessageBeingMiddlemanAccepted,
+            MessageMiddlemanAccepted,
+            MessageMiddlemanReady,
+            MessageNatPunch,
+            MessageWaitForNatTraverse,
+            MessageNatPunchFailure,
+            MessageWaitingForResults,
+            MessageSubtaskResultAccepted,
+            MessageSubtaskResultRejected,
+            MessageDeltaParts,
 
-                    # Resource messages
-                    MessageGetResource,
-                    MessagePushResource,
-                    MessageHasResource,
-                    MessageWantsResource,
-                    MessagePullResource,
-                    MessagePullAnswer,
-                    MessageResourceList,
+            # Resource messages
+            MessageGetResource,
+            MessagePushResource,
+            MessageHasResource,
+            MessageWantsResource,
+            MessagePullResource,
+            MessagePullAnswer,
+            MessageResourceList,
 
-                    MessageSubtaskPayment,
-                    MessageSubtaskPaymentRequest,
+            MessageSubtaskPayment,
+            MessageSubtaskPaymentRequest,
             ):
         if message_class.TYPE in Message.registered_message_types:
             raise RuntimeError(
                 "Duplicated message {}.TYPE: {}"
-                    .format(message_class.__name__, message_class.TYPE)
+                .format(message_class.__name__, message_class.TYPE)
             )
         Message.registered_message_types[message_class.TYPE] = message_class
