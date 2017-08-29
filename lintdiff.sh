@@ -84,9 +84,6 @@ echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo "$@"
 "$@" || exit 1 >$CURRENT_OUT
 
-# Remove the trap
-cleanup_artifacts
-
 diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
 # There's always a newline, so -gt 1
 if [ -n "$diff" ]; then
