@@ -50,11 +50,11 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=invalid-name,           # Pylint is overzealous here
+disable=invalid-name,                   # Pylint is overzealous here
         missing-docstring,              # We don't need a docstring for obvious things!
         fixme,
-        too-few-public-methods,
-        too-many-args
+        redefined-builtin,
+        logging-format-interpolation,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
