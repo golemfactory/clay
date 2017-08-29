@@ -25,7 +25,9 @@ class DockerTestCase(unittest.TestCase):
         try:
             client = cls.test_client()
             images = client.images()
-            repo_tags = sum([img["RepoTags"] for img in images], [])
+            repo_tags = sum([img["RepoTags"] 
+                             for img in images 
+                             if img["RepoTags"]], [])
             if cls.TEST_IMAGE not in repo_tags:
                 raise unittest.SkipTest(
                     "Skipping tests: Image {} not available".format(
@@ -53,9 +55,11 @@ class TestDockerImage(DockerTestCase):
         self.assertEqual(img.tag, self.TEST_TAG)
 
     def test_is_available_by_repo(self):
-        # img = DockerImage(repository=self.TEST_REPOSITORY, tag=self.TEST_TAG)
+        # img = DockerImage(repository=self.TEST_REPOSITORY,
+        #                   tag=self.TEST_TAG)
         # self.assertTrue(img.is_available())
-        # self.assertEqual(img.name, "{}:{}".format(self.TEST_REPOSITORY, self.TEST_TAG))
+        # self.assertEqual(img.name, "{}:{}".format(self.TEST_REPOSITORY,
+        #                                           self.TEST_TAG))
 
         nimg = DockerImage("imapp/xzy")
         self.assertFalse(nimg.is_available())
@@ -90,15 +94,21 @@ class TestDockerImage(DockerTestCase):
         self.assertFalse(nimg2.is_available())
 
     def test_cmp_name_and_tag(self):
-        img = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG, image_id=self.TEST_IMAGE_ID)
+        img = DockerImage(self.TEST_REPOSITORY, 
+                          tag=self.TEST_TAG, 
+                          image_id=self.TEST_IMAGE_ID)
         img2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
         assert img.cmp_name_and_tag(img2)
         assert img2.cmp_name_and_tag(img)
 
-        img3 = DockerImage(self.TEST_REPOSITORY, tag="bogus", image_id=self.TEST_IMAGE_ID)
+        img3 = DockerImage(self.TEST_REPOSITORY, 
+                           tag="bogus", 
+                           image_id=self.TEST_IMAGE_ID)
         assert not img.cmp_name_and_tag(img3)
         assert not img3.cmp_name_and_tag(img)
 
-        img4 = DockerImage("golemfactory/xyz", tag=self.TEST_TAG, image_id=self.TEST_IMAGE_ID)
+        img4 = DockerImage("golemfactory/xyz", 
+                           tag=self.TEST_TAG, 
+                           image_id=self.TEST_IMAGE_ID)
         assert not img.cmp_name_and_tag(img4)
         assert not img4.cmp_name_and_tag(img)
