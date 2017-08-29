@@ -1,14 +1,14 @@
 import os
 
-import PIL
-# from PIL import Image
 
-from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
+from apps.rendering.resources.ImgVerificator import ImgStatistics, \
+    ImgVerificator
 
-from apps.core.task.verificator import SubtaskVerificationState as VerificationState
-from apps.rendering.resources.imgrepr import load_img, PILImgRepr
+from apps.core.task.verificator import \
+    SubtaskVerificationState as VerificationState
+from apps.rendering.resources.imgrepr import PILImgRepr
 
-from golem.testutils import TempDirFixture
+
 from golem.tools.assertlogs import LogTestCase
 from golem import testutils
 from golem.core.common import get_golem_path
@@ -30,7 +30,8 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
         random.seed(0)
 
         random_crop_window_for_verification = \
-            ImgVerificator().get_random_crop_window(coverage=0.1, window=(0, 1, 0, 1))
+            ImgVerificator().get_random_crop_window(coverage=0.1,
+                                                    window=(0, 1, 0, 1))
 
         assert random_crop_window_for_verification == \
                (0.57739221584148, 0.8936199818583179,
@@ -87,18 +88,22 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
 
         cropped_img2 = img_verificator.crop_img_relative(
             img2, cropping_window2)
-        cropped_img2.img.save(os.path.join(folder_path, 'cropped' + cropped_img2.get_name()))
+        cropped_img2.img.save(os.path.join(folder_path,
+                                           'cropped' + cropped_img2.get_name()))
 
         # assert
         import hashlib
         assert hashlib.md5(
-            answer_img0.to_pil().tobytes()).hexdigest() == hashlib.md5(cropped_img0.to_pil().tobytes()).hexdigest()
+            answer_img0.to_pil().tobytes()).hexdigest() == hashlib.md5(
+            cropped_img0.to_pil().tobytes()).hexdigest()
 
         assert hashlib.md5(
-            cropped_img1.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img1.to_pil().tobytes()).hexdigest()
+            cropped_img1.to_pil().tobytes()).hexdigest() == hashlib.md5(
+            answer_img1.to_pil().tobytes()).hexdigest()
 
         assert hashlib.md5(
-            cropped_img2.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img2.to_pil().tobytes()).hexdigest()
+            cropped_img2.to_pil().tobytes()).hexdigest() == hashlib.md5(
+            answer_img2.to_pil().tobytes()).hexdigest()
 
     def test_imgStat_values(self):
         # arrange
@@ -123,7 +128,8 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
         ref_img0 = img_verificator.crop_img_relative(ref_img0, cropping_window)
         ref_img1 = img_verificator.crop_img_relative(ref_img1, cropping_window)
 
-        reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
+        # these are img rendered by requestor
+        reference_stats = ImgStatistics(ref_img0, ref_img1)
 
         print(reference_stats.get_stats())
 
@@ -140,9 +146,11 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
                                    "resources", "imgs_for_verification_tests")
 
         ref_img0 = PILImgRepr()
-        ref_img0.load_from_file(os.path.join(folder_path, 'reference_300x400spp50_run0.png'))
+        ref_img0.load_from_file(os.path.join(folder_path,
+                                             'reference_300x400spp50_run0.png'))
         ref_img1 = PILImgRepr()
-        ref_img1.load_from_file(os.path.join(folder_path, 'reference_300x400spp50_run1.png'))
+        ref_img1.load_from_file(os.path.join(folder_path,
+                                             'reference_300x400spp50_run1.png'))
 
         images = list()
         for file_name in os.listdir(folder_path):
@@ -158,7 +166,8 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
         ref_img0 = img_verificator.crop_img_relative(ref_img0, cropping_window)
         ref_img1 = img_verificator.crop_img_relative(ref_img1, cropping_window)
 
-        reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
+        # these are img rendered by requestor
+        reference_stats = ImgStatistics(ref_img0, ref_img1)
         #
         # ref_img0.img.save(('aaa' + ref_img0.get_name() + '.png'))
         # ref_img1.img.save(('aaa' + ref_img1.get_name() + '.png'))

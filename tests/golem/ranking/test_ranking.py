@@ -239,10 +239,8 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
                 assert gossip[1][0][1] == 0.5
         assert found
         assert r.client.send_gossip.called
-        assert r.client.send_gossip.call_args[0][0] \
-               == r.received_gossip[0]
-        assert r.client.send_gossip.call_args[0][1][0] \
-               in ["ABC", "JKL", "MNO"]
+        assert r.client.send_gossip.call_args[0][0] == r.received_gossip[0]
+        assert r.client.send_gossip.call_args[0][1][0] in ["ABC", "JKL", "MNO"]
 
         r.client.collect_neighbours_loc_ranks.return_value = \
             [['ABC', 'XYZ', [-0.2, -0.5]],
