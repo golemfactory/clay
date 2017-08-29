@@ -99,6 +99,8 @@ class ProcessService:
             self.fd = os.open(self.ctl_file, flags)
 
             return True
+        # FIXME: Exception may be too broad
+        # pylint: disable=broad-except
         except Exception as ex:
             logger.error("Failed to acquire lock due to {}".format(ex))
             return False

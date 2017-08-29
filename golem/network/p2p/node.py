@@ -52,9 +52,9 @@ class Node(DictSerializable):
                 self.prv_addr = get_host_address(seed_host, use_ipv6)
 
         if self.prv_addr not in self.prv_addresses:
-            logger.warn("Specified node address {} is not among detected "
-                        "network addresses: {}".format(self.prv_addr,
-                                                       self.prv_addresses))
+            logger.warning("Specified node address {} is not among detected "
+                           "network addresses: {}".format(self.prv_addr,
+                                                          self.prv_addresses))
 
     def is_super_node(self) -> bool:
         if self.pub_addr is None or self.prv_addr is None:
@@ -68,10 +68,10 @@ class Node(DictSerializable):
         return self.__dict__.copy()
 
     @staticmethod
-    def from_dict(d: Optional[dict]) -> 'Node':
+    def from_dict(data: Optional[dict]) -> 'Node':
         n = Node()
-        if d:
-            n.__dict__.update(d)
+        if data:
+            n.__dict__.update(data)
         return n
 
     def __eq__(self, other: object) -> bool:

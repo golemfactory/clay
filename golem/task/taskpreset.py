@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Union
 
-from peewee import IntegrityError
+from peewee import IntegrityError, PeeweeException
 
 from golem.model import TaskPreset
 
@@ -16,7 +16,7 @@ def save_task_preset(preset_name: str, task_type: str,
         except IntegrityError:
             is_same_preset = _is_same_task_preset(task_type, preset_name)
             TaskPreset.update(data=data).where(is_same_preset).execute()
-    except Exception:
+    except PeeweeException:
         logger.exception("Cannot save preset")
 
 
@@ -34,7 +34,7 @@ def delete_task_preset(task_type: str, name: str) -> None:
         query = TaskPreset.delete().where(
             _is_same_task_preset(task_type, name))
         query.execute()
-    except Exception:
+    except PeeweeException:
         logger.exception(("Cannot remove task preset {}:{}".format(
             task_type, name)))
 

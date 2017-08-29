@@ -5,7 +5,7 @@ import logging
 import sys
 import types
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Type, TypeVar, Union
+from typing import Optional, Type, Union
 
 import cbor2
 import pytz
