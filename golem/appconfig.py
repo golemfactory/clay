@@ -118,7 +118,7 @@ class NodeConfig:
 
 
 class AppConfig:
-    __loaded_configs = set() # type: Set[str]
+    __loaded_configs = set()  # type: Set[str]
 
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
