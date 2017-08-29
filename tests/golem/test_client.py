@@ -372,6 +372,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     @patch('golem.client.log')
     def test_do_work(self, log, *_):
+        # FIXME: Pylint has real problems here
+        # https://github.com/PyCQA/pylint/issues/1643
+        # https://github.com/PyCQA/pylint/issues/1645
+        # pylint: disable=no-member
         self.client = Client(
             datadir=self.path,
             transaction_system=False,
@@ -391,9 +395,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         # Test if method exits if p2pservice is not present
         c.p2pservice = None
         c.config_desc.send_pings = False
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__do_work()  # pylint: disable=no-member
+        c._Client__do_work()
 
         assert not log.exception.called
         assert not c.check_payments.called
@@ -402,17 +404,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.p2pservice = Mock()
         c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
 
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__do_work()  # pylint: disable=no-member
+        c._Client__do_work()
 
-        # FIXME: https://github.com/PyCQA/pylint/issues/1645
         assert not c.p2pservice.ping_peers.called
-        assert not log.exception.called  # pylint: disable=no-member
-        assert c.p2pservice.sync_network.called  # pylint: disable=no-member
-        assert c.task_server.sync_network.called  # pylint: disable=no-member
-        assert c.resource_server.sync_network.called  # pylint: disable=no-member
-        assert c.ranking.sync_network.called  # pylint: disable=no-member
+        assert not log.exception.called
+        assert c.p2pservice.sync_network.called
+        assert c.task_server.sync_network.called
+        assert c.resource_server.sync_network.called
+        assert c.ranking.sync_network.called
         assert c.check_payments.called
 
         # Enable pings
