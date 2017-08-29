@@ -1,5 +1,3 @@
-
-
 import logging
 from os import path
 
@@ -60,9 +58,9 @@ from golem.ranking.helper.trust_const import \
     REQUESTING_TRUST, \
     COMPUTING_TRUST
 
+
 # FIXME: deprecated
 class CommonConfig:
-
     def __init__(self, section="Common", **kwargs):
         self._section = section
 
@@ -196,7 +194,7 @@ class AppConfig:
             raise TypeError(
                 "Incorrect config descriptor type: {}."
                 " Should be ClientConfigDescriptor"
-                .format(type(cfg_desc))
+                    .format(type(cfg_desc))
             )
 
         for var, val in list(vars(cfg_desc).items()):
