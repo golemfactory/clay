@@ -10,11 +10,11 @@ CURRENT_OUT=/tmp/current-lint.out
 FETCH=true
 
 usage() {
-    echo "Usage: $0 [-b branch] [-o] [-f origin] command"
+    echo "Usage: $0 [-b <branch>] [-o] [-f <origin>] [-h] command"
     echo "    -h                show this help message"
-    echo "    -b branch         use branch \`branch\` for comparison. Default: origin/develop"
+    echo "    -b <branch>       use branch \`branch\` for comparison. Default: origin/develop"
     echo "    -o                offline mode, do not fetch origin"
-    echo "    -f origin         fetch the changes from origin if in online mode. Default: origin"
+    echo "    -f <remote>       select the remote to fetch before linting. Default: origin"
     exit 1
 }
 
