@@ -137,12 +137,12 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
 
-        self.connect()
-
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.get_key_id())
+
+        self.connect()
 
         self.diag_service = None
 
@@ -189,14 +189,6 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
-
-        for service in Client.services:
-            assert issubclass(service, BaseService)
-            assert service.name not in self.services
-            service.register_with_app(self)
-            assert hasattr(self.services, service.name)
-
-        BaseApp.start(self)
 
         dispatcher.connect(
             self.p2p_listener,
@@ -389,6 +381,14 @@ class Client(BaseApp, HardwarePresetsMixin):
         devp2plog.info(self.configp2p['discovery']['bootstrap_nodes'])
 
         BaseApp.__init__(self, self.configp2p)
+
+        for service in Client.services:
+            assert issubclass(service, BaseService)
+            assert service.name not in self.services
+            service.register_with_app(self)
+            assert hasattr(self.services, service.name)
+
+        BaseApp.start(self)
 
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
