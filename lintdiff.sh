@@ -1,6 +1,7 @@
 #!/bin/bash
 # Checks if new lint messages have appeared
 
+FETCH_ORIGIN=origin
 REF_BRANCH=origin/develop
 CURRENT_BRANCH=$(git symbolic-ref --short -q HEAD)
 
@@ -9,11 +10,17 @@ CURRENT_OUT=/tmp/current-lint.out
 FETCH=true
 
 usage() {
-    echo "Usage: $0 [-b branch] [-o] command"
-    echo "    -b branch         use branch \`branch\` for comparison"
+    echo "Usage: $0 [-b branch] [-o] [-f origin] command"
+    echo "    -h                show this help message"
+    echo "    -b branch         use branch \`branch\` for comparison. Default: origin/develop"
     echo "    -o                offline mode, do not fetch origin"
+    echo "    -f origin         fetch the changes from origin if in online mode. Default: origin"
     exit 1
 }
+
+if [ $# -eq 0 ]; then
+    usage
+fi
 
 # Check if diff supports colored output
 # Ubuntu Trusty has an ancient version of diffutils, 3.3,
@@ -26,13 +33,16 @@ else
     DIFF=diff
 fi
 
-while getopts "b:o" opt; do
+while getopts "b:of:h" opt; do
     case $opt in
         b)
             REF_BRANCH=$OPTARG
             ;;
         o)
             FETCH=false
+            ;;
+        f)
+            FETCH_ORIGIN=$OPTARG
             ;;
         *)
             usage
@@ -44,7 +54,7 @@ shift $((OPTIND - 1))
 # get new changes from develop, GitHub doesn't integrate them on its own
 if $FETCH; then
     echo "Fetching new changes from develop..."
-    git fetch origin || exit 1
+    git fetch "$FETCH_ORIGIN" || exit 1
 fi
 
 cleanup_artifacts() {
