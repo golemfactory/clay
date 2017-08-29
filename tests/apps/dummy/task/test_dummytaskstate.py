@@ -69,7 +69,7 @@ class TestDummyTaskDefinition(TempDirFixture):
             assert os.path.isdir(td.tmp_dir)
             assert isinstance(td.resources, set)
             assert td.tmp_dir == self.tempdir
-            assert os.path.islink(os.path.join(td.tmp_dir, "code"))
-            assert os.path.islink(os.path.join(td.tmp_dir, "data"))
+            assert os.path.isdir(os.path.join(td.tmp_dir, "code"))
+            assert os.path.isdir(os.path.join(td.tmp_dir, "data"))
             assert os.path.commonpath(list(td.resources)) == self.tempdir
             assert td.resources == set(ls_R(td.tmp_dir))

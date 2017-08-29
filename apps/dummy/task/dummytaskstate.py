@@ -91,7 +91,7 @@ class DummyTaskDefinition(TaskDefinition):
         # but we only have 1 file here
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])
 
-        os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
+        symlink_or_copy(common_data_path, os.path.join(self.tmp_dir, "data"))
 
         self.resources = set(ls_R(self.tmp_dir))
 
