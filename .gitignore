@@ -72,3 +72,6 @@ Installer/Installer_Win/golem-*
 # virtualenv
 venv/*
 .mypy_cache/
+
+# dummy test temp files
+apps/dummy/test_tmp/*
