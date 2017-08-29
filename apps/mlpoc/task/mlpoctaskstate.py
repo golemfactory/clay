@@ -19,7 +19,10 @@ class MLPOCTaskDefaults(TaskDefaults):
         self.shared_data_files = ["IRIS.data"]
         self.default_subtasks = 5
         self.code_dir = os.path.join(get_golem_path(),
-                                     "apps", "mlpoc", "resources", "code_dir")
+                                     "apps",
+                                     "mlpoc",
+                                     "resources",
+                                     "code_pytorch")
 
         @property
         def full_task_timeout(self):
@@ -41,7 +44,10 @@ class MLPOCTaskDefinition(TaskDefinition):
 
         # subtask code
         self.code_dir = os.path.join(get_golem_path(),
-                                     "apps", "mlpoc", "resources", "code_dir")
+                                     "apps",
+                                     "mlpoc",
+                                     "resources",
+                                     "code_dir")
         self.code_files = []
 
         if defaults:
@@ -56,8 +62,11 @@ class MLPOCTaskDefinition(TaskDefinition):
         self.shared_data_files = list(self.resources)
         self.code_files = ls_R(self.code_dir)
 
+        # TODO remove symlinks when the dummytask will be merged
+        # symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
         os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])
+        # symlink_or_copy(common_data_path, os.path.join(self.tmp_dir, "data"))
         os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
         self.resources = set(ls_R(self.tmp_dir))
 

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import random
@@ -10,12 +11,13 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
 from apps.mlpoc.mlpocenvironment import MLPOCTaskEnvironment
-from apps.mlpoc.resources.code_dir.impl.batchmanager import IrisBatchManager
-from apps.mlpoc.resources.code_dir.impl.box import CountingBlackBox
-from apps.mlpoc.resources.code_dir.messages import MLPOCBlackBoxAnswerMessage
+from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
+from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox
+from apps.mlpoc.resources.code_pytorch.messages import MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefaults, MLPOCTaskOptions
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef, Task
 from golem.task.taskstate import SubtaskStatus
 
@@ -66,10 +68,33 @@ class MLPOCTask(CoreTask):
             total_tasks=total_tasks
         )
 
+        tmp_path = "" # TODO create temp path for spearmint resources
+        local_spearmint = LocalComputer(None, # we don't use task at all
+                                        tmp_path,
+                                        lambda *_: self.__restart_spearmint(),
+                                        lambda *_: self.__restart_spearmint(),
+                                        lambda: self.__spearmint_ctd,
+                                        use_task_resources=False,
+                                        additional_resources=False)
+        local_spearmint.run() # TODO run in in background
+
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
         # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         # ver_opts["result_extension"] = self.RESULT_EXT
+
+    def __restart_spearmint(self):
+        # it shouldn't happen
+        # log it and restart spearmint
+        # and restore results.dat!!!
+        pass
+
+    def __spearmit_ctd(self):
+        # pass the appropriate code and extra data:
+        # EXPERIMENT_DIR - dir with config.json
+        # SIGNAL_FILE - file which signalizes the change in results.dat
+        # SIMULTANEOUS_UPDATES_NUM - how many new suggestions has the spearmint add every time?
+        pass
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
@@ -138,7 +163,9 @@ class MLPOCTask(CoreTask):
             self.subtasks_given[subtask_id]['node_id']
         ].accept()
         self.num_tasks_received += 1
-        self.__update_spearmint_state(result_files)
+
+        score_file = [f for f in result_files if ".score" in f]
+        self.__update_spearmint_state(score_file)
 
     def __get_new_subtask_id(self) -> str:
         return "{:32x}".format(random.getrandbits(128))
@@ -153,10 +180,11 @@ class MLPOCTask(CoreTask):
         self.test_batch_manager = batch_manager
         return exd
 
-    def __update_spearmint_state(self, result_files):
-        # TODO here happens magic with local spearmint dockerthread
-        # adding new params to spearmint file and running it
-        pass
+    def __update_spearmint_state(self, score_file):
+        with open(score_file, "r") as f:
+            res = json.load(f)["score"] # TODO check if it doesn't pose any security threat
+        score = res["score"]  # overall score of the network with
+        params = res["params"] # the given parameters
 
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
