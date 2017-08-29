@@ -146,10 +146,9 @@ class ClientOptions(object):
                         self.version)
         else:
             return self.clone()
-        return None
 
     def clone(self):
-        return ClientOptions(
+        return self.__class__(
             self.client_id,
             self.version,
             options=deepcopy(self.options)

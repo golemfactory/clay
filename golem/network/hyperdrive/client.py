@@ -60,14 +60,13 @@ class HyperdriveClient(IClient):
 
     def get_file(self, multihash, client_options=None, **kwargs):
         filepath = kwargs.pop('filepath')
-        filtered_options = None
         peers = None
 
         if client_options:
             filtered_options = client_options.filtered(self.CLIENT_ID,
                                                        self.VERSION)
-        if filtered_options:
-            peers = filtered_options.options.get('peers')
+            if filtered_options:
+                peers = filtered_options.options.get('peers')
 
         response = self._request(
             command='download',
@@ -106,13 +105,6 @@ class HyperdriveClient(IClient):
 class HyperdriveClientOptions(ClientOptions):
 
     max_peers = 64
-
-    def clone(self):
-        return HyperdriveClientOptions(
-            self.client_id,
-            self.version,
-            options=deepcopy(self.options)
-        )
 
     def filtered(self,
                  client_id=HyperdriveClient.CLIENT_ID,
