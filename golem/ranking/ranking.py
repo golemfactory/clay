@@ -81,7 +81,9 @@ class Ranking(object):
             self.__set_k()
             self.step += 1
             gossip = self.__prepare_gossip()
-            if len(self.neighbours) > 0:
+            # For sequences, (strings, lists, tuples),
+            # use the fact that empty sequences are false.
+            if self.neighbours:
                 send_to = random.sample(self.neighbours, self.k)
                 self.client.send_gossip(gossip, send_to)
             self.received_gossip = [gossip]
