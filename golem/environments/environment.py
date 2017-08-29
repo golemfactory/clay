@@ -19,11 +19,11 @@ class SupportStatus(object):
         return SupportStatus(desc, self.is_ok() and other.is_ok())
 
     @classmethod
-    def ok(cls) -> SupportStatus:
+    def ok(cls) -> 'SupportStatus':
         return cls({}, True)
 
     @classmethod
-    def err(cls, desc) -> SupportStatus:
+    def err(cls, desc) -> 'SupportStatus':
         return cls(desc, False)
 
     def __repr__(self) -> str:
@@ -42,10 +42,12 @@ class Environment(object):
     def __init__(self):
         self.software = []  # list of software that should be installed
         self.caps = []  # list of hardware requirements
-        self.short_description = "Default environment for generic tasks without any additional requirements."
+        self.short_description = "Default environment for generic tasks" \
+                                 " without any additional requirements."
         self.long_description = ""
         self.accept_tasks = False
-        self.allow_custom_main_program_file = False  # Check if tasks can define the source code
+        # Check if tasks can define the source code
+        self.allow_custom_main_program_file = False
         self.main_program_file = None
 
     def check_software(self):
@@ -53,7 +55,8 @@ class Environment(object):
         :return bool:
         """
         if not self.allow_custom_main_program_file:
-            return self.main_program_file and path.isfile(self.main_program_file)
+            return self.main_program_file and \
+                path.isfile(self.main_program_file)
         return True
 
     def check_caps(self):

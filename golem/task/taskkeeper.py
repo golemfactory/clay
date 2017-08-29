@@ -40,7 +40,7 @@ class CompSubtaskInfo(object):
         self.subtask_id = subtask_id
 
 
-def log_key_error(*args, **kwargs):
+def log_key_error(*args, **_):
     if isinstance(args[1], ComputeTaskDef):
         task_id = args[1].task_id
     else:
@@ -171,8 +171,7 @@ class TaskHeaderKeeper(object):
             min_price=0.0,
             app_version=APP_VERSION,
             remove_task_timeout=180,
-            verification_timeout=3600
-            ):
+            verification_timeout=3600):
         # all computing tasks that this node knows about
         self.task_headers = {}
         # ids of tasks that this node may try to compute
@@ -366,7 +365,7 @@ class TaskHeaderKeeper(object):
         :return TaskHeader|None: returns either None if there are no tasks
                                  that this node may want to compute
         """
-        if len(self.supported_tasks) > 0:
+        if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
             return self.task_headers[task_id]

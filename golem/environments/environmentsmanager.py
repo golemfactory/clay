@@ -42,7 +42,7 @@ class EnvironmentsManager(object):
             {'environment_missing': env_id}))
 
     def accept_tasks(self, env_id):
-        """ Return information whether tasks from given environment are accepted.
+        """Return information whether tasks from given environment are accepted.
         :param str env_id:
         :return bool:
         """
@@ -55,7 +55,7 @@ class EnvironmentsManager(object):
         :return set:
         """
         return self.environments
-    
+
     def get_environment_by_id(self, env_id):
         for env in self.environments:
             if env.get_id() == env_id:
@@ -69,7 +69,8 @@ class EnvironmentsManager(object):
         return envs
 
     def change_accept_tasks(self, env_id, state):
-        """ Change information whether tasks from this environment are accepted or not. Write changes in config file
+        """ Change information whether tasks from this environment are accepted
+            or not. Write changes in config file
         :param str env_id:
         :param bool state:
         """

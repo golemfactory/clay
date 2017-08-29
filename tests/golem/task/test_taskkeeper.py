@@ -257,9 +257,11 @@ def get_dict_task_header():
 
 def get_task_header():
     header = get_dict_task_header()
-    return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
+    return TaskHeader(header["node_name"], header["task_id"],
+                      header["task_owner_address"],
                       header["task_owner_port"], header["task_owner_key_id"],
-                      header["environment"], header["task_owner"], header["deadline"],
+                      header["environment"], header["task_owner"],
+                      header["deadline"],
                       header["subtask_timeout"], 1024, 1.0, 1000)
 
 
