@@ -36,18 +36,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance = EthereumIncomesKeeper(processor_old)
 
 
-        # client = mock.MagicMock()
-        # client.get_peer_count.return_value = 4
-        # client.is_syncing = False
-        #
-        # PRIV_KEY = tester.k1
-        # processor = PaymentProcessor(client=client, privkey=PRIV_KEY)
-        #
-        # self.instance = EthereumIncomesKeeper(processor)
-
-    # def test_received(self, super_received_mock, mock_payment_processor_synchronized):
-    # import mock
-    # @mock.patch('golem.ethereum.paymentprocessor.PaymentProcessor.synchronized', new_callable=mock.PropertyMock)
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
         received_kwargs = {
@@ -58,10 +46,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': random.randint(10, int(SQLITE3_MAX_INT / 2)),
         }
-        # mock_payment_processor_synchronized().return_value = True
-        hmm = self.instance.processor.synchronized()
-        # hmm2 = self.instance.processor.synchronized()
-        # # todo GG clean up
 
         # Transaction not in blockchain
         self.instance.processor.get_logs.return_value = None
