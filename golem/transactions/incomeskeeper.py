@@ -48,8 +48,28 @@ class IncomesKeeper(object):
                     continue
                 expected_income.delete_instance()
 
-    def received(self, sender_node_id, task_id, subtask_id, transaction_id,
-                 block_number, value):
+    def received(self, sender_node_id,
+                 task_id,
+                 subtask_id,
+                 transaction_id,
+                 block_number,
+                 value):
+
+        try:
+            with db.transaction():
+                expected_income = \
+                    ExpectedIncome.get(sender_node=sender_node_id,
+                                       task=task_id,
+                                       subtask=subtask_id)
+                expected_income.delete_instance()
+
+        except ExpectedIncome.DoesNotExist:
+            logger.info("Unexpected income received :) "
+                        "(%r, %r, %r, %r) ",
+                        sender_node_id,
+                        task_id,
+                        subtask_id,
+                        value)
 
         try:
             with db.transaction():
@@ -60,23 +80,6 @@ class IncomesKeeper(object):
                     transaction=transaction_id,
                     block_number=block_number,
                     value=value)
-
-                try:
-                    with db.transaction():
-                        expected_income = \
-                            ExpectedIncome.get(sender_node=sender_node_id,
-                                               task=task_id,
-                                               subtask=subtask_id)
-                        expected_income.delete_instance()
-
-                except ExpectedIncome.DoesNotExist:
-                    logger.info("Unexpected income received :) "
-                                "(%r, %r, %r, %r) ",
-                                sender_node_id,
-                                task_id,
-                                subtask_id,
-                                value)
-
                 return income
 
         except peewee.IntegrityError:

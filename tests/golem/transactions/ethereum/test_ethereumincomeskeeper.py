@@ -3,6 +3,7 @@ import random
 import sys
 import uuid
 
+from golem.model import db
 from golem import model
 from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper\
@@ -165,13 +166,21 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ]
 
         self.instance.received(**received_kwargs)
-        self.assertEqual(
-            1,
-            model.Income.select().where(
-                model.Income.subtask == received_kwargs['subtask_id']
+
+
+        # check the the income is in db
+        with db.atomic():
+            self.assertEqual(
+                1,
+                model.Income.select().where(
+                    model.Income.subtask == received_kwargs['subtask_id']
+                )
+                    .count()
             )
-            .count()
-        )
+            getincome = model.Income.get(sender_node=received_kwargs['sender_node_id'], task=received_kwargs['task_id'], subtask=received_kwargs['subtask_id'])
+            self.assertEqual(getincome.value, received_kwargs['value'])
+            self.assertEqual(getincome.transaction, received_kwargs['transaction_id'])
+            self.assertEqual(getincome.block_number, received_kwargs['block_number'])
 
         # Try to use the same payment for another subtask
         received_kwargs['subtask_id'] = 's2' + get_some_id()[:-2]
