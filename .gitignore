@@ -74,4 +74,4 @@ venv/*
 .mypy_cache/
 
 # dummy test temp files
-apps/dummy/test_tmp/*
+apps/dummy/test_tmp
