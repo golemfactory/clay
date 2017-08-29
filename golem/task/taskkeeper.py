@@ -4,6 +4,8 @@ import pickle
 import random
 import time
 
+from typing import Optional
+
 from semantic_version import Version
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
@@ -175,6 +177,8 @@ class TaskHeaderKeeper(object):
         self.task_headers = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
+        # results of tasks' support checks
+        self.support_status = {}
         # tasks that were removed from network recently, so they won't
         # be added again to task_headers
         self.removed_tasks = {}
@@ -185,18 +189,18 @@ class TaskHeaderKeeper(object):
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
 
-    def is_supported(self, th_dict_repr):
+    def is_supported(self, th_dict_repr) -> SupportStatus:
         """Checks if task described with given task header dict
            representation may be computed by this node. This node must
            support proper environment, be allowed to make computation
            cheaper than with max price declared in task and have proper
            application version.
         :param dict th_dict_repr: task header dictionary representation
-        :return bool: True if this node may compute a task
+        :return SupportStatus: ok() if this node may compute a task
         """
         supported = self.check_environment(th_dict_repr)
-        supported = supported and self.check_price(th_dict_repr)
-        return supported and self.check_version(th_dict_repr)
+        supported = supported.join(self.check_price(th_dict_repr))
+        return supported.join(self.check_version(th_dict_repr))
 
     @staticmethod
     def is_correct(th_dict_repr):
@@ -278,6 +282,14 @@ class TaskHeaderKeeper(object):
         local.patch = None
         return local == remote and local_patch >= remote.patch
 
+    def get_support_status(self, task_id) -> Optional[SupportStatus]:
+        """Return SupportStatus stating if and why the task is supported or not.
+        :param task_id: id of the task
+        :return SupportStatus|None: the support status
+                                    or None when task_id is unknown
+        """
+        return self.support_status.get(task_id)
+
     def get_all_tasks(self):
         """ Return all known tasks
         :return list: list of all known tasks
@@ -296,7 +308,9 @@ class TaskHeaderKeeper(object):
         self.min_price = config_desc.min_price
         self.supported_tasks = []
         for id_, th in self.task_headers.items():
-            if self.is_supported(th.__dict__):
+            supported = self.is_supported(th.__dict__)
+            self.support_status[id_] = supported
+            if supported:
                 self.supported_tasks.append(id_)
 
     def add_task_header(self, th_dict_repr):
@@ -318,6 +332,7 @@ class TaskHeaderKeeper(object):
             if id_ not in list(self.removed_tasks.keys()):  # not recent
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                 is_supported = self.is_supported(th_dict_repr)
+                self.support_status[id_] = is_supported
 
                 if update:
                     if not is_supported and id_ in self.supported_tasks:
@@ -342,6 +357,8 @@ class TaskHeaderKeeper(object):
             del self.task_headers[task_id]
         if task_id in self.supported_tasks:
             self.supported_tasks.remove(task_id)
+        if task_id in self.support_status:
+            del self.support_status[task_id]
         self.removed_tasks[task_id] = time.time()
 
     def get_task(self):
