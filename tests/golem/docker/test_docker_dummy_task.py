@@ -57,13 +57,14 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
                                 "dummy",
                                 "resources",
                                 "code_dir")
-        test_tmp = os.path.join(get_golem_path(),
-                                "apps",
-                                "dummy",
-                                "test_tmp")
+        cls.test_tmp = os.path.join(get_golem_path(),
+                                    "apps",
+                                    "dummy",
+                                    "test_tmp")
+        os.mkdir(cls.test_tmp)
 
-        cls.code_link = os.path.join(test_tmp, "code")
-        cls.data_link = os.path.join(test_tmp, "data")
+        cls.code_link = os.path.join(cls.test_tmp, "code")
+        cls.data_link = os.path.join(cls.test_tmp, "data")
 
         symlink_or_copy(code_dir, cls.code_link)
         symlink_or_copy(data_dir, cls.data_link)
@@ -86,7 +87,8 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
     def tearDownClass(cls):
         rmlink_or_rmtree(cls.code_link)
         rmlink_or_rmtree(cls.data_link)
-
+        os.rmdir(cls.test_tmp)
+        
         # TempDirFixture.tearDownClass()
         # DockerTestCase.tearDownClass()
 
