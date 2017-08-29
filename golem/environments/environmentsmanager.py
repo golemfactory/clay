@@ -1,13 +1,13 @@
 import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
-
+from .environment import SupportStatus
 logger = logging.getLogger(__name__)
 
 
 class EnvironmentsManager(object):
     """ Manage known environments. Allow user to choose accepted environment, keep track of supported environments """
     def __init__(self):
-        self.supported_environments = set()
+        self.support_status = {}
         self.environments = set()
         self.env_config = None
 
@@ -29,16 +29,17 @@ class EnvironmentsManager(object):
         supported = environment.supported()
         logger.info("Adding environment {} supported={}"
                     .format(environment.get_id(), supported))
-        if supported:
-            self.supported_environments.add(environment.get_id())
+        self.support_status[environment.get_id()] = supported
 
-    def supported(self, env_id):
-        """ Return information if given environment are supported. Uses information from supported environments, doesn't
-         check the environment again.
+    def supported(self, env_id) -> SupportStatus:
+        """ Return information if given environment are supported.
+            Uses information from supported environments,
+            doesn't check the environment again.
         :param str env_id:
-        :return bool:
+        :return SupportStatus:
         """
-        return env_id in self.supported_environments
+        return self.support_status.get(env_id, SupportStatus.err(
+            {'environment_missing': env_id}))
 
     def accept_tasks(self, env_id):
         """ Return information whether tasks from given environment are accepted.

@@ -8,7 +8,7 @@ from semantic_version import Version
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
-
+from golem.environments.environment import SupportStatus
 from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -218,46 +218,53 @@ class TaskHeaderKeeper(object):
             return False, "Subtask timeout is less than 0"
         return True, None
 
-    def check_environment(self, th_dict_repr):
+    def check_environment(self, th_dict_repr) -> SupportStatus:
         """Checks if this node supports environment necessary to compute task
            described with task header.
         :param dict th_dict_repr: task header dictionary representation
-        :return bool: True if this node support environment for this task,
-                      False otherwise
+        :return SupportStatus: ok() if this node support environment for this
+                               task, err() otherwise
         """
         env = th_dict_repr.get("environment")
-        if not self.environments_manager.supported(env):
-            return False
-        return self.environments_manager.accept_tasks(env)
+        status = SupportStatus.ok()
+        if not self.environments_manager.accept_tasks(env):
+            status = SupportStatus.err({'environment_not_accepting_tasks': env})
+        return self.environments_manager.supported(env).join(status)
 
-    def check_price(self, th_dict_repr):
+    def check_price(self, th_dict_repr) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
            price described in task header.
         :param dict th_dict_repr: task header dictionary representation
-        :return bool: False if price offered by this node is higher than
-                      maximum price for this task, True otherwise.
+        :return SupportStatus: err() if price offered by this node is higher
+                               than maximum price for this task,
+                               ok() otherwise.
         """
-        return th_dict_repr.get("max_price") >= self.min_price
+        if "max_price" in th_dict_repr \
+                and th_dict_repr["max_price"] >= self.min_price:
+            return SupportStatus.ok()
+        return SupportStatus.err({'max_price': th_dict_repr.get("max_price")})
 
-    def check_version(self, th_dict_repr):
+    def check_version(self, th_dict_repr) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
-           version described in task header. If there is no version specified
-           it will return True.
+           version described in task header.
         :param dict th_dict_repr: task header dictionary representation
-        :return bool: False if node's version is lower than minimum version
-                      for this task, False otherwise.
+        :return SupportStatus: err() if node's version is lower than minimum
+                               version for this task, False otherwise.
         """
         min_v = th_dict_repr.get("min_version")
 
+        ok = False
         try:
-            return self.check_version_compatibility(min_v)
+            ok = self.check_version_compatibility(min_v)
         except ValueError:
             logger.error(
                 "Wrong app version - app version %r, required version %r",
                 self.app_version,
                 min_v
             )
-            return False
+        if ok:
+            return SupportStatus.ok()
+        return SupportStatus.err({'app_version': min_v})
 
     def check_version_compatibility(self, remote):
         """For local a1.b1.c1 and remote a2.b2.c2, check if "a1.b1" == "a2.b2"

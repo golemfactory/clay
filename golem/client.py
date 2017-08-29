@@ -869,7 +869,7 @@ class Client(HardwarePresetsMixin):
         envs = copy(self.environments_manager.get_environments())
         return [{
             'id': str(env.get_id()),
-            'supported': env.supported(),
+            'supported': bool(env.supported()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(self.config_desc),
             'description': str(env.short_description)

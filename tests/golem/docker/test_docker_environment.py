@@ -23,4 +23,4 @@ class TestDockerEnvironment(DockerTestCase):
                             for img in env.docker_images))
 
         image_available = any(img.is_available() for img in env.docker_images)
-        self.assertEqual(image_available, env.supported())
+        self.assertEqual(image_available, env.supported().is_ok())

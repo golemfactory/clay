@@ -2,6 +2,35 @@ import sys
 from os import path
 
 
+class SupportStatus(object):
+    def __init__(self, desc, ok=False) -> None:
+        self.desc = desc
+        self._ok = ok
+
+    def is_ok(self) -> bool:
+        return self._ok
+
+    def __bool__(self) -> bool:
+        return self.is_ok()
+
+    def join(self, other) -> 'SupportStatus':
+        desc = self.desc.copy()
+        desc.update(other.desc)
+        return SupportStatus(desc, self.is_ok() and other.is_ok())
+
+    @classmethod
+    def ok(cls) -> SupportStatus:
+        return cls({}, True)
+
+    @classmethod
+    def err(cls, desc) -> SupportStatus:
+        return cls(desc, False)
+
+    def __repr__(self) -> str:
+        return '<SupportStatus %s (%r)>' % \
+            ('ok' if self._ok else 'err', self.desc)
+
+
 class Environment(object):
     @classmethod
     def get_id(cls):
@@ -33,18 +62,18 @@ class Environment(object):
         """
         return True
 
-    def supported(self):
+    def supported(self) -> SupportStatus:
         """ Check if this environment is supported on this machine
-        :return bool:
+        :return SupportStatus:
         """
-        return True
+        return SupportStatus.ok()
 
     def is_accepted(self):
         """ Check if user wants to compute tasks from this environment
         :return bool:
         """
         return self.accept_tasks
-    
+
     def get_performance(self, cfg_desc):
         """ Return performance index associated with the environment
         :return float:
