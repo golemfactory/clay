@@ -18,7 +18,9 @@ logger = logging.getLogger("gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):
-    """ Customizer for gui with all golem configuration option that can be changed by user
+    """ Customizer for gui
+    with all golem configuration options
+    that can be changed by user
     """
 
     SHOW_ADVANCE_BUTTON_MESSAGES = ["Show more", "Hide"]
@@ -241,7 +243,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __remove_from_computing(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all computed files?",
+                              "Are you sure you want to "
+                              "remove all computed files?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
@@ -254,7 +257,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __remove_from_distributed(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all distributed resources?",
+                              "Are you sure you want to "
+                              "remove all distributed resources?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
@@ -267,7 +271,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __remove_from_received(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all received task results?",
+                              "Are you sure you want to "
+                              "remove all received task results?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
