@@ -54,6 +54,7 @@ golem.log*
 golem_cli.log*
 golem_gui.log*
 golem_client.log*
+golemdocker_test.log*
 *.log
 
 # Project structure parse results

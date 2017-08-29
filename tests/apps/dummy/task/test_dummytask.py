@@ -34,7 +34,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_constants(self):
         assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
-        assert DummyTask.RESULT_EXTENSION == ".result"
+        assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):
         dt, td = self._get_new_dummy()
@@ -44,7 +44,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert ver_opts["difficulty"] == td.options.difficulty
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
+        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
 
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
@@ -57,7 +57,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         name = dt._DummyTask__get_result_file_name(subtask_id)
         assert name == "{}{}{}".format(td.out_file_basename,
                                        subtask_id[0:6],
-                                       dt.RESULT_EXTENSION)
+                                       dt.RESULT_EXT)
 
     @patch("random.getrandbits", lambda x: 0)
     def test_query_extra_data_for_test_task(self):
@@ -65,7 +65,8 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()
         data1.deadline = data2.deadline = 0
-        assert data1.extra_data["subtask_data"] == DummyTask.TESTING_CHAR * td.options.subtask_data_size
+        self.assertEqual(data1.extra_data["subtask_data"],
+                         DummyTask.TESTING_CHAR * td.options.subtask_data_size)
         data1.extra_data["subtask_data"] = data2.extra_data["subtask_data"] = ""
         assert data1.__dict__ == data2.__dict__
 
@@ -130,7 +131,8 @@ class TestDummyTaskBuilder(TestCase):
             dictionary["options"].update({"subtask_data_size": sbs,
                                           "difficulty": difficulty})
 
-            return DummyTaskBuilder.build_full_definition(DummyTaskTypeInfo(None, None), dictionary)
+            return DummyTaskBuilder.build_full_definition(
+                DummyTaskTypeInfo(None, None), dictionary)  # noqa
 
         difficulty = 20
         sbs = 10
@@ -149,15 +151,17 @@ class TestDummyTaskBuilder(TestCase):
             get_def(16 ** 8 + 1, 10)
         with self.assertRaises(Exception):
             get_def(16 ** 8, 10)
-            # TODO uncomment that when GUI will be fixed
-            # with self.assertRaises(TypeError):
-            #     get_def("aa", .1)
-            # with self.assertRaises(TypeError):
-            #     get_def("aa", 10)
-            # with self.assertRaises(TypeError):
-            #     get_def(.1, -1)
-            # with self.assertRaises(TypeError):
-            #     get_def(.1, .1)
+
+        pass
+        # TODO uncomment that when GUI will be fixed
+        # with self.assertRaises(TypeError):
+        #     get_def("aa", .1)
+        # with self.assertRaises(TypeError):
+        #     get_def("aa", 10)
+        # with self.assertRaises(TypeError):
+        #     get_def(.1, -1)
+        # with self.assertRaises(TypeError):
+        #     get_def(.1, .1)
 
 
 class TestDummyTaskTypeInfo(TestCase):

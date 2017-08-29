@@ -8,7 +8,7 @@ import params  # This module is generated before this script is run
 import time
 
 OUTPUT_DIR = "/golem/output"
-WORK_DIR = "/golem/work"  # we don't really need that, all the work is done in memory
+WORK_DIR = "/golem/work"  # we don't need that, all the work is done in memory
 RESOURCES_DIR = "/golem/resources"
 
 MESSAGES_IN = os.path.join(WORK_DIR, "messages_in")
@@ -53,6 +53,7 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     #                 x = json.load(f)
     #             with open(os.path.join(MESSAGES_OUT, fname + "out"), "w+") as f:
     #                 json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
+
 
 run(params.data_files,
     params.subtask_data,
