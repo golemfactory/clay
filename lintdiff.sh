@@ -20,8 +20,10 @@ usage() {
 # which doesn't handle that yet
 if diff --color /dev/null /dev/null; then
 	DIFF="diff --color"
-else
+elif which colordiff; then
 	DIFF=colordiff
+else
+    DIFF=diff
 fi
 
 while getopts "b:o" opt; do
