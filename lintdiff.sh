@@ -25,7 +25,7 @@ fi
 # Check if diff supports colored output
 # Ubuntu Trusty has an ancient version of diffutils, 3.3,
 # which doesn't handle that yet
-if diff --color /dev/null /dev/null; then
+if diff --color /dev/null /dev/null &> /dev/null; then
     DIFF="diff --color"
 elif which colordiff; then
     DIFF=colordiff
