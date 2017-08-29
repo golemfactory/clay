@@ -8,10 +8,11 @@ class ClientConfigDescriptor(object):
 
     def __init__(self):
         """ Create new basic empty configuration scheme """
+        from golem.appconfig import END_PORT
         self.node_name = ""
         self.node_address = ""
         self.start_port = 0
-        self.end_port = 0
+        self.end_port = END_PORT
         self.rpc_address = ""
         self.rpc_port = 0
         self.opt_peer_num = 0
