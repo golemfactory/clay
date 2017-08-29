@@ -75,41 +75,6 @@ class EthereumClientTest(TempDirFixture):
                                topics=[log_id, addr])
         assert logs == []
 
-        # GG todo
-        #self.processor._PaymentProcessor__client.web3._requestManager.provider.ipc_path = '/home/ggruszczynski/.ethereum/rinkeby/geth.ipc'
-        client.web3._requestManager.provider.ipc_path = '/home/ggruszczynski/.ethereum/rinkeby/geth.ipc'
-        # client.web3._requestManager.provider.ipc_path = '/tmp/rinkeby-49447'
-
-        my_address = '0x000000000000000000000000aa4abfaaa535087386e9c5bc82b7c858224988bf'
-
-        LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
-
-        block_num = 753335
-        block_hash ='0xa435eda52586183f1362dcebb42b3ccf15ee4e033d2420543fa5be1130644f27'
-
-        # from time import sleep
-        # syncing = True
-        # while syncing:
-        #     try:
-        #         syncing = client.is_syncing()
-        #         latest = client.web3.eth.getBlock('latest')
-        #         print('latest block number:' + str(latest['number']))
-        #     except Exception as e:
-        #         syncing = False
-        #     else:
-        #         sleep(0.5)
-
-
-        block_info = client.web3.eth.getBlock(block_hash)
-
-        logs2 = client.get_logs(from_block=block_num,
-                                to_block=block_num,
-                                topics=[LOG_ID, None, my_address])
-
-
-        assert logs2 != None
-
-
     def test_filters(self):
         """ Test creating filter and getting logs """
         client = self.client
