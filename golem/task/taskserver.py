@@ -505,7 +505,7 @@ class TaskServer(PendingConnectionsServer):
                        dest_node, ask_conn_id):
         key_id = asking_node.key
         response = lambda \
-            session: self.__asking_node_for_middleman_connection_established(
+                session: self.__asking_node_for_middleman_connection_established(
             session, conn_id, key_id,
             open_session, asking_node,
             dest_node, ask_conn_id)
@@ -674,16 +674,16 @@ class TaskServer(PendingConnectionsServer):
                                               *args):
 
         response = lambda \
-            session: self.__connection_for_task_request_established(session,
-                                                                    conn_id,
-                                                                    node_name,
-                                                                    key_id,
-                                                                    task_id,
-                                                                    estimated_performance,
-                                                                    price,
-                                                                    max_resource_size,
-                                                                    max_memory_size,
-                                                                    num_cores)
+                session: self.__connection_for_task_request_established(session,
+                                                                        conn_id,
+                                                                        node_name,
+                                                                        key_id,
+                                                                        task_id,
+                                                                        estimated_performance,
+                                                                        price,
+                                                                        max_resource_size,
+                                                                        max_memory_size,
+                                                                        num_cores)
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
@@ -746,11 +746,11 @@ class TaskServer(PendingConnectionsServer):
                                               err_msg):
 
         response = lambda \
-            session: self.__connection_for_task_failure_established(session,
-                                                                    conn_id,
-                                                                    key_id,
-                                                                    subtask_id,
-                                                                    err_msg)
+                session: self.__connection_for_task_failure_established(session,
+                                                                        conn_id,
+                                                                        key_id,
+                                                                        subtask_id,
+                                                                        err_msg)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
@@ -780,11 +780,12 @@ class TaskServer(PendingConnectionsServer):
                                                   subtask_id, resource_header):
 
         response = lambda \
-            session: self.__connection_for_resource_request_established(session,
-                                                                        conn_id,
-                                                                        key_id,
-                                                                        subtask_id,
-                                                                        resource_header)
+                session: self.__connection_for_resource_request_established(
+            session,
+            conn_id,
+            key_id,
+            subtask_id,
+            resource_header)
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
@@ -810,10 +811,11 @@ class TaskServer(PendingConnectionsServer):
                                                  subtask_id):
 
         response = lambda \
-            session: self.__connection_for_result_rejected_established(session,
-                                                                       conn_id,
-                                                                       key_id,
-                                                                       subtask_id)
+                session: self.__connection_for_result_rejected_established(
+            session,
+            conn_id,
+            key_id,
+            subtask_id)
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
@@ -1073,8 +1075,8 @@ class TaskServer(PendingConnectionsServer):
                       p2p_node_getter):
         for elem in elems_set.copy():
             if hasattr(elem, '_last_try') and (
-                datetime.datetime.now() - elem._last_try) < datetime.timedelta(
-                    seconds=30):
+                        datetime.datetime.now() - elem._last_try) < datetime.timedelta(
+                seconds=30):
                 continue
             logger.debug('_send_waiting(): %r', elem)
             elem._last_try = datetime.datetime.now()

@@ -3,7 +3,7 @@ import sys
 import time
 import json
 
-from typing import List, Set, Dict,Any
+from typing import List, Set, Dict, Any
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
@@ -40,7 +40,8 @@ def _encode_payments(payments):
         v = utils.zpad(utils.int_to_big_endian(v), 12)
         pair = v + to
         if len(pair) != 32:
-            raise ValueError("Incorrect pair length: {}. Should be 32".format(len(pair)))
+            raise ValueError(
+                "Incorrect pair length: {}. Should be 32".format(len(pair)))
         args.append(pair)
     return args, value
 
@@ -72,7 +73,7 @@ class PaymentProcessor(Service):
         self.__gnt_balance = None
         self.__gnt_reserved = 0
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
-        self._inprogress = {}    # type: Dict[Any,Any] # Sent transactions.
+        self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
@@ -84,14 +85,14 @@ class PaymentProcessor(Service):
         super(PaymentProcessor, self).__init__(13)
 
     def __check(self):
-            peers = self.__client.get_peer_count()
-            log.info("Peer count: {}".format(peers))
-            if peers == 0:
-                return False
-            if self.__client.is_syncing():
-                log.info("Node is syncing...")
-                return False
-            return True
+        peers = self.__client.get_peer_count()
+        log.info("Peer count: {}".format(peers))
+        if peers == 0:
+            return False
+        if self.__client.is_syncing():
+            log.info("Node is syncing...")
+            return False
+        return True
 
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
@@ -152,7 +153,7 @@ class PaymentProcessor(Service):
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
             addr = self.raw_address(self.__privkey)
-            data = self.__testGNT.encode('balanceOf', (addr, ))
+            data = self.__testGNT.encode('balanceOf', (addr,))
             r = self.__client.call(_from='0x' + encode_hex(addr),
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
                                    data='0x' + encode_hex(data),
@@ -184,21 +185,22 @@ class PaymentProcessor(Service):
 
     def load_from_db(self):
         with db.atomic():
-            for sent_payment in Payment\
-                    .select()\
+            for sent_payment in Payment \
+                    .select() \
                     .where(Payment.status == PaymentStatus.sent):
                 transaction_hash = decode_hex(sent_payment.details['tx'])
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
-            for awaiting_payment in Payment\
-                    .select()\
+            for awaiting_payment in Payment \
+                    .select() \
                     .where(Payment.status == PaymentStatus.awaiting):
                 self.add(awaiting_payment)
 
     def add(self, payment, deadline=DEFAULT_DEADLINE):
         if payment.status is not PaymentStatus.awaiting:
-            raise RuntimeError("Invalid payment status: {}".format(payment.status))
+            raise RuntimeError(
+                "Invalid payment status: {}".format(payment.status))
 
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
             payment.subtask,
@@ -288,7 +290,9 @@ class PaymentProcessor(Service):
             if receipt:
                 block_hash = receipt['blockHash'][2:]
                 if len(block_hash) != 64:
-                    raise ValueError("block hash length should be 64, but is: {}".format(len(block_hash)))
+                    raise ValueError(
+                        "block hash length should be 64, but is: {}".format(
+                            len(block_hash)))
                 block_number = receipt['blockNumber']
                 gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE
@@ -324,7 +328,7 @@ class PaymentProcessor(Service):
             del self._inprogress[h]
 
     def get_ether_from_faucet(self):
-        if self.__faucet and self.eth_balance(True) < 10**15:
+        if self.__faucet and self.eth_balance(True) < 10 ** 15:
             log.info("Requesting tETH")
             addr = self.raw_address(self.__privkey)
             tETH_faucet_donate(addr)
@@ -344,8 +348,10 @@ class PaymentProcessor(Service):
             return False
         return True
 
-    def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
-        return self.__client.get_logs(from_block=from_block, to_block=to_block, address=address, topics=topics)
+    def get_logs(self, from_block=None, to_block=None, address=None,
+                 topics=None):
+        return self.__client.get_logs(from_block=from_block, to_block=to_block,
+                                      address=address, topics=topics)
 
     def _run(self):
         if self._waiting_for_faucet:
