@@ -13,7 +13,7 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 class EthereumIncomesKeeper(IncomesKeeper):
     LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
 
-    def __init__(self, processor: PaymentProcessor):
+    def __init__(self, processor: PaymentProcessor) -> None:
         self.processor = processor
 
     def start(self):

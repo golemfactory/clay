@@ -6,26 +6,25 @@ import uuid
 from golem.model import db
 from golem import model
 from golem import testutils
-from golem.transactions.ethereum.ethereumincomeskeeper\
+from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 
-from golem.ethereum.paymentprocessor import PaymentProcessor
-from ethereum import tester
 
-SQLITE3_MAX_INT = 2**31 - 1
+SQLITE3_MAX_INT = 2 ** 31 - 1
 
 
 def get_some_id():
     return str(uuid.uuid4())
 
+
 def get_receiver_id():
     return '0x0000000000000000000000007d577a597b2742b498cb5cf0c26cdcd726d39e6e'
+
 
 class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/transactions/ethereum/ethereumincomeskeeper.py',
     ]
-
 
     def setUp(self, ):
         super(TestEthereumIncomesKeeper, self).setUp()
@@ -34,7 +33,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         processor_old.eth_address.return_value = get_receiver_id()
         processor_old.synchronized.return_value = True
         self.instance = EthereumIncomesKeeper(processor_old)
-
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
@@ -151,7 +149,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
         self.instance.received(**received_kwargs)
 
-
         # check the the income is in db
         with db.atomic():
             self.assertEqual(
@@ -159,12 +156,17 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 model.Income.select().where(
                     model.Income.subtask == received_kwargs['subtask_id']
                 )
-                    .count()
+                .count()
             )
-            getincome = model.Income.get(sender_node=received_kwargs['sender_node_id'], task=received_kwargs['task_id'], subtask=received_kwargs['subtask_id'])
+            getincome = model.Income.get(
+                sender_node=received_kwargs['sender_node_id'],
+                task=received_kwargs['task_id'],
+                subtask=received_kwargs['subtask_id'])
             self.assertEqual(getincome.value, received_kwargs['value'])
-            self.assertEqual(getincome.transaction, received_kwargs['transaction_id'])
-            self.assertEqual(getincome.block_number, received_kwargs['block_number'])
+            self.assertEqual(getincome.transaction,
+                             received_kwargs['transaction_id'])
+            self.assertEqual(getincome.block_number,
+                             received_kwargs['block_number'])
 
         # Try to use the same payment for another subtask
         received_kwargs['subtask_id'] = 's2' + get_some_id()[:-2]

@@ -3,6 +3,8 @@ import sys
 import time
 import json
 
+from typing import List, Set, Dict,Any
+
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
@@ -63,14 +65,14 @@ class PaymentProcessor(Service):
 
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, client: Client, privkey, faucet=False):
+    def __init__(self, client: Client, privkey, faucet=False) -> None:
         self.__client = client
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
         self.__gnt_reserved = 0
-        self._awaiting = []  # Awaiting individual payments
-        self._inprogress = {}  # Sent transactions.
+        self._awaiting = []  # type: List[Any] # Awaiting individual payments
+        self._inprogress = {}    # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
