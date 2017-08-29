@@ -59,7 +59,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = json.decode(f.read()) # type: DummyTaskDefinition
+            task_def = json.decode(f.read())  # type: DummyTaskDefinition
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
@@ -69,7 +69,8 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
-        task_def.shared_data_files = [set_root_dir(x) for x in task_def.shared_data_files]
+        task_def.shared_data_files = [set_root_dir(x)
+                                      for x in task_def.shared_data_files]
         task_def.code_dir = set_root_dir(task_def.code_dir)
 
         return task_def
@@ -80,7 +81,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         dir_manager = DirManager(self.path)
         task_builder = DummyTaskBuilder(node_name, task_def, self.tempdir,
                                         dir_manager)
-        task = task_builder.build() # type: DummyTask
+        task = task_builder.build()  # type: DummyTask
         task.max_pending_client_results = 5
         return task
 
@@ -112,7 +113,8 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
             common_data_prefix = path.commonprefix(td.shared_data_files)
             common_data_prefix = path.dirname(common_data_prefix)
         else:
-            common_data_prefix = path.dirname(next(iter(td.shared_data_files)))  # first elem of set
+            # first elem of set
+            common_data_prefix = path.dirname(next(iter(td.shared_data_files)))
 
         for res_file in td.shared_data_files:
             dest_file = path.join(resource_dir,
@@ -164,11 +166,17 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         shutil.copy(filepath, newfilepath)
         return newfilepath
 
-    def _extract_results(self, computer: LocalComputer, task: DummyTask, subtask_id):
+    def _extract_results(self,
+                         computer: LocalComputer,
+                         task: DummyTask,
+                         subtask_id):
         """
-        Since the local computer uses temp dir, you should copy files out of there before you use local computer again.
-        Otherwise the files would get overwritten (during the verification process).
-        This is a problem only in test suite. In real life provider and requestor are separate machines
+        Since the local computer uses temp dir, you should copy files out of
+        there before you use local computer again.
+        Otherwise the files would get overwritten (during the verification
+        process).
+        This is a problem only in test suite. In real life provider and
+        requestor are separate machines
         :param computer:
         :param task:
         :return:
@@ -180,9 +188,9 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.assertTrue(path.isfile(result))
 
         ## copy to new location
-        new_file_dir = path.join(path.dirname(result), subtask_id)
+        new_file_path = path.join(path.dirname(result), subtask_id, "a.result")
 
-        new_result = self._change_file_location(result, path.join(new_file_dir, "new.result"))
+        new_result = self._change_file_location(result, new_file_path)
 
         return new_result
 
