@@ -1,3 +1,4 @@
+# TODO this will be used when I will load external network file
 # this is a very basic, 2 layer network for testing purposes
 
 from torch import nn
