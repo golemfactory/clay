@@ -45,7 +45,7 @@ class DockerTaskThread(TaskThread):
                  task_computer: 'TaskComputer',
                  subtask_id: str,
                  docker_images: 'List[DockerImage]',
-                 orig_script_dir: str,
+                 _: str, # orig_script_dir: str - it was used in golem vm, now dead
                  src_code: str,
                  extra_data: Dict,
                  short_desc: str,
@@ -56,9 +56,15 @@ class DockerTaskThread(TaskThread):
 
         if not docker_images:
             raise AttributeError("docker images is None")
-        super(DockerTaskThread, self).__init__(
-            task_computer, subtask_id, orig_script_dir, src_code, extra_data,
-            short_desc, res_path, tmp_path, timeout)
+        super().__init__(task_computer,
+                         subtask_id,
+                         "",  # it wsa orig_script_dir
+                         src_code,
+                         extra_data,
+                         short_desc,
+                         res_path,
+                         tmp_path,
+                         timeout)
 
         # Find available image
         self.image = None

@@ -21,6 +21,7 @@ from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefaults, MLPOCTaskOptions
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
 from golem.core.common import timeout_to_deadline
+from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef, Task
 from golem.task.taskstate import SubtaskStatus
@@ -75,8 +76,11 @@ class MLPOCTask(CoreTask):
             total_tasks=total_tasks
         )
 
-        tmp_path = ""  # TODO create temp path for spearmint resources
-        self.run_spearmint_in_background(tmp_path)
+        dm = DirManager(root_path)
+        tmp_path = dm.get_task_temporary_dir(task_definition.task_id)
+        self.spearmint_path = os.path.join(tmp_path, "spearmint")
+        os.mkdir(self.spearmint_path)
+        self.run_spearmint_in_background(self.spearmint_path)
 
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
@@ -112,7 +116,8 @@ class MLPOCTask(CoreTask):
         ctd.docker_images = env.docker_images
         ctd.src_code = env.get_source_code()
         ctd.working_directory = self.spearmint_path
-        ctd.deadline = timeout_to_deadline(10000)  # infty
+        INFTY = 10000
+        ctd.deadline = timeout_to_deadline(INFTY)  # infty
 
         # EXPERIMENT_DIR - dir with config.json
         # SIGNAL_FILE - file which signalizes the change in results.dat

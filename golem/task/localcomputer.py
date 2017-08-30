@@ -147,7 +147,7 @@ class LocalComputer(object):
         return DockerTaskThread(self,
                                 ctd.subtask_id,
                                 ctd.docker_images,
-                                ctd.working_directory,
+                                "", # ctd.working_directory - not used anymore
                                 ctd.src_code,
                                 ctd.extra_data,
                                 ctd.short_description,

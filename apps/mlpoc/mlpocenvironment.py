@@ -10,9 +10,7 @@ class MLPOCTorchEnvironment(DockerEnvironment):
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
     SCRIPT_NAME = "provider_main.py"
-    SHORT_DESCRIPTION = "Example machine learning POC task, searching for " \
-                        "best neural network hyperparameters using bayesian " \
-                        "optimization"
+    SHORT_DESCRIPTION = "Provider-side and verificatoin enviromnent for MLPOC task used to run torch"
 
     def get_performance(self, cfg_desc):
         return cfg_desc.estimated_mlpoctask_performance
@@ -24,9 +22,7 @@ class MLPOCSpearmintEnvironment(DockerEnvironment):
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
     SCRIPT_NAME = "docker_spearmint.py"
-    SHORT_DESCRIPTION = "Example machine learning POC task, searching for " \
-                        "best neural network hyperparameters using bayesian " \
-                        "optimization"
+    SHORT_DESCRIPTION = "Requestor-side environment used to run Spearmint"
 
     def get_performance(self, _):
         return 0

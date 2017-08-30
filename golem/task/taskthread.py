@@ -10,8 +10,16 @@ logger = logging.getLogger("golem.task.taskthread")
 
 
 class TaskThread(Thread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
-                 extra_data, short_desc, res_path, tmp_path, timeout=0):
+    def __init__(self,
+                 task_computer,
+                 subtask_id,
+                 _, # working_directory -  not used anymore
+                 src_code,
+                 extra_data,
+                 short_desc,
+                 res_path,
+                 tmp_path,
+                 timeout=0):
         super(TaskThread, self).__init__()
 
         self.task_computer = task_computer
@@ -24,7 +32,7 @@ class TaskThread(Thread):
         self.done = False
         self.res_path = res_path
         self.tmp_path = tmp_path
-        self.working_directory = working_directory
+        self.working_directory = ""  # working directory - not used anymore
         self.prev_working_directory = ""
         self.lock = Lock()
         self.error = False
@@ -62,7 +70,7 @@ class TaskThread(Thread):
         with self.lock:
             return self.error
 
-    def run(self):
+    def run(self):  # not used anymore, now DockerJob is doing things
         logger.info("RUNNING ")
         try:
             self.__do_work()
@@ -90,15 +98,14 @@ class TaskThread(Thread):
         self.done = True
         self.task_computer.task_computed(self)
 
-    def __do_work(self):
+    def __do_work(self): # not used anymore, now DockerJob is doing things
         extra_data = copy.copy(self.extra_data)
 
         abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
         abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
 
         self.prev_working_directory = os.getcwd()
-        os.chdir(os.path.join(abs_res_path,
-                              os.path.normpath(self.working_directory)))
+        os.chdir(os.path.join(abs_res_path, os.path.normpath(self.working_directory)))  # working directory is not used anymore
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
