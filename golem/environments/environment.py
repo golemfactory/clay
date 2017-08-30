@@ -1,6 +1,8 @@
-import sys
 from os import path
 
+from apps.core.benchmark.minilight.src.minilight import make_perf_test
+
+from golem.core.common import get_golem_path
 from golem.model import Performance
 
 
@@ -87,3 +89,12 @@ class Environment(object):
         if self.main_program_file and path.isfile(self.main_program_file):
             with open(self.main_program_file) as f:
                 return f.read()
+
+    @classmethod
+    def run_default_benchmark(cls, num_cores=1, save=False):
+        test_file = path.join(get_golem_path(), 'apps', 'core', 'benchmark',
+                              'minilight', 'cornellbox.ml.txt')
+        estimated_performance = make_perf_test(test_file, num_cores=1)
+        if save:
+            Performance.update_or_create(cls.get_id(), estimated_performance)
+        return estimated_performance

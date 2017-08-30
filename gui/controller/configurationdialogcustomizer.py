@@ -31,7 +31,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def load_data(self):
         def load_benchmarks(benchmarks):
-            logger.exception(benchmarks)
             self.__load_performance(benchmarks)
 
         def load(config_desc):
@@ -93,8 +92,6 @@ class ConfigurationDialogCustomizer(Customizer):
             config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText("{}".format(
             config_desc.seed_port))
-        self.gui.ui.performanceLabel.setText("{}".format(
-            config_desc.estimated_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.gui.ui.nodeNameLineEdit.setText("{}".format(config_desc.node_name))
 
@@ -228,6 +225,8 @@ class ConfigurationDialogCustomizer(Customizer):
                 "{:.2f}".format(performance_values["LUXRENDER"])))
             self.gui.ui.blenderPerformanceLabel.setText("{}".format(
                 "{:.2f}".format(performance_values["BLENDER"])))
+            self.gui.ui.performanceLabel.setText("{:.2f}".format(
+                performance_values['DEFAULT']))
         except (ValueError, KeyError):
             logger.exception("Can't read performance")
 
@@ -395,7 +394,7 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText \
-            (str(self.logic.recount_performance(num_cores)))
+            ("{:.2f}".format(self.logic.recount_performance(num_cores)))
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = "{}".format \

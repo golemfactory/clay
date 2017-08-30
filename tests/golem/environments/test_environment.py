@@ -46,3 +46,8 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
             f.write("PROGRAM CODE")
 
         assert env.check_software()
+
+    def test_run_default_benchmark(self):
+        assert Environment.get_performance() == 0.0
+        assert Environment.run_default_benchmark() > 0.0
+        assert Environment.get_performance() > 0.0

@@ -353,3 +353,14 @@ class Performance(BaseModel):
 
     class Meta:
         database = db
+
+
+    @classmethod
+    def update_or_create(cl, env_id, performance):
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+            perf.value = performance
+            perf.save()
+        except Performance.DoesNotExist:
+            perf = Performance(environment_id=env_id, value=performance)
+            perf.save()

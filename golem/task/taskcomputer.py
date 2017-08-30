@@ -240,13 +240,7 @@ class TaskComputer(object):
                       error=None):
 
         def success_callback(performance):
-            try:
-                perf = Performance.get(Performance.environment_id == env_id)
-                perf.value = performance
-                perf.save()
-            except Performance.DoesNotExist:
-                perf = Performance(environment_id=env_id, value=performance)
-                perf.save()
+            Performance.update_or_create(env_id, performance)
             if success:
                 success(performance)
 

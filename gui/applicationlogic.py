@@ -1,5 +1,3 @@
-
-
 import logging
 import os
 from PyQt5 import QtCore
@@ -12,11 +10,11 @@ from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
@@ -393,9 +391,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @staticmethod
     def recount_performance(num_cores):
-        test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')
-        result_file = SimpleEnv.env_file_name("minilight.ini")
-        estimated_perf = makePerfTest(test_file, result_file, num_cores)
+        estimated_perf = Environment.run_default_benchmark(num_cores)
         return estimated_perf
 
     def lock_config(self, on=True):

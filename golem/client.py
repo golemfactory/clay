@@ -27,6 +27,7 @@ from golem.core.simpleserializer import DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
@@ -877,7 +878,6 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-
         deferred = Deferred()
 
         task_computer = self.task_server.task_computer
@@ -887,6 +887,10 @@ class Client(HardwarePresetsMixin):
             task_computer.run_benchmark(benchmark_data[0], benchmark_data[1],
                                         env_id, deferred.callback,
                                         deferred.errback)
+        elif env_id == DefaultEnvironment.get_id():
+            performance = DefaultEnvironment.run_default_benchmark(
+                self.config_desc.num_cores, save=True)
+            returnValue(performance)
         else:
             raise Exception("Unknown environment: {}".format(env_id))
 

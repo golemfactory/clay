@@ -1,5 +1,6 @@
 import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
+from golem.environments.environment import Environment
 
 logger = logging.getLogger(__name__)
 
@@ -84,5 +85,8 @@ class EnvironmentsManager(object):
                 return
 
     def get_performance_values(self):
-        return {env.get_id(): env.get_performance()
-                for env in self.environments}
+        perf_values  = {env.get_id(): env.get_performance()
+                        for env in self.environments}
+        if Environment.get_id() not in perf_values:
+            perf_values[Environment.get_id()] = Environment.get_performance()
+        return perf_values
