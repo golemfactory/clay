@@ -2,7 +2,7 @@ import logging
 import os
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
-from apps.mlpoc.mlpocenvironment import MLPOCTaskEnvironment
+from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import find_task_script
@@ -19,12 +19,12 @@ class MLPOCTaskVerificator(CoreVerificator):
         super().__init__(*args, **kwargs)
         self.verification_options = {}
         self.verification_error = False
-        self.script_name = find_task_script(MLPOCTaskEnvironment.APP_DIR,
+        self.script_name = find_task_script(MLPOCTorchEnvironment.APP_DIR,
                                             self.SCRIPT_NAME)
         assert os.path.isfile(self.script_name)
 
-        self.docker_image = DockerImage(MLPOCTaskEnvironment.DOCKER_IMAGE,
-                                        tag=MLPOCTaskEnvironment.DOCKER_TAG)
+        self.docker_image = DockerImage(MLPOCTorchEnvironment.DOCKER_IMAGE,
+                                        tag=MLPOCTorchEnvironment.DOCKER_TAG)
 
     def __verification_success(self, results, time_spent):
         logger.info("Advance verification finished")

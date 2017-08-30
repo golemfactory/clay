@@ -10,13 +10,17 @@ from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
-from apps.mlpoc.mlpocenvironment import MLPOCTaskEnvironment
+from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment, \
+    MLPOCSpearmintEnvironment
 from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
 from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox
-from apps.mlpoc.resources.code_pytorch.messages import MLPOCBlackBoxAnswerMessage
+from apps.mlpoc.resources.code_pytorch.messages import \
+    MLPOCBlackBoxAnswerMessage
+from apps.mlpoc.task import spearmint_utils
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefaults, MLPOCTaskOptions
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
+from golem.core.common import timeout_to_deadline
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef, Task
 from golem.task.taskstate import SubtaskStatus
@@ -41,9 +45,12 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
 # TODO refactor it to inherit from DummyTask
 @enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
-    ENVIRONMENT_CLASS = MLPOCTaskEnvironment
+    ENVIRONMENT_CLASS = MLPOCTorchEnvironment
     VERIFICATOR_CLASS = MLPOCTaskVerificator
 
+    SPEARMINT_ENV = MLPOCSpearmintEnvironment
+    SPEARMINT_EXP_DIR = "work/experiment"
+    SPEARMINT_SIGNAL_FILE = "work/x.signal"
     RESULT_EXT = ".result"
     BLACK_BOX = CountingBlackBox  # black box class, not instance
     BATCH_MANAGER = IrisBatchManager  # batch manager class, not instace
@@ -68,38 +75,59 @@ class MLPOCTask(CoreTask):
             total_tasks=total_tasks
         )
 
-        tmp_path = "" # TODO create temp path for spearmint resources
-        local_spearmint = LocalComputer(None, # we don't use task at all
-                                        tmp_path,
-                                        lambda *_: self.__restart_spearmint(),
-                                        lambda *_: self.__restart_spearmint(),
-                                        lambda: self.__spearmint_ctd,
-                                        use_task_resources=False,
-                                        additional_resources=False)
-        local_spearmint.run() # TODO run in in background
+        tmp_path = ""  # TODO create temp path for spearmint resources
+        self.run_spearmint_in_background(tmp_path)
 
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
         # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         # ver_opts["result_extension"] = self.RESULT_EXT
 
-    def __restart_spearmint(self):
-        # it shouldn't happen
-        # log it and restart spearmint
-        # and restore results.dat!!!
-        pass
+    def run_spearmint_in_background(self, tmp_path):
+        env = self.SPEARMINT_ENV()
+        self.src_code = env.get_source_code
+
+        local_spearmint = LocalComputer(None,  # we don't use task at all
+                                        tmp_path,
+                                        lambda *_: self.__restart_spearmint_pos(),
+                                        lambda *_: self.__restart_spearmint_neg(),
+                                        lambda: self.__spearmint_ctd,
+                                        use_task_resources=False,
+                                        additional_resources=False)
+        spearmint_utils.create_conf(os.path.join(tmp_path, self.SPEARMINT_EXP_DIR))
+        local_spearmint.run()
+
+    def __restart_spearmint_pos(self):
+        logger.warning("Spearmint docker was restarted positively. WRONG!")
+        raise Exception("Spearmint docker was restarted positively. WRONG!")
+
+    def __restart_spearmint_neg(self):
+        logger.warning("Spearmint docker was restarted negatively. WRONG!")
+        raise Exception("Spearmint docker was restarted negatively. WRONG!")
 
     def __spearmit_ctd(self):
-        # pass the appropriate code and extra data:
+        env = self.SPEARMINT_ENV()
+        ctd = ComputeTaskDef()
+        ctd.environment = env.ENV_ID
+        ctd.docker_images = env.docker_images
+        ctd.src_code = env.get_source_code()
+        ctd.working_directory = self.spearmint_path
+        ctd.deadline = timeout_to_deadline(10000)  # infty
+
         # EXPERIMENT_DIR - dir with config.json
         # SIGNAL_FILE - file which signalizes the change in results.dat
-        # SIMULTANEOUS_UPDATES_NUM - how many new suggestions has the spearmint add every time?
-        pass
+        # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
+        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR # TODO change that, take "/golem" from DockerTaskThread
+        ctd.extra_data["SIGNAL_FILE"] = "/golem/" + self.SPEARMINT_SIGNAL_FILE # TODO change that, as ^
+        ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
+        return ctd
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
 
     def __get_next_network_config(self):
+        # TODO here happens magic with spearmint in localcomputer
+        # using spearmint_utils methods
         return {"HIDDEN_SIZE": 10,
                 "INPUT_SIZE": 10,
                 "NUM_CLASSES": 3,
@@ -107,8 +135,7 @@ class MLPOCTask(CoreTask):
                 "STEPS_PER_EPOCH": self.task_definition.options.steps_per_epoch
                 }
 
-    def _extra_data(self, perf_index=0.0) -> Tuple[
-        BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
+    def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
 
         black_box = self.BLACK_BOX(
@@ -182,9 +209,9 @@ class MLPOCTask(CoreTask):
 
     def __update_spearmint_state(self, score_file):
         with open(score_file, "r") as f:
-            res = json.load(f)["score"] # TODO check if it doesn't pose any security threat
+            res = json.load(f)["score"]  # TODO check if it doesn't pose any security threat
         score = res["score"]  # overall score of the network with
-        params = res["params"] # the given parameters
+        params = res["params"]  # the given parameters
 
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
@@ -222,9 +249,9 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
         definition = super().build_full_definition(task_type, dictionary)
 
         steps_per_epoch = opts.get("steps_per_epoch",
-                       definition.options.steps_per_epoch)
+                                   definition.options.steps_per_epoch)
         number_of_epochs = opts.get("number_of_epochs",
-                              definition.options.number_of_epochs)
+                                    definition.options.number_of_epochs)
 
         # TODO uncomment that when GUI will be fixed
         # if not isinstance(steps_per_epoch, int):
@@ -243,7 +270,7 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
         definition.options.steps_per_epoch = steps_per_epoch
 
         return definition
-    # also, a second file, which will be a configuration file for spearmint
+        # also, a second file, which will be a configuration file for spearmint
 
 
 # comment that line to enable type checking

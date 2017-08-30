@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
-from apps.mlpoc.mlpocenvironment import MLPOCTaskEnvironment
+from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import ls_R
 
@@ -80,6 +80,6 @@ class MLPOCTaskDefinition(TaskDefinition):
 class MLPOCTaskOptions(Options):
     def __init__(self):
         super(MLPOCTaskOptions, self).__init__()
-        self.environment = MLPOCTaskEnvironment()
+        self.environment = MLPOCTorchEnvironment()
         self.steps_per_epoch = 0
         self.number_of_epochs = 0
