@@ -29,13 +29,19 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
         self.assertFalse(tk.is_supported({}))
         task = {"environment": Environment.get_id(), 'max_price': 0}
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.is_supported(task)
+        self.assertFalse(supported)
+        self.assertIn('environment_missing', supported.desc)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.is_supported(task)
+        self.assertFalse(supported)
+        self.assertIn('max_price', supported.desc)
         task["max_price"] = 10.0
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.is_supported(task)
+        self.assertFalse(supported)
+        self.assertIn('app_version', supported.desc)
         task["min_version"] = APP_VERSION
         self.assertTrue(tk.is_supported(task))
         task["max_price"] = 10.5
