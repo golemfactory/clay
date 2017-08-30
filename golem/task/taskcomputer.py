@@ -117,10 +117,9 @@ class TaskComputer(object):
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
-                timeout = deadline_to_timeout(subtask.deadline)
                 self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, timeout)
+                                    subtask.short_description, subtask.deadline)
                 self.waiting_for_task = None
                 return True
             else:
@@ -136,20 +135,28 @@ class TaskComputer(object):
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
                 self.__compute_task(subtask_id, subtask.docker_images, subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, deadline_to_timeout(subtask.deadline))
+                                    subtask.short_description, subtask.deadline)
                 return True
             return False
 
     def task_resource_failure(self, task_id, reason):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping.pop(task_id)
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks.pop(subtask_id)
-                self.task_server.send_task_failed(subtask_id, subtask.task_id,
-                                                  'Error downloading resources: {}'.format(reason),
-                                                  subtask.return_address, subtask.return_port, subtask.key_id,
-                                                  subtask.task_owner, self.node_name)
-            self.session_closed()
+        self.subtask_failure(task_id, 'Error downloading resources: {}'.format(reason))
+
+    def subtask_failure(self, task_id, reason):
+        if not task_id in self.task_to_subtask_mapping:
+            return
+
+        subtask_id = self.task_to_subtask_mapping.pop(task_id)
+        if subtask_id in self.assigned_subtasks:
+            subtask = self.assigned_subtasks.pop(subtask_id)
+            self.task_server.send_task_failed(subtask_id, subtask.task_id,
+                                              reason,
+                                              subtask.return_address,
+                                              subtask.return_port,
+                                              subtask.key_id,
+                                              subtask.task_owner,
+                                              self.node_name)
+        self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
         if task_id in self.task_to_subtask_mapping:
@@ -392,11 +399,23 @@ class TaskComputer(object):
                                                                   task_owner)
 
     def __compute_task(self, subtask_id, docker_images,
-                       src_code, extra_data, short_desc, task_timeout):
+                       src_code, extra_data, short_desc, subtask_deadline):
+
+        task_timeout = deadline_to_timeout(subtask_deadline)
 
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_dir = self.assigned_subtasks[subtask_id].working_directory
         unique_str = str(uuid.uuid4())
+
+        task_header = self.task_server.task_keeper.task_headers[task_id]
+        task_deadline = task_header.deadline
+
+        if subtask_deadline > task_deadline:
+            self.subtask_failure(task_id,
+                                 "Subtask deadline is after task deadline: "
+                                 "{} > {}"
+                                 .format(subtask_deadline, task_deadline))
+            return
 
         self.reset(computing_task=task_id)
 

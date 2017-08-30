@@ -92,6 +92,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = config_desc()
+        task_server.task_keeper.task_headers["xyz"].deadline = \
+            timeout_to_deadline(20)
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         ctd = ComputeTaskDef()
