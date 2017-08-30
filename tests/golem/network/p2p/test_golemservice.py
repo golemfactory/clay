@@ -29,6 +29,7 @@ class TestGolemService(unittest.TestCase):
     def setUp(self):
         datadir = tempfile.mkdtemp(prefix='golem_service_1')
         self.client = create_client(datadir)
+        self.client.connect()
         GolemService.register_with_app(self.client)
         PeerManager.register_with_app(self.client)
 
