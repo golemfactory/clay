@@ -29,6 +29,7 @@ class Node(object):
             geth_port=geth_port,
             **config_overrides
         )
+        self.client.connect()
 
         self.rpc_router = None
         self.rpc_session = None
