@@ -1,3 +1,4 @@
+import json
 import os
 import unittest
 import uuid
@@ -5,11 +6,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from mock import Mock
+from mock import Mock, mock_open, patch
 
 from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
     BlenderRenderTask
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.core.task.coretask import CoreTaskBuilder
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
@@ -405,6 +408,26 @@ class TestTasks(TempDirFixture):
             client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
+
+    def test_create(self) -> None:
+        client = self.client
+
+        definition = TaskDefinition()
+        definition.task_name = "The greatest task ever!"
+        # FIXME: use .to_dict() when #1329 gets merged
+        def_dict = CoreTaskBuilder.build_dictionary(definition)
+        def_str = json.dumps(def_dict)
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+            tasks.create_from_json(def_str)
+
+            client.create_task.assert_called_with(json.loads(def_str))
+
+            patched_open = "golem.interface.client.tasks.open"
+            with patch(patched_open, mock_open(read_data='{}')):
+                tasks.create("foo")
+                client.create_task.assert_called_with(json.loads('{}'))
 
     def test_show(self):
         client = self.client
