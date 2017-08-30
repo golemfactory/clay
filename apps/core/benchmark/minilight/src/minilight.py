@@ -190,7 +190,7 @@ def main():
               .format(float(numSamples) / duration))
         cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
-        average = average * multiprocessing.cpu_count()
+        average = average * min(32, multiprocessing.cpu_count())    # VBox supports max 32 cores
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
 
