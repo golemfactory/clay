@@ -732,18 +732,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 '/Users/user/Desktop/folder/model.mesh',
                 '/Users/user/Desktop/folder/stylized_levi.blend'
             ],
-            'name':
-            'Golem Task 17:41:45 GMT+0200 (CEST)',
-            'type':
-            'blender',
-            'timeout':
-            '09:25:00',
-            'subtasks':
-            '6',
-            'subtask_timeout':
-            '4:10:00',
-            'bid':
-            '0.000032',
+            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'type': 'blender',
+            'timeout': '09:25:00',
+            'subtasks': '6',
+            'subtask_timeout': '4:10:00',
+            'bid': '0.000032',
             'options': {
                 'resolution': [1920, 1080],
                 'frames': '1-10',
