@@ -142,8 +142,6 @@ class Client(BaseApp, HardwarePresetsMixin):
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.get_key_id())
 
-        self.connect()
-
         self.diag_service = None
 
         self.task_server = None
@@ -381,13 +379,11 @@ class Client(BaseApp, HardwarePresetsMixin):
         devp2plog.info(self.configp2p['discovery']['bootstrap_nodes'])
 
         BaseApp.__init__(self, self.configp2p)
-
         for service in Client.services:
             assert issubclass(service, BaseService)
             assert service.name not in self.services
             service.register_with_app(self)
             assert hasattr(self.services, service.name)
-
         BaseApp.start(self)
 
     @report_calls(Component.client, 'quit', once=True)

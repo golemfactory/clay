@@ -670,7 +670,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
-
+        self.client.connect()
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 

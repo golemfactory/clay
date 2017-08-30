@@ -41,25 +41,20 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_node_address_valid(self, mock_node, *_):
-        import gevent
+        node_address = '1.2.3.4'
 
-        def test():
-            node_address = '1.2.3.4'
+        runner = CliRunner()
+        args = self.args + ['--node-address', node_address]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+        self.assertEqual(return_value.exit_code, 0)
 
-            runner = CliRunner()
-            args = self.args + ['--node-address', node_address]
-            return_value = runner.invoke(start, args, catch_exceptions=False)
-            self.assertEqual(return_value.exit_code, 0)
-
-            self.assertGreater(len(mock_node.mock_calls), 0)
-            init_call = mock_node.mock_calls[0]
-            self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
-            init_call_args = init_call[1]
-            init_call_kwargs = init_call[2]
-            self.assertEqual(init_call_args, ())
-            self.assertEqual(init_call_kwargs.get('node_address'), node_address)
-
-        gevent.spawn(test)
+        self.assertGreater(len(mock_node.mock_calls), 0)
+        init_call = mock_node.mock_calls[0]
+        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
+        init_call_args = init_call[1]
+        init_call_kwargs = init_call[2]
+        self.assertEqual(init_call_args, ())
+        self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
     @patch('golem.node.Node.run')
     @patch('golem.docker.manager.DockerManager')
@@ -71,20 +66,18 @@ class TestNode(TestWithDatabase):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
-        import gevent
+        node_address = '1.2.3.4'
+        runner = CliRunner()
+        args = self.args + ['--node-address', node_address]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+        self.assertEqual(return_value.exit_code, 0)
 
-        def test():
-            node_address = '1.2.3.4'
-            runner = CliRunner()
-            args = self.args + ['--node-address', node_address]
-            return_value = runner.invoke(start, args, catch_exceptions=False)
-            self.assertEqual(return_value.exit_code, 0)
-
-            mock_client.assert_called_with(node_address=node_address,
-                                           datadir=self.path,
-                                           transaction_system=True,
-                                           use_docker_machine_manager=True)
-        gevent.spawn(test)
+        mock_client.assert_called_with(node_address=node_address,
+                                       datadir=self.path,
+                                       transaction_system=True,
+                                       use_docker_machine_manager=True,
+                                       geth_port = None,
+                                       use_monitor=True)
 
     @patch('golemapp.install_reactor')
     def test_node_address_invalid(self, *_):
@@ -104,37 +97,27 @@ class TestNode(TestWithDatabase):
 
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node, *_):
-        import gevent
-
-        def test():
-            mock_node.return_value = mock_node
-            addr1 = self.exampleNodeID + '@10.30.10.216:40111'
-            runner = CliRunner()
-            return_value = runner.invoke(start, self.args + ['--peer', addr1],
+        mock_node.return_value = mock_node
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
+        runner = CliRunner()
+        return_value = runner.invoke(start, self.args + ['--peer', addr1],
                                      catch_exceptions=False)
-            self.assertTrue(mock_node.called)
-            self.assertEqual(return_value.exit_code, 0)
-            mock_node.run.assert_called_with(use_rpc=True)
-
-        gevent.spawn(test)
+        self.assertTrue(mock_node.called)
+        self.assertEqual(return_value.exit_code, 0)
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node, *_):
-        import gevent
+        mock_node.return_value = mock_node
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
+        addr2 = self.exampleNodeID + '@10.30.10.214:3333'
+        runner = CliRunner()
+        args = self.args + ['--peer', addr1, '--peer', addr2]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+        self.assertEqual(return_value.exit_code, 0)
 
-        def test():
-            mock_node.return_value = mock_node
-            addr1 = self.exampleNodeID + '@10.30.10.216:40111'
-            addr2 = self.exampleNodeID + '@10.30.10.214:3333'
-            runner = CliRunner()
-            args = self.args + ['--peer', addr1, '--peer', addr2]
-            return_value = runner.invoke(start, args, catch_exceptions=False)
-            self.assertEqual(return_value.exit_code, 0)
-
-            mock_node.run.assert_called_with(use_rpc=True)
-
-        gevent.spawn(test)
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
@@ -148,58 +131,48 @@ class TestNode(TestWithDatabase):
 
     @patch('golemapp.OptNode')
     def test_peers(self, mock_node, *_):
-        import gevent
-
-        def test():
-            mock_node.return_value = mock_node
-            runner = CliRunner()
-            return_value = runner.invoke(
-                start, self.args + [
-                    '--peer', self.exampleNodeID + '@10.30.10.216:40111',
-                    '--peer', self.exampleNodeID + '@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                    '--peer', self.exampleNodeID + '@[::ffff:0:0:0]:96'
-                ], catch_exceptions=False
-            )
-            self.assertEqual(return_value.exit_code, 0)
-            mock_node.run.assert_called_with(use_rpc=True)
-
-        gevent.spawn(test)
+        mock_node.return_value = mock_node
+        runner = CliRunner()
+        return_value = runner.invoke(
+            start, self.args + [
+                '--peer', self.exampleNodeID + '@10.30.10.216:40111',
+                '--peer', self.exampleNodeID + '@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+                '--peer', self.exampleNodeID + '@[::ffff:0:0:0]:96'
+            ], catch_exceptions=False
+        )
+        self.assertEqual(return_value.exit_code, 0)
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.OptNode')
     def test_rpc_address(self, *_):
-        import gevent
+        runner = CliRunner()
 
-        def test():
-            runner = CliRunner()
+        ok_addresses = [
+            ['--rpc-address', '10.30.10.216:61000'],
+            ['--rpc-address', '[::ffff:0:0:0]:96'],
+            ['--rpc-address', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']
+        ]
+        bad_addresses = [
+            ['--rpc-address', '10.30.10.216:91000'],
+            ['--rpc-address', '[::ffff:0:0:0]:96999']
+        ]
+        skip_addresses = [
+            ['--rpc-address', '']
+        ]
 
-            ok_addresses = [
-                ['--rpc-address', '10.30.10.216:61000'],
-                ['--rpc-address', '[::ffff:0:0:0]:96'],
-                ['--rpc-address', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']
-            ]
-            bad_addresses = [
-                ['--rpc-address', '10.30.10.216:91000'],
-                ['--rpc-address', '[::ffff:0:0:0]:96999']
-            ]
-            skip_addresses = [
-                ['--rpc-address', '']
-            ]
+        for address in ok_addresses + skip_addresses:
+            return_value = runner.invoke(
+                start, self.args + address,
+                catch_exceptions=False
+            )
+            assert return_value.exit_code == 0
 
-            for address in ok_addresses + skip_addresses:
-                return_value = runner.invoke(
-                    start, self.args + address,
-                    catch_exceptions=False
-                )
-                assert return_value.exit_code == 0
-
-            for address in bad_addresses:
-                return_value = runner.invoke(
-                    start, self.args + address,
-                    catch_exceptions=False
-                )
-                assert return_value.exit_code != 0
-
-        gevent.spawn(test)
+        for address in bad_addresses:
+            return_value = runner.invoke(
+                start, self.args + address,
+                catch_exceptions=False
+            )
+            assert return_value.exit_code != 0
 
 
 def mock_async_callback(call):

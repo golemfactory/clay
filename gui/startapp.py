@@ -91,6 +91,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
         datadir=client.datadir
     )
     session = Session(router.address, methods=methods)
+    client.connect()
 
     def router_ready(*_):
         session.connect().addCallbacks(async_callback(session_ready),

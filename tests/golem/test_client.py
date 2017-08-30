@@ -85,7 +85,6 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
-
         n = 9
         payments = [
             Payment(
@@ -305,6 +304,7 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
+        self.client.connect()
         self.client.start_network()
         self.client.collect_gossip()
 
@@ -480,6 +480,7 @@ class TestClient(TestWithDatabase):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False)
+        self.client.connect()
         self.client.start()
 
         task_disc = self.client.task_server.disconnect
@@ -504,7 +505,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                         connect_to_known_hosts=False,
                         use_docker_machine_manager=False,
                         use_monitor=False)
-
+        client.connect()
         client.sync = Mock()
         client.keys_auth = Mock()
         client.keys_auth.key_id = str(uuid.uuid4())
@@ -823,7 +824,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_connection_status(self, *_):
         c = self.client
-
         # not connected
         self.assertTrue(c.connection_status()
                         .startswith("Application not listening"))

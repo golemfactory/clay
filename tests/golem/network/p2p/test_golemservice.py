@@ -30,8 +30,6 @@ class TestGolemService(unittest.TestCase):
         datadir = tempfile.mkdtemp(prefix='golem_service_1')
         self.client = create_client(datadir)
         self.client.connect()
-        GolemService.register_with_app(self.client)
-        PeerManager.register_with_app(self.client)
 
     @patch('gevent._socket2.socket')
     @patch('devp2p.peer.Peer.send_packet')
