@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 class EnvironmentsManager(object):
     """ Manage known environments. Allow user to choose accepted environment, keep track of supported environments """
+
     def __init__(self):
         self.supported_environments = set()
         self.environments = set()
@@ -15,7 +16,8 @@ class EnvironmentsManager(object):
         """ Load acceptance of environments from the config file
         :param datadir:
         """
-        self.env_config = EnvironmentsConfig.load_config(self.get_environments_to_config(), datadir)
+        self.env_config = EnvironmentsConfig.load_config(
+            self.get_environments_to_config(), datadir)
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
             getter_for_env = getattr(config_entries, "get_" + env.get_id())
@@ -54,7 +56,7 @@ class EnvironmentsManager(object):
         :return set:
         """
         return self.environments
-    
+
     def get_environment_by_id(self, env_id):
         for env in self.environments:
             if env.get_id() == env_id:
@@ -80,3 +82,7 @@ class EnvironmentsManager(object):
                 setter_for_env(int(state))
                 self.env_config = self.env_config.change_config()
                 return
+
+    def get_performance_values(self):
+        return {env.get_id(): env.get_performance()
+                for env in self.environments}

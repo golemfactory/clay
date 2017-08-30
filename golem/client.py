@@ -944,6 +944,9 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
 
+    def get_performance_values(self):
+        return self.environments_manager.get_performance_values()
+
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
             self.rpc_publisher.publish(event_name, *args, **kwargs)

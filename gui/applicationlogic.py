@@ -485,7 +485,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.client.abort_test_task()
 
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label, cfg_param_name):
+    def run_benchmark(self, benchmark, label):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
@@ -497,37 +497,43 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         reactor = self.__get_reactor()
 
         self.br = BenchmarkRunner(t, self.datadir,
-                                  lambda p: reactor.callFromThread(self._benchmark_computation_success,
-                                                                   performance=p, label=label,
-                                                                   cfg_param=cfg_param_name),
+                                  lambda p: reactor.callFromThread(
+                                      self._benchmark_computation_success,
+                                      performance=p, label=label,),
                                   self._benchmark_computation_error,
                                   benchmark)
-
-        self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-        self.progress_dialog_customizer.enable_ok_button(False) # disable 'ok' button
-        self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
+        self.progress_dialog = \
+            TestingTaskProgressDialog(self.customizer.gui.window)
+        self.progress_dialog_customizer = \
+            TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        # disable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(False)
+        # disable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', False)
         self.progress_dialog.show()
 
         self.br.run()
 
-    @inlineCallbacks
-    def _benchmark_computation_success(self, performance, label, cfg_param):
+    def _benchmark_computation_success(self, performance, label):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message("Recounted")
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
+        # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)
 
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
-        yield self.client.update_setting(cfg_param, perf)
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
         self.progress_dialog.stop_progress_bar()
-        self.progress_dialog_customizer.show_message("Recounting failed: {}".format(error))
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
+        self.progress_dialog_customizer.show_message(
+            "Recounting failed: {}".format(error))
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
+        # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)
 
     @inlineCallbacks
     def get_environments(self):
@@ -667,6 +673,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.current_task_type = self.task_types[name]
         else:
             logger.error("Unknown task type chosen {}, known task_types: {}".format(name, self.task_types))
+
+    @inlineCallbacks
+    def get_performance_values(self):
+        performance_values = yield self.client.get_performance_values()
+        returnValue(performance_values)
 
     def _validate_task_state(self, task_state):
         td = task_state.definition

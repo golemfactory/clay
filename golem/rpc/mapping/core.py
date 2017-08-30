@@ -10,6 +10,7 @@ CORE_METHOD_MAP = dict(
     get_datadir=            Environment.datadir,
     get_description=        Environment.opt_description,
     change_description=     Environment.opt_description_update,
+    get_performance_values= Environment.opt_performance_values,
 
     get_hw_caps=            Environment.hardware_caps,
     get_hw_presets=         Environment.presets,
@@ -90,4 +91,3 @@ CORE_METHOD_MAP = dict(
     resume=                 UI.start,
     pause=                  UI.stop
 )
-
