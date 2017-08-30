@@ -99,8 +99,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.node._run()
 
         ccd = ClientConfigDescriptor()
-        ccd.estimated_blender_performance = 2000.0
-        ccd.estimated_lux_performance = 2000.0
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
