@@ -354,7 +354,6 @@ class Performance(BaseModel):
     class Meta:
         database = db
 
-
     @classmethod
     def update_or_create(cl, env_id, performance):
         try:
