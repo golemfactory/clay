@@ -1,4 +1,4 @@
-import jsonpickle as json
+import json
 import unittest
 
 from golem.core.simpleserializer import DictSerializer

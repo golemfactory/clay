@@ -1,11 +1,13 @@
 import collections
 import inspect
+import json
 import logging
 import sys
 import types
+from abc import ABCMeta, abstractmethod
+from typing import Optional, Type, Union
 
 import cbor2
-import jsonpickle
 import pytz
 
 from golem.core.common import to_unicode
@@ -13,11 +15,9 @@ from golem.core.common import to_unicode
 logger = logging.getLogger('golem.core.simpleserializer')
 
 
-class DictCoder(object):
-
+class DictCoder:
     cls_key = 'py/object'
     deep_serialization = True
-
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
@@ -139,27 +139,6 @@ class CBORCoder(DictCoder):
         return obj
 
 
-class SimpleSerializer(object):
-    """ Simple meta-class that serialize and deserialize objects to a json format"""
-    @classmethod
-    def dumps(cls, obj):
-        """
-        Serialize obj to a JSON format
-        :param obj: object to be serialized
-        :return str: serialized object in json format
-        """
-        return jsonpickle.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        """
-        Deserialize data to a Python object
-        :param str data: json object to be deserialized
-        :return: deserialized Python object
-        """
-        return jsonpickle.loads(data)
-
-
 class DictSerializer(object):
     """ Serialize and deserialize objects to a dictionary"""
     @staticmethod
@@ -167,8 +146,8 @@ class DictSerializer(object):
         """
         Serialize obj to dictionary
         :param obj: object to be serialized
-        :param bool typed: simple serialization does not include type information
-        :return str: serialized object in json format
+        :param typed: simple serialization does not include type information
+        :return: serialized object in json format
         """
         return DictCoder.to_dict(obj, typed=typed)
 
@@ -195,4 +174,39 @@ class CBORSerializer(object):
 
     @classmethod
     def dumps(cls, obj):
-        return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
+        return cbor2.dumps(
+            obj,
+            encoders=cls.encoders,
+            datetime_as_timestamp=True,
+            timezone=pytz.utc
+        )
+
+
+class DictSerializable(metaclass=ABCMeta):
+    @abstractmethod
+    def to_dict(self) -> dict:
+        "Converts the object to a dict containing only primitive types"
+
+    @staticmethod
+    @abstractmethod
+    def from_dict(data: Optional[dict]) -> 'DictSerializable':
+        "Converts the object to a dict containing only primitive types"
+
+
+class JSONDictSerializer:
+    @staticmethod
+    def loads(data: Union[bytes, str], key_type: Type) -> dict:
+        """
+        Creates a dict from the JSON formatted data.
+        :param data: the JSON data
+        :param key_type: the type the keys should be converted to
+        """
+        deserialized = json.loads(data)
+        return {key_type(k): v for k, v in deserialized.items()}
+
+    @staticmethod
+    def dumps(obj) -> str:
+        """
+        Dumps the object obj to JSON, if can be easily serialied
+        """
+        return json.dumps(obj)

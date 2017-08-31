@@ -3,13 +3,14 @@ from datetime import datetime
 from peewee import IntegrityError
 
 import golem.model as m
+from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture, PEP8MixIn, TempDirFixture
 
 
 class TestDatabase(TempDirFixture, PEP8MixIn):
     PEP8_FILES = ["golem/model.py"]
 
-    def test_init(self):
+    def test_init(self) -> None:
         db = m.Database(self.path)
         self.assertFalse(db.db.is_closed())
         db.db.close()
@@ -27,7 +28,6 @@ class TestDatabase(TempDirFixture, PEP8MixIn):
 
 
 class TestPayment(DatabaseFixture):
-
     def test_default_fields(self):
         p = m.Payment()
         self.assertGreaterEqual(datetime.now(), p.created_date)
@@ -66,18 +66,27 @@ class TestPayment(DatabaseFixture):
         self.assertNotEqual(p1.payee, p2.payee)
         self.assertNotEqual(p1.subtask, p2.subtask)
         self.assertNotEqual(p1.value, p2.value)
-        self.assertEqual(p1.details, {})
+        self.assertEqual(p1.details, m.PaymentDetails())
         self.assertEqual(p1.details, p2.details)
         self.assertIsNot(p1.details, p2.details)
-        p1.details['check'] = True
-        self.assertTrue(p1.details['check'])
-        self.assertNotIn('check', p2.details)
+        p1.details.check = True
+        self.assertTrue(p1.details.check)
+        self.assertEqual(p2.details.check, None)
 
     def test_payment_big_value(self):
         value = 10000 * 10**18
         assert value > 2**64
         m.Payment.create(payee="me", subtask="T1000", value=value,
                          status=m.PaymentStatus.sent)
+
+    def test_payment_details_serialization(self):
+        p = m.PaymentDetails(node_info=Node(node_name="bla", key="xxx"), fee=700)
+        dct = p.to_dict()
+        self.assertIsInstance(dct, dict)
+        self.assertIsInstance(dct['node_info'], dict)
+        pd = m.PaymentDetails.from_dict(dct)
+        self.assertIsInstance(pd.node_info, Node)
+        self.assertEqual(p, pd)
 
 
 class TestReceivedPayment(DatabaseFixture):
@@ -88,19 +97,40 @@ class TestReceivedPayment(DatabaseFixture):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
 
     def test_create(self):
-        r = m.ReceivedPayment(from_node_id="DEF", task="xyz", val=4,
-                              expected_val=3131, state="SOMESTATE")
-        self.assertEquals(r.save(force_insert=True), 1)
+        r = m.ReceivedPayment(
+            from_node_id="DEF",
+            task="xyz",
+            val=4,
+            expected_val=3131,
+            state="SOMESTATE"
+        )
+        self.assertEqual(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            m.ReceivedPayment.create(from_node_id="DEF", task="xyz", val=5,
-                                     expected_val=3132, state="SOMESTATEX")
-        m.ReceivedPayment.create(from_node_id="DEF", task="xyz2", val=5,
-                                 expected_val=3132, state="SOMESTATEX")
-        m.ReceivedPayment.create(from_node_id="DEF2", task="xyz", val=5,
-                                 expected_val=3132, state="SOMESTATEX")
+            m.ReceivedPayment.create(
+                from_node_id="DEF",
+                task="xyz",
+                val=5,
+                expected_val=3132,
+                state="SOMESTATEX"
+            )
+        m.ReceivedPayment.create(
+            from_node_id="DEF",
+            task="xyz2",
+            val=5,
+            expected_val=3132,
+            state="SOMESTATEX"
+        )
+        m.ReceivedPayment.create(
+            from_node_id="DEF2",
+            task="xyz",
+            val=5,
+            expected_val=3132,
+            state="SOMESTATEX"
+        )
 
-        self.assertEqual(3, len([payment
-                                 for payment in m.ReceivedPayment.select()]))
+        self.assertEqual(
+            len([payment for payment in m.ReceivedPayment.select()]), 3
+        )
 
 
 class TestLocalRank(DatabaseFixture):
