@@ -203,11 +203,11 @@ def get_cpu_count():
     """
     Get number of cores with system limitations:
     - max 32 on Windows due to VBox limitation
-    - max 64 on MacOS dut to xhyve limitation
+    - max 16 on MacOS dut to xhyve limitation
     :return: number of cores
     """
     if is_windows():
         return min(cpu_count(), 32)  # VBox limitation
     if is_osx():
-        return min(cpu_count(), 64)  # xhyve limitation
+        return min(cpu_count(), 16)  # xhyve limitation
     return cpu_count()  # No limitatons on Linux
