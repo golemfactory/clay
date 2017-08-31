@@ -139,6 +139,7 @@ class HandleError(object):
                 return func(*args, **kwargs)
             except self.error:
                 return self.handle_error(*args, **kwargs)
+
         return func_wrapper
 
 
@@ -200,7 +201,13 @@ def config_logging(suffix='', datadir=None):
 
 def get_cpu_count():
     """
-    Return number of CPU cores (but max 32)
+    Get number of cores with system limitations:
+    - max 32 on Windows due to VBox limitation
+    - max 64 on MacOS dut to xhyve limitation
     :return: number of cores
     """
-    return min(cpu_count(), 32)     # VBox limitation
+    if is_windows():
+        return min(cpu_count(), 32)  # VBox limitation
+    if is_osx():
+        return min(cpu_count(), 64)  # xhyve limitation
+    return cpu_count()  # No limitatons on Linux
