@@ -36,6 +36,7 @@ class TaskTester(LocalComputer):
         self.success_callback(res, est_mem, time_spent,
                               after_test_data=after_test_data)
 
+    # FIXME: Function disconnected from class
     def is_success(self, task_thread):
         if task_thread.error or (not task_thread.result):
             return False

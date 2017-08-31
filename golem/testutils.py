@@ -7,8 +7,7 @@ import tempfile
 import unittest
 from os import path
 from time import sleep
-
-from mock import MagicMock
+from unittest.mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows
 

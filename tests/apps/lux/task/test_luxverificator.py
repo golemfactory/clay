@@ -1,5 +1,5 @@
 import os
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase

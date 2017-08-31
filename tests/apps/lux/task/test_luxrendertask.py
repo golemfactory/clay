@@ -4,8 +4,8 @@ from ethereum.utils import denoms
 from pathlib import Path
 import pickle
 import unittest
+from unittest.mock import Mock, patch
 
-from mock import Mock, patch
 from PIL import Image
 
 from golem.core.common import is_linux

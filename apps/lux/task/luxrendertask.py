@@ -12,7 +12,7 @@ from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 
 from golem.resource import dirmanager
-from golem.resource.dirmanager import DirManager, find_task_script
+from golem.resource.dirmanager import DirManager
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
@@ -513,6 +513,7 @@ class LuxTask(renderingtask.RenderingTask):
         img_current.close()
 
     def create_reference_data_for_task_validation(self):
+        reference_threads = set()
         for i in range(0, self.reference_runs):
             path = \
                 self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
@@ -525,6 +526,9 @@ class LuxTask(renderingtask.RenderingTask):
                 lambda: self.query_extra_data_for_reference_task(counter=i)
             )
             computer.run()
+            reference_threads.add(computer)
+
+        for computer in reference_threads:
             computer.tt.join()
 
         path = \
