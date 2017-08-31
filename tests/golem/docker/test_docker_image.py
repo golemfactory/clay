@@ -97,7 +97,7 @@ class TestDockerImage(DockerTestCase):
 
         img = DockerImage(self.TEST_REPOSITORY,
                           tag=self.TEST_TAG,
-                          image_id=self.TEST_IMAGE_ID)
+                          image_id=self.TEST_ENV_ID)
         img2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
         
         assert img.cmp_name_and_tag(img2)
@@ -105,12 +105,12 @@ class TestDockerImage(DockerTestCase):
 
         img3 = DockerImage(self.TEST_REPOSITORY,
                            tag="bogus",
-                           image_id=self.TEST_IMAGE_ID)
+                           image_id=self.TEST_ENV_ID)
         assert not img.cmp_name_and_tag(img3)
         assert not img3.cmp_name_and_tag(img)
 
         img4 = DockerImage("golemfactory/xyz",
                            tag=self.TEST_TAG,
-                           image_id=self.TEST_IMAGE_ID)
+                           image_id=self.TEST_ENV_ID)
         assert not img.cmp_name_and_tag(img4)
         assert not img4.cmp_name_and_tag(img)
