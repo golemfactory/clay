@@ -9,6 +9,7 @@ from typing import Optional, Type, Union
 
 import cbor2
 import pytz
+from rlp import Serializable
 
 from golem.core.common import to_unicode
 
@@ -210,3 +211,17 @@ class JSONDictSerializer:
         Dumps the object obj to JSON, if can be easily serialied
         """
         return json.dumps(obj)
+
+class CBORSedes(Serializable):
+
+    def __init__(self):
+        Serializable.__init__(self)
+
+    @classmethod
+    def serialize(cls, obj):
+        return CBORSerializer.dumps(obj)
+
+
+    @classmethod
+    def deserialize(cls, serial, exclude=None, **kwargs):
+        return CBORSerializer.loads(serial)

@@ -30,7 +30,8 @@ def tree(directory):
 hidden_imports = [
     'OpenEXR', 'sha3', 'scrypt',
     'requests', 'web3', 'rlp', 'pylru',
-    'Imath'
+    'Imath',
+    'tulipcore'
 ]
 
 binaries = []

@@ -66,12 +66,10 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
-
+    import gevent
     if not reactor:
-        from golem.core.common import is_windows
-        if is_windows():
-            from twisted.internet import iocpreactor
-            iocpreactor.install()
+        from twisted.internet import asyncioreactor
+        asyncioreactor.install(gevent.get_hub().loop.aio)
         from twisted.internet import reactor
 
     process_monitor = None
@@ -93,6 +91,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
         datadir=client.datadir
     )
     session = Session(router.address, methods=methods)
+    client.connect()
 
     def router_ready(*_):
         session.connect().addCallbacks(async_callback(session_ready),
@@ -139,6 +138,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
 
     try:
         reactor.run()
+        gevent.get_hub().join()
     except ReactorAlreadyRunning:
         logger.debug("Client process: reactor is already running")
 

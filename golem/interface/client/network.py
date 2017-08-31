@@ -1,17 +1,18 @@
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, Argument, command, CommandResult, doc
 from golem.network.transport.tcpnetwork import SocketAddress
-
+from ethereum.utils import encode_hex
 
 @group(help="Manage network")
 class Network(object):
 
     client = None
 
-    node_table_headers = ['ip', 'port', 'id', 'name', 'version']
+    node_table_headers = ['ip', 'port', 'id', 'version']
 
     ip_arg = Argument('ip', help='Remote IP address')
-    port_arg = Argument('port', help='Remote TCP port')
+    port_arg = Argument('port', help='Remote port address')
+    node_id_arg = Argument('node_id', help='Remote node_id address')
 
     full_table = Argument(
         '--full',
@@ -31,11 +32,11 @@ class Network(object):
         status = sync_wait(deferred) or "unknown"
         return status
 
-    @command(arguments=(ip_arg, port_arg), help="Connect to a node")
-    def connect(self, ip, port):
+    @command(arguments=(ip_arg, port_arg, node_id_arg), help="Connect to a node")
+    def connect(self, ip, port, node_id):
         try:
             sa = SocketAddress(ip, int(port))
-            Network.client.connect((sa.address, sa.port))
+            Network.client.connect((sa.address, sa.port), node_id)
         except Exception as exc:
             return CommandResult(error="Cannot connect to {}:{}: {}"
                                        .format(ip, port, exc))
@@ -56,17 +57,14 @@ class Network(object):
     def __peers(peers, sort, full):
         values = []
 
-        for p in peers:
-            addr = Network.__one_of(p, 'address', 'pub_addr')
-            port = Network.__one_of(p, 'port', 'p2p_pub_port', 'p2p_prv_port')
-            key = Network.__one_of(p, 'key_id', 'key')
-            version = Network.__one_of(p, 'client_ver')
-
+        for peer in peers:
+            ip = peer['ip_port'][0]
+            port = str(peer['ip_port'][1])
             values.append([
-                str(addr), str(port),
-                Network.__key_id(key, full),
-                str(p['node_name']),
-                str(version)
+                str(ip),
+                port,
+                Network.__key_id(encode_hex(peer['remote_pubkey']), full),
+                str(peer['node_name'])
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,
@@ -83,4 +81,4 @@ class Network(object):
     def __key_id(key_id, full=False):
         if full:
             return key_id
-        return key_id[:16] + "..." + key_id[-16:]
+        return key_id[:16] + b"..." + key_id[-16:]

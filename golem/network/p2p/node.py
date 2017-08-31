@@ -1,5 +1,7 @@
 import logging
 from typing import Optional, List
+import rlp
+from golem.core.simpleserializer import CBORSedes
 
 from golem.core.hostaddress import \
     get_host_address, get_external_address, get_host_addresses
@@ -7,8 +9,21 @@ from golem.core.simpleserializer import DictSerializable
 
 logger = logging.getLogger(__name__)
 
+class Node(rlp.Serializable, DictSerializable):
+    fields = [
+        ('node_name', CBORSedes),
+        ('key', CBORSedes),
+        ('prv_addr', CBORSedes),
+        ('prv_port', CBORSedes),
+        ('pub_addr', CBORSedes),
+        ('pub_port', CBORSedes),
+        ('nat_type', CBORSedes),
+        ('p2p_prv_port', CBORSedes),
+        ('p2p_pub_port', CBORSedes),
+        ('prv_addresses', rlp.sedes.CountableList(CBORSedes)),
+        ('port_status', CBORSedes),
+    ]
 
-class Node(DictSerializable):
     def __init__(self,
                  node_name: Optional[str] = None,
                  key: Optional[str] = None,
@@ -18,22 +33,12 @@ class Node(DictSerializable):
                  pub_port: Optional[int] = None,
                  nat_type: Optional[List[str]] = None,
                  p2p_prv_port: Optional[int] = None,
-                 p2p_pub_port: Optional[int] = None) -> None:
-        self.node_name = node_name
-        self.key = key
-        # task server ports
-        self.prv_port = prv_port
-        self.pub_port = pub_port
-        # p2p server ports
-        self.p2p_prv_port = p2p_prv_port
-        self.p2p_pub_port = p2p_pub_port
-        # addresses
-        self.prv_addr = prv_addr
-        self.pub_addr = pub_addr
-        self.prv_addresses = []  # type: List[str]
-
-        self.nat_type = nat_type
-        self.port_status = None
+                 p2p_pub_port: Optional[int] = None,
+                 prv_addresses: Optional[List[str]] = None,
+                 port_status: Optional[str] = None ) -> None:
+    
+       rlp.Serializable.__init__(self, node_name, key, prv_addr, prv_port, pub_addr, pub_port,
+                 nat_type, p2p_prv_port, p2p_pub_port, prv_addresses, port_status)
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:

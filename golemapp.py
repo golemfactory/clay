@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 import sys
+
+from golem.network.transport.message import init_messages
+init_messages()
+
 import click
 from multiprocessing import freeze_support
 import logging
@@ -16,7 +20,14 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
+import gevent
 
+from twisted.internet import asyncioreactor
+
+
+def monkey_patched_run(self, *args, **kwargs):
+    self.startRunning(installSignalHandlers=True)
+asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -31,8 +42,8 @@ from golem.node import OptNode
               help="RPC server address to use: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or "
-                   "[<ipv6_addr>]:<port>")
+              help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or "
+                   " <node_id>@<ipv6_addr>:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -89,7 +100,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
-
         node = OptNode(peers=peer, node_address=node_address,
                        use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
@@ -101,10 +111,8 @@ def delete_reactor():
 
 
 def install_reactor():
-    from golem.core.common import is_windows
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install(gevent.get_hub().loop.aio)
     from twisted.internet import reactor
     return reactor
 

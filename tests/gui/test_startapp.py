@@ -62,6 +62,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         queue = Queue()
 
+        @patch('devp2p.app.BaseApp.start')
+        @patch('devp2p.app.BaseApp.stop')
         @patch('gui.startapp.start_gui')
         @patch('golem.client.Client.start', side_effect=lambda *_: queue.put("Success"))
         @patch('golem.client.Client.sync')
@@ -77,12 +79,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                                 use_docker_machine_manager=False,
                                 use_monitor=False)
 
-                thread = Thread(target=lambda: start_client(start_ranking=False,
-                                                            client=client,
-                                                            reactor=self._get_reactor()))
+                start_client(start_ranking=False, client=client,
+                             reactor=self._get_reactor())
 
-                thread.daemon = True
-                thread.start()
                 message = queue.get(True, 10)
                 if isinstance(message, failure.Failure):
                     assert message.getErrorMessage().find(expected_result) != -1

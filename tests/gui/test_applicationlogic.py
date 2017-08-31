@@ -459,27 +459,21 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         peer = Mock()
-        peer.address = "10.10.10.10"
-        peer.port = 1031
-        peer.key_id = "KEYID"
-        peer.node_name = "NODE 1"
+        peer.ip_port = ("10.10.10.10", 1031)
+        peer.remote_pubkey = "KEYID"
         peer2 = Mock()
-        peer2.address = "10.10.10.20"
-        peer2.port = 1034
-        peer2.key_id = "KEYID2"
-        peer2.node_name = "NODE 2"
+        peer2.ip_port = ("10.10.10.20", 1034)
+        peer2.remote_pubkey = "KEYID2"
         logic._update_peers_view([DictSerializer.dump(peer),
                                   DictSerializer.dump(peer2)])
         table = logic.customizer.gui.ui.connectedPeersTable
         self.assertEqual(table.rowCount(), 2)
         self.assertEqual(table.item(0, 0).text(), "10.10.10.10")
-        self.assertEqual(table.item(1, 0).text(), "10.10.10.20")
         self.assertEqual(table.item(0, 1).text(), "1031")
+        self.assertEqual(table.item(0, 2).text(), "4b45594944")
+        self.assertEqual(table.item(1, 0).text(), "10.10.10.20")
         self.assertEqual(table.item(1, 1).text(), "1034")
-        self.assertEqual(table.item(0, 2).text(), "KEYID")
-        self.assertEqual(table.item(1, 2).text(), "KEYID2")
-        self.assertEqual(table.item(0, 3).text(), "NODE 1")
-        self.assertEqual(table.item(1, 3).text(), "NODE 2")
+        self.assertEqual(table.item(1, 2).text(), "4b4559494432")
 
     def test_change_verification_options(self):
         logic = self.logic
@@ -664,7 +658,7 @@ def mock_tester_run(self):
     self.tt.join()
 
 
-@patch('golem.client.P2PService.start_accepting')
+@patch('devp2p.app.BaseApp.start')
 @patch('golem.client.TaskServer.start_accepting')
 @patch('golem.client.async_run', side_effect=mock_async_run)
 @patch.object(golem.client.TaskTester, 'run', mock_tester_run)
@@ -676,7 +670,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
-
+        self.client.connect()
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 
