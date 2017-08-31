@@ -1,10 +1,11 @@
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 from apps.appsmanager import AppsManager
-from golem.core.deferred import sync_wait
+from apps.core.task.coretaskstate import TaskDefinition
 
+from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
@@ -59,6 +60,11 @@ class Tasks:
     file_name = Argument(
         'file_name',
         help="Task file"
+    )
+    outfile = Argument(
+        'outfile',
+        help="Output file",
+        optional=True,
     )
     skip_test = Argument(
         '--skip-test',
@@ -147,6 +153,17 @@ class Tasks:
     def create(self, file_name: str) -> Any:
         with open(file_name) as f:
             self.create_from_json(f.read())
+
+    @command(argument=outfile, help="Dump a task template")
+    def template(self, outfile: Optional[str]) -> Any:
+        template = TaskDefinition()
+        template_str = json.dumps(template.to_dict(), indent=4)
+
+        if outfile:
+            with open(outfile, 'w') as dest:
+                print(template_str, file=dest)
+        else:
+            print(template_str)
 
     @doc("Show statistics for tasks")
     def stats(self):

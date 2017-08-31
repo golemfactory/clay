@@ -1,4 +1,5 @@
 import json
+import io
 import unittest
 import uuid
 from collections import namedtuple
@@ -420,6 +421,24 @@ class TestTasks(TempDirFixture):
             with patch(patched_open, mock_open(read_data='{}')):
                 tasks.create("foo")
                 client.create_task.assert_called_with(json.loads('{}'))
+
+    def test_template(self) -> None:
+        with patch('sys.stdout', io.StringIO()) as mock_io:
+            tasks = Tasks()
+            tasks.template(None)
+            output = mock_io.getvalue()
+
+            self.assertIn("bid", output)
+            self.assertIn("0.0", output)
+            self.assertIn('"subtask_timeout": "0:00:00"', output)
+
+            self.assertEqual(json.loads(output), TaskDefinition().to_dict())
+
+            temp = self.temp_file_name("test_template")
+            tasks.template(temp)
+            with open(temp) as f:
+                content = f.read()
+                self.assertEqual(content, output)
 
     def test_show(self):
         client = self.client

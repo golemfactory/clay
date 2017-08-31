@@ -59,7 +59,7 @@ class TempDirFixture(unittest.TestCase):
             sleep(3)
             self.__remove_files()
 
-    def temp_file_name(self, name):
+    def temp_file_name(self, name: str) -> str:
         return path.join(self.tempdir, name)
 
     def additional_dir_content(self, file_num_list, dir_=None, results=None,
