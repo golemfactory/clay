@@ -97,6 +97,7 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
+    # TODO test that method!
     def create_task(self, dictionary, minimal=False):
         # FIXME: Backward compatibility only. Remove after upgrading GUI.
         if not isinstance(dictionary, dict):

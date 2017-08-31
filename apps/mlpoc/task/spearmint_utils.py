@@ -8,9 +8,8 @@ import os
 import shutil
 from collections import OrderedDict
 
-EXPERIMENT_DIR = "experiment"
-RESULT_FILE = os.path.join(EXPERIMENT_DIR, "results.dat")
-CONFIG = os.path.join(EXPERIMENT_DIR, "config.json")
+RESULT_FILE = "results.dat"
+CONFIG = "config.json"
 
 
 def f(x):
@@ -43,12 +42,12 @@ def run_one_evaluation(directory, params):
 
 
 def create_conf(directory):
-    conf = OrderedDict(("X", {"name": "X",
+    conf = OrderedDict([("X", {"name": "X",
                               "type": "float",
                               "min": 0.1,
                               "max": 5.0,
                               "size": 1
-                              }))
+                              })])
     with open(os.path.join(directory, CONFIG), "w+") as f:
         json.dump(conf, f)
 

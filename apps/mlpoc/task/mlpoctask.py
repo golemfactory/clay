@@ -3,6 +3,7 @@ import logging
 import os
 import random
 from typing import Dict, Tuple
+from unittest.mock import Mock
 
 import enforce
 
@@ -12,8 +13,8 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskTypeInfo)
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment, \
     MLPOCSpearmintEnvironment
-from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
-from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox
+# from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
+# from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox
 from apps.mlpoc.resources.code_pytorch.messages import \
     MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task import spearmint_utils
@@ -29,7 +30,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.mlpoc")
 
 
-@enforce.runtime_validation(group="mlpoc")
+# @enforce.runtime_validation(group="mlpoc")
 class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super().__init__(
@@ -44,7 +45,7 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
 
 
 # TODO refactor it to inherit from DummyTask
-@enforce.runtime_validation(group="mlpoc")
+# @enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
     ENVIRONMENT_CLASS = MLPOCTorchEnvironment
     VERIFICATOR_CLASS = MLPOCTaskVerificator
@@ -53,8 +54,8 @@ class MLPOCTask(CoreTask):
     SPEARMINT_EXP_DIR = "work/experiment"
     SPEARMINT_SIGNAL_FILE = "work/x.signal"
     RESULT_EXT = ".result"
-    BLACK_BOX = CountingBlackBox  # black box class, not instance
-    BATCH_MANAGER = IrisBatchManager  # batch manager class, not instace
+    BLACK_BOX = Mock # CountingBlackBox  # black box class, not instance
+    BATCH_MANAGER = Mock # IrisBatchManager  # batch manager class, not instace
 
     def __init__(self,
                  total_tasks: int,
@@ -85,36 +86,14 @@ class MLPOCTask(CoreTask):
         # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         # ver_opts["result_extension"] = self.RESULT_EXT
 
-    def run_spearmint_in_background(self, tmp_path):
+    def __spearmint_ctd(self):
         env = self.SPEARMINT_ENV()
-        self.src_code = env.get_source_code
-
-        local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        os.path.join(self.spearmint_path, "root"),  # TODO check if it is really needed
-                                        lambda *_: self.__restart_spearmint_pos(),
-                                        lambda *_: self.__restart_spearmint_neg(),
-                                        lambda: self.__spearmint_ctd,
-                                        use_task_resources=False,
-                                        additional_resources=False,
-                                        tmp_dir=os.path.join(self.spearmint_path, "tmp"))
-        spearmint_utils.create_conf(os.path.join(tmp_path, self.SPEARMINT_EXP_DIR))
-        local_spearmint.run()
-
-    def __restart_spearmint_pos(self):
-        logger.warning("Spearmint docker was restarted positively. WRONG!")
-        raise Exception("Spearmint docker was restarted positively. WRONG!")
-
-    def __restart_spearmint_neg(self):
-        logger.warning("Spearmint docker was restarted negatively. WRONG!")
-        raise Exception("Spearmint docker was restarted negatively. WRONG!")
-
-    def __spearmit_ctd(self):
-        env = self.SPEARMINT_ENV()
+        src_code = env.get_source_code()
         ctd = ComputeTaskDef()
         ctd.environment = env.ENV_ID
         ctd.docker_images = env.docker_images
-        ctd.src_code = env.get_source_code()
-        ctd.working_directory = "" # we should set not working directory, but LocalComputer.temp_dir
+        ctd.src_code = src_code
+        ctd.working_directory = ""  # we should set not working directory, but LocalComputer.temp_dir
         INFTY = 10000
         ctd.deadline = timeout_to_deadline(INFTY)
 
@@ -125,6 +104,28 @@ class MLPOCTask(CoreTask):
         ctd.extra_data["SIGNAL_FILE"] = "/golem/work/" + self.SPEARMINT_SIGNAL_FILE  # TODO change that, as ^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
         return ctd
+
+    def run_spearmint_in_background(self, tmp_path):
+        local_spearmint = LocalComputer(None,  # we don't use task at all
+                                        os.path.join(self.spearmint_path, "root"),  # TODO check if it is really needed
+                                        lambda *_: self.__restart_spearmint_pos(),
+                                        lambda *_: self.__restart_spearmint_neg(),
+                                        lambda: self.__spearmint_ctd(),
+                                        use_task_resources=False,
+                                        additional_resources=None,
+                                        tmp_dir=os.path.join(self.spearmint_path, "tmp"))
+        experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
+        os.makedirs(experiment_dir)
+        spearmint_utils.create_conf(experiment_dir)
+        local_spearmint.run()
+
+    def __restart_spearmint_pos(self):
+        logger.warning("Spearmint docker was restarted positively. WRONG!")
+        raise Exception("Spearmint docker was restarted positively. WRONG!")
+
+    def __restart_spearmint_neg(self):
+        logger.warning("Spearmint docker was restarted negatively. WRONG!")
+        raise Exception("Spearmint docker was restarted negatively. WRONG!")
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)

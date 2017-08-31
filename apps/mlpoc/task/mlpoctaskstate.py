@@ -47,7 +47,7 @@ class MLPOCTaskDefinition(TaskDefinition):
                                      "apps",
                                      "mlpoc",
                                      "resources",
-                                     "code_dir")
+                                     "code_pytorch")
         self.code_files = []
 
         if defaults:

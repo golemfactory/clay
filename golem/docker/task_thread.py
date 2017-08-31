@@ -90,9 +90,9 @@ class DockerTaskThread(TaskThread):
             output_dir = os.path.join(self.tmp_path, self.OUTPUT_DIR)
 
             if not os.path.exists(work_dir):
-                os.mkdir(work_dir)
+                os.makedirs(work_dir)
             if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
 
             messages_dirs = [os.path.join(self.tmp_path, self.MESSAGES_IN_DIR),
                              os.path.join(self.tmp_path, self.MESSAGES_OUT_DIR)]

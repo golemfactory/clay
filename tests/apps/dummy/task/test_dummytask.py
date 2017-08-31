@@ -131,8 +131,7 @@ class TestDummyTaskBuilder(TestCase):
             dictionary["options"].update({"subtask_data_size": sbs,
                                           "difficulty": difficulty})
 
-            return DummyTaskBuilder.build_full_definition(
-                DummyTaskTypeInfo(None, None), dictionary)  # noqa
+            return DummyTaskBuilder.build_full_definition(DummyTaskTypeInfo(None, None), dictionary)  # noqa
 
         difficulty = 20
         sbs = 10

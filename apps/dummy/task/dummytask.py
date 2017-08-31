@@ -39,6 +39,7 @@ class DummyTask(CoreTask):
     VERIFICATOR_CLASS = DummyTaskVerificator
 
     RESULT_EXT = ".result"
+    TESTING_CHAR = "a"
 
     def __init__(self,
                  total_tasks: int,
