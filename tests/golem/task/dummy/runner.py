@@ -14,17 +14,45 @@ import tempfile
 import time
 from os import path
 from threading import Thread
+import gevent
 
+if 'twisted.internet.reactor' in sys.modules:
+    del sys.modules['twisted.internet.reactor']
+from twisted.internet import asyncioreactor
+print("Installing reactor")
+asyncioreactor.install(gevent.get_hub().loop.aio)
 from twisted.internet import reactor
+
+def monkey_patched_run(self, *args, **kwargs):
+    self.startRunning(installSignalHandlers=True)
+asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
+
+from ethereum import slogging
+#Monkey patch for ethereum.slogging.
+#SLogger aggressively mess up with python looger.
+#This patch is to settle down this.
+#It should be done before any SLogger is created.
+orig_getLogger = slogging.SManager.getLogger
+def monkey_patched_getLogger(*args, **kwargs):
+    orig_class = logging.getLoggerClass()
+    result = orig_getLogger(*args, **kwargs)
+    logging.setLoggerClass(orig_class)
+    return result
+slogging.SManager.getLogger = monkey_patched_getLogger
 
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
+from golem.utils import find_free_net_port
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
+from golem.network.transport.message import init_messages
+from multiprocessing import freeze_support
+freeze_support()
+init_messages()
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
@@ -56,7 +84,6 @@ def create_client(datadir):
                   estimated_lux_performance=1000.0,
                   estimated_blender_performance=1000.0)
 
-
 def run_requesting_node(datadir, num_subtasks=3):
     client = None
 
@@ -75,6 +102,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     client = create_client(datadir)
+    client.connect()
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
@@ -83,26 +111,27 @@ def run_requesting_node(datadir, num_subtasks=3):
     task.initialize(DirManager(datadir))
     client.enqueue_new_task(task)
 
-    port = client.p2pservice.cur_port
-    requestor_addr = "{}:{}".format(client.node.prv_addr, port)
+    port = client.get_p2p_port()
+    requestor_addr = "{}:{}".format("127.0.0.1", port)
     report("Listening on {}".format(requestor_addr))
+    report("this_enode=enode://%s@%s:%s" %(client.configp2p['node']['pubkey_hex'],client.node.prv_addr, port ))
 
     def report_status():
         while True:
-            time.sleep(1)
+            gevent.sleep(1)
             if task.finished_computation():
                 report("Task finished")
                 shutdown()
                 return
 
-    reactor.callInThread(report_status)
+    g = gevent.spawn(report_status)
     reactor.run()
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 
-def run_computing_node(datadir, peer_address, fail_after=None):
+def run_computing_node(datadir, peer_address, node_id, fail_after=None):
     client = None
-
     def shutdown():
         client and client.quit()
         reactor.running and reactor.callFromThread(reactor.stop)
@@ -110,14 +139,20 @@ def run_computing_node(datadir, peer_address, fail_after=None):
         if os.path.exists(datadir):
             shutil.rmtree(datadir)
 
-    atexit.register(shutdown)
 
+    atexit.register(shutdown)
     global node_kind
     node_kind = "COMPUTER "
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir)
     client = create_client(datadir)
+    port = find_free_net_port()
+    client.configp2p['discovery']["listen_port"] = port
+    client.configp2p['p2p']["listen_port"] = port
+    client.connect(peer_address, node_id)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
@@ -137,7 +172,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     report("Connecting to requesting node at {}:{} ..."
            .format(peer_address.address, peer_address.port))
-    client.connect(peer_address)
+
 
     def report_status(fail_after=None):
         t0 = time.time()
@@ -147,10 +182,11 @@ def run_computing_node(datadir, peer_address, fail_after=None):
                 reactor.callFromThread(reactor.stop)
                 shutdown()
                 return
-            time.sleep(1)
+            gevent.sleep(1)
 
-    reactor.callInThread(report_status, fail_after)
+    g = gevent.spawn(report_status, fail_after)
     reactor.run()
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 
@@ -191,13 +227,24 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 requestor_address = m.group(1)
                 break
 
+    node_id_re = re.compile(".+this_enode=enode://(.+)@")
+    while True:
+        line = requesting_proc.stdout.readline().strip()
+        if line:
+            line = line.decode('utf-8')
+            print(line)
+            m = node_id_re.match(line)
+            if m:
+                node_id = m.group(1)
+                break
+
     # Start computing nodes in a separate processes
     computing_procs = []
     for n in range(0, num_computing_nodes):
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
             sys.executable, "-u", __file__, COMPUTING_NODE_KIND,
-            compdir, requestor_address
+            compdir, requestor_address, node_id
         ]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
@@ -265,13 +312,13 @@ def dispatch(args):
         # second arg is the data dir,
         # third arg is the number of subtasks.
         run_requesting_node(args[2], int(args[3]))
-    elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
+    elif len(args) in [5, 6] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node,
         # second arg is the data dir,
         # third arg is the address to connect to,
         # forth arg is the timeout (optional).
-        fail_after = float(args[4]) if len(args) == 5 else None
-        run_computing_node(args[2], SocketAddress.parse(args[3]), fail_after=fail_after)
+        fail_after = float(args[5]) if len(args) == 6 else None
+        run_computing_node(args[2], SocketAddress.parse(args[3]), args[4], fail_after=fail_after)
     elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,

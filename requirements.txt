@@ -41,6 +41,9 @@ qt5reactor
 GitPython>=2.1.0
 semantic_version
 pyOpenSSL==16.2.0
+gevent==1.2.2
+devp2p==0.9.2
+rlp==0.5.1
 requests==2.13.0
 Automat==0.5.0
 zope.interface==4.3.3

@@ -10,6 +10,7 @@ branches:
 
 env:
   global:
+    - GEVENT_LOOP=tulipcore.Loop
     - GETH_VER=geth-darwin-amd64-1.6.4-9c2882b2
     - HYPERG_VER=0.2.1
 
@@ -30,6 +31,7 @@ before_install:
   - ./hyperg/hyperg &
 
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
+  - sudo -HE pip3 install git+git://github.com/decentfox/tulipcore.git
   - sudo -HE pip3 install -r requirements.txt
   - sudo -HE pip3 install -r requirements-test.txt
   - sudo -HE python3 setup.py develop

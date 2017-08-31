@@ -1,6 +1,7 @@
 """Compute Node"""
 
 import click
+import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -28,6 +29,7 @@ class Node(object):
             geth_port=geth_port,
             **config_overrides
         )
+        self.client.connect()
 
         self.rpc_router = None
         self.rpc_session = None
@@ -49,6 +51,7 @@ class Node(object):
                 self._run()
 
             reactor.run()
+            gevent.get_hub().join()
         except Exception as exc:
             self.logger.error("Application error: {}".format(exc))
         finally:
@@ -148,8 +151,9 @@ class OptNode(Node):
         addresses = []
         for arg in value:
             try:
-                addresses.append(SocketAddress.parse(arg))
-            except AddressValueError as e:
+                node_id, sock_addr = arg.split('@', 1)
+                addresses.append([SocketAddress.parse(sock_addr), node_id])
+            except (AddressValueError, ValueError) as e:
                 raise click.BadParameter(
                     "Invalid peer address specified: {}".format(e))
         return addresses
