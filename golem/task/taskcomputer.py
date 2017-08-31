@@ -131,9 +131,6 @@ class TaskComputer(object):
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
-                if unpack_delta:
-                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
-                self.delta = None
                 self.last_task_timeout_checking = time.time()
                 self.__compute_task(subtask_id, subtask.docker_images, subtask.src_code, subtask.extra_data,
                                     subtask.short_description, deadline_to_timeout(subtask.deadline))
@@ -150,12 +147,6 @@ class TaskComputer(object):
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
                                                   subtask.task_owner, self.node_name)
             self.session_closed()
-
-    def wait_for_resources(self, task_id, delta):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
         logger.info("Task {} request rejected: {}".format(task_id, reason))

@@ -1,11 +1,9 @@
 import rlp
-from devp2p.protocol import BaseProtocol, SubProtocolError
+from devp2p.protocol import BaseProtocol
 from ethereum import slogging
-from rlp.sedes import big_endian_int, binary, List, CountableList
-from golem.docker.image import DockerImage
+
 from golem.task.taskbase import TaskHeader
-from golem.network.p2p.node import Node
-from golem.core.simpleserializer import CBORSedes
+
 log = slogging.get_logger('golem.protocol')
 
 
@@ -24,8 +22,7 @@ class GolemProtocol(BaseProtocol):
         """
         cmd_id = 0
 
-        structure = [
-        ]
+        structure = []
 
     class task_headers(BaseProtocol.command):
         """
@@ -35,63 +32,27 @@ class GolemProtocol(BaseProtocol):
 
         structure = rlp.sedes.CountableList(TaskHeader)
 
-        def create(self, proto, task_headers):
-            self.sent = True
-            t = []
-            for th in task_headers:
-                t.append(th)
-            return t
+        def create(self, proto, *args, **kwargs):
+            return list(args[0])
 
         @classmethod
         def decode_payload(cls, rlp_data):
-            ll = rlp.decode_lazy(rlp_data)
-            theaders = []
-            for th in ll:
-                theaders.append(TaskHeader.deserialize(th, mutable=True))
-
-            return theaders
-
-    class want_to_start_task_session(BaseProtocol.command):
-        """
-        Send invitation for connection if requestor is behind NAT
-        """
-
-        cmd_id = 2
-
-        structure = [('node', Node),
-                     ('connection_id', rlp.sedes.binary),
-                     ('super_node', CBORSedes)
-                     ]
-
-    class set_task_session(BaseProtocol.command):
-        """
-        Someone else is trying to connect with node to which direct connection is impossible
-        and to which there is no p2p connection. Send this messages to neighboring nodes in order to forward it
-        to reach recipient.
-        """
-
-        cmd_id = 3
-
-        structure = [('key', rlp.sedes.binary),
-                     ('node', Node),
-                     ('connection_id', rlp.sedes.binary),
-                     ('super_node', CBORSedes)
-                     ]
+            return [TaskHeader.deserialize(task_header, mutable=True)
+                    for task_header in rlp.decode_lazy(rlp_data)]
 
     class remove_task(BaseProtocol.command):
         """
         Remove given task from p2p network
         """
-        cmd_id = 4
+        cmd_id = 2
 
         structure = [('task_id', rlp.sedes.binary)]
-
 
     class get_node_name(BaseProtocol.command):
         """
         Request node name
         """
-        cmd_id = 5
+        cmd_id = 3
 
         structure = []
 
@@ -99,6 +60,6 @@ class GolemProtocol(BaseProtocol):
         """
         Deliver node name
         """
-        cmd_id = 6
+        cmd_id = 4
 
         structure = [('node_name', rlp.sedes.binary)]
