@@ -526,10 +526,10 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             subtask=str(uuid.uuid4()),
             payee=str(uuid.uuid4()),
             value=random.randint(1, 10),
-            details={
-                'tx': transaction_id,
-                'block_number': block_number,
-            }
+            details=model.PaymentDetails(
+                tx=transaction_id,
+                block_number=block_number,
+            )
         )
         self.task_session.inform_worker_about_payment(payment)
         expected = {
@@ -557,7 +557,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
 
     @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
-    def test_react_to_subtask_payment_request(self, inform_mock):
+    def test_react_to_subtask_payment_request(self, inform_mock) -> None:
         subtask_id = str(uuid.uuid4())
         msg = message.MessageSubtaskPaymentRequest(subtask_id=subtask_id)
         # Payment does not exist
@@ -569,7 +569,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             subtask=subtask_id,
             payee=str(uuid.uuid4()),
             value=random.randint(1, 10),
-            details={}
+            details=model.PaymentDetails()
         )
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)

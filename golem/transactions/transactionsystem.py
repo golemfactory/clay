@@ -1,17 +1,17 @@
 from golem.core.common import datetime_to_timestamp, to_unicode
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus, PaymentDetails
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
 
 
-class TransactionSystem(object):
+class TransactionSystem:
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
     def __init__(self, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
-        """ Create new transaction system instance.
-        :param payments_keeper_class: default PaymentsKeeper, payment keeper class, an instance of this class
-        while be used as a payment keeper
+        """Create new transaction system instance.
+        :param payments_keeper_class, payment keeper class,
+            an instance of this class will be used as a payment keeper
         """
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
@@ -32,9 +32,9 @@ class TransactionSystem(object):
             subtask=subtask_id,
             payee=payee,
             value=value,
-            details={
-                'node_info': account_info.node_info,
-            }
+            details=PaymentDetails(
+                node_info=account_info.node_info,
+            )
         )
 
     def get_payments_list(self):
@@ -86,5 +86,5 @@ class TransactionSystem(object):
         self.incomes_keeper.run_once()
         return []
 
-    def sync(self):
+    def sync(self) -> None:
         pass
