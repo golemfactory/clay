@@ -92,8 +92,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = config_desc()
-        task_server.task_keeper.task_headers["xyz"].deadline = \
-            timeout_to_deadline(20)
+        task_deadline = timeout_to_deadline(20)
+        task_server.task_keeper.task_headers["xyz"].deadline = task_deadline
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         ctd = ComputeTaskDef()
@@ -106,16 +106,27 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.src_code = "cnt=0\nfor i in range(10000):\n\tcnt += 1\noutput={'data': cnt, 'result_type': 0}"
         ctd.extra_data = {}
         ctd.short_description = "add cnt"
-        ctd.deadline = timeout_to_deadline(10)
+        ctd.deadline = timeout_to_deadline(100)
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
+        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(100))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
         assert tc.task_resource_collected("xyz")
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
+        assert len(tc.current_computations) == 0
+        assert tc.assigned_subtasks.get("xxyyzz") is None
+        task_server.send_task_failed.assert_called_with(
+            "xxyyzz", "xyz",
+            "Subtask deadline is after task deadline: {} > {}"\
+            .format(ctd.deadline, task_deadline),
+            "10.10.10.10", 10203, "key", "owner", "ABC")
+
+        ctd.deadline = timeout_to_deadline(10)
+        tc.task_given(ctd)
+        assert tc.task_resource_collected("xyz")
         assert len(tc.current_computations) == 0
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with("xxyyzz", "xyz", "Host direct task not supported",
