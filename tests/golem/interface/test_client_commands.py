@@ -1,5 +1,4 @@
 import json
-import os
 import unittest
 import uuid
 from collections import namedtuple
@@ -8,14 +7,9 @@ from contextlib import contextmanager
 from ethereum.utils import denoms
 from mock import Mock, mock_open, patch
 
-from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
-    BlenderRenderTask
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from apps.core.task.coretask import CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
@@ -414,9 +408,7 @@ class TestTasks(TempDirFixture):
 
         definition = TaskDefinition()
         definition.task_name = "The greatest task ever!"
-        # FIXME: use .to_dict() when #1329 gets merged
-        def_dict = CoreTaskBuilder.build_dictionary(definition)
-        def_str = json.dumps(def_dict)
+        def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
