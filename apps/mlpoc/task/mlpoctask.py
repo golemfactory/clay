@@ -77,9 +77,7 @@ class MLPOCTask(CoreTask):
         )
 
         dm = DirManager(root_path)
-        tmp_path = dm.get_task_temporary_dir(task_definition.task_id)
-        self.spearmint_path = os.path.join(tmp_path, "spearmint")
-        os.mkdir(self.spearmint_path)
+        self.spearmint_path = dm.get_task_temporary_dir(task_definition.task_id)
         self.run_spearmint_in_background(self.spearmint_path)
 
         ver_opts = self.verificator.verification_options
@@ -92,12 +90,13 @@ class MLPOCTask(CoreTask):
         self.src_code = env.get_source_code
 
         local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        tmp_path,
+                                        os.path.join(self.spearmint_path, "root"),  # TODO check if it is really needed
                                         lambda *_: self.__restart_spearmint_pos(),
                                         lambda *_: self.__restart_spearmint_neg(),
                                         lambda: self.__spearmint_ctd,
                                         use_task_resources=False,
-                                        additional_resources=False)
+                                        additional_resources=False,
+                                        tmp_dir=os.path.join(self.spearmint_path, "tmp"))
         spearmint_utils.create_conf(os.path.join(tmp_path, self.SPEARMINT_EXP_DIR))
         local_spearmint.run()
 
@@ -115,15 +114,15 @@ class MLPOCTask(CoreTask):
         ctd.environment = env.ENV_ID
         ctd.docker_images = env.docker_images
         ctd.src_code = env.get_source_code()
-        ctd.working_directory = self.spearmint_path
+        ctd.working_directory = "" # we should set not working directory, but LocalComputer.temp_dir
         INFTY = 10000
-        ctd.deadline = timeout_to_deadline(INFTY)  # infty
+        ctd.deadline = timeout_to_deadline(INFTY)
 
         # EXPERIMENT_DIR - dir with config.json
         # SIGNAL_FILE - file which signalizes the change in results.dat
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
-        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR # TODO change that, take "/golem" from DockerTaskThread
-        ctd.extra_data["SIGNAL_FILE"] = "/golem/" + self.SPEARMINT_SIGNAL_FILE # TODO change that, as ^
+        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/work/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem/work" from DockerTaskThread
+        ctd.extra_data["SIGNAL_FILE"] = "/golem/work/" + self.SPEARMINT_SIGNAL_FILE  # TODO change that, as ^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
         return ctd
 
@@ -134,8 +133,6 @@ class MLPOCTask(CoreTask):
         # TODO here happens magic with spearmint in localcomputer
         # using spearmint_utils methods
         return {"HIDDEN_SIZE": 10,
-                "INPUT_SIZE": 10,
-                "NUM_CLASSES": 3,
                 "NUM_EPOCHS": self.task_definition.options.number_of_epochs,
                 "STEPS_PER_EPOCH": self.task_definition.options.steps_per_epoch
                 }

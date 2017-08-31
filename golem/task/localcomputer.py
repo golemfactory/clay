@@ -32,7 +32,8 @@ class LocalComputer(object):
                  comp_failed_warning=DEFAULT_WARNING,
                  comp_success_message=DEFAULT_SUCCESS,
                  use_task_resources=True,
-                 additional_resources=None):
+                 additional_resources=None,
+                 tmp_dir: str=None):
         # TODO as TODO on the top of the class says
         # if not isinstance(task, Task):
         #     raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
@@ -43,6 +44,7 @@ class LocalComputer(object):
         self.lock = Lock()
         self.tt = None
         self.dir_manager = DirManager(root_path)
+        self.tmp_dir = tmp_dir
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
         self.success_callback = success_callback
@@ -138,7 +140,8 @@ class LocalComputer(object):
         return True
 
     def __prepare_tmp_dir(self):
-        self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
+        if not self.tmp_dir:
+            self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
