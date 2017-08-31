@@ -11,7 +11,7 @@ from ethereum.utils import denoms
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
-    timeout_to_string, string_to_timeout
+    string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
@@ -584,27 +584,12 @@ class CoreTaskBuilder(TaskBuilder):
 
         return definition
 
-    @classmethod
-    def build_dictionary(cls, definition: TaskDefinition):
-        task_timeout = timeout_to_string(definition.full_task_timeout)
-        subtask_timeout = timeout_to_string(definition.subtask_timeout)
-        output_path = cls.build_output_path(definition)
-
-        return {
-            'id': to_unicode(definition.task_id),
-            'type': to_unicode(definition.task_type),
-            'name': to_unicode(definition.task_name),
-            'timeout': to_unicode(task_timeout),
-            'subtask_timeout': to_unicode(subtask_timeout),
-            'subtasks': definition.total_subtasks,
-            'bid': float(definition.max_price) / denoms.ether,
-            'resources': [to_unicode(r) for r in definition.resources],
-            'options': {
-                'output_path': to_unicode(output_path)
-            },
-            # FIXME: Backward compatibility only. Remove after upgrading GUI.
-            'legacy': definition.legacy,
-        }
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
@@ -615,11 +600,3 @@ class CoreTaskBuilder(TaskBuilder):
             return options['output_path']
 
         return os.path.join(options['output_path'], definition.task_name)
-
-    @staticmethod
-    def build_output_path(definition):
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        if definition.legacy:
-            return definition.output_file
-
-        return definition.output_file.rsplit(os.path.sep, 1)[0]
