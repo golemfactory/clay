@@ -6,11 +6,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 
 
-class TestTaskPresets(TestWithDatabase, PEP8MixIn, LogTestCase):
-    PEP8_FILES = [
-        "golem/task/taskpreset.py"
-    ]
-
+class TestTaskPresets(TestWithDatabase, LogTestCase):
     def test_task_preset(self):
         save_task_preset("NewPreset", "NewTask", "Data number1")
 

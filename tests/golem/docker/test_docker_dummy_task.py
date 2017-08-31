@@ -12,7 +12,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, symlink_or_copy, \
+    rmlink_or_rmtree
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import DockerTaskThread
@@ -42,6 +43,32 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.node = None
         self._send_task_failed = TaskServer.send_task_failed
 
+    @classmethod
+    def setUpClass(cls):
+        # TempDirFixture.setUpClass()
+        # DockerTestCase.setUpClass()
+
+        data_dir = os.path.join(get_golem_path(),
+                                "apps",
+                                "dummy",
+                                "test_data")
+        code_dir = os.path.join(get_golem_path(),
+                                "apps",
+                                "dummy",
+                                "resources",
+                                "code_dir")
+        cls.test_tmp = os.path.join(get_golem_path(),
+                                    "apps",
+                                    "dummy",
+                                    "test_tmp")
+        os.mkdir(cls.test_tmp)
+
+        cls.code_link = os.path.join(cls.test_tmp, "code")
+        cls.data_link = os.path.join(cls.test_tmp, "data")
+
+        symlink_or_copy(code_dir, cls.code_link)
+        symlink_or_copy(data_dir, cls.data_link)
+
     def tearDown(self):
         if self.node and self.node.client:
             self.node.client.quit()
@@ -55,6 +82,15 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         DockerTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
+
+    @classmethod
+    def tearDownClass(cls):
+        rmlink_or_rmtree(cls.code_link)
+        rmlink_or_rmtree(cls.data_link)
+        os.rmdir(cls.test_tmp)
+        
+        # TempDirFixture.tearDownClass()
+        # DockerTestCase.tearDownClass()
 
     def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)

@@ -597,8 +597,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
     def test_update_signatures(self):
 
-        node = Node("node", "key_id", "10.0.0.10", 40103,
-                    "1.2.3.4", 40103, None, 40102, 40102)
+        node = Node(
+            node_name="node", key="key_id", prv_addr="10.0.0.10",
+            prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
+            nat_type=None, p2p_prv_port=40102, p2p_pub_port=40102
+        )
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
                                "key_id", "environment", task_owner=node), '', Mock())
 

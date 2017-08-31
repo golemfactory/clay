@@ -5,6 +5,33 @@ import shutil
 logger = logging.getLogger(__name__)
 
 
+# copied from docker_luxtask.py - difficult to refactor, since
+# docker_luxtask.py can't use external dependencies
+# the solution would be to replicate code_dir behaviour from dummytask
+# in lux task
+def symlink_or_copy(source, target):
+    try:
+        os.symlink(source, target)
+    except OSError:
+        if os.path.isfile(source):
+            if os.path.exists(target):
+                os.remove(target)
+            shutil.copy(source, target)
+        else:
+            from distutils import dir_util
+            dir_util.copy_tree(source, target, update=1)
+
+# complementary to symlink_or_copy
+def rmlink_or_rmtree(target):
+    try:
+        os.unlink(target)
+    except OSError:
+        if os.path.isfile(target):
+            os.remove(target)
+        else:
+            shutil.rmtree(target)
+
+
 def split_path(path):
     """ Split given path into a list of directories
     :param str path: path that should be split

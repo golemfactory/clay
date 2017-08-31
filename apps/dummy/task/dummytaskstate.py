@@ -1,5 +1,4 @@
 import os
-import shutil
 import tempfile
 from copy import deepcopy
 
@@ -7,24 +6,9 @@ from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
+
 from golem.resource.dirmanager import ls_R
-
-
-# copied from docker_luxtask.py - difficult to refactor, since
-# docker_luxtask.py can't use external dependencies
-# the solution would be to replicate code_dir behaviour from dummytask
-# in lux task
-def symlink_or_copy(source, target):
-    try:
-        os.symlink(source, target)
-    except OSError:
-        if os.path.isfile(source):
-            if os.path.exists(target):
-                os.remove(target)
-            shutil.copy(source, target)
-        else:
-            from distutils import dir_util
-            dir_util.copy_tree(source, target, update=1)
+from golem.resource.dirmanager import symlink_or_copy
 
 
 class DummyTaskDefaults(TaskDefaults):

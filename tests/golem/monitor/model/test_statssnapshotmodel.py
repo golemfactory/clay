@@ -1,4 +1,4 @@
-import jsonpickle as json
+import json
 import mock
 from pydispatch import dispatcher
 import random
