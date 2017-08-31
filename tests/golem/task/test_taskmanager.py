@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from mock import Mock, patch
 
+from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
@@ -32,7 +33,6 @@ class TaskMock(Task):
 
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
-
 
     def __getstate__(self):
         state = super(TaskMock, self).__getstate__()
@@ -690,7 +690,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         for i in range(0, n):
             task_id = str(uuid.uuid4())
 
-            definition = Mock()
+            definition = TaskDefinition()
+            definition.options = Mock()
+            definition.output_format = Mock()
+
             definition.task_id = task_id
             definition.task_type = "blender"
             definition.subtask_timeout = 3671
