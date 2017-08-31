@@ -45,7 +45,7 @@ def find_flm(directory):
 
 def format_lux_renderer_cmd(start_task, output_basename, output_format,
                             scene_file):
-    num_cores = min(32, cpu_count())
+    num_cores = cpu_count()
     flm_file = find_flm(WORK_DIR)
     if flm_file is not None:
         cmd = [

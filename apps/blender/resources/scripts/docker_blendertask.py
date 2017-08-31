@@ -27,7 +27,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
-        "-t", "{}".format(min(32, cpu_count())),
+        "-t", "{}".format(cpu_count()),
         "-f", "{}".format(frame)
     ]
     return cmd

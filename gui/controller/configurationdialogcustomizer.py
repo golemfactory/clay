@@ -81,7 +81,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__load_trust_config(config_desc)
 
     def __load_num_cores(self, config_desc):
-        max_num_cores = min(32, multiprocessing.cpu_count())    # VBox supports max 32 cores
+        max_num_cores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSpinBox.setMaximum(max_num_cores)
         self.gui.ui.numCoresRangeLabel.setText("Range: 1 - {}".format(max_num_cores))
 

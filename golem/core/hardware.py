@@ -23,7 +23,7 @@ def cpu_cores_available():
         return affinity[:-1] or affinity
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: {}".format(e))
-        num_cores = min(32, multiprocessing.cpu_count())    # VBox supports max 32 cores
+        num_cores = multiprocessing.cpu_count()
         return list(range(0, num_cores - 1)) or [0]
 
 
