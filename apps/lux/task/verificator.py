@@ -75,7 +75,6 @@ class LuxRenderVerificator(RenderingVerificator):
         return tr_flm_files, tr_preview_files
 
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        # Zrwonoleglic
         # First, assume it is wrong ;p
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
         # hack, advanced verification is enabled by default
