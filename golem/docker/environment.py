@@ -1,4 +1,5 @@
-from golem.environments.environment import Environment, SupportStatus
+from golem.environments.environment import (Environment, SupportStatus,
+                                            UnsupportReason)
 
 
 class DockerEnvironment(Environment):
@@ -19,7 +20,7 @@ class DockerEnvironment(Environment):
         if any(img.is_available() for img in self.docker_images):
             return SupportStatus.ok()
 
-        return SupportStatus.err({'environment_unsupported': {
+        return SupportStatus.err({UnsupportReason.ENVIRONMENT_UNSUPPORTED: {
             'env_id': self.get_id(),
             'docker_images_missing_any': self.docker_images,
         }})

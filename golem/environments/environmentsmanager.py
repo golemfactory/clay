@@ -1,6 +1,6 @@
 import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
-from .environment import SupportStatus
+from .environment import SupportStatus, UnsupportReason
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +39,7 @@ class EnvironmentsManager(object):
         :return SupportStatus:
         """
         return self.support_statuses.get(env_id, SupportStatus.err(
-            {'environment_missing': env_id}))
+            {UnsupportReason.ENVIRONMENT_MISSING: env_id}))
 
     def accept_tasks(self, env_id):
         """Return information whether tasks from given environment are accepted.

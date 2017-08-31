@@ -10,7 +10,7 @@ from semantic_version import Version
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
-from golem.environments.environment import SupportStatus
+from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -231,7 +231,8 @@ class TaskHeaderKeeper(object):
         env = th_dict_repr.get("environment")
         status = SupportStatus.ok()
         if not self.environments_manager.accept_tasks(env):
-            status = SupportStatus.err({'environment_not_accepting_tasks': env})
+            status = SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
         return self.environments_manager.get_support_status(env).join(status)
 
     def check_price(self, th_dict_repr) -> SupportStatus:
@@ -245,7 +246,8 @@ class TaskHeaderKeeper(object):
         if "max_price" in th_dict_repr \
                 and th_dict_repr["max_price"] >= self.min_price:
             return SupportStatus.ok()
-        return SupportStatus.err({'max_price': th_dict_repr.get("max_price")})
+        return SupportStatus.err(
+            {UnsupportReason.MAX_PRICE: th_dict_repr.get("max_price")})
 
     def check_version(self, th_dict_repr) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
@@ -267,7 +269,7 @@ class TaskHeaderKeeper(object):
             )
         if ok:
             return SupportStatus.ok()
-        return SupportStatus.err({'app_version': min_v})
+        return SupportStatus.err({UnsupportReason.APP_VERSION: min_v})
 
     def check_version_compatibility(self, remote):
         """For local a1.b1.c1 and remote a2.b2.c2, check if "a1.b1" == "a2.b2"

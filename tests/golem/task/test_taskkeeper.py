@@ -9,7 +9,7 @@ from mock import patch
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.variables import APP_VERSION
-from golem.environments.environment import Environment
+from golem.environments.environment import Environment, UnsupportReason
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
@@ -31,17 +31,17 @@ class TestTaskHeaderKeeper(LogTestCase):
         task = {"environment": Environment.get_id(), 'max_price': 0}
         supported = tk.check_support(task)
         self.assertFalse(supported)
-        self.assertIn('environment_missing', supported.desc)
+        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
         supported = tk.check_support(task)
         self.assertFalse(supported)
-        self.assertIn('max_price', supported.desc)
+        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
         task["max_price"] = 10.0
         supported = tk.check_support(task)
         self.assertFalse(supported)
-        self.assertIn('app_version', supported.desc)
+        self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
         task["min_version"] = APP_VERSION
         self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5

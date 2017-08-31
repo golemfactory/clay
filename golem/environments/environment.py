@@ -1,4 +1,5 @@
 import sys
+import enum
 from os import path
 
 
@@ -29,6 +30,14 @@ class SupportStatus(object):
     def __repr__(self) -> str:
         return '<SupportStatus %s (%r)>' % \
             ('ok' if self._ok else 'err', self.desc)
+
+
+class UnsupportReason(enum.Enum):
+    ENVIRONMENT_MISSING = 'environment_missing'
+    ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
+    ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
+    MAX_PRICE = 'max_price'
+    APP_VERSION = 'app_version'
 
 
 class Environment(object):
