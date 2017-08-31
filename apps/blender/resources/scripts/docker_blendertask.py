@@ -3,14 +3,27 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
+from multiprocessing import cpu_count
 
 import params  # This module is generated before this script is run
-
-from golem.core.common import get_cpu_count
 
 BLENDER_COMMAND = "blender"
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
+
+
+def get_cpu_count():
+    """
+    Get number of cores with system limitations:
+    - max 32 on Windows due to VBox limitation
+    - max 16 on MacOS dut to xhyve limitation
+    :return: number of cores
+    """
+    if sys.platform == "win32":
+        return min(cpu_count(), 32)  # VBox limitation
+    if sys.platform == "darwin":
+        return min(cpu_count(), 16)  # xhyve limitation
+    return cpu_count()  # No limitatons on Linux
 
 
 def exec_cmd(cmd):

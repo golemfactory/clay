@@ -5,15 +5,29 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from multiprocessing import cpu_count
 
 import params  # This module is generated before this script is run
 
-from golem.core.common import get_cpu_count
 
 LUXRENDER_COMMAND = "luxconsole"
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
 RESOURCES_DIR = "/golem/resources"
+
+
+def get_cpu_count():
+    """
+    Get number of cores with system limitations:
+    - max 32 on Windows due to VBox limitation
+    - max 16 on MacOS dut to xhyve limitation
+    :return: number of cores
+    """
+    if sys.platform == "win32":
+        return min(cpu_count(), 32)  # VBox limitation
+    if sys.platform == "darwin":
+        return min(cpu_count(), 16)  # xhyve limitation
+    return cpu_count()  # No limitatons on Linux
 
 
 def symlink_or_copy(source, target):
