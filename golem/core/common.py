@@ -4,6 +4,7 @@ import os
 import sys
 from calendar import timegm
 from datetime import datetime
+from multiprocessing import cpu_count
 
 import pytz
 from pathlib import Path
@@ -195,3 +196,11 @@ def config_logging(suffix='', datadir=None):
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
     set_global_log_level(crossbar_log_lvl)
+
+
+def get_cpu_count():
+    """
+    Return number of CPU cores (but max 32)
+    :return: number of cores
+    """
+    return min(cpu_count(), 32)     # VBox limitation

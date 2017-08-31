@@ -1,11 +1,12 @@
 from __future__ import print_function
 
-from multiprocessing import cpu_count
 import os
-import sys
 import subprocess
+import sys
 
 import params  # This module is generated before this script is run
+
+from golem.core.common import get_cpu_count
 
 BLENDER_COMMAND = "blender"
 WORK_DIR = "/golem/work"
@@ -27,7 +28,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
-        "-t", "{}".format(cpu_count()),
+        "-t", "{}".format(get_cpu_count()),
         "-f", "{}".format(frame)
     ]
     return cmd

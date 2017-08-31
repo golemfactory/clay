@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-from multiprocessing import cpu_count
 import os
 import shutil
 import subprocess
@@ -8,6 +7,8 @@ import sys
 import tempfile
 
 import params  # This module is generated before this script is run
+
+from golem.core.common import get_cpu_count
 
 LUXRENDER_COMMAND = "luxconsole"
 OUTPUT_DIR = "/golem/output"
@@ -45,7 +46,7 @@ def find_flm(directory):
 
 def format_lux_renderer_cmd(start_task, output_basename, output_format,
                             scene_file):
-    num_cores = cpu_count()
+    num_cores = get_cpu_count()
     flm_file = find_flm(WORK_DIR)
     if flm_file is not None:
         cmd = [
