@@ -1,4 +1,4 @@
-import jsonpickle as json
+import json
 from unittest import TestCase
 
 from golem.diag.service import DiagnosticsOutputFormat
