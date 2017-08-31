@@ -3,8 +3,8 @@ from os import path
 
 
 class SupportStatus(object):
-    def __init__(self, desc, ok=False) -> None:
-        self.desc = desc
+    def __init__(self, ok, desc=None) -> None:
+        self.desc = desc or {}
         self._ok = ok
 
     def is_ok(self) -> bool:
@@ -16,15 +16,15 @@ class SupportStatus(object):
     def join(self, other) -> 'SupportStatus':
         desc = self.desc.copy()
         desc.update(other.desc)
-        return SupportStatus(desc, self.is_ok() and other.is_ok())
+        return SupportStatus(self.is_ok() and other.is_ok(), desc)
 
     @classmethod
     def ok(cls) -> 'SupportStatus':
-        return cls({}, True)
+        return cls(True)
 
     @classmethod
     def err(cls, desc) -> 'SupportStatus':
-        return cls(desc, False)
+        return cls(False, desc)
 
     def __repr__(self) -> str:
         return '<SupportStatus %s (%r)>' % \
