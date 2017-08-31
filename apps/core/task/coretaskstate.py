@@ -2,7 +2,7 @@ from os import path, remove
 
 from ethereum.utils import denoms
 
-from golem.core.common import timeout_to_string, to_unicode
+from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
@@ -120,16 +120,16 @@ class TaskDefinition(object):
         output_path = self.build_output_path()
 
         return {
-            'id': to_unicode(self.task_id),
-            'type': to_unicode(self.task_type),
-            'name': to_unicode(self.task_name),
-            'timeout': to_unicode(task_timeout),
-            'subtask_timeout': to_unicode(subtask_timeout),
+            'id': self.task_id,
+            'type': self.task_type,
+            'name': self.task_name,
+            'timeout': task_timeout,
+            'subtask_timeout': subtask_timeout,
             'subtasks': self.total_subtasks,
             'bid': float(self.max_price) / denoms.ether,
-            'resources': [to_unicode(r) for r in self.resources],
+            'resources': list(self.resources),
             'options': {
-                'output_path': to_unicode(output_path)
+                'output_path': output_path
             },
             # FIXME: Backward compatibility only. Remove after upgrading GUI.
             'legacy': self.legacy,
