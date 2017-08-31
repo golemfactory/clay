@@ -12,7 +12,7 @@ class TestDockerEnvironment(DockerTestCase):
         with self.assertRaises(AttributeError):
             DockerEnvironment(None)
         de = DockerEnvironment([DockerImage("golemfactory/blender", tag="1.3")])
-        self.assertTrue(de.supported())
+        self.assertTrue(de.check_support())
         self.assertTrue(
             de.description().startswith('Default environment for generic tasks without any additional requirements.'))
         self.assertTrue(de.check_docker_images())
@@ -23,4 +23,4 @@ class TestDockerEnvironment(DockerTestCase):
                             for img in env.docker_images))
 
         image_available = any(img.is_available() for img in env.docker_images)
-        self.assertEqual(image_available, env.supported().is_ok())
+        self.assertEqual(image_available, env.check_support().is_ok())

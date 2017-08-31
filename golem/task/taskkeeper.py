@@ -188,7 +188,7 @@ class TaskHeaderKeeper(object):
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
 
-    def is_supported(self, th_dict_repr) -> SupportStatus:
+    def check_support(self, th_dict_repr) -> SupportStatus:
         """Checks if task described with given task header dict
            representation may be computed by this node. This node must
            support proper environment, be allowed to make computation
@@ -232,7 +232,7 @@ class TaskHeaderKeeper(object):
         status = SupportStatus.ok()
         if not self.environments_manager.accept_tasks(env):
             status = SupportStatus.err({'environment_not_accepting_tasks': env})
-        return self.environments_manager.supported(env).join(status)
+        return self.environments_manager.get_support_status(env).join(status)
 
     def check_price(self, th_dict_repr) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
@@ -307,7 +307,7 @@ class TaskHeaderKeeper(object):
         self.min_price = config_desc.min_price
         self.supported_tasks = []
         for id_, th in self.task_headers.items():
-            supported = self.is_supported(th.__dict__)
+            supported = self.check_support(th.__dict__)
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
@@ -330,17 +330,17 @@ class TaskHeaderKeeper(object):
 
             if id_ not in list(self.removed_tasks.keys()):  # not recent
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
-                is_supported = self.is_supported(th_dict_repr)
-                self.support_status[id_] = is_supported
+                support = self.check_support(th_dict_repr)
+                self.support_status[id_] = support
 
                 if update:
-                    if not is_supported and id_ in self.supported_tasks:
+                    if not support and id_ in self.supported_tasks:
                         self.supported_tasks.remove(id_)
-                elif is_supported:
+                elif support:
                     logger.info(
-                        "Adding task %r is_supported=%r",
+                        "Adding task %r support=%r",
                         id_,
-                        is_supported
+                        support
                     )
                     self.supported_tasks.append(id_)
 

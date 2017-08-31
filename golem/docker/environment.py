@@ -24,8 +24,8 @@ class DockerEnvironment(Environment):
             'docker_images_missing_any': self.docker_images,
         }})
 
-    def supported(self) -> SupportStatus:
-        return self.check_docker_images().join(Environment.supported(self))
+    def check_support(self) -> SupportStatus:
+        return self.check_docker_images().join(Environment.check_support(self))
 
     def description(self):
         descr = Environment.description(self)

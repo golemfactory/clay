@@ -65,7 +65,7 @@ class Environment(object):
         """
         return True
 
-    def supported(self) -> SupportStatus:
+    def check_support(self) -> SupportStatus:
         """ Check if this environment is supported on this machine
         :return SupportStatus:
         """

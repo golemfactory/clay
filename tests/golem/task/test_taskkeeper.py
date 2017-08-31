@@ -27,39 +27,39 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_is_supported(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
-        self.assertFalse(tk.is_supported({}))
+        self.assertFalse(tk.check_support({}))
         task = {"environment": Environment.get_id(), 'max_price': 0}
-        supported = tk.is_supported(task)
+        supported = tk.check_support(task)
         self.assertFalse(supported)
         self.assertIn('environment_missing', supported.desc)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        supported = tk.is_supported(task)
+        supported = tk.check_support(task)
         self.assertFalse(supported)
         self.assertIn('max_price', supported.desc)
         task["max_price"] = 10.0
-        supported = tk.is_supported(task)
+        supported = tk.check_support(task)
         self.assertFalse(supported)
         self.assertIn('app_version', supported.desc)
         task["min_version"] = APP_VERSION
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         config_desc = Mock()
         config_desc.min_price = 13.0
         tk.change_config(config_desc)
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "120"
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         task["min_version"] = tk.app_version
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "abc"
         with self.assertLogs(logger=logger, level='WARNING'):
-            self.assertFalse(tk.is_supported(task))
+            self.assertFalse(tk.check_support(task))
 
     def test_check_version_compatibility(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)

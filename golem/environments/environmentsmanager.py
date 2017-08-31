@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 class EnvironmentsManager(object):
     """ Manage known environments. Allow user to choose accepted environment, keep track of supported environments """
     def __init__(self):
-        self.support_status = {}
+        self.support_statuses = {}
         self.environments = set()
         self.env_config = None
 
@@ -26,19 +26,19 @@ class EnvironmentsManager(object):
         :param Environment environment:
         """
         self.environments.add(environment)
-        supported = environment.supported()
+        supported = environment.check_support()
         logger.info("Adding environment {} supported={}"
                     .format(environment.get_id(), supported))
-        self.support_status[environment.get_id()] = supported
+        self.support_statuses[environment.get_id()] = supported
 
-    def supported(self, env_id) -> SupportStatus:
+    def get_support_status(self, env_id) -> SupportStatus:
         """ Return information if given environment are supported.
             Uses information from supported environments,
             doesn't check the environment again.
         :param str env_id:
         :return SupportStatus:
         """
-        return self.support_status.get(env_id, SupportStatus.err(
+        return self.support_statuses.get(env_id, SupportStatus.err(
             {'environment_missing': env_id}))
 
     def accept_tasks(self, env_id):
