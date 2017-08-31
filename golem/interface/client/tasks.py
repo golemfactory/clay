@@ -1,9 +1,17 @@
-from apps.appsmanager import AppsManager
-from golem.core.deferred import sync_wait
 
+import json
+from typing import Any, Optional
+
+from apps.appsmanager import AppsManager
+from apps.core.task.coretaskstate import TaskDefinition
+
+from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
+
+# For type annotations:
+from golem.client import Client  # pylint: disable=unused-import
 
 
 class CommandAppLogic(AppLogic):
@@ -27,9 +35,9 @@ class CommandAppLogic(AppLogic):
 
 
 @group(help="Manage tasks")
-class Tasks(object):
+class Tasks:
 
-    client = None
+    client = None  # type: Client
 
     task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
@@ -52,6 +60,11 @@ class Tasks(object):
     file_name = Argument(
         'file_name',
         help="Task file"
+    )
+    outfile = Argument(
+        'outfile',
+        help="Output file",
+        optional=True,
     )
     skip_test = Argument(
         '--skip-test',
@@ -132,6 +145,26 @@ class Tasks(object):
         deferred = Tasks.client.resume_task(id)
         return sync_wait(deferred)
 
+    @command(argument=file_name, help="""
+        Create a task from file.
+        Note: no client-side validation is performed yet.
+        This will change in the future
+    """)
+    def create(self, file_name: str) -> Any:
+        with open(file_name) as f:
+            self.create_from_json(f.read())
+
+    @command(argument=outfile, help="Dump a task template")
+    def template(self, outfile: Optional[str]) -> Any:
+        template = TaskDefinition()
+        template_str = json.dumps(template.to_dict(), indent=4)
+
+        if outfile:
+            with open(outfile, 'w') as dest:
+                print(template_str, file=dest)
+        else:
+            print(template_str)
+
     @doc("Show statistics for tasks")
     def stats(self):
         deferred = Tasks.client.get_task_stats()
@@ -145,9 +178,14 @@ class Tasks(object):
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 
+    def create_from_json(self, jsondata: str) -> Any:
+        dictionary = json.loads(jsondata)
+        deferred = Tasks.client.create_task(dictionary)
+        return sync_wait(deferred)
+
 
 @group(help="Manage subtasks")
-class Subtasks(object):
+class Subtasks:
 
     client = None
 
