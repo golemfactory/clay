@@ -63,6 +63,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         queue = Queue()
 
         @patch('devp2p.app.BaseApp.start')
+        @patch('devp2p.app.BaseApp.stop')
         @patch('gui.startapp.start_gui')
         @patch('golem.client.Client.start', side_effect=lambda *_: queue.put("Success"))
         @patch('golem.client.Client.sync')

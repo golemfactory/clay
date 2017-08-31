@@ -44,6 +44,7 @@ from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
+from golem.utils import find_free_net_port
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -148,6 +149,9 @@ def run_computing_node(datadir, peer_address, node_id, fail_after=None):
     from golem.core.common import config_logging
     config_logging(datadir=datadir)
     client = create_client(datadir)
+    port = find_free_net_port()
+    client.configp2p['discovery']["listen_port"] = port
+    client.configp2p['p2p']["listen_port"] = port
     client.connect(peer_address, node_id)
     client.start()
     client.task_server.task_computer.support_direct_computation = True

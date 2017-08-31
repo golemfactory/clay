@@ -31,6 +31,9 @@ class TestGolemService(unittest.TestCase):
         self.client = create_client(datadir)
         self.client.connect()
 
+    def tearDown(self):
+        self.client.quit()
+
     @patch('gevent._socket2.socket')
     @patch('devp2p.peer.Peer.send_packet')
     @patch('golem.network.p2p.golemservice.GolemService.on_wire_protocol_start')

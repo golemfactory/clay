@@ -74,8 +74,7 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase):
 
-    @patch('golem.client.Client.stop')
-    def tearDown(self, stop):
+    def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
 
@@ -85,6 +84,7 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
+        self.client.connect()
         n = 9
         payments = [
             Payment(
@@ -291,14 +291,12 @@ class TestClient(TestWithDatabase):
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
 
-    @patch('golem.client.Client.stop')
-    def test_quit(self, stop, *_):
+    def test_quit(self, *_):
         self.client = Client(datadir=self.path)
         self.client.db = None
         self.client.quit()
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golem.client.Client.quit')
     def test_collect_gossip(self, quit, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
@@ -309,7 +307,7 @@ class TestClient(TestWithDatabase):
         self.client.collect_gossip()
 
     @patch('golem.client.log')
-    def test_do_work(self, log, stop, *_):
+    def test_do_work(self, log, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
@@ -512,15 +510,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
                                         Mock(), client,
                                         use_docker_machine_manager=False)
-        client.services = MagicMock()
-        client.services.peermanager = Mock()
-        client.services.peermanager.peers = {}
         client.monitor = Mock()
 
         self.client = client
 
-    @patch('golem.client.Client.stop')
-    def tearDown(self, stop):
+    def tearDown(self):
         self.client.quit()
 
     def test_node(self, *_):

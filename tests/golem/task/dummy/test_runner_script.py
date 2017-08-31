@@ -73,6 +73,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
 
     @mock.patch('gevent.greenlet.Greenlet.join')
     @mock.patch('devp2p.app.BaseApp.start')
+    @mock.patch('devp2p.app.BaseApp.stop')
     @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     def test_run_requesting_node(self, mock_reactor, enqueue_new_task, *_):

@@ -36,8 +36,6 @@ from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
-from golem.network.p2p.peersession import PeerMonitor
-from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -64,7 +62,6 @@ from devp2p.peermanager import PeerManager
 from devp2p.service import BaseService
 import ethereum.slogging as slogging
 from golem.network.p2p.golemservice import GolemService
-from golem.utils import find_free_net_port
 
 devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
@@ -84,7 +81,7 @@ class ClientTaskComputerEventListener(object):
 class Client(BaseApp, HardwarePresetsMixin):
     client_name = 'golem'
     default_config = dict(BaseApp.default_config)
-    services = [NodeDiscovery, PeerManager, GolemService]
+    available_services = [NodeDiscovery, PeerManager, GolemService]
 
     def __init__(
             self,
@@ -196,6 +193,11 @@ class Client(BaseApp, HardwarePresetsMixin):
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
+
+        from golem.p2pconfig import p2pconfig
+        self.configp2p = p2pconfig
+        BaseApp.__init__(self, self.configp2p)
+
         atexit.register(self.quit)
 
     def configure_rpc(self, rpc_session):
@@ -231,6 +233,7 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
+        super().stop()
         self.stop_network()
         if self.do_work_task.running:
             self.do_work_task.stop()
@@ -351,35 +354,30 @@ class Client(BaseApp, HardwarePresetsMixin):
                 int(socket_address[1])
             )
 
-        from golem.p2pconfig import p2pconfig
-        self.configp2p = p2pconfig
-        port = find_free_net_port()
-        self.configp2p['discovery']["listen_port"] = port
-        self.configp2p['p2p']["listen_port"] = port
-        self.configp2p['node'] = {}
-        self.configp2p['node']['privkey_hex'] = encode_hex(
+        self.config['node'] = {}
+        self.config['node']['privkey_hex'] = encode_hex(
             self.keys_auth._private_key)
-        self.configp2p['node']['pubkey_hex'] = encode_hex(
+        self.config['node']['pubkey_hex'] = encode_hex(
             self.keys_auth.public_key)
-        self.configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
-        self.configp2p['node']['node_name'] = self.config_desc.node_name
+        self.config['node']['id'] = encode_hex(self.keys_auth.public_key)
+        self.config['node']['node_name'] = self.config_desc.node_name
 
         if socket_address is None:
-            self.configp2p['discovery']['bootstrap_nodes'].append(
+            self.config['discovery']['bootstrap_nodes'].append(
                 str("enode://%s@%s:%s" % (self.configp2p['node']['pubkey_hex'],
-                    "127.0.0.1", port)).encode('utf-8')
+                    "127.0.0.1", self.config['p2p']["listen_port"])).encode(
+                    'utf-8')
             )
         else:
             devp2plog.info("Not bootstrap adding, so adding correct bootstrap"
                            " to list")
-            self.configp2p['discovery']['bootstrap_nodes'].append(
+            self.config['discovery']['bootstrap_nodes'].append(
                 str("enode://%s@%s:%s" % (node_id, socket_address.address,
                     socket_address.port)).encode('utf-8'))
 
-        devp2plog.info(self.configp2p['discovery']['bootstrap_nodes'])
+        devp2plog.info(self.config['discovery']['bootstrap_nodes'])
 
-        BaseApp.__init__(self, self.configp2p)
-        for service in Client.services:
+        for service in Client.available_services:
             assert issubclass(service, BaseService)
             assert service.name not in self.services
             service.register_with_app(self)
