@@ -1,5 +1,8 @@
 from os import path, remove
 
+from ethereum.utils import denoms
+
+from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
@@ -69,7 +72,7 @@ class TaskDefinition(object):
                 return True, "File {} may be overwritten".format(output_file)
         except IOError:
             return False, "Cannot open output file: {}".format(output_file)
-        except (OSError, TypeError) as err:
+        except TypeError as err:
             return False, "Output file {} is not properly set: {}".format(
                 output_file, err)
 
@@ -98,6 +101,34 @@ class TaskDefinition(object):
         self.total_subtasks = preset["total_subtasks"]
         self.optimize_total = preset["optimize_total"]
         self.verification_options = preset["verification_options"]
+
+    def to_dict(self) -> dict:
+        task_timeout = timeout_to_string(self.full_task_timeout)
+        subtask_timeout = timeout_to_string(self.subtask_timeout)
+        output_path = self.build_output_path()
+
+        return {
+            'id': self.task_id,
+            'type': self.task_type,
+            'name': self.task_name,
+            'timeout': task_timeout,
+            'subtask_timeout': subtask_timeout,
+            'subtasks': self.total_subtasks,
+            'bid': float(self.max_price) / denoms.ether,
+            'resources': list(self.resources),
+            'options': {
+                'output_path': output_path
+            },
+            # FIXME: Backward compatibility only. Remove after upgrading GUI.
+            'legacy': self.legacy,
+        }
+
+    def build_output_path(self) -> str:
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if self.legacy:
+            return self.output_file
+
+        return self.output_file.rsplit(path.sep, 1)[0]
 
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
