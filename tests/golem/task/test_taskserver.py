@@ -664,7 +664,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             subtask=str(uuid.uuid4()),
             payee=str(uuid.uuid4()),
             value=random.randint(1, 10),
-            details={'node_info': node, }
+            details=model.PaymentDetails(node_info=node)
         )
         self.ts.connection_for_payment_established(session, conn_id, payment)
         new_session_mock.assert_called_once_with(

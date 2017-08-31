@@ -1,30 +1,33 @@
-import os
-import psutil
 import fnmatch
-import time
 import logging
+import os
+import time
 
-from .simpleserializer import SimpleSerializer
+import psutil
+
+from .simpleserializer import JSONDictSerializer
 from .simpleenv import SimpleEnv
 from .variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
 
 logger = logging.getLogger(__name__)
 
 
-class ProcessService(object):
-    """ Keeps information about active application instances and gives them adequate numbers that may be used
-    to combine them with proper configuration options."""
+class ProcessService:
+    """ Keeps information about active application instances and gives them
+    adequate numbers that may be used to combine them with proper configuration
+    options."""
 
     def __init__(self, ctl_file_name=DEFAULT_PROC_FILE):
         """ Create new process service instance
-        :param str ctl_file_name: process working file were information about active applications is written
+        :param ctl_file_name: process working file where information
+            about active applications is written
         """
         ctl_file = SimpleEnv.env_file_name(ctl_file_name)
 
         self.maxFileSize = MAX_PROC_FILE_SIZE
         self.fd = -1
         self.ctl_file = ctl_file
-        self.state = {}
+        self.state = {}  # type: Dict[int, Tuple[float, int, NoneType]]
 
         if not os.path.exists(ctl_file) or os.path.getsize(ctl_file) < 2:
             if self.__acquire_lock():
@@ -47,11 +50,11 @@ class ProcessService(object):
         if self.fd > 0:
             self.__write_state_snapshot()
 
-    def register_self(self, extra_data=None):
-        """ Register new application instance in process control file. Remove inactive process and get earliest
-        available number
+    def register_self(self, extra_data=None) -> int:
+        """ Register new application instance in process control file.
+        Remove inactive process and get earliest available number
         :param extra_data: additional information that should be saved
-        :return int: process number
+        :return: process number
         """
         spid = int(os.getpid())
         timestamp = time.time()
@@ -60,7 +63,10 @@ class ProcessService(object):
             id_ = self.__update_state()
             self.state[spid] = [timestamp, id_, extra_data]
             self.unlock_state()
-            logger.info("Registering new process - PID {} at time {} at location {}".format(spid, timestamp, id_))
+            logger.info(
+                "Registering new process - PID {} at time {} at location {}"
+                .format(spid, timestamp, id_)
+            )
 
             return id_
 
@@ -93,6 +99,8 @@ class ProcessService(object):
             self.fd = os.open(self.ctl_file, flags)
 
             return True
+        # FIXME: Exception may be too broad
+        # pylint: disable=broad-except
         except Exception as ex:
             logger.error("Failed to acquire lock due to {}".format(ex))
             return False
@@ -105,21 +113,23 @@ class ProcessService(object):
     def __read_state_snapshot(self):
         os.lseek(self.fd, 0, 0)
         data = os.read(self.fd, self.maxFileSize)
-        self.state = SimpleSerializer.loads(data)
+        # JSON serializes every key as a string, so convert it back to int
+        self.state = JSONDictSerializer.loads(data, int)
 
     def __write_state_snapshot(self):
-        data = SimpleSerializer.dumps(self.state)
+        data = JSONDictSerializer.dumps(self.state)
 
         os.lseek(self.fd, 0, 0)
 
-        # FIXME: one hell of a hack but its pretty hard to truncate a file on Windows using low level API
+        # FIXME: one hell of a hack but its pretty hard
+        # to truncate a file on Windows using low level API
         hack = os.fdopen(self.fd, "w")
         hack.truncate(len(data))
         os.write(self.fd, data)
 
         hack.close()
 
-    def __update_state(self):
+    def __update_state(self) -> int:
         pids = psutil.pids()
         updated_state = {}
         ids = []
@@ -133,10 +143,10 @@ class ProcessService(object):
 
         self.state = updated_state
 
-        if len(ids) > 0:
+        if ids:
             sids = sorted(ids, key=int)
-            for i in range(len(sids)):
-                if i < sids[i]:
+            for i, el in enumerate(sids):
+                if i < el:
                     return i
 
         return len(ids)
