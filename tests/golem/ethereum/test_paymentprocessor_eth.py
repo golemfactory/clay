@@ -71,14 +71,14 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
             subtask='sent' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details={'tx': encode_hex(tx_hash)},
+            details=model.PaymentDetails(tx=encode_hex(tx_hash)),
             status=model.PaymentStatus.sent
         )
         sent_payment2 = model.Payment.create(
             subtask='sent2' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details={'tx': encode_hex(tx_hash)},
+            details=model.PaymentDetails(tx=encode_hex(tx_hash)),
             status=model.PaymentStatus.sent
         )
         self.payment_processor.load_from_db()
