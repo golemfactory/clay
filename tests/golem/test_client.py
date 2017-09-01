@@ -810,9 +810,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         from apps.lux.luxenvironment import LuxRenderEnvironment
         from apps.lux.benchmark.benchmark import LuxBenchmark
 
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_benchmark = Mock()
-        task_computer.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_benchmark = Mock()
+        benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
             c(True)
 
         with self.assertRaises(Exception):
@@ -820,21 +820,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
-        assert task_computer.run_benchmark.call_count == 1
-        assert isinstance(task_computer.run_benchmark.call_args[0][0],
+        assert benchmark_manager.run_benchmark.call_count == 1
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           BlenderBenchmark)
 
         sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
-        assert task_computer.run_benchmark.call_count == 2
-        assert isinstance(task_computer.run_benchmark.call_args[0][0],
+        assert benchmark_manager.run_benchmark.call_count == 2
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           LuxBenchmark)
 
-    @patch("golem.task.taskcomputer.BenchmarkRunner")
+    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
-        task_computer = self.client.task_server.task_computer
-        benchmarks = copy(self.client.task_server.benchmarks)
-        task_computer.run_benchmarks(benchmarks)
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_all_benchmarks()
         f = br_mock.call_args[0][2]  # get success callback
         f(1)
         assert br_mock.call_count == 2

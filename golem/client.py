@@ -880,22 +880,17 @@ class Client(HardwarePresetsMixin):
     def run_benchmark(self, env_id):
         deferred = Deferred()
 
-        task_computer = self.task_server.task_computer
-
-        benchmark_data = self.task_server.benchmarks.get(env_id)
-        if benchmark_data:
-            task_computer.run_benchmark(benchmark_data[0], benchmark_data[1],
-                                        env_id, deferred.callback,
-                                        deferred.errback)
-        elif env_id == DefaultEnvironment.get_id():
+        if env_id != DefaultEnvironment.get_id():
+            benchmark_manager = self.task_server.benchmark_manager
+            benchmark_manager.run_benchmark_for_env_id(env_id,
+                                                       deferred.callback,
+                                                       deferred.errback)
+            result = yield deferred
+            returnValue(result)
+        else:
             performance = DefaultEnvironment.run_default_benchmark(
                 self.config_desc.num_cores, save=True)
             returnValue(performance)
-        else:
-            raise Exception("Unknown environment: {}".format(env_id))
-
-        result = yield deferred
-        returnValue(result)
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)

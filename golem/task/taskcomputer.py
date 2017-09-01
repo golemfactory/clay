@@ -6,18 +6,15 @@ from threading import Lock
 
 from pydispatch import dispatcher
 
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.task.coretaskstate import TaskDesc
+
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
-from golem.model import Performance
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskStatus
+
 from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
@@ -40,7 +37,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_machine_manager=True, benchmarks=None):
+    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -70,13 +67,10 @@ class TaskComputer(object):
         if use_docker_machine_manager:
             self.docker_manager.check_environment()
 
-        run_benchmarks = self.___check_if_benchmark_is_needed(benchmarks)
-
         self.use_docker_machine_manager = use_docker_machine_manager
-        self.change_config(task_server.config_desc,
-                           in_background=False, 
+        run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
+        self.change_config(task_server.config_desc, in_background=False,
                            run_benchmarks=run_benchmarks)
-
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
@@ -228,59 +222,18 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks
         self.change_docker_config(config_desc, run_benchmarks, in_background)
-    
-    def _validate_task_state(self, task_state):
-        td = task_state.definition
-        if not os.path.exists(td.main_program_file):
-            logger.error("Main program file does not exist: {}".format(td.main_program_file))
-            return False
-        return True
-
-    def run_benchmark(self, benchmark, task_builder, env_id, success=None,
-                      error=None):
-
-        def success_callback(performance):
-            Performance.update_or_create(env_id, performance)
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run {} benchmark: {}".format(env_id,
-                                                                 err_msg))
-            if error:
-                error(err_msg)
-
-        task_state = TaskDesc()
-        task_state.status = TaskStatus.notStarted
-        task_state.definition = benchmark.task_definition
-        self._validate_task_state(task_state)
-        builder = task_builder(self.node_name, task_state.definition,
-                               self.task_server.client.datadir,
-                               self.dir_manager)
-        t = Task.build_task(builder)
-        br = BenchmarkRunner(t, self.task_server.client.datadir,
-                             success_callback, error_callback,
-                             benchmark)
-        br.run()
-
-    def run_benchmarks(self, benchmarks):
-        # Next benchmark ran only if previous completed successfully
-        if not benchmarks:
-            return
-        env_id, (benchmark, builder_class) = benchmarks.popitem()
-        self.run_benchmark(benchmark, builder_class, env_id,
-                           lambda _: self.run_benchmarks(benchmarks))
 
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
         
-    def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
+    def change_docker_config(self, config_desc, run_benchmarks,
+                             in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
         if not dm.docker_machine and run_benchmarks:
-            self.run_benchmarks(self.task_server.run_benchmarks)
+            self.task_server.benchmark_manager.run_all_benchmarks()
             return
         
         if dm.docker_machine and self.use_docker_machine_manager:
@@ -292,7 +245,7 @@ class TaskComputer(object):
 
             def done_callback():
                 if run_benchmarks:
-                    self.run_benchmarks(self.task_server.benchmarks)
+                    self.task_server.benchmark_manager.run_all_benchmarks()
                 logger.debug("Resuming new task computation")
                 self.lock_config(False)
                 self.runnable = True
@@ -392,17 +345,6 @@ class TaskComputer(object):
     def quit(self):
         for t in self.current_computations:
             t.end_comp()
-
-    @staticmethod
-    def ___check_if_benchmark_is_needed(benchmarks):
-        run_benchmarks = False
-        if benchmarks:
-            for env_id in benchmarks.keys():
-                try:
-                    _ = Performance.get(environment_id=env_id)
-                except Performance.DoesNotExist:
-                    run_benchmarks = True
-        return run_benchmarks
 
 
 class AssignedSubTask(object):
