@@ -93,6 +93,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
+        task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
 
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
@@ -155,8 +156,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
-        local_computer = LocalComputer(render_task, self.tempdir, Mock(), Mock(),
-                                       render_task.query_extra_data_for_test_task)
+        local_computer = LocalComputer(
+            render_task, self.tempdir, Mock(), Mock(),
+            render_task.query_extra_data_for_test_task)
         local_computer.run()
         local_computer.tt.join(60)
         return local_computer.tt
@@ -171,8 +173,10 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         result = task_thread.result
         assert result["result_type"] == result_types["files"]
         assert len(result["data"]) >= 3
-        assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"])
-        assert any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"])
+        assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE
+                   for f in result["data"])
+        assert any(path.basename(f) == DockerTaskThread.STDERR_FILE
+                   for f in result["data"])
         assert any(f.endswith(".png") for f in result["data"])
 
     def test_blender_test(self):
@@ -190,7 +194,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         node_name = "some_node"
         task_def = self._load_test_task_definition(self.CYCLES_TASK_FILE)
         dir_manager = DirManager(self.path)
-        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir,
+                                           dir_manager)
         task = builder.build()
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
@@ -217,7 +222,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert not task.header.signature
         assert task.listeners == []
         assert len(task.task_resources) == 1
-        assert task.task_resources[0].endswith('scene-Helicopter-27-cycles.blend')
+        assert task.task_resources[0].endswith(
+            'scene-Helicopter-27-cycles.blend')
         assert task.total_tasks == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
