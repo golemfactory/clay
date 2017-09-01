@@ -121,9 +121,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["task_id"] = "xyz"
         ts.add_task_header(task_header)
         ts.request_task()
-        self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        self.assertTrue(ts.send_result("xxyyzz", "xyz", 40, results, n))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        self.assertTrue(ts.send_result("xyzxyz", "xyz", 40, results, n))
         self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
@@ -633,27 +633,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.deny_set.add("ABC")
         assert not ts.should_accept_requestor("ABC")
 
-    @patch('golem.task.taskserver.TaskServer._mark_connected')
-    def test_new_session_prepare(self, mark_mock):
-        session = tasksession.TaskSession(conn=MagicMock())
-        session.address = '127.0.0.1'
-        session.port = 10
-
-        subtask_id = str(uuid.uuid4())
-        key_id = str(uuid.uuid4())
-        conn_id = str(uuid.uuid4())
-
-        self.ts.new_session_prepare(
-            session=session,
-            subtask_id=subtask_id,
-            key_id=key_id,
-            conn_id=conn_id
-        )
-        self.assertEqual(session.task_id, subtask_id)
-        self.assertEqual(session.key_id, key_id)
-        self.assertEqual(session.conn_id, conn_id)
-        mark_mock.assert_called_once_with(conn_id, session.address, session.port)
-
     @patch('golem.task.taskserver.TaskServer.new_session_prepare')
     @patch('golem.task.tasksession.TaskSession.send_hello')
     @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
@@ -768,12 +747,12 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         }
 
         elem._last_try = datetime.datetime.now()
-        self.ts._send_waiting(**kwargs)
+        self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_not_called()
 
         find_sessions_mock.return_value = []
         elem._last_try = datetime.datetime.min
-        self.ts._send_waiting(**kwargs)
+        self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_called_once_with(elem.subtask_id)
         find_sessions_mock.reset_mock()
         add_pending_mock.assert_called_once_with(
@@ -789,7 +768,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         session = tasksession.TaskSession(conn=MagicMock())
         find_sessions_mock.return_value = [session]
         elem._last_try = datetime.datetime.min
-        self.ts._send_waiting(**kwargs)
+        self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_called_once_with(elem.subtask_id)
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
@@ -801,7 +780,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.return_value = [weakref.ref(session)]
         elem._last_try = datetime.datetime.min
         kwargs['elems_set'] = {elem}
-        self.ts._send_waiting(**kwargs)
+        self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_called_once_with(elem.subtask_id)
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)

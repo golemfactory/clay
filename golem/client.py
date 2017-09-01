@@ -36,6 +36,7 @@ from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.taskservice import TaskService
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -81,7 +82,7 @@ class ClientTaskComputerEventListener(object):
 class Client(BaseApp, HardwarePresetsMixin):
     client_name = 'golem'
     default_config = dict(BaseApp.default_config)
-    available_services = [NodeDiscovery, PeerManager, GolemService]
+    available_services = [NodeDiscovery, PeerManager, GolemService, TaskService]
 
     def __init__(
             self,
@@ -437,10 +438,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.task_server.task_manager.resources_send(task_id)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+        self.task_server.task_computer.resource_given(task_id)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
@@ -791,15 +789,6 @@ class Client(BaseApp, HardwarePresetsMixin):
             resources,
             task_id,
             client_options=client_options
-        )
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
         )
 
     def get_res_dirs(self):

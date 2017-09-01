@@ -141,12 +141,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
         ts.verified = True
-        ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
         n.prv_addresses = []
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
-                                13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
+
+        wtr = WaitingTaskResult("xxyyzz", 13190, "hash", "secret", {}, n)
 
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ms = ts.conn.send_message.call_args[0][0]

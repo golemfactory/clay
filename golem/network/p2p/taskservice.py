@@ -1,7 +1,9 @@
-from enum import Enum, auto
+from enum import Enum
 
+import gevent
 from devp2p import slogging
 from devp2p.service import WiredService
+from gevent.event import AsyncResult
 
 from golem.docker.environment import DockerEnvironment
 from golem.model import db, Payment
@@ -60,15 +62,46 @@ class TaskService(WiredService):
         self.task_manager = None
         self.task_computer = None
 
+        self._connecting = dict()
+
     def set_task_server(self, task_server):
         self.task_server = task_server
         self.task_manager = task_server.task_manager
         self.task_computer = task_server.task_computer
 
-    def get_peer(self, pubkey):
+    def get_session(self, pubkey, protocol=TaskProtocol):
         for peer in self.peer_manager.peers:
             if peer.remote_pubkey == pubkey:
-                return peer
+                return peer.protocols.get(protocol)
+
+    # FIXME: Move out of TaskService
+    # FIXME: Accept multiple addresses
+    # FIXME: Allow pubkey only and discover peer addresses
+    def connect(self, address, pubkey):
+        future = AsyncResult()
+        session = self.get_session(pubkey)
+
+        if session:
+            future.set(session)
+        else:
+            if self.peer_manager.connect(address, pubkey):
+                self._connecting[pubkey] = future
+            else:
+                errors = '{}'.format(self.peer_manager.errors.get(address))
+                future.set_exception(RuntimeError(errors))
+
+        return future
+
+    # FIXME: same as connect
+    def spawn_connect(self, address, pubkey, cb, eb):
+        def connect():
+            try:
+                result = self.connect(address, pubkey).get()
+            except Exception as exc:
+                eb(exc)
+            else:
+                cb(result)
+        gevent.spawn(connect)
 
     def on_wire_protocol_start(self, proto):
         assert isinstance(proto, self.wire_protocol)
@@ -85,6 +118,11 @@ class TaskService(WiredService):
         proto.receive_accept_result_callbacks(self.receive_accept_result)
         proto.receive_payment_request_callbacks(self.receive_payment_request)
         proto.receive_payment_callbacks(self.receive_payment)
+
+        pubkey = proto.peer.remote_pubkey
+        future = self._connecting.pop(pubkey, None)
+        if future:
+            future.set(proto)
 
     def on_wire_protocol_stop(self, proto):
         assert isinstance(proto, self.wire_protocol)
@@ -191,9 +229,9 @@ class TaskService(WiredService):
     #                        TASK COMPUTATION RESULT
     # ======================================================================== #
 
-    def send_result(self, proto, subtask_id, computation_time,
-                    resource_hash, resource_secret, resource_options,
-                    eth_account):
+    @staticmethod
+    def send_result(proto, subtask_id, computation_time, resource_hash,
+                    resource_secret, resource_options, eth_account):
 
         proto.send_result(subtask_id, computation_time, resource_hash,
                           resource_secret, resource_options, eth_account)

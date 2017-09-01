@@ -19,11 +19,6 @@ class GolemService(WiredService):
         self.node = client.node
         self.task_server = None
 
-    def get_peer(self, pubkey):
-        for peer in self.peer_manager.peers:
-            if peer.remote_pubkey == pubkey:
-                return peer
-
     def on_wire_protocol_start(self, proto):
         assert isinstance(proto, self.wire_protocol)
 

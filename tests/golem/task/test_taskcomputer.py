@@ -110,9 +110,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_given("xyz")
         tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert len(tc.current_computations) == 0
         assert tc.assigned_subtasks.get("xxyyzz") is None
@@ -121,7 +119,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_given("xyz")
         assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
@@ -151,9 +149,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline, timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertFalse(tc.counting_task)
@@ -166,7 +162,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.src_code = "print('Hello world')"
         ctd.timeout = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
@@ -175,7 +171,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.subtask_id = "xxyyzz2"
         ctd.timeout = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         tt = tc.current_computations[0]
         tc.task_computed(tc.current_computations[0])
         self.assertEqual(len(tc.current_computations), 0)

@@ -78,7 +78,6 @@ class TaskProtocol(BaseProtocol):
         structure = [
             ('subtask_id', sedes.binary),
             ('computation_time', sedes.big_endian_int),
-            ('result_type', sedes.binary),
             ('resource_hash', sedes.binary),
             ('resource_secret', sedes.binary),
             ('resource_options', CBORSedes),
