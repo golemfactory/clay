@@ -3,6 +3,7 @@ import time
 from os import makedirs, path
 
 import json
+import pytest
 from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
@@ -179,6 +180,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
                    for f in result["data"])
         assert any(f.endswith(".png") for f in result["data"])
 
+    @pytest.mark.slow
     def test_blender_test(self):
         render_task = self._create_test_task()
         tt = self._run_docker_test_task(render_task)
@@ -238,9 +240,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert path.isdir(task.tmp_dir)
         assert task.verificator.verification_options is None
 
+    @pytest.mark.slow
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
 
+    @pytest.mark.slow
     def test_blender_cycles_subtask(self):
         self._test_blender_subtask(self.CYCLES_TASK_FILE)
 
