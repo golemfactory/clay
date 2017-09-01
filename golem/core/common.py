@@ -11,6 +11,8 @@ from pathlib import Path
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
+MAX_CPU_WINDOWS = 32
+MAX_CPU_MACOS = 16
 
 
 def is_frozen():
@@ -207,7 +209,7 @@ def get_cpu_count():
     :return: number of cores
     """
     if is_windows():
-        return min(cpu_count(), 32)  # VBox limitation
+        return min(cpu_count(), MAX_CPU_WINDOWS)  # VBox limitation
     if is_osx():
-        return min(cpu_count(), 16)  # xhyve limitation
+        return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
     return cpu_count()  # No limitatons on Linux

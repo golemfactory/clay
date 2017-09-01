@@ -16,20 +16,6 @@ WORK_DIR = "/golem/work"
 RESOURCES_DIR = "/golem/resources"
 
 
-def get_cpu_count():
-    """
-    Get number of cores with system limitations:
-    - max 32 on Windows due to VBox limitation
-    - max 16 on MacOS dut to xhyve limitation
-    :return: number of cores
-    """
-    if sys.platform == "win32":
-        return min(cpu_count(), 32)  # VBox limitation
-    if sys.platform == "darwin":
-        return min(cpu_count(), 16)  # xhyve limitation
-    return cpu_count()  # No limitatons on Linux
-
-
 def symlink_or_copy(source, target):
     try:
         os.symlink(source, target)
@@ -60,7 +46,7 @@ def find_flm(directory):
 
 def format_lux_renderer_cmd(start_task, output_basename, output_format,
                             scene_file):
-    num_cores = get_cpu_count()
+    num_cores = cpu_count()
     flm_file = find_flm(WORK_DIR)
     if flm_file is not None:
         cmd = [

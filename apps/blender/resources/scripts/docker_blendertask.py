@@ -12,20 +12,6 @@ WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 
 
-def get_cpu_count():
-    """
-    Get number of cores with system limitations:
-    - max 32 on Windows due to VBox limitation
-    - max 16 on MacOS dut to xhyve limitation
-    :return: number of cores
-    """
-    if sys.platform == "win32":
-        return min(cpu_count(), 32)  # VBox limitation
-    if sys.platform == "darwin":
-        return min(cpu_count(), 16)  # xhyve limitation
-    return cpu_count()  # No limitatons on Linux
-
-
 def exec_cmd(cmd):
     pc = subprocess.Popen(cmd)
     return pc.wait()
@@ -41,7 +27,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
-        "-t", "{}".format(get_cpu_count()),
+        "-t", "{}".format(cpu_count()),
         "-f", "{}".format(frame)
     ]
     return cmd
