@@ -127,7 +127,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz",
-            "Subtask deadline is after task deadline: {} > {}"
+            "Subtask deadline shouldn't be after task deadline: {} > {}"
             .format(ctd.deadline, task_deadline),
             "10.10.10.10", 10203, "key", "owner", "ABC")
 

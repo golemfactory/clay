@@ -277,8 +277,8 @@ class TaskComputer(object):
     def _validate_task_state(self, task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            logger.error("Main program file does not exist: {}"
-                         .format(td.main_program_file))
+            logger.error("Main program file does not exist: %s",
+                         td.main_program_file)
             return False
         return True
 
@@ -444,8 +444,8 @@ class TaskComputer(object):
 
         if subtask_deadline > task_deadline:
             self.subtask_failure(task_id,
-                                 "Subtask deadline is after task deadline: "
-                                 "{} > {}"
+                                 "Subtask deadline shouldn't be after task "
+                                 "deadline: {} > {}"
                                  .format(subtask_deadline, task_deadline))
             return
 
