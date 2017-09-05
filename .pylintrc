@@ -50,9 +50,11 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=invalid-name,           # Pylint is overzealous here
+disable=invalid-name,                   # Pylint is overzealous here
         missing-docstring,              # We don't need a docstring for obvious things!
         fixme,
+        redefined-builtin,
+        logging-format-interpolation,
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -72,7 +74,7 @@ evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / stateme
 
 # Template used to display messages. This is a python new-style format string
 # used to format the message information. See doc for all details
-#msg-template=
+msg-template={C}: {path}:{line}:{column}: {msg} ({symbol})
 
 # Set the output format. Available formats are text, parseable, colorized, json
 # and msvs (visual studio).You can also give a reporter class, eg
