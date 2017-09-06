@@ -3,6 +3,8 @@ import pickle
 import time
 
 from pathlib import Path
+
+from ethereum.utils import encode_hex
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
@@ -134,7 +136,7 @@ class TaskManager(TaskEventListener):
         task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
-        task.header.task_owner_key_id = self.key_id
+        task.header.task_owner_key_id = encode_hex(self.keys_auth.public_key)
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 

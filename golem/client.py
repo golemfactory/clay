@@ -157,7 +157,6 @@ class Client(BaseApp, HardwarePresetsMixin):
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.get_key_id())
 
-
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
         self.last_balance_time = time.time()
@@ -289,6 +288,8 @@ class Client(BaseApp, HardwarePresetsMixin):
                 "127.0.0.1", self.config['p2p']["listen_port"])).encode(
                 'utf-8')
         )
+
+        self.config['log_disconnects'] = True
 
         devp2plog.info(self.config['discovery']['bootstrap_nodes'])
 

@@ -9,5 +9,6 @@ p2pconfig = {
         "listen_port": 20171,
         "min_peers": 3,
         "max_peers": 5
-    }
+    },
+    "log_disconnects": True
 }

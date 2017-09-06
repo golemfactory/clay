@@ -31,7 +31,6 @@ class TaskServer:
         self.keys_auth = keys_auth
         self.config_desc = config_desc
 
-        self.task_service = task_service
         self.task_keeper = TaskHeaderKeeper(
             client.environments_manager,
             min_price=config_desc.min_price
@@ -52,6 +51,9 @@ class TaskServer:
         self.task_manager.listen_address = self.node.pub_addr
         self.task_manager.listen_port = self.client.get_p2p_port()
         self.task_manager.node = self.node
+
+        task_service.set_task_server(self)
+        self.task_service = task_service
 
         self.task_sessions = {}
 
@@ -143,8 +145,8 @@ class TaskServer:
         try:
             self.task_manager.add_comp_task_request(theader, min_price)
             self.task_service.spawn_connect(
-                address,
                 theader.task_owner_key_id,
+                [address],
                 lambda session: self._request_task_success(session, **args),
                 lambda error: self._request_task_error(error, theader.task_id)
             )
@@ -165,7 +167,7 @@ class TaskServer:
         self.task_keeper.remove_task_header(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
         logger.warning("Cannot send request for task {}: {}"
-                       .format(error, task_id))
+                       .format(task_id, error))
 
     def send_task_failed(self, subtask_id, task_id, err_msg, owner):
         Trust.REQUESTED.decrease(owner.key)
@@ -477,8 +479,8 @@ class TaskServer:
                 continue
 
             self.task_service.spawn_connect(
-                p2p_node.get_addresses(),
                 p2p_node.key,
+                addresses=p2p_node.get_addresses(),
                 cb=lambda session: cb(session, elem),
                 eb=lambda error: elems_set.remove(elem)
             )
@@ -526,8 +528,8 @@ class TaskServer:
                 self._send_result(session, wtr)
             else:
                 self.task_service.spawn_connect(
-                    wtr.owner.get_addresses(),
                     wtr.owner.key,
+                    addresses=wtr.owner.get_addresses(),
                     cb=lambda session: self._send_result(session, wtr),
                     eb=lambda error: self._send_result_failure(wtr)
                 )
@@ -557,8 +559,8 @@ class TaskServer:
                 self._send_failure(session, wtf)
             else:
                 self.task_service.spawn_connect(
-                    wtf.owner.get_addresses(),
                     wtf.owner.key,
+                    addresses=wtf.owner.get_addresses(),
                     cb=lambda session: self._send_failure(session, wtf),
                     eb=self.noop
                 )

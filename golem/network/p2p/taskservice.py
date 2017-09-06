@@ -1,5 +1,3 @@
-from enum import Enum
-
 import gevent
 from devp2p import slogging
 from devp2p.service import WiredService
@@ -11,18 +9,19 @@ from golem.network.p2p.taskprotocol import TaskProtocol
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskbase import result_types, ComputeTaskDef
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import decode_hex
 
 logger = slogging.get_logger('golem.service')
 
 
-class TaskRequestRejection(Enum):
+class TaskRequestRejection:
 
     TASK_ID_UNKNOWN = 0
     DOWNLOADING_RESULT = 1
     NO_MORE_SUBTASKS = 2
 
 
-class TaskRejection(Enum):
+class TaskRejection:
 
     INVALID_CTD = 0
     INVALID_DOCKER_IMAGES = 1
@@ -33,7 +32,7 @@ class TaskRejection(Enum):
     MISSING_SOURCE_CODE = 6
 
 
-class ResultRejection(Enum):
+class ResultRejection:
 
     SUBTASK_ID_UNKNOWN = 0
     SUBTASK_ID_MISMATCH = 1
@@ -44,7 +43,7 @@ class ResultRejection(Enum):
     VERIFICATION_FAILED = 6
 
 
-class PaymentRejection(Enum):
+class PaymentRejection:
 
     PAYMENT_UNKNOWN = 0
 
@@ -70,33 +69,48 @@ class TaskService(WiredService):
         self.task_computer = task_server.task_computer
 
     def get_session(self, pubkey, protocol=TaskProtocol):
+        try:
+            decoded = decode_hex(pubkey)
+        except Exception as exc:
+            logger.error('Invalid public key %r: %s', pubkey, exc)
+            return None
+
         for peer in self.peer_manager.peers:
-            if peer.remote_pubkey == pubkey:
-                return peer.protocols.get(protocol)
+            try:
+                if peer.remote_pubkey == decoded:
+                    return peer.protocols.get(protocol)
+            except Exception as exc:
+                logger.debug('Invalid pubkey: %r %s', peer.remote_pubkey, exc)
 
     # FIXME: Move out of TaskService
-    # FIXME: Accept multiple addresses
-    # FIXME: Allow pubkey only and discover peer addresses
-    def connect(self, address, pubkey):
+    # FIXME: Discover peer addresses if none were provided
+    def connect(self, pubkey, addresses):
         future = AsyncResult()
         session = self.get_session(pubkey)
 
-        if session:
+        if session is not None:
             future.set(session)
-        else:
+            return future
+
+        errors = []
+        for address in addresses:
+            logger.info('Connecting to %r (%r)', address, pubkey)
+
             if self.peer_manager.connect(address, pubkey):
                 self._connecting[pubkey] = future
             else:
-                errors = '{}'.format(self.peer_manager.errors.get(address))
-                future.set_exception(RuntimeError(errors))
+                conn_errors = self.peer_manager.errors.errors
+                errors.append(conn_errors.get(address, [])[-1])
+
+        if pubkey not in self._connecting:
+            future.set_exception(RuntimeError(errors))
 
         return future
 
-    # FIXME: same as connect
-    def spawn_connect(self, address, pubkey, cb, eb):
+    def spawn_connect(self, pubkey, addresses, cb, eb):
         def connect():
             try:
-                result = self.connect(address, pubkey).get()
+                result = self.connect(pubkey, addresses).get()
             except Exception as exc:
                 eb(exc)
             else:
