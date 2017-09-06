@@ -1,5 +1,3 @@
-import multiprocessing
-
 import psutil
 from psutil import virtual_memory
 
@@ -9,6 +7,8 @@ from golem.appconfig import logger,\
     MIN_CPU_CORES,\
     DEFAULT_HARDWARE_PRESET_NAME,\
     CUSTOM_HARDWARE_PRESET_NAME
+from golem.core.common import get_cpu_count, is_osx, is_windows,\
+    MAX_CPU_MACOS, MAX_CPU_WINDOWS
 from golem.core.fileshelper import free_partition_space
 from golem.model import HardwarePreset
 
@@ -20,10 +20,14 @@ def cpu_cores_available():
     """
     try:
         affinity = psutil.Process().cpu_affinity()
+        if is_osx() and len(affinity) > MAX_CPU_MACOS:
+            return list(range(0, MAX_CPU_MACOS))
+        if is_windows() and len(affinity) > MAX_CPU_WINDOWS:
+                return list(range(0, MAX_CPU_WINDOWS))
         return affinity[:-1] or affinity
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: {}".format(e))
-        num_cores = multiprocessing.cpu_count()
+        num_cores = get_cpu_count()
         return list(range(0, num_cores - 1)) or [0]
 
 

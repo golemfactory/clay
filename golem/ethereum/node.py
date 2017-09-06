@@ -1,25 +1,27 @@
 import atexit
+from devp2p.crypto import privtopub
+from ethereum.keys import privtoaddr
+from ethereum.transactions import Transaction
+from ethereum.utils import normalize_address, denoms
+from datetime import datetime
+from distutils.version import StrictVersion
 import logging
 import os
 import re
+import requests
 import subprocess
 import sys
 import tempfile
+import threading
 import time
-from datetime import datetime
-from distutils.version import StrictVersion
-
-import requests
-from devp2p.crypto import privtopub
-from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
-from ethereum.utils import privtoaddr
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
-from golem.utils import encode_hex, decode_hex, find_free_net_port
+from golem.utils import encode_hex, decode_hex
+from golem.utils import find_free_net_port
+from golem.utils import tee_target
 
 log = logging.getLogger('golem.ethereum')
 
@@ -115,12 +117,15 @@ class NodeProcess(object):
         chain = 'rinkeby'
         init_file = os.path.join(this_dir, chain + '.json')
         log.info("init file: {}".format(init_file))
-
+        geth_log_dir = os.path.join(self.datadir, "logs")
+        if not os.path.exists(geth_log_dir):
+            os.makedirs(geth_log_dir)
+        geth_log_path = os.path.join(geth_log_dir, "geth.log")
         geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
-
-        init_subp = subprocess.Popen([self.__prog, datadir_arg,
-                                      'init', init_file], **pipes)
+        genesis_args = [self.__prog, datadir_arg,
+                        'init', init_file]
+        init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
             raise OSError(
@@ -148,8 +153,18 @@ class NodeProcess(object):
         ]
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
+        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
 
-        self.__ps = subprocess.Popen(args, close_fds=True)
+        tee_kwargs = {
+            'prefix': 'geth: ',
+            'proc': self.__ps,
+            'path': geth_log_path,
+        }
+        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
+                                      kwargs=tee_kwargs)
+        tee_thread.start()
+
         atexit.register(lambda: self.stop())
 
         if is_windows():

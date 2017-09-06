@@ -1,16 +1,15 @@
-
-
 import logging
-import multiprocessing
+
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-
-from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPalette
+from PyQt5.QtWidgets import QMessageBox
+from ethereum.utils import denoms
+
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
-from ethereum.utils import denoms
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_cpu_count
 from golem.core.fileshelper import du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from gui.controller.customizer import Customizer
@@ -81,7 +80,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__load_trust_config(config_desc)
 
     def __load_num_cores(self, config_desc):
-        max_num_cores = multiprocessing.cpu_count()
+        max_num_cores = get_cpu_count()
         self.gui.ui.numCoresSpinBox.setMaximum(max_num_cores)
         self.gui.ui.numCoresRangeLabel.setText("Range: 1 - {}".format(max_num_cores))
 
