@@ -423,22 +423,31 @@ class TestTasks(TempDirFixture):
                 client.create_task.assert_called_with(json.loads('{}'))
 
     def test_template(self) -> None:
+        tasks = Tasks()
+
         with patch('sys.stdout', io.StringIO()) as mock_io:
-            tasks = Tasks()
             tasks.template(None)
             output = mock_io.getvalue()
 
-            self.assertIn("bid", output)
-            self.assertIn("0.0", output)
-            self.assertIn('"subtask_timeout": "0:00:00"', output)
+        self.assertIn("bid", output)
+        self.assertIn("0.0", output)
+        self.assertIn('"subtask_timeout": "0:00:00"', output)
 
-            self.assertEqual(json.loads(output), TaskDefinition().to_dict())
+        self.assertEqual(json.loads(output), TaskDefinition().to_dict())
 
-            temp = self.temp_file_name("test_template")
-            tasks.template(temp)
-            with open(temp) as f:
-                content = f.read()
-                self.assertEqual(content, output)
+        temp = self.temp_file_name("test_template")
+        tasks.template(temp)
+        with open(temp) as f:
+            content = f.read()
+            self.assertEqual(content, output)
+
+        with client_ctx(Tasks, self.client):
+            Tasks.client.get_task.return_value = TaskDefinition().to_dict()
+            tasks.dump('id', temp)
+
+        with open(temp) as f:
+            content_dump = f.read()
+            self.assertEqual(content, content_dump)
 
     def test_show(self):
         client = self.client
