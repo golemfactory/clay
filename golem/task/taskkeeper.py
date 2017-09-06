@@ -199,7 +199,11 @@ class TaskHeaderKeeper(object):
         """
         supported = self.check_environment(th_dict_repr)
         supported = supported.join(self.check_price(th_dict_repr))
-        return supported.join(self.check_version(th_dict_repr))
+        supported = supported.join(self.check_version(th_dict_repr))
+        if not supported.is_ok():
+            logger.info("Unsupported task %s, reason: %r",
+                        th_dict_repr.get("task_id"), supported.desc)
+        return supported
 
     @staticmethod
     def is_correct(th_dict_repr):
