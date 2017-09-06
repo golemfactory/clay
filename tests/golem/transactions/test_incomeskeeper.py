@@ -11,6 +11,14 @@ from golem.testutils import PEP8MixIn
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.incomeskeeper import IncomesKeeper
 
+# bigint - 8 Bytes
+# -2^63 (-9,223,372,036,854,775,808) to
+#  2^63-1 (9,223,372,036,854,775,807)
+
+MAX_INT = 2 ** 63
+# this proves that Golem's BigIntegerField wrapper does not
+# overflows as standard SQL implementation
+
 
 def generate_some_id(prefix='test'):
     return "%s-%d-%d" % (prefix, time.time() * 1000, random.random() * 1000)
@@ -44,7 +52,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         sender_node_id = generate_some_id('sender_node_id')
         task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(2 ** 2048, 2 ** 4096)
+        value = random.randint(MAX_INT, MAX_INT+10)
 
         self.assertEqual(ExpectedIncome.select().count(), 0)
         self._test_expect_income(sender_node_id=sender_node_id,
@@ -64,7 +72,9 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             block_number=block_number,
             value=value
         )
+
         self.assertEqual(ExpectedIncome.select().count(), 0)
+        assert type(income) is Income
         self.assertIsNotNone(income)
 
         with db.atomic():
@@ -77,7 +87,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         # try to duplicate key
         # same sender cannot pay for the same subtask twice
         new_transaction = generate_some_id('transaction_id2')
-        new_value = random.randint(2 ** 2048, 2 ** 4096)
+        new_value = random.randint(MAX_INT, MAX_INT+10)
         income = self.incomes_keeper.received(
             sender_node_id=sender_node_id,
             task_id=task_id,
@@ -92,7 +102,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         sender_node_id = generate_some_id('sender_node_id')
         task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(2 ** 2048, 2 ** 4096)
+        value = random.randint(MAX_INT, MAX_INT+10)
         transaction_id = generate_some_id('transaction_id')
 
         expected_income = self.incomes_keeper.expect(

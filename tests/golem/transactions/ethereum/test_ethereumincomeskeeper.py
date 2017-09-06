@@ -70,7 +70,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
+                self.instance.processor.get_eth_address(),  # receiver
             ],
             'data': hex(received_kwargs['value'] - 1),
         })
@@ -83,7 +83,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
+                self.instance.processor.get_eth_address(),  # receiver
             ],
             'data': hex(1),
         })
@@ -96,7 +96,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
+                self.instance.processor.get_eth_address(),  # receiver
             ],
             'data': hex(1),
         })
@@ -104,6 +104,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
 
+# GG todo
     # def test_transaction_overflow(self):
     #     received_kwargs = {
     #         'sender_node_id': get_some_id(),
@@ -141,7 +142,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 'topics': [
                     EthereumIncomesKeeper.LOG_ID,
                     get_some_id(),  # sender
-                    self.instance.processor.eth_address(),  # receiver
+                    self.instance.processor.get_eth_address(),  # receiver
                 ],
                 'data': hex(received_kwargs['value']),
             },

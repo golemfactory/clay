@@ -185,7 +185,10 @@ class Client(object):
         """
         return self.web3.eth.getFilterChanges(Client.__add_padding(filer_id))
 
-    def get_logs(self, from_block=None, to_block=None, address=None,
+    def get_logs(self,
+                 from_block=None,
+                 to_block=None,
+                 address=None,
                  topics=None):
         """
         Retrieves logs based on filter options

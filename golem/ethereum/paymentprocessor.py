@@ -3,19 +3,24 @@ import sys
 import time
 import json
 
+from .contracts import TestGNT
+from .node import tETH_faucet_donate
+
+from time import sleep
 from typing import List, Set, Dict, Any
+from pydispatch import dispatcher
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
-from golem.ethereum import Client
-from pydispatch import dispatcher
 
+from golem.report import report_calls, Component
+from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
 from golem.utils import decode_hex, encode_hex
-from .contracts import TestGNT
-from .node import tETH_faucet_donate
+
+
 
 log = logging.getLogger("golem.pay")
 
@@ -84,17 +89,34 @@ class PaymentProcessor(Service):
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
-    def __check(self):
-        peers = self.__client.get_peer_count()
-        log.info("Peer count: {}".format(peers))
-        if peers == 0:
-            return False
-        if self.__client.is_syncing():
-            log.info("Node is syncing...")
-            return False
-        return True
 
-    def synchronized(self):
+    # GG todo
+    @report_calls(Component.ethereum, 'sync')
+    def synchronize_with_confirmations(self,
+                                       to_block="latest",
+                                       n_of_confirmations = 1,
+                                       max_attempts = 100):
+
+        attempt_counter = 0
+        last_block = self.__client.web3.eth.getBlock('latest')
+
+        is_synchronized = False
+        while not is_synchronized and attempt_counter < max_attempts:
+            try:
+                is_synchronized = self.is_synchronized()
+                requested_block = self.__client.web3.eth.getBlock(to_block)
+
+                if requested_block['number'] > last_block['number'] + n_of_confirmations:
+                    is_synchronized = False
+
+            except Exception as e:
+                log.error("IPC error: {}".format(e))
+                is_synchronized = False
+            else:
+                attempt_counter += 1
+                sleep(0.5)
+
+    def is_synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
 
         if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
@@ -104,11 +126,21 @@ class PaymentProcessor(Service):
             return self.__sync
         self.__last_sync_check = time.time()
 
+        def check():
+            peers = self.__client.get_peer_count()
+            log.info("Peer count: {}".format(peers))
+            if peers == 0:
+                return False
+            if self.__client.is_syncing():
+                log.info("Node is syncing...")
+                return False
+            return True
+
         # TODO: This can be improved now because we use Ethereum Ropsten.
         # Normally we should check the time of latest block, but Golem testnet
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.
-        if not self.__check():
+        if not check():
             # Reset both sync flags. We have to start over.
             self.__temp_sync = False
             self.__sync = False
@@ -126,18 +158,12 @@ class PaymentProcessor(Service):
 
         return True
 
-    def eth_address(self, zpad=True):
-        return self.enc_address(self.__privkey, zpad)
-
-    def enc_address(self, privkey, zpad=True):
-        raw = self.raw_address(privkey)
+    def get_eth_address(self, zpad=True):
+        raw = keys.privtoaddr(self.__privkey)
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             raw = utils.zpad(raw, 32)
         return '0x' + encode_hex(raw)
-
-    def raw_address(self, privkey):
-        return keys.privtoaddr(privkey)
 
     def balance_known(self):
         return self.__gnt_balance is not None and self.__eth_balance is not None
@@ -145,14 +171,14 @@ class PaymentProcessor(Service):
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
-            addr = self.eth_address(zpad=False)
+            addr = self.get_eth_address(zpad=False)
             self.__eth_balance = self.__client.get_balance(addr)
             log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            addr = self.raw_address(self.__privkey)
+            addr = keys.privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr,))
             r = self.__client.call(_from='0x' + encode_hex(addr),
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
@@ -242,7 +268,7 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = self.enc_address(self.__privkey, zpad=False)
+        addr = self.get_eth_address(zpad=False)
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
@@ -330,7 +356,7 @@ class PaymentProcessor(Service):
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 10 ** 15:
             log.info("Requesting tETH")
-            addr = self.raw_address(self.__privkey)
+            addr = keys.privtoaddr(self.__privkey)
             tETH_faucet_donate(addr)
             return False
         return True
@@ -338,7 +364,7 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = self.enc_address(self.__privkey, zpad=False)
+            addr = self.get_eth_address(zpad=False)
             nonce = self.__client.get_transaction_count(addr)
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
@@ -348,10 +374,16 @@ class PaymentProcessor(Service):
             return False
         return True
 
-    def get_logs(self, from_block=None, to_block=None, address=None,
+    def get_logs(self,
+                 from_block=None,
+                 to_block=None,
+                 address=None,
                  topics=None):
-        return self.__client.get_logs(from_block=from_block, to_block=to_block,
-                                      address=address, topics=topics)
+
+        return self.__client.get_logs(from_block=from_block,
+                                      to_block=to_block,
+                                      address=address,
+                                      topics=topics)
 
     def _run(self):
         if self._waiting_for_faucet:
@@ -360,7 +392,7 @@ class PaymentProcessor(Service):
         self._waiting_for_faucet = True
 
         try:
-            if self.synchronized() and \
+            if self.is_synchronized() and \
                     self.get_ether_from_faucet() and \
                     self.get_gnt_from_faucet():
                 self.monitor_progress()

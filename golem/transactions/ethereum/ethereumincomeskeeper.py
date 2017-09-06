@@ -25,21 +25,27 @@ class EthereumIncomesKeeper(IncomesKeeper):
 
     def received(self, sender_node_id, task_id, subtask_id, transaction_id,
                  block_number, value):
-        my_address = self.processor.eth_address()
+        my_address = self.processor.get_eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
 
-        from time import sleep
-        is_synchronized = False
-        while not is_synchronized:
-            try:
-                is_synchronized = self.processor.synchronized()
-            except Exception as e:
-                logger.error("payment reception failed "
-                             "while syncing with eth blockchain: "
-                             "{}".format(e))
-                is_synchronized = False
-            else:
-                sleep(0.5)
+
+        if not self.processor.is_synchronized():
+            logger.warning("payment processor is not synchronized with "
+                           "blockchain, income may not be found...")
+
+
+        #
+        # is_synchronized = False
+        # while not is_synchronized:
+        #     try:
+        #         is_synchronized = self.processor.is_synchronized()
+        #     except Exception as e:
+        #         logger.error("payment reception failed "
+        #                      "while syncing with eth blockchain: "
+        #                      "{}".format(e))
+        #         is_synchronized = False
+        #     else:
+        #         sleep(0.5)
 
         incomes = self.processor.get_logs(
             from_block=block_number,

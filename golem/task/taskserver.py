@@ -402,7 +402,10 @@ class TaskServer(PendingConnectionsServer):
             return
         task_id = expected_income.task
         node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
+
+        # todo GG ensure its synchronized?!
+        # run this in separate thread
+        result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
             task_id=task_id,
             subtask_id=subtask_id,
@@ -410,7 +413,14 @@ class TaskServer(PendingConnectionsServer):
             block_number=block_number,
             value=reward,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+        # todo GG ensure that TRUST is increased after confirmation from
+        # incomes keeper
+
+        # check that the reward has been successfully written in db
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(node_id, self.max_trust)
+
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -1115,8 +1125,7 @@ class TaskServer(PendingConnectionsServer):
                 expected_income: expected_income.get_sender_node(),
             req_type=TASK_CONN_TYPES['payment_request'],
             session_cbk=lambda session,
-                               expected_income: session.request_payment(
-                expected_income)
+                               expected_income: session.request_payment(expected_income)
         )
 
     def send_waiting_payments(self):
@@ -1127,8 +1136,7 @@ class TaskServer(PendingConnectionsServer):
             p2p_node_getter=lambda payment: payment.get_sender_node(),
             req_type=TASK_CONN_TYPES['payment'],
             session_cbk=lambda session,
-                               payment: session.inform_worker_about_payment(
-                payment)
+                               payment: session.inform_worker_about_payment(payment)
         )
 
     def __send_waiting_results(self):
@@ -1191,37 +1199,38 @@ class TaskServer(PendingConnectionsServer):
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({
-            TASK_CONN_TYPES[
-                'task_request']: self.__connection_for_task_request_established,
-            TASK_CONN_TYPES[
-                'task_result']: self.__connection_for_task_result_established,
-            TASK_CONN_TYPES[
-                'task_failure']: self.__connection_for_task_failure_established,
-            TASK_CONN_TYPES[
-                'start_session']: self.__connection_for_start_session_established,
-            TASK_CONN_TYPES[
-                'middleman']: self.__connection_for_middleman_established,
-            TASK_CONN_TYPES[
-                'nat_punch']: self.__connection_for_nat_punch_established,
-            TASK_CONN_TYPES['payment']: self.connection_for_payment_established,
-            TASK_CONN_TYPES[
-                'payment_request']: self.connection_for_payment_request_established,
+            TASK_CONN_TYPES['task_request']:
+                self.__connection_for_task_request_established,
+            TASK_CONN_TYPES['task_result']:
+                self.__connection_for_task_result_established,
+            TASK_CONN_TYPES['task_failure']:
+                self.__connection_for_task_failure_established,
+            TASK_CONN_TYPES['start_session']:
+                self.__connection_for_start_session_established,
+            TASK_CONN_TYPES['middleman']:
+                self.__connection_for_middleman_established,
+            TASK_CONN_TYPES['nat_punch']:
+                self.__connection_for_nat_punch_established,
+            TASK_CONN_TYPES['payment']:
+                self.connection_for_payment_established,
+            TASK_CONN_TYPES['payment_request']:
+                self.connection_for_payment_request_established,
         })
 
     def _set_conn_failure(self):
         self.conn_failure_for_type.update({
-            TASK_CONN_TYPES[
-                'task_request']: self.__connection_for_task_request_failure,
-            TASK_CONN_TYPES[
-                'task_result']: self.__connection_for_task_result_failure,
-            TASK_CONN_TYPES[
-                'task_failure']: self.__connection_for_task_failure_failure,
-            TASK_CONN_TYPES[
-                'start_session']: self.__connection_for_start_session_failure,
-            TASK_CONN_TYPES[
-                'middleman']: self.__connection_for_middleman_failure,
-            TASK_CONN_TYPES[
-                'nat_punch']: self.__connection_for_nat_punch_failure,
+            TASK_CONN_TYPES['task_request']:
+                self.__connection_for_task_request_failure,
+            TASK_CONN_TYPES['task_result']:
+                self.__connection_for_task_result_failure,
+            TASK_CONN_TYPES['task_failure']:
+                self.__connection_for_task_failure_failure,
+            TASK_CONN_TYPES['start_session']:
+                self.__connection_for_start_session_failure,
+            TASK_CONN_TYPES['middleman']:
+                self.__connection_for_middleman_failure,
+            TASK_CONN_TYPES['nat_punch']:
+                self.__connection_for_nat_punch_failure,
             TASK_CONN_TYPES['payment']:
                 self.__connection_for_payment_failure,
             TASK_CONN_TYPES['payment_request']:
@@ -1230,18 +1239,22 @@ class TaskServer(PendingConnectionsServer):
 
     def _set_conn_final_failure(self):
         self.conn_final_failure_for_type.update({
-            TASK_CONN_TYPES[
-                'task_request']: self.__connection_for_task_request_final_failure,
-            TASK_CONN_TYPES[
-                'task_result']: self.__connection_for_task_result_final_failure,
-            TASK_CONN_TYPES[
-                'task_failure']: self.__connection_for_task_failure_final_failure,
-            TASK_CONN_TYPES[
-                'start_session']: self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['middleman']: self.noop,
-            TASK_CONN_TYPES['nat_punch']: self.noop,
-            TASK_CONN_TYPES['payment']: self.noop,
-            TASK_CONN_TYPES['payment_request']: self.noop,
+            TASK_CONN_TYPES['task_request']:
+                self.__connection_for_task_request_final_failure,
+            TASK_CONN_TYPES['task_result']:
+                self.__connection_for_task_result_final_failure,
+            TASK_CONN_TYPES['task_failure']:
+                self.__connection_for_task_failure_final_failure,
+            TASK_CONN_TYPES['start_session']:
+                self.__connection_for_start_session_final_failure,
+            TASK_CONN_TYPES['middleman']:
+                self.noop,
+            TASK_CONN_TYPES['nat_punch']:
+                self.noop,
+            TASK_CONN_TYPES['payment']:
+                self.noop,
+            TASK_CONN_TYPES['payment_request']:
+                self.noop,
         })
 
     def _set_listen_established(self):
