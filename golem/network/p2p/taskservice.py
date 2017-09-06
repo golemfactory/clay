@@ -110,14 +110,15 @@ class TaskService(WiredService):
         logger.debug('on_wire_protocol_start', proto=proto)
 
         # register callbacks
-        proto.receive_reject_callbacks(self.receive_reject)
-        proto.receive_task_request_callbacks(self.receive_task_request)
-        proto.receive_task_callbacks(self.receive_task)
-        proto.receive_failure_callbacks(self.receive_failure)
-        proto.receive_result_callbacks(self.receive_result)
-        proto.receive_accept_result_callbacks(self.receive_accept_result)
-        proto.receive_payment_request_callbacks(self.receive_payment_request)
-        proto.receive_payment_callbacks(self.receive_payment)
+        proto.receive_reject_callbacks.append(self.receive_reject)
+        proto.receive_task_request_callbacks.append(self.receive_task_request)
+        proto.receive_task_callbacks.append(self.receive_task)
+        proto.receive_failure_callbacks.append(self.receive_failure)
+        proto.receive_result_callbacks.append(self.receive_result)
+        proto.receive_accept_result_callbacks.append(self.receive_accept_result)
+        proto.receive_payment_request_callbacks.append(
+            self.receive_payment_request)
+        proto.receive_payment_callbacks.append(self.receive_payment)
 
         pubkey = proto.peer.remote_pubkey
         future = self._connecting.pop(pubkey, None)

@@ -7,6 +7,7 @@ from golem.core.simpleserializer import CBORSedes
 class TaskProtocol(BaseProtocol):
 
     protocol_id = 18318  # == GolemProtocol.protocol_id + 1
+    version = 1
     name = b'task_proto'
 
     def __init__(self, peer, service):
