@@ -90,7 +90,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         ccd.estimated_blender_performance = 2000.0
         ccd.estimated_lux_performance = 2000.0
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
+        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client, Mock(),
                                  use_docker_machine_manager=False)
         task_computer = task_server.task_computer
 

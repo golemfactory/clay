@@ -36,7 +36,6 @@ CORE_METHOD_MAP = dict(
     connection_status=      Network.status,
 
     get_p2p_port=           Network.p2p_port,
-    get_task_server_port=   Network.tasks_port,
 
     get_computing_trust=    Reputation.computing,
     get_requesting_trust=   Reputation.requesting,

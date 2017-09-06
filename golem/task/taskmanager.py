@@ -128,7 +128,8 @@ class TaskManager(TaskEventListener):
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
                                                self.listen_port):
-            raise IOError("Incorrect socket address")
+            raise IOError("Incorrect socket address: {}:{}"
+                          .format(self.listen_address, self.listen_port))
 
         task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
@@ -586,7 +587,8 @@ class TaskManager(TaskEventListener):
         return [sub.subtask_id for sub in
                 list(self.tasks_states[task_id].subtask_states.values())]
 
-    def change_config(self, root_path, use_distributed_resource_management):
+    def change_config(self, root_path,
+                      use_distributed_resource_management=True):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 

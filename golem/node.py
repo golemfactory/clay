@@ -29,7 +29,6 @@ class Node(object):
             geth_port=geth_port,
             **config_overrides
         )
-        self.client.connect()
 
         self.rpc_router = None
         self.rpc_session = None
@@ -44,6 +43,8 @@ class Node(object):
         from twisted.internet import reactor
 
         try:
+            self.client.start_devp2p()
+
             if use_rpc:
                 self._setup_rpc()
                 self._start_rpc_router()
@@ -62,17 +63,8 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
-        for peer in self._peers:
-            self.client.connect(peer)
+        self.client.start()
         self.client.sync()
-
-        try:
-            self.client.start()
-            for peer in self._peers:
-                self.client.connect(peer)
-        except SystemExit:
-            from twisted.internet import reactor
-            reactor.callFromThread(reactor.stop)
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter

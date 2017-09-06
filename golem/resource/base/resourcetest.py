@@ -84,9 +84,11 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         task_server_1 = TaskServer(Mock(), Mock(),
                                    self.client_1.keys_auth, self.client_1,
+                                   Mock(),
                                    use_docker_machine_manager=False)
         task_server_2 = TaskServer(Mock(), Mock(),
                                    self.client_2.keys_auth, self.client_2,
+                                   Mock(),
                                    use_docker_machine_manager=False)
 
         task_server_1.sync_network = task_server_2.sync_network = Mock()

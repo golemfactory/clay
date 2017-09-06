@@ -50,7 +50,7 @@ class TaskServer:
         )
 
         self.task_manager.listen_address = self.node.pub_addr
-        self.task_manager.listen_port = self.node.pub_port
+        self.task_manager.listen_port = self.client.get_p2p_port()
         self.task_manager.node = self.node
 
         self.task_sessions = {}
@@ -182,7 +182,7 @@ class TaskServer:
     def send_result(self, subtask_id, task_id, computing_time, result, owner):
 
         if subtask_id in self.results_to_send:
-            raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
+            raise RuntimeError("Unknown subtask_id: {}".format(subtask_id))
 
         Trust.REQUESTED.increase(owner.key)
 

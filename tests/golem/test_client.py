@@ -597,7 +597,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.keys_auth = Mock()
         client.keys_auth.key_id = str(uuid.uuid4())
         client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
-                                        Mock(), client,
+                                        Mock(), client, Mock(),
                                         use_docker_machine_manager=False)
         client.task_server = TaskServer(
             Node(),
