@@ -276,8 +276,8 @@ class TaskSession(MiddlemanSafeSession):
         logger.debug('inform_worker_about_payment(%r)', payment)
         if payment.details:
             logger.debug('payment.details: %r', payment.details)
-        transaction_id = payment.details.get('tx', None)
-        block_number = payment.details.get('block_number', None)
+        transaction_id = payment.details.tx
+        block_number = payment.details.block_number
         msg = message.MessageSubtaskPayment(
             subtask_id=payment.subtask,
             reward=payment.value,

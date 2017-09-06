@@ -10,7 +10,7 @@ from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
-from golem.model import KnownHosts, MAX_STORED_HOSTS
+from golem.model import MAX_STORED_HOSTS, KnownHosts
 from golem.network.p2p import peersession
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
@@ -19,22 +19,24 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
 
-class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/network/p2p/p2pservice.py',]
-
+class TestP2PService(testutils.DatabaseFixture):
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
         self.keys_auth = EllipticalKeysAuth(self.path)
-        self.service = P2PService(None, ClientConfigDescriptor(), self.keys_auth, connect_to_known_hosts=False)
+        self.service = P2PService(
+            None,
+            ClientConfigDescriptor(),
+            self.keys_auth,
+            connect_to_known_hosts=False)
 
     def test_find_node(self):
         node_key_id = uuid.uuid4()
 
         # find_node() without parameter
         node_session = peersession.PeerSession(conn=mock.MagicMock())
-        node_session.listen_port = random.randint(1, 2**16-1)
-        node_session.address = random.randint(1, 2**32-1)
+        node_session.listen_port = random.randint(1, 2**16 - 1)
+        node_session.address = random.randint(1, 2**32 - 1)
         node_session.node_name = 'approximately 16.8 million addresses'
         node_session.node_info = None
         self.service.peers = {
@@ -50,26 +52,30 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ]
         self.assertEqual(self.service.find_node(node_key_id=None), expected)
 
+        def randaddr() -> str:
+            def dig() -> int:
+                return random.randint(1, 255)
+
+            return '{}.{}.{}.{}'.format(dig(), dig(), dig(), dig())
+
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
         neighbour_node = Node(
             node_name='Syndrom wstrząsu toksycznego',
-            key=neighbour_node_key_id,
-            prv_addr=random.randint(1, 2**32-1),
-            prv_port=random.randint(1, 2**16-1)
-        )
-        self.service.peer_keeper.neighbours = mock.MagicMock(return_value=[
-            neighbour_node,
-        ])
-        expected = [
-            {
-                'address': neighbour_node.prv_addr,
-                'port': neighbour_node.prv_port,
-                'id': neighbour_node.key,
-                'node': neighbour_node,
-                'node_name': neighbour_node.node_name,
-            },
-        ]
+            key=str(neighbour_node_key_id),
+            prv_addr=randaddr(),
+            prv_port=random.randint(1, 2**16 - 1))
+        self.service.peer_keeper.neighbours = mock.MagicMock(
+            return_value=[
+                neighbour_node,
+            ])
+        expected = [{
+            'address': neighbour_node.prv_addr,
+            'port': neighbour_node.prv_port,
+            'id': neighbour_node.key,
+            'node': neighbour_node,
+            'node_name': neighbour_node.node_name,
+        }]
         self.assertEqual(self.service.find_node(node_key_id), expected)
 
     def test_add_to_peer_keeper(self):
@@ -104,7 +110,8 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
     def test_remove_old_peers(self):
         node = MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
+                                      "TESTPUB").get_key_id()
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -125,12 +132,14 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
+                                      "TESTPUB").get_key_id()
         node.key_id = node.key
         node.address = sa
 
         node2 = MagicMock()
-        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2", "TESTPUB2").get_key_id()
+        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2",
+                                       "TESTPUB2").get_key_id()
         node2.key_id = node2.key
         node2.address = sa
 
@@ -154,16 +163,17 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
+        key_id = EllipticalKeysAuth(self.path, "TESTPRIV",
+                                    "TESTPUB").get_key_id()
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
-            'super_node', key_id,
+            node_name='super_node',
+            key=str(key_id),
             pub_addr='1.2.3.4',
             prv_addr='1.2.3.4',
             pub_port=10000,
-            prv_port=10000
-        )
+            prv_port=10000)
         node.prv_addresses = [node.prv_addr, '172.1.2.3']
 
         assert Node.is_super_node(node)
@@ -199,12 +209,12 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
             pub = pub_prefix + i_str
             prv = prv_prefix + i_str
             n = Node(
-                i_str, key_id_str + i_str,
+                node_name=i_str,
+                key=key_id_str + i_str,
                 pub_addr=pub,
                 prv_addr=prv,
                 pub_port=10000,
-                prv_port=10000
-            )
+                prv_port=10000)
             self.service.add_known_peer(n, pub, n.prv_port)
 
         assert len(KnownHosts.select()) == MAX_STORED_HOSTS
@@ -212,7 +222,8 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
     def test_sync_free_peers(self):
         node = MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "PRIVTEST", "PUBTEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "PRIVTEST",
+                                      "PUBTEST").get_key_id()
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -237,9 +248,15 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.service.connect_to_seeds()
         time_ = time.time()
         last_time = self.service.last_time_tried_connect_with_seed
-        assert self.service.last_time_tried_connect_with_seed <= time_
-        assert time_ - self.service.last_time_tried_connect_with_seed < self.service.reconnect_with_seed_threshold
-        assert len(self.service.peers) == 0
+        self.assertLessEqual(
+            self.service.last_time_tried_connect_with_seed,
+            time_
+        )
+        self.assertLess(
+            time_ - self.service.last_time_tried_connect_with_seed,
+            self.service.reconnect_with_seed_threshold
+        )
+        self.assertEqual(len(self.service.peers), 0)
         self.service.sync_network()
         assert last_time == self.service.last_time_tried_connect_with_seed
         self.service.reconnect_with_seed_threshold = 0.1
@@ -249,11 +266,14 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
     def test_want_to_start_task_session(self):
         self.service.task_server = MagicMock()
-        self.service.task_server.task_connections_helper = TaskConnectionsHelper()
-        self.service.task_server.task_connections_helper.task_server = self.service.task_server
-        self.service.task_server.task_connections_helper.is_new_conn_request = Mock(side_effect=lambda *_: True)
+        self.service.task_server.task_connections_helper = \
+            TaskConnectionsHelper()
+        self.service.task_server.task_connections_helper.task_server = \
+            self.service.task_server
+        self.service.task_server.task_connections_helper \
+            .is_new_conn_request = Mock(side_effect=lambda *_: True)
 
-        def true_method(*args):
+        def true_method(*args) -> bool:
             return True
 
         key_id = str(uuid.uuid4())
@@ -272,11 +292,13 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
         self.service.want_to_start_task_session(key_id, node_info, conn_id)
         assert not peer.send_want_to_start_task_session.called
-        self.service.want_to_start_task_session(peer.key_id, node_info, conn_id)
+        self.service.want_to_start_task_session(peer.key_id, node_info,
+                                                conn_id)
         assert not peer.send_want_to_start_task_session.called
 
         peer.key_id = peer_id
-        self.service.want_to_start_task_session(peer.key_id, node_info, conn_id)
+        self.service.want_to_start_task_session(peer.key_id, node_info,
+                                                conn_id)
         assert peer.send_want_to_start_task_session.called
 
     def test_get_diagnostic(self):
@@ -290,7 +312,8 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
+                                        "PUBTESTPATH2")
         ps2.key_id = keys_auth2.key_id
         self.service.add_peer(keys_auth2.key_id, ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
@@ -337,16 +360,20 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.service.remove_task('task_id')
         assert p.send_remove_task.called
 
-        self.service.inform_about_nat_traverse_failure(str(uuid.uuid4()), 'res_key_id', 'conn_id')
+        self.service.inform_about_nat_traverse_failure(
+            str(uuid.uuid4()), 'res_key_id', 'conn_id')
         assert not p.send_inform_about_nat_traverse_failure.called
 
-        self.service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id', 'conn_id')
+        self.service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id',
+                                                       'conn_id')
         assert p.send_inform_about_nat_traverse_failure.called
 
-        self.service.inform_about_task_nat_hole(str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
+        self.service.inform_about_task_nat_hole(
+            str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
         assert not p.send_task_nat_hole.called
 
-        self.service.inform_about_task_nat_hole(p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
+        self.service.inform_about_task_nat_hole(
+            p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
         assert p.send_task_nat_hole.called
 
         self.service.send_nat_traverse_failure(p.key_id, 'conn_id')
@@ -364,13 +391,17 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
     def test_challenge_history_len(self):
         difficulty = self.service._get_difficulty("KEY_ID")
         for i in range(3):
-            challenge = self.service._get_challenge(self.keys_auth.get_key_id())
-            self.service.solve_challenge(self.keys_auth.get_key_id(), challenge, difficulty)
+            challenge = self.service._get_challenge(
+                self.keys_auth.get_key_id())
+            self.service.solve_challenge(self.keys_auth.get_key_id(),
+                                         challenge, difficulty)
         assert len(self.service.challenge_history) == 3
         assert self.service.last_challenge is not None
         for i in range(100):
-            challenge = self.service._get_challenge(self.keys_auth.get_key_id())
-            self.service.solve_challenge(self.keys_auth.get_key_id(), challenge, difficulty)
+            challenge = self.service._get_challenge(
+                self.keys_auth.get_key_id())
+            self.service.solve_challenge(self.keys_auth.get_key_id(),
+                                         challenge, difficulty)
 
         assert len(self.service.challenge_history) == HISTORY_LEN
 
@@ -385,25 +416,26 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         conn = MagicMock()
         peer = PeerSession(conn)
         peer.hello_called = False
+
         def fake_hello(self):
             self.hello_called = True
+
         import types
         peer.hello = types.MethodType(fake_hello, peer)
-        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
+                                       "PUBTESTPATH2")
         peer.key_id = keys_auth.key_id
         self.service.add_peer(keys_auth.key_id, peer)
         ccd = ClientConfigDescriptor()
         assert not peer.hello_called
         self.service.change_config(ccd)
-        assert not peer.hello_called # negative test
+        assert not peer.hello_called  # negative test
         ccd = ClientConfigDescriptor()
         ccd.node_name = "test sending hello on name change"
         self.service.change_config(ccd)
-        assert peer.hello_called # positive test
+        assert peer.hello_called  # positive test
 
     def test_disconnect(self):
-        self.service.peers = {
-            'peer_id': Mock()
-        }
+        self.service.peers = {'peer_id': Mock()}
         self.service.disconnect()
         assert self.service.peers['peer_id'].dropped.called

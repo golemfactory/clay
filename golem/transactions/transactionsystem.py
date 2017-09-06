@@ -1,5 +1,5 @@
 from golem.core.common import datetime_to_timestamp, to_unicode
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus, PaymentDetails
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
@@ -41,9 +41,9 @@ class TransactionSystem(object):
             subtask=subtask_id,
             payee=payee,
             value=value,
-            details={
-                'node_info': account_info.node_info,
-            }
+            details=PaymentDetails(
+                node_info=account_info.node_info,
+            )
         )
 
     def get_payments_list(self):
@@ -96,5 +96,5 @@ class TransactionSystem(object):
         self.incomes_keeper.run_once()
         return []
 
-    def sync(self):
+    def sync(self) -> None:
         pass

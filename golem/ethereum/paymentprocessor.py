@@ -188,7 +188,7 @@ class PaymentProcessor(Service):
             for sent_payment in Payment \
                     .select() \
                     .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = decode_hex(sent_payment.details['tx'])
+                transaction_hash = decode_hex(sent_payment.details.tx)
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
@@ -261,7 +261,7 @@ class PaymentProcessor(Service):
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent
-                payment.details['tx'] = encode_hex(h)
+                payment.details.tx = encode_hex(h)
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
                     payment.subtask,
@@ -302,9 +302,9 @@ class PaymentProcessor(Service):
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
-                        p.details['block_number'] = block_number
-                        p.details['block_hash'] = block_hash
-                        p.details['fee'] = fee
+                        p.details.block_number = block_number
+                        p.details.block_hash = block_hash
+                        p.details.fee = fee
                         p.save()
                         dispatcher.send(
                             signal='golem.monitor',

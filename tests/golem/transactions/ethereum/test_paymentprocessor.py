@@ -386,12 +386,12 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         receipt = {'blockNumber': 8214, 'blockHash': '0x' + 64*'f', 'gasUsed': 55001}
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
-        assert len(inprogress) == 0
-        assert p.status == PaymentStatus.confirmed
-        assert p.details['block_number'] == 8214
-        assert p.details['block_hash'] == 64*'f'
-        assert p.details['fee'] == 55001 * self.pp.GAS_PRICE
-        assert self.pp._gnt_reserved() == 0
+        self.assertEqual(len(inprogress), 0)
+        self.assertEqual(p.status, PaymentStatus.confirmed)
+        self.assertEqual(p.details.block_number, 8214)
+        self.assertEqual(p.details.block_hash, 64*'f')
+        self.assertEqual(p.details.fee, 55001 * self.pp.GAS_PRICE)
+        self.assertEqual(self.pp._gnt_reserved(), 0)
 
 
 class PaymentProcessorFunctionalTest(DatabaseFixture):
