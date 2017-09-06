@@ -3,7 +3,7 @@ from datetime import datetime
 from peewee import IntegrityError
 from golem.model import (Payment, PaymentStatus, LocalRank,
                          GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
-                         TaskPreset, PaymentDetails)
+                         TaskPreset, PaymentDetails )
 from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture, TempDirFixture
 
@@ -79,50 +79,6 @@ class TestPayment(DatabaseFixture):
         pd = PaymentDetails.from_dict(dct)
         self.assertIsInstance(pd.node_info, Node)
         self.assertEqual(p, pd)
-
-
-class TestReceivedPayment(DatabaseFixture):
-
-    def test_default_fields(self):
-        r = ReceivedPayment()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
-
-    def test_create(self):
-        r = ReceivedPayment(
-            from_node_id="DEF",
-            task="xyz",
-            val=4,
-            expected_val=3131,
-            state="SOMESTATE"
-        )
-        self.assertEqual(r.save(force_insert=True), 1)
-        with self.assertRaises(IntegrityError):
-            ReceivedPayment.create(
-                from_node_id="DEF",
-                task="xyz",
-                val=5,
-                expected_val=3132,
-                state="SOMESTATEX"
-            )
-        ReceivedPayment.create(
-            from_node_id="DEF",
-            task="xyz2",
-            val=5,
-            expected_val=3132,
-            state="SOMESTATEX"
-        )
-        ReceivedPayment.create(
-            from_node_id="DEF2",
-            task="xyz",
-            val=5,
-            expected_val=3132,
-            state="SOMESTATEX"
-        )
-
-        self.assertEqual(
-            len([payment for payment in ReceivedPayment.select()]), 3
-        )
 
 
 class TestLocalRank(DatabaseFixture):

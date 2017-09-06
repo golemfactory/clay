@@ -273,6 +273,8 @@ class Income(BaseModel):
             )
 
 
+
+
 ##################
 # RANKING MODELS #
 ##################
