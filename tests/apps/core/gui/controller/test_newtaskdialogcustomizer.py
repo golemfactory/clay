@@ -1,4 +1,5 @@
 import re
+import readline # workaround for issue #1338
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
