@@ -294,7 +294,7 @@ class TestTaskMonitor(TestDirFixture):
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", config_desc()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", config_desc()), MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = config_desc()
         task = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
