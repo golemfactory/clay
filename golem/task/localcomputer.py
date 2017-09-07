@@ -33,7 +33,7 @@ class LocalComputer(object):
                  comp_success_message=DEFAULT_SUCCESS,
                  use_task_resources=True,
                  additional_resources=None,
-                 tmp_dir: str=None):
+                 tmp_dir: str=None) -> None:  # if you provide tmp_dir, it has to be ready, ie already created
         # TODO as TODO on the top of the class says
         # if not isinstance(task, Task):
         #     raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
@@ -142,9 +142,9 @@ class LocalComputer(object):
     def __prepare_tmp_dir(self):
         if not self.tmp_dir:
             self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
-        if os.path.exists(self.tmp_dir):
-            shutil.rmtree(self.tmp_dir, True)
-        os.makedirs(self.tmp_dir)
+            if os.path.exists(self.tmp_dir):
+                shutil.rmtree(self.tmp_dir, True)
+            os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         return DockerTaskThread(self,

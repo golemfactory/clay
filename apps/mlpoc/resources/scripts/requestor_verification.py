@@ -1,17 +1,24 @@
-import imp
+import sys
 import itertools
 import os
 
 import numpy as np
+
 import params
 
+sys.path.append(os.path.join(params.RESOURCES_DIR, "code", "impl"))
+sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
+
+from impl import model, batchmanager, config, utils
 
 def compare_weights(model1: 'Model', model2: 'Model'):
     weights1 = model1.net.parameters()
     weights2 = model2.net.parameters()
 
     for x, y in zip(weights1, weights2):
-        assert (np.equal(x.data.numpy(), y.data.numpy()).all())
+        if not np.equal(x.data.numpy(), y.data.numpy()).all():
+            return False
+    return True
 
 
 def _hash_from_name(filepath: str):
@@ -31,18 +38,14 @@ def find_file_with_ext(ext, dir):
 
     raise Exception("In dir {} no file with ext {}".format(dir, ext))
 
+# TODO when writing verification code - remember to put output from task into RESOURCES_DIR/checkpoints
+def run():
+    serializer = model.ModelSerializer
 
-if __name__ == "__main__":
-
-    code_file = os.path.join(params.RESOURCES_DIR, "code", "impl")
-    impl = imp.load_source("code", code_file)
-
-    equals = []
-    serializer = impl.model.ModelSerializer
-
-    for checkpointdir in os.listdir(params.RESOURCES_DIR):
+    data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_files[0])
+    for checkpointdir in os.listdir(os.path.join(params.RESOURCES_DIR, "checkpoints")):
         # loading models
-        path = os.path.join(params.RESOURCES_DIR, checkpointdir)
+        path = os.path.join(params.RESOURCES_DIR, "checkpoints", checkpointdir)
         startmodel_name, endmodel_name = [find_file_with_ext(ext, path)
                                           for ext in ["begin", "end"]]
 
@@ -50,17 +53,21 @@ if __name__ == "__main__":
         endmodel = serializer.load(endmodel_name)
 
         # hashes checking
-        assert (str(serializer.get_model_hash(startmodel)) == _hash_from_name(startmodel_name))
-        assert (str(serializer.get_model_hash(endmodel)) == _hash_from_name(endmodel_name))
+        if not str(startmodel.get_hash()) == _hash_from_name(startmodel_name):
+            return False
+        if not str(endmodel.get_hash()) == _hash_from_name(endmodel_name):
+            return False
 
-        batch_manager = impl.batchmanager.IrisBatchManager(params.data_file)
+        batch_manager = batchmanager.IrisBatchManager(data_file)
 
         # one epoch of training
-        for i, (x, y) in enumerate(
-                itertools.islice(batch_manager, params.STEPS_PER_EPOCH)):
+        for i, (x, y) in enumerate(itertools.islice(batch_manager, config.STEPS_PER_EPOCH)):
             startmodel.run_one_batch(x, y)
 
         # weights checking
-        compare_weights(startmodel, endmodel)
+        if not compare_weights(startmodel, endmodel):
+            return False
 
-        # print(utils.bcolors.BOLD + utils.bcolors.OKGREEN + "All test passed" + utils.bcolors.ENDC)
+        print(utils.bcolors.BOLD + utils.bcolors.OKGREEN + "All test passed" + utils.bcolors.ENDC)
+        return True
+result = run()

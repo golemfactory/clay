@@ -32,7 +32,7 @@ def run_one_update():
 # check if any new messages were added - if yes, update results.dat file
 def run():
     while (True):
-        time.sleep(0.5)
+        time.sleep(params.EVENT_LOOP_SLEEP)
         if os.path.exists(params.SIGNAL_FILE):
             os.remove(params.SIGNAL_FILE)
             for _ in range(params.SIMULTANEOUS_UPDATES_NUM):

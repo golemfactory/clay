@@ -56,6 +56,7 @@ class MLPOCTask(CoreTask):
     RESULT_EXT = ".result"
     BLACK_BOX = Mock # CountingBlackBox  # black box class, not instance
     BATCH_MANAGER = Mock # IrisBatchManager  # batch manager class, not instace
+    INFTY = 10000000
 
     def __init__(self,
                  total_tasks: int,
@@ -67,6 +68,8 @@ class MLPOCTask(CoreTask):
                  owner_port=0,
                  owner_key_id=""
                  ):
+
+        self.BATCH_MANAGER.get_order_of_batches = lambda *_: list(range(100)) # remove that when batchmanager will be real
         super().__init__(
             task_definition=task_definition,
             node_name=node_name,
@@ -79,7 +82,7 @@ class MLPOCTask(CoreTask):
 
         dm = DirManager(root_path)
         self.spearmint_path = dm.get_task_temporary_dir(task_definition.task_id)
-        self.run_spearmint_in_background(self.spearmint_path)
+        self.local_spearmint = self.run_spearmint_in_background(self.spearmint_path)
 
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
@@ -94,30 +97,32 @@ class MLPOCTask(CoreTask):
         ctd.docker_images = env.docker_images
         ctd.src_code = src_code
         ctd.working_directory = ""  # we should set not working directory, but LocalComputer.temp_dir
-        INFTY = 10000
-        ctd.deadline = timeout_to_deadline(INFTY)
+        ctd.deadline = timeout_to_deadline(self.INFTY)
 
         # EXPERIMENT_DIR - dir with config.json
         # SIGNAL_FILE - file which signalizes the change in results.dat
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
+        # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
         ctd.extra_data["EXPERIMENT_DIR"] = "/golem/work/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem/work" from DockerTaskThread
         ctd.extra_data["SIGNAL_FILE"] = "/golem/work/" + self.SPEARMINT_SIGNAL_FILE  # TODO change that, as ^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
+        ctd.extra_data["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
 
     def run_spearmint_in_background(self, tmp_path):
         local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        os.path.join(self.spearmint_path, "root"),  # TODO check if it is really needed
-                                        lambda *_: self.__restart_spearmint_pos(),
-                                        lambda *_: self.__restart_spearmint_neg(),
-                                        lambda: self.__spearmint_ctd(),
-                                        use_task_resources=False,
-                                        additional_resources=None,
-                                        tmp_dir=os.path.join(self.spearmint_path, "tmp"))
+                                             "",  # os.path.join(self.spearmint_path),  # TODO i think it is not really needed
+                                             lambda *_: self.__restart_spearmint_pos(),
+                                             lambda *_: self.__restart_spearmint_neg(),
+                                             lambda: self.__spearmint_ctd(),
+                                             use_task_resources=False,
+                                             additional_resources=None,
+                                             tmp_dir=self.spearmint_path)
         experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
-        os.makedirs(experiment_dir)
+        os.makedirs(experiment_dir) # experiment dir has to be AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
         spearmint_utils.create_conf(experiment_dir)
-        local_spearmint.run()
+        # local_spearmint.run()
+        return local_spearmint
 
     def __restart_spearmint_pos(self):
         logger.warning("Spearmint docker was restarted positively. WRONG!")
@@ -145,7 +150,7 @@ class MLPOCTask(CoreTask):
             self.task_definition.options.probability_of_save,
             self.task_definition.options.number_of_epochs
         )
-        batch_manager = self.BATCH_MANAGER(self.shared_data_files)
+        batch_manager = self.BATCH_MANAGER(self.task_definition.shared_data_files)
 
         network_conf = self.__get_next_network_config()
 
@@ -219,7 +224,7 @@ class MLPOCTask(CoreTask):
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
         assert data["message_type"] == "MLPOCBlackBoxAskMessage"
-        answer = self.black_box[subtask_id].save(
+        answer = self.subtasks_given[subtask_id]["black_box"].save(
             params_hash=data["params_hash"],
             number_of_epoch=data["number_of_epoch"])
         return MLPOCBlackBoxAnswerMessage.new_message(answer)

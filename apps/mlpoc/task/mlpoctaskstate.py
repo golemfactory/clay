@@ -15,7 +15,8 @@ class MLPOCTaskDefaults(TaskDefaults):
     def __init__(self):
         super(MLPOCTaskDefaults, self).__init__()
         self.options = MLPOCTaskOptions()
-
+        self.options.steps_per_epoch = 10
+        self.options.number_of_epochs = 5
         self.shared_data_files = ["IRIS.data"]
         self.default_subtasks = 5
         self.code_dir = os.path.join(get_golem_path(),
@@ -83,3 +84,4 @@ class MLPOCTaskOptions(Options):
         self.environment = MLPOCTorchEnvironment()
         self.steps_per_epoch = 0
         self.number_of_epochs = 0
+        self.probability_of_save = 0 # TODO set that dynamically

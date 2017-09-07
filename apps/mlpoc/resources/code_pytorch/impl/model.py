@@ -16,7 +16,9 @@ from .config import (BATCH_SIZE,
 from .hash import PyTorchHash, StateHash
 from .net import Net
 from .utils import derandom
-from ..params import network_configuration
+
+
+from params import network_configuration
 
 
 class Model(metaclass=abc.ABCMeta):
@@ -160,13 +162,13 @@ class HonestModelRunner(object):
                  shared_path: str,
                  data_file: str,
                  save_model_as_dict=True,
-                 number_of_epochs=network_configuration.NUM_EPOCHS):
+                 number_of_epochs=network_configuration["NUM_EPOCHS"]):
 
         self.black_box = BlackBoxFileCallback()
         self.batch_manager = IrisBatchManager(data_file)
 
         self.model = IrisSimpleModel(self.batch_manager.get_input_size(),
-                                     network_configuration.HIDDEN_SIZE,
+                                     network_configuration["HIDDEN_SIZE"],
                                      NUM_CLASSES,
                                      LEARNING_RATE)
 
@@ -180,7 +182,7 @@ class HonestModelRunner(object):
             self.state.update_before(deepcopy(self.model))
 
             for i, (x, y) in enumerate(
-                    itertools.islice(self.batch_manager, network_configuration.STEPS_PER_EPOCH)):
+                    itertools.islice(self.batch_manager, network_configuration["STEPS_PER_EPOCH"])):
                 self.model.run_one_batch(x, y)
 
             self.state.update_after(deepcopy(self.model))
