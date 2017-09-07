@@ -237,10 +237,54 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert not correct
         assert err == "Subtask timeout is less than 0"
 
+    def test_task_limit(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        limit = tk.max_tasks_per_requestor
 
-def get_dict_task_header():
+        thd = get_dict_task_header("ta0")
+        thd["deadline"] = timeout_to_deadline(0.1)
+        tk.add_task_header(thd)
+
+        for i in range(1, limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        thd = get_dict_task_header("tb0")
+        thd["task_owner_key_id"] = "zzzz"
+        tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        self.assertIn("tb0", tk.task_headers)
+
+        thd = get_dict_task_header("ta%d" % limit)
+        tk.add_task_header(thd)
+        self.assertNotIn("ta%d" % limit, tk.task_headers)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+        time.sleep(0.1)
+        tk.remove_old_tasks()
+
+        thd = get_dict_task_header("ta%d" % (limit + 1))
+        tk.add_task_header(thd)
+        self.assertIn("ta%d" % (limit + 1), tk.task_headers)
+
+        self.assertNotIn("ta0", tk.task_headers)
+        for i in range(1, limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+
+def get_dict_task_header(task_id="xyz"):
     return {
-        "task_id": "xyz",
+        "task_id": task_id,
         "node_name": "ABC",
         "task_owner": dict(),
         "task_owner_address": "10.10.10.10",
