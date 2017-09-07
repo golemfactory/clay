@@ -1,3 +1,5 @@
+from golem.core.variables import APP_NAME, APP_VERSION
+
 p2pconfig = {
     "discovery": {
         "listen_host": "0.0.0.0",
@@ -10,5 +12,6 @@ p2pconfig = {
         "min_peers": 3,
         "max_peers": 5
     },
-    "log_disconnects": True
+    "log_disconnects": True,
+    "client_version_string": '{} {}'.format(APP_NAME, APP_VERSION)
 }

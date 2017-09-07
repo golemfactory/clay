@@ -234,7 +234,10 @@ class TaskServer:
                 self.send_task_failed(subtask_id, task_id, str(exc), owner)
 
         request = AsyncRequest(task_result_manager.create,
-                               self.node, result,
+                               self.node,
+                               # FIXME: introduced for backwards compatibility
+                               TaskResultWrapper(task_id, subtask_id,
+                                                 result, owner),
                                client_options=resource_options,
                                key_or_secret=resource_secret)
 
@@ -355,7 +358,8 @@ class TaskServer:
             logger.warning("Unknown payment address of %r (%r). Subtask: %r", account_info.node_name, account_info.addr, subtask_id)
             return
 
-        payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
+        payment = self.client.transaction_system.add_payment_info(
+            task_id, subtask_id, value, account_info)
         logger.debug('Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
         return payment
 
@@ -464,9 +468,10 @@ class TaskServer:
 
             elem._last_try = datetime.datetime.now()
             subtask_id = subtask_id_getter(elem)
-            session = self.task_sessions[subtask_id]
+            session = self.task_sessions.get(subtask_id)
 
-            logger.debug('_send_waiting() session:%r', len(session))
+            logger.debug('_send_waiting() session:%r',
+                         len(session) if session else None)
 
             if session:
                 cb(session, elem)
@@ -536,7 +541,7 @@ class TaskServer:
 
     def _send_result(self, session, wtr):
         self.task_sessions[wtr.subtask_id] = session
-        self.results_to_send.pop(wtr.subtask_id)
+        self.results_to_send.pop(wtr.subtask_id, None)
         self.task_service.send_result(
             session,
             wtr.subtask_id,
@@ -569,7 +574,7 @@ class TaskServer:
         self.failures_to_send.clear()
 
     def _send_failure(self, session, wtf):
-        self.failures_to_send.pop(wtf.subtask_id)
+        self.failures_to_send.pop(wtf.subtask_id, None)
         self.task_service.send_failure(session, wtf.subtask_id, wtf.err_msg)
 
     @staticmethod
@@ -617,3 +622,15 @@ class WaitingTaskFailure(object):
         self.subtask_id = subtask_id
         self.owner = owner
         self.err_msg = err_msg
+
+
+class TaskResultWrapper:
+
+    def __init__(self, task_id, subtask_id, result, owner):
+
+        self.task_id = task_id
+        self.subtask_id = subtask_id
+        self.result = result['data']
+        self.result_type = result['result_type']
+        self.owner = owner
+        self.owner_key_id = owner.key

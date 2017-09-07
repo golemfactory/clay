@@ -1,7 +1,11 @@
+from devp2p import slogging
 from devp2p.protocol import BaseProtocol
 from rlp import sedes
 
+from golem.core.common import to_unicode
 from golem.core.simpleserializer import CBORSedes
+
+logger = slogging.get_logger('golem.protocol')
 
 
 class TaskProtocol(BaseProtocol):
@@ -45,6 +49,12 @@ class TaskProtocol(BaseProtocol):
             ('max_cpus', sedes.big_endian_int)
         ]
 
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['task_id'] = to_unicode(decoded['task_id'])
+            return decoded
+
     class task(BaseProtocol.command):
         """
         ComputeTaskDef and resources,
@@ -58,6 +68,19 @@ class TaskProtocol(BaseProtocol):
             ('resource_options', CBORSedes)
         ]
 
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            try:
+                ctd = decoded['definition']
+                ctd.task_id = to_unicode(ctd.task_id)
+                ctd.subtask_id = to_unicode(ctd.subtask_id)
+                ctd.key_id = to_unicode(ctd.key_id)
+                ctd.task_owner.key = to_unicode(ctd.task_owner.key)
+            except Exception as exc:
+                logger.error("Error decoding task definition %s", exc)
+            return decoded
+
     class failure(BaseProtocol.command):
         """
         Computation failure,
@@ -69,6 +92,12 @@ class TaskProtocol(BaseProtocol):
             ('reason', sedes.binary)
         ]
 
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
+            return decoded
+
     class result(BaseProtocol.command):
         """
         Task computation result,
@@ -78,12 +107,20 @@ class TaskProtocol(BaseProtocol):
 
         structure = [
             ('subtask_id', sedes.binary),
-            ('computation_time', sedes.big_endian_int),
+            ('computation_time', CBORSedes),
             ('resource_hash', sedes.binary),
             ('resource_secret', sedes.binary),
             ('resource_options', CBORSedes),
             ('eth_account', sedes.binary)
         ]
+
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
+            decoded['resource_hash'] = to_unicode(decoded['resource_hash'])
+            decoded['eth_account'] = to_unicode(decoded['eth_account'])
+            return decoded
 
     class accept_result(BaseProtocol.command):
         """
@@ -94,8 +131,14 @@ class TaskProtocol(BaseProtocol):
 
         structure = [
             ('subtask_id', sedes.binary),
-            ('remuneration', sedes.big_endian_int)
+            ('remuneration', CBORSedes)
         ]
+
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
+            return decoded
 
     class payment_request(BaseProtocol.command):
         """
@@ -107,6 +150,12 @@ class TaskProtocol(BaseProtocol):
         structure = [
             ('subtask_id', sedes.binary),
         ]
+
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
+            return decoded
 
     class payment(BaseProtocol.command):
         """
@@ -121,3 +170,10 @@ class TaskProtocol(BaseProtocol):
             ('remuneration', sedes.big_endian_int),
             ('block_number', sedes.binary)
         ]
+
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
+            decoded['transaction_id'] = to_unicode(decoded['transaction_id'])
+            return decoded

@@ -9,7 +9,7 @@ from golem.network.p2p.taskprotocol import TaskProtocol
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskbase import result_types, ComputeTaskDef
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.utils import decode_hex
+from golem.utils import decode_hex, encode_hex
 
 logger = slogging.get_logger('golem.service')
 
@@ -62,6 +62,10 @@ class TaskService(WiredService):
         self.task_computer = None
 
         self._connecting = dict()
+
+        # FIXME: remove
+        from golem.network.p2p.debug import log_all
+        log_all(self)
 
     def set_task_server(self, task_server):
         self.task_server = task_server
@@ -188,18 +192,30 @@ class TaskService(WiredService):
 
     def _receive_reject_task_request(self, proto, reason, payload):
         task_id = payload
-        # TODO: Convert reason enum to message
-        self.task_computer.task_request_rejected(task_id, reason)
-        self.task_server.remove_task_header(task_id)
-        self.task_computer.session_closed()
+
+        if reason != TaskRequestRejection.DOWNLOADING_RESULT:
+            # TODO: Convert reason int to message str
+            logger.warning('Task %s request rejected: %r', task_id, reason)
+
+            self.task_computer.task_request_rejected(task_id, reason)
+            self.task_server.remove_task_header(task_id)
+            self.task_computer.session_closed()
 
     # ======================================================================== #
     #                                  TASK
     # ======================================================================== #
 
-    @staticmethod
-    def send_task(proto, ctd):
-        proto.send_task(ctd)
+    def send_task(self, proto, ctd):
+        client = self.task_server.client
+        key_id = encode_hex(self.task_server.keys_auth.public_key)
+
+        resource_manager = client.resource_server.resource_manager
+        client_options = resource_manager.build_client_options(key_id)
+
+        resources = resource_manager.get_resources(ctd.task_id)
+        resources = resource_manager.to_wire(resources)
+
+        proto.send_task(ctd, resources, client_options)
 
     def receive_task(self, proto, definition, resources, resource_options):
 
@@ -237,7 +253,8 @@ class TaskService(WiredService):
         subtask_id = payload
 
         if self.task_manager.get_node_id_for_subtask(subtask_id) == pubkey:
-            msg = 'Task computation rejected: {}'.format(reason)
+            msg = 'Subtask computation rejected: {}'.format(reason)
+            logger.error(msg)
             self.task_manager.task_computation_failure(subtask_id, msg)
 
     # ======================================================================== #
@@ -253,7 +270,7 @@ class TaskService(WiredService):
 
     def receive_result(self, proto, subtask_id, computation_time,
                        resource_hash, resource_secret, resource_options,
-                       node_info, eth_account):
+                       eth_account):
 
         logger.debug("Task result: received hash %r (options: %r)",
                      resource_hash, resource_options)
@@ -271,7 +288,8 @@ class TaskService(WiredService):
                          .format(extracted_pkg.__dict__))
 
             metadata = extracted_pkg.to_extra_data()
-            self._result_downloaded(proto, subtask_id, metadata)
+            self._result_downloaded(proto, subtask_id, metadata,
+                                    computation_time)
 
         def on_error(exc, *args, **kwargs):
             logger.error("Task result: error downloading {} ({})"
@@ -284,9 +302,7 @@ class TaskService(WiredService):
             self.send_reject_result(proto, subtask_id,
                                     ResultRejection.DOWNLOAD_FAILED)
 
-        self._set_eth_account(proto, node_info, eth_account)
-        self.task_server.receive_subtask_computation_time(
-            subtask_id, computation_time)
+        self._set_eth_account(proto, eth_account)
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
@@ -391,6 +407,11 @@ class TaskService(WiredService):
             block_number=block_number
         )
 
+    @staticmethod
+    def _receive_reject_payment(proto, reason, subtask_id):
+        logger.warning('Received payment rejection for subtask %s: %s',
+                       subtask_id, reason)
+
     # ======================================================================== #
     #                                 REJECT
     # ======================================================================== #
@@ -399,7 +420,7 @@ class TaskService(WiredService):
     def send_reject(proto, cmd_id, reason, payload, drop_peer=False):
         proto.send_reject(cmd_id, reason, payload)
         if drop_peer:
-            proto.send_disconnect(proto.disconnect.reason.useless_peer)
+            pass  # TODO: should we drop peers here?
 
     def receive_reject(self, proto, cmd_id, reason, payload):
         # Task request rejected
@@ -414,6 +435,9 @@ class TaskService(WiredService):
         # Payment request rejected
         elif cmd_id == TaskProtocol.payment_request.cmd_id:
             return self._receive_reject_payment_request(proto, reason, payload)
+        # Payment message rejected
+        elif cmd_id == TaskProtocol.payment.cmd_id:
+            return self._receive_reject_payment(proto, reason, payload)
 
         logger.warning('Received a rejection of an unknown request type: %d',
                        cmd_id)
@@ -421,7 +445,7 @@ class TaskService(WiredService):
     # ======================================================================== #
     # ======================================================================== #
 
-    def _result_downloaded(self, proto, subtask_id, metadata):
+    def _result_downloaded(self, proto, subtask_id, metadata, computation_time):
         result = metadata.get('result')
         result_type = metadata.get("result_type")
         result_subtask_id = metadata.get("subtask_id")
@@ -446,14 +470,26 @@ class TaskService(WiredService):
 
         payment = self.task_server.accept_result(subtask_id,
                                                  proto.eth_account_info)
+        self.task_server.receive_subtask_computation_time(subtask_id,
+                                                          computation_time)
 
-        self.send_accept_result(proto, subtask_id, payment.value)
+        if payment:
+            payment_value = payment.value
+        else:
+            logger.warning('No payment created for subtask %s', subtask_id)
+            payment_value = None
+
+        self.send_accept_result(proto, subtask_id, payment_value)
 
     @staticmethod
     def _validate_ctd(ctd, pubkey):
         if not isinstance(ctd, ComputeTaskDef):
             raise ValueError(TaskRejection.INVALID_CTD)
-        if ctd.key_id != pubkey or ctd.task_owner.key != pubkey:
+
+        key_id = decode_hex(ctd.key_id)
+        key = decode_hex(ctd.task_owner.key)
+
+        if key_id != pubkey or key != pubkey:
             raise ValueError(TaskRejection.INVALID_PUBKEY)
         if not SocketAddress.is_proper_address(ctd.return_address,
                                                ctd.return_port):
@@ -489,10 +525,10 @@ class TaskService(WiredService):
         if not ctd.src_code:
             raise RuntimeError(TaskRejection.MISSING_SOURCE_CODE)
 
-    def _set_eth_account(self, proto, node_info, eth_account):
+    def _set_eth_account(self, proto, eth_account):
         pubkey = proto.peer.remote_pubkey
         name = proto.peer.node_name
         ip, port = proto.peer.connection.getpeername()
-        account = EthAccountInfo(pubkey, port, ip, name, node_info, eth_account)
+        account = EthAccountInfo(pubkey, port, ip, name, None, eth_account)
 
         proto.eth_account_info = account

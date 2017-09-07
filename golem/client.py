@@ -280,7 +280,7 @@ class Client(BaseApp, HardwarePresetsMixin):
             self.keys_auth._private_key)
         self.config['node']['pubkey_hex'] = encode_hex(
             self.keys_auth.public_key)
-        self.config['node']['id'] = encode_hex(self.keys_auth.public_key)
+        self.config['node']['id'] = self.config['node']['pubkey_hex']
         self.config['node']['node_name'] = self.config_desc.node_name
 
         self.config['discovery']['bootstrap_nodes'].append(
