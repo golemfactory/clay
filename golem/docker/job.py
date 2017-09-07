@@ -349,6 +349,11 @@ class DockerJob(object):
         return contents
 
     def clean_work_files(self, dir):
+        if dir.startswith("work/"):
+            dir = dir.split("work/")[1]
+        if dir.startswith("/golem/work/"):
+            dir = dir.split("/golem/work/")[1]
+
         dir = os.path.join(self.work_dir, dir)
         try:
             for f in os.listdir(dir):

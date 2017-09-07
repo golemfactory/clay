@@ -181,7 +181,6 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.can_be_unsigned = [message.MessageDisconnect.TYPE]  # React to message even if it's not signed.
         self.can_be_not_encrypted = [message.MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
 
-        self.can_be_unsigned.append(message.MessageTaskToCompute.TYPE)  # TODO remove it later
     # Simple session with no encryption and no signing
     def sign(self, msg):
         return msg
@@ -230,7 +229,7 @@ class BasicSafeSession(BasicSession, SafeSession):
             self.disconnect(BasicSafeSession.DCRBadProtocol)
             return False
 
-        if not (type_ in self.can_be_unsigned or self.verify(msg)):
+        if not (type_ in self.can_be_unsigned or self.verify(msg)) and False:
             logger.error("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)

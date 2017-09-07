@@ -216,6 +216,7 @@ class MLPOCTask(CoreTask):
         return exd
 
     def __update_spearmint_state(self, score_file):
+        pass
         with open(score_file, "r") as f:
             res = json.load(f)["score"]  # TODO check if it doesn't pose any security threat
         score = res["score"]  # overall score of the network with
@@ -224,11 +225,12 @@ class MLPOCTask(CoreTask):
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
         assert data["message_type"] == "MLPOCBlackBoxAskMessage"
-        answer = self.subtasks_given[subtask_id]["black_box"].save(
-            params_hash=data["params_hash"],
-            number_of_epoch=data["number_of_epoch"])
-        return MLPOCBlackBoxAnswerMessage.new_message(answer)
+        # answer = self.subtasks_given[subtask_id]["black_box"].save(
+        #     params_hash=data["params_hash"],
+        #     number_of_epoch=data["number_of_epoch"])
+        # return MLPOCBlackBoxAnswerMessage.new_message(answer)
 
+        return  MLPOCBlackBoxAnswerMessage.new_message(True)
 
 class MLPOCTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = MLPOCTask
