@@ -16,8 +16,6 @@ from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
-from golem.resource.dirmanager import DirManager
-from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
@@ -629,32 +627,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         self.assertIsInstance(c.get_public_key(), bytes)
         self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
-
-    def test_directories(self, *_):
-        c = self.client
-
-        c.resource_server = ResourceServer.__new__(ResourceServer)
-        c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
-
-        self.assertIsInstance(c.get_datadir(), str)
-        self.assertIsInstance(c.get_dir_manager(), DirManager)
-
-        res_dirs = c.get_res_dirs()
-
-        self.assertIsInstance(res_dirs, dict)
-        self.assertTrue(len(res_dirs) == 3)
-
-        for key, value in list(res_dirs.items()):
-            self.assertIsInstance(key, str)
-            self.assertIsInstance(value, str)
-            self.assertTrue(self.path in value)
-
-        res_dir_sizes = c.get_res_dirs_sizes()
-
-        for key, value in list(res_dir_sizes.items()):
-            self.assertIsInstance(key, str)
-            self.assertIsInstance(value, str)
-            self.assertTrue(key in res_dirs)
 
     def test_get_estimated_cost(self, *_):
         c = self.client

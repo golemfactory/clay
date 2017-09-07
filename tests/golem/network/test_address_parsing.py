@@ -2,7 +2,7 @@ import sys
 import unittest
 from ipaddress import AddressValueError
 
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 
 
 class TestSocketAddressParsing(unittest.TestCase):

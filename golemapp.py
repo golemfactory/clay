@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 import sys
 
-from golem.network.transport.message import init_messages
-init_messages()
-
 import click
 from multiprocessing import freeze_support
 import logging

@@ -2,7 +2,6 @@ import datetime
 import os
 import random
 import uuid
-from collections import deque
 from math import ceil
 
 from mock import Mock, MagicMock, patch, ANY
@@ -14,12 +13,8 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
-from golem.network.stun.pystun import FullCone
-from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
-from golem.task.tasksession import TaskSession
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -179,26 +174,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.decrease_trust_payment("xyz")
         self.assertGreater(trust.PAYMENT.decrease.call_count, prev_call_count)
 
-    def test_connection_for_task_request_established(self):
-        ccd = self._get_config_desc()
-        ccd.min_price = 11
-        n = Node()
-        ka = EllipticalKeysAuth(self.path)
-        ts = TaskServer(n, ccd, ka, self.client,
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        session = Mock()
-        session.address = "10.10.10.10"
-        session.port = 1020
-        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
-            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
-        self.assertEqual(session.task_id, "xyz")
-        self.assertEqual(session.key_id, "key")
-        self.assertEqual(session.conn_id, "abc")
-        self.assertEqual(ts.task_sessions["xyz"], session)
-        session.send_hello.assert_called_with()
-        session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3, 1, 2)
-
     def test_change_config(self):
         ccd = self._get_config_desc()
         ccd.task_session_timeout = 40
@@ -278,50 +253,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
                         use_docker_machine_manager=False)
         self.ts = ts
         ts.sync_network()
-
-    def test_traverse_nat(self):
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address, "10.10.10.10")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port, 1312)
-
-    def test_forwarded_session_requests(self):
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-
-        key_id = str(uuid.uuid4())
-        conn_id = str(uuid.uuid4())
-        subtask_id = str(uuid.uuid4())
-
-        ts.add_forwarded_session_request(key_id, conn_id)
-        self.assertEqual(len(ts.forwarded_session_requests), 1)
-
-        ts.forwarded_session_requests[key_id]['time'] = 0
-        ts._sync_forwarded_session_requests()
-        self.assertEqual(len(ts.forwarded_session_requests), 0)
-
-        ts.add_forwarded_session_request(key_id, conn_id)
-        ts.forwarded_session_requests[key_id] = None
-        ts._sync_forwarded_session_requests()
-        self.assertEqual(len(ts.forwarded_session_requests), 0)
-
-        session = MagicMock()
-        session.address = '127.0.0.1'
-        session.port = 65535
-
-        ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
-            session, conn_id, key_id, subtask_id, "None"
-        )
-        self.assertEqual(ts.task_sessions[subtask_id], session)
 
     def test_retry_sending_task_result(self):
         ccd = self._get_config_desc()
@@ -412,36 +343,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.add_task_session(subtask_id, session)
         self.assertIsNotNone(ts.task_sessions[subtask_id])
 
-    def test_initiate_nat_traversal(self):
-        ccd = self._get_config_desc()
-        node = Node()
-        node.nat_type = FullCone
-
-        ts = TaskServer(node, ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts._add_pending_request = Mock()
-
-        initiate = ts._TaskServer__initiate_nat_traversal
-
-        key_id = 'key_id'
-        node_info = {}
-        super_node_info = Mock()
-        ans_conn_id = 'conn_id'
-
-        initiate(key_id, node_info, None, ans_conn_id)
-        self.assertFalse(ts._add_pending_request.called)
-
-        initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
-                                                   ANY, ANY, ANY, ANY)
-
-        node.nat_type = None
-        initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
-                                                   ANY, ANY, ANY, ANY)
-
     def test_remove_task_session(self):
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
@@ -456,146 +357,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.remove_task_session(session)
         ts.task_sessions['task'] = session
         ts.remove_task_session(session)
-
-    def test_respond_to(self):
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        session = Mock()
-
-        ts.respond_to('key_id', session, 'conn_id')
-        self.assertTrue(session.dropped.called)
-
-        session.dropped.called = False
-        ts.response_list['conn_id'] = deque([lambda *_: lambda x: x])
-        ts.respond_to('key_id', session, 'conn_id')
-        self.assertFalse(session.dropped.called)
-
-    def test_conn_for_task_failure_established(self):
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        session = Mock()
-        session.address = '127.0.0.1'
-        session.port = 40102
-
-        method = ts._TaskServer__connection_for_task_failure_established
-        method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
-
-        self.assertEqual(session.key_id, 'key_id')
-        self.assertIn('subtask_id', ts.task_sessions)
-        self.assertTrue(session.send_hello.called)
-        session.send_task_failure.assert_called_once_with('subtask_id', 'err_msg')
-
-    def test_conn_for_start_session_failure(self):
-
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts.final_conn_failure = Mock()
-
-        method = ts._TaskServer__connection_for_start_session_failure
-        method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
-
-        ts.final_conn_failure.assert_called_with('conn_id')
-
-    def test_conn_final_failures(self):
-
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts.final_conn_failure = Mock()
-        ts.task_computer = Mock()
-
-        method = ts._TaskServer__connection_for_resource_request_final_failure
-        method('conn_id', 'key_id', 'subtask_id', Mock())
-
-        ts.task_computer.resource_request_rejected.assert_called_once_with('subtask_id', ANY)
-
-        ts.remove_pending_conn = Mock()
-        ts.remove_responses = Mock()
-
-        method = ts._TaskServer__connection_for_result_rejected_final_failure
-        method('conn_id', 'key_id', 'subtask_id')
-
-        self.assertTrue(ts.remove_pending_conn.called)
-        self.assertTrue(ts.remove_responses.called_)
-        ts.remove_pending_conn.called = False
-        ts.remove_responses.called = False
-
-        method = ts._TaskServer__connection_for_task_result_final_failure
-        wtr = Mock()
-        method('conn_id', wtr)
-
-        self.assertTrue(ts.remove_pending_conn.called)
-        self.assertTrue(ts.remove_responses.called)
-        self.assertFalse(wtr.alreadySending)
-        self.assertTrue(wtr.lastSendingTrial)
-
-        ts.remove_pending_conn.called = False
-        ts.remove_responses.called = False
-
-        method = ts._TaskServer__connection_for_task_failure_final_failure
-        method('conn_id', 'key_id', 'subtask_id', 'err_msg')
-
-        self.assertTrue(ts.remove_pending_conn.called)
-        self.assertTrue(ts.remove_responses.called)
-        self.assertTrue(ts.task_computer.session_timeout.called)
-        ts.remove_pending_conn.called = False
-        ts.remove_responses.called = False
-        ts.task_computer.session_timeout.called = False
-
-        method = ts._TaskServer__connection_for_start_session_final_failure
-        method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
-
-        self.assertTrue(ts.remove_pending_conn.called)
-        self.assertTrue(ts.remove_responses.called)
-        self.assertTrue(ts.task_computer.session_timeout.called)
-
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
-        method = ts._TaskServer__connection_for_task_request_final_failure
-        method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
-               1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
-
-    def test_task_result_connection_failure(self):
-        """Tests what happens after connection failure when sending task_result"""
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client,  Mock(),
-                        use_docker_machine_manager=False)
-        ts.network = MagicMock()
-        ts.final_conn_failure = Mock()
-        ts.task_computer = Mock()
-
-        # Always fail on listening
-        from golem.network.transport import tcpnetwork
-        ts.network.listen = MagicMock(
-            side_effect=lambda listen_info, waiting_task_result:
-                tcpnetwork.TCPNetwork.__call_failure_callback(
-                    listen_info.failure_callback,
-                    {'waiting_task_result': waiting_task_result}
-                )
-        )
-
-        # Try sending mocked task_result
-        wtr = MagicMock()
-        wtr.owner_key_id = 'owner_key_id'
-        kwargs = {'waiting_task_result': wtr}
-        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id', 'owner_port', wtr.owner_key_id, kwargs)
-        ts._sync_pending()
-        ts.client.want_to_start_task_session.assert_called_once_with(
-            wtr.owner_key_id,
-            ts.node,
-            ANY,  # conn_id
-        )
 
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
@@ -639,69 +400,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         ts.deny_set.add("ABC")
         assert not ts.should_accept_requestor("ABC")
-
-    @patch('golem.task.taskserver.TaskServer.new_session_prepare')
-    @patch('golem.task.tasksession.TaskSession.send_hello')
-    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
-    def test_connection_for_payment(self, inform_mock, hello_mock,
-                                    new_session_mock):
-        session = tasksession.TaskSession(conn=MagicMock())
-        session.address = '127.0.0.1'
-        session.port = 10
-        conn_id = str(uuid.uuid4())
-        node = Node()
-        payment = model.Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=str(uuid.uuid4()),
-            value=random.randint(1, 10),
-            details=model.PaymentDetails(node_info=node)
-        )
-        self.ts.connection_for_payment_established(session, conn_id, payment)
-        new_session_mock.assert_called_once_with(
-            session=session,
-            subtask_id=payment.subtask,
-            key_id=node.key,
-            conn_id=conn_id
-        )
-        inform_mock.assert_called_once_with(payment)
-        hello_mock.assert_called_once_with()
-
-    @patch('golem.task.taskserver.TaskServer.new_session_prepare')
-    @patch('golem.task.tasksession.TaskSession.send_hello')
-    @patch('golem.task.tasksession.TaskSession.request_payment')
-    def test_connection_for_payment_request(self, request_payment_mock,
-                                            hello_mock, new_session_mock):
-        session = tasksession.TaskSession(conn=MagicMock())
-        session.address = '127.0.0.1'
-        session.port = 10
-        conn_id = str(uuid.uuid4())
-        node = Node()
-        expected_income = model.ExpectedIncome.create(
-            sender_node=str(uuid.uuid4()),
-            sender_node_details=node,
-            value=random.randint(1, 10),
-            subtask=str(uuid.uuid4()),
-            task=str(uuid.uuid4())
-        )
-        self.ts.connection_for_payment_request_established(session, conn_id,
-                                                           expected_income)
-        new_session_mock.assert_called_once_with(
-            session=session,
-            subtask_id=expected_income.subtask,
-            key_id=node.key,
-            conn_id=conn_id
-        )
-        request_payment_mock.assert_called_once_with(expected_income)
-        hello_mock.assert_called_once_with()
-
-    def test_new_connection(self):
-        ccd = self._get_config_desc()
-        ts = TaskServer(Node(), ccd, Mock(), self.client, Mock(),
-                        use_docker_machine_manager=False)
-        tss = TaskSession(Mock())
-        ts.new_connection(tss)
-        assert len(ts.task_sessions_incoming) == 1
-        assert ts.task_sessions_incoming.pop() == tss
 
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
@@ -872,14 +570,6 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
         ts.accept_result("xxyyzz", account_info)
         self.assertEqual(ts.client.transaction_system.add_payment_info.call_count, 0)
-
-    def test_disconnect(self):
-        task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
-                                 self.client, Mock(),
-                                 use_docker_machine_manager=False)
-        task_server.task_sessions = {'task_id': Mock()}
-        task_server.disconnect()
-        assert task_server.task_sessions['task_id'].dropped.called
 
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()

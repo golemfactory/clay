@@ -6,7 +6,7 @@ from gevent.event import AsyncResult
 from golem.docker.environment import DockerEnvironment
 from golem.model import db, Payment
 from golem.network.p2p.taskprotocol import TaskProtocol
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from golem.task.taskbase import result_types, ComputeTaskDef
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.utils import decode_hex, encode_hex

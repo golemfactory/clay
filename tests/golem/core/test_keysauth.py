@@ -7,7 +7,6 @@ from devp2p.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
-from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 

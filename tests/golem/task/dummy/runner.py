@@ -42,17 +42,15 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 from golem.utils import find_free_net_port
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
-from golem.network.transport.message import init_messages
 from multiprocessing import freeze_support
 freeze_support()
-init_messages()
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)

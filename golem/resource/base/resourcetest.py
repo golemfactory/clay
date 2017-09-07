@@ -4,13 +4,10 @@ import uuid
 from mock import Mock
 
 from golem.client import Client
-from golem.network.transport.message import MessageGetResource, \
-    MessageResourceList
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import file_sha_256
 from golem.resource.dirmanager import DirManager
 from golem.task.taskserver import TaskServer
-from golem.task.tasksession import TaskSession
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex

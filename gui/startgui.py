@@ -4,7 +4,7 @@ import click
 from apps.appsmanager import AppsManager
 from golem.core.common import config_logging
 from golem.core.deferred import install_unhandled_error_logger
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session, WebSocketAddress
 from ipaddress import AddressValueError
