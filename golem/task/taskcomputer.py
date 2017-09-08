@@ -117,10 +117,10 @@ class TaskComputer(object):
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
-                timeout = deadline_to_timeout(subtask.deadline)
+
                 self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, timeout)
+                                    subtask.short_description, subtask.deadline)
                 self.waiting_for_task = None
                 return True
             else:
@@ -136,7 +136,7 @@ class TaskComputer(object):
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
                 self.__compute_task(subtask_id, subtask.docker_images, subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, deadline_to_timeout(subtask.deadline))
+                                    subtask.short_description, subtask.deadline)
                 return True
             return False
 
@@ -392,9 +392,13 @@ class TaskComputer(object):
                                                                   task_owner)
 
     def __compute_task(self, subtask_id, docker_images,
-                       src_code, extra_data, short_desc, task_timeout):
-
+                       src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id].task_id
+
+        task_header = self.task_server.task_keeper.task_headers[task_id]
+        deadline = min(task_header.deadline, subtask_deadline)
+        task_timeout = deadline_to_timeout(deadline)
+
         working_dir = self.assigned_subtasks[subtask_id].working_directory
         unique_str = str(uuid.uuid4())
 
