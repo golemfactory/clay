@@ -11,6 +11,7 @@ from apps.lux.benchmark.benchmark import LuxBenchmark
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_cpu_count
 from golem.core.fileshelper import du
+from golem.core.simpleserializer import DictSerializer
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from gui.controller.customizer import Customizer
 from .memoryhelper import resource_size_to_display
@@ -314,7 +315,8 @@ class ConfigurationDialogCustomizer(Customizer):
             return
 
     def __change_config(self):
-        cfg_desc = ClientConfigDescriptor()
+        settings = yield self.logic.client.get_settings()
+        cfg_desc = DictSerializer.load(settings, ClientConfigDescriptor)
 
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)

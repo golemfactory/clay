@@ -579,8 +579,10 @@ class Client(HardwarePresetsMixin):
         key = self.node.key
         return str(key) if key else None
 
+    @inlineCallbacks
     def get_settings(self):
-        return DictSerializer.dump(self.config_desc)
+        settings = yield DictSerializer.dump(self.config_desc)
+        returnValue(settings)
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
