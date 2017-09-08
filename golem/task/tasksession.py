@@ -21,7 +21,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-TASK_PROTOCOL_ID = 51  # TODO CHANGE THAT BACK TO 15
+TASK_PROTOCOL_ID = 51  # TODO TODOJACEK CHANGE THAT BACK TO 15
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -145,7 +145,7 @@ class TaskSession(MiddlemanSafeSession):
         except Exception as err:
             logger.warning("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
-            self.dropped()
+            self.dropped()  # TODO TODOJACEK change that
             return None
 
         return data
@@ -809,8 +809,14 @@ class TaskSession(MiddlemanSafeSession):
         self.inform_worker_about_payment(payment)
 
     def _react_to_provider_to_requestor_msg(self, msg: message.MessageSubtaskProvToReq):  # noqa
+        logger.warning("Receiving message")
         task = self.task_server.task_manager.tasks[msg.task_id]
-        data = task.react_to_message(msg.subtask_id, msg.message_data)
+        try:
+            assert msg.task_id != msg.subtask_id  # TODO WTF? where does this message come from???
+            data = task.react_to_message(msg.subtask_id, msg.message_data)
+        except Exception as exp:
+            logger.warning("There was an error during message receiving. Error: %r " % str(exp))
+            return
         new_message = message.MessageSubtaskReqToProv(task_id=msg.task_id,
                                                       subtask_id=msg.subtask_id,
                                                       message_data=data)

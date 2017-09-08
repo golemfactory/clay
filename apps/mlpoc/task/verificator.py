@@ -54,7 +54,8 @@ class MLPOCTaskVerificator(CoreVerificator):
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
 
         if self.verification_options["no_verification"]:
-            return True
+            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+            return
 
         qed = lambda: self.__query_extra_data(subtask_info["STEPS_PER_EPOCH"])
         computer = LocalComputer(None,  # we don't use task at all

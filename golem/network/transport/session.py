@@ -229,7 +229,7 @@ class BasicSafeSession(BasicSession, SafeSession):
             self.disconnect(BasicSafeSession.DCRBadProtocol)
             return False
 
-        if not (type_ in self.can_be_unsigned or self.verify(msg)) and False:
+        if not (type_ in self.can_be_unsigned or self.verify(msg)) and False:  # TODO TODOJACEK change that back
             logger.error("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)

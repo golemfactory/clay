@@ -26,9 +26,14 @@ class BlackBoxFileCallback(BlackBox):
             ls = os.listdir(MESSAGES_IN_DIR)
             if ls:
                 in_message_path = os.path.join(MESSAGES_IN_DIR, ls[0])
-                with open(in_message_path, "r") as f:
-                    response = json.load(f)
-
+                try:
+                    with open(in_message_path, "r") as f:
+                        response = json.load(f)
+                except json.JSONDecodeError as e:
+                    # TODO very ugly, do something about it - but what?
+                    print("JSONDecodeError in file " + in_message_path)
+                    print("Error: " + str(e))
+                    continue
                 os.remove(in_message_path)
                 # Do some more authentication here!!
                 # like checking signature or something

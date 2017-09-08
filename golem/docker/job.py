@@ -2,6 +2,7 @@ import atexit
 import logging
 import os
 import posixpath
+import shutil
 import threading
 from os import path
 from typing import List, Dict
@@ -21,6 +22,17 @@ logger = logging.getLogger(__name__)
 The logger used for logging std streams of the process running in container.
 """
 container_logger = logging.getLogger(__name__ + ".container")
+
+
+def normalize_work_path(iofunction):
+    def normalized_path_iofunction(self, path, *args, **kwargs):
+        if path.startswith("work/"):
+            path = path.split("work/")[1]
+        if path.startswith("/golem/work/"):
+            path = path.split("/golem/work/")[1]
+
+        return iofunction(self, path, *args, **kwargs)
+    return normalized_path_iofunction
 
 
 class DockerJob(object):
@@ -331,15 +343,18 @@ class DockerJob(object):
             logger.warning("There was a problem with read_work_file. Path: %r, exception: %r", path, e)
             return ""
 
+    @normalize_work_path
     def write_work_file(self, path, content, options="w"):
         try:
             with open(os.path.join(self.work_dir, path), options) as f:
-                return f.write(content)
+                f.write(content)
+                f.flush()
         except IOError as e:
             logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
 
-    def read_work_files(self, dir="", options="r") -> Dict[str, str]:
-        dir = os.path.join(self.work_dir, dir)
+    @normalize_work_path
+    def read_work_files(self, path="", options="r") -> Dict[str, str]:
+        dir = os.path.join(self.work_dir, path)
         contents = {}
         if os.path.isdir(dir):
             for file in ls_R(dir):
@@ -348,13 +363,9 @@ class DockerJob(object):
             logger.warning("%r is not a directory", dir)
         return contents
 
-    def clean_work_files(self, dir):
-        if dir.startswith("work/"):
-            dir = dir.split("work/")[1]
-        if dir.startswith("/golem/work/"):
-            dir = dir.split("/golem/work/")[1]
-
-        dir = os.path.join(self.work_dir, dir)
+    @normalize_work_path
+    def clean_work_files(self, path):
+        dir = os.path.join(self.work_dir, path)
         try:
             for f in os.listdir(dir):
                 os.remove(os.path.join(dir, f))

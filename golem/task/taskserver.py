@@ -111,7 +111,11 @@ class TaskServer(PendingConnectionsServer):
 
     def send_task_messages(self, all_messages: List[Tuple[str, str, Dict]]):
         for task_id, subtask_id, data in all_messages:
-            self.task_sessions[subtask_id].send_message_to_requestor(subtask_id, task_id, data)
+            target_session = self.task_sessions.get(subtask_id, None)
+            if target_session:
+                target_session.send_message_to_requestor(task_id=task_id, subtask_id=subtask_id, data=data)
+            else:
+                logger.warning("Send task message error: there is not such session as (task_id: %r, subtask_id: %r)" % (task_id, subtask_id))
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(env_id)

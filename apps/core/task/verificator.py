@@ -9,7 +9,7 @@ logger = logging.getLogger("apps.core")
 
 
 def state_check_log_key_error(*args, **kwargs):
-    logger.warning("This is not my subtask {}".format(args[1]))
+    logger.warning("There was a problem with verification of {}".format(args[1]))
     return SubtaskVerificationState.UNKNOWN
 
 

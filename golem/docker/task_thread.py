@@ -168,7 +168,7 @@ class DockerTaskThread(TaskThread):
         """
         if not self.job:
             return [{}]
-        msgs = self.job.read_work_files(dir=self.MESSAGES_OUT_DIR)
+        msgs = self.job.read_work_files(self.MESSAGES_OUT_DIR)
         msgs_decoded = []
         for filename, content in msgs.items():
             try:
@@ -181,7 +181,7 @@ class DockerTaskThread(TaskThread):
                 logger.warning("ValueError during decoding message %r", str(content))  # noqa
 
         # cleaning messages files, to not read multiple times the same content
-        self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
+        self.job.clean_work_files(self.MESSAGES_OUT_DIR)
 
         return msgs_decoded
 
