@@ -45,8 +45,6 @@ class Node(object):
         from twisted.internet import reactor
 
         try:
-            self.client.start_devp2p()
-
             if use_rpc:
                 self._setup_rpc()
                 self._start_rpc_router()
@@ -65,8 +63,10 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
-        self.client.start()
         self.client.sync()
+        self.client.start()
+        for peer in self._peers:
+            self.client.connect(peer)
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter

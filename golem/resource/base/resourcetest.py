@@ -7,7 +7,6 @@ from golem.client import Client
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import file_sha_256
 from golem.resource.dirmanager import DirManager
-from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
@@ -40,107 +39,64 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         return resources_relative, resources
 
+    @classmethod
+    def _create_server(cls, datadir, task_id):
+        dir_manager = DirManager(datadir)
+        resource_manager = cls._resource_manager_class(dir_manager)
+
+        client = Client(datadir=datadir,
+                        connect_to_known_hosts=False,
+                        use_docker_machine_manager=False,
+                        use_monitor=False)
+
+        resource_dir = resource_manager.storage.get_dir(task_id)
+        resource_server = BaseResourceServer(resource_manager,
+                                             dir_manager,
+                                             Mock(), client)
+        client.start = Mock()
+        client.start_network = Mock()
+        client.task_server = Mock()
+        client.resource_server = resource_server
+
+        return resource_server, resource_dir
+
     def setUp(self):
         TempDirFixture.setUp(self)
         LogTestCase.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-
         self.datadir_1 = os.path.join(self.tempdir, 'node_1')
         self.datadir_2 = os.path.join(self.tempdir, 'node_2')
 
-        self.dir_manager_1 = DirManager(self.datadir_1)
-        self.dir_manager_2 = DirManager(self.datadir_2)
+        self.resource_server_1, self.resource_dir_1 = self._create_server(
+            self.datadir_1, self.task_id)
+        self.resource_server_2, self.resource_dir_2 = self._create_server(
+            self.datadir_2, self.task_id)
 
-        self.resource_manager_1 = self._resource_manager_class(
-            self.dir_manager_1)
-        self.resource_manager_2 = self._resource_manager_class(
-            self.dir_manager_2)
-
-        self.client_1 = Client(datadir=self.datadir_1,
-                               connect_to_known_hosts=False,
-                               use_docker_machine_manager=False,
-                               use_monitor=False)
-        self.client_2 = Client(datadir=self.datadir_2,
-                               connect_to_known_hosts=False,
-                               use_docker_machine_manager=False,
-                               use_monitor=False)
-
-        self.client_1.start = self.client_2.start = Mock()
-        self.client_1.start_network = self.client_2.start_network = Mock()
-
-        self.resource_server_1 = BaseResourceServer(self.resource_manager_1,
-                                                    self.dir_manager_1,
-                                                    Mock(), self.client_1)
-        self.resource_server_2 = BaseResourceServer(self.resource_manager_2,
-                                                    self.dir_manager_2,
-                                                    Mock(), self.client_2)
-
-        self.resource_server_1.client.resource_server = self.resource_server_1
-        self.resource_server_2.client.resource_server = self.resource_server_2
-
-        task_server_1 = TaskServer(Mock(), Mock(),
-                                   self.client_1.keys_auth, self.client_1,
-                                   Mock(),
-                                   use_docker_machine_manager=False)
-        task_server_2 = TaskServer(Mock(), Mock(),
-                                   self.client_2.keys_auth, self.client_2,
-                                   Mock(),
-                                   use_docker_machine_manager=False)
-
-        task_server_1.sync_network = task_server_2.sync_network = Mock()
-        task_server_1.start_accepting = task_server_2.start_accepting = Mock()
-        task_server_1.task_computer = task_server_2.task_computer = Mock()
-
-        self.client_1.task_server = task_server_1
-        self.client_2.task_server = task_server_2
-
-        self.task_session_1 = TaskSession(Mock())
-        self.task_session_2 = TaskSession(Mock())
-        self.task_session_1.task_server = task_server_1
-        self.task_session_2.task_server = task_server_2
-        self.task_session_1.task_id = self.task_session_2.task_id = self.task_id
-
-        self.resource_dir_1 = self.resource_manager_1.storage.get_dir(
-            self.task_id)
-        self.resource_dir_2 = self.resource_manager_2.storage.get_dir(
-            self.task_id)
-
-        client_options = self.resource_manager_1.build_client_options(
-            task_server_1.get_key_id())
+        resource_manager = self.resource_server_1.resource_manager
+        self.client_options = resource_manager.build_client_options('node_1')
 
         self.resources_relative, self.resources = self._create_resources(
             self.resource_dir_1)
-        self.resource_manager_1._add_task(self.resources, self.task_id,
-                                          client_options=client_options)
 
     def tearDown(self):
-        self.client_1.quit()
-        self.client_2.quit()
+        self.resource_server_1.client.quit()
+        self.resource_server_2.client.quit()
         LogTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
 
     def test(self):
 
-        send_buf_1 = []
-        send_buf_2 = []
+        rm = self.resource_server_1.resource_manager
+        rm._add_task(self.resources, self.task_id)
 
-        self.task_session_1.send = lambda x: send_buf_1.append(x)
-        self.task_session_2.send = lambda x: send_buf_2.append(x)
+        to_download = rm.get_resources(self.task_id)
+        to_download = rm.to_wire(to_download)
+        to_download = rm.from_wire(to_download)
 
-        msg_get_resource = MessageGetResource(task_id=self.task_id)
-        msg = MessageGetResource.deserialize_message(
-            msg_get_resource.serialize())
-        assert msg
-
-        self.task_session_1._react_to_get_resource(msg)
-
-        msg_resource_list = send_buf_1.pop()
-        msg = MessageResourceList.deserialize_message(
-            msg_resource_list.serialize())
-        assert msg
-
-        self.task_session_2._react_to_resource_list(msg)
+        self.resource_server_2.download_resources(to_download,
+                                                  self.task_id,
+                                                  self.client_options)
         self.resource_server_2._download_resources(async=False)
 
         for r in self.resources_relative:

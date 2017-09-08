@@ -51,8 +51,6 @@ class TaskServer:
         self.task_manager.listen_address = self.node.pub_addr
         self.task_manager.listen_port = self.client.get_p2p_port()
         self.task_manager.node = self.node
-
-        task_service.set_task_server(self)
         self.task_service = task_service
 
         self.task_sessions = {}
@@ -166,7 +164,7 @@ class TaskServer:
         self.task_computer.session_timeout()
         self.task_keeper.remove_task_header(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
-        logger.warning("Cannot send request for task {}: {}"
+        logger.warning("Request failed for task {}: {}"
                        .format(task_id, error))
 
     def send_task_failed(self, subtask_id, task_id, err_msg, owner):
@@ -468,10 +466,9 @@ class TaskServer:
 
             elem._last_try = datetime.datetime.now()
             subtask_id = subtask_id_getter(elem)
-            session = self.task_sessions.get(subtask_id)
+            session = self._find_sessions(subtask_id)
 
-            logger.debug('_send_waiting() session:%r',
-                         len(session) if session else None)
+            logger.debug('_send_waiting() session :%r', session)
 
             if session:
                 cb(session, elem)
@@ -558,7 +555,7 @@ class TaskServer:
     def send_failures(self):
         for subtask_id in list(self.failures_to_send.keys()):
             wtf = self.failures_to_send[subtask_id]
-            session = self.task_sessions.get(subtask_id)
+            session = self._find_sessions(subtask_id)
 
             if session:
                 self._send_failure(session, wtf)
@@ -576,6 +573,9 @@ class TaskServer:
     def _send_failure(self, session, wtf):
         self.failures_to_send.pop(wtf.subtask_id, None)
         self.task_service.send_failure(session, wtf.subtask_id, wtf.err_msg)
+
+    def _find_sessions(self, subtask_id):
+        return self.task_sessions.get(subtask_id)
 
     @staticmethod
     def __get_task_manager_root(datadir):

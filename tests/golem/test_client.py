@@ -94,7 +94,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_machine_manager=False,
             use_monitor=False
         )
-        self.client.connect()
         n = 9
         payments = [
             Payment(
@@ -323,8 +322,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c = self.client
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
-        c.services = MagicMock()
-        c.services.peermanager = MagicMock(peers=["ABC", "DEF"])
+        c.services['peermanager'] = MagicMock(peers=["ABC", "DEF"])
         c.transaction_system = MagicMock()
         status = c.get_status()
         self.assertIn("Waiting for tasks", status)
@@ -335,7 +333,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         mock2.get_progress.return_value = 0.33
         c.task_server.task_computer.get_progresses.return_value = \
             {"id1": mock1, "id2": mock2}
-        c.services.peermanager.peers = []
+        c.services['peermanager'].peers = []
         status = c.get_status()
         self.assertIn("Computing 2 subtask(s)", status)
         self.assertIn("id1 (25.0%)", status)
@@ -353,6 +351,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.db = None
         self.client.quit()
 
+    @unittest.skip('Gossip is disabled')
     def test_collect_gossip(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -361,7 +360,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_machine_manager=False,
             use_monitor=False
         )
-        self.client.connect()
         self.client.start_network()
         self.client.collect_gossip()
 
@@ -381,8 +379,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         c = self.client
         c.sync = Mock()
-        c.services = MagicMock()
-        c.services.golemservice = Mock()
+        c.services['golem_service'] = Mock()
         c.task_server = Mock()
         c.resource_server = Mock()
         c.ranking = Mock()
@@ -392,7 +389,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c._Client__do_work()
 
         assert not log.exception.called
-        assert c.services.golemservice.get_tasks.called
+        assert c.services['golem_service'].get_tasks.called
         assert c.task_server.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
@@ -402,7 +399,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         def raise_exc():
             raise Exception('Test exception')
 
-        c.services.golemservice.get_tasks = raise_exc
+        c.services['golem_service'].get_tasks = raise_exc
         c.task_server.sync_network = raise_exc
         c.resource_server.sync_network = raise_exc
         c.ranking.sync_network = raise_exc
@@ -564,17 +561,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_machine_manager=False
         )
 
-        self.client.connect()
+        self.client.stop_network = Mock()
+
         self.client.start()
-
-        task_disc = self.client.task_server.disconnect
-
-        self.client.task_server.disconnect = Mock()
-        self.client.task_server.disconnect.side_effect = task_disc
-
         self.client.stop()
 
-        assert self.client.task_server.disconnect.called
+        assert self.client.stop_network.called
 
 
 @patch('signal.signal')
@@ -590,18 +582,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             use_docker_machine_manager=False,
             use_monitor=False
         )
-        client.connect()
         client.sync = Mock()
         client.keys_auth = Mock()
-        client.keys_auth.key_id = str(uuid.uuid4())
+        client.keys_auth.public_key = decode_hex(
+            'e5b195e643aea2c0144f469e8e5297a598316459a0a5e6558278b39b969'
+            'fadea0adeed798c4258251a30461a6f639bd2cc69dce793d8c3936c1e61'
+            'bd81049228'
+        )
+        client.keys_auth.key_id = client.keys_auth.public_key
+
         client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
                                         Mock(), client, Mock(),
                                         use_docker_machine_manager=False)
         client.task_server = TaskServer(
             Node(),
             ClientConfigDescriptor(),
-            Mock(),
+            client.keys_auth,
             client,
+            Mock(),
             use_docker_machine_manager=False
         )
         client.monitor = Mock()
@@ -645,8 +643,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.task_server.task_manager.start_task = Mock()
         c.task_server.task_manager.listen_address = '127.0.0.1'
         c.task_server.task_manager.listen_port = 40103
-        c.keys_auth = Mock()
-        c.keys_auth.key_id = str(uuid.uuid4())
 
         task = Mock()
         task.header.max_price = 1 * 10**18
@@ -895,7 +891,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         # not connected
         self.assertTrue(
-            c.connection_status().startswith("Application not listening")
+            c.connection_status().startswith("Not connected to Golem Network")
         )
 
         # status without peers

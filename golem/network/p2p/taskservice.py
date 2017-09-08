@@ -67,7 +67,7 @@ class TaskService(WiredService):
         from golem.network.p2p.debug import log_all
         log_all(self)
 
-    def set_task_server(self, task_server):
+    def setup(self, task_server):
         self.task_server = task_server
         self.task_manager = task_server.task_manager
         self.task_computer = task_server.task_computer
@@ -148,6 +148,9 @@ class TaskService(WiredService):
 
         logger.debug('----------------------------------')
         logger.debug('on_wire_protocol_stop', proto=proto)
+
+        if self.task_server:
+            self.task_server.remove_task_session(proto)
 
     # ======================================================================== #
     #                              TASK REQUEST

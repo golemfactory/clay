@@ -10,6 +10,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.image import DockerImage
+from golem.network.p2p.node import Node
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
@@ -65,6 +66,21 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
         return task_def
 
+    @staticmethod
+    def _create_task_owner():
+        return Node(
+            node_name='requestor',
+            key='1' * 32,
+            prv_addr='10.0.0.2',
+            prv_port=10000,
+            pub_addr='1.2.3.4',
+            pub_port=10000,
+            nat_type=None,
+            p2p_prv_port=10000,
+            p2p_pub_port=10000,
+            prv_addresses=None
+        )
+
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
         task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
@@ -72,13 +88,26 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
+        render_task.header.task_owner = self._create_task_owner()
+
+        owner = render_task.header.task_owner
+        owner.task_owner_key_id = owner.key
+        owner.task_owner_address = owner.pub_addr
+        owner.task_owner_port = owner.pub_port
+
         return render_task
 
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
+
         ctd = extra_data.ctd
+        # missing fields (provided by TaskManager)
         ctd.deadline = timeout_to_deadline(timeout)
+        ctd.key_id = render_task.header.task_owner_key_id
+        ctd.return_address = render_task.header.task_owner_address
+        ctd.return_port = render_task.header.task_owner_port
+        ctd.task_owner = render_task.header.task_owner
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -118,9 +147,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         TaskServer.send_task_failed = send_task_failed
 
         # Start task computation
-        task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
-        assert result
+        assert task_computer.task_given(ctd)
+        assert task_computer.resource_given(ctd.task_id)
 
         # Thread for task computation should be created by now
         task_thread = None

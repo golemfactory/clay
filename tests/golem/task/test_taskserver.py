@@ -14,7 +14,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.taskserver import TaskServer, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -25,9 +25,9 @@ def get_example_task_header():
         "task_id": "uvw",
         "node_name": "ABC",
         "environment": "DEFAULT",
-        "task_owner": dict(),
+        "task_owner": dict(key=b'1' * 32),
         "task_owner_port": 10101,
-        "task_owner_key_id": "key",
+        "task_owner_key_id": b'1' * 32,
         "task_owner_address": "10.10.10.10",
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
@@ -78,7 +78,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
-        ts.client.get_suggested_conn_reverse.return_value = False
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
@@ -96,45 +95,50 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["task_id"] = "uvw2"
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
-        self.assertIsNone(ts.request_task())
-        self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
 
+        # Requests are fully asynchronous now,
+        # there IS a connection request pending
+        self.assertIsNotNone(ts.request_task())
+        self.assertIsNotNone(ts.task_keeper.task_headers.get("uvw2"))
+
+    @patch('golem.task.taskserver.async_run')
     @patch("golem.task.taskserver.Trust")
-    def test_send_results(self, trust):
+    def test_send_result(self, trust, async_run):
         ccd = self._get_config_desc()
         ccd.min_price = 11
         n = Node()
+        n.key = "key"
         n.prv_addresses = []
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client, Mock(),
                         use_docker_machine_manager=False)
         ts.verify_header_sig = lambda x: True
         self.ts = ts
+
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
         results = {"data": "", "result_type": 0}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
-        ts.add_task_header(task_header)
-        ts.request_task()
+
+        assert ts.add_task_header(task_header)
+        assert ts.request_task()
+
+        incomes_keeper = ts.client.transaction_system.incomes_keeper
+
+        self.assertFalse(async_run.called)
         self.assertTrue(ts.send_result("xxyyzz", "xyz", 40, results, n))
-        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
+        self.assertTrue(async_run.called)
+
+        incomes_keeper.expect.reset_mock()
+        async_run.reset_mock()
+
+        self.assertFalse(async_run.called)
         self.assertTrue(ts.send_result("xyzxyz", "xyz", 40, results, n))
         self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
-        wtr = ts.results_to_send["xxyyzz"]
-        self.assertIsInstance(wtr, WaitingTaskResult)
-        self.assertEqual(wtr.subtask_id, "xxyyzz")
-        self.assertEqual(wtr.result, "")
-        self.assertEqual(wtr.result_type, 0)
-        self.assertEqual(wtr.computing_time, 40)
-        self.assertEqual(wtr.last_sending_trial, 0)
-        self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner_address, "10.10.10.10")
-        self.assertEqual(wtr.owner_port, 10101)
-        self.assertEqual(wtr.owner_key_id, "key")
-        self.assertEqual(wtr.owner, n)
-        self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
+        self.assertTrue(async_run.called)
+
+        incomes_keeper.expect.assert_called_once_with(
             sender_node_id="key",
             task_id="xyz",
             subtask_id="xyzxyz",
@@ -178,19 +182,18 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ccd = self._get_config_desc()
         ccd.task_session_timeout = 40
         ccd.min_price = 1.0
-        ccd.use_distributed_resource_management = 10
         ccd.task_request_interval = 10
         # ccd.use_waiting_ttl = True
         ccd.waiting_for_task_timeout = 19
 
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
+                        task_service=Mock(),
                         use_docker_machine_manager=False)
         self.ts = ts
 
         ccd2 = self._get_config_desc()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
-        ccd2.use_distributed_resource_management = 0
         ccd2.task_request_interval = 31
         # ccd2.use_waiting_ttl = False
         ccd2.waiting_for_task_timeout = 90
@@ -198,7 +201,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertEqual(ts.config_desc, ccd2)
         self.assertEqual(ts.last_message_time_threshold, 124)
         self.assertEqual(ts.task_keeper.min_price, 0.0057)
-        self.assertEqual(ts.task_manager.use_distributed_resources, False)
         self.assertEqual(ts.task_computer.task_request_frequency, 31)
         self.assertEqual(ts.task_computer.waiting_for_task_timeout, 90)
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
@@ -209,7 +211,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "2"))
 
         self.ts = ts = TaskServer(Node(), config, keys_auth, self.client,
-                                  Mock(),
+                                  task_service=Mock(),
                                   use_docker_machine_manager=False)
 
         task_header = get_example_task_header()
@@ -283,7 +285,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.task_manager.check_timeouts.return_value = []
         ts.task_keeper = Mock()
         ts.task_connections_helper = Mock()
-        ts._add_pending_request = Mock()
 
         subtask_id = 'xxyyzz'
 
@@ -298,37 +299,27 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         wtr.port = 10000
 
         ts.sync_network()
-        ts._add_pending_request.assert_not_called()
 
         wtr.last_sending_trial = 0
         ts.retry_sending_task_result(subtask_id)
 
         ts.sync_network()
-        ts._add_pending_request.assert_called()
-
-        ts._add_pending_request.reset_mock()
         ts.task_sessions[subtask_id] = Mock()
         ts.task_sessions[subtask_id].last_message_time = float('infinity')
 
         ts.sync_network()
-        ts._add_pending_request.assert_not_called()
-
-        ts._add_pending_request.reset_mock()
         ts.results_to_send = dict()
 
         wtf = wtr
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        ts._add_pending_request.assert_not_called()
         self.assertEqual(ts.failures_to_send, {})
 
-        ts._add_pending_request.reset_mock()
         ts.task_sessions.pop(subtask_id)
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        ts._add_pending_request.assert_called()
         self.assertEqual(ts.failures_to_send, {})
 
     def test_add_task_session(self):
@@ -418,28 +409,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         for parent in self.__class__.__bases__:
             parent.tearDown(self)
 
-    def test_find_sessions(self):
-        subtask_id = str(uuid.uuid4())
-
-        # Empty
-        self.assertEqual([], self.ts._find_sessions(subtask_id))
-
-        # Found task_id
-        task_id = 't' + str(uuid.uuid4())
-        session = MagicMock()
-        session.task_id = task_id
-        self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
-        self.ts.task_sessions_incoming.add(session)
-        self.assertEqual([session], self.ts._find_sessions(subtask_id))
-
-        # Found in task_sessions
-        subtask_session = MagicMock()
-        self.ts.task_sessions[subtask_id] = subtask_session
-        self.assertEqual([subtask_session], self.ts._find_sessions(subtask_id))
-
-    @patch("golem.task.taskserver.TaskServer._add_pending_request")
     @patch("golem.task.taskserver.TaskServer._find_sessions")
-    def test_send_waiting(self, find_sessions_mock, add_pending_mock):
+    def test_send_waiting(self, find_sessions_mock):
         session_cbk = MagicMock()
         elem = MagicMock()
         elem.subtask_id = 's' + str(uuid.uuid4())
@@ -447,9 +418,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         kwargs = {
             'elems_set': {elem},
             'subtask_id_getter': lambda x: x.subtask_id,
-            'req_type': 'TEST_REQUEST_TYPE',
-            'session_cbk': session_cbk,
             'p2p_node_getter': lambda x: x.p2p_node,
+            'cb': session_cbk,
         }
 
         elem._last_try = datetime.datetime.now()
@@ -461,31 +431,19 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_called_once_with(elem.subtask_id)
         find_sessions_mock.reset_mock()
-        add_pending_mock.assert_called_once_with(
-            req_type=kwargs['req_type'],
-            task_owner=elem.p2p_node,
-            port=elem.p2p_node.prv_port,
-            key_id=ANY,
-            args={'obj': elem}
+
+        self.ts.task_service.spawn_connect.assert_called_once_with(
+            elem.p2p_node.key,
+            addresses=elem.p2p_node.get_addresses(),
+            cb=ANY,
+            eb=ANY
         )
-        add_pending_mock.reset_mock()
+        self.ts.task_service.spawn_connect.reset_mock()
 
         # Test ordinary session
-        session = tasksession.TaskSession(conn=MagicMock())
-        find_sessions_mock.return_value = [session]
+        session = Mock()
+        find_sessions_mock.return_value = session
         elem._last_try = datetime.datetime.min
-        self.ts._send_waiting_payments(**kwargs)
-        find_sessions_mock.assert_called_once_with(elem.subtask_id)
-        find_sessions_mock.reset_mock()
-        session_cbk.assert_called_once_with(session, elem)
-        session_cbk.reset_mock()
-        self.assertEqual(0, len(kwargs['elems_set']))
-
-        # Test weakref session exists
-        import weakref
-        find_sessions_mock.return_value = [weakref.ref(session)]
-        elem._last_try = datetime.datetime.min
-        kwargs['elems_set'] = {elem}
         self.ts._send_waiting_payments(**kwargs)
         find_sessions_mock.assert_called_once_with(elem.subtask_id)
         find_sessions_mock.reset_mock()

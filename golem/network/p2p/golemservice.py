@@ -12,11 +12,11 @@ class GolemService(WiredService):
     wire_protocol = GolemProtocol  # create for each peer
     name = 'golem_service'
 
-    def __init__(self, client):
-        super(GolemService, self).__init__(client)
-        self.client = client
-        self.peer_manager = client.services.peermanager
-        self.node = client.node
+    def __init__(self, app):
+        super(GolemService, self).__init__(app)
+        self.client = None
+        self.peer_manager = None
+        self.node = None
         self.task_server = None
 
     def on_wire_protocol_start(self, proto):
@@ -39,7 +39,10 @@ class GolemService(WiredService):
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_stop', proto=proto)
 
-    def set_task_server(self, task_server):
+    def setup(self, client, task_server):
+        self.client = client
+        self.peer_manager = client.services.peermanager
+        self.node = client.node
         self.task_server = task_server
 
     def get_tasks(self):
