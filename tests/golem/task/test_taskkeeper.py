@@ -248,6 +248,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         for i in range(1, limit):
             thd = get_dict_task_header("ta%d" % i)
             tk.add_task_header(thd)
+        last_add_time = time.time()
 
         for i in range(limit):
             self.assertIn("ta%d" % i, tk.task_headers)
@@ -260,6 +261,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn("ta%d" % i, tk.task_headers)
 
         self.assertIn("tb0", tk.task_headers)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
 
         thd = get_dict_task_header("ta%d" % limit)
         tk.add_task_header(thd)
