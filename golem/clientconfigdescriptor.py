@@ -8,19 +8,30 @@ class ClientConfigDescriptor(object):
 
     def __init__(self):
         """ Create new basic empty configuration scheme """
-        from golem.appconfig import (START_PORT, END_PORT, RPC_ADDRESS, RPC_PORT, OPTIMAL_PEER_NUM, SEND_PINGS,
-                                     PINGS_INTERVALS, USE_IP6, GETTING_PEERS_INTERVAL, GETTING_TASKS_INTERVAL,
-                                     TASK_REQUEST_INTERVAL, USE_WAITING_FOR_TASK_TIMEOUT, WAITING_FOR_TASK_TIMEOUT,
-                                     WAITING_FOR_TASK_SESSION_TIMEOUT, FORWARDED_SESSION_REQUEST_TIMEOUT,
-                                     P2P_SESSION_TIMEOUT, TASK_SESSION_TIMEOUT, RESOURCE_SESSION_TIMEOUT,
-                                     ESTIMATED_DEFAULT, NODE_SNAPSHOT_INTERVAL, NETWORK_CHECK_INTERVAL,
-                                     MAX_SENDING_DELAY, MIN_CPU_CORES, MIN_DISK_SPACE, MIN_MEMORY_SIZE,
-                                     DEFAULT_HARDWARE_PRESET_NAME, REQUESTING_TRUST, COMPUTING_TRUST, MIN_PRICE,
+        from golem.appconfig import (START_PORT, RPC_ADDRESS, RPC_PORT,
+                                     OPTIMAL_PEER_NUM, SEND_PINGS,
+                                     PINGS_INTERVALS, USE_IP6,
+                                     GETTING_PEERS_INTERVAL,
+                                     GETTING_TASKS_INTERVAL,
+                                     TASK_REQUEST_INTERVAL,
+                                     USE_WAITING_FOR_TASK_TIMEOUT,
+                                     WAITING_FOR_TASK_TIMEOUT,
+                                     WAITING_FOR_TASK_SESSION_TIMEOUT,
+                                     FORWARDED_SESSION_REQUEST_TIMEOUT,
+                                     P2P_SESSION_TIMEOUT, TASK_SESSION_TIMEOUT,
+                                     RESOURCE_SESSION_TIMEOUT,
+                                     ESTIMATED_DEFAULT, NODE_SNAPSHOT_INTERVAL,
+                                     NETWORK_CHECK_INTERVAL,
+                                     MAX_SENDING_DELAY, MIN_CPU_CORES,
+                                     MIN_DISK_SPACE, MIN_MEMORY_SIZE,
+                                     DEFAULT_HARDWARE_PRESET_NAME,
+                                     REQUESTING_TRUST, COMPUTING_TRUST,
+                                     MIN_PRICE,
                                      MAX_PRICE, ACCEPT_TASKS)
         self.node_name = ""
         self.node_address = ""
         self.start_port = START_PORT
-        self.end_port = END_PORT
+        self.end_port = START_PORT + 2
         self.rpc_address = RPC_ADDRESS
         self.rpc_port = RPC_PORT
         self.opt_peer_num = OPTIMAL_PEER_NUM
@@ -37,7 +48,8 @@ class ClientConfigDescriptor(object):
         self.use_waiting_for_task_timeout = USE_WAITING_FOR_TASK_TIMEOUT
         self.waiting_for_task_timeout = WAITING_FOR_TASK_TIMEOUT
         self.waiting_for_task_session_timeout = WAITING_FOR_TASK_SESSION_TIMEOUT
-        self.forwarded_session_request_timeout = FORWARDED_SESSION_REQUEST_TIMEOUT
+        self.forwarded_session_request_timeout =\
+            FORWARDED_SESSION_REQUEST_TIMEOUT
         self.p2p_session_timeout = P2P_SESSION_TIMEOUT
         self.task_session_timeout = TASK_SESSION_TIMEOUT
         self.resource_session_timeout = RESOURCE_SESSION_TIMEOUT
@@ -87,13 +99,18 @@ class ConfigApprover(object):
        """
 
     dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
-                       'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
+                       'use_distributed_resource_management',
+                       'use_waiting_for_task_timeout', 'send_pings',
                        'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
-    to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num', 'waiting_for_task_timeout', 'p2p_session_timeout',
-                  'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
+    to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
+                  'waiting_for_task_timeout', 'p2p_session_timeout',
+                  'task_session_timeout', 'pings_interval',
+                  'max_results_sending_delay',
                   'min_price', 'max_price']
-    to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
-                    'getting_peers_interval', 'getting_tasks_interval', 'computing_trust', 'requesting_trust']
+    to_float_opt = ['estimated_performance', 'estimated_lux_performance',
+                    'estimated_blender_performance',
+                    'getting_peers_interval', 'getting_tasks_interval',
+                    'computing_trust', 'requesting_trust']
 
     numeric_opt = to_int_opt + to_float_opt
 
