@@ -1,0 +1,7 @@
+---
+- hosts: master
+  remote_user: ubuntu
+  become: yes
+  roles:
+    - buildbot-master
+    - webserver

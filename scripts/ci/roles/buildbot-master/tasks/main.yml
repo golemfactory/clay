@@ -1,0 +1,71 @@
+- include_vars:
+    file: site_settings.yml
+    name: site_settings
+
+
+- group:
+    name: buildbot
+
+
+- user:
+    name: buildbot
+    group: buildbot
+    home: /home/buildbot
+
+
+- name: artifacts directory
+  file:
+    path: /var/build-artifacts
+    state: directory
+    owner: buildbot
+    group: buildbot
+    mode: u=rwx,g=rx,o=rx
+
+
+- apt:
+    name: python-pip,python-virtualenv
+
+
+- name: install buildbot and its requirements
+  pip:
+    name: buildbot[bundle],requests,txrequests
+    virtualenv: /var/lib/virtualenv/buildbot-master
+
+
+- name: initialized workspace for the master
+  command: /var/lib/virtualenv/buildbot-master/bin/buildbot create-master /home/buildbot/master creates=/home/buildbot/master/
+  become_user: buildbot
+
+
+- name: copy master.cfg
+  copy:
+    src: master.cfg
+    dest: /home/buildbot/master/master.cfg
+    owner: buildbot
+    group: buildbot
+    mode: 0400
+  notify: reconfigure buildbot
+
+
+- name: write site configuration
+  copy:
+    content: "{{ site_settings|to_nice_json }}"
+    dest: /home/buildbot/site_settings.json
+    owner: buildbot
+    group: buildbot
+    mode: 0400
+  notify: reconfigure buildbot
+
+
+- name: copy a systemd unit file
+  copy:
+    src: buildbot-master.service
+    dest: /etc/systemd/system/buildbot-master.service
+  notify: restart buildbot master service
+
+
+- systemd:
+    name: buildbot-master.service
+    daemon_reload: yes
+    enabled: yes
+    state: started
