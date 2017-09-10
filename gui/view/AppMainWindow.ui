@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -524,62 +524,6 @@
                     </property>
                    </widget>
                   </item>
-                  <!--<item>-->
-                   <!--<widget class="QPushButton" name="savePresetButton">-->
-                    <!--<property name="toolTip">-->
-                     <!--<string>Save this preset</string>-->
-                    <!--</property>-->
-                    <!--<property name="text">-->
-                     <!--<string>Save preset</string>-->
-                    <!--</property>-->
-                   <!--</widget>-->
-                  <!--</item>-->
-                  <!--<item>-->
-                   <!--<widget class="QLineEdit" name="presetNameLineEdit">-->
-                    <!--<property name="toolTip">-->
-                     <!--<string>Save under this value</string>-->
-                    <!--</property>-->
-                    <!--<property name="sizePolicy">-->
-                     <!--<sizepolicy hsizetype="Preferred" vsizetype="Maximum">-->
-                      <!--<horstretch>0</horstretch>-->
-                      <!--<verstretch>0</verstretch>-->
-                     <!--</sizepolicy>-->
-                    <!--</property>-->
-                   <!--</widget>-->
-                  <!--</item>-->
-                  <!--<item>-->
-                   <!--<widget class="QPushButton" name="loadPresetButton">-->
-                    <!--<property name="toolTip">-->
-                     <!--<string>Load preset</string>-->
-                    <!--</property>-->
-                    <!--<property name="text">-->
-                     <!--<string>Load preset</string>-->
-                    <!--</property>-->
-                   <!--</widget>-->
-                  <!--</item>-->
-                  <!--<item>-->
-                   <!--<widget class="QComboBox" name="presetComboBox">-->
-                    <!--<property name="sizePolicy">-->
-                     <!--<sizepolicy hsizetype="Preferred" vsizetype="Maximum">-->
-                      <!--<horstretch>0</horstretch>-->
-                      <!--<verstretch>0</verstretch>-->
-                     <!--</sizepolicy>-->
-                    <!--</property>-->
-                    <!--<property name="toolTip">-->
-                     <!--<string>Choose preset</string>-->
-                    <!--</property>-->
-                   <!--</widget>-->
-                  <!--</item>-->
-                  <!--<item>-->
-                   <!--<widget class="QPushButton" name="deletePresetButton">-->
-                    <!--<property name="toolTip">-->
-                     <!--<string>Remove this preset</string>-->
-                    <!--</property>-->
-                    <!--<property name="text">-->
-                     <!--<string>Remove preset</string>-->
-                    <!--</property>-->
-                   <!--</widget>-->
-                  <!--</item>-->
                   <item>
                    <widget class="QPushButton" name="saveButton">
                     <property name="toolTip">
@@ -1670,7 +1614,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>2</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -2139,7 +2083,7 @@
                         <item>
                          <widget class="QSlider" name="requestingTrustSlider">
                           <property name="minimum">
-                           <number>-100</number>
+                           <number>0</number>
                           </property>
                           <property name="maximum">
                            <number>100</number>
@@ -2160,7 +2104,7 @@
                           <item>
                            <widget class="QLabel" name="label_19">
                             <property name="text">
-                             <string>-100%</string>
+                             <string>0%</string>
                             </property>
                            </widget>
                           </item>
@@ -2180,7 +2124,7 @@
                           <item>
                            <widget class="QLabel" name="label_20">
                             <property name="text">
-                             <string>0</string>
+                             <string>50%</string>
                             </property>
                            </widget>
                           </item>
@@ -2393,7 +2337,7 @@
                         <item>
                          <widget class="QSlider" name="computingTrustSlider">
                           <property name="minimum">
-                           <number>-100</number>
+                           <number>0</number>
                           </property>
                           <property name="maximum">
                            <number>100</number>
@@ -2414,7 +2358,7 @@
                           <item>
                            <widget class="QLabel" name="label_21">
                             <property name="text">
-                             <string>-100%</string>
+                             <string>0%</string>
                             </property>
                            </widget>
                           </item>
@@ -2434,7 +2378,7 @@
                           <item>
                            <widget class="QLabel" name="label_22">
                             <property name="text">
-                             <string>0</string>
+                             <string>50%</string>
                             </property>
                            </widget>
                           </item>
@@ -2750,51 +2694,6 @@
                  <string>View Payments History</string>
                 </property>
                </widget>
-              </item>
-              <item row="13" column="0">
-               <widget class="QLabel" name="descriptionLabel">
-                <property name="toolTip">
-                 <string>Additional description of your node that you can send with Golem Stats</string>
-                </property>
-                <property name="text">
-                 <string>Description</string>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="1">
-               <layout class="QHBoxLayout" name="horizontalLayout_26">
-                <item>
-                 <widget class="QPlainTextEdit" name="descriptionTextEdit">
-                  <property name="enabled">
-                   <bool>false</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_6">
-                  <item>
-                   <widget class="QPushButton" name="editDescriptionButton">
-                    <property name="enabled">
-                     <bool>true</bool>
-                    </property>
-                    <property name="text">
-                     <string>Edit</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="saveDescriptionButton">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="text">
-                     <string>Save</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
               </item>
              </layout>
             </item>

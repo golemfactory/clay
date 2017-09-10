@@ -277,20 +277,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsNotNone(meta)
         self.assertEqual(meta, dict())
 
-    def test_description(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-
-        self.assertEqual(self.client.get_description(), "")
-        desc = "ADVANCE DESCRIPTION\n\tSOME TEXT"
-        self.client.change_description(desc)
-        self.assertEqual(self.client.get_description(), desc)
-
     @unittest.skip('IPFS metadata is currently disabled')
     def test_interpret_metadata(self, *_):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager

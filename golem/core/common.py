@@ -4,12 +4,15 @@ import os
 import sys
 from calendar import timegm
 from datetime import datetime
+from multiprocessing import cpu_count
 
 import pytz
 from pathlib import Path
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
+MAX_CPU_WINDOWS = 32
+MAX_CPU_MACOS = 16
 
 
 def is_frozen():
@@ -138,6 +141,7 @@ class HandleError(object):
                 return func(*args, **kwargs)
             except self.error:
                 return self.handle_error(*args, **kwargs)
+
         return func_wrapper
 
 
@@ -191,8 +195,20 @@ def config_logging(suffix='', datadir=None):
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
 
-    import txaio
-    txaio.use_twisted()
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
     txaio.set_global_log_level(crossbar_log_lvl)
+
+
+def get_cpu_count():
+    """
+    Get number of cores with system limitations:
+    - max 32 on Windows due to VBox limitation
+    - max 16 on MacOS dut to xhyve limitation
+    :return: number of cores
+    """
+    if is_windows():
+        return min(cpu_count(), MAX_CPU_WINDOWS)  # VBox limitation
+    if is_osx():
+        return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
+    return cpu_count()  # No limitatons on Linux

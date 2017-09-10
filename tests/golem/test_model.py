@@ -3,6 +3,7 @@ from datetime import datetime
 from peewee import IntegrityError
 
 import golem.model as m
+
 from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture, PEP8MixIn, TempDirFixture
 
@@ -80,7 +81,8 @@ class TestPayment(DatabaseFixture):
                          status=m.PaymentStatus.sent)
 
     def test_payment_details_serialization(self):
-        p = m.PaymentDetails(node_info=Node(node_name="bla", key="xxx"), fee=700)
+        p = m.PaymentDetails(node_info=Node(node_name="bla", key="xxx"),
+                             fee=700)
         dct = p.to_dict()
         self.assertIsInstance(dct, dict)
         self.assertIsInstance(dct['node_info'], dict)
@@ -89,52 +91,7 @@ class TestPayment(DatabaseFixture):
         self.assertEqual(p, pd)
 
 
-class TestReceivedPayment(DatabaseFixture):
-
-    def test_default_fields(self):
-        r = m.ReceivedPayment()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
-
-    def test_create(self):
-        r = m.ReceivedPayment(
-            from_node_id="DEF",
-            task="xyz",
-            val=4,
-            expected_val=3131,
-            state="SOMESTATE"
-        )
-        self.assertEqual(r.save(force_insert=True), 1)
-        with self.assertRaises(IntegrityError):
-            m.ReceivedPayment.create(
-                from_node_id="DEF",
-                task="xyz",
-                val=5,
-                expected_val=3132,
-                state="SOMESTATEX"
-            )
-        m.ReceivedPayment.create(
-            from_node_id="DEF",
-            task="xyz2",
-            val=5,
-            expected_val=3132,
-            state="SOMESTATEX"
-        )
-        m.ReceivedPayment.create(
-            from_node_id="DEF2",
-            task="xyz",
-            val=5,
-            expected_val=3132,
-            state="SOMESTATEX"
-        )
-
-        self.assertEqual(
-            len([payment for payment in m.ReceivedPayment.select()]), 3
-        )
-
-
 class TestLocalRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = m.LocalRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)
@@ -151,7 +108,6 @@ class TestLocalRank(DatabaseFixture):
 
 
 class TestGlobalRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = m.GlobalRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)
@@ -163,7 +119,6 @@ class TestGlobalRank(DatabaseFixture):
 
 
 class TestNeighbourRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = m.NeighbourLocRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)

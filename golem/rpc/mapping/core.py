@@ -8,8 +8,6 @@ CORE_METHOD_MAP = dict(
     get_setting=            Environment.opt,
     update_setting=         Environment.opt_update,
     get_datadir=            Environment.datadir,
-    get_description=        Environment.opt_description,
-    change_description=     Environment.opt_description_update,
 
     get_hw_caps=            Environment.hardware_caps,
     get_hw_presets=         Environment.presets,

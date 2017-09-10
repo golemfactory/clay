@@ -1,12 +1,15 @@
-
-
 import logging
 from os import path
 
+from typing import Set,Any
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
+
+from golem.ranking.helper.trust_const import \
+    REQUESTING_TRUST, \
+    COMPUTING_TRUST
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +56,9 @@ MAX_PRICE = int(5.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
 
-REQUESTING_TRUST = -1.0
-COMPUTING_TRUST = -1.0
-
 
 # FIXME: deprecated
 class CommonConfig:
-
     def __init__(self, section="Common", **kwargs):
         self._section = section
 
@@ -99,7 +98,7 @@ class NodeConfig:
 
 
 class AppConfig:
-    __loaded_configs = set()
+    __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):

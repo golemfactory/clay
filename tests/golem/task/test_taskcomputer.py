@@ -313,7 +313,7 @@ class TestTaskMonitor(DatabaseFixture):
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
         monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix",
-                                                  "3.1337", "Descr",
+                                                  "3.1337",
                                                   ClientConfigDescriptor()),
                                 MONITOR_CONFIG)
         task_server = mock.MagicMock()

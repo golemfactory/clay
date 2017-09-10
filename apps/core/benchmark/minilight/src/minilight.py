@@ -5,7 +5,6 @@
 #  http://www.hxa.name/minilight
 
 
-import multiprocessing
 from sys import argv, stdout
 from time import time
 import sys
@@ -15,7 +14,7 @@ from .camera import Camera
 from .image import Image
 from .scene import Scene
 from .randommini import Random
-
+from golem.core.common import get_cpu_count
 
 BANNER = '''
   MiniLight 1.6 Python - http://www.hxa.name/minilight
@@ -191,7 +190,7 @@ def main():
               .format(float(numSamples) / duration))
         cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
-        average = average * multiprocessing.cpu_count()
+        average = average * get_cpu_count()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
 
