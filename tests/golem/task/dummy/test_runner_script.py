@@ -30,12 +30,13 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node, *_):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
-                self.path, "1.2.3.4:5678", "NoBootstrap", 0]
+                self.path, "1.2.3.4:5678", "NoBootstrap", "0"]
         runner.dispatch(args)
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (self.path, SocketAddress("1.2.3.4", 5678), "NoBootstrap"))
+                         (self.path, SocketAddress("1.2.3.4", 5678),
+                          "NoBootstrap", 0))
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": None})
         self.assertFalse(mock_run_simulation.called)
@@ -48,12 +49,13 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node, *_):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
-                self.path, "10.0.255.127:16000", "NoBootstrap", 0, "25"]
+                self.path, "10.0.255.127:16000", "NoBootstrap", "0", "25"]
         runner.dispatch(args)
         self.assertFalse(mock_run_requesting_node.called)
         self.assertTrue(mock_run_computing_node.called)
         self.assertEqual(mock_run_computing_node.call_args[0],
-                         (self.path, SocketAddress("10.0.255.127", 16000), "NoBootstrap"))
+                         (self.path, SocketAddress("10.0.255.127", 16000),
+                          "NoBootstrap", 0), {"fail_after": 25})
         self.assertEqual(mock_run_computing_node.call_args[1],
                          {"fail_after": 25.0})
         self.assertFalse(mock_run_simulation.called)
@@ -86,14 +88,14 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     def test_run_computing_node(self, mock_reactor, *_):
         client = runner.run_computing_node(
-            self.path, SocketAddress("127.0.0.1", 40102),
+            self.path, SocketAddress("127.0.0.1", 20200),
             "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9c07f9e"
             "0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8",
             0
         )
         environments = list(client.environments_manager.environments)
         self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
-                                for env in environments))
+                            for env in environments))
         client.quit()
 
     @mock.patch("subprocess.Popen")

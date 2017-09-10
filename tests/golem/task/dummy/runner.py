@@ -63,7 +63,7 @@ def report(msg):
 
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
-    return OpenInternet, '1.2.3.4', 40102
+    return OpenInternet, '1.2.3.4', 20171
 
 
 def create_client(datadir):
@@ -124,7 +124,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     g = gevent.spawn(report_status)
     reactor.run()
-    gevent.get_hub().join()
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 
@@ -176,19 +176,19 @@ def run_computing_node(datadir, seed_addr, seed_id, node_num, fail_after=None):
     report("Connecting to requesting node at {}:{} ..."
            .format(seed_addr.address, seed_addr.port))
 
-    def report_status(fail_after=None):
+    def report_status():
         t0 = time.time()
         while True:
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
-                reactor.callFromThread(reactor.stop)
                 shutdown()
+                reactor.callFromThread(reactor.stop)
                 return
             gevent.sleep(1)
 
-    g = gevent.spawn(report_status, fail_after)
+    g = gevent.spawn(report_status)
     reactor.run()
-    gevent.get_hub().join(fail_after)
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 
@@ -319,7 +319,7 @@ def dispatch(args):
         # second arg is the data dir,
         # third arg is the address to connect to,
         # forth arg is the timeout (optional).
-        fail_after = float(args[5]) if len(args) == 6 else None
+        fail_after = float(args[6]) if len(args) == 7 else None
         run_computing_node(args[2], SocketAddress.parse(args[3]), args[4],
                            int(args[5]), fail_after=fail_after)
     elif len(args) == 1:

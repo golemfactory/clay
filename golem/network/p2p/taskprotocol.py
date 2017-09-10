@@ -111,7 +111,7 @@ class TaskProtocol(BaseProtocol):
             ('resource_hash', sedes.binary),
             ('resource_secret', sedes.binary),
             ('resource_options', CBORSedes),
-            ('eth_account', sedes.binary)
+            ('eth_account', CBORSedes)
         ]
 
         @classmethod

@@ -278,11 +278,18 @@ class Client(HardwarePresetsMixin):
                                                       self.keys_auth, self)
 
         from twisted.internet import reactor
-        reactor.callFromThread(self.devp2p_app.start)
+        reactor.callFromThread(self._start_devp2p)
 
         hyperdrive_ports = self.daemon_manager.ports()
         dispatcher.send(signal='golem.p2p', event='listening',
                         port=[self.get_p2p_port()] + list(hyperdrive_ports))
+
+    def _start_devp2p(self):
+        try:
+            self.devp2p_app.start()
+        except Exception as exc:
+            log.exception(exc)
+            self.quit()
 
     @property
     def services(self):
