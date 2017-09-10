@@ -1,0 +1,19 @@
+language: python
+
+python:
+  - 3.5
+
+install:
+  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
+  - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5 libfreeimage3 libfreeimage-dev
+  - pip3 install six
+  - pip3 install -r requirements.txt
+  - pip3 install -r requirements-lint.txt
+  - make -C apps/rendering/resources/taskcollector
+
+script:
+  - git checkout -b shippable-lint  # Shippable doesn't make a branch for us, unlike CircleCI
+  - git merge origin/develop        # Update the changes from develop to avoid false positives
+  - ./lint.sh origin/develop        # Run all the checks. We can't just enumerate them here,
+                                    # because the CI aborts the job after first failure
