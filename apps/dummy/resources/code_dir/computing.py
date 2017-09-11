@@ -47,7 +47,7 @@ def run_dummy_task(data_file, subtask_string, difficulty, result_size):
     """
     print('[DUMMY TASK] computation started, data_file = ', data_file,
           ', result_size = ', result_size,
-          ', difficulty = 0x%08x' % difficulty)  # TODO remove that print
+          ', difficulty = 0x%08x' % difficulty)
     t0 = time.clock()
 
     with open(data_file, 'r') as f:

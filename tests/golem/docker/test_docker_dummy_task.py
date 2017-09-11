@@ -45,9 +45,6 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
     @classmethod
     def setUpClass(cls):
-        # TempDirFixture.setUpClass()
-        # DockerTestCase.setUpClass()
-
         data_dir = os.path.join(get_golem_path(),
                                 "apps",
                                 "dummy",
@@ -88,9 +85,6 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         rmlink_or_rmtree(cls.code_link)
         rmlink_or_rmtree(cls.data_link)
         os.rmdir(cls.test_tmp)
-        
-        # TempDirFixture.tearDownClass()
-        # DockerTestCase.tearDownClass()
 
     def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)

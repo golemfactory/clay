@@ -21,11 +21,10 @@ class DummyTaskBenchmark(CoreBenchmark):
         td = self._task_definition = DummyTaskDefinition(DummyTaskDefaults())
         td.shared_data_files = [join(self.dummy_task_path, x) for x in
                                 td.shared_data_files]
-        # td.out_file_basename = join(tempfile.gettempdir(),
-        # td.out_file_basename)
+
         td.out_file_basename = td.out_file_basename
 
-        td.task_id = u"{}".format("dummy_benchmark")
+        td.task_id = "dummy_benchmark"
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
