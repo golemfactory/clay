@@ -5,6 +5,7 @@ import random
 from typing import Dict, Tuple
 from unittest.mock import Mock
 
+import copy
 import enforce
 
 from apps.core.task import coretask
@@ -54,8 +55,8 @@ class MLPOCTask(CoreTask):
     SPEARMINT_EXP_DIR = "work/experiment"
     SPEARMINT_SIGNAL_FILE = "work/x.signal"
     RESULT_EXT = ".result"
-    BLACK_BOX = Mock # CountingBlackBox  # black box class, not instance
-    BATCH_MANAGER = Mock # IrisBatchManager  # batch manager class, not instace
+    BLACK_BOX = Mock # CountingBlackBox  #  type: Type[BlackBox]
+    BATCH_MANAGER = Mock # IrisBatchManager  # type: Type[BatchManager]
     INFTY = 10000000
 
     def __init__(self,
@@ -178,7 +179,7 @@ class MLPOCTask(CoreTask):
         black_box, batch_manager, ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
-        self.subtasks_given[sid] = ctd.extra_data
+        self.subtasks_given[sid] = copy.deepcopy(ctd.extra_data)
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id

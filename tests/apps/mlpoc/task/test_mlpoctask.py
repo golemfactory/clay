@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 import time
 
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
+from apps.mlpoc.resources.code_pytorch.messages import MLPOCBlackBoxAskMessage, MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task import spearmint_utils
 from apps.mlpoc.task.mlpoctask import (
     MLPOCTaskDefaults,
@@ -27,7 +28,13 @@ class TestMLPOCTask(TempDirFixture, LogTestCase, PEP8MixIn):
         for f in os.listdir(self.tempdir):
             shutil.rmtree(os.path.join(self.tempdir, f), ignore_errors=True)
 
-    def _get_new_mlpoc(self):
+    @patch("golem.task.localcomputer.LocalComputer", MagicMock)
+    def _get_new_mlpoc_no_spearmint(self):
+        td = MLPOCTaskDefinition(MLPOCTaskDefaults())
+        mlt = MLPOCTask(5, "node", td, self.tempdir, "", "", "")
+        return mlt, td
+
+    def _get_new_mlpoc_with_spearmint(self):
         td = MLPOCTaskDefinition(MLPOCTaskDefaults())
         mlt = MLPOCTask(5, "node", td, self.tempdir, "", "", "")
         return mlt, td
@@ -45,17 +52,17 @@ class TestMLPOCTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert MLPOCTask.RESULT_EXT == ".result"
 
     def test_init(self):
-        mlt, td = self._get_new_mlpoc()
+        mlt, td = self._get_new_mlpoc_with_spearmint()
         self.assertEqual(mlt.spearmint_path, os.path.join(self.tempdir, "tmp"))
         assert isinstance(mlt.verificator, MLPOCTaskVerificator)
 
     def test_new_subtask_id(self):
-        mlt, td = self._get_new_mlpoc()
+        mlt, td = self._get_new_mlpoc_no_spearmint()
         new_id = mlt._MLPOCTask__get_new_subtask_id()
         assert len(new_id) == 32
 
     def test_get_result_filename(self):
-        mlt, td = self._get_new_mlpoc()
+        mlt, td = self._get_new_mlpoc_no_spearmint()
         subtask_id = "aaaaaaa"
         name = mlt._MLPOCTask__get_result_file_name(subtask_id)
         assert name == "{}{}".format(subtask_id[0:6], mlt.RESULT_EXT)
@@ -90,6 +97,15 @@ class TestMLPOCTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert os.path.exists(os.path.join(spr_dir,
                                            mlt.SPEARMINT_EXP_DIR,
                                            spearmint_utils.CONFIG))
+
+    def test_react_to_message(self):
+        mlt, td = self._get_new_mlpoc_no_spearmint()
+        msg = MLPOCBlackBoxAskMessage.new_message("hash", 15)
+        reaction = mlt.react_to_message("subtaskid", {"filename": "out.out",
+                                                      "content": msg})
+        self.assertIsInstance(reaction, dict)
+        self.assertEqual(set(reaction.keys()),
+                         set(MLPOCBlackBoxAnswerMessage.new_message(True).keys()))
 
         # @patch("random.getrandbits", lambda x: 0)
     # def test_query_extra_data_for_test_task(self):

@@ -54,9 +54,15 @@ def run():
 
         # hashes checking
         if not str(startmodel.get_hash()) == _hash_from_name(startmodel_name):
-            return False
+            raise Exception("Hash of startmodel from name: {} not equal to real hash: {}".format(
+                str(startmodel.get_hash()),
+                _hash_from_name(startmodel_name)
+            ))
         if not str(endmodel.get_hash()) == _hash_from_name(endmodel_name):
-            return False
+            raise Exception("Hash of endmodel from name: {} not equal to real hash: {}".format(
+                str(endmodel.get_hash()),
+                _hash_from_name(endmodel_name)
+            ))
 
         batch_manager = batchmanager.IrisBatchManager(data_file)
 
@@ -66,8 +72,10 @@ def run():
 
         # weights checking
         if not compare_weights(startmodel, endmodel):
-            return False
+            raise Exception("Not equal weights")
 
         print(utils.bcolors.BOLD + utils.bcolors.OKGREEN + "All test passed" + utils.bcolors.ENDC)
         return True
-result = run()
+
+
+run()

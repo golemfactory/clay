@@ -812,7 +812,7 @@ class TaskSession(MiddlemanSafeSession):
         logger.warning("Receiving message")
         task = self.task_server.task_manager.tasks[msg.task_id]
         try:
-            assert msg.task_id != msg.subtask_id  # TODO WTF? where does this message come from???
+            assert msg.task_id != msg.subtask_id  # TODO WTF??? where does this message come from???
             data = task.react_to_message(msg.subtask_id, msg.message_data)
         except Exception as exp:
             logger.warning("There was an error during message receiving. Error: %r " % str(exp))

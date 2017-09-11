@@ -355,9 +355,11 @@ class TaskComputer(object):
 
     def run_benchmarks(self):
         # Benchmarks are run sequentially, via callbacks
-        self.run_dummytask_benchmark(lambda _:
-            self.run_lux_benchmark(lambda _:
-            self.run_blender_benchmark()))
+        # TODO TODOJACEK change that back
+        # self.run_dummytask_benchmark(lambda _:
+        #     self.run_lux_benchmark(lambda _:
+        #     self.run_blender_benchmark()))
+        pass
 
     def config_changed(self):
         for l in self.listeners:

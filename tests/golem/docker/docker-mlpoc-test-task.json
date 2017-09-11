@@ -1,0 +1,92 @@
+{
+  "subtask_timeout": 300,
+  "estimated_memory": 0,
+  "full_task_timeout": 300,
+  "task_id": "3150359f-e4c7-45c0-b1bc-b59066a2e86f",
+  "optimize_total": false,
+  "resources": {
+    "py/set": [
+      "$TMP_DIR/code/impl/box_callback.py",
+      "$TMP_DIR/code/impl/hash.py",
+      "$TMP_DIR/code/impl/__init__.py",
+      "$TMP_DIR/code/impl/model.py",
+      "$TMP_DIR/code/impl/utils.py",
+      "$TMP_DIR/code/impl/config.py",
+      "$TMP_DIR/data/IRIS.csv",
+      "$TMP_DIR/code/impl/net.py",
+      "$TMP_DIR/code/impl/box.py",
+      "$TMP_DIR/code/impl/batchmanager.py",
+      "$TMP_DIR/code/messages.py",
+      "$TMP_DIR/code/__init__.py"
+    ]
+  },
+  "options": {
+    "probability_of_save": 0,
+    "steps_per_epoch": 4,
+    "name": "",
+    "py/object": "apps.mlpoc.task.mlpoctaskstate.MLPOCTaskOptions",
+    "number_of_epochs": 2,
+    "environment": {
+      "py/reduce": [
+        "py/newobj",
+        {
+          "py/tuple": [
+            {
+              "py/type": "apps.mlpoc.mlpocenvironment.MLPOCTorchEnvironment"
+            }
+          ]
+        },
+        {
+          "software": [
+            "Docker"
+          ],
+          "docker_images": [
+            {
+              "id": null,
+              "repository": "jacekjacekjacekg/mlbase",
+              "name": "jacekjacekjacekg/mlbase:latest",
+              "py/object": "golem.docker.image.DockerImage",
+              "tag": "latest"
+            }
+          ],
+          "short_description": "Provider-side and verificatoin enviromnent for MLPOC task used to run torch",
+          "long_description": "",
+          "accept_tasks": false,
+          "allow_custom_main_program_file": false,
+          "caps": [],
+          "main_program_file": "$GOLEM_DIR/apps/mlpoc/resources/scripts/provider_main.py"
+        },
+        null,
+        null
+      ]
+    }
+  },
+  "max_price": 4E+18,
+  "task_name": "Golem Task2",
+  "output_file": "/home/jacek/golem-electron/Golem Task2",
+  "code_files": [
+    "messages.py",
+    "__init__.py",
+    "impl/model.py",
+    "impl/net.py",
+    "impl/box.py",
+    "impl/box_callback.py",
+    "impl/config.py",
+    "impl/__init__.py",
+    "impl/hash.py",
+    "impl/batchmanager.py",
+    "impl/utils.py"
+  ],
+  "main_program_file": "",
+  "task_type": "MLPOC",
+  "py/object": "apps.mlpoc.task.mlpoctaskstate.MLPOCTaskDefinition",
+  "tmp_dir": "$TMP_DIR",
+  "legacy": false,
+  "verification_options": null,
+  "total_subtasks": 1,
+  "shared_data_files": [
+    "$GOLEM_DIR/apps/mlpoc/test_data/IRIS.csv"
+  ],
+  "code_dir": "$GOLEM_DIR/apps/mlpoc/resources/code_pytorch",
+  "docker_images": null
+}
