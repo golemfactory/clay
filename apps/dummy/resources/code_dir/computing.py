@@ -13,8 +13,8 @@ def check_pow(proof, input_data, difficulty):
     :rtype bool:
     """
     sha = hashlib.sha256()
-    sha.update(input_data.encode(encoding='UTF-8'))
-    sha.update(('%x' % proof).encode(encoding='UTF-8'))
+    sha.update(input_data.encode())
+    sha.update(('%x' % proof).encode())
     h = int(sha.hexdigest()[0:8], 16)
     return h >= difficulty
 
@@ -64,6 +64,6 @@ def run_dummy_task(data_file, subtask_string, difficulty, result_size):
     print('[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec')
 
     sha = hashlib.sha256()
-    sha.update(all_input.encode(encoding='UTF-8'))
+    sha.update(all_input.encode())
     print('[DUMMY TASK] computation finished, hash of input =', sha.hexdigest())
     return result
