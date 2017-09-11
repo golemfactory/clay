@@ -27,6 +27,11 @@ class TestTaskPeerManagerWrapper(unittest.TestCase):
         wrapped.computation_capability = True
         self.assertEqual(wrapped.computation_capability, 1)
 
+        # Make sure that references are intact
+        assert wrapped.peers is peer_manager.peers
+        assert wrapped.errors is peer_manager.errors
+        assert wrapped.server is peer_manager.server
+
 
 class TestGolemPeerManager(unittest.TestCase):
     pass
