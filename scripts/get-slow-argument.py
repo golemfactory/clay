@@ -13,7 +13,7 @@ pull_request_id = sys.argv[1]
 run_slow = True
 
 # config vars
-required_approvals = 2
+required_approvals = 1
 
 # When build is not a PR the input is: "" or "false"
 if pull_request_id not in ["", "false"]:
@@ -28,7 +28,7 @@ if pull_request_id not in ["", "false"]:
             data = f.read().decode('utf-8')
 
         json_data = json.loads(data)
-        result = [a for a in json_data if a["state"] != "APPROVED"]
+        result = [a for a in json_data if a["state"] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
     except urllib.error.HTTPError:
