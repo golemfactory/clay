@@ -10,6 +10,7 @@ from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_cpu_count
+from golem.core.deferred import sync_wait
 from golem.core.fileshelper import du
 from golem.core.simpleserializer import DictSerializer
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
@@ -315,7 +316,7 @@ class ConfigurationDialogCustomizer(Customizer):
             return
 
     def __change_config(self):
-        settings = yield self.logic.client.get_settings()
+        settings = sync_wait(self.logic.client.get_settings())
         cfg_desc = DictSerializer.load(settings, ClientConfigDescriptor)
 
         self.__read_basic_config(cfg_desc)
