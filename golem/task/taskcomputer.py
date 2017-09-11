@@ -406,7 +406,8 @@ class TaskComputer(object):
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)
-            temp_dir = os.path.join(self.resource_manager.get_temporary_dir(task_id), unique_str)
+            temp_dir = os.path.join(
+                self.resource_manager.get_temporary_dir(task_id), unique_str)
             # self.dir_manager.clear_temporary(task_id)
 
             if not os.path.exists(temp_dir):
@@ -423,9 +424,13 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtasks.pop(subtask_id)
-            self.task_server.send_task_failed(subtask_id, subtask.task_id, "Host direct task not supported",
-                                              subtask.return_address, subtask.return_port, subtask.key_id,
-                                              subtask.task_owner, self.node_name)
+            self.task_server.send_task_failed(subtask_id, subtask.task_id,
+                                              "Host direct task not supported",
+                                              subtask.return_address,
+                                              subtask.return_port,
+                                              subtask.key_id,
+                                              subtask.task_owner,
+                                              self.node_name)
             self.counting_task = None
             return
 
@@ -438,7 +443,8 @@ class TaskComputer(object):
 
 
 class AssignedSubTask(object):
-    def __init__(self, src_code, extra_data, short_desc, owner_address, owner_port):
+    def __init__(self, src_code, extra_data, short_desc, owner_address,
+                 owner_port):
         self.src_code = src_code
         self.extra_data = extra_data
         self.short_desc = short_desc
@@ -447,17 +453,18 @@ class AssignedSubTask(object):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
-                 tmp_path, timeout):
-        super(PyTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
-                                           short_desc, res_path, tmp_path, timeout)
+    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+                 extra_data, short_desc, res_path, tmp_path, timeout):
+        super(PyTaskThread, self).__init__(
+            task_computer, subtask_id, working_directory, src_code, extra_data,
+            short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
-                 tmp_path, timeout):
-        super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
-                                               short_desc, res_path, tmp_path, timeout)
+    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+                 extra_data, short_desc, res_path, tmp_path, timeout):
+        super(PyTestTaskThread, self).__init__(
+            task_computer, subtask_id, working_directory, src_code, extra_data,
+            short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()
-
