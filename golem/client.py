@@ -713,19 +713,6 @@ class Client(HardwarePresetsMixin):
             return self.ranking.get_requesting_trust(node_id)
         return None
 
-    def get_description(self):
-        try:
-            account, _ = Account.get_or_create(node_id=self.get_client_id())
-            return account.description
-        except Exception as e:
-            return "An error has occurred {}".format(e)
-
-    def change_description(self, description):
-        self.get_description()
-        q = Account.update(description=description)\
-            .where(Account.node_id == self.get_client_id())
-        q.execute()
-
     def use_ranking(self):
         return bool(self.ranking)
 
@@ -966,7 +953,6 @@ class Client(HardwarePresetsMixin):
             self.session_id,
             sys.platform,
             APP_VERSION,
-            self.get_description(),
             self.config_desc
         )
 

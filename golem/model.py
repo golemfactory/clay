@@ -14,11 +14,10 @@ from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
+from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
-
-NEUTRAL_TRUST = 0.0
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
@@ -97,7 +96,7 @@ class RawCharField(CharField):
 
 
 class BigIntegerField(CharField):
-    """ Standard BigIntegerField field is limited to 2^63-1. This field extends the
+    """ Standard Integer field is limited to 2^63-1. This field extends the
         range by storing the numbers as hex-encoded char strings.
     """
 
@@ -207,8 +206,9 @@ class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(
-        enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    status = EnumField(enum_type=PaymentStatus,
+                       index=True,
+                       default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
@@ -271,8 +271,6 @@ class Income(BaseModel):
                 self.transaction,
                 self.block_number
             )
-
-
 
 
 ##################
@@ -344,7 +342,6 @@ class KnownHosts(BaseModel):
 
 class Account(BaseModel):
     node_id = CharField(unique=True)
-    description = TextField(default="")
 
     class Meta:
         database = db

@@ -37,9 +37,12 @@ class TestPayment(DatabaseFixture):
                     status=PaymentStatus.awaiting)
         self.assertEqual(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
-            Payment.create(payee="DEF", subtask="xyz", value=5, status=PaymentStatus.awaiting)
-        Payment.create(payee="DEF", subtask="xyz2", value=4, status=PaymentStatus.confirmed)
-        Payment.create(payee="DEF2", subtask="xyz4", value=5, status=PaymentStatus.sent)
+            Payment.create(payee="DEF", subtask="xyz", value=5,
+                           status=PaymentStatus.awaiting)
+        Payment.create(payee="DEF", subtask="xyz2", value=4,
+                       status=PaymentStatus.confirmed)
+        Payment.create(payee="DEF2", subtask="xyz4", value=5,
+                       status=PaymentStatus.sent)
 
         self.assertEqual(3, len([payment for payment in Payment.select()]))
 
@@ -49,9 +52,11 @@ class TestPayment(DatabaseFixture):
 
     def test_invalid_value_type(self):
         with self.assertRaises(TypeError):
-            Payment.create(payee="XX", subtask="float", value=5.5, status=PaymentStatus.sent)
+            Payment.create(payee="XX", subtask="float", value=5.5,
+                           status=PaymentStatus.sent)
         with self.assertRaises(TypeError):
-            Payment.create(payee="XX", subtask="str", value="500", status=PaymentStatus.sent)
+            Payment.create(payee="XX", subtask="str", value="500",
+                           status=PaymentStatus.sent)
 
     def test_payment_details(self):
         p1 = Payment(payee="me", subtask="T1000", value=123456)
@@ -67,9 +72,10 @@ class TestPayment(DatabaseFixture):
         self.assertEqual(p2.details.check, None)
 
     def test_payment_big_value(self):
-        value = 10000 * 10**18
-        assert value > 2**64
-        Payment.create(payee="me", subtask="T1000", value=value, status=PaymentStatus.sent)
+        value = 10000 * 10 ** 18
+        assert value > 2 ** 64
+        Payment.create(payee="me", subtask="T1000", value=value,
+                       status=PaymentStatus.sent)
 
     def test_payment_details_serialization(self):
         p = PaymentDetails(node_info=Node(node_name="bla", key="xxx"), fee=700)
@@ -82,7 +88,6 @@ class TestPayment(DatabaseFixture):
 
 
 class TestLocalRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = LocalRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)
@@ -99,7 +104,6 @@ class TestLocalRank(DatabaseFixture):
 
 
 class TestGlobalRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = GlobalRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)
@@ -111,7 +115,6 @@ class TestGlobalRank(DatabaseFixture):
 
 
 class TestNeighbourRank(DatabaseFixture):
-
     def test_default_fields(self):
         r = NeighbourLocRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)

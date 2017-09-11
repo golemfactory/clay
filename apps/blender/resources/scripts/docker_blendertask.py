@@ -1,9 +1,9 @@
 from __future__ import print_function
 
-from multiprocessing import cpu_count
 import os
-import sys
 import subprocess
+import sys
+from multiprocessing import cpu_count
 
 import params  # This module is generated before this script is run
 

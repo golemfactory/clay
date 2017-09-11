@@ -8,6 +8,7 @@ from golem.ranking.manager import database_manager as dm
 from golem.ranking.ranking import Ranking
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.testutils import PEP8MixIn
 
 
 class TestRankingDatabase(TestWithDatabase):
@@ -96,7 +97,23 @@ class TestRankingDatabase(TestWithDatabase):
         self.assertEqual(nr.requesting_trust_value, -0.2)
 
 
-class TestRanking(TestWithDatabase, LogTestCase):
+class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'golem/ranking/ranking.py',
+        'golem/ranking/manager/trust_manager.py',
+    ]
+
+    def test_count_trust(self):
+        from golem.ranking.helper import min_max_utility
+
+        result = min_max_utility.count_trust(600, 200)
+        self.assertEqual(result, 0.2)
+
+        result = min_max_utility.count_trust(999999999, 1)
+        self.assertLessEqual(result, min_max_utility.MAX_TRUST)
+
+        result = min_max_utility.count_trust(1, 999999999)
+        self.assertGreaterEqual(result, min_max_utility.MIN_TRUST)
 
     def test_increase_trust_thread_safety(self):
         c = MagicMock(spec=Client)
@@ -127,10 +144,41 @@ class TestRanking(TestWithDatabase, LogTestCase):
         result = r.get_computing_trust("ABC")
         self.assertEqual(result, expected)
 
+    def test_requesting_trust_thread_safety(self):
+        c = MagicMock(spec=Client)
+        r = Ranking(c)
+
+        def run():
+            for x in range(0, 10):
+                Trust.PAYMENT.increase("ABC", 1)
+                Trust.PAYMENT.decrease("ABC", 1)
+                Trust.PAYMENT.increase("ABC", 1)
+
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread1.join()
+        expected = r.get_requesting_trust("ABC")
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread2 = Thread(target=run)
+        thread2.start()
+        thread3 = Thread(target=run)
+        thread3.start()
+        thread4 = Thread(target=run)
+        thread4.start()
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        thread4.join()
+        result = r.get_requesting_trust("ABC")
+        self.assertEqual(result, expected)
+
     def test_without_reactor(self):
         r = Ranking(MagicMock(spec=Client))
-        r.client.get_neighbours_degree.return_value = {'ABC': 4, 'JKL': 2, 'MNO': 5}
-        r.client.collect_stopped_peers.return_value = set()
+        r.client.get_neighbours_degree.return_value = \
+            {'ABC': 4, 'JKL': 2, 'MNO': 5}
+        r.client.collect_stopped_peers.return_value = \
+            set()
         reactor = MagicMock()
         r.run(reactor)
         assert r.reactor == reactor
@@ -155,23 +203,24 @@ class TestRanking(TestWithDatabase, LogTestCase):
         for v in list(r.working_vec.values()):
             assert v[0][1] == 1.0
             assert v[1][1] == 1.0
-        assert r.working_vec["ABC"][0][0] > 0.0
+
+        assert r.working_vec["ABC"][0][0] == 0.02
         assert r.working_vec["ABC"][1][0] == 0.0
-        assert r.working_vec["DEF"][0][0] < 0.0
-        assert r.working_vec["DEF"][1][0] > 0.0
+        assert r.working_vec["DEF"][0][0] == 0.0
+        assert r.working_vec["DEF"][1][0] == 0.02
         assert r.working_vec["GHI"][0][0] == 0.0
         assert r.working_vec["GHI"][1][0] == 0.0
-        assert r.working_vec["XYZ"][0][0] < 0.0
-        assert r.working_vec["XYZ"][1][0] < 0.0
+        assert r.working_vec["XYZ"][0][0] == 0.0
+        assert r.working_vec["XYZ"][1][0] == 0.0
 
-        assert r.prevRank["ABC"][0] > 0
+        assert r.prevRank["ABC"][0] == 0.02
         assert r.prevRank["ABC"][1] == 0
-        assert r.prevRank["DEF"][0] < 0
-        assert r.prevRank["DEF"][1] > 0
+        assert r.prevRank["DEF"][0] == 0
+        assert r.prevRank["DEF"][1] == 0.02
         assert r.prevRank["GHI"][0] == 0
         assert r.prevRank["GHI"][1] == 0
-        assert r.prevRank["XYZ"][0] < 0
-        assert r.prevRank["XYZ"][1] < 0
+        assert r.prevRank["XYZ"][0] == 0
+        assert r.prevRank["XYZ"][1] == 0
 
         r._Ranking__new_round()
         assert set(r.neighbours) == {'ABC', 'JKL', 'MNO'}
@@ -182,8 +231,8 @@ class TestRanking(TestWithDatabase, LogTestCase):
         for gossip in r.received_gossip[0]:
             if gossip[0] == "DEF":
                 found = True
-                assert gossip[1][0][0] < 0
-                assert gossip[1][0][0] > r.working_vec["DEF"][0][0]
+                assert gossip[1][0][0] == 0
+                assert gossip[1][0][0] == r.working_vec["DEF"][0][0]
                 assert gossip[1][0][1] == 0.5
                 assert gossip[1][1][0] > 0
                 assert gossip[1][0][0] < r.working_vec["DEF"][1][0]
@@ -193,12 +242,14 @@ class TestRanking(TestWithDatabase, LogTestCase):
         assert r.client.send_gossip.call_args[0][0] == r.received_gossip[0]
         assert r.client.send_gossip.call_args[0][1][0] in ["ABC", "JKL", "MNO"]
 
-        r.client.collect_neighbours_loc_ranks.return_value = [['ABC', 'XYZ', [-0.2, -0.5]],
-                                                              ['JKL', 'PQR', [0.8, 0.7]]]
+        r.client.collect_neighbours_loc_ranks.return_value = \
+            [['ABC', 'XYZ', [-0.2, -0.5]],
+             ['JKL', 'PQR', [0.8, 0.7]]]
         r.sync_network()
 
-        r.client.collect_gossip.return_value = [[["MNO", [[0.2, 0.2], [-0.1, 0.3]]],
-                                                ["ABC", [[0.3, 0.5], [0.3, 0.5]]]]]
+        r.client.collect_gossip.return_value = \
+            [[["MNO", [[0.2, 0.2], [-0.1, 0.3]]],
+              ["ABC", [[0.3, 0.5], [0.3, 0.5]]]]]
         r._Ranking__end_round()
         assert len(r.prevRank) == 4
         assert len(r.received_gossip) == 0
@@ -221,3 +272,28 @@ class TestRanking(TestWithDatabase, LogTestCase):
         r.client.collect_stopped_peers.return_value = {"MNO"}
         r._Ranking__make_break()
         assert r.global_finished
+
+        assert r.get_computing_trust("ABC") == 0.02
+        assert r.get_requesting_trust("ABC") == 0.0
+
+        assert r.get_computing_trust("DEF") == 0.0
+        assert r.get_requesting_trust("DEF") == 0.02
+
+        assert r.get_computing_trust("GHI") == 0.0
+        assert r.get_requesting_trust("GHI") == 0.0
+
+        assert r.get_computing_trust("JKL") == 0.0
+        assert r.get_requesting_trust("JKL") == 0.0
+
+        # FIXME Issue 1337
+        # assert r.get_computing_trust("MNO") == 0.46989967711046415
+        # assert r.get_requesting_trust("MNO") == 0.0
+        #
+        # assert r.get_computing_trust("PQR") == 0.0
+        # assert r.get_requesting_trust("PQR") == 0.0
+        #
+        # assert r.get_computing_trust("XYZ") == 0.0
+        # assert r.get_requesting_trust("XYZ") == 0.0
+        #
+        # assert r.get_computing_trust("UnknownNode") == 0.0
+        # assert r.get_requesting_trust("UnknownNode") == 0.0
