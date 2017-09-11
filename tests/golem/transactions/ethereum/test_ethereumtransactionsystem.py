@@ -54,21 +54,21 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         sleep.call_count = 0
         with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.synchronized',
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=false):
             e.sync()
             assert sleep.call_count == 1
 
         sleep.call_count = 0
         with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.synchronized',
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=switch):
             e.sync()
             assert sleep.call_count == 2
 
         sleep.call_count = 0
         with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.synchronized',
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=error):
             e.sync()
             assert sleep.call_count == 0

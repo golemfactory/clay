@@ -3,7 +3,10 @@
 import logging
 import peewee
 
+from time import sleep
+from golem.model import db
 from golem import model
+from golem.model import Income
 from golem.transactions.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentprocessor import PaymentProcessor
 
@@ -23,46 +26,63 @@ class EthereumIncomesKeeper(IncomesKeeper):
         if self.processor.running:
             self.processor.stop()
 
-    def received(self, sender_node_id, task_id, subtask_id, transaction_id,
-                 block_number, value):
+    def received(self,
+                 sender_node_id,
+                 task_id,
+                 subtask_id,
+                 transaction_id,
+                 block_number,
+                 value):
         my_address = self.processor.get_eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
-
 
         if not self.processor.is_synchronized():
             logger.warning("payment processor is not synchronized with "
                            "blockchain, income may not be found...")
 
+        # GG todo run it in another thread (busy waiting)
+        # use == False instead of not is_synchronized...
+        # otherwise not Mock() --> True
+        is_synchronized = False
 
-        #
-        # is_synchronized = False
-        # while not is_synchronized:
-        #     try:
-        #         is_synchronized = self.processor.is_synchronized()
-        #     except Exception as e:
-        #         logger.error("payment reception failed "
-        #                      "while syncing with eth blockchain: "
-        #                      "{}".format(e))
-        #         is_synchronized = False
-        #     else:
-        #         sleep(0.5)
+        while not is_synchronized:
+            try:
+                is_synchronized = self.processor.is_synchronized()
+            except Exception as e:
+                logger.error("payment reception failed "
+                             "while syncing with eth blockchain: "
+                             "{}".format(e))
+                is_synchronized = False
+            else:
+                sleep(0.5)
 
         incomes = self.processor.get_logs(
             from_block=block_number,
             to_block=block_number,
-            topics=[self.LOG_ID, None, my_address]
-        )
+            topics=[self.LOG_ID, None, my_address])
 
         if not incomes:
-            logger.error('Transaction not present: %r', transaction_id)
+            logger.error('Transaction not present in blockchain: %r',
+                         transaction_id)
             return
-        received_tokens = 0
-        # FIXME sum() will overflow if it becomes bigger than 8 bytes
-        spent_tokens = model.Income.select(peewee.fn.sum(model.Income.value))\
-            .where(model.Income.transaction == transaction_id)\
-            .scalar(convert=True)
-        if spent_tokens is None:
+
+        # Prevent using the same payment for another subtask
+        try:
+            with db.transaction():
+                spent_tokens = \
+                    model.Income.select().where(
+                        model.Income.transaction == transaction_id).get().value
+        except Income.DoesNotExist:
             spent_tokens = 0
+
+        # FIXME in Brass:
+        # currently our db doesnt support partial payments for subtasks,
+        # ie Income primary_key = CompositeKey('sender_node', 'subtask')
+        # watch out: peewee sum() may:
+        # 1) overflow if it becomes bigger than 8 bytes
+        # 2) cannot sum strings (value is encoded to hex then saved to db)
+
+        received_tokens = 0
         received_tokens -= spent_tokens
         for income_log in incomes:
             # Should we verify sender address?

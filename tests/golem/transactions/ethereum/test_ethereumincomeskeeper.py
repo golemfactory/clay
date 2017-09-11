@@ -10,8 +10,16 @@ from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 
 
-SQLITE3_MAX_INT = 2 ** 31 - 1
+# SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
 
+
+# bigint - 8 Bytes
+# -2^63 (-9,223,372,036,854,775,808) to
+#  2^63-1 (9,223,372,036,854,775,807)
+
+MAX_INT = 2 ** 63
+# this proves that Golem's BigIntegerField wrapper does not
+# overflows as standard SQL implementation
 
 def get_some_id():
     return str(uuid.uuid4())
@@ -31,7 +39,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         random.seed()
         processor_old = mock.MagicMock()
         processor_old.eth_address.return_value = get_receiver_id()
-        processor_old.synchronized.return_value = True
+        processor_old.is_synchronized.return_value = True
         self.instance = EthereumIncomesKeeper(processor_old)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
@@ -41,8 +49,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': get_some_id(),
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
-            'value': random.randint(10, int(SQLITE3_MAX_INT / 2)),
+            'block_number': random.randint(0, int(MAX_INT / 2)),
+            'value': random.randint(10, int(MAX_INT / 2)),
         }
 
         # Transaction not in blockchain
@@ -105,27 +113,29 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
 # GG todo
-    # def test_transaction_overflow(self):
-    #     received_kwargs = {
-    #         'sender_node_id': get_some_id(),
-    #         'task_id': get_some_id(),
-    #         'subtask_id': 's1' + get_some_id()[:-2],
-    #         'transaction_id': get_some_id(),
-    #         'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
-    #         'value': 2147483647,
-    #     }
-    #     self.instance.processor.get_logs.return_value = [
-    #         {
-    #             'topics': [
-    #                 EthereumIncomesKeeper.LOG_ID,
-    #                 get_some_id(),  # sender
-    #                 self.instance.processor.eth_address(),  # receiver
-    #             ],
-    #             'data': hex(received_kwargs['value']),
-    #         },
-    #     ]
-    #     with self.assertRaises(OverflowError):
-    #         self.instance.received(**received_kwargs)
+    def test_transaction_overflow(self):
+        pass
+
+        # received_kwargs = {
+        #     'sender_node_id': get_some_id(),
+        #     'task_id': get_some_id(),
+        #     'subtask_id': 's1' + get_some_id()[:-2],
+        #     'transaction_id': get_some_id(),
+        #     'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
+        #     'value': 2147483647,
+        # }
+        # self.instance.processor.get_logs.return_value = [
+        #     {
+        #         'topics': [
+        #             EthereumIncomesKeeper.LOG_ID,
+        #             get_some_id(),  # sender
+        #             self.instance.processor.eth_address(),  # receiver
+        #         ],
+        #         'data': hex(received_kwargs['value']),
+        #     },
+        # ]
+        # with self.assertRaises(OverflowError):
+        #     self.instance.received(**received_kwargs)
 
     def test_received_double_spending(self):
         received_kwargs = {
@@ -133,9 +143,14 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
-            'value': SQLITE3_MAX_INT - 1,
+            'block_number': random.randint(0, int(MAX_INT / 2)),
+            'value': MAX_INT,
         }
+
+
+        from golem.model import BigIntegerField
+        bigIntegerField = BigIntegerField()
+        db_value = bigIntegerField.db_value(received_kwargs['value'])
 
         self.instance.processor.get_logs.return_value = [
             {
@@ -144,7 +159,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                     get_some_id(),  # sender
                     self.instance.processor.get_eth_address(),  # receiver
                 ],
-                'data': hex(received_kwargs['value']),
+                'data': db_value
             },
         ]
 
