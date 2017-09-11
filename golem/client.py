@@ -3,13 +3,14 @@ import logging
 import sys
 import time
 import uuid
-from collections import Iterable
 from copy import copy
 from os import path, makedirs
 from threading import Lock
 
+import ethereum.slogging as slogging
+from devp2p.app import BaseApp
+from devp2p.discovery import NodeDiscovery
 from eth_utils import decode_hex
-from golem.network.socketaddress import SocketAddress
 from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import (inlineCallbacks, returnValue, Deferred)
@@ -35,9 +36,12 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
+from golem.network.p2p.golemservice import GolemService
 from golem.network.p2p.node import Node
+from golem.network.p2p.peermanager import GolemPeerManager
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.p2p.taskservice import TaskService
+from golem.network.socketaddress import SocketAddress
 from golem.p2pconfig import p2pconfig
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -57,12 +61,6 @@ from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.utils import encode_hex
-
-from devp2p.app import BaseApp
-from devp2p.discovery import NodeDiscovery
-from devp2p.peermanager import PeerManager
-import ethereum.slogging as slogging
-from golem.network.p2p.golemservice import GolemService
 
 devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
@@ -198,7 +196,8 @@ class Client(HardwarePresetsMixin):
             'node_name': self.config_desc.node_name
         }
 
-        for service in [NodeDiscovery, PeerManager, GolemService, TaskService]:
+        for service in [NodeDiscovery, GolemPeerManager,
+                        GolemService, TaskService]:
             service.register_with_app(self.devp2p_app)
 
     def configure_rpc(self, rpc_session):

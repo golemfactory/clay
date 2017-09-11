@@ -1,3 +1,5 @@
+import copy
+
 import gevent
 from devp2p import slogging
 from devp2p.service import WiredService
@@ -56,7 +58,10 @@ class TaskService(WiredService):
 
     def __init__(self, client):
         super(TaskService, self).__init__(client)
-        self.peer_manager = client.services.peermanager
+
+        self.peer_manager = copy.copy(client.services.peermanager)
+        self.peer_manager.computation_capability = True
+
         self.task_server = None
         self.task_manager = None
         self.task_computer = None
@@ -86,7 +91,6 @@ class TaskService(WiredService):
             except Exception as exc:
                 logger.debug('Invalid pubkey: %r %s', peer.remote_pubkey, exc)
 
-    # FIXME: Move out of TaskService
     # FIXME: Discover peer addresses if none were provided
     def connect(self, pubkey, addresses):
         future = AsyncResult()
@@ -178,7 +182,7 @@ class TaskService(WiredService):
             )
 
         if ctd:
-            self.send_task(proto, ctd)
+            return self.send_task(proto, ctd)
         elif wrong_task:
             self.send_reject_task_request(
                 proto, task_id, TaskRequestRejection.TASK_ID_UNKNOWN)
@@ -188,6 +192,9 @@ class TaskService(WiredService):
         else:
             self.send_reject_task_request(
                 proto, task_id, TaskRequestRejection.NO_MORE_SUBTASKS)
+
+        if proto.peer.computation_capability:
+            self.peer_manager.disconnect(proto.peer)
 
     def send_reject_task_request(self, proto, task_id, reason):
         cmd_id = TaskProtocol.task_request.cmd_id

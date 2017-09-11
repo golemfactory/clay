@@ -50,9 +50,6 @@ class BaseResourceServer(object):
     def get_distributed_resource_root(self):
         return self.resource_manager.storage.get_root()
 
-    def get_peers(self):
-        self.client.get_resource_peers()
-
     def sync_network(self):
         self._download_resources()
 
