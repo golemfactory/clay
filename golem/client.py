@@ -286,7 +286,8 @@ class Client(HardwarePresetsMixin):
 
     def _start_devp2p(self):
         try:
-            self.devp2p_app.start()
+            import gevent
+            gevent.spawn(self.devp2p_app.start)
         except Exception as exc:
             log.exception(exc)
             self.quit()

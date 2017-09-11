@@ -484,7 +484,7 @@ class TaskServer:
                 p2p_node.key,
                 addresses=p2p_node.get_addresses(),
                 cb=lambda session: cb(session, elem),
-                eb=lambda error: elems_set.remove(elem)
+                eb=lambda error: elems_set.discard(elem)
             )
 
     def send_waiting_payment_requests(self):
