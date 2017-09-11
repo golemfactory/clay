@@ -41,12 +41,11 @@ dependencies:
     - /usr/local/bin/ipfs daemon:
         background: true
 
-    # Slow tests only on branches and PRs with >= 2 approvals
+    # Slow tests only on branches and PRs with enough approvals
     - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument.py "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
 
     # requirements
     - pip3 install six
-    - pip3 install -r requirements-lint.txt
 
 test:
   pre:

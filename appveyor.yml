@@ -84,7 +84,7 @@ install:
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
-  # Slow tests only on branches and PRs with >= 2 approvals
+  # Slow tests only on branches and PRs with enough approvals
   - set TMP_FILE="approvals.txt"
   - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
   - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0

@@ -31,7 +31,7 @@ before_install:
   - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - ./hyperg/hyperg &
 
-  # Slow tests only on branches and PRs with >= 2 approvals
+  # Slow tests only on branches and PRs with enough approvals
   - ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
   # requirements
