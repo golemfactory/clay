@@ -13,8 +13,8 @@ def check_pow(proof, input_data, difficulty):
     :rtype bool:
     """
     sha = hashlib.sha256()
-    sha.update(input_data.encode())
-    sha.update(('%x' % proof).encode())
+    sha.update(input_data.encode(encoding='UTF-8'))
+    sha.update(('%x' % proof).encode(encoding='UTF-8'))
     h = int(sha.hexdigest()[0:8], 16)
     return h >= difficulty
 
@@ -28,6 +28,7 @@ def find_pow(input_data, difficulty, result_size):
     """
     num_bits = result_size * 4
     # This ensures that the generated number will not start with 0's as hex
+
     solution = (1 << (num_bits - 1)) | random.getrandbits(num_bits - 1)
     while True:
         if check_pow(solution, input_data, difficulty):
@@ -50,11 +51,19 @@ def run_dummy_task(data_file, subtask_string, difficulty, result_size):
           ', difficulty = 0x%08x' % difficulty)
     t0 = time.clock()
 
-    with open(data_file, 'r') as f:
+    with open(data_file, 'rU') as f:
         shared_input = f.read()
-    solution = find_pow(shared_input + subtask_string, difficulty, result_size)
+
+    all_input = shared_input + subtask_string
+    solution = find_pow(all_input, difficulty, result_size)
+
+    assert check_pow(solution, all_input, difficulty)
     result = '%x' % solution
     assert len(result) == result_size
 
     print('[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec')
+
+    sha = hashlib.sha256()
+    sha.update(all_input.encode(encoding='UTF-8'))
+    print('[DUMMY TASK] computation finished, hash of input =', sha.hexdigest())
     return result

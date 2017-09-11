@@ -97,6 +97,8 @@ class DummyTask(CoreTask):
                          num_cores=1,
                          node_id: str = None,
                          node_name: str = None) -> Task.ExtraData:
+        logger.debug("Query extra data on dummytask")
+
         ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
@@ -163,17 +165,14 @@ class DummyTaskBuilder(CoreTaskBuilder):
         # TODO uncomment that when GUI will be fixed
         # if not isinstance(sbs, int):
         #     raise TypeError("Subtask data size should be int")
-        # if not isinstance(difficulty, int):
-        #     raise TypeError("Difficulty should be int")
         sbs = int(sbs)
-        difficulty = int(difficulty)
+        # difficulty comes in hex string from GUI
+        difficulty = int(difficulty, 16)
 
         if sbs <= 0:
             raise Exception("Subtask data size should be greater than 0")
         if difficulty < 0:
             raise Exception("Difficulty should be greater than 0")
-        if difficulty >= 16 ** 8:
-            raise Exception("Difficulty should be < {}".format(16 ** 8))
 
         definition.options.difficulty = difficulty
         definition.options.subtask_data_size = sbs
