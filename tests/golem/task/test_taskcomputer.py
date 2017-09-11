@@ -126,6 +126,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         assert tc.task_resource_collected("xyz")
         assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
+        self.assertGreater(tc.current_computations[0].time_to_compute, 9)
+        self.assertLessEqual(tc.current_computations[0].time_to_compute, 10)
         self.__wait_for_tasks(tc)
 
         prev_task_failed_count = task_server.send_task_failed.call_count
@@ -173,6 +175,18 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
+
+        task_server.task_keeper.task_headers["xyz"].deadline = \
+            timeout_to_deadline(20)
+        ctd.subtask_id = "aabbcc3"
+        ctd.src_code = "output={'data': 0, 'result_type': 0}"
+        ctd.deadline = timeout_to_deadline(40)
+        tc.task_given(ctd)
+        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertEqual(len(tc.current_computations), 1)
+        self.assertGreater(tc.current_computations[0].time_to_compute, 10)
+        self.assertLessEqual(tc.current_computations[0].time_to_compute, 20)
+        self.__wait_for_tasks(tc)
 
         ctd.subtask_id = "xxyyzz2"
         ctd.timeout = timeout_to_deadline(1)
