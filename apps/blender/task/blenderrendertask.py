@@ -16,6 +16,7 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
+import apps.blender.resources.blenderdefinitionupdater as definition_updater
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
@@ -509,6 +510,9 @@ class BlenderRenderTask(FrameRenderingTask):
                 log_content = f.read()
 
             log_analyser.make_log_analyses(log_content, return_data)
+
+        definition_updater.propose_fixed_definition(self.task_definition,
+                                                    return_data)
 
         return return_data
 

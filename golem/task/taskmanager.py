@@ -102,7 +102,16 @@ class TaskManager(TaskEventListener):
         if not isinstance(dictionary, dict):
             return dictionary
 
-        type_name = dictionary['type'].lower()
+        type_name = dictionary['type']
+
+        if not type_name:
+            raise Exception("Task missing type {}".format(dictionary))
+
+        type_name = type_name.lower()
+
+        if type_name not in self.task_types:
+            raise Exception("Task type not supported '{}'".format(type_name))
+
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 

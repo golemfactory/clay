@@ -146,6 +146,13 @@ class Client(object):
         for method_name, method_alias in list(method_map.items()):
             setattr(self, method_name, self._make_call(method_alias))
 
+    def subscribe(self, rpc_name, method):
+        self._session.register_events([[method, rpc_name]])
+
+    def unsubscribe(self, rpc_name):
+        logger.debug("unsubscribing from '{}'".format(rpc_name))
+        self._session.unregister_events([rpc_name])
+
     def _make_call(self, method_alias):
         return lambda *a, **kw: self._call(str(method_alias), *a, **kw)
 
