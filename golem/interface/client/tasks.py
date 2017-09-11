@@ -1,6 +1,6 @@
-
 import json
 from typing import Any, Optional
+from uuid import uuid4
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
@@ -188,6 +188,8 @@ class Tasks:
 
     def create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
+        # FIXME CHANGE TASKI ID
+        dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)
 
