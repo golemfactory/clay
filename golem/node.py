@@ -64,9 +64,14 @@ class Node(object):
         self._setup_apps()
 
         self.client.sync()
-        self.client.start()
-        for peer in self._peers:
-            self.client.connect(peer)
+
+        try:
+            self.client.start()
+            for peer in self._peers:
+                self.client.connect(peer)
+        except SystemExit:
+            from twisted.internet import reactor
+            reactor.callFromThread(reactor.stop)
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter
