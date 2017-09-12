@@ -7,7 +7,7 @@ from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, ResourceType, ResultType
 
 
 class DummyTaskParameters(object):
@@ -16,7 +16,6 @@ class DummyTaskParameters(object):
     the least difficulty. For example difficulty = 0x003fffff requires
     0xffffffff / 0x003fffff = 1024 hash computations on average.
 
-    :type shared_data_size: int: size of data shared by all subtasks in bytes
     :type subtask_data_size: int: size of subtask-specific data in bytes
     :type result_size: int: size of subtask result in bytes
     :type difficulty: int: computational difficulty
@@ -119,7 +118,7 @@ class DummyTask(Task):
 
         self.task_resources = [self.shared_data_file]
 
-    def short_extra_data_repr(self, perf_index=None):
+    def short_extra_data_repr(self, extra_data):
         return "dummy task " + self.task_id
 
     def get_trust_mod(self, subtask_id):
@@ -204,7 +203,7 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
@@ -214,7 +213,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=ResourceType.ZIP, tmp_dir=None):
         return self.task_resources
 
     def add_resources(self, resource_parts):
