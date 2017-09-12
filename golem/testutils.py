@@ -1,19 +1,19 @@
 import logging
 import os
-from pathlib import Path
-import pycodestyle
 import shutil
 import tempfile
 import unittest
 from os import path
+from pathlib import Path
 from time import sleep
 
+import pycodestyle
 from mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
-
-from golem.model import Database
+from golem.core.simpleenv import get_local_datadir
 from golem.ethereum import Client
+from golem.model import Database
 
 
 class TempDirFixture(unittest.TestCase):
@@ -26,7 +26,7 @@ class TempDirFixture(unittest.TestCase):
             if is_osx():
                 # Use Golem's working directory in ~/Library/Application Support
                 # to avoid issues with mounting directories in Docker containers
-                cls.root_dir = os.path.join(get_golem_path(), 'tests')
+                cls.root_dir = os.path.join(get_local_datadir('tests'))
                 os.makedirs(cls.root_dir, exist_ok=True)
             else:
                 # Select nice root temp dir exactly once.
