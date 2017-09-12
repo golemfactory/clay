@@ -454,6 +454,12 @@ class TaskServer:
 
         time_delta = datetime.timedelta(seconds=30)
 
+        def create_cb(e):
+            return lambda session: cb(session, e)
+
+        def create_eb(e):
+            return lambda error: elems_set.discard(e)
+
         for elem in elems_set.copy():
 
             if hasattr(elem, '_last_try'):
@@ -482,8 +488,8 @@ class TaskServer:
             self.task_service.spawn_connect(
                 p2p_node.key,
                 addresses=p2p_node.get_addresses(),
-                cb=lambda session: cb(session, elem),
-                eb=lambda error: elems_set.discard(elem)
+                cb=create_cb(elem),
+                eb=create_eb(elem)
             )
 
     def send_waiting_payment_requests(self):
