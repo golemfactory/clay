@@ -845,7 +845,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
-        self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        settings = yield c.get_settings()
+        self.assertEqual(settings['node_name'], new_node_name)
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
