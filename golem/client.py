@@ -297,7 +297,8 @@ class Client(HardwarePresetsMixin):
 
     def stop_network(self):
         for service in self.services.values():
-            if hasattr(service, 'server') and service.server:
+            is_server = hasattr(service, 'server')
+            if not is_server or (is_server and service.server):
                 service.stop()
 
     def pause(self):
