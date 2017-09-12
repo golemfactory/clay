@@ -84,17 +84,17 @@ install:
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
-  # Slow tests only on branches and PRs with enough approvals
-  - set TMP_FILE="approvals.txt"
-  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
-  - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0
-  - del %TMP_FILE%
-
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
   - pip install -r requirements-win.txt
   - python setup.py develop
+
+  # Slow tests only on branches and PRs with enough approvals
+  - set TMP_FILE="approvals.txt"
+  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
+  - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0
+  - del %TMP_FILE%
 
 build_script:
   - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /p:Platform=x64 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"

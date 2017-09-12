@@ -1,12 +1,10 @@
 # Check if this build can skip slow tests
-# Skipping happens when build is a PR with < 2 approvals
+# Skipping happens when build is a PR with < required approvals
 # - input: pull_id from CI ( argv )
 # - output: argument to use for this test ( stdout )
 
 import sys
-import json
-import urllib.request
-import urllib.error
+import requests
 
 # input / ouput vars
 pull_request_id = sys.argv[1]
@@ -23,15 +21,13 @@ if pull_request_id not in ["", "false"]:
 
     try:
         # Github API requires user agent.
-        req = urllib.request.Request(url, headers={'User-Agent': 'build-bot'})
-        with urllib.request.urlopen(req, timeout=10) as f:
-            data = f.read().decode('utf-8')
+        req = requests.get(url, headers={'User-Agent': 'build-bot'})
 
-        json_data = json.loads(data)
+        json_data = req.json()
         result = [a for a in json_data if a["state"] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
-    except urllib.error.HTTPError:
+    except(requests.HTTPError, requests.Timeout) as e:
         sys.stderr.write("Error calling github, run all tests. {}".format(url))
 
 if run_slow:

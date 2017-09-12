@@ -16,6 +16,9 @@ dependencies:
   override:
     - pip3 install -r requirements.txt
     - python3 setup.py develop
+
+    # Slow tests only on branches and PRs with enough approvals
+    - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument.py "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
   pre:
     # geth
     - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
@@ -40,9 +43,6 @@ dependencies:
     - /usr/local/bin/ipfs config --json Addresses.Swarm '["/ip6/::/tcp/4001", "/ip6/::/udp/4002/utp", "/ip4/0.0.0.0/udp/4002/utp"]'
     - /usr/local/bin/ipfs daemon:
         background: true
-
-    # Slow tests only on branches and PRs with enough approvals
-    - echo 'export ARG_RUNSLOW="'$(python scripts/get-slow-argument.py "${CIRCLE_PR_NUMBER}")'"' >> ~/.circlerc
 
     # requirements
     - pip3 install six

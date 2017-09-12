@@ -31,14 +31,14 @@ before_install:
   - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - ./hyperg/hyperg &
 
-  # Slow tests only on branches and PRs with enough approvals
-  - ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
-
   # requirements
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
   - sudo -HE pip3 install -r requirements-test.txt
   - sudo -HE python3 setup.py develop
+
+  # Slow tests only on branches and PRs with enough approvals
+  - ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
 script:
   - python3 -m pytest --cov=golem${ARG_RUNSLOW}
