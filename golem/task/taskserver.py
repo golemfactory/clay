@@ -450,8 +450,7 @@ class TaskServer:
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)
 
-    def _send_waiting_payments(self, elems_set, subtask_id_getter,
-                               p2p_node_getter, cb):
+    def _send_waiting_payments(self, elems_set, cb):
 
         time_delta = datetime.timedelta(seconds=30)
 
@@ -465,19 +464,19 @@ class TaskServer:
             logger.debug('_send_waiting(): %r', elem)
 
             elem._last_try = datetime.datetime.now()
-            subtask_id = subtask_id_getter(elem)
+            subtask_id = elem.subtask
             session = self._find_sessions(subtask_id)
 
             logger.debug('_send_waiting() session :%r', session)
 
             if session:
                 cb(session, elem)
-                return elems_set.remove(elem)
+                return
 
-            p2p_node = p2p_node_getter(elem)
+            p2p_node = elem.get_sender_node()
             if p2p_node is None:
                 logger.debug('Empty node info in %r', elem)
-                elems_set.remove(elem)
+                elems_set.discard(elem)
                 continue
 
             self.task_service.spawn_connect(
@@ -490,28 +489,22 @@ class TaskServer:
     def send_waiting_payment_requests(self):
         self._send_waiting_payments(
             elems_set=self.payment_requests_to_send,
-            subtask_id_getter=lambda expected_income:
-                expected_income.subtask,
-            p2p_node_getter=lambda expected_income:
-                expected_income.get_sender_node(),
             cb=self._send_waiting_payment_request
         )
 
-    def _send_waiting_payment_request(self, session, income):
-        self.payment_requests_to_send.remove(income)
-        self.task_service.send_payment_request(session, income.subtask)
+    def _send_waiting_payment_request(self, session, payment):
+        self.payment_requests_to_send.discard(payment)
+        self.task_service.send_payment_request(session, payment.subtask)
 
     def send_waiting_payments(self):
         self._send_waiting_payments(
             elems_set=self.payments_to_send,
-            subtask_id_getter=lambda payment: payment.subtask,
-            p2p_node_getter=lambda payment: payment.get_sender_node(),
             cb=self._send_waiting_payment
         )
 
-    def _send_waiting_payment(self, session, income):
-        self.payments_to_send.remove(income)
-        self.task_service.send_payment(session, income.subtask)
+    def _send_waiting_payment(self, session, payment):
+        self.payments_to_send.discard(payment)
+        self.task_service.send_payment(session, payment.subtask)
 
     def send_waiting_results(self):
         self.send_results()

@@ -412,13 +412,13 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
     @patch("golem.task.taskserver.TaskServer._find_sessions")
     def test_send_waiting(self, find_sessions_mock):
         session_cbk = MagicMock()
+        node = Mock()
         elem = MagicMock()
-        elem.subtask_id = 's' + str(uuid.uuid4())
-        elem.p2p_node = MagicMock()
+        elem.subtask = 's' + str(uuid.uuid4())
+        elem.get_sender_node.return_value = node
+        elems_set = {elem}
         kwargs = {
-            'elems_set': {elem},
-            'subtask_id_getter': lambda x: x.subtask_id,
-            'p2p_node_getter': lambda x: x.p2p_node,
+            'elems_set': elems_set,
             'cb': session_cbk,
         }
 
@@ -429,12 +429,12 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.return_value = []
         elem._last_try = datetime.datetime.min
         self.ts._send_waiting_payments(**kwargs)
-        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.assert_called_once_with(elem.subtask)
         find_sessions_mock.reset_mock()
 
         self.ts.task_service.spawn_connect.assert_called_once_with(
-            elem.p2p_node.key,
-            addresses=elem.p2p_node.get_addresses(),
+            node.key,
+            addresses=elem.get_sender_node().get_addresses(),
             cb=ANY,
             eb=ANY
         )
@@ -445,11 +445,10 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.return_value = session
         elem._last_try = datetime.datetime.min
         self.ts._send_waiting_payments(**kwargs)
-        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.assert_called_once_with(elem.subtask)
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
-        self.assertEqual(0, len(kwargs['elems_set']))
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
