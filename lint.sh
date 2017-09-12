@@ -90,4 +90,5 @@ if [ $nfailed -gt 0 ]; then
         printf "%-20s" "${names[$i]}..."
         status ${exitcode[$i]}
     done
+    exit 1
 fi
