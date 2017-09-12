@@ -188,9 +188,10 @@ class DummyTask(Task):
         return all(self.subtask_results.values())
 
     def verify_subtask(self, subtask_id):
-        result = self.subtask_results[subtask_id]
+        from golem.core.simpleserializer import CBORSerializer
+        result = CBORSerializer.loads(self.subtask_results[subtask_id])
 
-        if len(result) != self.task_params.result_size:
+        if not result or len(result) != self.task_params.result_size:
             return False
 
         if self.task_params.difficulty == 0:

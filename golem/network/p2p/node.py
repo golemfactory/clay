@@ -66,6 +66,18 @@ class Node(rlp.Serializable, DictSerializable):
             return False
         return self.pub_addr == self.prv_addr
 
+    def get_addresses(self):
+        socket_addresses = [(i, self.prv_port) for i in self.prv_addresses]
+        port = self.prv_port
+
+        if self.pub_addr is None:
+            return socket_addresses
+        if self.pub_port:
+            port = self.pub_port
+
+        socket_addresses.append((self.pub_addr, port))
+        return socket_addresses
+
     def __str__(self) -> str:
         return "Node {}, (key: {})".format(self.node_name, self.key)
 

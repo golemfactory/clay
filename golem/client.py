@@ -3,15 +3,17 @@ import logging
 import sys
 import time
 import uuid
-from collections import Iterable
 from copy import copy
 from os import path, makedirs
 from threading import Lock
 
+import ethereum.slogging as slogging
+from devp2p.app import BaseApp
+from devp2p.discovery import NodeDiscovery
+from eth_utils import decode_hex
 from pydispatch import dispatcher
 from twisted.internet import task
-from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
-                                    Deferred)
+from twisted.internet.defer import (inlineCallbacks, returnValue, Deferred)
 
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL)
@@ -34,9 +36,13 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
+from golem.network.p2p.golemservice import GolemService
 from golem.network.p2p.node import Node
+from golem.network.p2p.peermanager import GolemPeerManager
 from golem.network.p2p.peersession import PeerSessionInfo
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.p2p.taskservice import TaskService
+from golem.network.socketaddress import SocketAddress
+from golem.p2pconfig import p2pconfig
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
@@ -56,13 +62,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.utils import encode_hex
 
-from devp2p.app import BaseApp
-from devp2p.discovery import NodeDiscovery
-from devp2p.peermanager import PeerManager
-from devp2p.service import BaseService
-import ethereum.slogging as slogging
-from golem.network.p2p.golemservice import GolemService
-
 devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
 
@@ -78,10 +77,7 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(BaseApp, HardwarePresetsMixin):
-    client_name = 'golem'
-    default_config = dict(BaseApp.default_config)
-    available_services = [NodeDiscovery, PeerManager, GolemService]
+class Client(HardwarePresetsMixin):
 
     def __init__(
             self,
@@ -118,6 +114,17 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         self.config_approver = ConfigApprover(self.config_desc)
 
+        self.cfg = config
+        self.resource_port = 0
+        self.get_resource_peers_interval = 5.0
+        self.use_monitor = use_monitor
+        self.session_id = str(uuid.uuid4())
+        self.send_snapshot = False
+        self.snapshot_lock = Lock()
+
+        self.use_docker_machine_manager = use_docker_machine_manager
+        self.connect_to_known_hosts = connect_to_known_hosts
+
         log.info(
             'Client "%s", datadir: %s',
             self.config_desc.node_name,
@@ -133,30 +140,29 @@ class Client(BaseApp, HardwarePresetsMixin):
                                       self.config_desc)
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
+        self.environments_manager = EnvironmentsManager()
 
-        # NETWORK
+        self.task_server = None
+        self.resource_server = None
+        self.diag_service = None
+        self.daemon_manager = None
+        self.rpc_publisher = None
+        self.monitor = None
+        self.nodes_manager_client = None
+
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.get_key_id())
 
-        self.diag_service = None
-
-        self.task_server = None
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
         self.last_balance_time = time.time()
         self.last_tasks_time = time.time()
-
+        self.last_get_resource_peers_time = time.time()
         self.last_node_state_snapshot = None
-
-        self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
         self.publish_task = task.LoopingCall(self.__publish_events)
-
-        self.cfg = config
-        self.send_snapshot = False
-        self.snapshot_lock = Lock()
 
         self.ranking = Ranking(self)
         if transaction_system:
@@ -169,22 +175,6 @@ class Client(BaseApp, HardwarePresetsMixin):
         else:
             self.transaction_system = None
 
-        self.use_docker_machine_manager = use_docker_machine_manager
-        self.connect_to_known_hosts = connect_to_known_hosts
-        self.environments_manager = EnvironmentsManager()
-        self.daemon_manager = None
-
-        self.rpc_publisher = None
-
-        self.ipfs_manager = None
-        self.resource_server = None
-        self.resource_port = 0
-        self.last_get_resource_peers_time = time.time()
-        self.get_resource_peers_interval = 5.0
-        self.use_monitor = use_monitor
-        self.monitor = None
-        self.session_id = str(uuid.uuid4())
-
         dispatcher.connect(
             self.p2p_listener,
             signal='golem.p2p'
@@ -194,11 +184,21 @@ class Client(BaseApp, HardwarePresetsMixin):
             signal='golem.taskmanager'
         )
 
-        from golem.p2pconfig import p2pconfig
-        self.configp2p = p2pconfig
-        BaseApp.__init__(self, self.configp2p)
-
+        self._init_devp2p()
         atexit.register(self.quit)
+
+    def _init_devp2p(self):
+        self.devp2p_app = BaseApp(p2pconfig)
+        self.devp2p_app.config['node'] = {
+            'privkey_hex': encode_hex(self.keys_auth._private_key),
+            'pubkey_hex': encode_hex(self.keys_auth.public_key),
+            'id': encode_hex(self.keys_auth.public_key),
+            'node_name': self.config_desc.node_name
+        }
+
+        for service in [NodeDiscovery, GolemPeerManager,
+                        GolemService, TaskService]:
+            service.register_with_app(self.devp2p_app)
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
@@ -233,7 +233,6 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
-        super().stop()
         self.stop_network()
         if self.do_work_task.running:
             self.do_work_task.stop()
@@ -245,8 +244,8 @@ class Client(BaseApp, HardwarePresetsMixin):
             self.stop_monitor()
             self.monitor = None
 
+    @report_calls(Component.client, 'start')
     def start_network(self):
-        log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
@@ -254,9 +253,14 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.task_server = TaskServer(
             self.node,
             self.config_desc,
-            self.keys_auth, self,
+            self.keys_auth,
+            client=self,
+            task_service=self.services['task_service'],
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_machine_manager=self.use_docker_machine_manager)
+
+        self.services['golem_service'].setup(self, self.task_server)
+        self.services['task_service'].setup(self.task_server)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -272,41 +276,29 @@ class Client(BaseApp, HardwarePresetsMixin):
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        self.services.golemservice.set_task_server(self.task_server)
+        from twisted.internet import reactor
+        reactor.callFromThread(self._start_devp2p)
 
-        def connect(tuple_param):
-            (task_port) = tuple_param
-            log.info('Task server is listening on port %s', task_port)
-
-            dispatcher.send(signal='golem.p2p', event='listening',
-                            port=[task_port] + list(hyperdrive_ports))
-
-            listener = ClientTaskComputerEventListener(self)
-            self.task_server.task_computer.register_listener(listener)
-
-            StatusPublisher.publish(Component.client, 'start',
-                                    stage=Stage.post)
-
-        def terminate(*exceptions):
-            log.error("Golem cannot listen on ports: %s", exceptions)
-            StatusPublisher.publish(Component.client, 'start',
-                                    stage=Stage.exception,
-                                    data=[to_unicode(e) for e in exceptions])
-            sys.exit(1)
-
-        task = Deferred()
         hyperdrive_ports = self.daemon_manager.ports()
+        dispatcher.send(signal='golem.p2p', event='listening',
+                        port=[self.get_p2p_port()] + list(hyperdrive_ports))
 
-        gatherResults([task], consumeErrors=True).addCallbacks(connect,
-                                                               terminate)
-        log.info("Starting task server ...")
-        self.task_server.start_accepting(listening_established=task.callback,
-                                         listening_failure=task.errback)
+    def _start_devp2p(self):
+        try:
+            import gevent
+            gevent.spawn(self.devp2p_app.start)
+        except Exception as exc:
+            log.exception(exc)
+            self.quit()
+
+    @property
+    def services(self):
+        return self.devp2p_app.services
 
     def stop_network(self):
-        if self.task_server:
-            self.task_server.stop_accepting()
-            self.task_server.disconnect()
+        for service in self.services.values():
+            if hasattr(service, 'server') and service.server:
+                service.stop()
 
     def pause(self):
         if self.do_work_task.running:
@@ -327,7 +319,6 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         if self.task_server:
             self.task_server.resume()
-        BaseApp.start(self)
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
@@ -344,45 +335,15 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.monitor.shut_down()
         self.diag_service.stop_looping_call()
 
-    def connect(self, socket_address=None, node_id=""):
-        devp2plog.info("Paased in socket address {}".format(socket_address))
-        if socket_address is None:
-            log.info("bootstrap node")
-        elif isinstance(socket_address, Iterable):
-            socket_address = SocketAddress(
-                socket_address[0],
-                int(socket_address[1])
-            )
+    def connect(self, address=None, node_id=""):
+        if isinstance(address, SocketAddress):
+            address = (address.address, address.port)
 
-        self.config['node'] = {}
-        self.config['node']['privkey_hex'] = encode_hex(
-            self.keys_auth._private_key)
-        self.config['node']['pubkey_hex'] = encode_hex(
-            self.keys_auth.public_key)
-        self.config['node']['id'] = encode_hex(self.keys_auth.public_key)
-        self.config['node']['node_name'] = self.config_desc.node_name
-
-        if socket_address is None:
-            self.config['discovery']['bootstrap_nodes'].append(
-                str("enode://%s@%s:%s" % (self.configp2p['node']['pubkey_hex'],
-                    "127.0.0.1", self.config['p2p']["listen_port"])).encode(
-                    'utf-8')
-            )
-        else:
-            devp2plog.info("Not bootstrap adding, so adding correct bootstrap"
-                           " to list")
-            self.config['discovery']['bootstrap_nodes'].append(
-                str("enode://%s@%s:%s" % (node_id, socket_address.address,
-                    socket_address.port)).encode('utf-8'))
-
-        devp2plog.info(self.config['discovery']['bootstrap_nodes'])
-
-        for service in Client.available_services:
-            assert issubclass(service, BaseService)
-            assert service.name not in self.services
-            service.register_with_app(self)
-            assert hasattr(self.services, service.name)
-        BaseApp.start(self)
+        try:
+            self.services['peermanager'].connect(address, decode_hex(node_id))
+        except Exception as exc:
+            log.error('Cannot connect to node %s (%s): %r',
+                      node_id, address, exc)
 
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
@@ -437,10 +398,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.task_server.task_manager.resources_send(task_id)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+        self.task_server.task_computer.resource_given(task_id)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
@@ -534,16 +492,16 @@ class Client(BaseApp, HardwarePresetsMixin):
         pass
 
     def get_suggested_addr(self, key_id):
-        return self.services.golemservice.suggested_address.get(key_id)
+        return self.services['golem_service'].suggested_address.get(key_id)
 
     def get_suggested_conn_reverse(self, key_id):
-        return self.services.golemservice.get_suggested_conn_reverse(key_id)
+        return self.services['golem_service'].get_suggested_conn_reverse(key_id)
 
     def get_resource_peers(self):
         pass
 
     def get_peers(self):
-        return self.services.peermanager.peers
+        return self.services['peermanager'].peers
 
     def get_known_peers(self):
         peers = self.get_peers()
@@ -615,10 +573,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         return str(self.datadir)
 
     def get_p2p_port(self):
-        return self.configp2p["p2p"]['listen_port']
-
-    def get_task_server_port(self):
-        return self.task_server.cur_port
+        return p2pconfig["p2p"]['listen_port']
 
     def get_task_count(self):
         return len(self.task_server.task_keeper.get_all_tasks())
@@ -722,8 +677,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         return bool(self.ranking)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
-        self.services.golemservice.want_to_start_task_session(key_id,
-                                                              node_id, conn_id)
+        pass
 
     def inform_about_task_nat_hole(
             self,
@@ -780,15 +734,6 @@ class Client(BaseApp, HardwarePresetsMixin):
             client_options=client_options
         )
 
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
-        )
-
     def get_res_dirs(self):
         return {"computing": self.get_computed_files_dir(),
                 "received": self.get_received_files_dir(),
@@ -838,7 +783,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
-        self.services.golemservice.remove_task(task_id)
+        self.services['golem_service'].remove_task(task_id)
 
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
@@ -971,7 +916,7 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     def __do_work(self):
         try:
-            self.services.golemservice.get_tasks()
+            self.services['golem_service'].get_tasks()
         except Exception:
             log.exception("golem service task roadcast failed")
         try:
@@ -1068,9 +1013,7 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
-        task_server_port = self.get_task_server_port()
-
-        if listen_port == 0 or task_server_port == 0:
+        if listen_port == 0:
             return "Application not listening, check config file."
 
         messages = []
@@ -1117,7 +1060,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         else:
             msg = "Not accepting tasks\n"
 
-        peers = self.services.peermanager.peers
+        peers = self.services['peermanager'].peers
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg

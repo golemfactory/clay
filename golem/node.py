@@ -1,5 +1,7 @@
 """Compute Node"""
 
+from ipaddress import AddressValueError
+
 import click
 import gevent
 
@@ -7,7 +9,7 @@ from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
 from golem.core.common import to_unicode
-from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
 
@@ -29,7 +31,6 @@ class Node(object):
             geth_port=geth_port,
             **config_overrides
         )
-        self.client.connect()
 
         self.rpc_router = None
         self.rpc_session = None

@@ -7,7 +7,6 @@ from devp2p.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
-from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 
@@ -220,9 +219,10 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                      b"263cc00ed03f9a781444"
         private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
                       b"3b4ac6ef078"
-        expected_result = b"c76bd0e19f1b3e2587b9ff9c6230fe0eed7d25de95fdfd471" \
-                          b"9e13c1be4fadcbe405f700743f9d2ff32843bd249891e929e" \
-                          b"478e716afd4b5aa081c68e732d369901"
+        expected_result = b'\x90\xc1fh7\xae^\x0b\xb7|\xa7]\x18#9\xe8\xce' \
+                          b'\xcb@r\xdc\xfb\x91R\\\t\xd6\xf2\xe0\xcd\xd0' \
+                          b'\x8fYMg\xe6f\xa75\xbb\xcc\xb7\x91|%:d\xf0lV\x84' \
+                          b'\x13F\xc0\x19}K!\xfa\x86@\xe4\\\xeb\x01'
 
         EllipticalKeysAuth.set_keys_dir(self.path)
         ek = EllipticalKeysAuth(self.path)
@@ -232,16 +232,18 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.key_id = ek.cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
-        msg = MessageWantToComputeTask(node_name='node_name',
-                                       task_id='task_id',
-                                       perf_index=2200,
-                                       price=5 * 10 ** 18,
-                                       max_resource_size=250000000,
-                                       max_memory_size=300000000,
-                                       num_cores=4,
-                                       timestamp=time.time())
+        msg = [
+            ['node_name', 'node_name'],
+            ['task_id', 'task_id'],
+            ['perf_index', 2200],
+            ['price', 5 * 10 ** 18],
+            ['max_resource_size', 250000000],
+            ['max_memory_size', 300000000],
+            ['num_cores', 4]
+        ]
 
-        data = msg.get_short_hash()
+        data = CBORSerializer.dumps(msg)
+
         signature = ek.sign(data)
 
         dumped_s = CBORSerializer.dumps(signature)
@@ -260,20 +262,13 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
 
-        src = [1000, signature, time.time(), msg.dict_repr()]
+        src = [1000, signature, time.time(), msg]
         dumped_l = CBORSerializer.dumps(src)
         loaded_l = CBORSerializer.loads(dumped_l)
 
         self.assertEqual(src, loaded_l)
         self.assertEqual(signature, loaded_l[1])
-
-        msg_2 = MessageWantToComputeTask(dict_repr=loaded_l[3])
-
-        self.assertEqual(msg.get_short_hash(), msg_2.get_short_hash())
-        self.assertTrue(ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id))
-
-        self.assertEqual(type(loaded_l[1]), type(expected_result))
-        self.assertEqual(loaded_l[1], decode_hex(expected_result))
+        self.assertEqual(signature, expected_result)
 
     def test_encrypt_decrypt_elliptical(self):
         """ Test encryption and decryption with EllipticalKeysAuth """

@@ -1,6 +1,6 @@
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, Argument, command, CommandResult, doc
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from ethereum.utils import encode_hex
 
 @group(help="Manage network")

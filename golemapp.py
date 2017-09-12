@@ -1,33 +1,36 @@
 #!/usr/bin/env python
+import os
 import sys
-
-from golem.network.transport.message import init_messages
-init_messages()
-
+# Set the default event loop
+os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
+import gevent
 import click
-from multiprocessing import freeze_support
 import logging
+
+from multiprocessing import freeze_support
 from ethereum import slogging
 #Monkey patch for ethereum.slogging.
 #SLogger aggressively mess up with python looger.
 #This patch is to settle down this.
 #It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
+
+
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
-import gevent
-
 from twisted.internet import asyncioreactor
 
 
 def monkey_patched_run(self, *args, **kwargs):
     self.startRunning(installSignalHandlers=True)
 asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
+
 
 @click.command()
 @click.option('--gui/--nogui', default=True)

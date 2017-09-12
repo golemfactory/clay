@@ -637,7 +637,6 @@ def mock_tester_run(self):
 
 
 @patch('devp2p.app.BaseApp.start')
-@patch('golem.client.TaskServer.start_accepting')
 @patch('golem.client.async_run', side_effect=mock_async_run)
 @patch.object(golem.client.TaskTester, 'run', mock_tester_run)
 class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
@@ -648,7 +647,6 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
-        self.client.connect()
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 

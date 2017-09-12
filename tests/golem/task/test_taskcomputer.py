@@ -110,18 +110,15 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
-        assert tc.task_resource_collected("xyz")
-        tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
+        assert tc.resource_given("xyz")
         assert len(tc.current_computations) == 0
         assert tc.assigned_subtasks.get("xxyyzz") is None
-        task_server.send_task_failed.assert_called_with("xxyyzz", "xyz", "Host direct task not supported",
-                                                        "10.10.10.10", 10203, "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with(
+            "xxyyzz", "xyz", "Host direct task not supported", "owner")
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_given("xyz")
         assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
@@ -131,18 +128,15 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
         assert task_server.send_task_failed.call_count == prev_task_failed_count
-        self.assertTrue(task_server.send_results.called)
-        args = task_server.send_results.call_args[0]
+        self.assertTrue(task_server.send_result.called)
+        args = task_server.send_result.call_args[0]
+        print(args)
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
-        self.assertEqual(args[2]["data"], 10000)
-        self.assertGreater(args[3], 0)
-        self.assertLess(args[3], 10)
-        self.assertEqual(args[4], "10.10.10.10")
-        self.assertEqual(args[5], 10203)
-        self.assertEqual(args[6], "key")
-        self.assertEqual(args[7], "owner")
-        self.assertEqual(args[8], "ABC")
+        self.assertGreater(args[2], 0)
+        self.assertEqual(args[3]["data"], 10000)
+        self.assertEqual(args[3]["result_type"], 0)
+        self.assertEqual(args[4], "owner")
 
         ctd.subtask_id = "aabbcc"
         ctd.src_code = "raise Exception('some exception')"
@@ -151,36 +145,34 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
         self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline, timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
-        task_server.send_task_failed.assert_called_with("aabbcc", "xyz", 'some exception', "10.10.10.10",
-                                                        10203, "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with(
+            "aabbcc", "xyz", 'some exception', "owner")
 
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print('Hello world')"
         ctd.timeout = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         self.__wait_for_tasks(tc)
 
-        task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-                                                        "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with(
+            "aabbcc2", "xyz", "Wrong result format", "owner")
 
         ctd.subtask_id = "xxyyzz2"
         ctd.timeout = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_given("xyz"))
         tt = tc.current_computations[0]
         tc.task_computed(tc.current_computations[0])
         self.assertEqual(len(tc.current_computations), 0)
-        task_server.send_task_failed.assert_called_with("xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-                                                        "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with(
+            "xxyyzz2", "xyz", "Wrong result format", "owner")
         tt.end_comp()
         time.sleep(0.5)
         if tt.is_alive():

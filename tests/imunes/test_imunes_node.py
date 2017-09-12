@@ -13,6 +13,7 @@ from node import immunes_start
 from twisted.internet import reactor  # noqa
 
 
+@unittest.skip('Deprecated')
 class TestNode(DatabaseFixture):
 
     @unittest.expectedFailure

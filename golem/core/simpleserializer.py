@@ -212,6 +212,7 @@ class JSONDictSerializer:
         """
         return json.dumps(obj)
 
+
 class CBORSedes(Serializable):
 
     def __init__(self):

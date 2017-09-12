@@ -10,7 +10,7 @@ from requests import HTTPError
 
 from golem.core.common import DEVNULL
 from golem.core.hostaddress import ip_address_private
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from golem.resource.client import ClientConfig, ClientHandler, IClient, \
     ClientOptions
 
