@@ -12,8 +12,7 @@ def meta_data():
     cliid = str(uuid4())
     sessid = str(uuid4())
     return NodeMetadataModel(cliid, sessid, sys.platform,
-                             'app_version', 'description',
-                             ClientConfigDescriptor())
+                             'app_version', ClientConfigDescriptor())
 
 
 class MonitorTestBaseClass(unittest.TestCase):

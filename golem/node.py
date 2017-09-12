@@ -62,8 +62,6 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
-        for peer in self._peers:
-            self.client.connect(peer)
         self.client.sync()
 
         try:

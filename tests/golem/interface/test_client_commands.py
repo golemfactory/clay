@@ -1,18 +1,16 @@
-import os
+import json
+import io
 import unittest
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from mock import Mock
+from mock import Mock, mock_open, patch
 
-from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
-    BlenderRenderTask
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
@@ -406,6 +404,55 @@ class TestTasks(TempDirFixture):
             client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
+
+    @patch("golem.interface.client.tasks.uuid4")
+    def test_create(self, mock_uuid) -> None:
+        client = self.client
+        mock_uuid.return_value = "new_uuid"
+
+        definition = TaskDefinition()
+        definition.task_name = "The greatest task ever!"
+        def_str = json.dumps(definition.to_dict())
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+            tasks.create_from_json(def_str)
+            task_def = json.loads(def_str)
+            task_def['id'] = "new_uuid"
+            client.create_task.assert_called_with(task_def)
+
+            patched_open = "golem.interface.client.tasks.open"
+            with patch(patched_open, mock_open(read_data='{}')):
+                tasks.create("foo")
+                task_def = json.loads('{"id": "new_uuid"}')
+                client.create_task.assert_called_with(task_def)
+
+    def test_template(self) -> None:
+        tasks = Tasks()
+
+        with patch('sys.stdout', io.StringIO()) as mock_io:
+            tasks.template(None)
+            output = mock_io.getvalue()
+
+        self.assertIn("bid", output)
+        self.assertIn("0.0", output)
+        self.assertIn('"subtask_timeout": "0:00:00"', output)
+
+        self.assertEqual(json.loads(output), TaskDefinition().to_dict())
+
+        temp = self.temp_file_name("test_template")
+        tasks.template(temp)
+        with open(temp) as f:
+            content = f.read()
+            self.assertEqual(content, output)
+
+        with client_ctx(Tasks, self.client):
+            Tasks.client.get_task.return_value = TaskDefinition().to_dict()
+            tasks.dump('id', temp)
+
+        with open(temp) as f:
+            content_dump = f.read()
+            self.assertEqual(content, content_dump)
 
     def test_show(self):
         client = self.client
