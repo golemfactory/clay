@@ -60,6 +60,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.privkey = urandom(32)
         self.addr = privtoaddr(self.privkey)
         self.client = mock.MagicMock(spec=Client)
+        self.client.web3 = mock.MagicMock()
         self.client.get_balance.return_value = 0
         self.client.send.side_effect = lambda tx: '0x' + encode_hex(tx.hash)
         self.nonce = random.randint(0, 9999)
@@ -271,6 +272,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
                         (1, syncing_status),
                         (65, syncing_status),
                         (65, False))
+
+        self.client.web3.eth.syncing.return_value=\
+            {'currentBlock': 123, 'highestBlock': 1234}
 
         for c in combinations:
             print("Subtest {}".format(c))

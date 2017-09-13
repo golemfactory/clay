@@ -33,7 +33,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
                  transaction_id,
                  block_number,
                  value):
-        my_address = self.processor.get_eth_address()
+        my_address = self.processor.eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
 
         if not self.processor.is_synchronized():

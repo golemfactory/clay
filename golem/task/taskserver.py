@@ -399,6 +399,7 @@ class TaskServer(PendingConnectionsServer):
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
+        # value2 =  self.task_manager.comp_task_keeper.get_value(subtask_id)
         if not value:
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return

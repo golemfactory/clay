@@ -25,11 +25,11 @@ class TestPaymentProcessor(unittest.TestCase):
         # Test with zpad
         expected = ('0x000000000000000000000000e1ad9e38fc4bf20e5'
                     'd4847e00e8a05170c87913f')
-        self.assertEqual(expected, self.payment_processor.get_eth_address())
+        self.assertEqual(expected, self.payment_processor.eth_address())
 
         # Test without zpad
         expected = '0xe1ad9e38fc4bf20e5d4847e00e8a05170c87913f'
-        result = self.payment_processor.get_eth_address(zpad=False)
+        result = self.payment_processor.eth_address(zpad=False)
         self.assertEqual(expected, result)
 
 

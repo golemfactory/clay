@@ -343,7 +343,14 @@ class TaskManager(TaskEventListener):
         :return long: price that should be paid for given subtask
         """
         task_id = self.subtask2task_mapping[subtask_id]
-        return self.tasks_states[task_id].subtask_states[subtask_id].value
+
+        # todo GG
+        # test = self.tasks_states[task_id].subtask_states[subtask_id].value * \
+        #     self.tasks_states[task_id].subtask_states[
+        #         subtask_id].computation_time
+
+        value = self.tasks_states[task_id].subtask_states[subtask_id].value
+        return value
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result, result_type):

@@ -78,7 +78,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.get_eth_address(),  # receiver
+                self.instance.processor.eth_address(),  # receiver
             ],
             'data': hex(received_kwargs['value'] - 1),
         })
@@ -91,7 +91,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.get_eth_address(),  # receiver
+                self.instance.processor.eth_address(),  # receiver
             ],
             'data': hex(1),
         })
@@ -104,7 +104,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
-                self.instance.processor.get_eth_address(),  # receiver
+                self.instance.processor.eth_address(),  # receiver
             ],
             'data': hex(1),
         })
@@ -157,7 +157,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 'topics': [
                     EthereumIncomesKeeper.LOG_ID,
                     get_some_id(),  # sender
-                    self.instance.processor.get_eth_address(),  # receiver
+                    self.instance.processor.eth_address(),  # receiver
                 ],
                 'data': db_value
             },

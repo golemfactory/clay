@@ -90,31 +90,31 @@ class PaymentProcessor(Service):
         super(PaymentProcessor, self).__init__(13)
 
 
-    # GG todo
-    @report_calls(Component.ethereum, 'sync')
-    def synchronize_with_confirmations(self,
-                                       to_block="latest",
-                                       n_of_confirmations = 1,
-                                       max_attempts = 100):
-
-        attempt_counter = 0
-        last_block = self.__client.web3.eth.getBlock('latest')
-
-        is_synchronized = False
-        while not is_synchronized and attempt_counter < max_attempts:
-            try:
-                is_synchronized = self.is_synchronized()
-                requested_block = self.__client.web3.eth.getBlock(to_block)
-
-                if requested_block['number'] > last_block['number'] + n_of_confirmations:
-                    is_synchronized = False
-
-            except Exception as e:
-                log.error("IPC error: {}".format(e))
-                is_synchronized = False
-            else:
-                attempt_counter += 1
-                sleep(0.5)
+    # # GG todo
+    # @report_calls(Component.ethereum, 'sync')
+    # def synchronize_with_confirmations(self,
+    #                                    to_block="latest",
+    #                                    n_of_confirmations = 1,
+    #                                    max_attempts = 100):
+    #
+    #     attempt_counter = 0
+    #     last_block = self.__client.web3.eth.getBlock('latest')
+    #
+    #     is_synchronized = False
+    #     while not is_synchronized and attempt_counter < max_attempts:
+    #         try:
+    #             is_synchronized = self.is_synchronized()
+    #             requested_block = self.__client.web3.eth.getBlock(to_block)
+    #
+    #             if requested_block['number'] > last_block['number'] + n_of_confirmations:
+    #                 is_synchronized = False
+    #
+    #         except Exception as e:
+    #             log.error("IPC error: {}".format(e))
+    #             is_synchronized = False
+    #         else:
+    #             attempt_counter += 1
+    #             sleep(0.5)
 
     def is_synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
@@ -162,7 +162,7 @@ class PaymentProcessor(Service):
 
         return True
 
-    def get_eth_address(self, zpad=True):
+    def eth_address(self, zpad=True):
         raw = keys.privtoaddr(self.__privkey)
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
@@ -175,7 +175,7 @@ class PaymentProcessor(Service):
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
-            addr = self.get_eth_address(zpad=False)
+            addr = self.eth_address(zpad=False)
             self.__eth_balance = self.__client.get_balance(addr)
             log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
@@ -272,7 +272,7 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = self.get_eth_address(zpad=False)
+        addr = self.eth_address(zpad=False)
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
@@ -368,7 +368,7 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = self.get_eth_address(zpad=False)
+            addr = self.eth_address(zpad=False)
             nonce = self.__client.get_transaction_count(addr)
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
