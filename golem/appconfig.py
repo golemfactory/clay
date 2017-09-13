@@ -1,7 +1,7 @@
 import logging
 from os import path
 
-from typing import Set,Any
+from typing import Set, Any
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -85,14 +85,17 @@ class NodeConfig:
     def read_estimated_performance(cls):
         estm_file = SimpleEnv.env_file_name(ESTM_FILENAME)
         res = 0
-        try:
-            with open(estm_file, 'r') as file_:
-                val = file_.read()
-                res = "{0:.1f}".format(float(val))
-        except IOError as err:
-            logger.warning("Can't open file {}: {}".format(estm_file, str(err)))
-        except ValueError as err:
-            logger.warning("Can't change {} to float: {}".format(val, str(err)))
+        if path.isfile(estm_file):
+            try:
+                with open(estm_file, 'r') as file_:
+                    val = file_.read()
+                    res = "{0:.1f}".format(float(val))
+            except IOError as err:
+                logger.warning(
+                    "Can't open file {}: {}".format(estm_file, str(err)))
+            except ValueError as err:
+                logger.warning(
+                    "Can't change {} to float: {}".format(val, str(err)))
         return res
 
     def __init__(self, **kwargs):
@@ -195,7 +198,7 @@ class AppConfig:
             raise TypeError(
                 "Incorrect config descriptor type: {}."
                 " Should be ClientConfigDescriptor"
-                .format(type(cfg_desc))
+                    .format(type(cfg_desc))
             )
 
         for var, val in list(vars(cfg_desc).items()):
