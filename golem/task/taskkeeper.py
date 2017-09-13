@@ -1,5 +1,6 @@
 import logging
 import math
+import pathlib
 import pickle
 import random
 import time
@@ -55,10 +56,10 @@ class CompTaskKeeper:
 
     handle_key_error = HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path, persist=True):
+    def __init__(self, tasks_path: pathlib.Path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
 
-        tasks_path: pathlib.Path to tasks directory
+        tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
         self.active_tasks = {}
@@ -67,7 +68,7 @@ class CompTaskKeeper:
         self.persist = persist
         self.restore()
 
-    def dump(self):
+    def dump(self) -> None:
         if not self.persist:
             return
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
@@ -78,7 +79,7 @@ class CompTaskKeeper:
                 logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
-    def restore(self):
+    def restore(self) -> None:
         if not self.persist:
             return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
