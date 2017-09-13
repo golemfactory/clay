@@ -233,7 +233,8 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
-        self.stop_network()
+        import gevent
+        gevent.spawn(self.stop_network)
         if self.do_work_task.running:
             self.do_work_task.stop()
         if self.publish_task.running:

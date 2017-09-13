@@ -547,12 +547,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_machine_manager=False
         )
 
-        self.client.stop_network = Mock()
-
         self.client.start()
         self.client.stop()
 
-        assert self.client.stop_network.called
+        assert not self.client.do_work_task.running
+        assert not self.client.publish_task.running
 
 
 @patch('signal.signal')
