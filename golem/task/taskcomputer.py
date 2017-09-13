@@ -182,7 +182,13 @@ class TaskComputer(object):
             subtask = self.assigned_subtasks.pop(subtask_id)
             # get paid for max working time,
             # thus task withholding won't make profit
-            work_time_to_be_paid = subtask.deadline
+
+            # work_time_to_be_paid = subtask.deadline
+            task_header = self.task_server.task_keeper.task_headers[
+                subtask.task_id]
+
+            work_time_to_be_paid = task_header.subtask_timeout
+
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
             return

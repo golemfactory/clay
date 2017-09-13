@@ -142,7 +142,10 @@ class CompTaskKeeper(object):
 
     @handle_key_error
     def get_value(self, task_id, computing_time):
-        price = self.active_tasks[task_id].price
+        # todo GG
+        # price = self.active_tasks[task_id].price
+        price = int(self.active_tasks[task_id].header.max_price)
+
         if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
