@@ -1,8 +1,9 @@
+import abc
 import sys
 from os import path
 
 
-class Environment(object):
+class Environment():
     @classmethod
     def get_id(cls):
         """ Get Environment unique id

@@ -75,8 +75,8 @@ setup(
             path.normpath('apps/registered.ini'),
             path.normpath('apps/images.ini')
         ]),
-        (path.normpath('../../golem/apps/core/benchmark/minilight'), [
-            path.normpath('apps/core/benchmark/minilight/cornellbox.ml.txt'),
+        (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
+            path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),

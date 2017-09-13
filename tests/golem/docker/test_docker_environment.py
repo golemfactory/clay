@@ -1,3 +1,5 @@
+from enforce.exceptions import RuntimeTypeError
+
 from apps.blender.blenderenvironment import BlenderEnvironment
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -5,13 +7,25 @@ from golem.tools.ci import ci_skip
 
 from .test_docker_image import DockerTestCase
 
+class DockerEnvironmentMock(DockerEnvironment):
+    DOCKER_IMAGE = ""
+    DOCKER_TAG = ""
+    ENV_ID = ""
+    APP_DIR = ""
+    SCRIPT_NAME = ""
+    SHORT_DESCRIPTION = ""
+
 
 @ci_skip
 class TestDockerEnvironment(DockerTestCase):
     def test_docker_environment(self):
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             DockerEnvironment(None)
-        de = DockerEnvironment([DockerImage("golemfactory/blender", tag="1.3")])
+
+        with self.assertRaises(RuntimeTypeError):
+            DockerEnvironmentMock(additional_images=["aaa"])
+
+        de = DockerEnvironmentMock(additional_images=[DockerImage("golemfactory/blender", tag="1.3")])
         self.assertTrue(de.supported())
         self.assertTrue(
             de.description().startswith('Default environment for generic tasks without any additional requirements.'))

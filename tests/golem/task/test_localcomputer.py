@@ -1,6 +1,6 @@
 from os import path
 
-from mock import Mock
+from mock import Mock, patch
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task, ComputeTaskDef
@@ -11,6 +11,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 
 
 @ci_skip
+@patch.multiple(Task, __abstractmethods__=frozenset())
 class TestLocalComputer(TestDirFixture):
     last_error = None
     last_result = None
@@ -27,7 +28,7 @@ class TestLocalComputer(TestDirFixture):
         with self.assertRaises(TypeError):
             LocalComputer(None, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)
         files = self.additional_dir_content([1])
-        task = Task(Mock(), Mock())
+        task = Task(Mock(), Mock(), Mock())
         lc = LocalComputer(task, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)
         self.assertIsInstance(lc, LocalComputer)
         lc.run()

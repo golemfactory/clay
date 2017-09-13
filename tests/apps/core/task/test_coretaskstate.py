@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from apps.core.task.coretaskstate import (CoreTaskDefaults, Options,
-                                          TaskDefinition, TaskDesc)
+from apps.core.task.coretaskstate import (TaskDefaults, TaskDefinition, TaskDesc, Options)
 
 from golem.environments.environment import Environment
 from golem.testutils import PEP8MixIn
@@ -15,7 +14,7 @@ class TestTaskDesc(TestCase):
 
 class TestCoreTaskDefautls(TestCase):
     def test_init(self):
-        defaults = CoreTaskDefaults()
+        defaults = TaskDefaults()
         assert defaults.output_format == ""
         assert defaults.main_program_file == ""
         assert defaults.full_task_timeout == 4 * 3600

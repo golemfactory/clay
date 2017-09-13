@@ -6,7 +6,7 @@ import time
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -368,7 +368,7 @@ class TestTaskMonitor(TestDirFixture):
         task_thread.error = False
         task_thread.error_msg = None
         task_thread.result = {'data': 'oh senora!!!',
-                              'result_type': 'Cadencia da Vila'}
+                              'result_type': ResultType.DATA}
         check(True)
 
         # default case (error)
