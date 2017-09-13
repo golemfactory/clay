@@ -58,6 +58,7 @@ class TestCreateClient(TestDirFixture):
         self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
+    @patch('golem.client.filelock', new=None)
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_invalid(self, *_):
         """Test that Client() does not allow to override properties
