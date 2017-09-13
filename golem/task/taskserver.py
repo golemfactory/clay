@@ -364,10 +364,6 @@ class TaskServer(PendingConnectionsServer):
         task_id = expected_income.task
         node_id = expected_income.sender_node
 
-        # todo GG ensure its synchronized?!
-        # run this in separate thread
-
-
         # check that the reward has been successfully written in db
         result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
@@ -399,7 +395,7 @@ class TaskServer(PendingConnectionsServer):
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
-        # value2 =  self.task_manager.comp_task_keeper.get_value(subtask_id)
+
         if not value:
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return

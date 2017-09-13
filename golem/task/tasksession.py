@@ -6,6 +6,7 @@ import functools
 import os
 import struct
 import time
+import threading
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
@@ -82,6 +83,7 @@ class TaskSession(MiddlemanSafeSession):
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
+        # self.threads = []
     ########################
     # BasicSession methods #
     ########################
@@ -791,6 +793,27 @@ class TaskSession(MiddlemanSafeSession):
                 msg.transaction_id
             )
             return
+
+        # GG todo
+        # reward_for_subtask_paid requires being sync with blockchain
+        # run it with separate thread to prevent hanging the main thread
+
+        # thread = threading.Thread(
+        #     target=self.task_server.reward_for_subtask_paid,
+        #     args=(),
+        #     kwargs = {
+        #     'subtask_id':msg.subtask_id,
+        #     'reward':msg.reward,
+        #     'transaction_id':msg.transaction_id,
+        #     'block_number':msg.block_number
+        #     }
+        # )
+
+        # # thread.daemon = True                            # Daemonize thread
+        # thread.start()                                  # Start the execution
+        # thread.join()
+        # # time.sleep(2)
+        # self.threads.append(thread)
         self.task_server.reward_for_subtask_paid(
             subtask_id=msg.subtask_id,
             reward=msg.reward,

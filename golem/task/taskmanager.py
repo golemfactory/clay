@@ -44,6 +44,7 @@ subtask_priority = {
 
 class TaskManager(TaskEventListener):
     """ Keeps and manages information about requested tasks
+    Requestor uses TaskManager to assign task to providers
     """
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
@@ -343,12 +344,6 @@ class TaskManager(TaskEventListener):
         :return long: price that should be paid for given subtask
         """
         task_id = self.subtask2task_mapping[subtask_id]
-
-        # todo GG
-        # test = self.tasks_states[task_id].subtask_states[subtask_id].value * \
-        #     self.tasks_states[task_id].subtask_states[
-        #         subtask_id].computation_time
-
         value = self.tasks_states[task_id].subtask_states[subtask_id].value
         return value
 
@@ -665,7 +660,9 @@ class TaskManager(TaskEventListener):
         """
         Set computation time for subtask and also compute and set new value based on saved price for this subtask
         :param str subtask_id: subtask which was computed in given computation_time
-        :param float computation_time: how long does it take to compute this task
+        :param float computation_time: how long does it take to compute
+        this task = max timeout
+
         :return:
         """
         task_id = self.subtask2task_mapping[subtask_id]

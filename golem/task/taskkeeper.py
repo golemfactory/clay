@@ -15,7 +15,7 @@ logger = logging.getLogger('golem.task.taskkeeper')
 
 
 def compute_subtask_value(price, computation_time):
-    value  = int(math.ceil(price * computation_time / 3600))
+    value = int(math.ceil(price * computation_time / 3600))
     return value
 
 
@@ -165,6 +165,7 @@ class TaskHeaderKeeper(object):
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.
+       Provider uses Taskkeeper to find tasks for itself
     """
 
     def __init__(

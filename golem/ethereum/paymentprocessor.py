@@ -20,8 +20,6 @@ from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
 from golem.utils import decode_hex, encode_hex
 
-
-
 log = logging.getLogger("golem.pay")
 
 gnt_contract = abi.ContractTranslator(json.loads(TestGNT.ABI))
@@ -89,32 +87,20 @@ class PaymentProcessor(Service):
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
+    def wait_until_synchronized(self):
+        is_synchronized = False
+        while not is_synchronized:
+            try:
+                is_synchronized = self.is_synchronized()
+            except Exception as e:
+                log.error("Error "
+                          "while syncing with eth blockchain: "
+                          "{}".format(e))
+                is_synchronized = False
+            else:
+                sleep(0.5)
 
-    # # GG todo
-    # @report_calls(Component.ethereum, 'sync')
-    # def synchronize_with_confirmations(self,
-    #                                    to_block="latest",
-    #                                    n_of_confirmations = 1,
-    #                                    max_attempts = 100):
-    #
-    #     attempt_counter = 0
-    #     last_block = self.__client.web3.eth.getBlock('latest')
-    #
-    #     is_synchronized = False
-    #     while not is_synchronized and attempt_counter < max_attempts:
-    #         try:
-    #             is_synchronized = self.is_synchronized()
-    #             requested_block = self.__client.web3.eth.getBlock(to_block)
-    #
-    #             if requested_block['number'] > last_block['number'] + n_of_confirmations:
-    #                 is_synchronized = False
-    #
-    #         except Exception as e:
-    #             log.error("IPC error: {}".format(e))
-    #             is_synchronized = False
-    #         else:
-    #             attempt_counter += 1
-    #             sleep(0.5)
+        return True
 
     def is_synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""

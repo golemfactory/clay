@@ -33,6 +33,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
                  transaction_id,
                  block_number,
                  value):
+
         my_address = self.processor.eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
 
@@ -40,21 +41,8 @@ class EthereumIncomesKeeper(IncomesKeeper):
             logger.warning("payment processor is not synchronized with "
                            "blockchain, income may not be found...")
 
-        # GG todo run it in another thread (busy waiting)
-        # use == False instead of not is_synchronized...
-        # otherwise not Mock() --> True
-        is_synchronized = False
-
-        while not is_synchronized:
-            try:
-                is_synchronized = self.processor.is_synchronized()
-            except Exception as e:
-                logger.error("payment reception failed "
-                             "while syncing with eth blockchain: "
-                             "{}".format(e))
-                is_synchronized = False
-            else:
-                sleep(0.5)
+        # todo GG
+        # self.processor.wait_until_synchronized()
 
         incomes = self.processor.get_logs(
             from_block=block_number,
