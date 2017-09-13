@@ -133,6 +133,10 @@ class PaymentProcessor(Service):
                 return False
             if self.__client.is_syncing():
                 log.info("Node is syncing...")
+                syncing = self.__client.web3.eth.syncing
+                if syncing:
+                    log.info("currentBlock: " + str(syncing['currentBlock']) +
+                             "\t highestBlock:" + str(syncing['highestBlock']))
                 return False
             return True
 
