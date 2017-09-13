@@ -16,7 +16,6 @@ checkout:
 
 dependencies:
   override:
-    - pip3 install git+git://github.com/decentfox/tulipcore.git
     - pip3 install -r requirements.txt
     - python3 setup.py develop
   pre:

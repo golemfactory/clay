@@ -56,3 +56,4 @@ numpy
 scipy
 pyssim
 enforce==0.3.4
+tulipcore
