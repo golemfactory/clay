@@ -132,6 +132,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
+        task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
