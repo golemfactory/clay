@@ -180,6 +180,9 @@ class TaskComputer(object):
         subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtasks.pop(subtask_id)
+            # get paid for max working time,
+            # thus task withholding won't make profit
+            work_time_to_be_paid = subtask.deadline
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
             return
@@ -193,13 +196,15 @@ class TaskComputer(object):
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
+
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
             logger.info("Task %r computed", subtask_id)
             self.stats.increase_stat('computed_tasks')
-            self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
+            self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, work_time_to_be_paid,
                                           subtask.return_address, subtask.return_port, subtask.key_id,
                                           subtask.task_owner, self.node_name)
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=time_)
+
         else:
             self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
