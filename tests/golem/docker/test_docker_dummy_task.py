@@ -45,6 +45,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         data_dir = os.path.join(get_golem_path(),
                                 "apps",
                                 "dummy",
