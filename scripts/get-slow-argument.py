@@ -24,7 +24,8 @@ if pull_request_id not in ["", "false"]:
         req = requests.get(url, headers={'User-Agent': 'build-bot'})
 
         json_data = req.json()
-        result = [a for a in json_data if a["state"] == "APPROVED"]
+        key = "state"
+        result = [a for a in json_data if key in a and a[key] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
     except(requests.HTTPError, requests.Timeout) as e:
