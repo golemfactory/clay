@@ -18,7 +18,7 @@ def compute_subtask_value(price, computation_time):
     return int(math.ceil(price * computation_time / 3600))
 
 
-class CompTaskInfo(object):
+class CompTaskInfo:
     def __init__(self, header, price):
         self.header = header
         self.price = price
@@ -33,12 +33,12 @@ class CompTaskInfo(object):
         )
 
 
-class CompSubtaskInfo(object):
+class CompSubtaskInfo:
     def __init__(self, subtask_id):
         self.subtask_id = subtask_id
 
 
-def log_key_error(*args, **kwargs):
+def log_key_error(*args):
     if isinstance(args[1], ComputeTaskDef):
         task_id = args[1].task_id
     else:
@@ -47,13 +47,13 @@ def log_key_error(*args, **kwargs):
     return None
 
 
-class CompTaskKeeper(object):
+class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
     handle_key_error = HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path, persist=True):
+    def __init__(self, tasks_path):
         """ Create new instance of compuatational task's definition's keeper
 
         tasks_path: pathlib.Path to tasks directory
@@ -62,12 +62,9 @@ class CompTaskKeeper(object):
         self.active_tasks = {}
         self.subtask_to_task = {}  # maps subtasks id to tasks id
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
-        self.persist = persist
         self.restore()
 
     def dump(self):
-        if not self.persist:
-            return
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
@@ -77,8 +74,6 @@ class CompTaskKeeper(object):
             pickle.dump(dump_data, f)
 
     def restore(self):
-        if not self.persist:
-            return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
@@ -157,7 +152,7 @@ class CompTaskKeeper(object):
         self.dump()
 
 
-class TaskHeaderKeeper(object):
+class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.
@@ -169,8 +164,7 @@ class TaskHeaderKeeper(object):
             min_price=0.0,
             app_version=APP_VERSION,
             remove_task_timeout=180,
-            verification_timeout=3600
-            ):
+            verification_timeout=3600):
         # all computing tasks that this node knows about
         self.task_headers = {}
         # ids of tasks that this node may try to compute
@@ -342,7 +336,7 @@ class TaskHeaderKeeper(object):
         :return TaskHeader|None: returns either None if there are no tasks
                                  that this node may want to compute
         """
-        if len(self.supported_tasks) > 0:
+        if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
             return self.task_headers[task_id]

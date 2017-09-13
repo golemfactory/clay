@@ -14,8 +14,8 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import CompTaskInfo
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
-from golem.testutils import PEP8MixIn
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, \
+    CompSubtaskInfo, logger
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -263,10 +263,7 @@ class TestCompSubtaskInfo(TestCase):
         self.assertIsInstance(csi, CompSubtaskInfo)
 
 
-class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
-    PEP8_FILES = [
-        "golem/task/taskkeeper.py",
-    ]
+class TestCompTaskKeeper(LogTestCase, TempDirFixture):
 
     def setUp(self):
         super(TestCompTaskKeeper, self).setUp()
@@ -342,7 +339,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
     def test_receive_subtask_problems(self):
-        ctk = CompTaskKeeper(Path(self.path), False)
+        ctk = CompTaskKeeper(Path(self.path))
         th = get_task_header()
         ctk.add_request(th, 5)
         ctd = ComputeTaskDef()
