@@ -120,7 +120,7 @@ class Session(ApplicationSession):
     def unregister_events(self, event_names):
         for event_name in event_names:
             if event_name in self.subs:
-                yield self.subs[event_name].unsubscibe()
+                yield self.subs[event_name].unsubscribe()
                 self.subs.pop(event_name, None)
             else:
                 logger.error("RPC: Not subscribed to: {}".format(event_name))

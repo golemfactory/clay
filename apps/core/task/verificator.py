@@ -43,6 +43,8 @@ class CoreVerificator(object):
     def get_verification_state(self, subtask_id):
         return self.ver_states[subtask_id]
 
+    # subtask_info is what sits in the task.subtasks_given[subtask_id"]
+    # it is set in the query_extra_data function
     @handle_key_error_for_state
     def verify(self, subtask_id, subtask_info, tr_files, task):
         self._check_files(subtask_id, subtask_info, tr_files, task)
@@ -51,8 +53,12 @@ class CoreVerificator(object):
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
         for tr_file in tr_files:
             if os.path.isfile(tr_file):
-                self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-                return
+                if self._verify_result(subtask_id, subtask_info, tr_file, task):
+                    self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+                    return
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-
+    def _verify_result(self, subtask_id, subtask_info, tr_file, task):
+        """ Override this to change verification method
+        """
+        return True

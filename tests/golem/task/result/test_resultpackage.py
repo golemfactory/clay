@@ -6,7 +6,7 @@ from golem.core.fileencrypt import FileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultpackage import ZipPackager, EncryptingPackager, EncryptingTaskResultPackager, \
     ExtractedPackage
-from golem.task.taskbase import result_types
+from golem.task.taskbase import ResultType
 from golem.tools.testdirfixture import TestDirFixture
 
 node_name = 'test_suite'
@@ -26,7 +26,7 @@ class MockTaskResult:
                  owner_key_id=None, owner=None):
 
         if result_type is None:
-            result_type = result_types['files']
+            result_type = ResultType.FILES
         if owner_key_id is None:
             owner_key_id = str(uuid.uuid4())
         if owner is None:
@@ -149,7 +149,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         os.remove(path)
 
         tr = MockTaskResult(self.task_id, "Result string data",
-                            result_type=result_types["data"])
+                            result_type=ResultType.DATA)
 
         path = etp.create(self.out_path,
                           node=node,
@@ -199,7 +199,7 @@ class TestExtractedPackage(TestDirFixture):
         extracted = etp.extract(path)
         extra_data = extracted.to_extra_data()
 
-        self.assertEqual(extra_data.get('result_type', None), result_types['files'])
+        self.assertEqual(extra_data.get('result_type', None), ResultType.FILES)
         self.assertEqual(len(extra_data.get('result', [])), len(self.file_list))
         self.assertIsNone(extra_data.get('data_type', None))
 

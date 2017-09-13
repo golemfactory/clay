@@ -36,7 +36,7 @@ from gui.view.appmainwindow import AppMainWindow
 
 class TTask(Task):
     def __init__(self):
-        Task.__init__(self, Mock(), Mock())
+        Task.__init__(self, Mock(), Mock(), Mock())
         self.src_code = ""
         self.extra_data = {}
         self.test_finished = False
@@ -69,7 +69,6 @@ class TTaskWithDef(TTask):
         self.task_definition = TaskDefinition()
         self.task_definition.max_price = 100 * denoms.ether
 
-
 class TTaskBuilder(CoreTaskBuilder):
 
     def __init__(self, path, task_class=TTask):
@@ -78,7 +77,11 @@ class TTaskBuilder(CoreTaskBuilder):
         self.extra_data = {"n": 421}
         self.task_class = task_class
 
+        # the patch.multiple decorator doesn't work here
+        self.task_class.__abstractmethods__ = frozenset()
+
     def build(self):
+        # no initialization here
         t = self.task_class()
         t.header = TaskHeader(
             node_name="node1",

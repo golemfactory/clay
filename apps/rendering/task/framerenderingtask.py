@@ -19,6 +19,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
+from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -90,7 +91,7 @@ class FrameRenderingTask(RenderingTask):
             self._update_task_preview()
 
     @CoreTask.handle_key_error
-    def computation_finished(self, subtask_id, task_result, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
         super(FrameRenderingTask, self).computation_finished(subtask_id,
                                                              task_result,
                                                              result_type)
@@ -133,7 +134,7 @@ class FrameRenderingTask(RenderingTask):
         return subtasks
 
     def accept_results(self, subtask_id, result_files):
-        super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
+        super().accept_results(subtask_id, result_files)
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']

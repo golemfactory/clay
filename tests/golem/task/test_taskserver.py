@@ -13,8 +13,8 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
-from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, logger
+from golem.task.taskbase import ComputeTaskDef, TaskHeader, ResultType
+from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -117,7 +117,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
-        results = {"data": "", "result_type": 0}
+        results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
 
@@ -135,9 +135,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         self.assertFalse(async_run.called)
         self.assertTrue(ts.send_result("xyzxyz", "xyz", 40, results, n))
-        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
-        self.assertTrue(async_run.called)
 
+        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         incomes_keeper.expect.assert_called_once_with(
             sender_node_id="key",
             task_id="xyz",
@@ -354,6 +353,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ccd.root_path = self.path
         ccd.estimated_lux_performance = 2000.0
         ccd.estimated_blender_performance = 2000.0
+        ccd.estimated_dummytask_performance = 2000.0
         return ccd
 
     def test_should_accept_provider(self):
