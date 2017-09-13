@@ -6,7 +6,7 @@ import time
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -294,7 +294,7 @@ class TestTaskMonitor(TestDirFixture):
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", config_desc()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", config_desc()), MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = config_desc()
         task = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
@@ -333,7 +333,7 @@ class TestTaskMonitor(TestDirFixture):
         prepare()
         task_thread.error = False
         task_thread.error_msg = None
-        task_thread.result = {'data': 'oh senora!!!', 'result_type': 'Cadencia da Vila'}
+        task_thread.result = {'data': 'oh senora!!!', 'result_type': ResultType.DATA}
         check(True)
 
         # default case (error)

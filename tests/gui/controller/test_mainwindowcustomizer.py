@@ -29,27 +29,6 @@ class MagicQObject(QObject):
 
 class TestMainWindowCustomizer(TestGui):
 
-    def test_description(self):
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
-        assert isinstance(customizer, MainWindowCustomizer)
-        customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC1")
-        assert customizer.gui.ui.descriptionTextEdit.toPlainText() == "DESC1"
-        customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC2")
-        assert customizer.gui.ui.descriptionTextEdit.toPlainText() == "DESC2"
-        assert customizer.gui.ui.editDescriptionButton.isEnabled()
-        assert not customizer.gui.ui.saveDescriptionButton.isEnabled()
-        assert not customizer.gui.ui.descriptionTextEdit.isEnabled()
-
-        QTest.mouseClick(customizer.gui.ui.editDescriptionButton, Qt.LeftButton)
-        assert not customizer.gui.ui.editDescriptionButton.isEnabled()
-        assert customizer.gui.ui.saveDescriptionButton.isEnabled()
-        assert customizer.gui.ui.descriptionTextEdit.isEnabled()
-
-        QTest.mouseClick(customizer.gui.ui.saveDescriptionButton, Qt.LeftButton)
-        assert customizer.gui.ui.editDescriptionButton.isEnabled()
-        assert not customizer.gui.ui.saveDescriptionButton.isEnabled()
-        assert not customizer.gui.ui.descriptionTextEdit.isEnabled()
-
     def test_table(self):
         customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
         task1 = TaskDesc()

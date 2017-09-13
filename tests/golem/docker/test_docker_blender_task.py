@@ -13,7 +13,7 @@ from golem.docker.image import DockerImage
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import result_types, TaskHeader
+from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -169,7 +169,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        assert result["result_type"] == result_types["files"]
+        assert result["result_type"] == ResultType.FILES
         assert len(result["data"]) >= 3
         assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"])
         assert any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"])

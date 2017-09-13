@@ -62,7 +62,10 @@ class PyInstaller(Command):
 
         for spec in ['golemapp.spec', 'golemcli.spec']:
             self.banner("Building {}".format(spec))
-            subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', spec])
+            subprocess.check_call([
+                sys.executable, '-m', 'PyInstaller', '--clean',
+                '--win-private-assemblies', spec
+            ])
 
         print("> Copying taskcollector")
         self.copy_taskcollector(dist_dir)
@@ -87,8 +90,14 @@ class PyInstaller(Command):
     def copy_taskcollector(self, dist_dir):
         import shutil
 
-        taskcollector_dir = path.join('apps', 'rendering', 'resources',
-                                      'taskcollector', 'x64' if is_windows() else '', 'Release')
+        taskcollector_dir = path.join(
+            'apps',
+            'rendering',
+            'resources',
+            'taskcollector',
+            'x64' if is_windows() else '',
+            'Release'
+        )
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
 
@@ -293,7 +302,6 @@ def file_name():
 
 
 def get_files():
-    from golem.core.common import get_golem_path
     golem_path = get_golem_path()
     extensions = ['py', 'pyc', 'pyd', 'ini', 'template', 'dll', 'png', 'txt']
     excluded = ['golem.egg-info', 'build', 'tests', 'Installer', '.git']

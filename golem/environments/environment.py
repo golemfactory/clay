@@ -40,7 +40,9 @@ class UnsupportReason(enum.Enum):
     APP_VERSION = 'app_version'
 
 
-class Environment(object):
+
+class Environment():
+
     @classmethod
     def get_id(cls):
         """ Get Environment unique id

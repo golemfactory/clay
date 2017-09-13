@@ -1,6 +1,6 @@
 import logging
 
-from docker import errors
+from docker.errors import NotFound, APIError
 
 from .client import local_client
 
@@ -30,10 +30,10 @@ class DockerImage(object):
             else:
                 info = client.inspect_image(self.name)
                 return self.id is None or info["Id"] == self.id
-        except errors.NotFound:
+        except NotFound:
             log.debug('DockerImage NotFound', exc_info=True)
             return False
-        except errors.APIError:
+        except APIError:
             log.debug('DockerImage APIError', exc_info=True)
             if self.tag is not None:
                 return False

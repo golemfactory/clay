@@ -55,6 +55,13 @@ def session_call(resolve_fn):
     return call
 
 
+def docker_command(key, *args, **kwargs):
+    if key == 'status':
+        return 'Running'
+    return ''
+
+
+@patch('golem.docker.manager.DockerManager.command', side_effect=docker_command)
 @patch('twisted.internet.iocpreactor', create=True)
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
@@ -106,8 +113,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 return self.path
             elif alias == aliases.Environment.opts:
                 return DictSerializer.dump(ClientConfigDescriptor())
-            elif alias == aliases.Environment.opt_description:
-                return 'test description'
             elif alias == aliases.Payments.ident:
                 return '0xdeadbeef'
             elif alias == aliases.Crypto.key_id:
@@ -224,7 +229,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         stop_reactor()
         assert reactor.stop.called
 
-    @patch('golem.docker.manager.DockerManager.command')
     @patch('gui.startapp.start_client')
     def test_start_app(self, _start_client, *_):
         start_app(datadir=self.tempdir)

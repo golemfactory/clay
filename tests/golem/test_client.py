@@ -19,7 +19,7 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, resource_types
+from golem.task.taskbase import Task, TaskHeader, ResourceType
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
@@ -275,20 +275,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         meta = self.client.get_metadata()
         self.assertIsNotNone(meta)
         self.assertEqual(meta, dict())
-
-    def test_description(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-
-        self.assertEqual(self.client.get_description(), "")
-        desc = "ADVANCE DESCRIPTION\n\tSOME TEXT"
-        self.client.change_description(desc)
-        self.assertEqual(self.client.get_description(), desc)
 
     @unittest.skip('IPFS metadata is currently disabled')
     def test_interpret_metadata(self, *_):
@@ -706,7 +692,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, resource_types["hashes"])
+        task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
         c.resource_server.resource_manager.build_client_options \
             .assert_called_with(c.keys_auth.key_id)
@@ -806,12 +792,15 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
         task_computer = self.client.task_server.task_computer
         task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
         task_computer.run_lux_benchmark = Mock()
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
@@ -820,6 +809,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         assert task_computer.run_blender_benchmark.called
         assert not task_computer.run_lux_benchmark.called
+        assert not task_computer.run_dummytask_benchmark.called
 
         task_computer.run_blender_benchmark.called = False
         task_computer.run_lux_benchmark.called = False
@@ -828,6 +818,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called
+        assert not task_computer.run_dummytask_benchmark.called
+
+        task_computer.run_blender_benchmark.called = False
+        task_computer.run_lux_benchmark.called = False
+
+        sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
+
+        assert not task_computer.run_blender_benchmark.called
+        assert not task_computer.run_lux_benchmark.called
+        assert task_computer.run_dummytask_benchmark.called
 
     def test_run_benchmarks(self, *_):
         task_computer = self.client.task_server.task_computer
@@ -835,10 +835,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
         task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda *_: 1
+        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark.side_effect = lambda c: c(1)
 
         task_computer.run_benchmarks()
         assert task_computer.run_lux_benchmark.called
         assert task_computer.run_blender_benchmark.called
+        assert task_computer.run_dummytask_benchmark.called
 
     def test_config_changed(self, *_):
         c = self.client
@@ -895,18 +898,18 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
         c = self.client
         c.enqueue_new_task = Mock()
 
         # create a task
-        t = Task(
-            TaskHeader(
-                "node_name", "task_id", "10.10.10.10", 123, "owner_id",
-                "DEFAULT"
-            ),
-            src_code="print('hello')"
-        )
+        t = Task(TaskHeader("node_name", "task_id",
+                            "10.10.10.10", 123,
+                            "owner_id", "DEFAULT"),
+                 src_code="print('hello')",
+                 task_definition=Mock())
+
 
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)

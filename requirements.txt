@@ -52,3 +52,4 @@ pycparser==2.17
 numpy
 scipy
 pyssim
+enforce==0.3.4
