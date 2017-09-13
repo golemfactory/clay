@@ -12,7 +12,7 @@ class BlenderEnvTest(unittest.TestCase):
     def test_blender(self):
         """Basic environment test."""
         env = BlenderEnvironment()
-        self.assertTrue(env.supported())
+        self.assertTrue(env.check_support())
         self.assertTrue(env.check_software())
 
     def test_get_performance(self):
