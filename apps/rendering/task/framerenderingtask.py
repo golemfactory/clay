@@ -175,6 +175,16 @@ class FrameRenderingTask(RenderingTask):
     # Specific task methods #
     #########################
 
+    @CoreTask.handle_key_error
+    def _remove_from_preview(self, subtask_id):
+        if not isinstance(self.preview_file_path, list):
+            return super()._remove_from_preview(subtask_id)
+        empty_color = (0, 0, 0)
+        sub = self.subtasks_given[subtask_id]
+        for frame in sub['frames']:
+            # __mark_sub_frame() also saves preview_file_path(num)
+            self.__mark_sub_frame(sub, frame, empty_color)
+
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
         preview_task_file_path = self._get_preview_task_file_path(num)

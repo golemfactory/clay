@@ -1,14 +1,13 @@
 import logging
 import os
+import os.path
+import pycodestyle
 import shutil
 import tempfile
 import unittest
-from os import path
 from pathlib import Path
 from time import sleep
-
-import pycodestyle
-from mock import MagicMock
+from unittest.mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
@@ -66,7 +65,7 @@ class TempDirFixture(unittest.TestCase):
             self.__remove_files()
 
     def temp_file_name(self, name: str) -> str:
-        return path.join(self.tempdir, name)
+        return os.path.join(self.tempdir, name)
 
     def additional_dir_content(self, file_num_list, dir_=None, results=None,
                                sub_dir=None):
@@ -103,7 +102,7 @@ class TempDirFixture(unittest.TestCase):
         return results
 
     def __remove_files(self):
-        if path.isdir(self.tempdir):
+        if os.path.isdir(self.tempdir):
             shutil.rmtree(self.tempdir)
 
 
