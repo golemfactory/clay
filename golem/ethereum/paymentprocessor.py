@@ -98,7 +98,7 @@ class PaymentProcessor(Service):
                           "{}".format(e))
                 is_synchronized = False
             else:
-                sleep(0.5)
+                sleep(self.SYNC_CHECK_INTERVAL)
 
         return True
 

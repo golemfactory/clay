@@ -8,6 +8,7 @@ from pydispatch import dispatcher
 import time
 
 from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
@@ -28,8 +29,12 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth, client,
-                 use_ipv6=False, use_docker_machine_manager=True):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -117,8 +122,12 @@ class TaskServer(PendingConnectionsServer):
                 performance = env.get_performance(self.config_desc)
             else:
                 performance = 0.0
-            if self.should_accept_requestor(theader.task_owner_key_id):
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+
+            is_requestor_accepted = self.should_accept_requestor(theader.task_owner_key_id)
+            is_price_accepted = self.config_desc.min_price < theader.max_price
+            if is_requestor_accepted and is_price_accepted:
+                self.task_manager.add_comp_task_request(theader=theader,
+                                                        price=theader.max_price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,

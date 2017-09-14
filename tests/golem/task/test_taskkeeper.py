@@ -306,6 +306,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
+
         self.assertEqual(ctk.get_value(task_id="xyz", computing_time=1), 2)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)

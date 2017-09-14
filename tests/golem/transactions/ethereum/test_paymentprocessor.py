@@ -259,6 +259,14 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert not self.pp.sendout()
         assert check_deadline(self.pp.deadline, now + 1111)
 
+    def test_wait_until_synchronized(self):
+        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
+        pp = PaymentProcessor(self.client, self.privkey, faucet=False)
+
+        self.client.get_peer_count.return_value = 4
+        self.client.is_syncing.return_value = False
+        self.assertTrue( pp.wait_until_synchronized())
+
     def test_synchronized(self):
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
         PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL

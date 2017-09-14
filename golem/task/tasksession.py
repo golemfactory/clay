@@ -1,5 +1,4 @@
 
-
 from ethereum.utils import denoms
 import logging
 import functools
@@ -798,28 +797,28 @@ class TaskSession(MiddlemanSafeSession):
         # reward_for_subtask_paid requires being sync with blockchain
         # run it with separate thread to prevent hanging the main thread
 
-        # thread = threading.Thread(
-        #     target=self.task_server.reward_for_subtask_paid,
-        #     args=(),
-        #     kwargs = {
-        #     'subtask_id':msg.subtask_id,
-        #     'reward':msg.reward,
-        #     'transaction_id':msg.transaction_id,
-        #     'block_number':msg.block_number
-        #     }
-        # )
+        thread = threading.Thread(
+            target=self.task_server.reward_for_subtask_paid,
+            args=(),
+            kwargs={
+                'subtask_id': msg.subtask_id,
+                'reward': msg.reward,
+                'transaction_id': msg.transaction_id,
+                'block_number': msg.block_number
+            }
+        )
 
-        # # thread.daemon = True                            # Daemonize thread
-        # thread.start()                                  # Start the execution
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
         # thread.join()
         # # time.sleep(2)
         # self.threads.append(thread)
-        self.task_server.reward_for_subtask_paid(
-            subtask_id=msg.subtask_id,
-            reward=msg.reward,
-            transaction_id=msg.transaction_id,
-            block_number=msg.block_number
-        )
+        # self.task_server.reward_for_subtask_paid(
+        #     subtask_id=msg.subtask_id,
+        #     reward=msg.reward,
+        #     transaction_id=msg.transaction_id,
+        #     block_number=msg.block_number
+        # )
 
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)

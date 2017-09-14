@@ -4,6 +4,7 @@ import pickle
 import random
 import time
 
+import typing
 from semantic_version import Version
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
@@ -20,7 +21,7 @@ def compute_subtask_value(price, computation_time):
 
 
 class CompTaskInfo(object):
-    def __init__(self, header, price):
+    def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
         self.requests = 1
@@ -60,7 +61,7 @@ class CompTaskKeeper(object):
         tasks_path: pathlib.Path to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}
+        self.active_tasks = {}  # type: typing.Dict[str, CompTaskInfo]
         self.subtask_to_task = {}  # maps subtasks id to tasks id
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
         self.persist = persist
@@ -96,7 +97,7 @@ class CompTaskKeeper(object):
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
 
-    def add_request(self, theader, price):
+    def add_request(self, theader: TaskHeader, price: int):
         logger.debug('CT.add_request()')
         if not isinstance(price, int):
             raise TypeError(
@@ -143,9 +144,7 @@ class CompTaskKeeper(object):
 
     @handle_key_error
     def get_value(self, task_id, computing_time):
-        # todo GG
-        # price = self.active_tasks[task_id].price
-        price = int(self.active_tasks[task_id].header.max_price)
+        price = self.active_tasks[task_id].price
 
         if not isinstance(price, int):
             raise TypeError(
@@ -342,7 +341,7 @@ class TaskHeaderKeeper(object):
             self.supported_tasks.remove(task_id)
         self.removed_tasks[task_id] = time.time()
 
-    def get_task(self):
+    def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed
         :return TaskHeader|None: returns either None if there are no tasks
                                  that this node may want to compute
