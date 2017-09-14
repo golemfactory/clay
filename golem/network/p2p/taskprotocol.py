@@ -3,7 +3,7 @@ from devp2p.protocol import BaseProtocol
 from rlp import sedes
 
 from golem.core.common import to_unicode
-from golem.core.simpleserializer import CBORSedes
+from golem.core.simpleserializer import CBORSedes, unicode_sedes
 
 logger = slogging.get_logger('golem.protocol')
 
@@ -41,19 +41,13 @@ class TaskProtocol(BaseProtocol):
         cmd_id = 1
 
         structure = [
-            ('task_id', sedes.binary),
+            ('task_id', unicode_sedes),
             ('performance', CBORSedes),
             ('price', sedes.big_endian_int),
             ('max_disk', sedes.big_endian_int),
             ('max_memory', sedes.big_endian_int),
             ('max_cpus', sedes.big_endian_int)
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['task_id'] = to_unicode(decoded['task_id'])
-            return decoded
 
     class task(BaseProtocol.command):
         """
@@ -88,15 +82,9 @@ class TaskProtocol(BaseProtocol):
         """
         cmd_id = 3
         structure = [
-            ('subtask_id', sedes.binary),
+            ('subtask_id', unicode_sedes),
             ('reason', sedes.binary)
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
-            return decoded
 
     class result(BaseProtocol.command):
         """
@@ -106,9 +94,9 @@ class TaskProtocol(BaseProtocol):
         cmd_id = 4
 
         structure = [
-            ('subtask_id', sedes.binary),
+            ('subtask_id', unicode_sedes),
             ('computation_time', CBORSedes),
-            ('resource_hash', sedes.binary),
+            ('resource_hash', unicode_sedes),
             ('resource_secret', sedes.binary),
             ('resource_options', CBORSedes),
             ('eth_account', CBORSedes)
@@ -117,8 +105,6 @@ class TaskProtocol(BaseProtocol):
         @classmethod
         def decode_payload(cls, rlp_data):
             decoded = super().decode_payload(rlp_data)
-            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
-            decoded['resource_hash'] = to_unicode(decoded['resource_hash'])
             decoded['eth_account'] = to_unicode(decoded['eth_account'])
             return decoded
 
@@ -130,15 +116,9 @@ class TaskProtocol(BaseProtocol):
         cmd_id = 5
 
         structure = [
-            ('subtask_id', sedes.binary),
+            ('subtask_id', unicode_sedes),
             ('remuneration', CBORSedes)
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
-            return decoded
 
     class payment_request(BaseProtocol.command):
         """
@@ -148,14 +128,8 @@ class TaskProtocol(BaseProtocol):
         cmd_id = 6
 
         structure = [
-            ('subtask_id', sedes.binary),
+            ('subtask_id', unicode_sedes),
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
-            return decoded
 
     class payment(BaseProtocol.command):
         """
@@ -165,15 +139,8 @@ class TaskProtocol(BaseProtocol):
         cmd_id = 7
 
         structure = [
-            ('subtask_id', sedes.binary),
-            ('transaction_id', sedes.binary),
+            ('subtask_id', unicode_sedes),
+            ('transaction_id', unicode_sedes),
             ('remuneration', sedes.big_endian_int),
             ('block_number', sedes.binary)
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['subtask_id'] = to_unicode(decoded['subtask_id'])
-            decoded['transaction_id'] = to_unicode(decoded['transaction_id'])
-            return decoded

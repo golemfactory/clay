@@ -9,7 +9,7 @@ from typing import Optional, Type, Union
 
 import cbor2
 import pytz
-from rlp import Serializable
+from rlp import Serializable, sedes
 
 from golem.core.common import to_unicode
 
@@ -226,3 +226,10 @@ class CBORSedes(Serializable):
     @classmethod
     def deserialize(cls, serial, exclude=None, **kwargs):
         return CBORSerializer.loads(serial)
+
+class _UnicodeSedes(sedes.Binary):
+    def deserialize(self, serial):
+        result = super().deserialize(serial)
+        return to_unicode(result)
+
+unicode_sedes = _UnicodeSedes()
