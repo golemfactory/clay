@@ -127,7 +127,7 @@ class TaskServer(PendingConnectionsServer):
             is_price_accepted = self.config_desc.min_price < theader.max_price
             if is_requestor_accepted and is_price_accepted:
                 self.task_manager.add_comp_task_request(theader=theader,
-                                                        price=theader.max_price)
+                                                        price=int(theader.max_price))
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,

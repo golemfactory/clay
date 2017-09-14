@@ -23,7 +23,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-TASK_PROTOCOL_ID = 15666  # todo GG remove in release
+TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -793,10 +793,9 @@ class TaskSession(MiddlemanSafeSession):
             )
             return
 
-        # GG todo
-        # reward_for_subtask_paid requires being sync with blockchain
-        # run it with separate thread to prevent hanging the main thread
-
+        # reward_for_subtask_paid -> ethereum incomes keeper requires
+        # being sync with blockchain
+        # run it in separate thread to prevent hanging the main thread
         thread = threading.Thread(
             target=self.task_server.reward_for_subtask_paid,
             args=(),
@@ -807,18 +806,9 @@ class TaskSession(MiddlemanSafeSession):
                 'block_number': msg.block_number
             }
         )
-
         thread.daemon = True                            # Daemonize thread
         thread.start()                                  # Start the execution
-        # thread.join()
-        # # time.sleep(2)
-        # self.threads.append(thread)
-        # self.task_server.reward_for_subtask_paid(
-        #     subtask_id=msg.subtask_id,
-        #     reward=msg.reward,
-        #     transaction_id=msg.transaction_id,
-        #     block_number=msg.block_number
-        # )
+
 
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
