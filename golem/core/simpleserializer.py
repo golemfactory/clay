@@ -227,9 +227,11 @@ class CBORSedes(Serializable):
     def deserialize(cls, serial, exclude=None, **kwargs):
         return CBORSerializer.loads(serial)
 
+
 class _UnicodeSedes(sedes.Binary):
     def deserialize(self, serial):
         result = super().deserialize(serial)
         return to_unicode(result)
+
 
 unicode_sedes = _UnicodeSedes()

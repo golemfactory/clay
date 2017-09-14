@@ -7,6 +7,7 @@ from golem.network.p2p.taskprotocol import TaskProtocol
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef
 
+
 class TestTaskProtocolKeepUnicode(unittest.TestCase):
     task_id = "Gęśla jaźń"
     subtask_id = "Zażółć gęślą jaźń"
@@ -48,7 +49,7 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
             self.assertEqual(self.key_id, definition.key_id)
             self.assertEqual(self.key, definition.task_owner.key)
 
-        self.check_sedes(packet,check_ctd, self.proto.receive_task_callbacks)
+        self.check_sedes(packet, check_ctd, self.proto.receive_task_callbacks)
 
     def test_failure(self):
         packet = self.proto.create_failure(self.subtask_id, b'')
@@ -61,7 +62,7 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
 
     def test_result(self):
         packet = self.proto.create_result(self.subtask_id, 0, self.key_id,
-                                     b'', 0, self.key)
+                                          b'', 0, self.key)
 
         def check(proto, subtask_id, computation_time, resource_hash,
                   resource_secret, resource_options, eth_account):
@@ -97,6 +98,7 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
             self.assertEqual(self.key_id, transaction_id)
 
         self.check_sedes(packet, check, self.proto.receive_payment_callbacks)
+
 
 # Sorry for copy-paste, would prefer parametrized tests but there doesn't seem
 # to be any way to do it.
@@ -141,7 +143,7 @@ class TestTaskProtocolConvertUnicode(unittest.TestCase):
             self.assertEqual(self.key_id, definition.key_id)
             self.assertEqual(self.key, definition.task_owner.key)
 
-        self.check_sedes(packet,check_ctd, self.proto.receive_task_callbacks)
+        self.check_sedes(packet, check_ctd, self.proto.receive_task_callbacks)
 
     def test_failure(self):
         packet = self.proto.create_failure(self.subtask_id.encode('utf_8'), b'')
