@@ -11,13 +11,15 @@ from golem.testutils import PEP8MixIn
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.incomeskeeper import IncomesKeeper
 
+# SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
+
 # bigint - 8 Bytes
 # -2^63 (-9,223,372,036,854,775,808) to
 #  2^63-1 (9,223,372,036,854,775,807)
 
 MAX_INT = 2 ** 63
 # this proves that Golem's BigIntegerField wrapper does not
-# overflows as standard SQL implementation
+# overflows in contrast to standard SQL implementation
 
 
 def generate_some_id(prefix='test'):

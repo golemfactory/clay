@@ -12,14 +12,13 @@ from golem.transactions.ethereum.ethereumincomeskeeper \
 
 # SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
 
-
 # bigint - 8 Bytes
 # -2^63 (-9,223,372,036,854,775,808) to
 #  2^63-1 (9,223,372,036,854,775,807)
 
 MAX_INT = 2 ** 63
 # this proves that Golem's BigIntegerField wrapper does not
-# overflows as standard SQL implementation
+# overflows in contrast to standard SQL implementation
 
 def get_some_id():
     return str(uuid.uuid4())
@@ -112,30 +111,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
 
-# GG todo
-    def test_transaction_overflow(self):
-        pass
-
-        # received_kwargs = {
-        #     'sender_node_id': get_some_id(),
-        #     'task_id': get_some_id(),
-        #     'subtask_id': 's1' + get_some_id()[:-2],
-        #     'transaction_id': get_some_id(),
-        #     'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
-        #     'value': 2147483647,
-        # }
-        # self.instance.processor.get_logs.return_value = [
-        #     {
-        #         'topics': [
-        #             EthereumIncomesKeeper.LOG_ID,
-        #             get_some_id(),  # sender
-        #             self.instance.processor.eth_address(),  # receiver
-        #         ],
-        #         'data': hex(received_kwargs['value']),
-        #     },
-        # ]
-        # with self.assertRaises(OverflowError):
-        #     self.instance.received(**received_kwargs)
 
     def test_received_double_spending(self):
         received_kwargs = {
@@ -146,7 +121,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'block_number': random.randint(0, int(MAX_INT / 2)),
             'value': MAX_INT,
         }
-
 
         from golem.model import BigIntegerField
         bigIntegerField = BigIntegerField()
