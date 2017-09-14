@@ -150,7 +150,6 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
@@ -180,7 +179,6 @@ class TaskManager(TaskEventListener):
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
-        task.task_status = TaskStatus.waiting
         task_state.status = TaskStatus.waiting
         task.register_listener(self)
 
@@ -224,7 +222,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def resources_send(self, task_id: str) -> None:
         self.tasks_states[task_id].status = TaskStatus.waiting
-        self.tasks[task_id].task_status = TaskStatus.waiting
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
@@ -306,9 +303,10 @@ class TaskManager(TaskEventListener):
 
     def get_tasks_headers(self) -> List[TaskHeader]:
         ret = []
-        for t in list(self.tasks.values()):
-            if t.needs_computation() and t.task_status in self.activeStatus:
-                ret.append(t.header)
+        for tid, task in self.tasks.items():
+            if task.needs_computation() and \
+                    self.tasks_states[tid].status in self.activeStatus:
+                ret.append(task.header)
 
         return ret
 
@@ -471,13 +469,18 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
-    def get_progresses(self):
+    def get_progresses(self) -> Dict[str, LocalTaskStateSnapshot]:
         tasks_progresses = {}
 
         for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
-                ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))  # FIXME in short_extra_data_repr should there be extra data
+                ltss = LocalTaskStateSnapshot(
+                    t.header.task_id,
+                    t.get_total_tasks(),
+                    t.get_active_tasks(),
+                    t.get_progress(),
+                    t.short_extra_data_repr(2200.0)
+                )  # FIXME in short_extra_data_repr should there be extra data
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses
@@ -494,7 +497,6 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
 
         task.restart()
-        task.task_status = TaskStatus.restarted
         self.tasks_states[task_id].status = TaskStatus.restarted
         task.header.deadline = timeout_to_deadline(
             task.task_definition.full_task_timeout)
@@ -539,7 +541,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def abort_task(self, task_id: str) -> None:
         self.tasks[task_id].abort()
-        self.tasks[task_id].task_status = TaskStatus.aborted
         self.tasks_states[task_id].status = TaskStatus.aborted
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
@@ -549,14 +550,12 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def pause_task(self, task_id: str) -> None:
-        self.tasks[task_id].task_status = TaskStatus.paused
         self.tasks_states[task_id].status = TaskStatus.paused
 
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
     def resume_task(self, task_id: str) -> None:
-        self.tasks[task_id].task_status = TaskStatus.starting
         self.tasks_states[task_id].status = TaskStatus.starting
 
         self.notice_task_updated(task_id)
