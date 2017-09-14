@@ -3,8 +3,10 @@ import unittest
 
 from devp2p.multiplexer import Packet
 from devp2p.peer import Peer
-from mock import patch, Mock
+from mock import patch, Mock, sentinel
 
+from golem.network.p2p.golemservice import GolemService
+from golem.network.p2p.golemprotocol import GolemProtocol
 
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
@@ -27,6 +29,16 @@ def create_client(datadir):
 
     client.services['golem_service'].setup(client, task_server=Mock())
     return client
+
+
+def create_proto():
+        proto = Mock()
+        proto.receive_get_tasks_callbacks = []
+        proto.receive_task_headers_callbacks = []
+        proto.receive_get_node_name_callbacks = []
+        proto.receive_node_name_callbacks = []
+        proto.receive_remove_task_callbacks = []
+        return proto
 
 
 class TestGolemService(unittest.TestCase):
@@ -52,3 +64,112 @@ class TestGolemService(unittest.TestCase):
         peer.stop()
         peer.send_packet.assert_called_once_with(pkt)
         gservice.on_wire_protocol_start.assert_called_once()
+
+    def test_wire_proto_start(self):
+        app = Mock(config={}, services={})
+        gservice = GolemService(app)
+        gservice.wire_protocol = object
+
+        proto = create_proto()
+
+        gservice.on_wire_protocol_start(proto)
+
+        self.assertGreater(len(proto.receive_get_tasks_callbacks), 0)
+        self.assertGreater(len(proto.receive_task_headers_callbacks), 0)
+        self.assertGreater(len(proto.receive_get_node_name_callbacks), 0)
+        self.assertGreater(len(proto.receive_node_name_callbacks), 0)
+
+        self.assertTrue(proto.send_get_node_name.called)
+
+    def test_receive_get_tasks(self):
+        app = Mock(config={}, services={})
+        gservice = GolemService(app)
+        gservice.wire_protocol = object
+        proto = create_proto()
+        gservice.on_wire_protocol_start(proto)
+
+        def get_tasks():
+            for cb in proto.receive_get_tasks_callbacks:
+                cb(proto)
+
+        get_tasks()
+
+        proto.send_task_headers.assert_not_called()
+
+        client = Mock()
+        task_server = Mock()
+        gservice.setup(client, task_server)
+
+        task_server.get_tasks_headers.return_value = []
+        get_tasks()
+
+        proto.send_task_headers.assert_not_called()
+
+        def assert_headers(headers):
+            self.assertIn(sentinel.task_hdr1, headers)
+            self.assertIn(sentinel.task_hdr2, headers)
+
+        proto.send_task_headers.side_effect = assert_headers
+
+        task_server.get_tasks_headers.return_value = \
+            [sentinel.task_hdr1, sentinel.task_hdr2]
+        get_tasks()
+
+        self.assertTrue(proto.send_task_headers.called)
+
+
+class TestGolemService2(unittest.TestCase):
+
+    def setUp(self):
+        app = Mock(config={}, services={})
+        self.gservice = GolemService(app)
+        self.gservice.wire_protocol = object
+
+        self.client = Mock()
+        self.task_server = Mock()
+        self.gservice.setup(self.client, self.task_server)
+
+        self.proto = create_proto()
+        self.gservice.on_wire_protocol_start(self.proto)
+
+
+    def test_receive_task_headers(self):
+        def make_task(d):
+            task = Mock()
+            task.to_dict.return_value = d
+            return task
+
+        # TODO: test on actual task headers
+        task_headers = [make_task(sentinel.th_dict1),
+                        make_task(sentinel.th_dict2)]
+
+        for cb in self.proto.receive_task_headers_callbacks:
+            cb(self.proto, task_headers=task_headers)
+
+        self.task_server.add_task_header.assert_any_call(sentinel.th_dict1)
+        self.task_server.add_task_header.assert_any_call(sentinel.th_dict2)
+
+    def test_receive_remove_task(self):
+        task_id = b'abcdef' * 5
+
+        for cb in self.proto.receive_remove_task_callbacks:
+            cb(self.proto, task_id=task_id)
+
+        self.task_server.remove_task_header.assert_called_with(task_id)
+
+    def test_receive_get_node_name(self):
+        name = "I AM NODE"
+        self.client.config_desc.node_name = name
+
+        for cb in self.proto.receive_get_node_name_callbacks:
+            cb(self.proto)
+
+        self.proto.send_node_name.assert_called_with(name)
+
+    def test_receive_node_name(self):
+        name = "I'm different"
+
+        for cb in self.proto.receive_node_name_callbacks:
+            cb(self.proto, node_name=name)
+
+        self.assertEqual(name, self.proto.peer.node_name)
