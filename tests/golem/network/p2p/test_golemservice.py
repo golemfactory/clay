@@ -8,6 +8,7 @@ from mock import patch, Mock, sentinel
 from golem.network.p2p.golemservice import GolemService
 from golem.network.p2p.golemprotocol import GolemProtocol
 
+
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
@@ -60,7 +61,8 @@ class TestGolemService(unittest.TestCase):
         peer.connect_service(gservice)
         self.client.services['peermanager'].peers.append(peer)
         gservice.get_tasks()
-        pkt = Packet(prioritize=False, payload=b'\xc0', cmd_id=0, protocol_id=18317)
+        pkt = Packet(prioritize=False, payload=b'\xc0', cmd_id=0,
+                     protocol_id=18317)
         peer.stop()
         peer.send_packet.assert_called_once_with(pkt)
         gservice.on_wire_protocol_start.assert_called_once()
@@ -131,7 +133,6 @@ class TestGolemService2(unittest.TestCase):
 
         self.proto = create_proto()
         self.gservice.on_wire_protocol_start(self.proto)
-
 
     def test_receive_task_headers(self):
         def make_task(d):
