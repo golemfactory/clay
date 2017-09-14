@@ -4,7 +4,8 @@ from typing import List
 import enforce
 
 from golem.docker.image import DockerImage
-from golem.environments.environment import Environment
+from golem.environments.environment import (Environment, SupportStatus,
+                                            UnsupportReason)
 from golem.resource.dirmanager import find_task_script
 
 
@@ -26,11 +27,17 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         if additional_images:
             self.docker_images += additional_images
 
-    def check_docker_images(self):
-        return any(img.is_available() for img in self.docker_images)
+    def check_docker_images(self) -> SupportStatus:
+        if any(img.is_available() for img in self.docker_images):
+            return SupportStatus.ok()
 
-    def supported(self):
-        return self.check_docker_images() and Environment.supported(self)
+        return SupportStatus.err({UnsupportReason.ENVIRONMENT_UNSUPPORTED: {
+            'env_id': self.get_id(),
+            'docker_images_missing_any': self.docker_images,
+        }})
+
+    def check_support(self) -> SupportStatus:
+        return self.check_docker_images().join(Environment.check_support(self))
 
     def description(self):
         descr = Environment.description(self)
