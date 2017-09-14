@@ -96,21 +96,28 @@ class TaskManager(TaskEventListener):
         # Remember to also remove it from init params
         self.task_persistence = task_persistence
 
-        self.tasks_dir = Path(tasks_dir)
+        dump_path = Path(tasks_dir)
+        self.tasks_dir = dump_path / "taskmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        resource_manager = HyperdriveResourceManager(self.dir_manager,
-                                                     resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        resource_manager = HyperdriveResourceManager(
+            self.dir_manager,
+            resource_dir_method=self.dir_manager.get_task_temporary_dir
+        )
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting, TaskStatus.restarted]
         self.use_distributed_resources = use_distributed_resources
 
-        self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
+        self.comp_task_keeper = CompTaskKeeper(
+            dump_path / "taskkeeper",
+            persist=self.task_persistence
+        )
+
         if self.task_persistence:
             self.restore_tasks()
 

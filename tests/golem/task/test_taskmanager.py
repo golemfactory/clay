@@ -57,7 +57,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.test_nonce = "%.3f-%d" % (time.time(), random.random() * 10000)
         keys_auth = Mock()
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-        self.tm = TaskManager("ABC", Node(), keys_auth, root_path=self.path)
+        self.tm = TaskManager(
+            "ABC",
+            Node(),
+            keys_auth,
+            root_path=self.path,
+            task_persistence=False
+        )
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
         self.tm.listen_port = 2222
