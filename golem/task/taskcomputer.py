@@ -186,7 +186,7 @@ class TaskComputer(object):
             task_header = \
                 self.task_server.task_keeper.task_headers[subtask.task_id]
             work_time_to_be_paid = task_header.subtask_timeout
-            time_ = work_time_to_be_paid
+            # time_ = work_time_to_be_paid
 
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
