@@ -76,11 +76,10 @@ class PyInstaller(Command):
         print("> Copying chain")
         self.copy_chain(dist_dir)
 
-        if not is_windows():
-            print("> Compressing distribution")
-            tar_dir = self.move(dist_dir)
-            tar_file = self.compress(tar_dir, dist_dir)
-            print("> Archive saved: '{}'".format(tar_file))
+        print("> Compressing distribution")
+        archive_dir = self.move(dist_dir)
+        archive_file = self.compress(archive_dir, dist_dir)
+        print("> Archive saved: '{}'".format(archive_file))
 
     def banner(self, msg):
         print("\n> --------------------------------")
@@ -145,27 +144,40 @@ class PyInstaller(Command):
         return ver_dir
 
     def compress(self, src_dir, dist_dir):
-        import tarfile
+        archive_file = self.get_archive_path(dist_dir)
+        if not is_windows():
+            import tarfile
 
-        tar_file = self.get_tarball_path(dist_dir)
-        with tarfile.open(tar_file, "w:gz") as tar:
-            tar.add(src_dir, arcname=path.basename(src_dir))
-        return tar_file
+            with tarfile.open(archive_file, "w:gz") as tar:
+                tar.add(src_dir, arcname=path.basename(src_dir))
+        else:
+            import zipfile
+            zf = zipfile.ZipFile(archive_file, "wb")
+            for dirname, _, files in walk(src_dir):
+                zf.write(dirname)
+                for filename in files:
+                    zf.write(path.join(dirname, filename))
+            zf.close()
+        return archive_file
 
-    def get_tarball_path(self, dist_dir):
+    def get_archive_path(self, dist_dir):
         if self.package_path:
             return self.package_path
 
+        extension = 'tar.gz'
         if is_osx():
             sys_name = 'macos'
         elif is_linux():
             sys_name = 'linux_x64'
+        elif is_windows():
+            sys_name = 'win32'
+            extension = 'zip'
         else:
             raise EnvironmentError("Unsupported OS: {}".format(sys.platform))
 
         version = get_version()
         return path.join(dist_dir,
-                         'golem-{}-{}.tar.gz'.format(sys_name, version))
+                         'golem-{}-{}.{}'.format(sys_name, version, extension))
 
 
 def get_long_description(my_path):
