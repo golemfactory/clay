@@ -150,6 +150,8 @@ class TestGolemService2(unittest.TestCase):
         self.task_server.add_task_header.assert_any_call(sentinel.th_dict1)
         self.task_server.add_task_header.assert_any_call(sentinel.th_dict2)
 
+    # TODO: implement task events (new, update, remove)
+    @unittest.skip('Not implemented')
     def test_receive_remove_task(self):
         task_id = b'abcdef' * 5
 
