@@ -254,7 +254,7 @@ def get_task_header():
     return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
                       header["task_owner_port"], header["task_owner_key_id"],
                       header["environment"], header["task_owner"], header["deadline"],
-                      header["subtask_timeout"], 1024, 1.0, 1000)
+                      header["subtask_timeout"], 1024, 1.0, 1000, header['max_price'])
 
 
 class TestCompSubtaskInfo(TestCase):
@@ -306,7 +306,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        self.assertEqual(ctk.get_value("xyz", 1), 2)
+        self.assertEqual(ctk.get_value(task_id="xyz", computing_time=1), 2)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)
         self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)

@@ -176,6 +176,7 @@ class TaskComputer(object):
             except ValueError: # not in list
                 pass
 
+        # todo GGtime_ not needed anymore?
         time_ = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
         try:
@@ -185,6 +186,7 @@ class TaskComputer(object):
             task_header = \
                 self.task_server.task_keeper.task_headers[subtask.task_id]
             work_time_to_be_paid = task_header.subtask_timeout
+            time_ = work_time_to_be_paid
 
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
@@ -203,7 +205,7 @@ class TaskComputer(object):
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
             logger.info("Task %r computed", subtask_id)
             self.stats.increase_stat('computed_tasks')
-            self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, work_time_to_be_paid,
+            self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                           subtask.return_address, subtask.return_port, subtask.key_id,
                                           subtask.task_owner, self.node_name)
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=time_)
