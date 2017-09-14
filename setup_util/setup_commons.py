@@ -138,8 +138,12 @@ class PyInstaller(Command):
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
         shutil.move(path.join(dist_dir, 'golem'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
+        if is_windows():
+            shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
+        else:
+            shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
         return ver_dir
 
@@ -152,7 +156,7 @@ class PyInstaller(Command):
                 tar.add(src_dir, arcname=path.basename(src_dir))
         else:
             import zipfile
-            zf = zipfile.ZipFile(archive_file, "wb")
+            zf = zipfile.ZipFile(archive_file, "w")
             for dirname, _, files in walk(src_dir):
                 zf.write(dirname)
                 for filename in files:
