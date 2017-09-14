@@ -55,7 +55,7 @@ class GolemService(WiredService):
         if not self.task_server:
             return
 
-        task_headers = self.task_server.get_tasks_headers()
+        task_headers = self.task_server.get_task_headers()
         if task_headers:
             proto.send_task_headers(task_headers)
 

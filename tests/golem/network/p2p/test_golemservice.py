@@ -100,7 +100,7 @@ class TestGolemService(unittest.TestCase):
         task_server = Mock()
         gservice.setup(client, task_server)
 
-        task_server.get_tasks_headers.return_value = []
+        task_server.get_task_headers.return_value = []
         get_tasks()
 
         proto.send_task_headers.assert_not_called()
@@ -111,7 +111,7 @@ class TestGolemService(unittest.TestCase):
 
         proto.send_task_headers.side_effect = assert_headers
 
-        task_server.get_tasks_headers.return_value = \
+        task_server.get_task_headers.return_value = \
             [sentinel.task_hdr1, sentinel.task_hdr2]
         get_tasks()
 

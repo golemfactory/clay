@@ -288,7 +288,7 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         return ctd, False, extra_data.should_wait
 
-    def get_tasks_headers(self):
+    def get_task_headers(self):
         ret = []
         for t in list(self.tasks.values()):
             if t.needs_computation() and t.task_status in self.activeStatus:
