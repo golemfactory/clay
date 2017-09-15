@@ -146,7 +146,7 @@ class NodeProcess(object):
             self.__prog,
             datadir_arg,
             '--cache=32',
-            '--syncmode=light',
+            '--syncmode=full',
             '--rinkeby',
             '--port={}'.format(port),
             '--ipcpath={}'.format(ipc_path),
