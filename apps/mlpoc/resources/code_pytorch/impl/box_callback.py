@@ -3,7 +3,6 @@ import os
 import time
 
 from .box import BlackBox
-from .hash import Hash
 from messages import MLPOCBlackBoxAskMessage
 from params import MESSAGES_OUT_DIR, MESSAGES_IN_DIR
 
@@ -14,10 +13,10 @@ class BlackBoxFileCallback(BlackBox):
     it in the filename location
     """
 
-    def decide(self, hash: Hash) -> bool:
-        out_message_path = os.path.join(MESSAGES_OUT_DIR, str(hash)[:8])
+    def decide(self, hash: str) -> bool:
+        out_message_path = os.path.join(MESSAGES_OUT_DIR,hash[:8])
         # TODO 1: change epoch num,
-        msg = MLPOCBlackBoxAskMessage.new_message(str(hash), number_of_epoch=0)
+        msg = MLPOCBlackBoxAskMessage.new_message(hash, number_of_epoch=0)
         with open(out_message_path, "w") as f:
             json.dump(msg, f)
 

@@ -1,12 +1,12 @@
+import copy
 import json
 import logging
 import os
 import random
 from collections import OrderedDict
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Type
 from unittest.mock import Mock
 
-import copy
 import enforce
 
 from apps.core.task import coretask
@@ -16,7 +16,7 @@ from apps.core.task.coretask import (CoreTask,
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment, \
     MLPOCSpearmintEnvironment
 # from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
-# from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox
+from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox, BlackBox
 from apps.mlpoc.resources.code_pytorch.messages import \
     MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task import spearmint_utils
@@ -46,6 +46,15 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
         )
 
 
+# TODO remove that when really batch_manager will be available to be imported
+class MockIrisBatchManager():
+    def __init__(self, data_files):
+        pass
+
+    def get_order_of_batches(self, *args, **kwargs):
+        return list(range(100))
+
+
 # TODO refactor it to inherit from DummyTask
 # @enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
@@ -56,8 +65,8 @@ class MLPOCTask(CoreTask):
     SPEARMINT_EXP_DIR = "work/experiment"
     SPEARMINT_SIGNAL_FILE = "work/x.signal"
     RESULT_EXT = ".score"
-    BLACK_BOX = Mock # CountingBlackBox  #  type: Type[BlackBox]
-    BATCH_MANAGER = Mock # IrisBatchManager  # type: Type[BatchManager]
+    BLACK_BOX = CountingBlackBox  #  type: Type[BlackBox]
+    BATCH_MANAGER = MockIrisBatchManager  # type: Type[BatchManager]
     INFTY = 10000000
 
     def __init__(self,
@@ -70,8 +79,6 @@ class MLPOCTask(CoreTask):
                  owner_port=0,
                  owner_key_id=""
                  ):
-
-        self.BATCH_MANAGER.get_order_of_batches = lambda *_: list(range(100)) # remove that when batchmanager will be real
         super().__init__(
             task_definition=task_definition,
             node_name=node_name,
@@ -113,17 +120,17 @@ class MLPOCTask(CoreTask):
 
     def run_spearmint_in_background(self, tmp_path):
         local_spearmint = LocalComputer(None,  # we don't use task at all
-                                             "",  # os.path.join(self.spearmint_path),  # TODO i think it is not really needed
-                                             lambda *_: self.__restart_spearmint_pos(),
-                                             lambda *_: self.__restart_spearmint_neg(),
-                                             lambda: self.__spearmint_ctd(),
-                                             use_task_resources=False,
-                                             additional_resources=None,
-                                             tmp_dir=self.spearmint_path)
+                                        "",  # os.path.join(self.spearmint_path),  # TODO i think it is not really needed
+                                        lambda *_: self.__restart_spearmint_pos(),
+                                        lambda *_: self.__restart_spearmint_neg(),
+                                        lambda: self.__spearmint_ctd(),
+                                        use_task_resources=False,
+                                        additional_resources=None,
+                                        tmp_dir=self.spearmint_path)
         experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
-        os.makedirs(experiment_dir) # experiment dir has to be AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
+        os.makedirs(experiment_dir)  # experiment dir has to be AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
         spearmint_utils.create_conf(experiment_dir)
-        # local_spearmint.run()
+        local_spearmint.run()
         return local_spearmint
 
     def __restart_spearmint_pos(self):
@@ -140,10 +147,11 @@ class MLPOCTask(CoreTask):
     def __get_next_network_config(self):
         # TODO here happens magic with spearmint in localcomputer
         # using spearmint_utils methods
-        return {"HIDDEN_SIZE": 10,
-                "NUM_EPOCHS": self.task_definition.options.number_of_epochs,
-                "STEPS_PER_EPOCH": self.task_definition.options.steps_per_epoch
-                }
+
+        hidden_size = int(spearmint_utils.get_next_configuration(self.spearmint_path)[0])
+        return [("HIDDEN_SIZE", hidden_size),
+                ("NUM_EPOCHS", self.task_definition.options.number_of_epochs),
+                ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]
 
     def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
@@ -154,14 +162,14 @@ class MLPOCTask(CoreTask):
         )
         batch_manager = self.BATCH_MANAGER(self.task_definition.shared_data_files)
 
-        network_conf = self.__get_next_network_config()
+        network_configuration = self.__get_next_network_config()
 
         shared_data_files_base = [os.path.basename(x) for x in
                                   self.task_definition.shared_data_files]
 
         extra_data = {
             "data_files": shared_data_files_base,
-            "network_configuration": network_conf,
+            "network_configuration": network_configuration,
             "order_of_batches": batch_manager.get_order_of_batches(),
             "RESULT_EXT": self.RESULT_EXT
         }
@@ -228,9 +236,10 @@ class MLPOCTask(CoreTask):
         with open(score_file, "r") as f:
             res = json.load(f)  # TODO check if it doesn't pose any security threat
         score = res["score"]  # overall score of the network with
+        # TODO hyperparameters should be somehow passed as a list
         hyperparameters = res["params"]  # the given parameters
 
-        assert isinstance(hyperparameters, OrderedDict)
+        assert isinstance(hyperparameters, list)
         assert isinstance(score, float)
 
         spearmint_utils.run_one_evaluation(self.spearmint_path, params={
@@ -240,12 +249,10 @@ class MLPOCTask(CoreTask):
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
         assert data["content"]["message_type"] == "MLPOCBlackBoxAskMessage"
-        # answer = self.subtasks_given[subtask_id]["black_box"].save(
-        #     params_hash=data["params_hash"],
-        #     number_of_epoch=data["number_of_epoch"])
-        # return MLPOCBlackBoxAnswerMessage.new_message(answer)
-
-        return MLPOCBlackBoxAnswerMessage.new_message(True)
+        answer = self.subtasks_given[subtask_id]["black_box"].save(
+            params_hash=data["params_hash"],
+            number_of_epoch=data["number_of_epoch"])
+        return MLPOCBlackBoxAnswerMessage.new_message(answer)
 
 class MLPOCTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = MLPOCTask
@@ -299,4 +306,4 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
 
 
 # comment that line to enable type checking
-enforce.config({'groups': {'set': {'mlpoc': False}}})
+enforce.config({'groups': {'set': {'mlpoc': True}}})

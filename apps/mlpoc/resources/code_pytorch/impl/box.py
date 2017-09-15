@@ -2,19 +2,17 @@ from abc import abstractmethod, ABCMeta
 
 import numpy as np
 
-from .config import MAX_LAST_BYTES_NUM
 from .hash import Hash
-
 
 class BlackBox(metaclass=ABCMeta):
     LAST_BYTES_NUM = 1  # max value config.MAX_LAST_BYTES_NUM
 
     @abstractmethod
-    def decide(self, hash: Hash) -> bool:
+    def decide(self, hash: str) -> bool:
         pass
 
 
-assert (BlackBox.LAST_BYTES_NUM <= MAX_LAST_BYTES_NUM)
+assert (BlackBox.LAST_BYTES_NUM <= Hash.MAX_LAST_BYTES_NUM)
 
 
 # SimpleBlackBox decisions are based on hash and difficulty
@@ -26,10 +24,10 @@ class SimpleBlackBox(BlackBox):
         self.probability = probability  # probability of BlackBox saying 'save'
         self.difficulty = int(2 ** (8 * self.LAST_BYTES_NUM) * self.probability)
 
-    def decide(self, hash: Hash):
+    def decide(self, hash: str):
         self.history.append(hash)
 
-        if hash.last_bytes_int(size=self.LAST_BYTES_NUM) <= self.difficulty:
+        if Hash.last_bytes_int(hash, size=self.LAST_BYTES_NUM) <= self.difficulty:
             return True
         return False
 
@@ -47,7 +45,7 @@ class CountingBlackBox(BlackBox):
                                                num_of_rounds,
                                                replace=False)
 
-    def decide(self, hash: Hash):
+    def decide(self, hash: str):
         self.history.append(hash)
 
         if self.current_round in self.checked_rounds:

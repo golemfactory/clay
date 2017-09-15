@@ -289,7 +289,7 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
         computer.tt.join(180.0)
 
         output_dir = os.path.commonpath(computer.tt.result[0]['data'])
-        self._check_output_files(output_dir)
+        self._check_output_files(output_dir, task)
 
 
     def test_mlpoc_subtask(self):
@@ -303,10 +303,10 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
         self.assertEqual(result["result_type"], ResultType.FILES)
 
         output_dir = os.path.commonpath(result['data'])
-        self._check_output_files(output_dir)
+        self._check_output_files(output_dir, task)
 
 
-    def _check_output_files(self, output_dir):
+    def _check_output_files(self, output_dir, task):
         all_result_files = os.listdir(output_dir)
         special_names = [DockerTaskThread.STDOUT_FILE,
                          DockerTaskThread.STDERR_FILE,

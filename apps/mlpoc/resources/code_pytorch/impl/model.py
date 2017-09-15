@@ -17,9 +17,11 @@ from .hash import PyTorchHash, StateHash
 from .net import Net
 from .utils import derandom
 
-
+# very ugly, but network hyperparams have to be passed as a list
+# because spearmint doesn't allow for named parameters and we have
+# to keep order at all times
 from params import network_configuration
-
+network_configuration = dict(network_configuration)
 
 class Model(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -190,7 +192,7 @@ class HonestModelRunner(object):
             self.call_box(epoch, self.state)
 
     def call_box(self, epoch: int, state: ComputationState):
-        box_decision = self.black_box.decide(StateHash(state))
+        box_decision = self.black_box.decide(str(StateHash(state)))
         if box_decision:
             self.serializer.save(epoch, state)
 

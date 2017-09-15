@@ -3,7 +3,7 @@ import os
 import shutil
 from threading import Lock
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
@@ -23,7 +23,7 @@ class LocalComputer(object):
     DEFAULT_SUCCESS = "Task computation success!"
 
     def __init__(self,
-                 task: Task,
+                 task: Optional[Task],
                  root_path: str,
                  success_callback,
                  error_callback,
