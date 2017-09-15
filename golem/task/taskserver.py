@@ -344,7 +344,7 @@ class TaskServer(PendingConnectionsServer):
     def reward_for_subtask_paid(self, subtask_id, reward, transaction_id,
                                 block_number):
         logger.info(
-            "Received payment for subtask %r (val:%r, tid:%r, bn:%r)",
+            "Received information about payment for subtask %r (val:%r, tid:%r, bn:%r)",
             subtask_id,
             reward,
             transaction_id,
@@ -354,7 +354,7 @@ class TaskServer(PendingConnectionsServer):
             expected_income = model.ExpectedIncome.get(subtask=subtask_id)
         except model.ExpectedIncome.DoesNotExist:
             logger.warning(
-                'Received unexpected payment for subtask %r'
+                'Received unexpected information about payment for subtask %r'
                 '(val:%rGNT, tid: %r, bn:%r)',
                 subtask_id,
                 reward,
