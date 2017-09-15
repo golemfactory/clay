@@ -478,11 +478,15 @@ class TestGolemService(unittest.TestCase):
 
     @patch('golem.docker.image.DockerImage.cmp_name_and_tag')
     def test_set_ctd_docker_images(self, cmp_name_and_tag):
+        gservice = self.client.services['task_service']
         cmp_name_and_tag.return_type = True
         ctd = Mock()
-        ctd.docker_images = ["first", "second"]
+        from golem.docker.image import DockerImage
+        docker_images = [Mock(spec=DockerImage), Mock(spec=DockerImage)]
+        ctd.docker_images = docker_images
         env = Mock()
-        env.docker_images = ["first", "second"]
+        env.docker_images = docker_images
+        gservice._set_ctd_docker_images(ctd, env)
 
     def test_set_ctd_env_params(self):
         gservice = self.client.services['task_service']
