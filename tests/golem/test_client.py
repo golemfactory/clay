@@ -26,7 +26,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
-
+from devp2p.peer import Peer
 
 def mock_async_run(req, success, error):
     try:
@@ -47,6 +47,7 @@ class TestCreateClient(TestDirFixture):
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
+        Peer.dumb_remote_timeout = 0.1
         c = Client(
             datadir=self.path,
             node_address='1.0.0.0',
@@ -84,6 +85,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     # pylint: disable=attribute-defined-outside-init
 
     def tearDown(self):
+        Peer.dumb_remote_timeout = 0.1
         if hasattr(self, 'client'):
             self.client.quit()
 
@@ -550,7 +552,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.client.start()
         self.client.stop()
-
+        import gevent
+        gevent.get_hub().join()
         assert not self.client.do_work_task.running
         assert not self.client.publish_task.running
 
@@ -560,7 +563,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-
+        Peer.dumb_remote_timeout = 0.1
         client = Client(
             datadir=self.path,
             transaction_system=False,
