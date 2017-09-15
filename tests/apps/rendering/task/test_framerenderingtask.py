@@ -1,20 +1,19 @@
 import os
 import unittest
 import uuid
-
 from pathlib import Path
+
 from PIL import Image
 
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
+from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
+                                                    FrameRenderingTaskBuilder,
+                                                    FrameRendererOptions, logger)
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
-                                                    FrameRenderingTaskBuilder,
-                                                    FrameRendererOptions, logger)
 
 
 class FrameRenderingTaskMock(FrameRenderingTask):
@@ -29,9 +28,14 @@ class FrameRenderingTaskMock(FrameRenderingTask):
         self.ENVIRONMENT_CLASS.main_program_file = main_program_file
         super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
+    def query_extra_data(*args, **kwargs):
+        pass
+
+    def query_extra_data_for_test_task(self):
+        pass
+
 
 class TestFrameRenderingTask(TestDirFixture, LogTestCase):
-
     def _get_frame_task(self, use_frames=True):
         files_ = self.additional_dir_content([3])
         rt = RenderingTaskDefinition()
@@ -102,8 +106,12 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = self._get_frame_task()
         task.tmp_dir = self.path
         task._accept_client("NODE 1")
-        task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 3, "frames": [4, 5]}
+        task.subtasks_given["SUBTASK1"] = {"start_task": 3,
+                                           "node_id": "NODE 1",
+                                           "parts": 1,
+                                           "end_task": 3,
+                                           "frames": [4, 5],
+                                           "status": SubtaskStatus.downloading}
         img_file2 = os.path.join(self.path, "img2.png")
         img.save(img_file2)
         img.close()

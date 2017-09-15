@@ -75,8 +75,8 @@ setup(
             path.normpath('apps/registered.ini'),
             path.normpath('apps/images.ini')
         ]),
-        (path.normpath('../../golem/apps/core/benchmark/minilight'), [
-            path.normpath('apps/core/benchmark/minilight/cornellbox.ml.txt'),
+        (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
+            path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
@@ -85,6 +85,15 @@ setup(
         (path.normpath('../../golem/apps/lux/resources/scripts'), [
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
             path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
+        ]),
+        (path.normpath('../../golem/apps/dummy/resources/scripts'), [
+            path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
+        ]),
+        (path.normpath('../../golem/apps/dummy/resources/code_dir'), [
+            path.normpath('apps/dummy/resources/code_dir/computing.py')
+        ]),
+        (path.normpath('../../golem/apps/dummy/test_data'), [
+            path.normpath('apps/dummy/test_data/in.data')
         ]),
         (path.normpath('../../golem/gui/view/'), [
             path.normpath('gui/view/nopreview.png')

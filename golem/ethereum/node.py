@@ -128,8 +128,10 @@ class NodeProcess(object):
         init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
-            raise OSError(
-                "geth init failed with code {}".format(init_subp.returncode))
+            error_msg = "geth init failed with code {}".format(
+                init_subp.returncode)
+            log.error(error_msg)
+            raise OSError(error_msg)
 
         if port is None:
             port = find_free_net_port()
@@ -154,7 +156,8 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+                                     stderr=subprocess.PIPE,
+                                     stdin=DEVNULL)
 
         tee_kwargs = {
             'prefix': 'geth: ',

@@ -5,7 +5,7 @@ import zipfile
 
 from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.simpleserializer import CBORSerializer
-from golem.task.taskbase import result_types
+from golem.task.taskbase import ResultType
 
 
 class Packager(object):
@@ -176,7 +176,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
 
         extracted = ExtractedPackage(files, files_dir, descriptor)
 
-        if descriptor.result_type == result_types['data']:
+        if descriptor.result_type == ResultType.DATA:
 
             result_path = os.path.join(files_dir, self.result_file_name)
 
@@ -191,9 +191,9 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         disk_files = disk_files[:] if disk_files else []
         cbor_files = cbor_files[:] if cbor_files else []
 
-        if result.result_type == result_types['data']:
+        if result.result_type == ResultType.DATA:
             cbor_files.append((self.result_file_name, result.result))
-        elif result.result_type == result_types['files']:
+        elif result.result_type == ResultType.FILES:
             disk_files.extend(result.result)
         else:
             raise ValueError("Invalid result type {}".format(result.result_type))
@@ -223,9 +223,9 @@ class ExtractedPackage:
             "result_type": self.descriptor.result_type
         }
 
-        if result_type == result_types['files']:
+        if result_type == ResultType.FILES:
             extra_data["result"] = full_path_files
-        elif result_type == result_types['data']:
+        elif result_type == ResultType.DATA:
             extra_data["result"] = self.result
 
         if self.result:

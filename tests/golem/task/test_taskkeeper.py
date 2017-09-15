@@ -9,7 +9,7 @@ from mock import patch
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.variables import APP_VERSION
-from golem.environments.environment import Environment
+from golem.environments.environment import Environment, UnsupportReason
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
@@ -27,33 +27,39 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_is_supported(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
-        self.assertFalse(tk.is_supported({}))
+        self.assertFalse(tk.check_support({}))
         task = {"environment": Environment.get_id(), 'max_price': 0}
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
         task["max_price"] = 10.0
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
         task["min_version"] = APP_VERSION
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         config_desc = Mock()
         config_desc.min_price = 13.0
         tk.change_config(config_desc)
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "120"
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         task["min_version"] = tk.app_version
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "abc"
         with self.assertLogs(logger=logger, level='WARNING'):
-            self.assertFalse(tk.is_supported(task))
+            self.assertFalse(tk.check_support(task))
 
     def test_check_version_compatibility(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
@@ -251,10 +257,13 @@ def get_dict_task_header():
 
 def get_task_header():
     header = get_dict_task_header()
-    return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
+    return TaskHeader(header["node_name"], header["task_id"],
+                      header["task_owner_address"],
                       header["task_owner_port"], header["task_owner_key_id"],
-                      header["environment"], header["task_owner"], header["deadline"],
-                      header["subtask_timeout"], 1024, 1.0, 1000, header['max_price'])
+                      header["environment"], header["task_owner"],
+                      header["deadline"],
+                      header["subtask_timeout"], 1024, 1.0, 1000,
+                      header['max_price'])
 
 
 class TestCompSubtaskInfo(TestCase):
@@ -306,8 +315,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-
-        self.assertEqual(ctk.get_value(task_id="xyz", computing_time=1), 2)
+        self.assertEqual(ctk.get_value("xyz", 1), 2)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)
         self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)

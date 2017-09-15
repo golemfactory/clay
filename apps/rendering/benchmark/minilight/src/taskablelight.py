@@ -1,11 +1,9 @@
 import time
 
-from .taskablerenderer import TaskableRenderer
-from .renderworker import RenderWorker
+from . import task_data_0
 from .img import Img
 from .rendertaskcreator import ThreadRenderWorkerPool
-
-from . import task_data_0
+from .taskablerenderer import TaskableRenderer
 
 INPUT_W  = 50
 INPUT_H  = 50

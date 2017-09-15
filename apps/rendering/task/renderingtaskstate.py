@@ -2,10 +2,10 @@ from os import path
 
 from apps.core.task.coretaskstate import (TaskDefinition,
                                           AdvanceVerificationOptions,
-                                          CoreTaskDefaults)
+                                          TaskDefaults)
 
 
-class RendererDefaults(CoreTaskDefaults):
+class RendererDefaults(TaskDefaults):
     """ Suggested default values for Rendering tasks"""
     def __init__(self):
         super(RendererDefaults, self).__init__()

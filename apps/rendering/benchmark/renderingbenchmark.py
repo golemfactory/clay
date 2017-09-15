@@ -3,32 +3,41 @@ import logging
 import os.path
 from PIL import Image
 
+from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger("apps.core")
 
 
-class Benchmark(object):
+class RenderingBenchmark(CoreBenchmark):
+
     def __init__(self):
-        self.task_definition = RenderingTaskDefinition()
-        self.task_definition.max_price = 100
-        self.task_definition.resolution = [200, 100]
-        self.task_definition.full_task_timeout = 10000
-        self.task_definition.subtask_timeout = 10000
-        self.task_definition.optimize_total = False
-        self.task_definition.resources = set()
-        self.task_definition.total_tasks = 1
-        self.task_definition.total_subtasks = 1
-        self.task_definition.start_task = 1
-        self.task_definition.end_task = 1
+        self._task_definition = RenderingTaskDefinition()
+        self._task_definition.max_price = 100
+        self._task_definition.resolution = [200, 100]
+        self._task_definition.full_task_timeout = 10000
+        self._task_definition.subtask_timeout = 10000
+        self._task_definition.optimize_total = False
+        self._task_definition.resources = set()
+        self._task_definition.total_tasks = 1
+        self._task_definition.total_subtasks = 1
+        self._task_definition.start_task = 1
+        self._task_definition.end_task = 1
         
         # magic constant obtained experimentally
-        self.normalization_constant = 9500
+        self._normalization_constant = 9500
+
+    @property
+    def normalization_constant(self):
+        return self._normalization_constant
+
+    @property
+    def task_definition(self):
+        return self._task_definition
 
     def find_resources(self):
         return set()
 
-    # result is a list of files produced in computation (logs and imgs)
     # if img has a different format, you need to implement this method in a subclass
     def verify_result(self, result):
         for filepath in result:
@@ -48,7 +57,7 @@ class Benchmark(object):
             return False
         img_size = image.size
         image.close()
-        expected = self.task_definition.resolution
+        expected = self._task_definition.resolution
         if tuple(img_size) == tuple(expected):
             return True
         logger.warning("Bad resolution\nExpected {}x{}, but got {}x{}".format(expected[0], expected[1], img_size[0], img_size[1]))

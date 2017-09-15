@@ -18,7 +18,7 @@ from golem.model import Payment
 from golem.network.transport import tcpnetwork
 from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
-from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
+from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -250,7 +250,7 @@ class TaskSession(MiddlemanSafeSession):
             self._reject_subtask_result(subtask_id)
             return
 
-        if result_type == result_types['data']:
+        if result_type == ResultType.DATA:
             try:
                 if decrypt:
                     result = self.decrypt(result)
@@ -366,9 +366,9 @@ class TaskSession(MiddlemanSafeSession):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == result_types['data']:
+        if task_result.result_type == ResultType.DATA:
             extra_data = []
-        elif task_result.result_type == result_types['files']:
+        elif task_result.result_type == ResultType.FILES:
             extra_data = [os.path.basename(x) for x in task_result.result]
         else:
             logger.error(
@@ -884,7 +884,7 @@ class TaskSession(MiddlemanSafeSession):
         res_file_path = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["zip"]
+            ResourceType.ZIP
         )
 
         if not res_file_path:
@@ -902,7 +902,7 @@ class TaskSession(MiddlemanSafeSession):
         res = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["parts"]
+            ResourceType.PARTS
         )
         if res is None:
             return
