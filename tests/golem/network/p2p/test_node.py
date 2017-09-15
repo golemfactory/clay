@@ -1,6 +1,8 @@
 import unittest
-from golem.network.p2p.node import Node
 import json
+
+from golem.network.p2p.node import Node
+from golem.core.hostaddress import get_host_addresses
 
 
 def is_ip_address(address):
@@ -36,6 +38,44 @@ class TestNode(unittest.TestCase):
         assert is_ip_address(node.prv_addr)
         for address in node.prv_addresses:
             assert is_ip_address(address)
+
+    def test_collect_network_info2(self):
+        """ Test configuring Node object """
+        node = Node(pub_addr='8.8.8.8')
+        node.collect_network_info()
+
+        assert is_ip_address(node.pub_addr)
+        assert is_ip_address(node.prv_addr)
+        for address in node.prv_addresses:
+            assert is_ip_address(address)
+
+    def test_collect_network_info3(self):
+        """ Test configuring Node object """
+        node = Node(prv_port='40111')
+        node.collect_network_info()
+
+        assert is_ip_address(node.pub_addr)
+        assert is_ip_address(node.prv_addr)
+        for address in node.prv_addresses:
+            assert is_ip_address(address)
+
+    def test_collect_network_info4(self):
+        """ Test configuring Node object """
+        node = Node(prv_addr='8.8.8.8')
+
+        with self.assertLogs(level='WARNING'):
+            node.collect_network_info()
+
+    def test_collect_network_info5(self):
+        """ Test configuring Node object """
+        addr = get_host_addresses(False)[0]
+        node = Node(pub_addr=addr)
+
+        node.collect_network_info()
+
+        assert is_ip_address(node.pub_addr)
+        assert is_ip_address(node.prv_addr)
+        self.assertEquals(node.pub_addr, node.prv_addr)
 
     def test_json(self) -> None:
         "Test serialization and deserialization"
@@ -74,3 +114,8 @@ class TestNode(unittest.TestCase):
         self.assertIn((pub_addr, pub_port), res)
         for addr in prv_addresses:
             self.assertIn((addr, prv_port), res)
+
+    def test_eq(self):
+        n = Node()
+        with self.assertRaises(TypeError):
+            n == ""
