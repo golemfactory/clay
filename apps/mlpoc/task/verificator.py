@@ -54,6 +54,8 @@ class MLPOCTaskVerificator(CoreVerificator):
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
 
         if self.verification_options["no_verification"]:
+            # FIXME quite tricky to know that I should save that
+            # it would be a lot better if _check_files would juts return True/False
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
             return
 

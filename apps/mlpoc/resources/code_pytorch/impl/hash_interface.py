@@ -7,7 +7,7 @@ class Hash(object):
     MAX_LAST_BYTES_NUM = hashing_algorithm(b"something").digest_size
 
     def __init__(self, value):
-        self.value = Hash._compute_hash(value)
+        self.value = self._compute_hash(value)
 
     def __repr__(self):
         return str(self.value.hex())

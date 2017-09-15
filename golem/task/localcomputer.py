@@ -122,9 +122,9 @@ class LocalComputer(object):
         #  get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
-        else:
-            shutil.rmtree(self.test_task_res_path, True)
-            os.makedirs(self.test_task_res_path)
+        # else:
+            # shutil.rmtree(self.test_task_res_path, True)
+            # os.makedirs(self.test_task_res_path)
 
         # self.test_task_res_dir = get_test_task_path(self.root_path)
         if self.use_task_resources:

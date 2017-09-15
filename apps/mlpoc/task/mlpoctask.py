@@ -63,7 +63,7 @@ class MLPOCTask(CoreTask):
 
     SPEARMINT_ENV = MLPOCSpearmintEnvironment
     SPEARMINT_EXP_DIR = "work/experiment"
-    SPEARMINT_SIGNAL_FILE = "work/x.signal"
+    SPEARMINT_SIGNAL_FILE = "x.signal"
     RESULT_EXT = ".score"
     BLACK_BOX = CountingBlackBox  #  type: Type[BlackBox]
     BATCH_MANAGER = MockIrisBatchManager  # type: Type[BatchManager]
@@ -89,14 +89,15 @@ class MLPOCTask(CoreTask):
             total_tasks=total_tasks
         )
 
-        dm = DirManager(root_path)
-        self.spearmint_path = dm.get_task_temporary_dir(task_definition.task_id)
-        self.local_spearmint = self.run_spearmint_in_background(self.spearmint_path)
-
         ver_opts = self.verificator.verification_options
         ver_opts["no_verification"] = True
         # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         # ver_opts["result_extension"] = self.RESULT_EXT
+
+    def initialize(self, dir_manager):
+        super().initialize(dir_manager)
+        self.spearmint_path = dir_manager.get_task_temporary_dir(self.task_definition.task_id)
+        self.local_spearmint = self.run_spearmint_in_background(self.spearmint_path)
 
     def __spearmint_ctd(self):
         env = self.SPEARMINT_ENV()
@@ -112,25 +113,32 @@ class MLPOCTask(CoreTask):
         # SIGNAL_FILE - file which signalizes the change in results.dat
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
         # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
-        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/work/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem/work" from DockerTaskThread
+        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem/work" from DockerTaskThread
         ctd.extra_data["SIGNAL_FILE"] = "/golem/work/" + self.SPEARMINT_SIGNAL_FILE  # TODO change that, as ^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
         ctd.extra_data["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
 
+    def __send_signal_to_spearmint(self):
+        spearmint_utils.generate_new_suggestions(
+            os.path.join(self.spearmint_path,
+                         "work",
+                         self.SPEARMINT_SIGNAL_FILE))
+
     def run_spearmint_in_background(self, tmp_path):
         local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        "",  # os.path.join(self.spearmint_path),  # TODO i think it is not really needed
+                                        os.path.join(self.spearmint_path),  # Root path is used to store resourecs (DirManager is constructed from root_path)
                                         lambda *_: self.__restart_spearmint_pos(),
                                         lambda *_: self.__restart_spearmint_neg(),
                                         lambda: self.__spearmint_ctd(),
                                         use_task_resources=False,
                                         additional_resources=None,
                                         tmp_dir=self.spearmint_path)
-        experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
-        os.makedirs(experiment_dir)  # experiment dir has to be AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
-        spearmint_utils.create_conf(experiment_dir)
+        self.experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
+        os.makedirs(self.experiment_dir)  # experiment dir has to be AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
+        spearmint_utils.create_conf(self.experiment_dir)
         local_spearmint.run()
+        self.__send_signal_to_spearmint()
         return local_spearmint
 
     def __restart_spearmint_pos(self):
@@ -148,14 +156,13 @@ class MLPOCTask(CoreTask):
         # TODO here happens magic with spearmint in localcomputer
         # using spearmint_utils methods
 
-        hidden_size = int(spearmint_utils.get_next_configuration(self.spearmint_path)[0])
+        hidden_size = int(spearmint_utils.get_next_configuration(self.experiment_dir)[0])
         return [("HIDDEN_SIZE", hidden_size),
                 ("NUM_EPOCHS", self.task_definition.options.number_of_epochs),
                 ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]
 
     def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
-
         black_box = self.BLACK_BOX(
             self.task_definition.options.probability_of_save,
             self.task_definition.options.number_of_epochs
@@ -186,6 +193,9 @@ class MLPOCTask(CoreTask):
                          num_cores=1,
                          node_id: str = None,
                          node_name: str = None) -> Task.ExtraData:
+
+        logger.warning("New task is being deployed")
+
         black_box, batch_manager, ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
@@ -216,8 +226,10 @@ class MLPOCTask(CoreTask):
         ].accept()
         self.num_tasks_received += 1
 
-        score_file = [f for f in result_files if ".score" in f]
+        score_file = [f for f in result_files if ".score" in f][0]
         self.__update_spearmint_state(score_file)
+        self.__send_signal_to_spearmint()
+        logger.warning("Subtask finished")
 
     def __get_new_subtask_id(self) -> str:
         return "{:32x}".format(random.getrandbits(128))
@@ -235,23 +247,28 @@ class MLPOCTask(CoreTask):
     def __update_spearmint_state(self, score_file):
         with open(score_file, "r") as f:
             res = json.load(f)  # TODO check if it doesn't pose any security threat
-        score = res["score"]  # overall score of the network with
-        # TODO hyperparameters should be somehow passed as a list
-        hyperparameters = res["params"]  # the given parameters
+
+        # structure of the score file: {score: list_of_hyperparams}
+        # where list_of_hyperparams = [(name_of_param, param_value)]
+        score, hyperparameters = list(res.items())[0]
+
+        # TODO temporary hack, because for now only one param is used
+        hyperparameters = [str(v) for k, v in hyperparameters if k == "HIDDEN_SIZE"]
 
         assert isinstance(hyperparameters, list)
-        assert isinstance(score, float)
+        assert isinstance(float(score), float)  # not so dumb as it seems - just checking if score can be mapped to float
 
-        spearmint_utils.run_one_evaluation(self.spearmint_path, params={
-            score: hyperparameters
-        })
+        spearmint_utils.run_one_evaluation(
+            self.experiment_dir,
+            params={score: hyperparameters}
+        )
 
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
         assert data["content"]["message_type"] == "MLPOCBlackBoxAskMessage"
-        answer = self.subtasks_given[subtask_id]["black_box"].save(
-            params_hash=data["params_hash"],
-            number_of_epoch=data["number_of_epoch"])
+        box = self.subtasks_given[subtask_id]["black_box"]  # type: BlackBox
+        answer = box.decide(hash=data["content"]["params_hash"],
+                            epoch_num=data["content"]["number_of_epoch"])
         return MLPOCBlackBoxAnswerMessage.new_message(answer)
 
 class MLPOCTaskBuilder(CoreTaskBuilder):
@@ -284,7 +301,8 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
                                    definition.options.steps_per_epoch)
         number_of_epochs = opts.get("number_of_epochs",
                                     definition.options.number_of_epochs)
-
+        probability_of_save = opts.get("probability_of_save",
+                                    definition.options.probability_of_save)
         # TODO uncomment that when GUI will be fixed
         # if not isinstance(steps_per_epoch, int):
         #     raise TypeError("Num of steps per epoch should be int")
@@ -292,7 +310,7 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
         #     raise TypeError("Num of epochs should be int")
         steps_per_epoch = int(steps_per_epoch)
         number_of_epochs = int(number_of_epochs)
-
+        probability_of_save = float(probability_of_save)
         if steps_per_epoch <= 0:
             raise Exception("Num of steps per epoch should be greater than 0")
         if number_of_epochs < 0:
@@ -300,6 +318,7 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
 
         definition.options.number_of_epochs = number_of_epochs
         definition.options.steps_per_epoch = steps_per_epoch
+        definition.options.probability_of_save = probability_of_save
 
         return definition
         # also, a second file, which will be a configuration file for spearmint

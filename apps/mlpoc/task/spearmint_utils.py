@@ -7,9 +7,13 @@ import shutil
 from collections import OrderedDict
 from typing import Tuple, List, Optional, Dict, Callable
 
+import time
+
 RESULT_FILE = "results.dat"
 CONFIG = "config.json"
-DEFAULT_EVAL_TIME = 1 # spearmint takes into consideration evalutaion times, but we are not going to bother with that now
+DEFAULT_EVAL_TIME = 1  # spearmint takes into consideration evalutaion times, but we are not going to bother with that now
+
+UPDATE_PERIOD = 0.1  # when waiting for results from spearmint, loop will wait this much between checking if results arrived
 
 # dirty-state hyperparams configurations
 # eg these which were already send to provider, but there is still no answer
@@ -31,11 +35,11 @@ def process_lines(directory: str, f: Callable[[str, str, List[str], str], None])
                 continue
             y = values.pop(0)
             dur = values.pop(0)
-            x = values
+            x = tuple(values)
             f(y, dur, x, line)
 
 
-def run_one_evaluation(directory: str, params: Dict[float, List[float]]) -> None:
+def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     """
     This function is called by MLPOCTask.__update_spearmint_state with new results from provider
     It then simply saves the results to RESULT_FILE file (replaces old line with these hyperparams
@@ -45,15 +49,14 @@ def run_one_evaluation(directory: str, params: Dict[float, List[float]]) -> None
     :return: None
     """
 
-    params = {tuple(str(x) for x in v): k for k, v in sorted(params.items())}
+    params = {tuple(x for x in v): k for k, v in sorted(params.items())}
     print("Evaluation...")
     newlines = []
 
     def f(y, dur, x, line):
-        X = [float(a) for a in x]
-        if dur == 'P' and tuple(X) in params:
-            val = params[X]
-            newlines.append("{} {} {}\n".format(val, DEFAULT_EVAL_TIME, " ".join(str(p) for p in X)))
+        if dur == 'P' and tuple(x) in params:
+            val = params[tuple(x)]
+            newlines.append("{} {} {}\n".format(val, DEFAULT_EVAL_TIME, " ".join(p for p in x)))
         else:
             newlines.append(line)
 
@@ -113,3 +116,8 @@ def get_next_configuration(directory: str) -> Optional[List[str]]:
 
     process_lines(directory, f)
     return xs
+
+def generate_new_suggestions(file):
+    open(file, "w").close()  # create signal file
+    while os.path.exists(file):
+        time.sleep(UPDATE_PERIOD)

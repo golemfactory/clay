@@ -64,6 +64,7 @@ class MLPOCTaskDefinition(TaskDefinition):
         self.code_files = ls_R(self.code_dir)
 
         # TODO remove symlinks when the dummytask will be merged
+        # TODO remove critical bug #1387
         # symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
         os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])

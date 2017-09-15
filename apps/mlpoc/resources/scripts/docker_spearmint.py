@@ -4,8 +4,9 @@
 # Spearmint CAN be resources-heavy
 # but i guess that's all we have for now
 
-import os
+import subprocess
 import time
+import os
 
 import params
 
@@ -23,10 +24,28 @@ def ls_R(dir):
 # TODO change the way parameters are passed to spearmint
 def run_one_update():
     print("Updating suggestions...")
-    cmd = "python /opt/spearmint/spearmint-lite/spearmint-lite.py {} " \
-          "--method=GPEIOptChooser --method -args=mcmc_iters=10," \
-          "noiseless=1".format(params.EXPERIMENT_DIR)
-    os.subprocess.call(cmd)
+    print(os.path.isfile("/usr/bin/python"))
+    print(os.path.exists("/opt"))
+    print(os.listdir("/opt"))
+    print(os.path.exists("/opt/spearmint"))
+    print(os.listdir("/opt/spearmint"))
+    print(os.path.exists("/opt/spearmint/spearmint-lite"))
+    print(os.listdir("/opt/spearmint/spearmint-lite"))
+    print(os.path.exists("/opt/spearmint/spearmint-lite/spearmint-lite.py"))
+    print("aaas")
+    print(os.path.exists(params.EXPERIMENT_DIR))
+    print(os.listdir(params.EXPERIMENT_DIR))
+    output = ""
+
+    # cmd = "/usr/bin/python /opt/spearmint/spearmint-lite/spearmint-lite.py {} " \
+    #       "--method=GPEIOptChooser --method-args=mcmc_iters=10,noiseless=1"\
+    #       .format(params.EXPERIMENT_DIR)
+    cmd = "/usr/bin/python /opt/spearmint/spearmint-lite/spearmint-lite.py {}".format(params.EXPERIMENT_DIR)
+    try:
+        subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        raise Exception("Updating spearmint went wrong")
 
 
 # check if any new messages were added - if yes, update results.dat file
@@ -34,9 +53,9 @@ def run():
     while (True):
         time.sleep(params.EVENT_LOOP_SLEEP)
         if os.path.exists(params.SIGNAL_FILE):
-            os.remove(params.SIGNAL_FILE)
             for _ in range(params.SIMULTANEOUS_UPDATES_NUM):
                 run_one_update()
+            os.remove(params.SIGNAL_FILE)  # signal file has to be removed after updating
 
 
 run()
