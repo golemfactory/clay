@@ -793,6 +793,9 @@ class TaskSession(MiddlemanSafeSession):
             )
             return
 
+        # FIXME: spawning a thread per message is expensive
+        # Please rewrite.
+
         # reward_for_subtask_paid -> ethereum incomes keeper requires
         # being sync with blockchain
         # run it in separate thread to prevent hanging the main thread
