@@ -186,6 +186,7 @@ class CoreTask(Task):
                and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager):
+        dir_manager.clear_temporary(self.header.task_id)
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
         self.verificator.tmp_dir = self.tmp_dir
 
