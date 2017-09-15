@@ -47,3 +47,30 @@ class TestNode(unittest.TestCase):
         print(deser_dict)
         n_deser = Node.from_dict(deser_dict)
         self.assertEqual(n.__dict__, n_deser.__dict__)
+
+    def test_get_addresses(self):
+        prv_port = 1234
+        prv_addresses = ['10.0.0.2', '192.168.0.7']
+        pub_addr = '1.2.3.4'
+        pub_port = 40041
+
+        n = Node(prv_port=prv_port, prv_addresses=prv_addresses)
+
+        res = n.get_addresses()
+        self.assertEqual(2, len(res))
+        for addr in prv_addresses:
+            self.assertIn((addr, prv_port), res)
+
+        n.pub_addr = pub_addr
+        res = n.get_addresses()
+        self.assertEqual(3, len(res))
+        self.assertIn((pub_addr, prv_port), res)
+        for addr in prv_addresses:
+            self.assertIn((addr, prv_port), res)
+
+        n.pub_port = pub_port
+        res = n.get_addresses()
+        self.assertEqual(3, len(res))
+        self.assertIn((pub_addr, pub_port), res)
+        for addr in prv_addresses:
+            self.assertIn((addr, prv_port), res)
