@@ -6,6 +6,8 @@ from golem.utils import decode_hex
 from golem.network.p2p.taskservice import TaskRequestRejection, TaskRejection, \
     ResultRejection
 from golem.task.taskbase import ComputeTaskDef
+from golem.docker.environment import DockerEnvironment
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 from golem.model import Payment
 
@@ -473,3 +475,47 @@ class TestGolemService(unittest.TestCase):
         ctd.return_port = 6677
 
         gservice._validate_ctd(ctd, pubkey)
+
+    @patch('golem.docker.image.DockerImage.cmp_name_and_tag')
+    def test_set_ctd_docker_images(self, cmp_name_and_tag):
+        cmp_name_and_tag.return_type = True
+        ctd = Mock()
+        ctd.docker_images = ["first", "second"]
+        env = Mock()
+        env.docker_images = ["first", "second"]
+
+    def test_set_ctd_env_params(self):
+        gservice = self.client.services['task_service']
+        proto = create_proto()
+        proto.peer.ip_port = ['10.10.10.1', 0]
+        gservice.task_manager.comp_task_keeper = Mock()
+        env = Mock(spec=DockerEnvironment)
+        gservice.task_manager.comp_task_keeper.get_task_env = Mock()
+        gservice.task_server.get_environment_by_id = Mock(return_value=env)
+
+        ctd = Mock()
+        ctd.task_id = "1234"
+        env.get_source_code = Mock(return_value="src_code")
+
+        gservice._set_ctd_docker_images = Mock()
+        env.allow_custom_main_program_file = False
+
+        gservice._set_ctd_env_params(ctd)
+        assert gservice._set_ctd_docker_images.called
+
+    def test_set_eth_account(self):
+        gservice = self.client.services['task_service']
+        proto = create_proto()
+        proto.peer.ip_port = ['10.10.10.1', 0]
+        proto.peer.remote_pubkey = "ABCDEF"
+        proto.peer.name = "golem_node"
+        eth_account= "0xABD32143242"
+        proto.peer.connection.getpeername = Mock()
+        proto.peer.connection.getpeername.return_value = ['10.10.10.1', 0]
+
+        eth_account = EthAccountInfo("ABCDEF", 0, '10.10.10.1', 'golem_node',
+            None, "0xABD32143242")
+
+        gservice._set_eth_account(proto, eth_account)
+
+        assert proto.eth_account_info == eth_account
