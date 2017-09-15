@@ -45,6 +45,8 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()  # needed to work on macOS
+
         data_dir = os.path.join(get_golem_path(),
                                 "apps",
                                 "mlpoc",
@@ -278,6 +280,7 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
     #     self.assertFalse(task.verify_subtask(ctd.subtask_id))
     #     self.assertEqual(task.num_tasks_received, 1)
 
+
     def test_mlpoctask_TaskTester_should_pass(self):
         task = self._test_task()
 
@@ -286,14 +289,8 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
         computer.tt.join(180.0)
 
         output_dir = os.path.commonpath(computer.tt.result[0]['data'])
+        self._check_output_files(output_dir)
 
-        results = [os.path.join(output_dir, f) for f in os.listdir(output_dir) if "stderr" not in f and "stdout" not in f]
-
-        assert len(results) == task.task_definition.options.number_of_epochs
-        for epoch_dir in results:
-            assert len([f for f in os.listdir(epoch_dir) if f.endswith(".end")]) == 1
-            assert len([f for f in os.listdir(epoch_dir) if f.endswith(".begin")]) == 1
-            assert len(os.listdir(epoch_dir)) == 2
 
     def test_mlpoc_subtask(self):
         task = self._test_task()
@@ -304,11 +301,24 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
         # Check the number and type of result files:
         result = task_thread.result
         self.assertEqual(result["result_type"], ResultType.FILES)
-        self.assertGreaterEqual(len(result["data"]), 3)
-        self.assertTrue(any(path.basename(f) == DockerTaskThread.STDOUT_FILE
-                            for f in result["data"]))
 
-        self.assertEqual(len([0 for f in result["data"] if f.endswith(".end")]),
-                        task.task_definition.options.number_of_epochs)
-        self.assertEqual(len([0 for f in result["data"] if f.endswith(".begin")]),
-                         task.task_definition.options.number_of_epochs)
+        output_dir = os.path.commonpath(result['data'])
+        self._check_output_files(output_dir)
+
+
+    def _check_output_files(self, output_dir):
+        all_result_files = os.listdir(output_dir)
+        special_names = [DockerTaskThread.STDOUT_FILE,
+                         DockerTaskThread.STDERR_FILE,
+                         MLPOCTask.RESULT_EXT]
+        results = [os.path.join(output_dir, f) for f in all_result_files
+                   if not any(x in f for x in special_names)]
+
+        exactly_one_file = lambda lst, name: len([x for x in lst if name in x]) == 1
+        assert all(exactly_one_file(all_result_files, x) for x in special_names)
+
+        assert len(results) == task.task_definition.options.number_of_epochs
+        for epoch_dir in results:
+            assert len([f for f in os.listdir(epoch_dir) if f.endswith(".end")]) == 1
+            assert len([f for f in os.listdir(epoch_dir) if f.endswith(".begin")]) == 1
+            assert len(os.listdir(epoch_dir)) == 2

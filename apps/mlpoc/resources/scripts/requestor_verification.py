@@ -31,12 +31,20 @@ def _hash_from_name(filepath: str):
 #     return ... == hash
 
 
+# def check_score(data, name):
+#     """Check if the score in results file matches real score
+#     of the network
+#     """
+#     pass
+
+
 def find_file_with_ext(ext, dir):
     for file in os.listdir(dir):
         if file.split(".")[-1] == ext:
             return os.path.join(dir, file)
 
     raise Exception("In dir {} no file with ext {}".format(dir, ext))
+
 
 # TODO when writing verification code - remember to put output from task into RESOURCES_DIR/checkpoints
 def run():

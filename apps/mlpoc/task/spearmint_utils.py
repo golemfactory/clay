@@ -1,6 +1,4 @@
-# based on braninpy from https://github.com/JasperSnoek/spearmint/blob/master
-# /spearmint-lite/braninpy/braninrunner.py  # noqa
-# author: Jasper Snoek
+# based on braninpy from https://github.com/JasperSnoek/spearmint/blob/master/spearmint-lite/braninpy/braninrunner.py  # noqa
 
 import json
 import math
@@ -19,7 +17,7 @@ def f(x):
 def run_one_evaluation(directory, params):
     # for now, params are param -> values
     # but we need values -> param
-    params = OrderedDict((tuple(v), k) for k, v in sorted(params.items()))
+    params = {tuple(str(x) for x in v): k for k, v in sorted(params.items())}
     print("Evaluation...")
     with open(os.path.join(directory, RESULT_FILE), 'r') as resfile:
         newlines = []
@@ -31,9 +29,9 @@ def run_one_evaluation(directory, params):
             dur = values.pop(0)
             X = values
 
-            if val == 'P' and val in params:
-                val = params[val]
-                newlines.append("{} 1 {}\n".format(val, float(values[0])))
+            if val == 'P' and X in params:
+                val = params[X]
+                newlines.append("{} 1 {}\n".format(val, " ".join(str(p) for p in values)))
             else:
                 newlines.append(line)
 
@@ -42,10 +40,10 @@ def run_one_evaluation(directory, params):
 
 
 def create_conf(directory):
-    conf = OrderedDict([("X", {"name": "X",
-                              "type": "float",
-                              "min": 0.1,
-                              "max": 5.0,
+    conf = OrderedDict([("HIDDEN_LAYER_SIZE", {"name": "HIDDEN_LAYER_SIZE",
+                              "type": "int",
+                              "min": 1,
+                              "max": 10**5,
                               "size": 1
                               })])
     with open(os.path.join(directory, CONFIG), "w+") as f:
@@ -53,7 +51,8 @@ def create_conf(directory):
 
 
 def clean_res(directory):
-    shutil.rmtree(directory)
+    for f in os.listdir(directory):
+        shutil.rmtree(os.path.join(f, directory), ignore_errors=True)
 
 
 def extract_results(directory):

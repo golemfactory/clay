@@ -49,7 +49,7 @@ class TestMLPOCTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_constants(self):
         assert MLPOCTask.VERIFICATOR_CLASS == MLPOCTaskVerificator
         assert MLPOCTask.ENVIRONMENT_CLASS == MLPOCTorchEnvironment
-        assert MLPOCTask.RESULT_EXT == ".result"
+        assert MLPOCTask.RESULT_EXT == ".score"
 
     def test_init(self):
         mlt, td = self._get_new_mlpoc_with_spearmint()

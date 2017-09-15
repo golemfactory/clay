@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+from collections import OrderedDict
 from typing import Dict, Tuple
 from unittest.mock import Mock
 
@@ -54,7 +55,7 @@ class MLPOCTask(CoreTask):
     SPEARMINT_ENV = MLPOCSpearmintEnvironment
     SPEARMINT_EXP_DIR = "work/experiment"
     SPEARMINT_SIGNAL_FILE = "work/x.signal"
-    RESULT_EXT = ".result"
+    RESULT_EXT = ".score"
     BLACK_BOX = Mock # CountingBlackBox  #  type: Type[BlackBox]
     BATCH_MANAGER = Mock # IrisBatchManager  # type: Type[BatchManager]
     INFTY = 10000000
@@ -161,7 +162,8 @@ class MLPOCTask(CoreTask):
         extra_data = {
             "data_files": shared_data_files_base,
             "network_configuration": network_conf,
-            "order_of_batches": batch_manager.get_order_of_batches()
+            "order_of_batches": batch_manager.get_order_of_batches(),
+            "RESULT_EXT": self.RESULT_EXT
         }
 
         return (black_box,
@@ -179,6 +181,12 @@ class MLPOCTask(CoreTask):
         black_box, batch_manager, ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
+        # TODO maybe save batch_manager and black_box somewhere else?
+        # as the ctd.extra_data is modified in-place, and then saved/stored/send
+        # somewhere, black_box and batch_manager don't survive serialization
+        # (at least now, when they are Mocks)
+        # they are available to verificator, since it has access to subtasks_given
+        # array
         self.subtasks_given[sid] = copy.deepcopy(ctd.extra_data)
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
@@ -217,11 +225,17 @@ class MLPOCTask(CoreTask):
         return exd
 
     def __update_spearmint_state(self, score_file):
-        return
         with open(score_file, "r") as f:
-            res = json.load(f)["score"]  # TODO check if it doesn't pose any security threat
+            res = json.load(f)  # TODO check if it doesn't pose any security threat
         score = res["score"]  # overall score of the network with
-        params = res["params"]  # the given parameters
+        hyperparameters = res["params"]  # the given parameters
+
+        assert isinstance(hyperparameters, OrderedDict)
+        assert isinstance(score, float)
+
+        spearmint_utils.run_one_evaluation(self.spearmint_path, params={
+            score: hyperparameters
+        })
 
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response

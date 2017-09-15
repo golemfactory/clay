@@ -1,8 +1,8 @@
 # It has to run on the local machine
-# because colluding can be real danger in this setting
+# because colluding can be a real danger in this setting
 # but <del> Spearmint shouldn't be very resources-heavy </del>
 # Spearmint CAN be resources-heavy
-# but i guess that's all we have
+# but i guess that's all we have for now
 
 import os
 import time
