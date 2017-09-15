@@ -75,7 +75,7 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        Task.__init__(self, header, src_code)
+        Task.__init__(self, header, src_code, None)
 
         self.task_id = task_id
         self.task_params = params
@@ -222,3 +222,25 @@ class DummyTask(Task):
         :param map[str, list[str]] resource_parts:
         """
         self.resource_parts = resource_parts
+
+    def computation_failed(self, subtask_id):
+        print('DummyTask.computation_failed called')
+        self.computation_finished(subtask_id, None)
+
+    def restart(self):
+        print('DummyTask.restart called')
+
+    def restart_subtask(self, subtask_id):
+        print('DummyTask.restart_subtask called')
+
+    def abort(self):
+        print('DummyTask.abort called')
+
+    def update_task_state(self, task_state):
+        print('DummyTask.update_task_state called')
+
+    def get_active_tasks(self):
+        return self.assigned_subtasks
+
+    def get_progress(self):
+        return 0
