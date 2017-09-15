@@ -28,7 +28,12 @@ def create_client(datadir):
                     estimated_lux_performance=1000.0,
                     estimated_blender_performance=1000.0)
 
-    client.services['golem_service'].setup(client, task_server=Mock())
+    task_server = Mock(keys_auth=Mock(
+        sign=lambda x: x,
+        verify=lambda *_: True
+    ))
+
+    client.services['golem_service'].setup(client, task_server)
     return client
 
 
@@ -64,7 +69,13 @@ class TestGolemService(unittest.TestCase):
         pkt = Packet(prioritize=False, payload=b'\xc0', cmd_id=0,
                      protocol_id=18317)
         peer.stop()
-        peer.send_packet.assert_called_once_with(pkt)
+        self.assertTrue(peer.send_packet.called)
+
+        # signed message encapsulates the original payload
+        call_pkt = peer.send_packet.call_args[0][0]
+        self.assertEqual(call_pkt.cmd_id, pkt.cmd_id)
+        self.assertNotEqual(call_pkt.payload, pkt.payload)
+
         gservice.on_wire_protocol_start.assert_called_once()
 
     def test_wire_proto_start(self):

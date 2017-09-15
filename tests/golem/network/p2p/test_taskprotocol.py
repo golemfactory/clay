@@ -8,6 +8,12 @@ from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef
 
 
+task_server = Mock(keys_auth=Mock(
+    sign=lambda x: x,
+    verify=lambda *_: True
+))
+
+
 class TestTaskProtocolKeepUnicode(unittest.TestCase):
     task_id = "Gęśla jaźń"
     subtask_id = "Zażółć gęślą jaźń"
@@ -15,7 +21,8 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
     key = "πœę©ß←↓→óþ"
 
     def setUp(self):
-        self.proto = TaskProtocol(Mock(), Mock(spec=WiredService))
+        self.proto = TaskProtocol(Mock(), Mock(spec=WiredService,
+                                               task_server=task_server))
 
     def check_sedes(self, packet, check, callbacks):
         handler = Mock(side_effect=check)
@@ -65,7 +72,7 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
                                           b'', 0, self.key)
 
         def check(proto, subtask_id, computation_time, resource_hash,
-                  resource_secret, resource_options, eth_account):
+                  resource_secret, resource_options, eth_account, **_):
             self.assertEqual(self.subtask_id, subtask_id)
             self.assertEqual(self.key_id, resource_hash)
             self.assertEqual(self.key, eth_account)
@@ -84,7 +91,7 @@ class TestTaskProtocolKeepUnicode(unittest.TestCase):
     def test_payment_request(self):
         packet = self.proto.create_payment_request(self.subtask_id)
 
-        def check(proto, subtask_id):
+        def check(proto, subtask_id, **_):
             self.assertEqual(self.subtask_id, subtask_id)
 
         self.check_sedes(packet, check,
@@ -109,7 +116,8 @@ class TestTaskProtocolConvertUnicode(unittest.TestCase):
     key = "πœę©ß←↓→óþ"
 
     def setUp(self):
-        self.proto = TaskProtocol(Mock(), Mock(spec=WiredService))
+        self.proto = TaskProtocol(Mock(), Mock(spec=WiredService,
+                                               task_server=task_server))
 
     def check_sedes(self, packet, check, callbacks):
         handler = Mock(side_effect=check)
@@ -160,7 +168,7 @@ class TestTaskProtocolConvertUnicode(unittest.TestCase):
                                           b'', 0, self.key.encode('utf_8'))
 
         def check(proto, subtask_id, computation_time, resource_hash,
-                  resource_secret, resource_options, eth_account):
+                  resource_secret, resource_options, eth_account, **_):
             self.assertEqual(self.subtask_id, subtask_id)
             self.assertEqual(self.key_id, resource_hash)
             self.assertEqual(self.key, eth_account)
@@ -181,7 +189,7 @@ class TestTaskProtocolConvertUnicode(unittest.TestCase):
         packet = self.proto.create_payment_request(
             self.subtask_id.encode('utf_8'))
 
-        def check(proto, subtask_id):
+        def check(proto, subtask_id, **_):
             self.assertEqual(self.subtask_id, subtask_id)
 
         self.check_sedes(packet, check,
