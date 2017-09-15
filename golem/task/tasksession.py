@@ -809,7 +809,6 @@ class TaskSession(MiddlemanSafeSession):
         thread.daemon = True                            # Daemonize thread
         thread.start()                                  # Start the execution
 
-
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
         try:
