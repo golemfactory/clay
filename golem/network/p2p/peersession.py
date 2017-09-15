@@ -1,5 +1,7 @@
 import logging
 
+from golem.diag.service import DiagnosticsProvider
+
 logger = logging.getLogger(__name__)
 
 P2P_PROTOCOL_ID = 14
@@ -24,15 +26,14 @@ class PeerSessionInfo(object):
         return repr
 
 
-class PeerMonitor(object):
+class PeerMonitor(DiagnosticsProvider):
 
     def __init__(self, peermanager):
         self.peermanager = peermanager
 
     def get_diagnostics(self, output_format):
         peer_data = []
-        for peer in self.app.services.peermanager.peers:
+        for peer in self.peermanager.peers:
             peer = PeerSessionInfo(peer).get_simplified_repr()
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
-
