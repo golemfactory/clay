@@ -5,6 +5,7 @@ from devp2p.peer import Peer
 from golem.utils import decode_hex
 from golem.network.p2p.taskservice import TaskRequestRejection, TaskRejection, \
     ResultRejection
+from golem.task.taskbase import ComputeTaskDef
 
 from golem.model import Payment
 
@@ -379,8 +380,96 @@ class TestGolemService(unittest.TestCase):
         transaction_id = "5678"
         gservice.task_server.reward_for_subtask_paid = Mock()
         gservice.receive_payment(proto, subtask_id, transaction_id,
-            remuneration, block_number)
+                                 remuneration, block_number)
         gservice.task_server.reward_for_subtask_paid.assert_called_with(
             subtask_id=subtask_id, reward=remuneration,
             transaction_id=transaction_id, block_number=block_number)
 
+    def test_receive_reject(self):
+        gservice = self.client.services['task_service']
+        proto = create_proto()
+        proto.peer.ip_port = ['10.10.10.1', 0]
+
+        reason = "some_reason"
+        payload = "payload"
+
+        gservice._receive_reject_task_request = Mock()
+        gservice._receive_reject_task = Mock()
+        gservice._receive_reject_result = Mock()
+        gservice._receive_reject_payment_request = Mock()
+        gservice._receive_reject_payment = Mock()
+
+        for i in [1, 2, 4, 6, 7]:
+            gservice.receive_reject(proto, i, reason, payload)
+            if i == 1:
+                assert gservice._receive_reject_task_request.called
+            if i == 2:
+                assert gservice._receive_reject_task.called
+            if i == 4:
+                assert gservice._receive_reject_result.called
+            if i == 6:
+                assert gservice._receive_reject_payment_request.called
+            if i == 7:
+                assert gservice._receive_reject_payment.called
+
+    def test_result_downloaded(self):
+        gservice = self.client.services['task_service']
+        proto = create_proto()
+        proto.peer.ip_port = ['10.10.10.1', 0]
+
+        gservice.task_manager.computed_task_received = Mock()
+        gservice.task_manager.verify_subtask = Mock(return_value=True)
+        gservice.task_server.receive_subtask_computation_time = Mock()
+        gservice.send_accept_result = Mock(0)
+
+        subtask_id = "1234"
+        metadata = {"result": "result", "result_type": 1,
+                    "subtask_id": "1234"}
+        computation_time = 10
+
+        payment = Mock()
+        payment.value = Mock()
+        gservice.task_server.accept_result = Mock(return_value=payment)
+
+        gservice._result_downloaded(proto, subtask_id, metadata,
+                                    computation_time)
+
+        gservice.send_accept_result.assert_called_with(proto, subtask_id,
+                                                       payment.value)
+
+        metadata["result_type"] = "NotInTypes"
+
+        gservice.send_reject_result = Mock()
+        gservice._result_downloaded(proto, subtask_id, metadata,
+                                    computation_time)
+        gservice.send_reject_result.assert_called_with(proto, subtask_id,
+                                                       ResultRejection.RESULT_TYPE_UNKNOWN)
+
+        subtask_id = "Not in downloaded"
+        gservice._result_downloaded(proto, subtask_id, metadata,
+                                    computation_time)
+        gservice.send_reject_result.assert_called_with(proto, subtask_id,
+                                                       ResultRejection.SUBTASK_ID_MISMATCH)
+
+        metadata["result_type"] = 1
+        subtask_id = "1234"
+        gservice.task_manager.verify_subtask.return_value = False
+        gservice._result_downloaded(proto, subtask_id, metadata,
+                                    computation_time)
+        gservice.send_reject_result.assert_called_with(proto, subtask_id,
+                                                       ResultRejection.VERIFICATION_FAILED)
+
+    def test_validate_ctd(self):
+        gservice = self.client.services['task_service']
+        proto = create_proto()
+        proto.peer.ip_port = ['10.10.10.1', 0]
+
+        ctd = Mock(spec=ComputeTaskDef)
+        pubkey = decode_hex("ABCDEF")
+        ctd.key_id = "ABCDEF"
+        ctd.task_owner = Mock()
+        ctd.task_owner.key = "ABCDEF"
+        ctd.return_address = "10.20.10.10"
+        ctd.return_port = 6677
+
+        gservice._validate_ctd(ctd, pubkey)
