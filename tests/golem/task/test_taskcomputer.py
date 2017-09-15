@@ -95,12 +95,6 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.resource_request_rejected(subtask_id, 'reason')
 
     def test_computation(self):
-        # task_server = mock.MagicMock()
-        # task_server.get_task_computer_root.return_value = self.path
-        # task_server.config_desc = config_desc()
-
-        # tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
-
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
