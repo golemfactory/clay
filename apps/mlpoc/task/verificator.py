@@ -1,11 +1,13 @@
 import logging
 import os
+import shutil
+import tempfile
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
-from golem.resource.dirmanager import find_task_script
+from golem.resource.dirmanager import find_task_script, symlink_or_copy, ls_R
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 
@@ -39,34 +41,58 @@ class MLPOCTaskVerificator(CoreVerificator):
             src = f.read()
         return src
 
-    def __query_extra_data(self, steps):
+    def __query_extra_data(self, steps, subtask_data):
         ctd = ComputeTaskDef()
         ctd.extra_data["STEPS_PER_EPOCH"] = steps
-        ctd.extra_data["data_file"] = os.path.join(get_golem_path(),
-                                                   "apps",
-                                                   "mlpoc",
-                                                   "test_data",
-                                                   "IRIS.csv")
+        ctd.extra_data["data_file"] = "IRIS.csv"
         ctd.src_code = self._load_src()
         ctd.docker_images = [self.docker_image]
+        ctd.extra_data.update(subtask_data)
+        ctd.extra_data["batch_manager"] = None
+        ctd.extra_data["black_box"] = None
         return ctd
 
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
 
-        if self.verification_options["no_verification"]:
-            # FIXME quite tricky to know that I should save that
-            # it would be a lot better if _check_files would juts return True/False
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-            return
+        # if self.verification_options["no_verification"]:
+        #     # FIXME quite tricky to know that I should save that
+        #     # it would be a lot better if _check_files would juts return True/False
+        #     self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+        #     return
 
-        qed = lambda: self.__query_extra_data(subtask_info["STEPS_PER_EPOCH"])
+        tempdir = tempfile.mkdtemp()
+        checkpoints_dir = os.path.join(tempdir, "checkpoints")  # TODO save this "checkpoints" name explicitly somewhere
+        os.mkdir(checkpoints_dir)
+
+        epoch_num = lambda x: os.path.basename(x).split(".")[0].split("-")[0]
+        checkpoints = [f for f in tr_files if any(x in f for x in ["begin", "end"])]  # TODO make these excplicite!
+        checkpoint_dirs = set(epoch_num(f) for f in checkpoints)
+
+        for c in checkpoint_dirs:
+            os.mkdir(os.path.join(checkpoints_dir, c))
+            for f in checkpoints:
+                if epoch_num(f) == c:
+                    symlink_or_copy(f, os.path.join(checkpoints_dir, c, os.path.basename(f)))
+
+        resources = {self.verification_options["code_place"],
+                     self.verification_options["data_place"],
+                     checkpoints_dir}
+
+        # TODO very ugly, do something about that
+        steps = [v for k, v in subtask_info["network_configuration"] if k == "STEPS_PER_EPOCH"][0]
+
+        qed = lambda: self.__query_extra_data(steps, subtask_info)
+
+        assert set(os.path.basename(x) for x in resources) == {"code", "data", "checkpoints"}
+
         computer = LocalComputer(None,  # we don't use task at all
-                                 "",
+                                 tempdir,
                                  self.__verification_success,
                                  self.__verification_failure,
                                  qed,
-                                 additional_resources=tr_files,
-                                 use_task_resources=False)
+                                 additional_resources=resources,
+                                 use_task_resources=False,
+                                 tmp_dir=tempdir)
         computer.run()
         if computer.tt is not None:
             computer.tt.join()
@@ -79,3 +105,5 @@ class MLPOCTaskVerificator(CoreVerificator):
                   if os.path.basename(x) == "stderr.log"]
 
         self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+
+        shutil.rmtree(tempdir, ignore_errors=True)

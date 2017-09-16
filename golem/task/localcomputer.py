@@ -134,8 +134,14 @@ class LocalComputer(object):
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
+
         for res in self.additional_resources:
-            shutil.copy(res, self.test_task_res_path)
+            if os.path.isdir(res):
+                shutil.copytree(res, os.path.join(self.test_task_res_path, os.path.basename(res)))
+            elif os.path.isfile(res):
+                shutil.copy(res, self.test_task_res_path)
+            else:
+                logger.warning("Resource doesn't exist: {}".format(res))
 
         return True
 

@@ -23,7 +23,7 @@ def compare_weights(model1: 'Model', model2: 'Model'):
 
 def _hash_from_name(filepath: str):
     name = os.path.basename(filepath)
-    return name.split(".")[0]
+    return name.split(".")[0].split("-")[1]
 
 
 # def check_batch_hash(data, name):
@@ -50,7 +50,7 @@ def find_file_with_ext(ext, dir):
 def run():
     serializer = model.ModelSerializer
 
-    data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_files[0])
+    data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_file)
     for checkpointdir in os.listdir(os.path.join(params.RESOURCES_DIR, "checkpoints")):
         # loading models
         path = os.path.join(params.RESOURCES_DIR, "checkpoints", checkpointdir)

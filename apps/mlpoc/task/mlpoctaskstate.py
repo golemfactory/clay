@@ -63,13 +63,16 @@ class MLPOCTaskDefinition(TaskDefinition):
         self.shared_data_files = list(self.resources)
         self.code_files = ls_R(self.code_dir)
 
+        self.code_place = os.path.join(self.tmp_dir, "code")
+        self.data_place = os.path.join(self.tmp_dir, "data")
+
         # TODO remove symlinks when the dummytask will be merged
         # TODO remove critical bug #1387
         # symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
-        os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
+        os.symlink(self.code_dir, self.code_place)
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])
-        # symlink_or_copy(common_data_path, os.path.join(self.tmp_dir, "data"))
-        os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
+        os.symlink(common_data_path, self.data_place)
+
         self.resources = set(ls_R(self.tmp_dir))
 
     def set_defaults(self, defaults: MLPOCTaskDefaults):

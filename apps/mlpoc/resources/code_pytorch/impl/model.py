@@ -127,7 +127,7 @@ class ModelSerializer():
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-        filename = str(model.get_hash()) + "." + ext
+        filename = "{}-{}.{}".format(epoch, str(model.get_hash()), ext)
         return os.path.join(dir, filename)
 
     def save(self, epoch, state):

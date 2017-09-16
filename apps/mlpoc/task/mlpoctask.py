@@ -90,9 +90,10 @@ class MLPOCTask(CoreTask):
         )
 
         ver_opts = self.verificator.verification_options
-        ver_opts["no_verification"] = True
-        # ver_opts["shared_data_files"] = self.task_definition.shared_data_files
-        # ver_opts["result_extension"] = self.RESULT_EXT
+        ver_opts["no_verification"] = False
+        ver_opts["data_place"] = task_definition.data_place
+        ver_opts["code_place"] = task_definition.code_place
+        ver_opts["result_extension"] = self.RESULT_EXT
 
     def initialize(self, dir_manager):
         super().initialize(dir_manager)
@@ -142,21 +143,22 @@ class MLPOCTask(CoreTask):
         return local_spearmint
 
     def __restart_spearmint_pos(self):
-        logger.warning("Spearmint docker was restarted positively. WRONG!")
         raise Exception("Spearmint docker was restarted positively. WRONG!")
 
     def __restart_spearmint_neg(self):
-        logger.warning("Spearmint docker was restarted negatively. WRONG!")
         raise Exception("Spearmint docker was restarted negatively. WRONG!")
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
 
     def __get_next_network_config(self):
-        # TODO here happens magic with spearmint in localcomputer
+        # here happens magic with spearmint in localcomputer
         # using spearmint_utils methods
 
         hidden_size = int(spearmint_utils.get_next_configuration(self.experiment_dir)[0])
+
+        # order of these is important! that's why there's no dict here
+        # (no OrderedDict, because these params will be saved to json)
         return [("HIDDEN_SIZE", hidden_size),
                 ("NUM_EPOCHS", self.task_definition.options.number_of_epochs),
                 ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]
@@ -263,10 +265,13 @@ class MLPOCTask(CoreTask):
             params={score: hyperparameters}
         )
 
+
+    # TODO set the structure of message_data, as in TaskThread.check_for_new_messages TODO
     def react_to_message(self, subtask_id: str, data: Dict):
         # save answer to blackbox and get a response
         assert data["content"]["message_type"] == "MLPOCBlackBoxAskMessage"
         box = self.subtasks_given[subtask_id]["black_box"]  # type: BlackBox
+
         answer = box.decide(hash=data["content"]["params_hash"],
                             epoch_num=data["content"]["number_of_epoch"])
         return MLPOCBlackBoxAnswerMessage.new_message(answer)
