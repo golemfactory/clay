@@ -39,10 +39,6 @@ before_install:
 
   # Slow tests only on branches and PRs with enough approvals
   - export ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
-  - python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST}
-  - export TEST_VAR="$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})"
-  - echo $TEST_VAR
-  - echo ""$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
 script:
   - python3 -m pytest --cov=golem${ARG_RUNSLOW}

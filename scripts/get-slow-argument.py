@@ -13,6 +13,11 @@ run_slow = True
 # config vars
 required_approvals = 1
 
+
+class ApprovalError(Exception):
+    pass
+
+
 # When build is not a PR the input is: "" or "false"
 if pull_request_id not in ["", "false"]:
     base_url = "https://api.github.com/" \
@@ -24,12 +29,17 @@ if pull_request_id not in ["", "false"]:
         req = requests.get(url, headers={'User-Agent': 'build-bot'})
 
         json_data = req.json()
-        key = "state"
-        print("{}".format( json_data ), file=sys.stderr)
-        result = [a for a in json_data if key in a and a[key] == "APPROVED"]
+
+        if "message" in json_data \
+                and json_data["message"].startswith("API rate"):
+
+            sys.stderr.write("Raw reply:{}".format(json_data))
+            raise ApprovalError
+
+        result = [a for a in json_data if a["state"] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
-    except(requests.HTTPError, requests.Timeout) as e:
+    except(requests.HTTPError, requests.Timeout, ApprovalError) as e:
         sys.stderr.write("Error calling github, run all tests. {}".format(url))
 
 if run_slow:
