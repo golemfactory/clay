@@ -25,6 +25,7 @@ if pull_request_id not in ["", "false"]:
 
         json_data = req.json()
         key = "state"
+        print("{}".format( json_data ), file=sys.stderr)
         result = [a for a in json_data if key in a and a[key] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
