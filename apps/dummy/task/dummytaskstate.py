@@ -83,7 +83,7 @@ class DummyTaskDefinition(TaskDefinition):
         data_path = os.path.join(self.tmp_dir, "data")
         data_file = list(self.shared_data_files)[0]
         if os.path.exists(data_path):
-            raise Exception("Error adding to resources: data path: {} exists"
+            raise FileExistsError("Error adding to resources: data path: {} exists"
                             .format(data_path))
 
         os.mkdir(data_path)
