@@ -57,21 +57,19 @@ class SigningProtocol(BaseProtocol):
             decoded = super().decode_payload(data['payload'])
             decoded = self.received(decoded)
 
-            kwargs = dict(_payload=data['payload'], _sig=data['sig'])
-
             for cb in self.receive_callbacks:
                 if isinstance(self.structure, sedes.CountableList):
-                    cb(proto, decoded, **kwargs)
+                    cb(proto, decoded, _msg_bytes=data)
                 else:
-                    cb(proto, **decoded, **kwargs)
+                    cb(proto, **decoded, _msg_bytes=data)
 
-        def received(self, data):
+        def received(self, decoded):
             """
             Message handler for post-processing
-            :param data: Decoded message
+            :param decoded: Decoded message
             :return: (optionally) altered decoded message
             """
-            return data
+            return decoded
 
         @classmethod
         def encode_payload(cls, data):

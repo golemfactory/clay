@@ -34,10 +34,10 @@ class GolemProtocol(SigningProtocol):
 
         structure = rlp.sedes.CountableList(CBORSedes)
 
-        def received(self, data):
-            if isinstance(data, tuple):
+        def received(self, decoded):
+            if isinstance(decoded, tuple):
                 # flatten the contents
-                return list(itertools.chain.from_iterable(data))
+                return list(itertools.chain.from_iterable(decoded))
             return []
 
     class remove_task(SigningProtocol.command):

@@ -167,8 +167,7 @@ class TaskService(WiredService):
                                 max_memory, max_cpus)
 
     def receive_task_request(self, proto, task_id, performance, price,
-                             max_disk, max_memory, max_cpus,
-                             _payload=None, _sig=None):
+                             max_disk, max_memory, max_cpus, _msg_bytes=None):
 
         pubkey = proto.peer.remote_pubkey
         name = proto.peer.node_name or ''
@@ -229,7 +228,7 @@ class TaskService(WiredService):
         proto.send_task(ctd, resources, client_options)
 
     def receive_task(self, proto, definition, resources, resource_options,
-                     _payload=None, _sig=None):
+                     _msg_bytes=None):
 
         task_keeper = self.task_manager.comp_task_keeper
         pubkey = proto.peer.remote_pubkey
@@ -282,7 +281,7 @@ class TaskService(WiredService):
 
     def receive_result(self, proto, subtask_id, computation_time,
                        resource_hash, resource_secret, resource_options,
-                       eth_account, _payload=None, _sig=None):
+                       eth_account, _msg_bytes=None):
 
         logger.debug("Task result: received hash %r (options: %r)",
                      resource_hash, resource_options)
@@ -333,7 +332,7 @@ class TaskService(WiredService):
         proto.send_accept_result(subtask_id, remuneration)
 
     def receive_accept_result(self, proto, subtask_id, remuneration,
-                              _payload=None, _sig=None):
+                              _msg_bytes=None):
         self.task_server.subtask_accepted(subtask_id, remuneration)
 
     def send_reject_result(self, proto, subtask_id, reason):
@@ -351,8 +350,7 @@ class TaskService(WiredService):
     def send_failure(proto, subtask_id, reason):
         proto.send_failure(subtask_id, reason)
 
-    def receive_failure(self, proto, subtask_id, reason,
-                        _payload=None, _sig=None):
+    def receive_failure(self, proto, subtask_id, reason, _msg_bytes=None):
         self.task_server.subtask_failure(subtask_id, reason)
 
     # ======================================================================== #
@@ -363,8 +361,7 @@ class TaskService(WiredService):
     def send_payment_request(proto, subtask_id):
         proto.send_payment_request(subtask_id)
 
-    def receive_payment_request(self, proto, subtask_id,
-                                _payload=None, _sig=None):
+    def receive_payment_request(self, proto, subtask_id, _msg_bytes=None):
         try:
             with db.atomic():
                 payment = Payment.get(Payment.subtask == subtask_id)
@@ -397,7 +394,7 @@ class TaskService(WiredService):
         )
 
     def receive_payment(self, proto, subtask_id, transaction_id, remuneration,
-                        block_number, _payload=None, _sig=None):
+                        block_number, _msg_bytes=None):
 
         if transaction_id is None:
             logger.debug(
@@ -438,8 +435,7 @@ class TaskService(WiredService):
         if drop_peer:
             pass  # TODO: should we drop peers here?
 
-    def receive_reject(self, proto, cmd_id, reason, payload,
-                       _payload=None, _sig=None):
+    def receive_reject(self, proto, cmd_id, reason, payload, _msg_bytes=None):
         # Task request rejected
         if cmd_id == TaskProtocol.task_request.cmd_id:
             return self._receive_reject_task_request(proto, reason, payload)

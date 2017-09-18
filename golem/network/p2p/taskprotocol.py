@@ -62,16 +62,16 @@ class TaskProtocol(SigningProtocol):
             ('resource_options', CBORSedes)
         ]
 
-        def received(self, data):
+        def received(self, decoded):
             try:
-                ctd = data['definition']
+                ctd = decoded['definition']
                 ctd.task_id = to_unicode(ctd.task_id)
                 ctd.subtask_id = to_unicode(ctd.subtask_id)
                 ctd.key_id = to_unicode(ctd.key_id)
                 ctd.task_owner.key = to_unicode(ctd.task_owner.key)
             except Exception as exc:
                 logger.error("Error decoding task definition %s", exc)
-            return data
+            return decoded
 
     class failure(SigningProtocol.command):
         """
@@ -100,9 +100,9 @@ class TaskProtocol(SigningProtocol):
             ('eth_account', CBORSedes)
         ]
 
-        def received(self, data):
-            data['eth_account'] = to_unicode(data['eth_account'])
-            return data
+        def received(self, decoded):
+            decoded['eth_account'] = to_unicode(decoded['eth_account'])
+            return decoded
 
     class accept_result(SigningProtocol.command):
         """
