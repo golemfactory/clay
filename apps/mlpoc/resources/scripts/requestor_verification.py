@@ -20,7 +20,8 @@ def compare_weights(model1: 'Model', model2: 'Model'):
             return False
     return True
 
-
+# TODO write that down somewhere explicite
+# That the name of epoch is EpochNum-HashOfState.begin (or .end)
 def _hash_from_name(filepath: str):
     name = os.path.basename(filepath)
     return name.split(".")[0].split("-")[1]
@@ -46,7 +47,6 @@ def find_file_with_ext(ext, dir):
     raise Exception("In dir {} no file with ext {}".format(dir, ext))
 
 
-# TODO when writing verification code - remember to put output from task into RESOURCES_DIR/checkpoints
 def run():
     serializer = model.ModelSerializer
 

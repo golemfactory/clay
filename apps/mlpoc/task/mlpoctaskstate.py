@@ -17,7 +17,7 @@ class MLPOCTaskDefaults(TaskDefaults):
         self.options = MLPOCTaskOptions()
         self.options.steps_per_epoch = 10
         self.options.number_of_epochs = 5
-        self.shared_data_files = ["IRIS.data"]
+        self.input_data_file = "IRIS.csv"
         self.default_subtasks = 5
         self.code_dir = os.path.join(get_golem_path(),
                                      "apps",
@@ -41,7 +41,7 @@ class MLPOCTaskDefinition(TaskDefinition):
         self.options = MLPOCTaskOptions()
 
         # subtask data
-        self.shared_data_files = []
+        self.input_data_file = ""
 
         # subtask code
         self.code_dir = os.path.join(get_golem_path(),
@@ -60,7 +60,7 @@ class MLPOCTaskDefinition(TaskDefinition):
 
         self.tmp_dir = tempfile.mkdtemp()
 
-        self.shared_data_files = list(self.resources)
+        self.input_data_file = list(self.resources)[0]
         self.code_files = ls_R(self.code_dir)
 
         self.code_place = os.path.join(self.tmp_dir, "code")
@@ -70,13 +70,13 @@ class MLPOCTaskDefinition(TaskDefinition):
         # TODO remove critical bug #1387
         # symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
         os.symlink(self.code_dir, self.code_place)
-        common_data_path = os.path.dirname(list(self.shared_data_files)[0])
+        common_data_path = os.path.dirname(self.input_data_file)
         os.symlink(common_data_path, self.data_place)
 
         self.resources = set(ls_R(self.tmp_dir))
 
     def set_defaults(self, defaults: MLPOCTaskDefaults):
-        self.shared_data_files = deepcopy(defaults.shared_data_files)
+        self.input_data_file = defaults.input_data_file
         self.code_dir = defaults.code_dir
         self.total_subtasks = defaults.default_subtasks
         self.options = deepcopy(defaults.options)

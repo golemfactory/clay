@@ -14,7 +14,7 @@ def evaluate_network():
     return 1.0  # TODO finish that function
 
 def run():
-    data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_files[0])
+    data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_file)
     # this if is not strictly needed, but it is useful for debugging purposes
     # IT DOESN"T WORK BECAUSE THE RESOURCES FILESYSTEM IS READ-ONLY
     # if not os.path.exists(os.path.join(params.RESOURCES_DIR, "code", "impl", "params.py")):

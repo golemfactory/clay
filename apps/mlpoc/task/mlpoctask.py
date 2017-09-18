@@ -94,6 +94,7 @@ class MLPOCTask(CoreTask):
         ver_opts["data_place"] = task_definition.data_place
         ver_opts["code_place"] = task_definition.code_place
         ver_opts["result_extension"] = self.RESULT_EXT
+        ver_opts["input_data_file"] = task_definition.input_data_file
 
     def initialize(self, dir_manager):
         super().initialize(dir_manager)
@@ -169,15 +170,14 @@ class MLPOCTask(CoreTask):
             self.task_definition.options.probability_of_save,
             self.task_definition.options.number_of_epochs
         )
-        batch_manager = self.BATCH_MANAGER(self.task_definition.shared_data_files)
+        batch_manager = self.BATCH_MANAGER(self.task_definition.input_data_file)
 
         network_configuration = self.__get_next_network_config()
 
-        shared_data_files_base = [os.path.basename(x) for x in
-                                  self.task_definition.shared_data_files]
+        input_data_file_base = os.path.basename(self.task_definition.input_data_file)
 
         extra_data = {
-            "data_files": shared_data_files_base,
+            "data_file": input_data_file_base,
             "network_configuration": network_configuration,
             "order_of_batches": batch_manager.get_order_of_batches(),
             "RESULT_EXT": self.RESULT_EXT
