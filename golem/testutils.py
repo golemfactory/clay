@@ -8,7 +8,7 @@ from pathlib import Path
 from time import sleep
 
 import pycodestyle
-from mock import MagicMock
+from unittest.mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir

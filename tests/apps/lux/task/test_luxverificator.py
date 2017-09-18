@@ -9,8 +9,6 @@ from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
-
-
 class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/verificator.py',
