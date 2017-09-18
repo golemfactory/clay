@@ -1,0 +1,25 @@
+{
+  "options": {
+    "frames": "",
+    "resolution": [
+      100,
+      100
+    ],
+    "sample_per_pixel": "",
+    "number_of_epochs": "2",
+    "probability_of_save": "1",
+    "output_path": "/home/jacek/golem-electron",
+    "format": "",
+    "steps_per_epoch": "4",
+    "compositing": false
+  },
+  "subtasks": "2",
+  "bid": "4",
+  "resources": [
+    "/home/jacek/golem/apps/mlpoc/test_data/IRIS.csv"
+  ],
+  "type": "MLPOC",
+  "subtask_timeout": "00:05:00",
+  "name": "Golem Task2",
+  "timeout": "00:05:00"
+}

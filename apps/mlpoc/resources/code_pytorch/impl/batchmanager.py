@@ -7,32 +7,7 @@ from sklearn.model_selection import train_test_split
 
 from .config import BATCH_SIZE, IRIS_SIZE, TEST_SIZE
 from .utils import derandom
-
-
-class BatchManager(metaclass=ABCMeta):
-
-    def __iter__(self):
-        return self
-
-    @abstractmethod
-    def __next__(self) -> (np.ndarray, np.ndarray):
-        pass
-
-    @abstractmethod
-    def save(self, batch_num: int, filepath: str):
-        pass
-
-    @abstractmethod
-    def get_input_size(self) -> int:
-        pass
-
-    @abstractmethod
-    def get_full_training_set(self) -> (np.ndarray, np.ndarray):
-        pass
-
-    @abstractmethod
-    def get_order_of_batches(self):
-        pass
+from .batchmanager_inferface import BatchManager
 
 
 class IrisBatchManager(BatchManager):
