@@ -1,6 +1,6 @@
 import unittest
 import tempfile
-from unittest.mock import patch, Mock, ANY
+from unittest.mock import patch, Mock, ANY, sentinel
 from devp2p.peer import Peer
 from golem.utils import decode_hex
 from golem.network.p2p.taskservice import TaskRequestRejection, TaskRejection, \
@@ -321,11 +321,36 @@ class TestGolemService(unittest.TestCase):
         task = Mock()
         gservice.task_manager.subtask2task_mapping = {subtask_id : task_id }
 
+        def test_callbacks(multihash, task_id, subtask_id, _,
+                           success, error, **kwargs):
+            gservice._result_downloaded = Mock()
+
+            extracted_package = Mock()
+            extracted_package.to_extra_data.return_value = sentinel.extra_data
+
+            success(extracted_package, multihash, task_id, subtask_id)
+            gservice._result_downloaded.assert_called_with(
+                proto, subtask_id, sentinel.extra_data, computation_time)
+
+            exception = Mock(spec=Exception)
+
+            error(exception, Mock(), task_id)
+
+            gservice.task_server.reject_result.assert_called_with(
+                subtask_id, proto.eth_account_info)
+            gservice.task_manager.task_computation_failure.\
+                assert_called_once_with(subtask_id, ANY)
+            gservice.send_reject_result.assert_called_with(
+                proto, subtask_id, ResultRejection.DOWNLOAD_FAILED)
+
+        gservice.task_manager.task_result_manager.pull_package.\
+            side_effect = test_callbacks
+
         gservice.task_manager.tasks = {task_id: None}
         gservice.send_reject_result = Mock()
         gservice.receive_result(proto, subtask_id, computation_time, resource_hash,
             resource_secret, resource_options, eth_account)
-        gservice.send_reject_result.assert_called_with(proto, subtask_id,
+        gservice.send_reject_result.assert_any_call(proto, subtask_id,
             ResultRejection.SUBTASK_ID_UNKNOWN)
         assert not gservice.task_manager.task_result_manager.pull_package.called
 
