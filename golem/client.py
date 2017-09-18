@@ -48,7 +48,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import resource_types
+from golem.task.taskbase import ResourceType
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -394,7 +394,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.key_changed()
 
     def enqueue_new_task(self, task_dict):
-        # FIXME: Statement only for DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
             task = self.task_server.task_manager.create_task(task_dict)
         else:
@@ -408,7 +408,7 @@ class Client(HardwarePresetsMixin):
         key_id = self.keys_auth.key_id
 
         options = resource_manager.build_client_options(key_id)
-        files = task.get_resources(None, resource_types["hashes"])
+        files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
             request = AsyncRequest(task_manager.start_task, task_id)
@@ -516,7 +516,7 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.delete_task(task_id)
 
     def get_node(self):
-        return DictSerializer.dump(self.node)
+        return self.node.to_dict()
 
     def get_node_name(self):
         name = self.config_desc.node_name
@@ -711,19 +711,6 @@ class Client(HardwarePresetsMixin):
             return self.ranking.get_requesting_trust(node_id)
         return None
 
-    def get_description(self):
-        try:
-            account, _ = Account.get_or_create(node_id=self.get_client_id())
-            return account.description
-        except Exception as e:
-            return "An error has occurred {}".format(e)
-
-    def change_description(self, description):
-        self.get_description()
-        q = Account.update(description=description)\
-            .where(Account.node_id == self.get_client_id())
-        q.execute()
-
     def use_ranking(self):
         return bool(self.ranking)
 
@@ -869,7 +856,7 @@ class Client(HardwarePresetsMixin):
         envs = copy(self.environments_manager.get_environments())
         return [{
             'id': str(env.get_id()),
-            'supported': env.supported(),
+            'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(self.config_desc),
             'description': str(env.short_description)
@@ -880,6 +867,7 @@ class Client(HardwarePresetsMixin):
         # TODO: move benchmarks to environments
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
         deferred = Deferred()
 
@@ -889,6 +877,10 @@ class Client(HardwarePresetsMixin):
             )
         elif env_id == LuxRenderEnvironment.get_id():
             self.task_server.task_computer.run_lux_benchmark(
+                deferred.callback, deferred.errback
+            )
+        elif env_id == DummyTaskEnvironment.get_id():
+            self.task_server.task_computer.run_dummytask_benchmark(
                 deferred.callback, deferred.errback
             )
         else:
@@ -964,7 +956,6 @@ class Client(HardwarePresetsMixin):
             self.session_id,
             sys.platform,
             APP_VERSION,
-            self.get_description(),
             self.config_desc
         )
 

@@ -19,8 +19,8 @@ dependencies:
   pre:
     - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
-    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5 libfreeimage3 libfreeimage-dev colordiff
-    - cd apps/rendering/resources/taskcollector && make && cd ../../../../..
+    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5 libfreeimage3 libfreeimage-dev
+    - make -C apps/rendering/resources/taskcollector
 
     - pip3 install six
     - pip3 install -r requirements.txt
@@ -42,10 +42,6 @@ test:
   pre:
     - pip3 install coverage codecov
   override:
-    - ./lintdiff.sh pylint --disable=R apps golem gui scripts setup_util '*.py' || echo "pylint failed"
-    - ./lintdiff.sh pylint --disable=R,protected-access tests || echo "pylint for tests failed"
-    - ./lintdiff.sh pycodestyle || echo "pycodestyle failed"
-    - ./lintdiff.sh mypy apps golem gui scripts setup_util tests '*.py' || echo "mypy failed"
     - python3 -m coverage run --branch --source=. setup.py test -a "--junitxml=$CIRCLE_TEST_REPORTS/test_result.xml":
         timeout: 1200
   post:

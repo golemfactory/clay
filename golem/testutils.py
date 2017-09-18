@@ -1,18 +1,19 @@
 import logging
 import os
-from pathlib import Path
-import pycodestyle
 import shutil
 import tempfile
 import unittest
 from os import path
+from pathlib import Path
 from time import sleep
-from unittest.mock import MagicMock
 
-from golem.core.common import get_golem_path, is_windows
+import pycodestyle
+from mock import MagicMock
 
-from golem.model import Database
+from golem.core.common import get_golem_path, is_windows, is_osx
+from golem.core.simpleenv import get_local_datadir
 from golem.ethereum import Client
+from golem.model import Database
 
 
 class TempDirFixture(unittest.TestCase):
@@ -22,11 +23,17 @@ class TempDirFixture(unittest.TestCase):
     def setUpClass(cls):
         logging.basicConfig(level=logging.DEBUG)
         if cls.root_dir is None:
-            # Select nice root temp dir exactly once.
-            cls.root_dir = tempfile.mkdtemp(prefix='golem-tests-')
-            if is_windows():
-                import win32api
-                cls.root_dir = win32api.GetLongPathName(cls.root_dir)
+            if is_osx():
+                # Use Golem's working directory in ~/Library/Application Support
+                # to avoid issues with mounting directories in Docker containers
+                cls.root_dir = os.path.join(get_local_datadir('tests'))
+                os.makedirs(cls.root_dir, exist_ok=True)
+            else:
+                # Select nice root temp dir exactly once.
+                cls.root_dir = tempfile.mkdtemp(prefix='golem-tests-')
+                if is_windows():
+                    import win32api
+                    cls.root_dir = win32api.GetLongPathName(cls.root_dir)
 
     # Concurrent tests will fail
     # @classmethod
@@ -58,7 +65,7 @@ class TempDirFixture(unittest.TestCase):
             sleep(3)
             self.__remove_files()
 
-    def temp_file_name(self, name):
+    def temp_file_name(self, name: str) -> str:
         return path.join(self.tempdir, name)
 
     def additional_dir_content(self, file_num_list, dir_=None, results=None,

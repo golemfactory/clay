@@ -1,23 +1,13 @@
 from os import path, remove
 
+from ethereum.utils import denoms
+
+from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
 
-class Options(object):
-    """ Task specific options """
-    def __init__(self):
-        self.environment = Environment()
-        self.name = ''
-
-    def add_to_resources(self, resources):
-        pass
-
-    def remove_from_resources(self, resources):
-        pass
-
-
-class CoreTaskDefaults(object):
+class TaskDefaults(object):
     """ Suggested default values for task parameters """
 
     def __init__(self):
@@ -39,6 +29,7 @@ class CoreTaskDefaults(object):
 
 class TaskDefinition(object):
     """ Task description used in GUI and in save file format"""
+
     def __init__(self):
         self.task_id = ""
         self.full_task_timeout = 0
@@ -81,7 +72,7 @@ class TaskDefinition(object):
                 return True, "File {} may be overwritten".format(output_file)
         except IOError:
             return False, "Cannot open output file: {}".format(output_file)
-        except (OSError, TypeError) as err:
+        except TypeError as err:
             return False, "Output file {} is not properly set: {}".format(
                 output_file, err)
 
@@ -111,6 +102,34 @@ class TaskDefinition(object):
         self.optimize_total = preset["optimize_total"]
         self.verification_options = preset["verification_options"]
 
+    def to_dict(self) -> dict:
+        task_timeout = timeout_to_string(self.full_task_timeout)
+        subtask_timeout = timeout_to_string(self.subtask_timeout)
+        output_path = self.build_output_path()
+
+        return {
+            'id': self.task_id,
+            'type': self.task_type,
+            'name': self.task_name,
+            'timeout': task_timeout,
+            'subtask_timeout': subtask_timeout,
+            'subtasks': self.total_subtasks,
+            'bid': float(self.max_price) / denoms.ether,
+            'resources': list(self.resources),
+            'options': {
+                'output_path': output_path
+            },
+            # FIXME: Backward compatibility only. Remove after upgrading GUI.
+            'legacy': self.legacy,
+        }
+
+    def build_output_path(self) -> str:
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if self.legacy:
+            return self.output_file
+
+        return self.output_file.rsplit(path.sep, 1)[0]
+
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
@@ -121,7 +140,9 @@ class AdvanceVerificationOptions(object):
 
 
 class TaskDesc(object):
-    def __init__(self, definition_class=TaskDefinition, state_class=TaskState):
+    def __init__(self,
+                 definition_class=TaskDefinition,
+                 state_class=TaskState):
         self.definition = definition_class()
         self.task_state = state_class()
 
@@ -132,3 +153,17 @@ class TaskDesc(object):
         :param int num_outputs:
         """
         return len(self.task_state.outputs) >= num_outputs
+
+
+class Options(object):
+    """ Task specific options """
+
+    def __init__(self):
+        self.environment = Environment()
+        self.name = ''
+
+    def add_to_resources(self, resources):
+        pass
+
+    def remove_from_resources(self, resources):
+        pass

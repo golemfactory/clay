@@ -2,18 +2,18 @@
 
 import logging
 import os
-from PyQt5 import QtCore
 
 import jsonpickle
+from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QTableWidgetItem
 from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.rendering.benchmark.minilight.src.minilight import makePerfTest
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
@@ -84,7 +84,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
         payment_address = yield client.get_payment_address()
-        description = yield client.get_description()
 
         config = DictSerializer.load(config_dict)
 
@@ -94,7 +93,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.dir_manager = DirManager(self.datadir)
 
         self.customizer.init_config()
-        self.customizer.set_options(config, client_id, payment_address, description)
+        self.customizer.set_options(config, client_id, payment_address)
 
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
@@ -230,9 +229,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def get_config(self):
         config_dict = yield self.client.get_settings()
         returnValue(DictSerializer.load(config_dict))
-
-    def change_description(self, description):
-        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()
@@ -393,7 +389,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @staticmethod
     def recount_performance(num_cores):
-        test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')
+        test_file = os.path.join(get_golem_path(), 'apps', 'rendering', 'benchmark', 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf

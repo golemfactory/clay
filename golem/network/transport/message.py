@@ -6,6 +6,7 @@ from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
+from golem.task.taskbase import ResultType
 
 logger = logging.getLogger('golem.network.transport.message')
 
@@ -726,7 +727,7 @@ class MessageReportComputedTask(Message):
     def __init__(
             self,
             subtask_id=0,
-            result_type=None,
+            result_type=ResultType.DATA,
             computation_time='',
             node_name='',
             address='',
@@ -739,7 +740,7 @@ class MessageReportComputedTask(Message):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
-        :param int result_type: type of a result (from result_types dict)
+        :param int result_type: type of a result
         :param float computation_time: how long does it take to  compute this
                                        subtask
         :param node_name: task result owner name
@@ -751,6 +752,7 @@ class MessageReportComputedTask(Message):
         :param extra_data: additional information, eg. list of files
         """
         self.subtask_id = subtask_id
+        # TODO why do we need the type here?
         self.result_type = result_type
         self.extra_data = extra_data
         self.computation_time = computation_time
@@ -760,7 +762,7 @@ class MessageReportComputedTask(Message):
         self.key_id = key_id
         self.eth_account = eth_account
         self.node_info = node_info
-        super(MessageReportComputedTask, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
 
 class MessageGetTaskResult(Message):

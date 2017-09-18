@@ -1,35 +1,30 @@
-
 import logging
 import math
 import os
 import random
 import shutil
-
 from collections import OrderedDict
+
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
-from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
-
-from golem.resource import dirmanager
-from golem.resource.dirmanager import DirManager
-
-from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
-
-from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
-from apps.core.task.coretaskstate import Options
+import apps.lux.resources.scenefilereader as sfr
+from apps.core.task import coretask
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-import apps.lux.resources.scenefilereader as sfr
-
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
 from apps.rendering.task import renderingtaskstate
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
+from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
+from golem.resource import dirmanager
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
+from apps.core.task.coretaskstate import Options
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")
 
@@ -48,7 +43,7 @@ class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
         self.default_subtasks = 5
 
 
-class LuxRenderTaskTypeInfo(TaskTypeInfo):
+class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super(LuxRenderTaskTypeInfo, self).__init__(
             "LuxRender",
@@ -137,7 +132,7 @@ class LuxTask(renderingtask.RenderingTask):
     ################
 
     def __init__(self, halttime, haltspp, **kwargs):
-        super(LuxTask, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.dirManager = DirManager(self.root_path)
         self.tmp_dir = \
@@ -185,27 +180,13 @@ class LuxTask(renderingtask.RenderingTask):
 
         return write_interval
 
-    def query_extra_data(
-            self,
-            perf_index,
-            num_cores=0,
-            node_id=None,
-            node_name=None
-    ):
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning(
-                    "Client %r banned from this task",
-                    node_name
-                )
-
-            return self.ExtraData(should_wait=should_wait)
-
+    @coretask.accepting
+    def query_extra_data(self,
+                         perf_index,
+                         num_cores=0,
+                         node_id=None,
+                         node_name=None
+                         ):
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             logger.error("Task already computed")
@@ -397,7 +378,7 @@ class LuxTask(renderingtask.RenderingTask):
         return self.__get_merge_ctd(files)
 
     def accept_results(self, subtask_id, result_files):
-        super(LuxTask, self).accept_results(subtask_id, result_files)
+        super().accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         for tr_file in result_files:
             if has_ext(tr_file, ".flm"):
@@ -430,17 +411,20 @@ class LuxTask(renderingtask.RenderingTask):
         with open(script_file) as f:
             src_code = f.read()
 
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = self.header.task_id
-        ctd.extra_data = {'output_flm': self.output_file, 'flm_files': files}
+        extra_data = {'output_flm': self.output_file, 'flm_files': files}
+        ctd = self._new_compute_task_def(hash=self.header.task_id,
+                                         extra_data=extra_data,
+                                         perf_index=0)
+
+        # different than ordinary subtask code and timeout
         ctd.src_code = src_code
-        ctd.working_directory = "."
-        ctd.docker_images = self.header.docker_images
         ctd.deadline = timeout_to_deadline(self.merge_timeout)
         return ctd
 
-    def _short_extra_data_repr(self, perf_index, extra_data):
+    def short_extra_data_repr(self, extra_data):
+        if "output_flm" in extra_data:
+            return "output flm: {output_flm}, " \
+                   "flm files: {flm_files}, ".format(**extra_data)
         return "start_task: {start_task}, " \
                "outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
@@ -459,8 +443,8 @@ class LuxTask(renderingtask.RenderingTask):
     def _remove_from_preview(self, subtask_id):
         preview_files = []
         for sub_id, task in list(self.subtasks_given.items()):
-            if sub_id != subtask_id\
-                    and task['status'] == 'Finished'\
+            if sub_id != subtask_id \
+                    and task['status'] == 'Finished' \
                     and 'preview_file' in task:
                 preview_files.append(task['preview_file'])
 
@@ -531,9 +515,10 @@ class LuxTask(renderingtask.RenderingTask):
         for computer in reference_threads:
             computer.tt.join()
 
-        path = \
-            self.dirManager.get_ref_data_dir(
-                self.header.task_id, counter='flmMergingTest')
+        path = self.dirManager.get_ref_data_dir(
+            self.header.task_id,
+            counter='flmMergingTest'
+        )
 
         computer = LocalComputer(
             self,
@@ -626,25 +611,21 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
     DEFAULTS = LuxRenderDefaults
 
     def get_task_kwargs(self, **kwargs):
-        kwargs = super(LuxRenderTaskBuilder, self).get_task_kwargs(**kwargs)
+        kwargs = super().get_task_kwargs(**kwargs)
         kwargs['halttime'] = self.task_definition.options.halttime
         kwargs['haltspp'] = self.task_definition.options.haltspp
         return kwargs
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(LuxRenderTaskBuilder, cls)
-
-        dictionary = parent.build_dictionary(definition)
+        dictionary = super().build_dictionary(definition)
         dictionary['options']['haltspp'] = definition.options.haltspp
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        parent = super(LuxRenderTaskBuilder, cls)
         options = dictionary['options']
-
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = super().build_full_definition(task_type, dictionary)
         definition.options.haltspp = options.get('haltspp',
                                                  definition.options.haltspp)
         return definition

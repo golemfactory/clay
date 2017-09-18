@@ -9,6 +9,7 @@ from collections import OrderedDict
 import time
 from PIL import Image, ImageChops
 
+from apps.core.task import coretask
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import DirManager
@@ -18,7 +19,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
-from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
+from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
@@ -118,7 +119,7 @@ class PreviewUpdater(object):
             img.close()
 
 
-class BlenderTaskTypeInfo(TaskTypeInfo):
+class BlenderTaskTypeInfo(CoreTaskTypeInfo):
     """ Blender App descryption that can be used by interface to define
     parameters and task build
     """
@@ -375,18 +376,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   preview_y, 
                                                   expected_offsets)
 
+    @coretask.accepting
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
-
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning("Client {} banned from this task".format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
@@ -448,7 +439,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, perf_index=perf_index)
         return self.ExtraData(ctd=ctd)
 
     def restart(self):

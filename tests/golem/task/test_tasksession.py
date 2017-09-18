@@ -1,12 +1,12 @@
-import pickle
 import os
+import pickle
 import random
 import unittest
 import uuid
 
-from apps.core.task.coretask import TaskResourceHeader
 from mock import Mock, MagicMock, patch
 
+from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
@@ -21,10 +21,19 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
                                              MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
                                              Message)
 from golem.network.transport.tcpnetwork import BasicProtocol
-from golem.task.taskbase import ComputeTaskDef, result_types
+from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.tools.assertlogs import LogTestCase
+
+
+class DockerEnvironmentMock(DockerEnvironment):
+    DOCKER_IMAGE = ""
+    DOCKER_TAG = ""
+    ENV_ID = ""
+    APP_DIR = ""
+    SCRIPT_NAME = ""
+    SHORT_DESCRIPTION = ""
 
 
 class TestTaskSession(LogTestCase, testutils.TempDirFixture,
@@ -38,7 +47,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
-        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000, )
+        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000,)
         self.task_session.send_hello()
         expected = {
             'CHALLENGE': None,
@@ -141,7 +150,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
@@ -149,7 +158,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ms = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageReportComputedTask)
         self.assertEqual(ms.subtask_id, "xxyyzz")
-        self.assertEqual(ms.result_type, 0)
+        self.assertEqual(ms.result_type, ResultType.DATA)
         self.assertEqual(ms.computation_time, 13190)
         self.assertEqual(ms.node_name, "ABC")
         self.assertEqual(ms.address, "10.10.10.10")
@@ -186,6 +195,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         def create_verify(value):
             def verify(*args):
                 return value
+
             return verify
 
         key_id = 'deadbeef'
@@ -228,7 +238,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert conn.close.called
 
         extra_data.update(dict(
-            result_type=result_types['data'],
+            result_type=ResultType.DATA,
         ))
         conn.close.called = False
         ts.msgs_to_send = []
@@ -259,6 +269,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                     success(Mock())
                 else:
                     error(Exception('Pull failed'))
+
             return pull_package
 
         conn = Mock()
@@ -405,9 +416,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Envrionment is Docker environment but with different images -> failure
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = \
-            DockerEnvironment([DockerImage("dockerix/xii", tag="323"),
-                               DockerImage("dockerix/xiii", tag="325"),
-                               DockerImage("dockerix/xiii")])
+            DockerEnvironmentMock(additional_images=[
+                DockerImage("dockerix/xii", tag="323"),
+                DockerImage("dockerix/xiii", tag="325"),
+                DockerImage("dockerix/xiii")
+            ])
         ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
         assert ts.err_msg.startswith("Wrong docker images")
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -416,9 +429,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Envrionment is Docker environment with proper images, but no srouce code -> failure
         __reset_mocks()
-        de = DockerEnvironment([DockerImage("dockerix/xii", tag="323"),
-                                DockerImage("dockerix/xiii", tag="325"),
-                                DockerImage("dockerix/xiii", tag="323")])
+        de = DockerEnvironmentMock(additional_images=[
+            DockerImage("dockerix/xii", tag="323"),
+            DockerImage("dockerix/xiii", tag="325"),
+            DockerImage("dockerix/xiii", tag="323")
+        ])
         ts.task_server.get_environment_by_id.return_value = de
         ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
         assert ts.err_msg.startswith("No source code")
@@ -469,9 +484,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         reward_mock = MagicMock()
         self.task_session.task_server.reward_for_subtask_paid = reward_mock
         subtask_id = str(uuid.uuid4())
-        reward = random.randint(1, 2**10)
+        reward = random.randint(1, 2 ** 10)
         transaction_id = str(uuid.uuid4())
-        block_number = random.randint(1, 2**10)
+        block_number = random.randint(1, 2 ** 10)
 
         # Pending
         msg = message.MessageSubtaskPayment(
@@ -506,15 +521,15 @@ class TestSessionWithDB(testutils.DatabaseFixture):
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
         transaction_id = str(uuid.uuid4())
-        block_number = random.randint(1, 2**8)
+        block_number = random.randint(1, 2 ** 8)
         payment = model.Payment.create(
             subtask=str(uuid.uuid4()),
             payee=str(uuid.uuid4()),
             value=random.randint(1, 10),
-            details={
-                'tx': transaction_id,
-                'block_number': block_number,
-            }
+            details=model.PaymentDetails(
+                tx=transaction_id,
+                block_number=block_number,
+            )
         )
         self.task_session.inform_worker_about_payment(payment)
         expected = {
@@ -542,7 +557,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
 
     @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
-    def test_react_to_subtask_payment_request(self, inform_mock):
+    def test_react_to_subtask_payment_request(self, inform_mock) -> None:
         subtask_id = str(uuid.uuid4())
         msg = message.MessageSubtaskPaymentRequest(subtask_id=subtask_id)
         # Payment does not exist
@@ -554,7 +569,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             subtask=subtask_id,
             payee=str(uuid.uuid4()),
             value=random.randint(1, 10),
-            details={}
+            details=model.PaymentDetails()
         )
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
@@ -573,7 +588,6 @@ def executor_error(req, success, error):
 
 
 class TestCreatePackage(unittest.TestCase):
-
     def setUp(self):
         conn = Mock()
         ts = TaskSession(conn)
@@ -596,7 +610,6 @@ class TestCreatePackage(unittest.TestCase):
 
     @patch('golem.task.tasksession.async_run', side_effect=executor_success)
     def test_send_task_result_hash_success(self, _):
-
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
 
@@ -605,7 +618,6 @@ class TestCreatePackage(unittest.TestCase):
 
     @patch('golem.task.tasksession.async_run', side_effect=executor_recoverable_error)
     def test_send_task_result_hash_recoverable_error(self, _):
-
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
 
@@ -614,7 +626,6 @@ class TestCreatePackage(unittest.TestCase):
 
     @patch('golem.task.tasksession.async_run', side_effect=executor_error)
     def test_send_task_result_hash_unrecoverable_error(self, _):
-
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
 

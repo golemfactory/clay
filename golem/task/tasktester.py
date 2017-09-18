@@ -1,6 +1,7 @@
 import logging
 
 from golem.task.localcomputer import LocalComputer
+from golem.task.taskbase import Task
 from golem.task.taskcomputer import PyTestTaskThread
 
 logger = logging.getLogger("golem.task")
@@ -10,7 +11,9 @@ class TaskTester(LocalComputer):
     TESTER_WARNING = "Task not tested properly"
     TESTER_SUCCESS = "Test task computation success!"
 
-    def __init__(self, task, root_path, success_callback, error_callback):
+    # TODO I think there should be Task, not CoreTask type
+    # but Task doesn't have query_extra_data_for_test_task method
+    def __init__(self, task: Task, root_path, success_callback, error_callback):
         super(TaskTester, self).__init__(task, root_path, success_callback, error_callback,
                                          task.query_extra_data_for_test_task, True,
                                          TaskTester.TESTER_WARNING, TaskTester.TESTER_SUCCESS)

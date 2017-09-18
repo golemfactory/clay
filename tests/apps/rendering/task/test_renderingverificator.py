@@ -155,6 +155,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
             rv._RenderingVerificator__box_render_error("some error")
             assert any("some error" in log for log in l.output)
 
+    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_run_task_with_errors(self):
         rv = RenderingVerificator()
         rv.root_path = self.path
@@ -163,7 +164,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         class MockTask(Task):
             pass
 
-        assert rv._run_task(extra_data, MockTask(Mock(), Mock())) is None
+        assert rv._run_task(extra_data, MockTask(Mock(), Mock(), Mock())) is None
 
 
 class TestFrameRenderingVerificator(TempDirFixture):

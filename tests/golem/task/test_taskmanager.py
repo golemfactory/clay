@@ -7,13 +7,14 @@ from collections import OrderedDict
 
 from mock import Mock, patch
 
+from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
-    TaskEventListener
+    TaskEventListener, ResultType
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger, subtask_priority
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -24,12 +25,14 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
 class TaskMock(Task):
-    task_definition = Mock()
-    task_definition.full_task_timeout = 10
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.task_definition = Mock()
+        self.task_definition.full_task_timeout = 10
 
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
-
 
     def __getstate__(self):
         state = super(TaskMock, self).__getstate__()
@@ -45,6 +48,8 @@ class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
         assert any("RESTORE TASKS" in log for log in l.output)
 
 
+@patch.multiple(TaskMock, __abstractmethods__=frozenset())
+@patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def setUp(self):
         super(TestTaskManager, self).setUp()
@@ -79,7 +84,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0,
                        subtask_timeout=120.0):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
-        task_mock = TaskMock(header, src_code='')
+        task_mock = TaskMock(header, src_code='', task_definition=Mock())
 
         ctd = ComputeTaskDef()
         ctd.task_id = task_id
@@ -236,7 +241,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             self.tm.add_new_task(task_mock)
             assert self.tm.get_resources(task_id, task_mock.header) is resources
 
-        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'")
+        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'", Mock())
         self.tm.tasks["xyz"] = task
         self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
 
@@ -247,7 +252,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
         class TestTask(Task):
             def __init__(self, header, src_code, subtasks_id, verify_subtasks):
-                super(TestTask, self).__init__(header, src_code)
+                super(TestTask, self).__init__(header, src_code, Mock())
                 self.finished = {k: False for k in subtasks_id}
                 self.restarted = {k: False for k in subtasks_id}
                 self.verify_subtasks = verify_subtasks
@@ -267,7 +272,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result, result_type=0):
+            def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
 
@@ -411,7 +416,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def test_resource_send(self):
         from pydispatch import dispatcher
         self.tm.task_persistence = True
-        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'")
+        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'", None)
         listener_mock = Mock()
         def listener(sender, signal, event, task_id):
             self.assertEqual(event, 'task_status_updated')
@@ -592,10 +597,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
     def test_update_signatures(self):
 
-        node = Node("node", "key_id", "10.0.0.10", 40103,
-                    "1.2.3.4", 40103, None, 40102, 40102)
+        node = Node(
+            node_name="node", key="key_id", prv_addr="10.0.0.10",
+            prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
+            nat_type=None, p2p_prv_port=40102, p2p_pub_port=40102
+        )
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
-                               "key_id", "environment", task_owner=node), '')
+                               "key_id", "environment", task_owner=node), '', Mock())
 
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
         self.tm.add_new_task(task)
@@ -682,7 +690,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         for i in range(0, n):
             task_id = str(uuid.uuid4())
 
-            definition = Mock()
+            definition = TaskDefinition()
+            definition.options = Mock()
+            definition.output_format = Mock()
+
             definition.task_id = task_id
             definition.task_type = "blender"
             definition.subtask_timeout = 3671

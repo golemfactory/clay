@@ -1,19 +1,16 @@
-import os
+import json
+import io
 import unittest
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 
-import jsonpickle
 from ethereum.utils import denoms
-from mock import Mock
+from mock import Mock, mock_open, patch
 
-from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
-    BlenderRenderTask
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
@@ -40,13 +37,9 @@ def assert_client_method(instance, name):
 
 
 class TestAccount(unittest.TestCase):
-
     def test(self):
 
-        node = dict(
-            node_name='node1',
-            key='deadbeef'
-        )
+        node = dict(node_name='node1', key='deadbeef')
 
         client = Mock()
         client.__getattribute__ = assert_client_method
@@ -54,7 +47,11 @@ class TestAccount(unittest.TestCase):
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
         client.get_payment_address.return_value = 'f0f0f0ababab'
-        client.get_balance.return_value = 3 * denoms.ether, 2 * denoms.ether, denoms.ether
+        client.get_balance.return_value = (
+            3 * denoms.ether,
+            2 * denoms.ether,
+            denoms.ether
+        )
 
         with client_ctx(account, client):
             result = account()
@@ -74,7 +71,6 @@ class TestAccount(unittest.TestCase):
 
 
 class TestEnvironments(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
 
@@ -118,12 +114,10 @@ class TestEnvironments(unittest.TestCase):
 
             assert isinstance(result_1, CommandResult)
             assert result_1.type == CommandResult.TABULAR
-            assert result_1.data == (
-                Environments.table_headers, [
-                    ['env 2', 'False', 'False', '2000', 'description 2'],
-                    ['env 1', 'True', 'True', '1000', 'description 1'],
-                ]
-            )
+            assert result_1.data == (Environments.table_headers, [
+                ['env 2', 'False', 'False', '2000', 'description 2'],
+                ['env 1', 'True', 'True', '1000', 'description 1'],
+            ])
 
             result_2 = Environments().show(sort='name')
 
@@ -144,7 +138,6 @@ class TestEnvironments(unittest.TestCase):
 
 
 class TestNetwork(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
 
@@ -154,8 +147,7 @@ class TestNetwork(unittest.TestCase):
                 port='2500{}'.format(i),
                 key_id='deadbeef0{}'.format(i) * 8,
                 node_name='node_{}'.format(i),
-                client_ver='0.0.0'
-            ) for i in range(1, 1 + 6)
+                client_ver='0.0.0') for i in range(1, 1 + 6)
         ]
 
         client = Mock()
@@ -212,22 +204,21 @@ class TestNetwork(unittest.TestCase):
             self.__assert_peer_result(result_1, result_2)
 
     def __assert_peer_result(self, result_1, result_2):
-        assert result_1.data[1][0] == [
+        self.assertEqual(result_1.data[1][0], [
             '10.0.0.1',
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
             '0.0.0'
+        ])
 
-        ]
-
-        assert result_2.data[1][0] == [
+        self.assertEqual(result_2.data[1][0], [
             '10.0.0.1',
             '25001',
             'deadbeef01' * 8,
             'node_1',
             '0.0.0'
-        ]
+        ])
 
         assert isinstance(result_1, CommandResult)
         assert isinstance(result_2, CommandResult)
@@ -243,28 +234,23 @@ class TestNetwork(unittest.TestCase):
 
 
 class TestPayments(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
 
-        incomes_list = [
-            {
-                'value': '{}'.format(i),
-                'payer': 'node_{}'.format(i),
-                'status': 'waiting',
-                'block_number': 'deadbeef0{}'.format(i)
-            } for i in range(1, 6)
-        ]
+        incomes_list = [{
+            'value': '{}'.format(i),
+            'payer': 'node_{}'.format(i),
+            'status': 'waiting',
+            'block_number': 'deadbeef0{}'.format(i)
+        } for i in range(1, 6)]
 
-        payments_list = [
-            {
-                'fee': '{}'.format(i),
-                'value': '0.{}'.format(i),
-                'subtask': 'subtask_{}'.format(i),
-                'payee': 'node_{}'.format(i),
-                'status': 'waiting',
-            } for i in range(1, 6)
-        ]
+        payments_list = [{
+            'fee': '{}'.format(i),
+            'value': '0.{}'.format(i),
+            'subtask': 'subtask_{}'.format(i),
+            'payee': 'node_{}'.format(i),
+            'status': 'waiting',
+        } for i in range(1, 6)]
 
         client = Mock()
         client.__getattribute__ = assert_client_method
@@ -283,10 +269,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1',
-                'waiting',
-                '0.000000 GNT',
-                'deadbeef01'
+                'node_1', 'waiting', '0.000000 GNT', 'deadbeef01'
             ]
 
     def test_payments(self):
@@ -307,7 +290,6 @@ class TestPayments(unittest.TestCase):
 
 
 class TestResources(unittest.TestCase):
-
     def setUp(self):
         super(TestResources, self).setUp()
         self.client = Mock()
@@ -316,8 +298,7 @@ class TestResources(unittest.TestCase):
     def test_show(self):
         dirs = dict(
             example_1='100MB',
-            example_2='200MB',
-        )
+            example_2='200MB', )
 
         client = self.client
         client.get_res_dirs_sizes.return_value = dirs
@@ -366,30 +347,25 @@ def _has_subtask(id):
 
 
 class TestTasks(TempDirFixture):
-
     @classmethod
     def setUpClass(cls):
         super(TestTasks, cls).setUpClass()
 
-        cls.tasks = [
-            {
-                'id': '745c1d0{}'.format(i),
-                'time_remaining': i,
-                'subtasks': i + 2,
-                'status': 'waiting',
-                'progress': i / 100.0
-            } for i in range(1, 6)
-        ]
+        cls.tasks = [{
+            'id': '745c1d0{}'.format(i),
+            'time_remaining': i,
+            'subtasks': i + 2,
+            'status': 'waiting',
+            'progress': i / 100.0
+        } for i in range(1, 6)]
 
-        cls.subtasks = [
-            {
-                'node_name': 'node_{}'.format(i),
-                'subtask_id': 'subtask_{}'.format(i),
-                'time_remaining': 10 - i,
-                'status': 'waiting',
-                'progress': i / 100.0
-            } for i in range(1, 6)
-        ]
+        cls.subtasks = [{
+            'node_name': 'node_{}'.format(i),
+            'subtask_id': 'subtask_{}'.format(i),
+            'time_remaining': 10 - i,
+            'status': 'waiting',
+            'progress': i / 100.0
+        } for i in range(1, 6)]
 
         cls.n_tasks = len(cls.tasks)
         cls.n_subtasks = len(cls.subtasks)
@@ -427,6 +403,55 @@ class TestTasks(TempDirFixture):
             client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
+
+    @patch("golem.interface.client.tasks.uuid4")
+    def test_create(self, mock_uuid) -> None:
+        client = self.client
+        mock_uuid.return_value = "new_uuid"
+
+        definition = TaskDefinition()
+        definition.task_name = "The greatest task ever!"
+        def_str = json.dumps(definition.to_dict())
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+            tasks.create_from_json(def_str)
+            task_def = json.loads(def_str)
+            task_def['id'] = "new_uuid"
+            client.create_task.assert_called_with(task_def)
+
+            patched_open = "golem.interface.client.tasks.open"
+            with patch(patched_open, mock_open(read_data='{}')):
+                tasks.create("foo")
+                task_def = json.loads('{"id": "new_uuid"}')
+                client.create_task.assert_called_with(task_def)
+
+    def test_template(self) -> None:
+        tasks = Tasks()
+
+        with patch('sys.stdout', io.StringIO()) as mock_io:
+            tasks.template(None)
+            output = mock_io.getvalue()
+
+        self.assertIn("bid", output)
+        self.assertIn("0.0", output)
+        self.assertIn('"subtask_timeout": "0:00:00"', output)
+
+        self.assertEqual(json.loads(output), TaskDefinition().to_dict())
+
+        temp = self.temp_file_name("test_template")
+        tasks.template(temp)
+        with open(temp) as f:
+            content = f.read()
+            self.assertEqual(content, output)
+
+        with client_ctx(Tasks, self.client):
+            Tasks.client.get_task.return_value = TaskDefinition().to_dict()
+            tasks.dump('id', temp)
+
+        with open(temp) as f:
+            content_dump = f.read()
+            self.assertEqual(content, content_dump)
 
     def test_show(self):
         client = self.client
@@ -473,72 +498,8 @@ class TestTasks(TempDirFixture):
         yield
         TaskTester.run = run
 
-    def test_load(self):
-        client = self.client
-        task_file_name = self._create_blender_task(client.get_dir_manager())
-
-        def run_success(instance):
-            instance.success_callback()
-
-        def run_error(instance):
-            instance.error_callback()
-
-        with client_ctx(Tasks, client):
-
-            with self._run_context(run_success):
-
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-                tasks.load(task_file_name, True)
-
-                call_args = client.create_task.call_args[0]
-                assert len(call_args) == 1
-                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
-
-            with self._run_context(run_error):
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-                tasks.load(task_file_name, True)
-
-                call_args = client.create_task.call_args[0]
-
-                assert len(call_args) == 1
-                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
-
-            with self._run_context(run_error):
-                client.create_task.call_args = None
-                client.create_task.called = False
-
-                tasks = Tasks()
-
-                with self.assertRaises(CommandException):
-                    tasks.load(task_file_name, False)
-
-    def _create_blender_task(self, dir_manager):
-
-        definition = RenderingTaskDefinition()
-        definition.options = BlenderRendererOptions()
-        definition.options.use_frames = True
-        definition.options.frames = [1, 2, 3, 4, 5, 6]
-        definition.options.frames_string = "1-6"
-        definition.total_subtasks = 6
-        definition.task_id = "deadbeef"
-        definition.task_type = "Blender"
-
-        task_file_name = os.path.join(self.path, 'task_file.gt')
-
-        with open(task_file_name, 'wb') as task_file:
-            task_file.write(jsonpickle.dumps(definition).encode())
-
-        return task_file_name
-
 
 class TestSubtasks(unittest.TestCase):
-
     def setUp(self):
         super(TestSubtasks, self).setUp()
 
@@ -571,7 +532,6 @@ class TestSubtasks(unittest.TestCase):
 
 
 class TestSettings(TempDirFixture):
-
     def setUp(self):
         super(TestSettings, self).setUp()
 
@@ -605,11 +565,13 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(True, True, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings) - len(Settings.requestor_settings)
+            assert len(result) >= len(Settings.settings) - len(
+                Settings.requestor_settings)
 
             result = settings.show(True, False, True)
             assert isinstance(result, dict)
-            assert len(result) == len(Settings.basic_settings) + len(Settings.requestor_settings)
+            assert len(result) == len(Settings.basic_settings) + len(
+                Settings.requestor_settings)
 
     def test_set(self):
 
@@ -660,7 +622,9 @@ class TestSettings(TempDirFixture):
                     with self.assertRaises(CommandException):
                         settings.set(k, iv)
 
-            settings.set('max_memory_size', MIN_MEMORY_SIZE + int(_virtual_mem - MIN_MEMORY_SIZE) / 2)
+            settings.set(
+                'max_memory_size',
+                MIN_MEMORY_SIZE + int(_virtual_mem - MIN_MEMORY_SIZE) / 2)
             settings.set('max_memory_size', _virtual_mem - 1)
             settings.set('max_memory_size', MIN_MEMORY_SIZE)
 
@@ -680,7 +644,6 @@ class TestSettings(TempDirFixture):
 
 
 class TestDebug(unittest.TestCase):
-
     def setUp(self):
         super(TestDebug, self).setUp()
 
@@ -694,7 +657,7 @@ class TestDebug(unittest.TestCase):
             debug = Debug()
             task_id = str(uuid.uuid4())
 
-            debug.rpc((aliases.Network.ident,))
+            debug.rpc((aliases.Network.ident, ))
             assert client.get_node.called
 
             debug.rpc((aliases.Task.task, task_id))
@@ -704,4 +667,4 @@ class TestDebug(unittest.TestCase):
             client.get_subtasks_borders.assert_called_with(task_id, 2)
 
             with self.assertRaises(CommandException):
-                debug.rpc((task_id,))
+                debug.rpc((task_id, ))
