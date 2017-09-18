@@ -147,7 +147,6 @@ class TaskManager(TaskEventListener):
         self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
 
-
     @handle_task_key_error
     def start_task(self, task_id):
         task = self.tasks[task_id]
