@@ -342,7 +342,8 @@ class Client(HardwarePresetsMixin):
             address = (address.address, address.port)
 
         try:
-            self.services['peermanager'].connect(address, decode_hex(node_id))
+            self.services['peermanager'].connect(address,
+                decode_hex(node_id[8:]))
         except Exception as exc:
             log.error('Cannot connect to node %s (%s): %r',
                       node_id, address, exc)
