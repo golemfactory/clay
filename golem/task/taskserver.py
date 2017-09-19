@@ -48,7 +48,8 @@ class TaskServer:
             use_docker_machine_manager=use_docker_machine_manager
         )
 
-        self.task_manager.listen_address = self.node.pub_addr
+        self.task_manager.listen_address =\
+            self.node.pub_addr or self.node.prv_addr
         self.task_manager.listen_port = self.client.get_p2p_port()
         self.task_manager.node = self.node
         self.task_service = task_service
