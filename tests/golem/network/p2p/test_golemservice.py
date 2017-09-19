@@ -67,7 +67,8 @@ class TestGolemService(unittest.TestCase):
         peer.send_packet.assert_called_once_with(pkt)
         gservice.on_wire_protocol_start.assert_called_once()
 
-    def test_wire_proto_start(self):
+    @patch('gevent.spawn_later')
+    def test_wire_proto_start(self, spawn_later):
         app = Mock(config={}, services={})
         gservice = GolemService(app)
         gservice.wire_protocol = object
@@ -81,7 +82,7 @@ class TestGolemService(unittest.TestCase):
         self.assertGreater(len(proto.receive_get_node_name_callbacks), 0)
         self.assertGreater(len(proto.receive_node_name_callbacks), 0)
 
-        self.assertTrue(proto.send_get_node_name.called)
+        spawn_later.assert_called_with(1., proto.send_get_node_name)
 
     def test_receive_get_tasks(self):
         app = Mock(config={}, services={})
