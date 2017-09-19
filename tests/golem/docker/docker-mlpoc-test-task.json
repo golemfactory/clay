@@ -43,10 +43,10 @@
           "docker_images": [
             {
               "id": null,
-              "repository": "jacekjacekjacekg/mlbase",
-              "name": "jacekjacekjacekg/mlbase:latest",
+              "repository": "golemfactory/mlbase",
+              "name": "golemfactory/mlbase:1.0",
               "py/object": "golem.docker.image.DockerImage",
-              "tag": "latest"
+              "tag": "1.0"
             }
           ],
           "short_description": "Provider-side and verificatoin enviromnent for MLPOC task used to run torch",

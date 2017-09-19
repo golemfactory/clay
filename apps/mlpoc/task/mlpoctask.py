@@ -46,15 +46,6 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
         )
 
 
-# TODO remove that when real IrisBatchManager will be available for import
-class MockIrisBatchManager():
-    def __init__(self, data_files):
-        pass
-
-    def get_order_of_batches(self, *args, **kwargs):
-        return list(range(100))
-
-
 # TODO refactor it to inherit from DummyTask
 # @enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
@@ -63,10 +54,9 @@ class MLPOCTask(CoreTask):
 
     SPEARMINT_ENV = MLPOCSpearmintEnvironment
     SPEARMINT_EXP_DIR = "work/experiment"
-    SPEARMINT_SIGNAL_FILE = "x.signal" # TODO not multithreading-safe, change that to multiple signal files
+    SPEARMINT_SIGNAL_DIR = "signal"
     RESULT_EXT = ".score"
     BLACK_BOX = CountingBlackBox  #  type: Type[BlackBox]
-    BATCH_MANAGER = MockIrisBatchManager  # type: Type[BatchManager]
     INFTY = 10000000
 
     def __init__(self,
@@ -117,7 +107,7 @@ class MLPOCTask(CoreTask):
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
         # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
         ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem" from DockerTaskThread
-        ctd.extra_data["SIGNAL_FILE"] = "/golem/work/" + self.SPEARMINT_SIGNAL_FILE  # TODO change that, as above^
+        ctd.extra_data["SIGNAL_DIR"] = "/golem/work/" + self.SPEARMINT_SIGNAL_DIR # TODO change that, as above^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
         ctd.extra_data["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
@@ -126,7 +116,8 @@ class MLPOCTask(CoreTask):
         spearmint_utils.generate_new_suggestions(
             os.path.join(self.spearmint_path,
                          "work",
-                         self.SPEARMINT_SIGNAL_FILE))
+                         self.SPEARMINT_SIGNAL_DIR,
+                         "{:32x}".format(random.getrandbits(128))))
 
     def prepare_spearmint_localcomputer(self, tmp_path):
         local_spearmint = LocalComputer(None,  # we don't use task at all
@@ -162,14 +153,12 @@ class MLPOCTask(CoreTask):
                 ("NUM_EPOCHS", self.task_definition.options.number_of_epochs),
                 ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]
 
-    def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, BATCH_MANAGER, ComputeTaskDef]:
+    def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
         black_box = self.BLACK_BOX(
             self.task_definition.options.probability_of_save,
             self.task_definition.options.number_of_epochs
         )
-        batch_manager = self.BATCH_MANAGER(self.task_definition.input_data_file)
-
         network_configuration = self.__get_next_network_config()
 
         input_data_file_base = os.path.basename(self.task_definition.input_data_file)
@@ -177,12 +166,11 @@ class MLPOCTask(CoreTask):
         extra_data = {
             "data_file": input_data_file_base,
             "network_configuration": network_configuration,
-            "order_of_batches": batch_manager.get_order_of_batches(),
+            "order_of_batches": list(range(100)),
             "RESULT_EXT": self.RESULT_EXT
         }
 
         return (black_box,
-                batch_manager,
                 self._new_compute_task_def(subtask_id,
                                            extra_data,
                                            perf_index=perf_index))
@@ -196,7 +184,7 @@ class MLPOCTask(CoreTask):
 
         logger.info("New task is being deployed")
 
-        black_box, batch_manager, ctd = self._extra_data(perf_index)
+        black_box, ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
         # TODO maybe save batch_manager and black_box somewhere else?
@@ -211,7 +199,6 @@ class MLPOCTask(CoreTask):
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["black_box"] = black_box
-        self.subtasks_given[sid]["batch_manager"] = batch_manager
 
         return self.ExtraData(ctd=ctd)
 
@@ -239,9 +226,8 @@ class MLPOCTask(CoreTask):
                              self.RESULT_EXT)
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        black_box, batch_manager, exd = self._extra_data()
+        black_box, exd = self._extra_data()
         self.test_black_box = black_box
-        self.test_batch_manager = batch_manager
         return exd
 
     def __update_spearmint_state(self, score_file):

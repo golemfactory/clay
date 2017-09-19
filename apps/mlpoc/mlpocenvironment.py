@@ -5,8 +5,8 @@ from golem.docker.environment import DockerEnvironment
 
 
 class MLPOCTorchEnvironment(DockerEnvironment):
-    DOCKER_IMAGE = "jacekjacekjacekg/mlbase"
-    DOCKER_TAG = "latest"
+    DOCKER_IMAGE = "golemfactory/mlbase"
+    DOCKER_TAG = "1.0"
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
     SCRIPT_NAME = "provider_main.py"
@@ -17,8 +17,8 @@ class MLPOCTorchEnvironment(DockerEnvironment):
 
 
 class MLPOCSpearmintEnvironment(DockerEnvironment):
-    DOCKER_IMAGE = "jacekjacekjacekg/mlspearmint"
-    DOCKER_TAG = "latest"
+    DOCKER_IMAGE = "golemfactory/mlspearmint"
+    DOCKER_TAG = "1.0"
     ENV_ID = "MLPOC"
     APP_DIR = path.join(get_golem_path(), 'apps', 'mlpoc')
     SCRIPT_NAME = "docker_spearmint.py"

@@ -20,7 +20,7 @@ UPDATE_PERIOD = 0.1  # when waiting for results from spearmint, loop will wait t
 dirties = set()
 
 
-def process_lines(directory: str, f: Callable[[str, str, List[str], str], None]) -> None:
+def process_lines(directory: str, f: Callable[[str, str, Tuple[str], str], None]) -> None:
     """
     A helper function to do processing of RESULT_FILE
     :param directory: spearmint_directory

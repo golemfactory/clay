@@ -15,10 +15,7 @@ def evaluate_network():
 
 def run():
     data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_file)
-    # this if is not strictly needed, but it is useful for debugging purposes
-    # IT DOESN"T WORK BECAUSE THE RESOURCES FILESYSTEM IS READ-ONLY
-    # if not os.path.exists(os.path.join(params.RESOURCES_DIR, "code", "impl", "params.py")):
-    #     os.symlink(os.path.join(params.WORK_DIR, "params.py"), os.path.join(params.RESOURCES_DIR, "code", "impl", "params.py"))
+
     runner = model.HonestModelRunner(params.OUTPUT_DIR, data_file)
     runner.run_full_training()
     score = evaluate_network()
