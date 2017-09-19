@@ -1,4 +1,3 @@
-import logging
 import os
 import pickle
 import unittest
@@ -17,7 +16,7 @@ from apps.lux.task.luxrendertask import (
     LuxRenderTaskTypeInfo,
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.core.common import is_linux
+from golem.core.common import is_linux, get_golem_path
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -185,7 +184,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask._accept_client("NODE_1")
         luxtask.accept_results("SUBTASK1", [img_file, flm_file, log_file])
 
-
         assert luxtask.subtasks_given["SUBTASK1"]['preview_file'] == img_file
         assert os.path.isfile(luxtask.preview_file_path)
         preview_img = Image.open(luxtask.preview_file_path)
@@ -244,8 +242,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("Cannot find merger script" in log for log in l.output)
 
     def test_update_preview_with_exr(self):
-        p = Path(__file__).parent.parent.parent / \
-            "rendering" / "resources" / "testfile.EXR"
+        p = os.path.join(get_golem_path(), 'tests', "apps",
+                         "rendering", "resources", "testfile.EXR")
         luxtask = self.get_test_lux_task()
         luxtask.res_x, luxtask.res_y = 10, 10
         luxtask._update_preview(str(p), 1)

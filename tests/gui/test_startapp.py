@@ -9,7 +9,7 @@ from twisted.internet.defer import Deferred
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
-from golem.environments.environment import Environment
+from golem.environments.environment import Environment, SupportStatus
 from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
@@ -55,6 +55,13 @@ def session_call(resolve_fn):
     return call
 
 
+def docker_command(key, *args, **kwargs):
+    if key == 'status':
+        return 'Running'
+    return ''
+
+
+@patch('golem.docker.manager.DockerManager.command', side_effect=docker_command)
 @patch('twisted.internet.iocpreactor', create=True)
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
@@ -106,8 +113,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 return self.path
             elif alias == aliases.Environment.opts:
                 return DictSerializer.dump(ClientConfigDescriptor())
-            elif alias == aliases.Environment.opt_description:
-                return 'test description'
             elif alias == aliases.Payments.ident:
                 return '0xdeadbeef'
             elif alias == aliases.Crypto.key_id:
@@ -174,7 +179,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-              return_value=True)
+              return_value=SupportStatus.ok())
     def test_start_client_success(self, *_):
         self._start_client(expected_result="Success")
 
@@ -182,7 +187,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-              return_value=True)
+              return_value=SupportStatus.ok())
     def test_start_client_router_failure(self, *_):
         self._start_client(router_fails=True,
                            expected_result="Router error")
@@ -191,7 +196,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-              return_value=True)
+              return_value=SupportStatus.ok())
     def test_start_client_session_failure(self, *_):
         self._start_client(session_fails=True,
                            expected_result="Session error")
@@ -200,7 +205,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-              return_value=True)
+              return_value=SupportStatus.ok())
     def test_start_gui_success(self, *_):
         self._start_gui(expected_result="Success")
 
@@ -209,7 +214,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-              return_value=True)
+              return_value=SupportStatus.ok())
     def test_start_gui_failure(self, *_):
         self._start_gui(session_fails=True,
                         expected_result="Session error")
@@ -224,7 +229,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         stop_reactor()
         assert reactor.stop.called
 
-    @patch('golem.docker.manager.DockerManager.command')
     @patch('gui.startapp.start_client')
     def test_start_app(self, _start_client, *_):
         start_app(datadir=self.tempdir)

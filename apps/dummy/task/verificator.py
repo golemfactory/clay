@@ -27,10 +27,10 @@ class DummyTaskVerificator(CoreVerificator):
         if self.verification_options["difficulty"] == 0:
             return True
 
-        with open(self.verification_options["shared_data_files"][0], 'r') as f:
-            input_data = f.read()
+        with open(self.verification_options["shared_data_files"][0], 'rU') as f:
+            shared_data = f.read()
 
-        input_data += subtask_info["subtask_data"]
+        input_data = shared_data + subtask_info["subtask_data"]
 
         return computing.check_pow(int(result_data, 16),
                                    input_data,

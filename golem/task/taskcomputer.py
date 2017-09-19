@@ -129,10 +129,10 @@ class TaskComputer(object):
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
-                timeout = deadline_to_timeout(subtask.deadline)
+
                 self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, timeout)
+                                    subtask.short_description, subtask.deadline)
                 self.waiting_for_task = None
                 return True
             else:
@@ -148,7 +148,7 @@ class TaskComputer(object):
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
                 self.__compute_task(subtask_id, subtask.docker_images, subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, deadline_to_timeout(subtask.deadline))
+                                    subtask.short_description, subtask.deadline)
                 return True
             return False
 
@@ -444,9 +444,13 @@ class TaskComputer(object):
                                                                   task_owner)
 
     def __compute_task(self, subtask_id, docker_images,
-                       src_code, extra_data, short_desc, task_timeout):
-
+                       src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id].task_id
+
+        task_header = self.task_server.task_keeper.task_headers[task_id]
+        deadline = min(task_header.deadline, subtask_deadline)
+        task_timeout = deadline_to_timeout(deadline)
+
         working_dir = self.assigned_subtasks[subtask_id].working_directory
         unique_str = str(uuid.uuid4())
 
@@ -454,7 +458,8 @@ class TaskComputer(object):
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)
-            temp_dir = os.path.join(self.resource_manager.get_temporary_dir(task_id), unique_str)
+            temp_dir = os.path.join(
+                self.resource_manager.get_temporary_dir(task_id), unique_str)
             # self.dir_manager.clear_temporary(task_id)
 
             if not os.path.exists(temp_dir):
@@ -471,6 +476,7 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtasks.pop(subtask_id)
+
             self.task_server.send_task_failed(subtask_id,
                                               subtask.task_id,
                                               "Host direct task not supported",
@@ -511,7 +517,8 @@ class TaskComputer(object):
 
 
 class AssignedSubTask(object):
-    def __init__(self, src_code, extra_data, short_desc, owner_address, owner_port):
+    def __init__(self, src_code, extra_data, short_desc, owner_address,
+                 owner_port):
         self.src_code = src_code
         self.extra_data = extra_data
         self.short_desc = short_desc
@@ -520,16 +527,18 @@ class AssignedSubTask(object):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
-                 tmp_path, timeout):
-        super(PyTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
-                                           short_desc, res_path, tmp_path, timeout)
+    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+                 extra_data, short_desc, res_path, tmp_path, timeout):
+        super(PyTaskThread, self).__init__(
+            task_computer, subtask_id, working_directory, src_code, extra_data,
+            short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code, extra_data, short_desc, res_path,
-                 tmp_path, timeout):
-        super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
-                                               short_desc, res_path, tmp_path, timeout)
+    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+                 extra_data, short_desc, res_path, tmp_path, timeout):
+        super(PyTestTaskThread, self).__init__(
+            task_computer, subtask_id, working_directory, src_code, extra_data,
+            short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

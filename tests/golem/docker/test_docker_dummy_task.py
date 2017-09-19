@@ -3,7 +3,7 @@ import os
 import shutil
 from os import makedirs, path, remove
 
-import jsonpickle as json
+import json
 from mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
@@ -11,6 +11,7 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
+from golem.core.simpleserializer import DictSerializer
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager, symlink_or_copy, \
     rmlink_or_rmtree
@@ -45,9 +46,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
     @classmethod
     def setUpClass(cls):
-        # TempDirFixture.setUpClass()
-        # DockerTestCase.setUpClass()
-
+        super().setUpClass()
         data_dir = os.path.join(get_golem_path(),
                                 "apps",
                                 "dummy",
@@ -88,14 +87,11 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         rmlink_or_rmtree(cls.code_link)
         rmlink_or_rmtree(cls.data_link)
         os.rmdir(cls.test_tmp)
-        
-        # TempDirFixture.tearDownClass()
-        # DockerTestCase.tearDownClass()
 
     def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = json.decode(f.read())  # type: DummyTaskDefinition
+            task_def = DictSerializer.load(json.loads(f.read()))  # type: DummyTaskDefinition
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
@@ -136,6 +132,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
+        task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
