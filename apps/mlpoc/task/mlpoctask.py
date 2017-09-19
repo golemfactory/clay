@@ -54,7 +54,7 @@ class MLPOCTask(CoreTask):
 
     SPEARMINT_ENV = MLPOCSpearmintEnvironment
     SPEARMINT_EXP_DIR = "work/experiment"
-    SPEARMINT_SIGNAL_DIR = "signal"
+    SPEARMINT_SIGNAL_DIR = "work/signal"
     RESULT_EXT = ".score"
     BLACK_BOX = CountingBlackBox  #  type: Type[BlackBox]
     INFTY = 10000000
@@ -107,29 +107,30 @@ class MLPOCTask(CoreTask):
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
         # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
         ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem" from DockerTaskThread
-        ctd.extra_data["SIGNAL_DIR"] = "/golem/work/" + self.SPEARMINT_SIGNAL_DIR # TODO change that, as above^
+        ctd.extra_data["SIGNAL_DIR"] = "/golem/" + self.SPEARMINT_SIGNAL_DIR # TODO change that, as above^
         ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
         ctd.extra_data["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
 
     def __trigger_spearmint_update(self):
         spearmint_utils.generate_new_suggestions(
-            os.path.join(self.spearmint_path,
-                         "work",
-                         self.SPEARMINT_SIGNAL_DIR,
+            os.path.join(self.signal_dir,
                          "{:32x}".format(random.getrandbits(128))))
 
     def prepare_spearmint_localcomputer(self, tmp_path):
         local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        os.path.join(self.spearmint_path),  # root_path/temp is used to store resources inside LocalComputer (DirManager is constructed from root_path)
+                                        tmp_path,  # root_path/temp is used to store resources inside LocalComputer (DirManager is constructed from root_path)
                                         lambda *_: self.__spearmint_exit("with exit code =0"),
                                         lambda *_: self.__spearmint_exit("with exit code !=0"),
                                         lambda: self.__spearmint_ctd(),
                                         use_task_resources=False,
                                         additional_resources=None,
-                                        tmp_dir=self.spearmint_path)
+                                        tmp_dir=tmp_path)
         self.experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
+        self.signal_dir = os.path.join(tmp_path, self.SPEARMINT_SIGNAL_DIR)
         os.makedirs(self.experiment_dir)  # experiment dir has to be created AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
+        os.makedirs(self.signal_dir)  # signal dir has to be created AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
+
         spearmint_utils.create_conf(self.experiment_dir)
         return local_spearmint
 
