@@ -26,12 +26,14 @@ function release_url()
 # CONSTANTS
 declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
+declare -r golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
+declare -r golem_dev_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
 declare -r docker_checksum='21fad4a6fbb31a91155ac09e13000c27'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
-declare -r ui_package_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
+declare -r electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
+declare -r electron_dev_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron-dev/releases")
 declare -r hyperg_pack=/tmp/hyperg.tar.gz
 declare -r PACKAGE="golem-linux.tar.gz"
 declare -r ELECTRON_PACKAGE="electron.tar.gz"
@@ -49,7 +51,8 @@ PACKAGE_VERSION="0.1.0"
 # PARAMS
 LOCAL_PACKAGE=""
 UI_PACKAGE=""
-DEPS_ONLY=0
+declare -i DEPS_ONLY=0
+declare -i DEVELOP=0
 
 # @brief print error message
 # @param error message
@@ -183,7 +186,11 @@ function download_package() {
         cp "$LOCAL_PACKAGE" "/tmp/$PACKAGE"
     else
         info_msg "Downloading Golem package"
-        wget -qO- "$golem_package" > /tmp/${PACKAGE}
+        if [[ ${DEVELOP} -eq 0 ]]; then
+            wget -qO- ${golem_url} > /tmp/${PACKAGE}
+        else
+            wget -qO- ${golem_dev_url} > /tmp/${PACKAGE}
+        fi
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
@@ -196,7 +203,11 @@ function download_package() {
         cp ${UI_PACKAGE} /tmp/${ELECTRON_PACKAGE}
     else
         info_msg "Downloading ui package (it may take awhile)"
-        wget -qO- ${ui_package_url} > /tmp/${ELECTRON_PACKAGE}
+        if [[ ${DEVELOP} -eq 0 ]]; then
+            wget -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
+        else
+            wget -qO- ${electron_dev_url} > /tmp/${ELECTRON_PACKAGE}
+        fi
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
@@ -305,7 +316,8 @@ function help_message() {
     echo -e "\e[4mOptions:\e[0m"
     echo -e "   -g, --golem           package with Golem"
     echo -e "   -u, --ui              package with UI"
-    echo -e "   -d, --deps-only       Install only dependencies without Golem"
+    echo -e "   -d, --deps-only       install only dependencies without Golem"
+    echo -e "   -dev, --develop       install develop version"
     echo -e "   -h, --help            print this message"
     echo
 }
@@ -329,6 +341,9 @@ while [[ $# -ge 1 ]]; do
         fi
         UI_PACKAGE="$2"
         shift # past argument
+        ;;
+        -dev|--develop)
+        DEVELOP=1
         ;;
         -h|--help)
         help_message
