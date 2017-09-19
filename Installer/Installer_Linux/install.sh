@@ -27,7 +27,7 @@ function release_url()
 declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
-declare -r docker_checksum='d41d8cd98f00b204e9800998ecf8427e'
+declare -r docker_checksum='21fad4a6fbb31a91155ac09e13000c27'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
@@ -91,7 +91,8 @@ function ask_user()
     done
 }
 
-# @brief check if dependencies (pip, Docker, and Ethereum) are installed and set proper 'global' variables
+# @brief check if dependencies (pip, Docker, and Ethereum)
+# are installed and set proper 'global' variables
 function check_dependencies()
 {
     # Check if docker daemon exists
@@ -136,7 +137,7 @@ function install_dependencies()
                 sudo usermod -aG docker ${USER}
             fi
         else
-            warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
+            warning_msg "DOCKER ERROR - incorrect checksum. Please install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
         fi
         rm -f /tmp/${docker_script}
