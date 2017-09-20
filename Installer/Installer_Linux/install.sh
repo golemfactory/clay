@@ -145,7 +145,12 @@ function install_dependencies()
             stable"
     fi
 
-    packages+=("docker-ce=$(apt-cache madison docker-ce 2>/dev/null | head -1 | awk '{print $3}')")
+    docker_version="$(apt-cache madison docker-ce 2>/dev/null | head -1 | awk '{print $3}')"
+    if [[ -z "${docker_version}" ]]; then
+        packages+=(docker-ce)
+    else
+        packages+=(docker-ce=${docker_version})
+    fi
 
     declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
@@ -174,7 +179,11 @@ function install_dependencies()
     done
     echo -e "\e[39m"
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
-        sudo usermod -aG docker ${USER}
+        if [[ -z "${SUDO_USER}" ]]; then
+            sudo usermod -aG docker ${USER}
+        else
+            sudo usermod -aG docker ${SUDO_USER}
+        fi
         sudo docker run hello-world &>/dev/null
         if [[ ${?} -eq 0 ]]; then
             info_msg "Docker installed successfully"
@@ -239,7 +248,12 @@ function check_symlink()
     [[ ${point_to} == ${source} ]] && return 0
     sudo rm -f ${destination} 2>/dev/null
     sudo ln -s ${source} ${destination}
-    return $?
+    res=${?}
+    if [[ -n "${SUDO_USER}" ]]; then
+        sudo chown ${SUDO_USER}:${SUDO_USER} ${destination}
+        sudo -H -u ${SUDO_USER} chmod 755 ${destination}
+    fi
+    return ${res}
 }
 
 # @brief Download and install golem
@@ -254,6 +268,10 @@ function install_golem()
     fi
 
     tar -zxvf /tmp/${PACKAGE} >/dev/null
+    if [[ ${?} -ne 0 ]]; then
+        error_msg "ERROR) Cannot extract ${PACKAGE}. Exiting..."
+        return 1
+    fi
     PACKAGE_DIR=$( find . -maxdepth 1 -name "golem-*" -type d -print | head -n1 )
     if [[ ! -d ${PACKAGE_DIR} ]]; then
         error_msg "Error extracting package"
@@ -279,6 +297,10 @@ function install_golem()
     rm -rf ${PACKAGE_DIR} &>/dev/null
 
     tar -zxvf /tmp/${ELECTRON_PACKAGE} >/dev/null
+    if [[ ${?} -ne 0 ]]; then
+        error_msg "ERROR) Cannot extract ${ELECTRON_PACKAGE}. Exiting..."
+        return 1
+    fi
     ELECTRON_DIR=$(find . -maxdepth 1 -name "linux-unpacked" -type d -print | head -n1)
     if [[ ! -d ${ELECTRON_DIR} ]]; then
         error_msg "Error extracting package"
@@ -290,6 +312,11 @@ function install_golem()
     rm -rf ${ELECTRON_DIR} &>/dev/null
     rm -rf /tmp/${ELECTRON_PACKAGE} &>/dev/null
     rm -rf ${ELECTRON_DIR} &>/dev/null
+
+    if [[ -n "${SUDO_USER}" ]]; then
+        sudo chown -R ${SUDO_USER}:${SUDO_USER} ${GOLEM_DIR}
+        sudo -H -u ${SUDO_USER} chmod -R 755 ${GOLEM_DIR}
+    fi
 
     result=0
     check_symlink ${GOLEM_DIR}/electron/golem /usr/local/bin/golem
