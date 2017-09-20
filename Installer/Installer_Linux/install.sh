@@ -2,9 +2,9 @@
 #title          :install.sh
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
-#email          :contact@golemnetwork.com
-#date           :20170711
-#version        :0.3
+#email          :contact@golem.network
+#date           :20170920
+#version        :0.4
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
