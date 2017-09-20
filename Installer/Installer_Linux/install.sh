@@ -9,30 +9,11 @@
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
-function release_url()
-{
-    json=$(wget -qO- --header='Accept: application/json' $1)
-    echo ${json} | python -c '\
-        import sys, json;                          \
-        j = json.load(sys.stdin);                  \
-        k = "browser_download_url";                \
-        print([asset[k] for entry in j             \
-                   if "assets" in entry            \
-               for asset in entry["assets"]        \
-                   if asset[k].find("linux") != -1 \
-              ][0])'
-}
-
 # CONSTANTS
 declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
-declare -r golem_dev_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
-declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
-declare -r electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
-declare -r electron_dev_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron-dev/releases")
 declare -r hyperg_pack=/tmp/hyperg.tar.gz
 declare -r PACKAGE="golem-linux.tar.gz"
 declare -r ELECTRON_PACKAGE="electron.tar.gz"
@@ -91,6 +72,20 @@ function ask_user()
             * ) warning_msg "Please answer yes or no.";;
         esac
     done
+}
+
+function release_url()
+{
+    json=$(wget -qO- --header='Accept: application/json' $1)
+    echo ${json} | python -c '\
+        import sys, json;                          \
+        j = json.load(sys.stdin);                  \
+        k = "browser_download_url";                \
+        print([asset[k] for entry in j             \
+                   if "assets" in entry            \
+               for asset in entry["assets"]        \
+                   if asset[k].find("linux") != -1 \
+              ][0])'
 }
 
 # @brief check if dependencies (pip, Docker, and Ethereum)
@@ -152,6 +147,7 @@ function install_dependencies()
 
     packages+=("docker-ce=$(apt-cache madison docker-ce 2>/dev/null | head -1 | awk '{print $3}')")
 
+    declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
     ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
@@ -199,10 +195,11 @@ function download_package() {
     else
         info_msg "Downloading Golem package"
         if [[ ${DEVELOP} -eq 0 ]]; then
-            wget -qO- ${golem_url} > /tmp/${PACKAGE}
+            golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
         else
-            wget -qO- ${golem_dev_url} > /tmp/${PACKAGE}
+            golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
         fi
+        wget -qO- ${golem_url} > /tmp/${PACKAGE}
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
@@ -216,10 +213,11 @@ function download_package() {
     else
         info_msg "Downloading ui package (it may take awhile)"
         if [[ ${DEVELOP} -eq 0 ]]; then
-            wget -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
+            electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
         else
-            wget -qO- ${electron_dev_url} > /tmp/${ELECTRON_PACKAGE}
+            electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron-dev/releases")
         fi
+        wget -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
