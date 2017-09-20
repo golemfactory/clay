@@ -28,7 +28,6 @@ declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
 declare -r golem_dev_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
-declare -r docker_checksum='21fad4a6fbb31a91155ac09e13000c27'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
@@ -111,6 +110,7 @@ function check_dependencies()
     fi
 }
 
+
 # @brief Install/Upgrade required dependencies
 function install_dependencies()
 {
@@ -121,6 +121,11 @@ function install_dependencies()
         exit 1
     fi
 
+    declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
+               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
+               libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
+               ethereum )
+
     if [[ ${INSTALL_GETH} -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         sudo apt-get install -y -q software-properties-common >/dev/null
@@ -129,22 +134,23 @@ function install_dependencies()
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
-        wget -qO- https://get.docker.com > /tmp/${docker_script}
-        if [[ "$( md5sum /tmp/${docker_script} | awk '{print $1}' )" == "$docker_checksum" ]]; then
-            bash /tmp/${docker_script} >/dev/null
-            if [[ $? -ne 0 ]]; then
-                warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
-                sleep 5s
-            fi
-            if [[ $UID -ne 0 ]]; then
-                sudo usermod -aG docker ${USER}
-            fi
-        else
-            warning_msg "DOCKER ERROR - incorrect checksum. Please install it manually: https://docs.docker.com/engine/installation/"
-            sleep 5s
+
+        # Ubuntu 14.04 needs some additional dependencies
+        if [[ $( lsb_release -r | awk '{print $2}' ) == '14.04' ]]; then
+            packages+=("linux-image-extra-$(uname -r)" linux-image-extra-virtual)
         fi
-        rm -f /tmp/${docker_script}
+
+        packages+=( apt-transport-https \
+                    ca-certificates \
+                    software-properties-common)
+        wget -qO- https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository \
+            "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) \
+            stable"
     fi
+
+    packages+=("docker-ce=$(apt-cache madison docker-ce 2>/dev/null | head -1 | awk '{print $3}')")
 
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
@@ -166,15 +172,21 @@ function install_dependencies()
         rm -f ${hyperg_pack} &>/dev/null
     fi
     sudo apt-get update >/dev/null
-    declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
-               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
-               libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
-               ethereum docker-engine )
     echo -e "\e[91m"
     for package in ${packages[*]}; do
         sudo apt-get install -q -y ${package} >/dev/null
     done
     echo -e "\e[39m"
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+        sudo usermod -aG docker ${USER}
+        sudo docker run hello-world &>/dev/null
+        if [[ ${?} -eq 0 ]]; then
+            info_msg "Docker installed successfully"
+        else
+            warning_msg "Error occurred during installation"
+            sleep 5s
+        fi
+    fi
     info_msg "Done installing Golem dependencies"
 }
 
