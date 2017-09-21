@@ -1,6 +1,5 @@
 from os import linesep
 from os.path import abspath, dirname, join, sep
-from sys import platform
 
 from git import Repo
 
@@ -34,8 +33,8 @@ def update_ini():
     """
     version_file = join(get_golem_path(), '.version.ini')
     repo_tag = get_tag().split('-')
-    version = "[version]{0}version = {1}{2}{0}".format(linesep, repo_tag[0],
-                                                       ("-" + repo_tag[1]) if len(repo_tag) > 1 else "")
+    version = "[version]{0}version = {1}{2}{0}number = {1}{0}".format(linesep, repo_tag[0],
+                                                                      ("-" + repo_tag[1]) if len(repo_tag) > 1 else "")
     with open(version_file, 'wb') as f_:
         f_.write(version.encode('ascii'))
 
