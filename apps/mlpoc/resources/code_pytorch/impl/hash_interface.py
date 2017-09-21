@@ -14,7 +14,7 @@ class Hash(object):
 
     @staticmethod
     def last_bytes_int(value: str, size: int) -> int:
-        return Hash._int_from_bytes(value.encode()[:size])  # TODO danger here! check if it really works
+        return Hash._int_from_bytes(value.encode()[:size])
 
     # from https://stackoverflow.com/questions/21017698/converting-int-to-bytes-in-python-3
     @staticmethod
@@ -25,10 +25,12 @@ class Hash(object):
     def _int_from_bytes(xbytes: bytes):
         return int.from_bytes(xbytes, 'big')
 
-
-    # ------------------------- THIS METHODS SHOULD BE OVERRIDEN FOR SPECIFIC USECASES -------------------------
+    # ---- THESE METHODS SHOULD BE OVERRIDEN FOR SPECIFIC USECASES ----
 
     @staticmethod
     def _compute_hash(value) -> bytes:
-        # return bytes(sha3_256(pickle.dumps(value))) # non-determinitic
-        return bytes(Hash.HASHING_ALGORITHM(hash(value)))  # python hash() is very short - only 4 bytes!
+        # # non-determinitic
+        # return bytes(sha3_256(pickle.dumps(value)))
+
+        # python hash() is very short - only 4 bytes!
+        return bytes(Hash.HASHING_ALGORITHM(hash(value)))

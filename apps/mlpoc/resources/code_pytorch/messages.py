@@ -1,4 +1,3 @@
-# TODO this file contain the scheme in which messages are passed
 import abc
 
 

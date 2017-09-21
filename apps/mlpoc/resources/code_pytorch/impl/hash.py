@@ -1,5 +1,5 @@
-# from keras.models import Sequential
 from torch import nn
+
 from .hash_interface import Hash
 
 
@@ -9,9 +9,10 @@ class PyTorchHash(Hash):
 
     @staticmethod
     def _compute_hash(value: nn.Module):
-        # for pytorch
-        # this is copying data every time, in function tobytes()
-        return Hash.HASHING_ALGORITHM("".join([str(v.data.numpy()) for v in value.parameters()]).encode()).digest()
+        # this is super slow, change that
+        str_repr = "".join([str(v.data.numpy())
+                            for v in value.parameters()])
+        return Hash.HASHING_ALGORITHM(str_repr.encode()).digest()
 
 
 class StateHash(Hash):
@@ -27,11 +28,11 @@ class StateHash(Hash):
 
     @staticmethod
     def _merge_two_hashes(start_hash, end_hash):
-        # It is used again during verification process
         common_hash = start_hash + end_hash
         return Hash.HASHING_ALGORITHM(common_hash.encode()).digest()
 
 
+# from keras.models import Sequential
 # class KerasHash(Hash):
 #
 #     def __init__(self, value: Sequential):
@@ -41,4 +42,7 @@ class StateHash(Hash):
 #     def _compute_hash(value):
 #         # for keras
 #         # this is copying data every time, in function tobytes()
-#         return Hash.HASHING_ALGORITHM("".join([str(hash(c.tobytes())) for v in value.layers for c in v.get_weights()]).encode()).digest()
+#         str_repr = "".join([str(hash(c.tobytes()))
+#                             for v in value.layers
+#                             for c in v.get_weights()])
+#         return Hash.HASHING_ALGORITHM(str_repr.encode()).digest()

@@ -1,14 +1,8 @@
 # this class is a replacement for normal BlackBoxCallback
 # it is used for tests, as mock
-import json
-import os
-import time
 
 from .box import BlackBox
 from .hash import Hash
-from messages import MLPOCBlackBoxAskMessage
-from params import MESSAGES_OUT_DIR, MESSAGES_IN_DIR
-
 
 
 class BlackBoxFileCallback(BlackBox):

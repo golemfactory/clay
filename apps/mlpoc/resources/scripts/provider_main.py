@@ -3,21 +3,19 @@ import os
 import sys
 
 import params
-
 from sklearn.metrics import accuracy_score
-from torch import nn, torch, from_numpy
+from torch import torch, from_numpy
 from torch.autograd import Variable
-
 
 sys.path.append(os.path.join(params.RESOURCES_DIR, "code", "impl"))
 sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
-sys.path.append(os.path.join(params.WORK_DIR)) # for params.py and messages.py
+sys.path.append(os.path.join(params.WORK_DIR))  # for messages.py
 
 from impl import model
 
 
 def evaluate_network(model_runner: model.HonestModelRunner):
-    # FIXME quite ugly, should be a function of Model
+    # FIXME quite ugly, evaluation should be a function of Model
     x, y_true = model_runner.batch_manager.get_full_testing_set()
     x = Variable(from_numpy(x).view(len(x), -1).type(torch.FloatTensor))
     y_pred = model_runner.model.net(x)
@@ -31,11 +29,13 @@ def run():
 
     runner = model.HonestModelRunner(params.OUTPUT_DIR, data_file)
     runner.run_full_training()
+
     score = evaluate_network(runner)
     return score
 
 
 score = run()
 
-with open(os.path.join(params.OUTPUT_DIR, "result" + params.RESULT_EXT), "w") as f:
+output_file = os.path.join(params.OUTPUT_DIR, "result" + params.RESULT_EXT)
+with open(output_file, "w") as f:
     json.dump({score: params.network_configuration}, f)

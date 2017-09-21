@@ -4,9 +4,9 @@
 # Spearmint CAN be resources-heavy
 # but i guess that's all we have for now
 
+import os
 import subprocess
 import time
-import os
 
 import params
 
@@ -22,22 +22,9 @@ def ls_R(dir):
 
 
 # TODO change the way parameters are passed to spearmint
+# noiseless parameter should be based on some input from user
+# not hardcoded here. Method should also not be hardcoded here.
 def run_one_update():
-    # DEBUG
-    # print("Updating suggestions...")
-    # print(os.path.isfile("/usr/bin/python"))
-    # print(os.path.exists("/opt"))
-    # print(os.listdir("/opt"))
-    # print(os.path.exists("/opt/spearmint"))
-    # print(os.listdir("/opt/spearmint"))
-    # print(os.path.exists("/opt/spearmint/spearmint-lite"))
-    # print(os.listdir("/opt/spearmint/spearmint-lite"))
-    # print(os.path.exists("/opt/spearmint/spearmint-lite/spearmint-lite.py"))
-    # print("aaas")
-    # print(os.path.exists(params.EXPERIMENT_DIR))
-    # print(os.listdir(params.EXPERIMENT_DIR))
-    # output = ""
-
     # cmd = "/usr/bin/python /opt/spearmint/spearmint-lite/spearmint-lite.py {} " \
     #       "--method=GPEIOptChooser --method-args=mcmc_iters=10,noiseless=1"\
     #       .format(params.EXPERIMENT_DIR)
@@ -56,8 +43,9 @@ def run():
         signal_files = os.listdir(params.SIGNAL_DIR)
         if signal_files:
             for f in signal_files:
-                for _ in range(params.SIMULTANEOUS_UPDATES_NUM):
-                    run_one_update()
-                os.remove(os.path.join(params.SIGNAL_DIR, f))  # signal file has to be removed AFTER updating
+                run_one_update()
+                # signal file has to be removed AFTER updating
+                os.remove(os.path.join(params.SIGNAL_DIR, f))
+
 
 run()

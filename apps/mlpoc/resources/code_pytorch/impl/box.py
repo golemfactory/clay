@@ -4,11 +4,12 @@ import numpy as np
 
 from .hash_interface import Hash
 
+
 class BlackBox(metaclass=ABCMeta):
     LAST_BYTES_NUM = 1  # max value config.MAX_LAST_BYTES_NUM
 
     @abstractmethod
-    def decide(self, hash: str, **kwargs) -> bool:
+    def decide(self, hash: str, epoch_num: int) -> bool:
         pass
 
 
@@ -16,16 +17,18 @@ assert (BlackBox.LAST_BYTES_NUM <= Hash.MAX_LAST_BYTES_NUM)
 
 
 # SimpleBlackBox decisions are based on hash and difficulty
+# they are probabilistic, but it still shouldn't be on the providers machine
+# since Provider than can change history array
 class SimpleBlackBox(BlackBox):
     LAST_BYTES_NUM = 1
 
     def __init__(self, probability: float):
-        self.history = []
+        self.history = {}
         self.probability = probability  # probability of BlackBox saying 'save'
         self.difficulty = int(2 ** (8 * self.LAST_BYTES_NUM) * self.probability)
 
-    def decide(self, hash: str, **kwargs):
-        self.history.append(hash)
+    def decide(self, hash: str, epoch_num: int):
+        self.history[epoch_num] = hash
 
         if Hash.last_bytes_int(hash, size=self.LAST_BYTES_NUM) <= self.difficulty:
             return True

@@ -4,9 +4,7 @@ import logging
 import os
 import random
 import shutil
-from collections import OrderedDict
 from typing import Dict, Tuple, Type
-from unittest.mock import Mock
 
 import enforce
 
@@ -14,10 +12,10 @@ from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
-from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment, \
-    MLPOCSpearmintEnvironment
-# from apps.mlpoc.resources.code_pytorch.impl.batchmanager import IrisBatchManager
-from apps.mlpoc.resources.code_pytorch.impl.box import CountingBlackBox, BlackBox
+from apps.mlpoc.mlpocenvironment import (MLPOCTorchEnvironment,
+                                         MLPOCSpearmintEnvironment)
+from apps.mlpoc.resources.code_pytorch.impl.box import (CountingBlackBox,
+                                                        BlackBox)
 from apps.mlpoc.resources.code_pytorch.messages import \
     MLPOCBlackBoxAnswerMessage
 from apps.mlpoc.task import spearmint_utils
@@ -26,7 +24,6 @@ from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
 from golem.core.common import timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
-from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef, Task
 from golem.task.taskstate import SubtaskStatus
@@ -58,7 +55,7 @@ class MLPOCTask(CoreTask):
     SPEARMINT_EXP_DIR = "work/experiment"
     SPEARMINT_SIGNAL_DIR = "work/signal"
     RESULT_EXT = ".score"
-    BLACK_BOX = CountingBlackBox  #  type: Type[BlackBox]
+    BLACK_BOX = CountingBlackBox  # type: Type[BlackBox]
     INFTY = 10000000
 
     def __init__(self,
@@ -94,67 +91,92 @@ class MLPOCTask(CoreTask):
         self.local_spearmint = self.prepare_spearmint_localcomputer(self.spearmint_path)
         self.local_spearmint.run()
 
-    def __spearmint_ctd(self):
+    def __spearmint_ctd(self) -> ComputeTaskDef:
+        """
+        Returns parameters for spearmint task run.
+        In particular, extra_data structure containing:
+        - EXPERIMENT_DIR - dir with config.json (and then results.dat)
+        - SIGNAL_DIR - dir in which we add signal files
+                       when requesting an update of results.dat
+        - EVENT_LOOP_SLEEP - that's how long time.sleep()
+                             waits in each repetition of event loop
+        :return: ComputeTaskDef with extra_data specified above
+        """
         env = self.SPEARMINT_ENV()
         src_code = env.get_source_code()
         ctd = ComputeTaskDef()
         ctd.environment = env.ENV_ID
         ctd.docker_images = env.docker_images
         ctd.src_code = src_code
-        ctd.working_directory = ""  # we should set not working directory, but LocalComputer.temp_dir
-        ctd.deadline = timeout_to_deadline(self.INFTY)  # task has to run indefinitely
 
-        # EXPERIMENT_DIR - dir with config.json (and then results.dat)
-        # SIGNAL_DIR - directory in which we add signal files, requesting a change in results.dat
-        # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
-        # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
-        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem" from DockerTaskThread
-        ctd.extra_data["SIGNAL_DIR"] = "/golem/" + self.SPEARMINT_SIGNAL_DIR # TODO change that, as above^
-        ctd.extra_data["SIMULTANEOUS_UPDATES_NUM"] = 1
+        # we should set not working directory, but LocalComputer.temp_dir
+        ctd.working_directory = ""
+
+        # spearmint LocalComputer has to run indefinitely
+        ctd.deadline = timeout_to_deadline(self.INFTY)
+
+        # TODO change that, take "/golem" from DockerTaskThread
+        ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR
+        # TODO change that, same as above
+        ctd.extra_data["SIGNAL_DIR"] = "/golem/" + self.SPEARMINT_SIGNAL_DIR
         ctd.extra_data["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
 
     def __trigger_spearmint_update(self):
+        some_random_name = "{:32x}".format(random.getrandbits(128))
         spearmint_utils.generate_new_suggestions(
-            os.path.join(self.signal_dir,
-                         "{:32x}".format(random.getrandbits(128))))
+            os.path.join(self.signal_dir, some_random_name))
 
     def prepare_spearmint_localcomputer(self, tmp_path):
-        local_spearmint = LocalComputer(task=None,  # we don't use task at all
-                                        root_path=tmp_path,  # root_path/temp is used to store resources inside LocalComputer (DirManager is constructed from root_path)
-                                        success_callback=lambda *_: self.__spearmint_exit("with exit code =0"),
-                                        error_callback=lambda *_: self.__spearmint_exit("with exit code !=0"),
-                                        get_compute_task_def=lambda: self.__spearmint_ctd(),
-                                        use_task_resources=False,
-                                        additional_resources=None,
-                                        tmp_dir=tmp_path)
+        local_spearmint = LocalComputer(
+            task=None,  # we don't use task at all
+            root_path=tmp_path,  # root_path/temp is used to store resources
+            # inside LocalComputer, because DirManager
+            # is constructed from root_path
+            success_callback=lambda *_: self.__spearmint_exit("=0"),
+            error_callback=lambda *_: self.__spearmint_exit("!=0"),
+            get_compute_task_def=lambda: self.__spearmint_ctd(),
+            use_task_resources=False,
+            additional_resources=None,
+            tmp_dir=tmp_path
+        )
         self.experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
         self.signal_dir = os.path.join(tmp_path, self.SPEARMINT_SIGNAL_DIR)
-        os.makedirs(self.experiment_dir)  # experiment dir has to be created AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
-        os.makedirs(self.signal_dir)  # signal dir has to be created AFTER local_spearmint, since it destroys LocalComputer.tmp_dir
+
+        # experiment dir has to be created AFTER local_spearmint
+        # since it destroys LocalComputer.tmp_dir
+        os.makedirs(self.experiment_dir)
+
+        # signal dir has to be created AFTER local_spearmint
+        # since it destroys LocalComputer.tmp_dir
+        os.makedirs(self.signal_dir)
 
         spearmint_utils.create_conf(self.experiment_dir)
         return local_spearmint
 
     def __spearmint_exit(self, label):
         # There was some problem with spearmint LocalComputer and it exited
-        # so we lost all progress on the task
-        # so let's panic!
-        raise Exception("Spearmint docker was restarted {}. WRONG!".format(label))
+        # so we lost all progress on the task - so let's panic!
+        raise Exception("Spearmint docker was restarted "
+                        "with exit code {}. WRONG!".format(label))
 
     def short_extra_data_repr(self, extra_data):
         return "MLPOC extra_data: {}".format(extra_data)
 
     def __get_next_network_config(self):
-        # here happens magic with spearmint in localcomputer using spearmint_utils methods
-        self.__trigger_spearmint_update()  # send signal to container to trigger spearmint update
-        hidden_size = int(spearmint_utils.get_next_configuration(self.experiment_dir)[0])
+        # here happens magic with spearmint in localcomputer
+        self.__trigger_spearmint_update()
+
+        # TODO hidden_size shouldn't be hardcoded here
+        hidden_size = int(spearmint_utils.get_next_configuration(
+            self.experiment_dir)[0]
+        )
 
         # order of these is important! that's why there's no dict here
         # (no OrderedDict, because these params will be saved to json)
         return [("HIDDEN_SIZE", hidden_size),
                 ("NUM_EPOCHS", self.task_definition.options.number_of_epochs),
-                ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]
+                ("STEPS_PER_EPOCH", self.task_definition.options.steps_per_epoch)]  # noqa
 
     def _extra_data(self, perf_index=0.0) -> Tuple[BLACK_BOX, ComputeTaskDef]:
         subtask_id = self.__get_new_subtask_id()
@@ -164,7 +186,7 @@ class MLPOCTask(CoreTask):
         )
         network_configuration = self.__get_next_network_config()
 
-        input_data_file_base = os.path.basename(self.task_definition.input_data_file)
+        input_data_file_base = os.path.basename(self.task_definition.input_data_file)  # noqa
 
         extra_data = {
             "data_file": input_data_file_base,
@@ -173,10 +195,10 @@ class MLPOCTask(CoreTask):
             "RESULT_EXT": self.RESULT_EXT
         }
 
-        return (black_box,
-                self._new_compute_task_def(subtask_id,
-                                           extra_data,
-                                           perf_index=perf_index))
+        ctd = self._new_compute_task_def(subtask_id,
+                                         extra_data,
+                                         perf_index=perf_index)
+        return (black_box, ctd)
 
     @coretask.accepting
     def query_extra_data(self,
@@ -184,19 +206,18 @@ class MLPOCTask(CoreTask):
                          num_cores=1,
                          node_id: str = None,
                          node_name: str = None) -> Task.ExtraData:
-
         logger.info("New task is being deployed")
 
         black_box, ctd = self._extra_data(perf_index)
         sid = ctd.subtask_id
 
-        # TODO maybe save batch_manager and black_box somewhere else?
-        # as the ctd.extra_data is modified in-place, and then saved/stored/send
-        # somewhere, black_box and batch_manager don't survive serialization
-        # but, on the other hand, in this form,
-        # they are available to verificator,
-        # since it has access to subtasks_given array
-        # and not some MLPOCTask.black_boxes_and_batch_managers_array
+        # Deepcopying extra_data is ugly, but it is probably the only option
+        # as the ctd.extra_data is modified in-place,
+        # and then saved/stored/send somewhere, black_box doesn't survive
+        # serialization, so then have to be ereased
+        # (in verificator.py/__query_extra_data) - but, only in this form
+        # it is are available  to verificator - since it has access
+        # only to subtasks_given array and not some MLPOCTask.black_boxes_array
         self.subtasks_given[sid] = copy.deepcopy(ctd.extra_data)
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
@@ -224,15 +245,21 @@ class MLPOCTask(CoreTask):
         if self.num_tasks_received == self.total_tasks:
             self.__generate_final_answer()
 
-    def __generate_final_answer(self):
-        # for now, it just returns the result.dat file from spearmint
-        # but maybe in the future we would want to return trained network model
+    def __generate_final_answer(self) -> None:
+        """
+        For now, it just returns the result.dat file from spearmint
+        but maybe in the future we would want to return trained network model
+        :return: None
+        """
         out_file = self.task_definition.output_file
         logger.info("Genereting final answer in {}".format(out_file))
         result_file = find_file_with_ext(self.spearmint_path, [".dat"])
         shutil.copy(result_file, out_file)
 
     def __get_new_subtask_id(self) -> str:
+        """
+        :return: A random string of length 32
+        """
         return "{:32x}".format(random.getrandbits(128))
 
     def __get_result_file_name(self, subtask_id: str) -> str:
@@ -252,20 +279,28 @@ class MLPOCTask(CoreTask):
         # where list_of_hyperparams = [(name_of_param, param_value)]
         score, hyperparameters = list(res.items())[0]
 
-        # TODO temporary hack, because for now only one param is used
-        hyperparameters = [str(v) for k, v in hyperparameters if k == "HIDDEN_SIZE"]
+        # TODO HIDDEN_SIZE shouldn't be harcoded here like that
+        hyperparameters = [str(v) for k, v in hyperparameters
+                           if k == "HIDDEN_SIZE"]
 
         assert isinstance(hyperparameters, list)
-        assert isinstance(float(score), float)  # not so dumb as it seems - just checking if score can be casted to float
+        # not so dumb as it seems - it's checking if score can be casted to float
+        assert isinstance(float(score), float)
 
         spearmint_utils.run_one_evaluation(
             self.experiment_dir,
             params={score: hyperparameters}
         )
 
-    # TODO set the structure of message_data, as in TaskThread.check_for_new_messages TODO
+    # TODO set the structure of message_data
+    # as in TaskThread.check_for_new_messages
     def react_to_message(self, subtask_id: str, data: Dict):
-        # save answer to blackbox and get a response
+        """
+        Saves answer to blackbox and gets a response
+        :param subtask_id:
+        :param data: message_data containing hash of state
+        :return: Message containing answer - if the state should be saved
+        """
         assert data["content"]["message_type"] == "MLPOCBlackBoxAskMessage"
         box = self.subtasks_given[subtask_id]["black_box"]  # type: BlackBox
 
@@ -287,7 +322,6 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
 
         return dictionary
 
-    # TODO do the checking in some @enforce
     @classmethod
     def build_full_definition(cls, task_type: MLPOCTaskTypeInfo, dictionary):
         # dictionary comes from GUI
@@ -300,7 +334,7 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
         number_of_epochs = opts.get("number_of_epochs",
                                     definition.options.number_of_epochs)
         probability_of_save = opts.get("probability_of_save",
-                                    definition.options.probability_of_save)
+                                       definition.options.probability_of_save)
 
         steps_per_epoch = int(steps_per_epoch)
         number_of_epochs = int(number_of_epochs)

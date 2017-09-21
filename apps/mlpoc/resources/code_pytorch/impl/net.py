@@ -1,5 +1,6 @@
 from torch import nn
 
+
 # some code taken from
 # https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/01-basics/feedforward_neural_network/main.py
 # Neural Network Model (1 hidden layer)

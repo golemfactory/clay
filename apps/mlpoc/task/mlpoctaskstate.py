@@ -6,7 +6,7 @@ from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
 from golem.core.common import get_golem_path
-from golem.resource.dirmanager import ls_R
+from golem.resource.dirmanager import ls_R, symlink_or_copy
 
 
 class MLPOCTaskDefaults(TaskDefaults):
@@ -54,25 +54,24 @@ class MLPOCTaskDefinition(TaskDefinition):
         if defaults:
             self.set_defaults(defaults)
 
-    # TODO abstract away
     def add_to_resources(self):
         super().add_to_resources()
 
         self.tmp_dir = tempfile.mkdtemp()
-
-        self.input_data_file = list(self.resources)[0]
-        self.code_files = ls_R(self.code_dir)
-
         self.code_place = os.path.join(self.tmp_dir, "code")
         self.data_place = os.path.join(self.tmp_dir, "data")
 
-        # TODO remove symlinks when the dummytask will be merged
-        # TODO remove critical bug #1387
-        # symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
-        os.symlink(self.code_dir, self.code_place)
-        common_data_path = os.path.dirname(self.input_data_file)
-        os.symlink(common_data_path, self.data_place)
+        # code
+        self.code_files = ls_R(self.code_dir)
+        symlink_or_copy(self.code_dir, self.code_place)
 
+        # data
+        self.input_data_file = list(self.resources)[0]
+        os.mkdir(self.data_place)
+        symlink_or_copy(self.input_data_file,
+                        os.path.join(self.data_place,
+                                     os.path.basename(self.input_data_file)))
+        
         self.resources = set(ls_R(self.tmp_dir))
 
     def set_defaults(self, defaults: MLPOCTaskDefaults):
@@ -88,4 +87,4 @@ class MLPOCTaskOptions(Options):
         self.environment = MLPOCTorchEnvironment()
         self.steps_per_epoch = 0
         self.number_of_epochs = 0
-        self.probability_of_save = 0 # TODO set that dynamically
+        self.probability_of_save = 0

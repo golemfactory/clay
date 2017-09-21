@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 
 
 class BatchManager(metaclass=ABCMeta):
-
     def __iter__(self):
         return self
 

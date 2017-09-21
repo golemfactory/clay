@@ -1,53 +1,68 @@
 import abc
 import itertools
 import os
-from copy import deepcopy, copy
+from copy import deepcopy
+from typing import Dict, Any
 
 import dill as pickle
 import numpy as np
+from params import network_configuration
 from torch import nn, torch, from_numpy
 from torch.autograd import Variable
 
 from .batchmanager import IrisBatchManager
 from .box_callback import BlackBoxFileCallback
+from .common_utils import name_of_model_dump
 from .config import (BATCH_SIZE,
                      LEARNING_RATE,
                      NUM_CLASSES)
 from .hash import PyTorchHash, StateHash
+from .inside_utils import derandom
 from .net import Net
-from .utils import derandom
 
-# very ugly, but network hyperparams have to be passed as a list
-# because spearmint doesn't allow for named parameters and we have
-# to keep order at all times
-from params import network_configuration
 network_configuration = dict(network_configuration)
+
 
 class Model(metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def run_one_batch(self, x: np.ndarray, y: np.ndarray):
+    def run_one_batch(self, x: np.ndarray, y: np.ndarray) -> None:
+        """
+        Train model on one batch of training samples
+        :param x: Training examples
+        :param y: Answers
+        :return: None
+        """
         pass
 
     @property
     @abc.abstractmethod
-    def kwargs(self):
+    def kwargs(self) -> Dict[str, Any]:
+        """
+        kwargs are parameters used to construct the class
+        Storing them makes it possible to dump the model - without a pickle
+        just saving kwargs - and then reconstructing class
+        :return: dict of kwargs passed to __init__
+        """
         pass
 
-    def get_hash(self):
+    def get_hash(self) -> 'Hash':
         return self.get_model_hash(self)
 
     @abc.abstractmethod
-    def get_model_hash(self):
+    def get_model_hash(self) -> 'Hash':
         pass
 
     @property
     @abc.abstractmethod
-    def net(self):
+    def net(self) -> torch.Module:
         pass
 
 
 class IrisSimpleModel(Model):
-    def __init__(self, input_size: int, hidden_size: int, num_classes: int,
+    def __init__(self,
+                 input_size: int,
+                 hidden_size: int,
+                 num_classes: int,
                  learning_rate: int):
         self._kwargs = {}
         self._kwargs["input_size"] = input_size
@@ -56,8 +71,8 @@ class IrisSimpleModel(Model):
         self._kwargs["learning_rate"] = learning_rate
 
         self._net = Net(input_size=input_size,
-                       hidden_size=hidden_size,
-                       num_classes=num_classes)
+                        hidden_size=hidden_size,
+                        num_classes=num_classes)
 
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.net.parameters(),
@@ -88,6 +103,7 @@ class IrisSimpleModel(Model):
     def net(self):
         return self._net
 
+
 class ComputationState(object):
     def __init__(self, start_model: Model,
                  end_model: Model):
@@ -97,8 +113,6 @@ class ComputationState(object):
     def get_start_end(self):
         return self.start_model, self.end_model
 
-    # TODO calculate hash here and then just cache it
-    # flag if the state was changed
     def update_before(self, model):
         self.start_model = model
 
@@ -129,14 +143,15 @@ class ModelSerializer():
         return self.model.get_model_hash(self.model)
 
     def _get_path_to_save(self, model: Model, epoch: int, ext):
-        # dir = "{}_{}".format(str(self.epoch), str(batch))
         dir = str(epoch)
         dir = os.path.join(self.shared_path, dir)
 
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-        filename = "{}-{}.{}".format(epoch, str(model.get_hash()), ext)
+        filename = name_of_model_dump(epoch=epoch,
+                                      hash=str(model.get_hash()),
+                                      ext=ext)
         return os.path.join(dir, filename)
 
     def save(self, epoch, state):
@@ -163,7 +178,6 @@ class ModelSerializer():
         model = IrisSimpleModel(**model_kwargs)
         model.net.load_state_dict(checkpoint['network_state_dict'])
         model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        # start_epoch = checkpoint['epoch']
 
         return model
 
@@ -189,11 +203,14 @@ class HonestModelRunner(object):
         self.num_epochs = number_of_epochs
 
     def run_full_training(self):
+
+        steps = network_configuration["STEPS_PER_EPOCH"]
+
         for epoch in range(self.num_epochs):
             self.state.update_before(deepcopy(self.model))
 
-            for i, (x, y) in enumerate(
-                    itertools.islice(self.batch_manager, network_configuration["STEPS_PER_EPOCH"])):
+            for i, (x, y) in enumerate(itertools.islice(self.batch_manager,
+                                                        steps)):
                 self.model.run_one_batch(x, y)
 
             self.state.update_after(deepcopy(self.model))
@@ -201,12 +218,16 @@ class HonestModelRunner(object):
             self.call_box(epoch, self.state)
 
     def call_box(self, epoch: int, state: ComputationState):
-        box_decision = self.black_box.decide(str(StateHash(state)), number_of_epoch=epoch)
+        box_decision = self.black_box.decide(str(StateHash(state)),
+                                             number_of_epoch=epoch)
         if box_decision:
             self.serializer.save(epoch, state)
 
 # for tests
 # class SkippingDishonestModelRunner(HonestModelRunner):
+#     """
+#     This modelRunner skips epoch with some fixed probability_of_cheating
+#     """
 #     def __init__(self, probability_of_cheating: float, *args, **kwargs):
 #         super().__init__(*args, **kwargs)
 #         self.probability_of_cheating = probability_of_cheating
@@ -216,7 +237,7 @@ class HonestModelRunner(object):
 #             self.state.update_before(deepcopy(self.model))
 #
 #             for i, (x, y) in enumerate(
-#                     itertools.islice(self.batch_manager, STEPS_PER_EPOCH)):
+#                     itertools.islice(self.batch_manager, network_configuration["STEPS_PER_EPOCH"])):
 #                 # with some probability, we we'll skip a step of computation
 #                 if np.random.rand() < self.probability_of_cheating:
 #                     self.model.run_one_batch(x, y)
@@ -225,9 +246,13 @@ class HonestModelRunner(object):
 #
 #             self.state.update_before(deepcopy(self.model))
 #             self.call_box(epoch, self.state)
-#
-#
+
+
 # class CyclicBufferDishonestModelRunner(HonestModelRunner):
+#     """
+#     This ModelRunner creates a cyclic buffer with some known lenght_of_cb
+#     And then just loops over it
+#     """
 #     def __init__(self, lenght_of_cb: int, added_eps: float, *args, **kwargs):
 #         super().__init__(*args, **kwargs)
 #         self.lenght_of_cb = lenght_of_cb

@@ -2,29 +2,38 @@
 
 import json
 import logging
-import math
 import os
 import shutil
 import tempfile
+import time
 from collections import OrderedDict
 from typing import Tuple, List, Optional, Dict, Callable
 
-import time
-
 logger = logging.getLogger("apps.mlpoc")
 
+# files which are used by spearmint
 RESULT_FILE = "results.dat"
 CONFIG = "config.json"
-DEFAULT_EVAL_TIME = 1  # spearmint takes into consideration evalutaion times, but we are not going to bother with that now
 
-UPDATE_PERIOD = 0.1  # when waiting for results from spearmint, loop will wait this much between checking if results arrived
+# spearmint takes into consideration evalutaion times
+# but we are not going to bother with that now
+# instead, we're pretending every operation
+# took DEFAULT_EVAL_TIME
+DEFAULT_EVAL_TIME = 1
+
+# when active waiting for results from spearmint
+# loop will wait this much between subsequent checks
+# if results already arrived
+UPDATE_PERIOD = 0.1
 
 # dirty-state hyperparams configurations
-# eg these which were already send to provider, but there is still no answer
+# so these which were already send to provider
+# but there is still no answer
 dirties = set()
 
 
-def process_lines(directory: str, f: Callable[[str, str, Tuple[str], str], None]) -> None:
+def process_lines(directory: str,
+                  f: Callable[[str, str, Tuple[str], str], None]) -> None:
     """
     A helper function to do processing of RESULT_FILE
     :param directory: spearmint_directory
@@ -45,11 +54,13 @@ def process_lines(directory: str, f: Callable[[str, str, Tuple[str], str], None]
 
 def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     """
-    This function is called by MLPOCTask.__update_spearmint_state with new results from provider
-    It then simply saves the results to RESULT_FILE file (replaces old line with these hyperparams
+    This function is called by MLPOCTask.__update_spearmint_state
+    with new results from provider. It then simply saves the results
+    to RESULT_FILE file (replaces old line with these hyperparams
     and without score with new one, containing score and DEFAULT_EVAL_TIME
     :param directory: spearmint directory
-    :param params: dict of score -> hyperparameters, but since we need the reverse dict, we are reversing it here
+    :param params: dict of score -> hyperparameters (but since we need
+           the reverse dict, we are reversing it below)
     :return: None
     """
 
@@ -60,7 +71,9 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     def f(y, dur, x, line):
         if dur == 'P' and tuple(x) in params:
             val = params[tuple(x)]
-            newlines.append("{} {} {}\n".format(val, DEFAULT_EVAL_TIME, " ".join(p for p in x)))
+            newlines.append("{} {} {}\n".format(val,
+                                                DEFAULT_EVAL_TIME,
+                                                " ".join(x)))
         else:
             newlines.append(line)
 
@@ -68,18 +81,23 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
 
     # this is an atomic write
     # inspired by http://stupidpythonideas.blogspot.com/2014/07/getting-atomic-writes-right.html
-    with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as fout:
+    with tempfile.NamedTemporaryFile("w", dir=directory, delete=False) as fout:
         fout.writelines(newlines)
     os.replace(fout.name, os.path.join(directory, RESULT_FILE))
 
 
 def create_conf(directory: str):
-    conf = OrderedDict([("HIDDEN_LAYER_SIZE", {"name": "HIDDEN_LAYER_SIZE",
-                              "type": "int",
-                              "min": 1,
-                              "max": 10**5,
-                              "size": 1
-                              })])
+    # TODO this config should be constructed dynamically
+    # or just read from user input
+    conf = OrderedDict([
+        ("HIDDEN_LAYER_SIZE", {
+            "name": "HIDDEN_LAYER_SIZE",
+            "type": "int",
+            "min": 1,
+            "max": 10 ** 5,
+            "size": 1
+        })])
+
     with open(os.path.join(directory, CONFIG), "w+") as f:
         json.dump(conf, f)
 
@@ -125,7 +143,9 @@ def get_next_configuration(directory: str) -> Optional[List[str]]:
     process_lines(directory, f)
     return xs
 
+
 def generate_new_suggestions(file):
     open(file, "w").close()  # create signal file
     while os.path.exists(file):
+        # wait till the suggestions are filled in and the file is deleted
         time.sleep(UPDATE_PERIOD)

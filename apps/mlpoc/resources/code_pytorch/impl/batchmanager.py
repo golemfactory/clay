@@ -1,17 +1,15 @@
 import pickle
-from abc import ABCMeta, abstractmethod
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-from .config import BATCH_SIZE, IRIS_SIZE, TEST_SIZE
-from .utils import derandom
 from .batchmanager_inferface import BatchManager
+from .config import BATCH_SIZE, IRIS_SIZE, TEST_SIZE
+from .inside_utils import derandom
 
 
 class IrisBatchManager(BatchManager):
-
     def __init__(self, datafile, derandom_seed=0):
         self.datafile = datafile
 
@@ -48,9 +46,6 @@ class IrisBatchManager(BatchManager):
         return batch
 
     def save(self, batch_num, filepath):
-        print("aaaa", batch_num, self.current_index)
-        # assert(batch_num == self.current_index) # TODO why it doesn't work?
-
         batch = (self.x_train[self.current_index: self.current_index + BATCH_SIZE],
                  self.y_train[self.current_index: self.current_index + BATCH_SIZE])
 
