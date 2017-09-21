@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from apps.appsmanager import AppsManager
-from apps.core.benchmark.benchmark import Benchmark
+from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.core.task.coretask import TaskBuilder
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.lux.luxenvironment import LuxRenderEnvironment
@@ -25,15 +25,15 @@ class TestAppsManager(TestCase):
         """ Are benchmarks added to apps on the list? """
         app_manager = self._get_loaded_app_manger()
         for app in app_manager.apps.values():
-            assert issubclass(app.benchmark, Benchmark)
+            assert issubclass(app.benchmark, CoreBenchmark)
 
     def test_get_benchmarks(self):
         app_manager = self._get_loaded_app_manger()
         benchmarks = app_manager.get_benchmarks()
         # We have 2 compuational envs registered
-        assert len(benchmarks) == 2
+        assert len(benchmarks) == 3
         # Let's check that benchmarks values are defined properly
         for benchmark in benchmarks.values():
             benchmark, builder_class = benchmark
-            assert isinstance(benchmark, Benchmark)
+            assert isinstance(benchmark, CoreBenchmark)
             assert issubclass(builder_class, TaskBuilder)

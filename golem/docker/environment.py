@@ -1,25 +1,43 @@
-from golem.environments.environment import Environment
+import abc
+from typing import List
+
+import enforce
+
+from golem.docker.image import DockerImage
+from golem.environments.environment import (Environment, SupportStatus,
+                                            UnsupportReason)
+from golem.resource.dirmanager import find_task_script
 
 
-class DockerEnvironment(Environment):
+@enforce.runtime_validation()
+class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
+    def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
 
-    def __init__(self, docker_images):
-        """
-        :param list(DockerImage) docker_images: nonempty list of Docker images,
-          at least one should be available for this environment to be supported.
-        :return:
-        """
-        if docker_images is None:
-            raise AttributeError("docker_images is None")
-        self.docker_images = docker_images
+        if tag is None:
+            tag = self.DOCKER_TAG
+
+        image = DockerImage(image_id=image_id) if image_id \
+            else DockerImage(self.DOCKER_IMAGE, tag=tag)
         Environment.__init__(self)
         self.software.append('Docker')
 
-    def check_docker_images(self):
-        return any(img.is_available() for img in self.docker_images)
+        self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)
 
-    def supported(self):
-        return self.check_docker_images() and Environment.supported(self)
+        self.docker_images = [image]
+        if additional_images:
+            self.docker_images += additional_images
+
+    def check_docker_images(self) -> SupportStatus:
+        if any(img.is_available() for img in self.docker_images):
+            return SupportStatus.ok()
+
+        return SupportStatus.err({UnsupportReason.ENVIRONMENT_UNSUPPORTED: {
+            'env_id': self.get_id(),
+            'docker_images_missing_any': self.docker_images,
+        }})
+
+    def check_support(self) -> SupportStatus:
+        return self.check_docker_images().join(Environment.check_support(self))
 
     def description(self):
         descr = Environment.description(self)
@@ -30,3 +48,37 @@ class DockerEnvironment(Environment):
         descr += "\n"
 
         return descr
+
+    @property
+    @abc.abstractmethod
+    def DOCKER_IMAGE(cls):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def DOCKER_TAG(cls):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def ENV_ID(cls):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def APP_DIR(cls):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def SCRIPT_NAME(cls):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def SHORT_DESCRIPTION(cls):
+        pass
+
+    @classmethod
+    def get_id(cls):
+        return cls.ENV_ID

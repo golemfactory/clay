@@ -17,6 +17,7 @@ class App(object):
         self.controller = None  # inherit from Customizer
         self.task_type_info = None  # inherit from TaskTypeInfo
         self.benchmark = None  # inherit from Benchmark
+        self.benchmark_builder = None #inherit from TaskBuilder
 
 
 class AppsManager(object):
@@ -50,5 +51,5 @@ class AppsManager(object):
         :return dict: dictionary, where environment ids are the keys and values
         are defined as pairs of instance of Benchmark and class of task builder
         """
-        return {app.env().get_id(): (app.benchmark(), app.builder)
+        return {app.env().get_id(): (app.benchmark(), app.benchmark_builder)
                 for app in self.apps.values()}

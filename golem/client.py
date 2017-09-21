@@ -49,7 +49,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import resource_types
+from golem.task.taskbase import ResourceType
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -395,7 +395,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.key_changed()
 
     def enqueue_new_task(self, task_dict):
-        # FIXME: Statement only for DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
             task = self.task_server.task_manager.create_task(task_dict)
         else:
@@ -409,7 +409,7 @@ class Client(HardwarePresetsMixin):
         key_id = self.keys_auth.key_id
 
         options = resource_manager.build_client_options(key_id)
-        files = task.get_resources(None, resource_types["hashes"])
+        files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
             request = AsyncRequest(task_manager.start_task, task_id)
@@ -857,7 +857,7 @@ class Client(HardwarePresetsMixin):
         envs = copy(self.environments_manager.get_environments())
         return [{
             'id': str(env.get_id()),
-            'supported': env.supported(),
+            'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
             'description': str(env.short_description)

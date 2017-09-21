@@ -919,13 +919,16 @@ class TaskServer(PendingConnectionsServer):
     def __remove_old_sessions(self):
         cur_time = time.time()
         sessions_to_remove = []
-        for subtask_id, session in self.task_sessions.items():
-            if cur_time - session.last_message_time > self.last_message_time_threshold:
+        sessions = dict(self.task_sessions)
+
+        for subtask_id, session in sessions.items():
+            dt = cur_time - session.last_message_time
+            if dt > self.last_message_time_threshold:
                 sessions_to_remove.append(subtask_id)
         for subtask_id in sessions_to_remove:
-            if self.task_sessions[subtask_id].task_computer is not None:
-                self.task_sessions[subtask_id].task_computer.session_timeout()
-            self.task_sessions[subtask_id].dropped()
+            if sessions[subtask_id].task_computer is not None:
+                sessions[subtask_id].task_computer.session_timeout()
+            sessions[subtask_id].dropped()
 
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:

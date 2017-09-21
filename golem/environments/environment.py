@@ -1,12 +1,52 @@
+import enum
+
 from os import path
 
-from apps.core.benchmark.minilight.src.minilight import make_perf_test
+from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
 
 from golem.core.common import get_golem_path
 from golem.model import Performance
 
 
-class Environment(object):
+class SupportStatus(object):
+    def __init__(self, ok, desc=None) -> None:
+        self.desc = desc or {}
+        self._ok = ok
+
+    def is_ok(self) -> bool:
+        return self._ok
+
+    def __bool__(self) -> bool:
+        return self.is_ok()
+
+    def join(self, other) -> 'SupportStatus':
+        desc = self.desc.copy()
+        desc.update(other.desc)
+        return SupportStatus(self.is_ok() and other.is_ok(), desc)
+
+    @classmethod
+    def ok(cls) -> 'SupportStatus':
+        return cls(True)
+
+    @classmethod
+    def err(cls, desc) -> 'SupportStatus':
+        return cls(False, desc)
+
+    def __repr__(self) -> str:
+        return '<SupportStatus %s (%r)>' % \
+            ('ok' if self._ok else 'err', self.desc)
+
+
+class UnsupportReason(enum.Enum):
+    ENVIRONMENT_MISSING = 'environment_missing'
+    ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
+    ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
+    MAX_PRICE = 'max_price'
+    APP_VERSION = 'app_version'
+
+
+class Environment():
+
     @classmethod
     def get_id(cls):
         """ Get Environment unique id
@@ -17,8 +57,9 @@ class Environment(object):
     def __init__(self):
         self.software = []  # list of software that should be installed
         self.caps = []  # list of hardware requirements
-        self.short_description = "Default environment for generic tasks " \
-                                 "without any additional requirements."
+        self.short_description = "Default environment for generic tasks" \
+                                 " without any additional requirements."
+
         self.long_description = ""
         self.accept_tasks = False
         # Check if tasks can define the source code
@@ -30,8 +71,9 @@ class Environment(object):
         :return bool:
         """
         if not self.allow_custom_main_program_file:
-            return self.main_program_file and path.isfile(
-                self.main_program_file)
+            return self.main_program_file and \
+                path.isfile(self.main_program_file)
+
         return True
 
     def check_caps(self):
@@ -40,11 +82,11 @@ class Environment(object):
         """
         return True
 
-    def supported(self):
+    def check_support(self) -> SupportStatus:
         """ Check if this environment is supported on this machine
-        :return bool:
+        :return SupportStatus:
         """
-        return True
+        return SupportStatus.ok()
 
     def is_accepted(self):
         """ Check if user wants to compute tasks from this environment
@@ -92,8 +134,8 @@ class Environment(object):
 
     @classmethod
     def run_default_benchmark(cls, num_cores=1, save=False):
-        test_file = path.join(get_golem_path(), 'apps', 'core', 'benchmark',
-                              'minilight', 'cornellbox.ml.txt')
+        test_file = path.join(get_golem_path(), 'apps', 'rendering',
+                              'benchmark', 'minilight', 'cornellbox.ml.txt')
         estimated_performance = make_perf_test(test_file, num_cores=1)
         if save:
             Performance.update_or_create(cls.get_id(), estimated_performance)

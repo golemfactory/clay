@@ -2,9 +2,9 @@ import os
 import tempfile
 import unittest
 
-from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderOptions
+from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
@@ -14,7 +14,7 @@ class TestLuxBenchmark(unittest.TestCase):
 
     def test_is_instance(self):
         self.assertIsInstance(self.lb, LuxBenchmark)
-        self.assertIsInstance(self.lb, Benchmark)
+        self.assertIsInstance(self.lb, RenderingBenchmark)
         self.assertIsInstance(self.lb.task_definition, RenderingTaskDefinition)
         self.assertIsInstance(self.lb.task_definition.options, LuxRenderOptions)
     

@@ -1,7 +1,7 @@
 import mock
 from PIL import Image
 
-from apps.core.benchmark import benchmark
+from apps.rendering.benchmark import renderingbenchmark
 from golem.testutils import TempDirFixture
 
 
@@ -9,7 +9,7 @@ class TestBenchmark(TempDirFixture):
 
     def setUp(self):
         super(self.__class__, self).setUp()
-        self.benchmark = benchmark.Benchmark()
+        self.benchmark = renderingbenchmark.RenderingBenchmark()
 
     def test_verify_img(self):
         filepath = self.temp_file_name("img.png")
@@ -29,7 +29,7 @@ class TestBenchmark(TempDirFixture):
         filepath = self.temp_file_name("broken.png")
         with open(filepath, "w") as f:
             f.write('notanimage,notanimageatall')
-        with mock.patch('apps.core.benchmark.benchmark.logger') as m:
+        with mock.patch('apps.rendering.benchmark.renderingbenchmark.logger') as m:
             self.assertFalse(self.benchmark.verify_img(filepath))
             m.warning.assert_called_once_with(mock.ANY, exc_info=True)
 

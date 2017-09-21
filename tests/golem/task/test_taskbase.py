@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from mock import Mock
+from mock import Mock, patch
 
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.image import DockerImage
@@ -9,7 +9,7 @@ from golem.task.taskbase import (Task, TaskBuilder, TaskHeader,
                                  TaskEventListener, logger)
 from golem.tools.assertlogs import LogTestCase
 
-
+@patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskBase(LogTestCase):
 
     def test_header_serialization(self):

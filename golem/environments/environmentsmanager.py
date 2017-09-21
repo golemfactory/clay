@@ -1,6 +1,6 @@
 import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
-from golem.environments.environment import Environment
+from .environment import Environment, SupportStatus, UnsupportReason
 
 logger = logging.getLogger(__name__)
 
@@ -9,7 +9,7 @@ class EnvironmentsManager(object):
     """ Manage known environments. Allow user to choose accepted environment, keep track of supported environments """
 
     def __init__(self):
-        self.supported_environments = set()
+        self.support_statuses = {}
         self.environments = set()
         self.env_config = None
 
@@ -29,22 +29,23 @@ class EnvironmentsManager(object):
         :param Environment environment:
         """
         self.environments.add(environment)
-        supported = environment.supported()
+        supported = environment.check_support()
         logger.info("Adding environment {} supported={}"
                     .format(environment.get_id(), supported))
-        if supported:
-            self.supported_environments.add(environment.get_id())
+        self.support_statuses[environment.get_id()] = supported
 
-    def supported(self, env_id):
-        """ Return information if given environment are supported. Uses information from supported environments, doesn't
-         check the environment again.
+    def get_support_status(self, env_id) -> SupportStatus:
+        """ Return information if given environment are supported.
+            Uses information from supported environments,
+            doesn't check the environment again.
         :param str env_id:
-        :return bool:
+        :return SupportStatus:
         """
-        return env_id in self.supported_environments
+        return self.support_statuses.get(env_id, SupportStatus.err(
+            {UnsupportReason.ENVIRONMENT_MISSING: env_id}))
 
     def accept_tasks(self, env_id):
-        """ Return information whether tasks from given environment are accepted.
+        """Return information whether tasks from given environment are accepted.
         :param str env_id:
         :return bool:
         """
@@ -71,7 +72,8 @@ class EnvironmentsManager(object):
         return envs
 
     def change_accept_tasks(self, env_id, state):
-        """ Change information whether tasks from this environment are accepted or not. Write changes in config file
+        """ Change information whether tasks from this environment are accepted
+            or not. Write changes in config file
         :param str env_id:
         :param bool state:
         """

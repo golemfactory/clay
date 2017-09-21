@@ -16,7 +16,7 @@ from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
-from golem.task.taskbase import ComputeTaskDef, TaskHeader
+from golem.task.taskbase import ComputeTaskDef, TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -112,7 +112,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
-        results = {"data": "", "result_type": 0}
+        results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
         ts.add_task_header(task_header)
@@ -125,7 +125,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
         self.assertEqual(wtr.result, "")
-        self.assertEqual(wtr.result_type, 0)
+        self.assertEqual(wtr.result_type, ResultType.DATA)
         self.assertEqual(wtr.computing_time, 40)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)

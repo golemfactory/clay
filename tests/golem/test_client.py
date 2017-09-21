@@ -20,7 +20,7 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, resource_types
+from golem.task.taskbase import Task, TaskHeader, ResourceType
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
@@ -693,7 +693,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, resource_types["hashes"])
+        task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
         c.resource_server.resource_manager.build_client_options \
             .assert_called_with(c.keys_auth.key_id)
@@ -879,18 +879,18 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
         c = self.client
         c.enqueue_new_task = Mock()
 
         # create a task
-        t = Task(
-            TaskHeader(
-                "node_name", "task_id", "10.10.10.10", 123, "owner_id",
-                "DEFAULT"
-            ),
-            src_code="print('hello')"
-        )
+        t = Task(TaskHeader("node_name", "task_id",
+                            "10.10.10.10", 123,
+                            "owner_id", "DEFAULT"),
+                 src_code="print('hello')",
+                 task_definition=Mock())
+
 
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
