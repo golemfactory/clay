@@ -40,6 +40,11 @@ class Model(metaclass=abc.ABCMeta):
     def get_model_hash(self):
         pass
 
+    @property
+    @abc.abstractmethod
+    def net(self):
+        pass
+
 
 class IrisSimpleModel(Model):
     def __init__(self, input_size: int, hidden_size: int, num_classes: int,
@@ -50,7 +55,7 @@ class IrisSimpleModel(Model):
         self._kwargs["num_classes"] = num_classes
         self._kwargs["learning_rate"] = learning_rate
 
-        self.net = Net(input_size=input_size,
+        self._net = Net(input_size=input_size,
                        hidden_size=hidden_size,
                        num_classes=num_classes)
 
@@ -66,7 +71,7 @@ class IrisSimpleModel(Model):
         y = Variable(from_numpy(y).view(BATCH_SIZE).type(torch.LongTensor))
 
         self.optimizer.zero_grad()
-        outputs = self.net(x)
+        outputs = self._net(x)
         loss = self.criterion(outputs, y)
         loss.backward()
         self.optimizer.step()
@@ -79,10 +84,13 @@ class IrisSimpleModel(Model):
     def kwargs(self):
         return self._kwargs
 
+    @property
+    def net(self):
+        return self._net
 
 class ComputationState(object):
-    def __init__(self, start_model: IrisSimpleModel,
-                 end_model: IrisSimpleModel):
+    def __init__(self, start_model: Model,
+                 end_model: Model):
         self.start_model = start_model
         self.end_model = end_model
 
@@ -97,6 +105,7 @@ class ComputationState(object):
     def update_after(self, model):
         self.end_model = model
 
+    # useful for testing non-determinism
     def add_perturbation(self, eps: float):
         derandom()  # TODO keep track of all derandomizations
         for model in [self.start_model, self.end_model]:
@@ -192,7 +201,7 @@ class HonestModelRunner(object):
             self.call_box(epoch, self.state)
 
     def call_box(self, epoch: int, state: ComputationState):
-        box_decision = self.black_box.decide(str(StateHash(state)))
+        box_decision = self.black_box.decide(str(StateHash(state)), number_of_epoch=epoch)
         if box_decision:
             self.serializer.save(epoch, state)
 

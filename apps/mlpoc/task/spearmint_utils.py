@@ -1,13 +1,17 @@
 # based on braninpy from https://github.com/JasperSnoek/spearmint/blob/master/spearmint-lite/braninpy/braninrunner.py  # noqa
 
 import json
+import logging
 import math
 import os
 import shutil
+import tempfile
 from collections import OrderedDict
 from typing import Tuple, List, Optional, Dict, Callable
 
 import time
+
+logger = logging.getLogger("apps.mlpoc")
 
 RESULT_FILE = "results.dat"
 CONFIG = "config.json"
@@ -50,7 +54,7 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     """
 
     params = {tuple(x for x in v): k for k, v in sorted(params.items())}
-    print("Evaluation...")
+    logger.info("Running spearmint update")
     newlines = []
 
     def f(y, dur, x, line):
@@ -61,8 +65,12 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
             newlines.append(line)
 
     process_lines(directory, f)
-    with open(os.path.join(directory, RESULT_FILE), 'w') as outfile:
-        outfile.writelines(newlines)
+
+    # this is an atomic write
+    # inspired by http://stupidpythonideas.blogspot.com/2014/07/getting-atomic-writes-right.html
+    with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as fout:
+        fout.writelines(newlines)
+    os.replace(fout.name, os.path.join(directory, RESULT_FILE))
 
 
 def create_conf(directory: str):

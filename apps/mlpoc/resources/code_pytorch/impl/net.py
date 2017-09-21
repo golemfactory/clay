@@ -1,5 +1,8 @@
 from torch import nn
 
+# some code taken from
+# https://github.com/yunjey/pytorch-tutorial/blob/master/tutorials/01-basics/feedforward_neural_network/main.py
+# Neural Network Model (1 hidden layer)
 
 class Net(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):

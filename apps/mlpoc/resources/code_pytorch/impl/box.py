@@ -36,7 +36,7 @@ class SimpleBlackBox(BlackBox):
 # as it resides on Requestor side, there is no danger in strategy being here
 class CountingBlackBox(BlackBox):
     def __init__(self, probability: float, num_of_rounds: int):
-        self.history = []
+        self.history = {}
         self.num_of_rounds = num_of_rounds
         num_of_checked_rounds = int(probability * num_of_rounds)
         self.current_round = 0
@@ -46,7 +46,7 @@ class CountingBlackBox(BlackBox):
                                                replace=False)
 
     def decide(self, hash: str, epoch_num=0):
-        self.history.append(hash)
+        self.history[epoch_num] = hash
 
         if self.current_round in self.checked_rounds:
             decision = True

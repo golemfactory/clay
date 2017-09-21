@@ -65,3 +65,6 @@ class IrisBatchManager(BatchManager):
 
     def get_order_of_batches(self):
         return self.indexing
+
+    def get_full_testing_set(self):
+        return self.x_test, self.y_test

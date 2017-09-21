@@ -20,10 +20,15 @@ class StateHash(Hash):
 
     @staticmethod
     def _compute_hash(value: 'ComputationState'):
-        # for state
         start_model, end_model = value.get_start_end()
         hh = lambda x: str(PyTorchHash(x.net))
-        common_hash = hh(start_model) + hh(end_model)
+
+        return StateHash._merge_two_hashes(hh(start_model), hh(end_model))
+
+    @staticmethod
+    def _merge_two_hashes(start_hash, end_hash):
+        # It is used again during verification process
+        common_hash = start_hash + end_hash
         return Hash.HASHING_ALGORITHM(common_hash.encode()).digest()
 
 

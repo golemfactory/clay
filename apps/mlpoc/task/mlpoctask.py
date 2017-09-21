@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import random
+import shutil
 from collections import OrderedDict
 from typing import Dict, Tuple, Type
 from unittest.mock import Mock
@@ -24,6 +25,7 @@ from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefaults, MLPOCTaskOptions
 from apps.mlpoc.task.mlpoctaskstate import MLPOCTaskDefinition
 from apps.mlpoc.task.verificator import MLPOCTaskVerificator
 from golem.core.common import timeout_to_deadline
+from golem.core.fileshelper import find_file_with_ext
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef, Task
@@ -32,7 +34,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.mlpoc")
 
 
-# @enforce.runtime_validation(group="mlpoc")
+@enforce.runtime_validation(group="mlpoc")
 class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super().__init__(
@@ -47,7 +49,7 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
 
 
 # TODO refactor it to inherit from DummyTask
-# @enforce.runtime_validation(group="mlpoc")
+@enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
     ENVIRONMENT_CLASS = MLPOCTorchEnvironment
     VERIFICATOR_CLASS = MLPOCTaskVerificator
@@ -103,7 +105,7 @@ class MLPOCTask(CoreTask):
         ctd.deadline = timeout_to_deadline(self.INFTY)  # task has to run indefinitely
 
         # EXPERIMENT_DIR - dir with config.json (and then results.dat)
-        # SIGNAL_FILE - file which signalizes a change in results.dat
+        # SIGNAL_DIR - directory in which we add signal files, requesting a change in results.dat
         # SIMULTANEOUS_UPDATES_NUM - how many new suggestions should spearmint add every time?
         # EVENT_LOOP_SLEEP - that's how long time.sleep() waits in each repetition of event loop
         ctd.extra_data["EXPERIMENT_DIR"] = "/golem/" + self.SPEARMINT_EXP_DIR  # TODO change that, take "/golem" from DockerTaskThread
@@ -118,11 +120,11 @@ class MLPOCTask(CoreTask):
                          "{:32x}".format(random.getrandbits(128))))
 
     def prepare_spearmint_localcomputer(self, tmp_path):
-        local_spearmint = LocalComputer(None,  # we don't use task at all
-                                        tmp_path,  # root_path/temp is used to store resources inside LocalComputer (DirManager is constructed from root_path)
-                                        lambda *_: self.__spearmint_exit("with exit code =0"),
-                                        lambda *_: self.__spearmint_exit("with exit code !=0"),
-                                        lambda: self.__spearmint_ctd(),
+        local_spearmint = LocalComputer(task=None,  # we don't use task at all
+                                        root_path=tmp_path,  # root_path/temp is used to store resources inside LocalComputer (DirManager is constructed from root_path)
+                                        success_callback=lambda *_: self.__spearmint_exit("with exit code =0"),
+                                        error_callback=lambda *_: self.__spearmint_exit("with exit code !=0"),
+                                        get_compute_task_def=lambda: self.__spearmint_ctd(),
                                         use_task_resources=False,
                                         additional_resources=None,
                                         tmp_dir=tmp_path)
@@ -219,6 +221,17 @@ class MLPOCTask(CoreTask):
         self.__update_spearmint_state(score_file)
         logger.info("Subtask finished")
 
+        if self.num_tasks_received == self.total_tasks:
+            self.__generate_final_answer()
+
+    def __generate_final_answer(self):
+        # for now, it just returns the result.dat file from spearmint
+        # but maybe in the future we would want to return trained network model
+        out_file = self.task_definition.output_file
+        logger.info("Genereting final answer in {}".format(out_file))
+        result_file = find_file_with_ext(self.spearmint_path, [".dat"])
+        shutil.copy(result_file, out_file)
+
     def __get_new_subtask_id(self) -> str:
         return "{:32x}".format(random.getrandbits(128))
 
@@ -233,7 +246,7 @@ class MLPOCTask(CoreTask):
 
     def __update_spearmint_state(self, score_file):
         with open(score_file, "r") as f:
-            res = json.load(f)  # TODO check if it doesn't pose any security threat
+            res = json.load(f)
 
         # structure of the score file: {score: list_of_hyperparams}
         # where list_of_hyperparams = [(name_of_param, param_value)]
@@ -305,4 +318,4 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
 
 
 # comment that line to enable type checking
-enforce.config({'groups': {'set': {'mlpoc': True}}})
+enforce.config({'groups': {'set': {'mlpoc': False}}})

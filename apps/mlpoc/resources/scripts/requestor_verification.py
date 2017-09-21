@@ -10,6 +10,8 @@ sys.path.append(os.path.join(params.RESOURCES_DIR, "code", "impl"))
 sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
 
 from impl import model, batchmanager, config, utils
+from impl.hash import StateHash
+from impl.model import ComputationState
 
 def compare_weights(model1: 'Model', model2: 'Model'):
     weights1 = model1.net.parameters()
@@ -21,7 +23,7 @@ def compare_weights(model1: 'Model', model2: 'Model'):
     return True
 
 # TODO write that down somewhere explicite
-# That the name of epoch is EpochNum-HashOfState.begin (or .end)
+# That the name of model dump is EpochNum-HashOfState.begin (or .end)
 def _hash_from_name(filepath: str):
     name = os.path.basename(filepath)
     return name.split(".")[0].split("-")[1]
@@ -49,9 +51,13 @@ def find_file_with_ext(ext, dir):
 
 def run():
     serializer = model.ModelSerializer
+    black_box_history = dict(params.black_box_history)
 
     data_file = os.path.join(params.RESOURCES_DIR, "data", params.data_file)
     for checkpointdir in os.listdir(os.path.join(params.RESOURCES_DIR, "checkpoints")):
+
+        epoch = int(checkpointdir)
+
         # loading models
         path = os.path.join(params.RESOURCES_DIR, "checkpoints", checkpointdir)
         startmodel_name, endmodel_name = [find_file_with_ext(ext, path)
@@ -61,15 +67,30 @@ def run():
         endmodel = serializer.load(endmodel_name)
 
         # hashes checking
-        if not str(startmodel.get_hash()) == _hash_from_name(startmodel_name):
+        startmodel_hash = str(startmodel.get_hash())
+        endmodel_hash = str(endmodel.get_hash())
+
+        if epoch not in black_box_history:
+            raise Exception("No hashes for the epoch {}".format(epoch))
+
+        if not startmodel_hash == _hash_from_name(startmodel_name):
             raise Exception("Hash of startmodel from name: {} not equal to real hash: {}".format(
-                str(startmodel.get_hash()),
+                startmodel_hash,
                 _hash_from_name(startmodel_name)
             ))
-        if not str(endmodel.get_hash()) == _hash_from_name(endmodel_name):
+
+        if not endmodel_hash == _hash_from_name(endmodel_name):
             raise Exception("Hash of endmodel from name: {} not equal to real hash: {}".format(
-                str(endmodel.get_hash()),
+                endmodel_hash,
                 _hash_from_name(endmodel_name)
+            ))
+
+        boxed_hash = black_box_history[epoch]
+        real_state_hash = str(StateHash(ComputationState(startmodel, endmodel)))
+        if not real_state_hash == boxed_hash:
+            raise Exception("Real hash of state transition: {} not equal to the hash saved in the box: {}".format(
+                real_state_hash,
+                boxed_hash
             ))
 
         batch_manager = batchmanager.IrisBatchManager(data_file)

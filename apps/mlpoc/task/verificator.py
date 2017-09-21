@@ -41,22 +41,27 @@ class MLPOCTaskVerificator(CoreVerificator):
             src = f.read()
         return src
 
-    def __query_extra_data(self, steps, subtask_data):
+    def __query_extra_data(self, steps, subtask_data, black_box: 'MLPOCTask.BLACK_BOX'):
         ctd = ComputeTaskDef()
         ctd.extra_data["STEPS_PER_EPOCH"] = steps
         ctd.extra_data["data_file"] = os.path.basename(self.verification_options["input_data_file"])
         ctd.src_code = self._load_src()
         ctd.docker_images = [self.docker_image]
         ctd.extra_data.update(subtask_data)
-        ctd.extra_data["batch_manager"] = None
-        ctd.extra_data["black_box"] = None
+        ctd.extra_data["black_box"] = None # clearing non-serializable black box class
+        ctd.extra_data["black_box_history"] = black_box.history
         return ctd
 
     # FIXME quite tricky to know that I should save that
     # self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
     # it would be a lot better if _check_files would juts return True/False
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
+        black_box = subtask_info["black_box"]
+
         with tempfile.TemporaryDirectory() as tempdir:
+
+            logger.info("Verification is done in {} tempdir".format(tempdir))
+
             checkpoints_dir = os.path.join(tempdir, "checkpoints")  # TODO save this "checkpoints" name explicitly somewhere
             os.mkdir(checkpoints_dir)
 
@@ -76,7 +81,7 @@ class MLPOCTaskVerificator(CoreVerificator):
 
             steps = dict(subtask_info["network_configuration"])["STEPS_PER_EPOCH"]
 
-            qed = lambda: self.__query_extra_data(steps, subtask_info)
+            qed = lambda: self.__query_extra_data(steps, subtask_info, black_box)
 
             assert set(os.path.basename(x) for x in resources) == {"code", "data", "checkpoints"}
 

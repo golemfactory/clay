@@ -47,3 +47,11 @@ class BatchManager(metaclass=ABCMeta):
         :return: List-like object containing order of batches
         """
         pass
+
+    def get_full_testing_set(self) -> ('np.ndarray', 'np.ndarray'):
+        """
+        Returns full testing set, intersection with data returned
+        from get_full_training_set should be empty
+        :return: (testing_instances, answers)
+        """
+        pass
