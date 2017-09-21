@@ -3,14 +3,27 @@ from typing import Dict, Any
 from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
-from golem.interface.command import command, group
+from golem.interface.command import Argument, command, group
 # For type annotations:
 from golem.client import Client  # pylint: disable=unused-import
 
 
 @group(help="Manage account")
 class Account:
+    # that's in fact golem.rpc.session.Client, which is created dynamically,
+    # which is a subset of golem.client.Client
+    # Anyway, we'll get better checks if we fool mypy to believe its the former
     client = None  # type: Client
+
+    privkey = Argument(
+        'privkey',
+        help="The file the private key will be saved to"
+    )
+    pubkey = Argument(
+        'pubkey',
+        help="The file the public key will be saved to"
+    )
+
 
     @command(help="Display account & financial info")
     def info(self) -> Dict[str, Any]:
@@ -46,6 +59,17 @@ class Account:
                 eth_balance=_fmt(eth_balance, unit="ETH")
             )
         )
+
+    @command(arguments=(privkey, pubkey), help="Export the keys")
+    def export(self, pubkey: str, privkey: str) -> None:
+        client = Account.client
+        deferred = client.save_keys_to_files(
+            private_key_path=privkey,
+            public_key_path=pubkey
+        )
+        ret = sync_wait(deferred)
+        if ret is False:
+            print("An error occurred...")
 
 
 def _fmt(value: float, unit: str = "GNT") -> str:

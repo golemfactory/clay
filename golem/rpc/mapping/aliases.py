@@ -157,6 +157,10 @@ class UI:
     evt_lock_config         = 'evt.ui.widget.config.lock'
 
 
+class Accounts:
+    export_keys             = 'accounts.export_keys'
+
+
 class Applications:
     # 'app'
     pass

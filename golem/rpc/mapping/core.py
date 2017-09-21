@@ -86,5 +86,7 @@ CORE_METHOD_MAP = dict(
 
     quit=                   UI.quit,
     resume=                 UI.start,
-    pause=                  UI.stop
+    pause=                  UI.stop,
+
+    save_keys_to_files=     Accounts.export_keys,
 )

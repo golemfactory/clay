@@ -36,7 +36,9 @@ class CommandAppLogic(AppLogic):
 
 @group(help="Manage tasks")
 class Tasks:
-
+    # that's in fact golem.rpc.session.Client, which is created dynamically,
+    # which is a subset of golem.client.Client
+    # Anyway, we'll get better checks if we fool mypy to believe its the former
     client = None  # type: Client
 
     task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']

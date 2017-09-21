@@ -37,7 +37,7 @@ def assert_client_method(instance, name):
 
 
 class TestAccount(unittest.TestCase):
-    def test(self):
+    def test_info(self) -> None:
 
         node = dict(node_name='node1', key='deadbeef')
 
@@ -68,6 +68,15 @@ class TestAccount(unittest.TestCase):
                     'total_balance': '3.000000 GNT'
                 },
             }
+
+    def test_export(self) -> None:
+        client = Mock()
+        with client_ctx(Account, client):
+            Account().export("foo", "bar")
+            client.save_keys_to_files.assert_called_once_with(
+                private_key_path='bar',
+                public_key_path='foo'
+            )
 
 
 class TestEnvironments(unittest.TestCase):
