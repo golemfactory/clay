@@ -405,15 +405,11 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-<<<<<<< HEAD
-    def test_create(self) -> None:
-        client = self.client
-=======
     @patch("golem.interface.client.tasks.uuid4")
     def test_create(self, mock_uuid) -> None:
         client = self.client
         mock_uuid.return_value = "new_uuid"
->>>>>>> provider_requestor_comms
+
 
         definition = TaskDefinition()
         definition.task_name = "The greatest task ever!"
@@ -422,21 +418,14 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
             tasks.create_from_json(def_str)
-<<<<<<< HEAD
 
-            client.create_task.assert_called_with(json.loads(def_str))
-=======
             task_def = json.loads(def_str)
             task_def['id'] = "new_uuid"
             client.create_task.assert_called_with(task_def)
->>>>>>> provider_requestor_comms
 
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(read_data='{}')):
                 tasks.create("foo")
-<<<<<<< HEAD
-                client.create_task.assert_called_with(json.loads('{}'))
-=======
                 task_def = json.loads('{"id": "new_uuid"}')
                 client.create_task.assert_called_with(task_def)
 
@@ -466,7 +455,6 @@ class TestTasks(TempDirFixture):
         with open(temp) as f:
             content_dump = f.read()
             self.assertEqual(content, content_dump)
->>>>>>> provider_requestor_comms
 
     def test_show(self):
         client = self.client
