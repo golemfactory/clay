@@ -188,4 +188,4 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
         )
         instance.run()
         instance.success_callback.assert_not_called()
-        instance.error_callback.assert_called_once()
+        self.assertEquals(instance.error_callback.call_count, 1)

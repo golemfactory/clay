@@ -86,7 +86,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.call.return_value = '0xaa'
         b = self.pp.gnt_balance()
         assert b == expected_balance
-        self.client.call.assert_called_once()
+        self.assertEquals(self.client.call.call_count, 1)
 
     def test_eth_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)

@@ -1,5 +1,5 @@
 import autobahn
-from collections import OrderedDict
+import collections
 from twisted.internet.defer import Deferred
 import unittest
 import unittest.mock as mock
@@ -46,7 +46,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_valid_method_map(self):
 
         obj = self.MockObject()
-        valid_method_map = OrderedDict([
+        valid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_2', 'alias_2')
         ])
@@ -60,7 +60,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_invalid_method_map(self):
 
         obj = self.MockObject()
-        invalid_method_map = OrderedDict([
+        invalid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_x', 'alias_x')
         ])

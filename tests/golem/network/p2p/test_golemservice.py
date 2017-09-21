@@ -65,7 +65,7 @@ class TestGolemService(unittest.TestCase):
                      protocol_id=18317)
         peer.stop()
         peer.send_packet.assert_called_once_with(pkt)
-        gservice.on_wire_protocol_start.assert_called_once()
+        self.assertEquals(gservice.on_wire_protocol_start.call_count, 1)
 
     @mock.patch('gevent.spawn_later')
     def test_wire_proto_start(self, spawn_later):

@@ -69,4 +69,4 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         if self.br.tt:
             self.br.tt.join()
 
-        success.assert_called()
+        self.assertTrue(success.called)
