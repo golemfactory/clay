@@ -25,13 +25,17 @@ class GolemService(WiredService):
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_start', proto=proto)
 
+        proto.peer.node_name = None
+
         # register callbacks
         proto.receive_get_tasks_callbacks.append(self.receive_get_tasks)
         proto.receive_task_headers_callbacks.append(self.receive_task_headers)
         proto.receive_get_node_name_callbacks.append(self.receive_get_node_name)
         proto.receive_node_name_callbacks.append(self.receive_node_name)
 
-        proto.send_get_node_name()
+        # do not call send_get_node_name directly here
+        import gevent
+        gevent.spawn_later(1., proto.send_get_node_name)
 
     def on_wire_protocol_stop(self, proto):
         assert isinstance(proto, self.wire_protocol)
