@@ -4,7 +4,7 @@ import os
 from typing import List, Dict
 
 import requests
-from jsonpickle import json
+import json
 
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ResultType

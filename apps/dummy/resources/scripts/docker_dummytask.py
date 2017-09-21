@@ -1,11 +1,9 @@
 from __future__ import print_function
 
 import imp
-import json
 import os
 
 import params  # This module is generated before this script is run
-import time
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"  # we don't need that, all the work is done in memory
@@ -33,7 +31,9 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     # -------------------------------------------------------------------
     # Temporary testing for communications
     #####################################################################
-
+    # import json
+    # import time
+    #
     # os.makedirs(MESSAGES_IN)
     # os.makedirs(MESSAGES_OUT)
     #
