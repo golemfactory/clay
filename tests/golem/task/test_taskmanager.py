@@ -57,7 +57,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.test_nonce = "%.3f-%d" % (time.time(), random.random() * 10000)
         keys_auth = Mock()
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-        self.tm = TaskManager("ABC", Node(), keys_auth, root_path=self.path)
+        self.tm = TaskManager(
+            "ABC",
+            Node(),
+            keys_auth,
+            root_path=self.path,
+            task_persistence=False
+        )
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
         self.tm.listen_port = 2222
@@ -479,15 +485,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert ts is not None
         assert ts.progress == 0.3
 
-    def test_resume_task(self):
+    def test_resume_task(self) -> None:
         with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.resume_task("xyz") is None
+            self.assertIsNone(self.tm.resume_task("xyz"))
+
         t = self._get_task_mock()
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.resume_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.starting
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.starting
+
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].status,
+            TaskStatus.starting
+        )
 
     def test_restart_task(self):
         with self.assertLogs(logger, level="WARNING"):
@@ -496,8 +506,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.restart_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
+
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].status,
+            TaskStatus.restarted
+        )
+
         with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
             self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
             t.query_extra_data_return_value.ctd.subtask_id = "xxyyzz2"
@@ -505,31 +519,42 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
             with self.assertNoLogs(logger, level="WARNING"):
                 self.tm.restart_task("xyz")
-            assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
-            assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
-            assert len(self.tm.tasks_states["xyz"].subtask_states) == 2
+
+            self.assertEqual(
+                self.tm.tasks_states["xyz"].status,
+                TaskStatus.restarted
+            )
+            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
             for ss in list(self.tm.tasks_states["xyz"].subtask_states.values()):
-                assert ss.subtask_status == SubtaskStatus.restarted
+                self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
 
     def test_abort_task(self):
         with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.abort_task("xyz") is None
+            self.assertIsNone(self.tm.abort_task("xyz"))
+
         t = self._get_task_mock()
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.abort_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.aborted
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.aborted
+
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].status,
+            TaskStatus.aborted
+        )
 
     def test_pause_task(self):
         with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.pause_task("xyz") is None
+            self.assertIsNone(self.tm.pause_task("xyz"))
+
         t = self._get_task_mock()
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.pause_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.paused
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.paused
+
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].status,
+            TaskStatus.paused
+        )
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):

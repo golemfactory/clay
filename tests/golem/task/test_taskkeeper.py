@@ -298,7 +298,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             self.assertIn(header.task_id, ctk.active_tasks)
 
     @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_comp_keeper(self, dump_mock):
+    def test_comp_keeper(self, _):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
         header.task_id = "xyz"

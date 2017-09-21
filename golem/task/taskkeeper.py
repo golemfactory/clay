@@ -1,5 +1,6 @@
 import logging
 import math
+import pathlib
 import pickle
 import random
 import time
@@ -20,7 +21,7 @@ def compute_subtask_value(price, computation_time):
     return int(math.ceil(price * computation_time / 3600))
 
 
-class CompTaskInfo(object):
+class CompTaskInfo:
     def __init__(self, header, price):
         self.header = header
         self.price = price
@@ -35,7 +36,7 @@ class CompTaskInfo(object):
         )
 
 
-class CompSubtaskInfo(object):
+class CompSubtaskInfo:
     def __init__(self, subtask_id):
         self.subtask_id = subtask_id
 
@@ -49,25 +50,27 @@ def log_key_error(*args, **_):
     return None
 
 
-class CompTaskKeeper(object):
+class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
     handle_key_error = HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path, persist=True):
+    def __init__(self, tasks_path: pathlib.Path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
 
-        tasks_path: pathlib.Path to tasks directory
+        tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
         self.active_tasks = {}
         self.subtask_to_task = {}  # maps subtasks id to tasks id
+        if not tasks_path.is_dir():
+            tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
         self.persist = persist
         self.restore()
 
-    def dump(self):
+    def dump(self) -> None:
         if not self.persist:
             return
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
@@ -78,7 +81,7 @@ class CompTaskKeeper(object):
                 logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
-    def restore(self):
+    def restore(self) -> None:
         if not self.persist:
             return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
@@ -159,7 +162,7 @@ class CompTaskKeeper(object):
         self.dump()
 
 
-class TaskHeaderKeeper(object):
+class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.

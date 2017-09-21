@@ -2,31 +2,42 @@ import logging
 import pickle
 import time
 
+# FIXME: use the PEP-3107 annotations when we reach 3.6 and remove the
+# suppresion then
+from typing import Any, Dict, List, Union  # pylint: disable=unused-import
+
 from pathlib import Path
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
-from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline, to_unicode, update_dict
+from golem.core.common import (
+    HandleKeyError, get_timestamp_utc, timeout_to_deadline, to_unicode,
+    update_dict
+)
+from golem.core.keysauth import KeysAuth
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, ResourceType
+from golem.task.taskbase import (
+    ComputeTaskDef, Task, TaskEventListener, TaskHeader, ResourceType
+)
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
-    SubtaskState
+from golem.task.taskstate import (
+    TaskState, TaskStatus, SubtaskStatus, SubtaskState
+)
 
 logger = logging.getLogger(__name__)
 
 
-def log_subtask_key_error(*args, **kwargs):
+def log_subtask_key_error(*args):
     logger.warning("This is not my subtask {}".format(args[1]))
     return None
 
 
-def log_task_key_error(*args, **kwargs):
+def log_task_key_error(*args):
     logger.warning("This is not my task {}".format(args[1]))
     return None
 
@@ -48,10 +59,18 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
-    def __init__(self, node_name, node, keys_auth, listen_address="",
-                 listen_port=0, root_path="res", use_distributed_resources=True,
-                 tasks_dir="tasks", task_persistence=False):
-        super(TaskManager, self).__init__()
+    def __init__(
+            self,
+            node_name: str,
+            node: Node,
+            keys_auth: KeysAuth,
+            listen_address: str = "",
+            listen_port: int = 0,
+            root_path: str = "res",
+            use_distributed_resources: bool = True,
+            tasks_dir: str = "tasks",
+            task_persistence: bool = False) -> None:
+        super().__init__()
 
         self.apps_manager = AppsManager()
         self.apps_manager.load_apps()
@@ -65,32 +84,40 @@ class TaskManager(TaskEventListener):
         self.keys_auth = keys_auth
         self.key_id = keys_auth.get_key_id()
 
-        self.tasks = {}
-        self.tasks_states = {}
-        self.subtask2task_mapping = {}
+        self.tasks = {}  # type: Dict[str, Task]
+        self.tasks_states = {}  # type: Dict[str, TaskState]
+        self.subtask2task_mapping = {}  # type: Dict[str, str]
 
         self.listen_address = listen_address
         self.listen_port = listen_port
 
-        # FIXME Remove this variable and make task persistance obligatory after it is more tested
+        # FIXME Remove this variable and make task persistance obligatory
+        # after it is more tested
         # Remember to also remove it from init params
         self.task_persistence = task_persistence
 
-        self.tasks_dir = Path(tasks_dir)
+        dump_path = Path(tasks_dir)
+        self.tasks_dir = dump_path / "taskmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        resource_manager = HyperdriveResourceManager(self.dir_manager,
-                                                     resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        resource_manager = HyperdriveResourceManager(
+            self.dir_manager,
+            resource_dir_method=self.dir_manager.get_task_temporary_dir
+        )
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting, TaskStatus.restarted]
         self.use_distributed_resources = use_distributed_resources
 
-        self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
+        self.comp_task_keeper = CompTaskKeeper(
+            dump_path / "taskkeeper",
+            persist=self.task_persistence
+        )
+
         if self.task_persistence:
             self.restore_tasks()
 
@@ -113,14 +140,14 @@ class TaskManager(TaskEventListener):
 
         return Task.build_task(builder)
 
-    def get_task_definition_dict(self, task: Task):
+    def get_task_definition_dict(self, task: Task) -> Dict[str, Any]:
         if isinstance(task, dict):
             return task
         definition = task.task_definition
         task_type = self.task_types[definition.task_type.lower()]
         return task_type.task_builder_type.build_dictionary(definition)
 
-    def add_new_task(self, task):
+    def add_new_task(self, task: Task) -> None:
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
@@ -130,7 +157,6 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
@@ -151,9 +177,8 @@ class TaskManager(TaskEventListener):
         self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
 
-
     @handle_task_key_error
-    def start_task(self, task_id):
+    def start_task(self, task_id: str) -> None:
         task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
 
@@ -161,7 +186,6 @@ class TaskManager(TaskEventListener):
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
-        task.task_status = TaskStatus.waiting
         task_state.status = TaskStatus.waiting
         task.register_listener(self)
 
@@ -170,7 +194,7 @@ class TaskManager(TaskEventListener):
             logger.info("Task {} added".format(task.header.task_id))
             self.notice_task_updated(task.header.task_id)
 
-    def dump_task(self, task_id):
+    def dump_task(self, task_id: str) -> None:
         logger.debug('DUMP TASK')
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
@@ -178,13 +202,13 @@ class TaskManager(TaskEventListener):
             logger.debug('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
-        except:
+        except Exception:
             logger.exception('DUMP ERROR task_id: %r task: %r state: %r', task_id, self.tasks.get(task_id, '<not found>'), self.tasks_states.get(task_id, '<not found>'))
             if filepath.exists():
                 filepath.unlink()
             raise
 
-    def restore_tasks(self):
+    def restore_tasks(self) -> None:
         logger.debug('RESTORE TASKS')
         for path in self.tasks_dir.iterdir():
             logger.debug('RESTORE TASKS %r', path)
@@ -203,9 +227,8 @@ class TaskManager(TaskEventListener):
             dispatcher.send(signal='golem.taskmanager', event='task_restored', task=task, state=state)
 
     @handle_task_key_error
-    def resources_send(self, task_id):
+    def resources_send(self, task_id: str) -> None:
         self.tasks_states[task_id].status = TaskStatus.waiting
-        self.tasks[task_id].task_status = TaskStatus.waiting
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
@@ -285,15 +308,16 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         return ctd, False, extra_data.should_wait
 
-    def get_tasks_headers(self):
+    def get_tasks_headers(self) -> List[TaskHeader]:
         ret = []
-        for t in list(self.tasks.values()):
-            if t.needs_computation() and t.task_status in self.activeStatus:
-                ret.append(t.header)
+        for tid, task in self.tasks.items():
+            if task.needs_computation() and \
+                    self.tasks_states[tid].status in self.activeStatus:
+                ret.append(task.header)
 
         return ret
 
-    def get_trust_mod(self, subtask_id):
+    def get_trust_mod(self, subtask_id: str):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
@@ -305,7 +329,7 @@ class TaskManager(TaskEventListener):
         for task in list(self.tasks.values()):
             task.header.signature = self.sign_task_header(task.header)
 
-    def sign_task_header(self, task_header):
+    def sign_task_header(self, task_header: TaskHeader):
         return self.keys_auth.sign(task_header.to_binary())
 
     def verify_subtask(self, subtask_id):
@@ -337,7 +361,7 @@ class TaskManager(TaskEventListener):
         subtask_state.value = value
 
     @handle_subtask_key_error
-    def get_value(self, subtask_id):
+    def get_value(self, subtask_id: str) -> int:
         """ Return value of a given subtask
         :param subtask_id:  id of a computed subtask
         :return long: price that should be paid for given subtask
@@ -452,13 +476,18 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
-    def get_progresses(self):
+    def get_progresses(self) -> Dict[str, LocalTaskStateSnapshot]:
         tasks_progresses = {}
 
         for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
-                ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0)) # FIXME in short_extra_data_repr should there be extra data
+                ltss = LocalTaskStateSnapshot(
+                    t.header.task_id,
+                    t.get_total_tasks(),
+                    t.get_active_tasks(),
+                    t.get_progress(),
+                    t.short_extra_data_repr(2200.0)
+                )  # FIXME in short_extra_data_repr should there be extra data
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses
@@ -469,13 +498,12 @@ class TaskManager(TaskEventListener):
         return task.get_resources(resource_header, resource_type)
 
     @handle_task_key_error
-    def restart_task(self, task_id):
+    def restart_task(self, task_id: str) -> None:
         logger.info("restarting task")
         self.dir_manager.clear_temporary(task_id)
         task = self.tasks[task_id]
 
         task.restart()
-        task.task_status = TaskStatus.restarted
         self.tasks_states[task_id].status = TaskStatus.restarted
         task.header.deadline = timeout_to_deadline(
             task.task_definition.full_task_timeout)
@@ -518,9 +546,8 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def abort_task(self, task_id):
+    def abort_task(self, task_id: str) -> None:
         self.tasks[task_id].abort()
-        self.tasks[task_id].task_status = TaskStatus.aborted
         self.tasks_states[task_id].status = TaskStatus.aborted
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
@@ -529,15 +556,13 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def pause_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.paused
+    def pause_task(self, task_id: str) -> None:
         self.tasks_states[task_id].status = TaskStatus.paused
 
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def resume_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.starting
+    def resume_task(self, task_id: str) -> None:
         self.tasks_states[task_id].status = TaskStatus.starting
 
         self.notice_task_updated(task_id)
