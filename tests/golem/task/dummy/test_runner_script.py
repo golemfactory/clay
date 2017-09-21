@@ -1,12 +1,10 @@
-import unittest
-
 import mock
 
 from golem.network.socketaddress import SocketAddress
 from golem.testutils import DatabaseFixture
 from tests.golem.task.dummy import runner, task
 
-@unittest.skip("It doesn't work, using new dummy task instead")
+
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
@@ -79,6 +77,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch('gevent.greenlet.Greenlet.join')
     @mock.patch('devp2p.app.BaseApp.start')
     @mock.patch('devp2p.app.BaseApp.stop')
+    @mock.patch('golem.core.common.config_logging')
     @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     def test_run_requesting_node(self, mock_reactor, enqueue_new_task, *_):
@@ -86,9 +85,11 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertTrue(enqueue_new_task.called)
         client.quit()
 
-    @mock.patch('gevent.greenlet.Greenlet.join')
+    @mock.patch('gevent.greenlet.Greenlet')
+    @mock.patch('gevent.hub.get_hub')
+    @mock.patch('golem.core.common.config_logging')
     @mock.patch("tests.golem.task.dummy.runner.reactor")
-    def test_run_computing_node(self, mock_reactor, *_):
+    def test_run_computing_node(self, *_):
         client = runner.run_computing_node(
             self.path, SocketAddress("127.0.0.1", 20200),
             "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9c07f9e"

@@ -156,8 +156,13 @@ def run_computing_node(datadir, seed_addr, seed_id, node_num, fail_after=None):
     client = create_client(datadir)
 
     client.start()
-    client.connect(seed_addr, seed_id)
     client.task_server.task_computer.support_direct_computation = True
+
+    if seed_addr and seed_id:
+        report("Connecting to requesting node at {}:{} ..."
+               .format(seed_addr.address, seed_addr.port))
+        client.connect(seed_addr, seed_id)
+
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     class DummyEnvironment(Environment):
@@ -173,22 +178,14 @@ def run_computing_node(datadir, seed_addr, seed_id, node_num, fail_after=None):
     dummy_env.accept_tasks = True
     client.environments_manager.add_environment(dummy_env)
 
-    report("Connecting to requesting node at {}:{} ..."
-           .format(seed_addr.address, seed_addr.port))
+    if fail_after:
+        gevent.spawn_later(
+            fail_after,
+            lambda *_: report("Failure"), shutdown()
+        )
 
-    def report_status():
-        t0 = time.time()
-        while True:
-            if fail_after and time.time() - t0 > fail_after:
-                report("Failure!")
-                shutdown()
-                reactor.callFromThread(reactor.stop)
-                return
-            gevent.sleep(1)
-
-    g = gevent.spawn(report_status)
     reactor.run()
-    g.join()
+    gevent.get_hub().join()
     return client  # Used in tests, with mocked reactor
 
 
@@ -301,7 +298,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
         for proc in all_procs:
             if proc.poll() is None:
-                proc.kill()
+                proc.terminate()
                 proc.wait()
                 del proc
 
