@@ -1,3 +1,4 @@
+# Inside utils can be imported only from inside of docker environment
 import os
 import random as rn
 

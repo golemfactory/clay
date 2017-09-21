@@ -1,3 +1,5 @@
+# Common utils can be imported from inside and outside of docker environment
+
 # copied from Blender build tools
 import os
 from collections import namedtuple
