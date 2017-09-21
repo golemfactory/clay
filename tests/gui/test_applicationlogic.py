@@ -758,3 +758,6 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         assert logic.run_test_task(ts.definition)
         assert not logic.run_test_task(None)
+
+    def test_recount_performance(self, *_):
+        assert self.logic.recount_performance(3) > 0.0

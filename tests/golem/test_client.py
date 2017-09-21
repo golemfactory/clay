@@ -13,6 +13,7 @@ from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -1003,6 +1004,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             description="port 1234: closed"
         )
         self.assertTrue(self.client.node.port_status)
+
+    def test_get_performance_values(self, *_):
+        expected_perf = {DefaultEnvironment.get_id(): 0.0}
+        assert self.client.get_performance_values() == expected_perf
 
     @classmethod
     def __new_incoming_peer(cls):

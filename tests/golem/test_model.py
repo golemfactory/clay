@@ -166,3 +166,16 @@ class TestPerformance(DatabaseFixture):
         # value doesn't have to be unique
         perf3 = m.Performance(environment_id="ENV3", value=138.18)
         perf3.save()
+
+    def test_update_or_create(self):
+        m.Performance.update_or_create("ENVX", 100)
+        env =  m.Performance.get(m.Performance.environment_id == "ENVX")
+        assert env.value == 100
+        m.Performance.update_or_create("ENVX", 200)
+        env = m.Performance.get(m.Performance.environment_id == "ENVX")
+        assert env.value == 200
+        m.Performance.update_or_create("ENVXXX", 300)
+        env = m.Performance.get(m.Performance.environment_id == "ENVXXX")
+        assert env.value == 300
+        env = m.Performance.get(m.Performance.environment_id == "ENVX")
+        assert env.value == 200
