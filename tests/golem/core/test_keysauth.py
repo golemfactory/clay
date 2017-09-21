@@ -117,7 +117,7 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         priv_key_file = join(self.path, "priv_rsa.key")
         pub_key = ek.get_public_key().exportKey()
         priv_key = ek._private_key.exportKey()
-        self.assertTrue(ek.save_to_files(priv_key_file, pub_key_file))
+        ek.save_to_files(priv_key_file, pub_key_file)
         with self.assertRaises(TypeError):
             ek.generate_new(None)
         ek.generate_new(5)
@@ -140,7 +140,8 @@ class TestRSAKeysAuth(TestWithKeysAuth):
                 pub_key_file = join(self.path, "pub_rsa_incorrect.key")
                 open(pub_key_file, 'w').close()
                 chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
+                with self.assertRaises(PermissionError):
+                    ek.save_to_files(priv_key_file, pub_key_file)
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):
@@ -212,7 +213,8 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                 pub_key_file = join(self.path, "pub_incorrect.hey")
                 open(pub_key_file, 'w').close()
                 chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
+                with self.assertRaises(PermissionError):
+                    ek.save_to_files(priv_key_file, pub_key_file)
 
     def test_fixed_sign_verify_elliptical(self):
         public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \

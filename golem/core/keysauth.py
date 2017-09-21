@@ -162,11 +162,10 @@ class KeysAuth(object):
         """
 
     @abstractmethod
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> None:
         """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
+        :param private_key_loc: where should private key be saved
+        :param public_key_loc: where should public key be saved
         """
         pass
 
@@ -312,11 +311,10 @@ class RSAKeysAuth(KeysAuth):
         self._set_and_save(priv_key, pub_key)
         return True
 
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> None:
         """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
+        :param private_key_loc: where should private key be saved
+        :param public_key_loc: where should public key be saved
         """
         from os.path import isdir, dirname
         from os import mkdir
@@ -324,23 +322,15 @@ class RSAKeysAuth(KeysAuth):
         def make_dir(file_path):
             dir_name = dirname(file_path)
             if not isdir(dir_name):
-                try:
-                    mkdir(dir_name)
-                except OSError:
-                    return False
-            return True
+                mkdir(dir_name)
 
-        if not (make_dir(private_key_loc) and make_dir(public_key_loc)):
-            return False
+        make_dir(private_key_loc)
+        make_dir(public_key_loc)
 
-        try:
-            with open(private_key_loc, 'wb') as f:
-                f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key.exportKey())
-                return True
-        except IOError:
-            return False
+        with open(private_key_loc, 'wb') as f:
+            f.write(self._private_key.exportKey('PEM'))
+        with open(public_key_loc, 'wb') as f:
+            f.write(self.public_key.exportKey())
 
     @staticmethod
     def _load_private_key_from_file(file_name):
@@ -503,20 +493,15 @@ class EllipticalKeysAuth(KeysAuth):
         self._set_and_save(priv_key, pub_key)
         return True
 
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> None:
         """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
+        :param private_key_loc: where should private key be saved
+        :param public_key_loc: where should public key be saved
         """
-        try:
-            with open(private_key_loc, 'wb') as f:
-                f.write(self._private_key)
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key)
-            return True
-        except IOError:
-            return False
+        with open(private_key_loc, 'wb') as f:
+            f.write(self._private_key)
+        with open(public_key_loc, 'wb') as f:
+            f.write(self.public_key)
 
     def _set_and_save(self, priv_key, pub_key):
         priv_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)

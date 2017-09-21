@@ -1,5 +1,7 @@
 from typing import Dict, Any
 
+from autobahn.wamp.exception import ApplicationError
+
 from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
@@ -23,7 +25,6 @@ class Account:
         'pubkey',
         help="The file the public key will be saved to"
     )
-
 
     @command(help="Display account & financial info")
     def info(self) -> Dict[str, Any]:
@@ -67,9 +68,10 @@ class Account:
             private_key_path=privkey,
             public_key_path=pubkey
         )
-        ret = sync_wait(deferred)
-        if ret is False:
-            print("An error occurred...")
+        try:
+            sync_wait(deferred)
+        except ApplicationError as err:
+            print("Saving the results failed: {}".format(err.args[1]))
 
 
 def _fmt(value: float, unit: str = "GNT") -> str:
