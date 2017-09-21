@@ -1,6 +1,6 @@
-
 import json
 from typing import Any, Optional
+from uuid import uuid4
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
@@ -154,6 +154,7 @@ class Tasks:
         with open(file_name) as f:
             self.create_from_json(f.read())
 
+<<<<<<< HEAD
     @command(argument=outfile, help="Dump a task template")
     def template(self, outfile: Optional[str]) -> Any:
         template = TaskDefinition()
@@ -164,11 +165,31 @@ class Tasks:
                 print(template_str, file=dest)
         else:
             print(template_str)
+=======
+    @command(arguments=(id_req, outfile), help="Dump an existing task")
+    def dump(self, id: str, outfile: Optional[str]) -> None:
+        task_dict = sync_wait(self.client.get_task(id))
+        self.__dump_dict(task_dict, outfile)
+
+    @command(argument=outfile, help="Dump a task template")
+    def template(self, outfile: Optional[str]) -> None:
+        template = TaskDefinition()
+        self.__dump_dict(template.to_dict(), outfile)
+>>>>>>> provider_requestor_comms
 
     @doc("Show statistics for tasks")
     def stats(self):
         deferred = Tasks.client.get_task_stats()
         return sync_wait(deferred)
+
+    @staticmethod
+    def __dump_dict(dictionary: dict, outfile: Optional[str]) -> None:
+        template_str = json.dumps(dictionary, indent=4)
+        if outfile:
+            with open(outfile, 'w') as dest:
+                print(template_str, file=dest)
+        else:
+            print(template_str)
 
     @staticmethod
     def __progress_str(progress):
@@ -180,6 +201,11 @@ class Tasks:
 
     def create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
+<<<<<<< HEAD
+=======
+        # FIXME CHANGE TASKI ID
+        dictionary['id'] = str(uuid4())
+>>>>>>> provider_requestor_comms
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)
 

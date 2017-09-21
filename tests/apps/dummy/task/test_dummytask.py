@@ -99,7 +99,6 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
 
 class TestDummyTaskBuilder(TestCase):
-    # TODO do the input data validation
 
     def test_constants(self):
         assert DummyTaskBuilder.TASK_CLASS == DummyTask
@@ -133,11 +132,11 @@ class TestDummyTaskBuilder(TestCase):
 
             return DummyTaskBuilder.build_full_definition(DummyTaskTypeInfo(None, None), dictionary)  # noqa
 
-        difficulty = 20
+        difficulty = "0xf"
         sbs = 10
         def_ = get_def(difficulty, sbs)
 
-        assert def_.options.difficulty == difficulty
+        assert def_.options.difficulty == int(difficulty, 16)
         assert def_.options.subtask_data_size == sbs
 
         with self.assertRaises(Exception):

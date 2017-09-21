@@ -5,7 +5,7 @@ import posixpath
 import shutil
 import threading
 from os import path
-from typing import List, Dict
+from typing import Dict
 
 import docker.errors
 

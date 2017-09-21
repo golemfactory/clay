@@ -4,7 +4,7 @@ import logging
 import os
 import uuid
 from enum import Enum
-from typing import Type, Dict
+from typing import Type
 
 from ethereum.utils import denoms
 

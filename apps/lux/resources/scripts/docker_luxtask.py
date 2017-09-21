@@ -1,13 +1,14 @@
 from __future__ import print_function
 
-from multiprocessing import cpu_count
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+from multiprocessing import cpu_count
 
 import params  # This module is generated before this script is run
+
 
 LUXRENDER_COMMAND = "luxconsole"
 OUTPUT_DIR = "/golem/output"

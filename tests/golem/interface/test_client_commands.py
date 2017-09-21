@@ -1,4 +1,6 @@
 import json
+import io
+
 import unittest
 import uuid
 from collections import namedtuple
@@ -403,8 +405,15 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
+<<<<<<< HEAD
     def test_create(self) -> None:
         client = self.client
+=======
+    @patch("golem.interface.client.tasks.uuid4")
+    def test_create(self, mock_uuid) -> None:
+        client = self.client
+        mock_uuid.return_value = "new_uuid"
+>>>>>>> provider_requestor_comms
 
         definition = TaskDefinition()
         definition.task_name = "The greatest task ever!"
@@ -413,13 +422,51 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
             tasks.create_from_json(def_str)
+<<<<<<< HEAD
 
             client.create_task.assert_called_with(json.loads(def_str))
+=======
+            task_def = json.loads(def_str)
+            task_def['id'] = "new_uuid"
+            client.create_task.assert_called_with(task_def)
+>>>>>>> provider_requestor_comms
 
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(read_data='{}')):
                 tasks.create("foo")
+<<<<<<< HEAD
                 client.create_task.assert_called_with(json.loads('{}'))
+=======
+                task_def = json.loads('{"id": "new_uuid"}')
+                client.create_task.assert_called_with(task_def)
+
+    def test_template(self) -> None:
+        tasks = Tasks()
+
+        with patch('sys.stdout', io.StringIO()) as mock_io:
+            tasks.template(None)
+            output = mock_io.getvalue()
+
+        self.assertIn("bid", output)
+        self.assertIn("0.0", output)
+        self.assertIn('"subtask_timeout": "0:00:00"', output)
+
+        self.assertEqual(json.loads(output), TaskDefinition().to_dict())
+
+        temp = self.temp_file_name("test_template")
+        tasks.template(temp)
+        with open(temp) as f:
+            content = f.read()
+            self.assertEqual(content, output)
+
+        with client_ctx(Tasks, self.client):
+            Tasks.client.get_task.return_value = TaskDefinition().to_dict()
+            tasks.dump('id', temp)
+
+        with open(temp) as f:
+            content_dump = f.read()
+            self.assertEqual(content, content_dump)
+>>>>>>> provider_requestor_comms
 
     def test_show(self):
         client = self.client

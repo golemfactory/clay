@@ -73,9 +73,15 @@ class DummyTaskDefinition(TaskDefinition):
         # makes sense when len(..) > 1
         # common_data_path = os.path.commonpath(self.shared_data_files)
         # but we only have 1 file here
-        common_data_path = os.path.dirname(list(self.shared_data_files)[0])
+        data_path = os.path.join(self.tmp_dir, "data")
+        data_file = list(self.shared_data_files)[0]
+        if os.path.exists(data_path):
+            raise Exception("Error adding to resources: data path: {} exists"
+                            .format(data_path))
 
-        symlink_or_copy(common_data_path, os.path.join(self.tmp_dir, "data"))
+        os.mkdir(data_path)
+        symlink_or_copy(data_file,
+                        os.path.join(data_path, os.path.basename(data_file)))
 
         self.resources = set(ls_R(self.tmp_dir))
 
