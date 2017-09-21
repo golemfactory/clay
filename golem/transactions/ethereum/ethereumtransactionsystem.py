@@ -45,7 +45,7 @@ class EthereumTransactionSystem(TransactionSystem):
         )
 
         super(EthereumTransactionSystem, self).__init__(
-            incomes_keeper_class=EthereumIncomesKeeper(
+            incomes_keeper=EthereumIncomesKeeper(
                 payment_processor)
         )
 

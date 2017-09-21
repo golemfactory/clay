@@ -9,20 +9,20 @@ class TransactionSystem(object):
     """ Transaction system.
     Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, payments_keeper_class=PaymentsKeeper(),
-                 incomes_keeper_class=IncomesKeeper()):
+    def __init__(self, payments_keeper=PaymentsKeeper(),
+                 incomes_keeper=IncomesKeeper()):
         """ Create new transaction system instance.
-        :param payments_keeper_class:
+        :param payments_keeper:
         default PaymentsKeeper, payment keeper class,
         an instance of this class
         while be used as a payment keeper
         """
 
         # Keeps information about payments to send
-        self.payments_keeper = payments_keeper_class
+        self.payments_keeper = payments_keeper
 
         # Keeps information about received payments
-        self.incomes_keeper = incomes_keeper_class
+        self.incomes_keeper = incomes_keeper
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask.
