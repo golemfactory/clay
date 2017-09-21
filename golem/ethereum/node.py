@@ -65,7 +65,7 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.6.1'
-    MAX_GETH_VERSION = '1.7.0'
+    MAX_GETH_VERSION = '1.7.999'
     IPC_CONNECTION_TIMEOUT = 10
 
     SUBPROCESS_PIPES = dict(
