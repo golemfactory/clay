@@ -1,7 +1,6 @@
 import os
 from PIL import Image
-
-from mock import patch, Mock
+import unittest.mock as mock
 
 from golem.core.common import is_linux
 from golem.task.taskbase import Task
@@ -36,22 +35,22 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.res_y = 600
         assert rv._get_part_size(dict()) == (800, 600)
 
-    @patch("apps.rendering.task.verificator.LocalComputer")
+    @mock.patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()
         # Result us not a file
-        assert rv.verify("Subtask1", dict(), ["file1"], Mock()) == \
+        assert rv.verify("Subtask1", dict(), ["file1"], mock.Mock()) == \
                SubtaskVerificationState.WRONG_ANSWER
 
         rv.res_x = 80
         rv.res_y = 60
         rv.total_tasks = 30
         # No data
-        assert rv.verify("Subtask1", {"start_task": 3}, [], Mock()) == \
+        assert rv.verify("Subtask1", {"start_task": 3}, [], mock.Mock()) == \
                          SubtaskVerificationState.WRONG_ANSWER
 
         # Result is not an image
-        assert rv.verify("Subtask1", {"start_task": 3}, ["file1"], Mock()) == \
+        assert rv.verify("Subtask1", {"start_task": 3}, ["file1"], mock.Mock()) == \
                SubtaskVerificationState.WRONG_ANSWER
 
         img_path = os.path.join(self.path, "img1.png")
@@ -69,7 +68,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
 
         # Proper simple verification - just check if images have proper sizes
         assert rv.verify("Subtask1", {"start_task": 3},
-                         [img_path, img_path2], Mock()) == \
+                         [img_path, img_path2], mock.Mock()) == \
                SubtaskVerificationState.VERIFIED
 
         # ADVANCE VERIFICATION
@@ -85,7 +84,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         computer_mock.return_value.tt.result.get.return_value = \
             self.additional_dir_content([3])
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
-                         [img_path], Mock()) == \
+                         [img_path], mock.Mock()) == \
                SubtaskVerificationState.WRONG_ANSWER
 
         # Properly verified
@@ -94,7 +93,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         assert rv.verify("Subtask1", {"start_task": 3,
                                       "output_format": "png",
                                       "node_id": "ONENODE"},
-                         [img_path], Mock()) == \
+                         [img_path], mock.Mock()) == \
                SubtaskVerificationState.VERIFIED
 
         if is_linux() and os.geteuid() == 0:
@@ -102,7 +101,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
             assert rv.verify("Subtask1", {"start_task": 3,
                                           "output_format": "png",
                                           "node_id": "ONENODE"},
-                             [img_path], Mock()) == \
+                             [img_path], mock.Mock()) == \
                    SubtaskVerificationState.UNKNOWN
 
     def test_get_part_img_size(self):
@@ -155,7 +154,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
             rv._RenderingVerificator__box_render_error("some error")
             assert any("some error" in log for log in l.output)
 
-    @patch.multiple(Task, __abstractmethods__=frozenset())
+    @mock.patch.multiple(Task, __abstractmethods__=frozenset())
     def test_run_task_with_errors(self):
         rv = RenderingVerificator()
         rv.root_path = self.path
@@ -164,7 +163,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         class MockTask(Task):
             pass
 
-        assert rv._run_task(extra_data, MockTask(Mock(), Mock(), Mock())) is None
+        assert rv._run_task(extra_data, MockTask(mock.Mock(), mock.Mock(), mock.Mock())) is None
 
 
 class TestFrameRenderingVerificator(TempDirFixture):
@@ -172,22 +171,22 @@ class TestFrameRenderingVerificator(TempDirFixture):
         frv = FrameRenderingVerificator()
         frv.total_tasks = 20
         frv.use_frames = False
-        frv._check_files("id1", {"frames": [3]}, [], Mock())
+        frv._check_files("id1", {"frames": [3]}, [], mock.Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
         frv.use_frames = True
         frv.frames = [3, 4, 5, 6]
-        frv._check_files("id1", {"frames": [3]}, [], Mock())
+        frv._check_files("id1", {"frames": [3]}, [], mock.Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
         frv.total_tasks = 2
-        frv._check_files("id1", {"frames": [3]}, [], Mock())
+        frv._check_files("id1", {"frames": [3]}, [], mock.Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
-        frv._check_files("id1", {"frames": [3, 4]}, ["file1"], Mock())
+        frv._check_files("id1", {"frames": [3, 4]}, ["file1"], mock.Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
-        frv._check_files("id1", {"frames": [3, 4], "start_task": 1}, ["file1", "file2"], Mock())
+        frv._check_files("id1", {"frames": [3, 4], "start_task": 1}, ["file1", "file2"], mock.Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
     def test_get_part_img_size(self):

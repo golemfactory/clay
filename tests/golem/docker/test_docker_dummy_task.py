@@ -1,10 +1,9 @@
+import json
 import logging
 import os
 import shutil
+import unittest.mock as mock
 from os import makedirs, path, remove
-
-import json
-from mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -125,12 +124,12 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
-        self.node.client.start = Mock()
+        self.node.client.start = mock.Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client, Mock(),
+        task_server = TaskServer(mock.Mock(), ccd, mock.Mock(), self.node.client, mock.Mock(),
                                  use_docker_machine_manager=False)
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
@@ -235,8 +234,8 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         computer = LocalComputer(
             task,
             self.tempdir,
-            Mock(),
-            Mock(),
+            mock.Mock(),
+            mock.Mock(),
             lambda: ctd
         )
 
@@ -268,7 +267,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
     def test_dummytask_TaskTester_should_pass(self):
         task = self._test_task()
 
-        computer = TaskTester(task, self.tempdir, Mock(), Mock())
+        computer = TaskTester(task, self.tempdir, mock.Mock(), mock.Mock())
         computer.run()
         computer.tt.join(60.0)
 

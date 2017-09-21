@@ -1,4 +1,4 @@
-import mock
+import unittest.mock as mock
 from pydispatch import dispatcher
 import random
 

@@ -3,8 +3,8 @@
 from golem.core.common import config_logging
 from golem.testutils import PEP8MixIn
 import logging
-import mock
 import unittest
+import unittest.mock as mock
 
 
 config_logging(suffix='_test_logging')

@@ -1,8 +1,7 @@
 import ntpath
 import os
 from os import makedirs, path, remove
-
-from mock import Mock, patch, ANY
+import unittest.mock as mock
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
@@ -102,7 +101,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         rt.task_resources = [res1, res2]
         assert rt._get_working_directory() == "../.."
 
-    @patch("apps.rendering.task.renderingtask.is_windows")
+    @mock.patch("apps.rendering.task.renderingtask.is_windows")
     def test_paths2(self, mock_is_windows):
         rt = self.task
         npath = "\\".join(path.split(self.path))
@@ -110,7 +109,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         res2 = "{}\\dir1\\dir2\\name2".format(npath)
         rt.task_resources = [res1, res2]
         mock_is_windows.return_value = True
-        with patch("apps.rendering.task.renderingtask.os.path", ntpath):
+        with mock.patch("apps.rendering.task.renderingtask.os.path", ntpath):
             assert rt._get_working_directory() == "../.."
 
     def test_remove_from_preview(self):
@@ -235,18 +234,18 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert args[4] == '"{}"'.format(output_file_name)
             assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
 
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
+             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
             self.task._put_collected_files_together(output_file_name, files, arg)
 
             assert exec_cmd.call_args[0][0][0].endswith('.exe')
-            exec_cmd.assert_called_with([ANY, arg,
+            exec_cmd.assert_called_with([mock.ANY, arg,
                                          str(self.task.res_x), str(self.task.res_y),
                                          output_file_name] + files)
 
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
+             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
             self.task._put_collected_files_together(output_file_name, files, arg)
 
@@ -316,9 +315,9 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_get_task_collector_path(self):
         assert path.isfile(self.task._get_task_collector_path())
 
-        mock_is_windows = Mock()
+        mock_is_windows = mock.Mock()
         mock_is_windows.return_value = False
-        with patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
+        with mock.patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
             linux_path = self.task._get_task_collector_path()
             mock_is_windows.return_value = True
 
@@ -373,7 +372,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             assert builder._calculate_total(defaults) == 33
 
     def test_build_definition(self):
-        defaults_mock = Mock()
+        defaults_mock = mock.Mock()
         defaults_mock.main_program_file = "src_code.py"
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
                                Options, RenderingTaskBuilder)

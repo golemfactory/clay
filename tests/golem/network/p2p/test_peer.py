@@ -1,8 +1,7 @@
 import copy
-import unittest
-
 from ethereum.utils import encode_hex
-from mock import Mock
+import unittest
+import unittest.mock as mock
 
 from golem.network.p2p.peer import COMPUTATION_CAPABILITY, GolemPeer
 from golem.network.p2p.peermanager import GolemPeerManager
@@ -11,7 +10,7 @@ from golem.network.p2p.peermanager import GolemPeerManager
 class TestGolemPeer(unittest.TestCase):
 
     def test_capabilities(self):
-        app = Mock(
+        app = mock.Mock(
             config=dict(
                 node=dict(
                     privkey_hex=encode_hex(b'1' * 32),
@@ -23,12 +22,12 @@ class TestGolemPeer(unittest.TestCase):
         )
 
         peer_manager = GolemPeerManager(app)
-        peer = GolemPeer(peer_manager, Mock())
+        peer = GolemPeer(peer_manager, mock.Mock())
 
         wrapped = copy.copy(peer_manager)
         wrapped.computation_capability = True
 
-        peer_comp = GolemPeer(wrapped, Mock())
+        peer_comp = GolemPeer(wrapped, mock.Mock())
 
         self.assertFalse(peer.computation_capability)
         self.assertEqual(peer.capabilities, [])

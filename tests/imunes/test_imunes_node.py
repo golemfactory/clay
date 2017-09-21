@@ -1,6 +1,6 @@
 import unittest
+import unittest.mock as mock
 
-from mock import patch
 from click.testing import CliRunner
 
 from golem.testutils import DatabaseFixture
@@ -17,8 +17,8 @@ from twisted.internet import reactor  # noqa
 class TestNode(DatabaseFixture):
 
     @unittest.expectedFailure
-    @patch('golem.client.Client')
-    @patch('twisted.internet.reactor')
+    @mock.patch('golem.client.Client')
+    @mock.patch('twisted.internet.reactor')
     def test_blender_enabled(self, mock_reactor, mock_client):
         result = CliRunner().invoke(immunes_start, ['--nogui', '-d', self.path])
         assert not result.exception
@@ -33,8 +33,8 @@ class TestNode(DatabaseFixture):
         self.assertTrue((BlenderEnvironment in env_types))
 
     @unittest.expectedFailure
-    @patch('golem.client.Client')
-    @patch('twisted.internet.reactor')
+    @mock.patch('golem.client.Client')
+    @mock.patch('twisted.internet.reactor')
     def test_blender_disabled(self, mock_reactor, mock_client):
         runner = CliRunner()
         result = runner.invoke(immunes_start, ['--no-blender', '--nogui', '-d', self.path])
@@ -49,8 +49,8 @@ class TestNode(DatabaseFixture):
         self.assertTrue(BlenderEnvironment not in env_types)
 
     @unittest.expectedFailure
-    @patch('gui.node.Node.initialize')
-    @patch('gui.node.Node.run', autospec=True)
+    @mock.patch('gui.node.Node.initialize')
+    @mock.patch('gui.node.Node.run', autospec=True)
     def test_public_address(self, mock_run, mock_initialize):
         public_address = '1.0.0.1'
         runner = CliRunner()

@@ -1,7 +1,6 @@
 import os
 import unittest
-
-import mock
+import unittest.mock as mock
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask

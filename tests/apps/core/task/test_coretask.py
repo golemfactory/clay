@@ -1,11 +1,10 @@
 import os
 import shutil
 import unittest
+import unittest.mock as mock
 import zipfile
 import zlib
 from copy import copy, deepcopy
-
-from mock import MagicMock, Mock
 
 from golem.core.common import is_linux, timeout_to_deadline
 from golem.core.fileshelper import outer_dir_path
@@ -28,7 +27,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     # CoreTask is abstract, so in order to be able to instantiate it
     # we have to override some stuff
     class CoreTaskDeabstracted(CoreTask):
-        ENVIRONMENT_CLASS = MagicMock()
+        ENVIRONMENT_CLASS = mock.MagicMock()
         def query_extra_data(self, *args, **kwargs):
             pass
         def short_extra_data_repr(self, extra_data):
@@ -64,7 +63,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             CoreTaskDeabstacted(task_def, "node_name")
 
         class CoreTaskDeabstractedEnv(CoreTask):
-            ENVIRONMENT_CLASS = MagicMock()
+            ENVIRONMENT_CLASS = mock.MagicMock()
             def query_extra_data(self, *args, **kwargs):
                 pass
             def short_extra_data_repr(self, extra_data):
@@ -263,7 +262,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.num_tasks_received = 1
         task.last_task = 8
         task.num_failed_subtasks = 2
-        task.counting_nodes = MagicMock()
+        task.counting_nodes = mock.MagicMock()
 
         task.subtasks_given["xyz"] = {'status': SubtaskStatus.finished,
                                       'start_task': 1,
@@ -468,7 +467,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     def test_create_path_in_load_task_result(self):
         c = self._get_core_task()
         assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
-        c.load_task_results(MagicMock(), ResultType.DATA, "subtask1")
+        c.load_task_results(mock.MagicMock(), ResultType.DATA, "subtask1")
         assert os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
 
     def test_new_compute_task_def(self):
@@ -476,7 +475,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c.header.subtask_timeout = 1
 
         hash = "aaa"
-        extra_data = Mock()
+        extra_data = mock.Mock()
         working_directory = "."
         perf_index = 0
 
@@ -533,7 +532,8 @@ class TestTaskTypeInfo(unittest.TestCase):
 
 class TestCoreTaskBuilder(unittest.TestCase):
     def _get_core_task_builder(self):
-        return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())
+        return CoreTaskBuilder("Node1", mock.MagicMock(), "path",
+            mock.MagicMock())
 
     def test_init(self):
         builder = self._get_core_task_builder()
@@ -542,7 +542,7 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert builder.task_definition is not None
         assert builder.node_name == "Node1"
         assert builder.root_path == "path"
-        assert isinstance(builder.dir_manager, MagicMock)
+        assert isinstance(builder.dir_manager, mock.MagicMock)
 
     def test_get_task_kwargs(self):
         builder = self._get_core_task_builder()
@@ -556,7 +556,7 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert kwargs["arg2"] == 1380
         assert kwargs["arg3"] == c
         assert kwargs["node_name"] == "Node1"
-        assert isinstance(kwargs["task_definition"], MagicMock)
+        assert isinstance(kwargs["task_definition"], mock.MagicMock)
 
     def test_build(self):
         builder = self._get_core_task_builder()

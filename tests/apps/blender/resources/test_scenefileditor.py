@@ -1,10 +1,8 @@
 import builtins
 from importlib import reload
-
-import mock
+import unittest.mock as mock
 
 from apps.blender.resources import scenefileeditor
-
 from golem.testutils import TempDirFixture
 
 

@@ -1,4 +1,4 @@
-from mock import Mock
+import unittest.mock as mock
 
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -12,7 +12,7 @@ class TestDummyTaskCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestDummyTaskCustomizer, self).setUp()
         self.logic = GuiApplicationLogic()
-        self.gui = Gui(Mock(), AppMainWindow)
+        self.gui = Gui(mock.Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestDummyTaskCustomizer, self).tearDown()

@@ -1,7 +1,6 @@
-import unittest
-
-from mock import MagicMock, Mock, patch
 from twisted.internet.defer import Deferred
+import unittest
+import unittest.mock as mock
 
 from gui.application import Gui
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
@@ -10,14 +9,14 @@ from gui.view.dialog import EnvironmentsDialog
 from gui.view.envtableelem import EnvTableElem
 
 
-@patch('gui.view.dialog.Dialog.show')
+@mock.patch('gui.view.dialog.Dialog.show')
 class TestEnvironmentsDialogCustomizer(unittest.TestCase):
 
     def setUp(self):
         super(TestEnvironmentsDialogCustomizer, self).setUp()
-        self.logic = MagicMock()
+        self.logic = mock.MagicMock()
         self.gui = Gui(self.logic, AppMainWindow)
-        self.gui.main_window.show = MagicMock()
+        self.gui.main_window.show = mock.MagicMock()
         self.dialog = EnvironmentsDialog(self.gui.main_window.window)
 
         self.env_count = 3
@@ -31,7 +30,7 @@ class TestEnvironmentsDialogCustomizer(unittest.TestCase):
         deferred = Deferred()
         deferred.callback(self.envs)
 
-        self.logic.get_environments = Mock()
+        self.logic.get_environments = mock.Mock()
         self.logic.get_environments.return_value = deferred
 
     def tearDown(self):
@@ -44,8 +43,8 @@ class TestEnvironmentsDialogCustomizer(unittest.TestCase):
         assert customizer.gui.ui.tableWidget.rowCount() == self.env_count
 
     def test_task_table_row_clicked(self, *_):
-        self.logic.disable_environment = Mock()
-        self.logic.enable_environment = Mock()
+        self.logic.disable_environment = mock.Mock()
+        self.logic.enable_environment = mock.Mock()
 
         customizer = EnvironmentsDialogCustomizer(self.dialog, self.logic)
         customizer._setup_connections()

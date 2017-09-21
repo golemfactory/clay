@@ -1,9 +1,9 @@
 import os
 import time
 import unittest
+import unittest.mock as mock
 import uuid
 
-from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from golem.client import Client, ClientTaskComputerEventListener
@@ -44,7 +44,7 @@ def random_hex_str() -> str:
 
 
 class TestCreateClient(TestDirFixture):
-    @patch('twisted.internet.reactor', create=True)
+    @mock.patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
         Peer.dumb_remote_timeout = 0.1
@@ -59,8 +59,8 @@ class TestCreateClient(TestDirFixture):
         self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
-    @patch('golem.client.filelock', new=None)
-    @patch('twisted.internet.reactor', create=True)
+    @mock.patch('golem.client.filelock', new=None)
+    @mock.patch('twisted.internet.reactor', create=True)
     def test_config_override_invalid(self, *_):
         """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
@@ -77,8 +77,8 @@ class TestCreateClient(TestDirFixture):
             )
 
 
-@patch('signal.signal')
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@mock.patch('signal.signal')
+@mock.patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break
@@ -109,7 +109,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             ) for i in range(n + 1)
         ]
 
-        db = Mock()
+        db = mock.Mock()
         db.get_newest_payment.return_value = reversed(payments)
 
         self.client.transaction_system.payments_keeper.db = db
@@ -188,7 +188,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    @patch(
+    @mock.patch(
         'golem.transactions.ethereum.ethereumtransactionsystem.'
         'EthereumTransactionSystem.sync'
     )
@@ -220,12 +220,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             return d
 
         c = self.client
-        c.task_server = Mock()
+        c.task_server = mock.Mock()
         c.task_server.get_task_computer_root.return_value = unique_dir()
         c.task_server.task_manager.get_task_manager_root.return_value = \
             unique_dir()
 
-        c.resource_server = Mock()
+        c.resource_server = mock.Mock()
         c.resource_server.get_distributed_resource_root.return_value = \
             unique_dir()
 
@@ -294,7 +294,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         ip = '127.0.0.1'
         port = 40102
 
-        node = MagicMock()
+        node = mock.MagicMock()
         node.prv_addr = ip
         node.prv_port = port
 
@@ -309,16 +309,16 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         c = self.client
-        c.task_server = MagicMock()
+        c.task_server = mock.MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
-        c.services['peermanager'] = MagicMock(peers=["ABC", "DEF"])
-        c.transaction_system = MagicMock()
+        c.services['peermanager'] = mock.MagicMock(peers=["ABC", "DEF"])
+        c.transaction_system = mock.MagicMock()
         status = c.get_status()
         self.assertIn("Waiting for tasks", status)
         self.assertIn("Active peers in network: 2", status)
-        mock1 = MagicMock()
+        mock1 = mock.MagicMock()
         mock1.get_progress.return_value = 0.25
-        mock2 = MagicMock()
+        mock2 = mock.MagicMock()
         mock2.get_progress.return_value = 0.33
         c.task_server.task_computer.get_progresses.return_value = \
             {"id1": mock1, "id2": mock2}
@@ -352,7 +352,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
-    @patch('golem.client.log')
+    @mock.patch('golem.client.log')
     def test_do_work(self, log, *_):
         # FIXME: Pylint has real problems here
         # https://github.com/PyCQA/pylint/issues/1643
@@ -367,12 +367,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
 
         c = self.client
-        c.sync = Mock()
-        c.services['golem_service'] = Mock()
-        c.task_server = Mock()
-        c.resource_server = Mock()
-        c.ranking = Mock()
-        c.check_payments = Mock()
+        c.sync = mock.Mock()
+        c.services['golem_service'] = mock.Mock()
+        c.task_server = mock.Mock()
+        c.resource_server = mock.Mock()
+        c.ranking = mock.Mock()
+        c.check_payments = mock.Mock()
 
         # Test calls with golemservice
         c._Client__do_work()
@@ -400,8 +400,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         assert log.exception.call_count == 5
 
-    @patch('golem.client.log')
-    @patch('golem.client.dispatcher.send')
+    @mock.patch('golem.client.log')
+    @mock.patch('golem.client.dispatcher.send')
     def test_publish_events(self, send, log, *_):
         self.client = Client(
             datadir=self.path,
@@ -417,8 +417,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             d.callback((1, 2, 3))
             return d
 
-        c.task_server = Mock()
-        c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
+        c.task_server = mock.Mock()
+        c.task_server.task_sessions = {str(uuid.uuid4()): mock.Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.current_computations = []
@@ -432,7 +432,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.config_desc.node_snapshot_interval = 1
         c.config_desc.network_check_interval = 1
 
-        c._publish = Mock()
+        c._publish = mock.Mock()
 
         past_time = time.time() - 10**10
         future_time = time.time() + 10**10
@@ -467,7 +467,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             raise Exception('Test exception')
 
         c.get_balance = raise_exc
-        c._publish = Mock()
+        c._publish = mock.Mock()
         send.call_count = 0
 
         c.last_nss_time = past_time
@@ -514,7 +514,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
 
-        self.client.task_server = Mock()
+        self.client.task_server = mock.Mock()
         self.client.restart_frame_subtasks('tid', 10)
 
         self.client.task_server.task_manager.restart_frame_subtasks.\
@@ -541,7 +541,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
-    @patch('golem.client.SystemMonitor')
+    @mock.patch('golem.client.SystemMonitor')
     def test_start_stop(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -558,8 +558,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert not self.client.publish_task.running
 
 
-@patch('signal.signal')
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@mock.patch('signal.signal')
+@mock.patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
@@ -571,8 +571,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             use_docker_machine_manager=False,
             use_monitor=False
         )
-        client.sync = Mock()
-        client.keys_auth = Mock()
+        client.sync = mock.Mock()
+        client.keys_auth = mock.Mock()
         client.keys_auth.public_key = decode_hex(
             'e5b195e643aea2c0144f469e8e5297a598316459a0a5e6558278b39b969'
             'fadea0adeed798c4258251a30461a6f639bd2cc69dce793d8c3936c1e61'
@@ -581,17 +581,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.keys_auth.key_id = client.keys_auth.public_key
 
         client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
-                                        Mock(), client, Mock(),
+                                        mock.Mock(), client, mock.Mock(),
                                         use_docker_machine_manager=False)
         client.task_server = TaskServer(
             Node(),
             ClientConfigDescriptor(),
             client.keys_auth,
             client,
-            Mock(),
+            mock.Mock(),
             use_docker_machine_manager=False
         )
-        client.monitor = Mock()
+        client.monitor = mock.Mock()
 
         self.client = client
 
@@ -624,16 +624,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
              "num_subtasks": 5}
         ) == 1875
 
-    @patch('golem.client.async_run', side_effect=mock_async_run)
+    @mock.patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         c = self.client
 
-        c.resource_server = Mock()
-        c.task_server.task_manager.start_task = Mock()
+        c.resource_server = mock.Mock()
+        c.task_server.task_manager.start_task = mock.Mock()
         c.task_server.task_manager.listen_address = '127.0.0.1'
         c.task_server.task_manager.listen_port = 40103
 
-        task = Mock()
+        task = mock.Mock()
         task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
 
@@ -656,7 +656,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         assert c.task_server.task_manager.start_task.called
 
-    @patch('golem.client.async_run', side_effect=mock_async_run)
+    @mock.patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task_dict(self, *_):
         t_dict = {
             'resources': [
@@ -680,11 +680,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         }
 
         c = self.client
-        c.resource_server = Mock()
-        c.keys_auth = Mock()
+        c.resource_server = mock.Mock()
+        c.keys_auth = mock.Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-        c.task_server.task_manager.add_new_task = Mock()
-        c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.add_new_task = mock.Mock()
+        c.task_server.task_manager.start_task = mock.Mock()
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
@@ -702,7 +702,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         frames = c.get_subtasks_frames(task_id)
         assert frames is not None
 
-    @patch('golem.client.async_run')
+    @mock.patch('golem.client.async_run')
     def test_get_balance(self, async_run, *_):
         c = self.client
 
@@ -714,7 +714,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         async_run.return_value = deferred
 
-        c.transaction_system = Mock()
+        c.transaction_system = mock.Mock()
         c.transaction_system.get_balance.return_value = result
 
         balance = sync_wait(c.get_balance())
@@ -741,11 +741,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
         task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark = Mock()
+        task_computer.run_blender_benchmark = mock.Mock()
         task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_lux_benchmark = Mock()
+        task_computer.run_lux_benchmark = mock.Mock()
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark = mock.Mock()
         task_computer.run_dummytask_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
@@ -777,11 +777,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_run_benchmarks(self, *_):
         task_computer = self.client.task_server.task_computer
-        task_computer.run_lux_benchmark = Mock()
+        task_computer.run_lux_benchmark = mock.Mock()
         task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
-        task_computer.run_blender_benchmark = Mock()
+        task_computer.run_blender_benchmark = mock.Mock()
         task_computer.run_blender_benchmark.side_effect = lambda *_: 1
-        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark = mock.Mock()
         task_computer.run_dummytask_benchmark.side_effect = lambda c: c(1)
 
         task_computer.run_benchmarks()
@@ -792,11 +792,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_config_changed(self, *_):
         c = self.client
 
-        c._publish = Mock()
+        c._publish = mock.Mock()
         c.lock_config(True)
         c._publish.assert_called_with(UI.evt_lock_config, True)
 
-        c._publish = Mock()
+        c._publish = mock.Mock()
         c.config_changed()
         c._publish.assert_called_with(Environment.evt_opts_changed)
 
@@ -835,7 +835,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         self.assertIsNone(c.rpc_publisher)
 
-        rpc_session = Mock()
+        rpc_session = mock.Mock()
 
         c.configure_rpc(rpc_session)
         self.assertIsInstance(c.rpc_publisher, Publisher)
@@ -844,17 +844,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
-    @patch.multiple(Task, __abstractmethods__=frozenset())
+    @mock.patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
         c = self.client
-        c.enqueue_new_task = Mock()
+        c.enqueue_new_task = mock.Mock()
 
         # create a task
         t = Task(TaskHeader("node_name", "task_id",
                             "10.10.10.10", 123,
                             "owner_id", "DEFAULT"),
                  src_code="print('hello')",
-                 task_definition=Mock())
+                 task_definition=mock.Mock())
 
 
         c.create_task(DictSerializer.dump(t))
@@ -862,9 +862,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_delete_task(self, *_):
         c = self.client
-        c.remove_task_header = Mock()
-        c.remove_task = Mock()
-        c.task_server = Mock()
+        c.remove_task_header = mock.Mock()
+        c.remove_task = mock.Mock()
+        c.task_server = mock.Mock()
 
         c.delete_task(str(uuid.uuid4()))
         assert c.remove_task_header.called
@@ -874,8 +874,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_task_preview(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
-        c.task_server.task_manager.tasks[task_id] = Mock()
-        c.task_server.task_manager.get_task_preview = Mock()
+        c.task_server.task_manager.tasks[task_id] = mock.Mock()
+        c.task_server.task_manager.get_task_preview = mock.Mock()
 
         c.get_task_preview(task_id)
         c.task_server.task_manager.get_task_preview.assert_called_with(
@@ -885,8 +885,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
-        c.task_server.task_manager.tasks[task_id] = Mock()
-        c.task_server.task_manager.get_subtasks_borders = Mock()
+        c.task_server.task_manager.tasks[task_id] = mock.Mock()
+        c.task_server.task_manager.get_subtasks_borders = mock.Mock()
 
         c.get_subtasks_borders(task_id)
         c.task_server.task_manager.get_subtasks_borders.assert_called_with(
@@ -930,7 +930,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert not self.client.get_golem_status()
 
         # status published, with rpc publisher
-        StatusPublisher._rpc_publisher = Mock()
+        StatusPublisher._rpc_publisher = mock.Mock()
         StatusPublisher.publish(*status)
         assert self.client.get_golem_status() == status
 
@@ -962,7 +962,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     @staticmethod
     def __new_session():
-        session = Mock()
+        session = mock.Mock()
         for attr in PeerSessionInfo.attributes:
             setattr(session, attr, str(uuid.uuid4()))
         return session
@@ -971,7 +971,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 class TestEventListener(unittest.TestCase):
     def test_task_computer_event_listener(self):
 
-        client = Mock()
+        client = mock.Mock()
         listener = ClientTaskComputerEventListener(client)
 
         listener.lock_config(True)

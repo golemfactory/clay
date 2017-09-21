@@ -1,6 +1,5 @@
 import unittest
-
-import mock
+import unittest.mock as mock
 
 from golem.network.socketaddress import SocketAddress
 from golem.testutils import DatabaseFixture

@@ -1,7 +1,6 @@
 import time
 from threading import Thread
-
-from mock import Mock
+import unittest.mock as mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.docker.image import DockerImage
@@ -17,7 +16,7 @@ class TestDockerTaskThread(TestDockerJob):
     def test_termination(self):
         script = "import time\ntime.sleep(20)"
 
-        task_server = Mock()
+        task_server = mock.Mock()
         task_server.config_desc = ClientConfigDescriptor()
         task_server.config_desc.estimated_blender_performance = 2000.0
         task_server.config_desc.estimated_lux_performance = 2000.0

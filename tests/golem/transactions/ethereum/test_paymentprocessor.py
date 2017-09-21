@@ -1,18 +1,17 @@
 import json
-import random
-import time
-import unittest
-import rlp
 from os import urandom
-
-import mock
+import random
 import requests
+import rlp
+import time
+from twisted.internet.task import Clock
+import unittest
+import unittest.mock as mock
+
 from ethereum import tester, processblock
 from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms, privtoaddr
-from mock import patch, Mock
-from twisted.internet.task import Clock
 
 from golem.ethereum import Client
 from golem.ethereum.contracts import TestGNT
@@ -164,9 +163,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         with self.assertRaises(RuntimeError):
             self.pp.add(p1)
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_faucet(self, get):
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 200
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
         pp.get_ether_from_faucet()
@@ -520,9 +519,9 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         def success(*_):
             return True
 
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.pp.synchronized = lambda *_: True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
         self.pp.get_gnt_from_faucet = failure
         self.pp.get_ether_from_faucet = failure

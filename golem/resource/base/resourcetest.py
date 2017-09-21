@@ -1,7 +1,6 @@
 import os
+import unittest.mock as mock
 import uuid
-
-from mock import Mock
 
 from golem.client import Client
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -52,10 +51,10 @@ class AddGetResources(TempDirFixture, LogTestCase):
         resource_dir = resource_manager.storage.get_dir(task_id)
         resource_server = BaseResourceServer(resource_manager,
                                              dir_manager,
-                                             Mock(), client)
-        client.start = Mock()
-        client.start_network = Mock()
-        client.task_server = Mock()
+                                             mock.Mock(), client)
+        client.start = mock.Mock()
+        client.start_network = mock.Mock()
+        client.task_server = mock.Mock()
         client.resource_server = resource_server
 
         return resource_server, resource_dir

@@ -1,16 +1,15 @@
-from unittest import TestCase
-
-from mock import Mock
+import unittest
+import unittest.mock as mock
 
 from gui.application import Gui
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.tasktableelem import TaskTableElem, ItemMap
 
 
-class TestTaskTableElem(TestCase):
+class TestTaskTableElem(unittest.TestCase):
     def setUp(self):
         super(TestTaskTableElem, self).setUp()
-        self.gui = Gui(Mock(), AppMainWindow)
+        self.gui = Gui(mock.Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestTaskTableElem, self).tearDown()

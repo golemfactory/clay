@@ -1,9 +1,9 @@
-import unittest
-
 import netifaces
+import unittest
+import unittest.mock as mock
+
 from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks, \
                                    ip_addresses, get_host_address_from_connection, get_external_address
-from mock import patch
 
 
 def mock_ifaddresses(*args):
@@ -78,7 +78,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
-    @patch('golem.network.stun.pystun.get_ip_info')
+    @mock.patch('golem.network.stun.pystun.get_ip_info')
     def test_get_external_address_argument(self, stun):
         stun.return_value = ('2607:f0d0:1002:51::4', 1234, "Open Internet")
         address, port, nat = get_external_address(9876)
@@ -105,7 +105,7 @@ class TestHostAddress(unittest.TestCase):
                 self.assertTrue(is_ip_address(address[0]), "Incorrect IP address: {}".format(address[0]))
                 self.assertTrue(0 < int(address[1]) < 33, "Incorrect mask: {}".format(address[1]))
 
-    @patch('netifaces.ifaddresses', side_effect=mock_ifaddresses)
+    @mock.patch('netifaces.ifaddresses', side_effect=mock_ifaddresses)
     def testGetIPNetworks2(self, *_):
         ipv4_networks()
 

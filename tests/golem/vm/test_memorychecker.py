@@ -1,14 +1,13 @@
 import time
 from unittest import TestCase
-
-from mock import patch
+import unittest.mock as mock
 
 from golem.vm.memorychecker import MemoryChecker
 
 
 class TestMemoryChecker(TestCase):
 
-    @patch("golem.vm.memorychecker.psutil")
+    @mock.patch("golem.vm.memorychecker.psutil")
     def test_memory(self, psutil_mock):
         psutil_mock.virtual_memory.return_value.used = 1200000
         mc = MemoryChecker()

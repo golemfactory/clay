@@ -1,5 +1,6 @@
 import os
-from mock import patch, Mock
+import unittest.mock as mock
+import unittest.mock as mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -19,37 +20,37 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_check_files(self):
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)
-        lrv._check_files("SUBTASK1", {}, [], Mock())
+        lrv._check_files("SUBTASK1", {}, [], mock.Mock())
         assert lrv.get_verification_state("SUBTASK1") == SubtaskVerificationState.WRONG_ANSWER
         lrv.advanced_verification = False
-        lrv._check_files("SUBTASK2", {}, ["not existing"], Mock())
+        lrv._check_files("SUBTASK2", {}, ["not existing"], mock.Mock())
         assert lrv.get_verification_state("SUBTASK2") == SubtaskVerificationState.WRONG_ANSWER
 
-    @patch("apps.lux.task.verificator.LocalComputer")
+    @mock.patch("apps.lux.task.verificator.LocalComputer")
     def test_merge_flm_files_failure(self, mock_lc):
         mock_lc.return_value.tt = None
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)
         lrv.tmp_dir = self.path
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
-        mock_lc.return_value.tt = Mock()
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
+        mock_lc.return_value.tt = mock.Mock()
         lrv.verification_error = True
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
         lrv.verification_error = False
         mock_lc.return_value.tt.result = {'data': self.additional_dir_content([3])}
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
         flm_file = os.path.join(self.path, "bla.flm")
         open(flm_file, 'w').close()
         mock_lc.return_value.tt.result = {'data': self.additional_dir_content([1]) + [flm_file]}
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
         stderr_file = os.path.join(self.path, "stderr.log")
         mock_lc.return_value.tt.result = {'data': [flm_file, stderr_file]}
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
         open(stderr_file, 'w').close()
-        assert lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
         with open(stderr_file, 'w') as f:
             f.write("ERROR at merging files")
 
-        assert not lrv.merge_flm_files("flm_file", Mock(), "flm_output")
+        assert not lrv.merge_flm_files("flm_file", mock.Mock(), "flm_output")
 
     def test_flm_verify_failure(self):
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)

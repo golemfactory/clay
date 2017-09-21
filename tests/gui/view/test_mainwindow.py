@@ -1,11 +1,10 @@
-import sys
-from unittest import TestCase
-
-from mock import MagicMock, patch
 from PyQt5.QtWidgets import QApplication
+import sys
+import unittest
+import unittest.mock as mock
 
 
-class TestMainWindow(TestCase):
+class TestMainWindow(unittest.TestCase):
 
     def setUp(self):
         super(TestMainWindow, self).setUp()
@@ -16,7 +15,7 @@ class TestMainWindow(TestCase):
         self.app.exit(0)
         self.app.deleteLater()
 
-    @patch("gui.view.mainwindow.QMessageBox")
+    @mock.patch("gui.view.mainwindow.QMessageBox")
     def test_exit(self, msg_box):
 
         msg_box.Yes = 1
@@ -30,14 +29,14 @@ class TestMainWindow(TestCase):
         assert isinstance(window.window, MainWindow)
         assert window.ui is not None
 
-        event = MagicMock()
+        event = mock.MagicMock()
         msg_box.exec_.return_value = msg_box.No
 
         window.window.closeEvent(event)
         assert event.ignore.called
         assert not event.accept.called
 
-        event = MagicMock()
+        event = mock.MagicMock()
         msg_box.exec_.return_value = msg_box.Yes
 
         window.window.closeEvent(event)

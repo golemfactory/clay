@@ -3,12 +3,12 @@ import os
 import shutil
 import tempfile
 import unittest
+import unittest.mock as mock
 from os import path
 from pathlib import Path
 from time import sleep
 
 import pycodestyle
-from mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
@@ -126,7 +126,7 @@ class TestGui(TempDirFixture):
         from gui.application import Gui
         from gui.view.appmainwindow import AppMainWindow
 
-        self.logic = MagicMock()
+        self.logic = mock.MagicMock()
         self.gui = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):

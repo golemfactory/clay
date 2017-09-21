@@ -1,9 +1,9 @@
 import re
 import readline # workaround for issue #1338
+import unittest.mock as mock
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
-from mock import Mock, patch
 
 from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 from apps.core.gui.controller.newtaskdialogcustomizer import (
@@ -37,17 +37,17 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
 
     def test_customizer(self):
 
-        self.logic.client = Mock()
-        self.logic.client.config_desc = Mock()
+        self.logic.client = mock.Mock()
+        self.logic.client.config_desc = mock.Mock()
         self.logic.client.config_desc.max_price = 0
         self.logic.client.get_config.return_value = self.logic.client.config_desc
-        self.logic.dir_manager = Mock()
+        self.logic.dir_manager = mock.Mock()
         self.logic.dir_manager.root_path = self.path
 
-        tti = CoreTaskTypeInfo("Nice task", TaskDefinition, TaskDefaults(), Mock(),
-                               Mock(), Mock(), Mock())
+        tti = CoreTaskTypeInfo("Nice task", TaskDefinition, TaskDefaults(), mock.Mock(),
+                               mock.Mock(), mock.Mock(), mock.Mock())
         self.logic.register_new_task_type(tti)
-        self.gui.main_window.ui.taskSpecificLayout = Mock()
+        self.gui.main_window.ui.taskSpecificLayout = mock.Mock()
         self.gui.main_window.ui.taskSpecificLayout.count.return_value = 2
         customizer = NewTaskDialogCustomizer(self.gui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
@@ -92,32 +92,32 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         name = "{}".format(customizer.gui.ui.taskNameLineEdit.text())
         assert re.match(reg, name) is not None, "Task name does not match: {}".format(name)
 
-    @patch('gui.applicationlogic.TestingTaskProgressDialog')
-    @patch('apps.core.gui.controller.newtaskdialogcustomizer.QFileDialog')
+    @mock.patch('gui.applicationlogic.TestingTaskProgressDialog')
+    @mock.patch('apps.core.gui.controller.newtaskdialogcustomizer.QFileDialog')
     def test_customizer(self, file_dialog_mock, test_task_dialog_mock):
-        self.logic.client = Mock()
-        self.logic.client.config_desc = Mock()
+        self.logic.client = mock.Mock()
+        self.logic.client.config_desc = mock.Mock()
         self.logic.client.config_desc.max_price = 0
         self.logic.client.get_config.return_value = self.logic.client.config_desc
-        self.logic.dir_manager = Mock()
+        self.logic.dir_manager = mock.Mock()
         self.logic.dir_manager.root_path = self.path
-        self.logic.customizer = Mock()
+        self.logic.customizer = mock.Mock()
 
         register_task_types(self.logic)
         customizer = NewTaskDialogCustomizer(self.gui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
 
         definition = RenderingTaskDefinition()
-        renderer = BlenderTaskTypeInfo(Mock(), Mock())
+        renderer = BlenderTaskTypeInfo(mock.Mock(), mock.Mock())
         assert renderer.name == "Blender"
         assert renderer.options is not None
         definition.task_type = renderer.name
-        definition.options = Mock()
+        definition.options = mock.Mock()
         definition.options.use_frames = False
         definition.options.compositing = False
         resources = self.additional_dir_content([3])
         definition.resources = set(resources)
-        self.logic.customizer = Mock()
+        self.logic.customizer = mock.Mock()
         self.logic.task_types[renderer.name] = renderer
         customizer.load_task_definition(definition)
         with self.assertRaises(TypeError):

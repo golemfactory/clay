@@ -1,6 +1,5 @@
 from threading import Thread
-
-from mock import MagicMock
+import unittest.mock as mock
 
 from golem.client import Client
 from golem.ranking.helper.trust import Trust
@@ -116,7 +115,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         self.assertGreaterEqual(result, min_max_utility.MIN_TRUST)
 
     def test_increase_trust_thread_safety(self):
-        c = MagicMock(spec=Client)
+        c = mock.MagicMock(spec=Client)
         r = Ranking(c)
 
         def run():
@@ -145,7 +144,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         self.assertEqual(result, expected)
 
     def test_requesting_trust_thread_safety(self):
-        c = MagicMock(spec=Client)
+        c = mock.MagicMock(spec=Client)
         r = Ranking(c)
 
         def run():
@@ -174,12 +173,12 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         self.assertEqual(result, expected)
 
     def test_without_reactor(self):
-        r = Ranking(MagicMock(spec=Client))
+        r = Ranking(mock.MagicMock(spec=Client))
         r.client.get_neighbours_degree.return_value = \
             {'ABC': 4, 'JKL': 2, 'MNO': 5}
         r.client.collect_stopped_peers.return_value = \
             set()
-        reactor = MagicMock()
+        reactor = mock.MagicMock()
         r.run(reactor)
         assert r.reactor == reactor
         Trust.COMPUTED.increase("ABC", 1)

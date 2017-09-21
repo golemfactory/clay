@@ -1,13 +1,12 @@
+import time
 import types
+import twisted
+from twisted.internet.defer import Deferred
 import unittest
+import unittest.mock as mock
 import uuid
 
-import time
-import twisted
 from golem.tools.testwithreactor import TestWithReactor
-from mock import Mock, patch
-from twisted.internet.defer import Deferred
-
 from golem.resource.client import ClientHandler, ClientCommands, ClientError, \
     ClientOptions, ClientConfig
 from golem.core.async import AsyncRequest, async_run
@@ -21,7 +20,7 @@ class MockClientHandler(ClientHandler):
         pass
 
     def new_client(self):
-        return Mock()
+        return mock.Mock()
 
 
 class MockClientConfig(ClientConfig):
@@ -88,7 +87,7 @@ class TestAsyncRequest(TestWithReactor):
     def test_callbacks(self):
         done = [False]
 
-        method = Mock()
+        method = mock.Mock()
         req = AsyncRequest(method)
 
         def success(*_):

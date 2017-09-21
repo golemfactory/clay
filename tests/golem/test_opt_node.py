@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from mock import patch, Mock
+import unittest.mock as mock
 
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
@@ -7,7 +7,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, OptNode
 
 @ci_skip
-@patch('golem.core.common.config_logging')
+@mock.patch('golem.core.common.config_logging')
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
@@ -18,8 +18,8 @@ class TestNode(TestWithDatabase):
     def tearDown(self):
         super(TestNode, self).tearDown()
 
-    @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.install_reactor')
+    @mock.patch('twisted.internet.reactor', create=True)
+    @mock.patch('golemapp.install_reactor')
     def test_help(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
@@ -27,8 +27,8 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
 
-    @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.install_reactor')
+    @mock.patch('twisted.internet.reactor', create=True)
+    @mock.patch('golemapp.install_reactor')
     def test_wrong_option(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'],
@@ -37,9 +37,9 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.install_reactor')
-    @patch('golemapp.OptNode')
+    @mock.patch('twisted.internet.reactor', create=True)
+    @mock.patch('golemapp.install_reactor')
+    @mock.patch('golemapp.OptNode')
     def test_node_address_valid(self, mock_node, *_):
         node_address = '1.2.3.4'
 
@@ -56,12 +56,12 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
-    @patch('golem.node.Node.run')
-    @patch('golem.docker.manager.DockerManager')
-    @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.delete_reactor')
-    @patch('golemapp.install_reactor')
-    @patch('golem.node.Client')
+    @mock.patch('golem.node.Node.run')
+    @mock.patch('golem.docker.manager.DockerManager')
+    @mock.patch('twisted.internet.reactor', create=True)
+    @mock.patch('golemapp.delete_reactor')
+    @mock.patch('golemapp.install_reactor')
+    @mock.patch('golem.node.Client')
     def test_node_address_passed_to_client(self, mock_client, *_):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
@@ -79,7 +79,7 @@ class TestNode(TestWithDatabase):
                                        geth_port = None,
                                        use_monitor=True)
 
-    @patch('golemapp.install_reactor')
+    @mock.patch('golemapp.install_reactor')
     def test_node_address_invalid(self, *_):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
@@ -88,14 +88,14 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
 
-    @patch('golemapp.install_reactor')
+    @mock.patch('golemapp.install_reactor')
     def test_node_address_missing(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
-    @patch('golemapp.OptNode')
+    @mock.patch('golemapp.OptNode')
     def test_single_peer(self, mock_node, *_):
         mock_node.return_value = mock_node
         addr1 = self.exampleNodeID + '@10.30.10.216:40111'
@@ -106,8 +106,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
-    @patch('golemapp.install_reactor')
-    @patch('golemapp.OptNode')
+    @mock.patch('golemapp.install_reactor')
+    @mock.patch('golemapp.OptNode')
     def test_many_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
         addr1 = self.exampleNodeID + '@10.30.10.216:40111'
@@ -119,8 +119,8 @@ class TestNode(TestWithDatabase):
 
         mock_node.run.assert_called_with(use_rpc=True)
 
-    @patch('golemapp.install_reactor')
-    @patch('golemapp.OptNode')
+    @mock.patch('golemapp.install_reactor')
+    @mock.patch('golemapp.OptNode')
     def test_bad_peer(self, *_):
         addr1 = self.exampleNodeID + "@10.30.10.216:40111"
         runner = CliRunner()
@@ -129,7 +129,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
-    @patch('golemapp.OptNode')
+    @mock.patch('golemapp.OptNode')
     def test_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
         runner = CliRunner()
@@ -143,7 +143,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
-    @patch('golemapp.OptNode')
+    @mock.patch('golemapp.OptNode')
     def test_rpc_address(self, *_):
         runner = CliRunner()
 
@@ -181,9 +181,9 @@ def mock_async_callback(call):
     return callback
 
 
-@patch('golem.node.async_callback', mock_async_callback)
-@patch('golem.rpc.router.CrossbarRouter', create=True)
-@patch('twisted.internet.reactor', create=True)
+@mock.patch('golem.node.async_callback', mock_async_callback)
+@mock.patch('golem.rpc.router.CrossbarRouter', create=True)
+@mock.patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
     def tearDown(self):
@@ -210,8 +210,8 @@ class TestOptNode(TempDirFixture):
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
 
-    @patch('gevent.hub.Hub.join')
-    @patch('golem.docker.image.DockerImage')
+    @mock.patch('gevent.hub.Hub.join')
+    @mock.patch('golem.docker.image.DockerImage')
     def test_setup_without_docker(self, *_):
         exampleNodeID = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3\
         dd60d8954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3\
@@ -221,10 +221,10 @@ class TestOptNode(TempDirFixture):
         self.node = OptNode(self.path, use_docker_machine_manager=False,
                             peers=self.parsed_peer)
 
-        self.node._setup_docker = Mock()
-        self.node.connect_from_main = Mock()
-        self.node.client.start = Mock()
-        self.node.client.environments_manager = Mock()
+        self.node._setup_docker = mock.Mock()
+        self.node.connect_from_main = mock.Mock()
+        self.node.client.start = mock.Mock()
+        self.node.client.environments_manager = mock.Mock()
         self.node.run()
 
         assert self.node.client.start.called
@@ -232,17 +232,17 @@ class TestOptNode(TempDirFixture):
         assert not self.node._setup_docker.called
         self.node.connect_from_main.assert_called_with(self.parsed_peer[0])
 
-    @patch('gevent.hub.Hub.join')
-    @patch('golem.docker.image.DockerImage')
+    @mock.patch('gevent.hub.Hub.join')
+    @mock.patch('golem.docker.image.DockerImage')
     def test_setup_with_docker(self, docker_manager, *_):
         docker_manager.return_value = docker_manager
 
         self.node = OptNode(self.path, use_docker_machine_manager=True)
 
-        self.node._setup_docker = Mock()
-        self.node.client.connect = Mock()
-        self.node.client.start = Mock()
-        self.node.client.environments_manager = Mock()
+        self.node._setup_docker = mock.Mock()
+        self.node.client.connect = mock.Mock()
+        self.node.client.start = mock.Mock()
+        self.node.client.environments_manager = mock.Mock()
         self.node.run()
 
         assert self.node.client.start.called

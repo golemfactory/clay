@@ -1,7 +1,7 @@
+import os
 from PyQt5.QtCore import Qt, QSettings
 from PyQt5.QtTest import QTest
-from mock import Mock, patch
-import os
+import unittest.mock as mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.assertlogs import LogTestCase
@@ -24,21 +24,21 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestLuxRenderDialogCustomizer, self).setUp()
         self.logic = GuiApplicationLogic()
-        self.gui = Gui(Mock(), AppMainWindow)
+        self.gui = Gui(mock.Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestLuxRenderDialogCustomizer, self).tearDown()
         self.gui.app.exit(0)
         self.gui.app.deleteLater()
 
-    @patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
+    @mock.patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
         self.logic.register_new_task_type(LuxRenderTaskTypeInfo(
             TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
         self.logic.customizer = MainWindowCustomizer(self.gui.main_window, self.logic)
-        self.logic.dir_manager = Mock()
+        self.logic.dir_manager = mock.Mock()
         self.logic.dir_manager.root_path = self.path
-        self.logic.client = Mock()
+        self.logic.client = mock.Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
         self.logic.client.config_desc.use_ipv6 = False
         self.logic.client.config_desc.max_price = 0

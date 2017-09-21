@@ -1,4 +1,4 @@
-from mock import Mock, patch
+import unittest.mock as mock
 
 from apps.rendering.gui.controller.renderercustomizer import (RendererCustomizer,
                                                               FrameRendererCustomizer)
@@ -21,7 +21,7 @@ class TestRendererCustomizer(TestGui):
 
     def test_add_ext_to_out_filename(self):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
         assert isinstance(controller, RendererCustomizer)
@@ -59,7 +59,7 @@ class TestRendererCustomizer(TestGui):
 
     def test_load_task_definition(self):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
         gui.ui.outputFormatsComboBox.findText.return_value = 0
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
@@ -75,15 +75,15 @@ class TestRendererCustomizer(TestGui):
 
     def test_change_options(self):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
         controller._change_options()
 
-    @patch('apps.rendering.gui.controller.renderercustomizer.QFileDialog')
+    @mock.patch('apps.rendering.gui.controller.renderercustomizer.QFileDialog')
     def test_choose_main_file_button_clicked(self, file_dialog_mock):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
         self.logic.dir_manager.root_path = self.path
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
@@ -91,10 +91,10 @@ class TestRendererCustomizer(TestGui):
         controller._choose_main_scene_file_button_clicked()
         controller.gui.ui.mainSceneFileLineEdit.setText.assert_called_with("result file name")
 
-    @patch('apps.rendering.gui.controller.renderercustomizer.QFileDialog')
+    @mock.patch('apps.rendering.gui.controller.renderercustomizer.QFileDialog')
     def test_choose_output_file_button_clicked(self, file_dialog_mock):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
         self.logic.dir_manager.root_path = self.path
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
@@ -115,7 +115,7 @@ class TestFrameRendererCustomizer(TestGui):
 
     def test_frames_from_options(self):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
 
         controller = TestFrameRendererCustomizer.TestFRC(gui, self.logic)
         controller.options = FrameRendererOptions()
@@ -129,7 +129,7 @@ class TestFrameRendererCustomizer(TestGui):
 
     def test_frames_check_box_changed(self):
         gui = self.gui.get_main_window()
-        gui.ui = Mock()
+        gui.ui = mock.Mock()
 
         controller = TestFrameRendererCustomizer.TestFRC(gui, self.logic)
         gui.ui.framesCheckBox.isChecked.return_value = False

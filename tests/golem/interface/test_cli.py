@@ -1,13 +1,13 @@
 import argparse
-import unittest
 from io import StringIO
+from twisted.internet.defer import Deferred, TimeoutError
+from twisted.internet.error import ReactorNotRunning
+import unittest
+import unittest.mock as mock
 
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
 from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
-from mock import patch, Mock, mock
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.internet.error import ReactorNotRunning
 
 
 def _nop(*a, **kw):
@@ -47,7 +47,7 @@ class TestCLI(unittest.TestCase):
 
     __input = 'builtins.input'
 
-    class MockFormatter(Mock):
+    class MockFormatter(mock.Mock):
         def supports(self, *args, **kwargs):
             return True
 
@@ -64,16 +64,16 @@ class TestCLI(unittest.TestCase):
                 return object.__getattribute__(self, name)
             return lambda *args, **kwargs: self.return_value
 
-    @patch('sys.stdout', new_callable=StringIO)
-    @patch('golem.interface.cli.CLI.process',
-           side_effect=lambda x: (' '.join(x), Mock()))
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('golem.interface.cli.CLI.process',
+           side_effect=lambda x: (' '.join(x), mock.Mock()))
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_execute(self, _, _process, _out):
 
         client = self.MockClient()
         cli = CLI(client=client, formatters=[self.MockFormatter()])
 
-        with patch(self.__input, return_value='', create=True):
+        with mock.patch(self.__input, return_value='', create=True):
             cli.execute()
 
         _process.assert_called_with(['help'])
@@ -82,22 +82,22 @@ class TestCLI(unittest.TestCase):
         _process.called = False
 
         cmd = 'invalid_command --invalid-flag'
-        with patch(self.__input, return_value=cmd, create=True):
+        with mock.patch(self.__input, return_value=cmd, create=True):
             cli.execute()
 
         self.assertTrue(_process.called)
 
-    @patch('sys.stdout', new_callable=StringIO)
-    @patch('golem.interface.cli._exit', side_effect=_nop)
-    @patch('golem.interface.cli.CLI.process', side_effect=_raise)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('sys.stdout', new_callable=StringIO)
+    @mock.patch('golem.interface.cli._exit', side_effect=_nop)
+    @mock.patch('golem.interface.cli.CLI.process', side_effect=_raise)
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_execute_exception(self, _, _process, _exit, _out):
 
         client = self.MockClient()
         cli = CLI(client=client, formatters=[self.MockFormatter()])
 
         cmd = 'invalid_command --invalid-flag'
-        with patch(self.__input, return_value=cmd, create=True):
+        with mock.patch(self.__input, return_value=cmd, create=True):
             with self.assertRaises(Exception):
                 cli.execute()
 
@@ -105,34 +105,34 @@ class TestCLI(unittest.TestCase):
             self.assertFalse(_exit.called)
             self.assertFalse(_out.getvalue())
 
-    @patch('sys.stdout', new_callable=MockStdout)
-    @patch('golem.interface.cli._exit', side_effect=_nop)
-    @patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('sys.stdout', new_callable=MockStdout)
+    @mock.patch('golem.interface.cli._exit', side_effect=_nop)
+    @mock.patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_execute_exit(self, _, _process, _exit, _out):
 
         client = self.MockClient()
         cli = CLI(client=client)
 
         cmd = 'invalid_command --invalid-flag'
-        with patch(self.__input, return_value=cmd, create=True):
+        with mock.patch(self.__input, return_value=cmd, create=True):
             cli.execute()
             self.assertTrue(_process.called)
             self.assertFalse(_exit.called)
             self.assertFalse(_out.data)
 
-    @patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_interactive(self, _, _process):
         client = self.MockClient()
         cli = CLI(client=client)
 
-        with patch(self.__input, return_value='exit', create=True):
+        with mock.patch(self.__input, return_value='exit', create=True):
             cli.execute(interactive=True)
             self.assertTrue(_process.called)
 
-    @patch('builtins.input', create=True)
-    @patch('golem.interface.cli._exit', side_effect=_nop)
+    @mock.patch('builtins.input', create=True)
+    @mock.patch('golem.interface.cli._exit', side_effect=_nop)
     def test_execute_interactive(self, _exit, _ri):
 
         with storage_context():
@@ -151,8 +151,8 @@ class TestCLI(unittest.TestCase):
             cli.execute(['commands', 'exit'], interactive=True)
             self.assertFalse(_exit.called)
 
-    @patch('golem.interface.cli._exit', side_effect=_nop)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('golem.interface.cli._exit', side_effect=_nop)
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_process(self, *_):
 
         with storage_context():
@@ -165,12 +165,12 @@ class TestCLI(unittest.TestCase):
             client = self.MockClient()
             cli = CLI(client=client)
 
-            with patch('sys.stderr', new_callable=StringIO) as err:
+            with mock.patch('sys.stderr', new_callable=StringIO) as err:
                 cli.process(['commands', 'command'])
                 self.assertTrue(not err.getvalue())
 
-    @patch('golem.interface.cli._exit', side_effect=_nop)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @mock.patch('golem.interface.cli._exit', side_effect=_nop)
+    @mock.patch('golem.core.common.config_logging', side_effect=_nop)
     def test_process_errors(self, config_logging, cli_exit):
 
         exceptions = [
@@ -198,7 +198,7 @@ class TestCLI(unittest.TestCase):
                 MockClass.exc_class = exc_class
                 result, _ = cli.process(['commands', 'command'])
 
-                with patch('sys.stderr', new_callable=MockStdout) as out:
+                with mock.patch('sys.stderr', new_callable=MockStdout) as out:
                     cli.execute(['commands', 'command_2'])
                     self.assertIsNotNone(out.data)
 
@@ -212,7 +212,7 @@ class TestCLI(unittest.TestCase):
             expected = ['test', 'string with spaces', '--flag', 'value']
 
             cmd = 'test "string with spaces" --flag "value"'
-            with patch(self.__input, return_value=cmd, create=True):
+            with mock.patch(self.__input, return_value=cmd, create=True):
                 self.assertEqual(cli._read_arguments(interactive=True),
                                  expected)
 
@@ -320,13 +320,13 @@ class TestCLI(unittest.TestCase):
 
 class TestCLICommands(unittest.TestCase):
 
-    @patch('logging.error')
-    @patch('sys.exit')
-    @patch('twisted.internet.reactor', create=True, new_callable=MockReactor)
+    @mock.patch('logging.error')
+    @mock.patch('sys.exit')
+    @mock.patch('twisted.internet.reactor', create=True, new_callable=MockReactor)
     def test_exit(self, reactor, sys_exit, logging_error):
         self.assertIsNotNone(CommandHelper.get_interface(_exit))
 
-        with patch('golem.interface.cli.CLI.shutdown') as shutdown:
+        with mock.patch('golem.interface.cli.CLI.shutdown') as shutdown:
             _exit()
             self.assertTrue(shutdown.called)
 
@@ -336,7 +336,7 @@ class TestCLICommands(unittest.TestCase):
         with self.assertRaises(ParsingException):
             _help()
 
-    @patch('sys.stdout', new_callable=MockStdout)
+    @mock.patch('sys.stdout', new_callable=MockStdout)
     def test_debug(self, out):
         _debug()
         self.assertTrue(out.getvalue())

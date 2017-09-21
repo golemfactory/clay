@@ -1,6 +1,5 @@
 import time
-
-import mock
+import unittest.mock as mock
 
 from apps.core.benchmark import benchmarkrunner
 from golem.task.taskbase import Task

@@ -1,4 +1,4 @@
-from mock import Mock, patch
+import unittest.mock as mock
 
 from golem.task.taskbase import Task
 from golem.task.tasktester import TaskTester, logger
@@ -24,19 +24,19 @@ class MemTaskThread(TaskThread):
     def get_progress(self):
         return "30%"
 
-@patch.multiple(Task, __abstractmethods__=frozenset())
+@mock.patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskTester(TestDirFixture, LogTestCase):
 
     node = 'node1'
     task_name = 'task1'
 
     def test_init(self):
-        task = Task(Mock(), Mock(), Mock())
-        task.query_extra_data_for_test_task = Mock()
+        task = Task(mock.Mock(), mock.Mock(), mock.Mock())
+        task.query_extra_data_for_test_task = mock.Mock()
         self.assertIsNotNone(TaskTester(task, self.path, None, None))
 
     def test_task_computed(self):
-        task = Task(Mock(), Mock(), Mock())
+        task = Task(mock.Mock(), mock.Mock(), mock.Mock())
 
         result = [{"data": True}, 123]
 
@@ -44,9 +44,9 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         task.header.task_id = self.task_name
         task.root_path = self.path
         task.after_test = lambda res, tmp_dir: {}
-        task.query_extra_data_for_test_task = Mock()
+        task.query_extra_data_for_test_task = mock.Mock()
 
-        tt = TaskTester(task, self.path, Mock(), Mock())
+        tt = TaskTester(task, self.path, mock.Mock(), mock.Mock())
         tt.tmp_dir = self.path
         task_thread = TaskThread(result)
         tt.task_computed(task_thread)
@@ -74,7 +74,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         task.header.task_id = self.task_name
         task.root_path = self.path
         task.after_test = lambda res, tmp_dir: {"warnings": "bla ble"}
-        task.query_extra_data_for_test_task = Mock()
+        task.query_extra_data_for_test_task = mock.Mock()
 
         tt = TaskTester(task, self.path, success_callback, None)
         tt.tmp_dir = self.path
@@ -84,11 +84,11 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.assertTrue("ble" in self.message)
 
     def test_is_success(self):
-        task = Task(Mock(), Mock(), Mock())
+        task = Task(mock.Mock(), mock.Mock(), mock.Mock())
 
-        task.query_extra_data_for_test_task = Mock()
-        tt = TaskTester(task, self.path, Mock(), Mock())
-        task_thread = Mock()
+        task.query_extra_data_for_test_task = mock.Mock()
+        tt = TaskTester(task, self.path, mock.Mock(), mock.Mock())
+        task_thread = mock.Mock()
 
         # Proper task
         task_thread.error = None
