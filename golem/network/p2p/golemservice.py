@@ -1,3 +1,4 @@
+import gevent
 from devp2p.service import WiredService
 from devp2p import slogging
 
@@ -50,10 +51,11 @@ class GolemService(WiredService):
         self.task_server = task_server
 
     def get_tasks(self):
-        self.peer_manager.broadcast(GolemProtocol, 'get_tasks')
+        gevent.spawn(self.peer_manager.broadcast, GolemProtocol, 'get_tasks')
 
     def remove_task(self, task_id):
-        self.peer_manager.broadcast(GolemProtocol, 'remove_task', task_id)
+        gevent.spawn(self.peer_manager.broadcast, GolemProtocol, 'remove_task',
+                     task_id)
 
     def receive_get_tasks(self, proto):
         if not self.task_server:

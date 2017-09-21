@@ -60,7 +60,8 @@ class TestGolemService(unittest.TestCase):
         peer.remote_pubkey = "f325434534jfdslgfds0"
         peer.connect_service(gservice)
         self.client.services['peermanager'].peers.append(peer)
-        gservice.get_tasks()
+
+        gservice.peer_manager.broadcast(GolemProtocol, 'get_tasks')
         pkt = Packet(prioritize=False, payload=b'\xc0', cmd_id=0,
                      protocol_id=18317)
         peer.stop()
