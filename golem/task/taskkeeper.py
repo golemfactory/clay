@@ -334,36 +334,48 @@ class TaskHeaderKeeper(object):
         try:
             id_ = th_dict_repr["task_id"]
             update = id_ in list(self.task_headers.keys())
-            is_correct, err = self.is_correct(th_dict_repr)
-            if not is_correct:
-                raise TypeError(err)
 
-            if id_ not in list(self.removed_tasks.keys()):  # not recent
-                th = TaskHeader.from_dict(th_dict_repr)
-                self.task_headers[id_] = th
+            self.check_correct(th_dict_repr)
 
-                self._get_tasks_by_owner_set(th.task_owner_key_id).add(id_)
+            if id_ in list(self.removed_tasks.keys()):  # recent
+                # silently ignore
+                return True
 
-                support = self.check_support(th_dict_repr)
-                self.support_status[id_] = support
+            th = TaskHeader.from_dict(th_dict_repr)
+            self.task_headers[id_] = th
 
-                if update:
-                    if not support and id_ in self.supported_tasks:
-                        self.supported_tasks.remove(id_)
-                elif support:
-                    logger.info(
-                        "Adding task %r support=%r",
-                        id_,
-                        support
-                    )
-                    self.supported_tasks.append(id_)
+            self._get_tasks_by_owner_set(th.task_owner_key_id).add(id_)
 
-                self.check_max_tasks_per_owner(th.task_owner_key_id)
+            self.update_supported_set(th_dict_repr, update)
+
+            self.check_max_tasks_per_owner(th.task_owner_key_id)
 
             return True
         except (KeyError, TypeError) as err:
             logger.warning("Wrong task header received {}".format(err))
             return False
+
+    def update_supported_set(self,  th_dict_repr, update_header):
+        id_ = th_dict_repr["task_id"]
+
+        support = self.check_support(th_dict_repr)
+        self.support_status[id_] = support
+
+        if update_header:
+            if not support and id_ in self.supported_tasks:
+                self.supported_tasks.remove(id_)
+        elif support:
+            logger.info(
+                "Adding task %r support=%r",
+                id_,
+                support
+            )
+            self.supported_tasks.append(id_)
+
+    def check_correct(self, th_dict_repr):
+        is_correct, err = self.is_correct(th_dict_repr)
+        if not is_correct:
+            raise TypeError(err)
 
     def _get_tasks_by_owner_set(self, owner_key_id):
         if owner_key_id not in self.tasks_by_owner:
