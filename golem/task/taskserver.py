@@ -143,6 +143,9 @@ class TaskServer:
 
         try:
             self.task_manager.add_comp_task_request(theader, min_price)
+            logger.info("Connecting to owner %r of task %r",
+                        theader.task_owner_key_id,
+                        theader.task_id)
             self.task_service.spawn_connect(
                 theader.task_owner_key_id,
                 [address],

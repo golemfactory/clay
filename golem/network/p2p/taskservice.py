@@ -80,6 +80,7 @@ class TaskService(WiredService):
     def get_session(self, pubkey, protocol=TaskProtocol):
         try:
             decoded = decode_hex(pubkey)
+            logger.info("decoding key %r to %r ", pubkey, decoded)
         except Exception as exc:
             logger.error('Invalid public key %r: %s', pubkey, exc)
             return None
@@ -87,9 +88,11 @@ class TaskService(WiredService):
         for peer in self.peer_manager.peers:
             try:
                 if peer.remote_pubkey == decoded:
+                    logger.info("Pubkey %r not in connected peers %r",
+                                decoded, peer.remote_pubkey)
                     return peer.protocols.get(protocol)
             except Exception as exc:
-                logger.debug('Invalid pubkey: %r %s', peer.remote_pubkey, exc)
+                logger.info('Invalid pubkey: %r %s', peer.remote_pubkey, exc)
 
     # FIXME: Discover peer addresses if none were provided
     def connect(self, pubkey, addresses):
@@ -111,6 +114,7 @@ class TaskService(WiredService):
                 errors.append(conn_errors.get(address, [])[-1])
 
         if pubkey not in self._connecting:
+            logger.info("Peer %r not connected", pubkey)
             future.set_exception(RuntimeError(errors))
 
         return future
