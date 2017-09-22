@@ -1,14 +1,14 @@
 import logging
 import os
-import shutil
 import tempfile
 from typing import Any, Dict
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from apps.mlpoc.mlpocenvironment import MLPOCTorchEnvironment
-from apps.mlpoc.resources.code_pytorch.impl.common_utils import details_from_dump_name
+from apps.mlpoc.resources.code_pytorch.impl.common_utils import \
+    details_from_dump_name
 from golem.docker.image import DockerImage
-from golem.resource.dirmanager import find_task_script, symlink_or_copy, ls_R
+from golem.resource.dirmanager import find_task_script, symlink_or_copy
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 
@@ -48,7 +48,6 @@ class MLPOCTaskVerificator(CoreVerificator):
                            black_box: 'MLPOCTask.BLACK_BOX'):
         ctd = ComputeTaskDef()
 
-
         ctd.src_code = self._load_src()
         ctd.docker_images = [self.docker_image]
         ctd.extra_data.update(subtask_data)
@@ -73,9 +72,6 @@ class MLPOCTaskVerificator(CoreVerificator):
         with tempfile.TemporaryDirectory() as tempdir:
 
             logger.info("Verification is done in {} tempdir".format(tempdir))
-
-            # TODO instead of creating whole directory structure here, we should
-            # just copy it from output
 
             # TODO remove "checkpoints" magic constant
             checkpoints_dir = os.path.join(tempdir, "checkpoints")

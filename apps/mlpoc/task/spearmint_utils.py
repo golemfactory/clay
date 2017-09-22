@@ -1,4 +1,5 @@
-# based on braninpy from https://github.com/JasperSnoek/spearmint/blob/master/spearmint-lite/braninpy/braninrunner.py  # noqa
+# some code based on braninpy from
+# https://github.com/JasperSnoek/spearmint/blob/master/spearmint-lite/braninpy/braninrunner.py  # noqa
 
 import json
 import logging
@@ -27,8 +28,8 @@ DEFAULT_EVAL_TIME = 1
 UPDATE_PERIOD = 0.1
 
 # dirty-state hyperparams configurations
-# so these which were already send to provider
-# but there is still no answer
+# (so these which were already send to provider
+# but there is still no answer)
 dirties = set()
 
 
@@ -56,8 +57,8 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     """
     This function is called by MLPOCTask.__update_spearmint_state
     with new results from provider. It then simply saves the results
-    to RESULT_FILE file (replaces old line with these hyperparams
-    and without score with new one, containing score and DEFAULT_EVAL_TIME
+    to RESULT_FILE file (replaces old line with, containing these hyperparams
+    without score with new one, containing score and DEFAULT_EVAL_TIME
     :param directory: spearmint directory
     :param params: dict of score -> hyperparameters (but since we need
            the reverse dict, we are reversing it below)
@@ -80,7 +81,7 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
     process_lines(directory, f)
 
     # this is an atomic write
-    # inspired by http://stupidpythonideas.blogspot.com/2014/07/getting-atomic-writes-right.html
+    # inspired by http://stupidpythonideas.blogspot.com/2014/07/getting-atomic-writes-right.html  # noqa
     with tempfile.NamedTemporaryFile("w", dir=directory, delete=False) as fout:
         fout.writelines(newlines)
     os.replace(fout.name, os.path.join(directory, RESULT_FILE))

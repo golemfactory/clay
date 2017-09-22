@@ -101,9 +101,9 @@ def run():
         if not real_state_hash == boxed_hash:
             raise Exception("Real hash of state transition {} "
                             "not equal to the hash saved in the box {}".format(
-                real_state_hash,
-                boxed_hash
-            ))
+                                real_state_hash,
+                                boxed_hash
+                            ))
 
         batch_manager = batchmanager.IrisBatchManager(data_file)
 
