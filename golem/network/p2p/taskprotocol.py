@@ -46,8 +46,15 @@ class TaskProtocol(BaseProtocol):
             ('price', sedes.big_endian_int),
             ('max_disk', sedes.big_endian_int),
             ('max_memory', sedes.big_endian_int),
-            ('max_cpus', sedes.big_endian_int)
+            ('max_cpus', sedes.big_endian_int),
+            ('eth_account', CBORSedes)
         ]
+
+        @classmethod
+        def decode_payload(cls, rlp_data):
+            decoded = super().decode_payload(rlp_data)
+            decoded['eth_account'] = to_unicode(decoded['eth_account'])
+            return decoded
 
     class task(BaseProtocol.command):
         """
@@ -98,15 +105,8 @@ class TaskProtocol(BaseProtocol):
             ('computation_time', CBORSedes),
             ('resource_hash', unicode_sedes),
             ('resource_secret', sedes.binary),
-            ('resource_options', CBORSedes),
-            ('eth_account', CBORSedes)
+            ('resource_options', CBORSedes)
         ]
-
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['eth_account'] = to_unicode(decoded['eth_account'])
-            return decoded
 
     class accept_result(BaseProtocol.command):
         """

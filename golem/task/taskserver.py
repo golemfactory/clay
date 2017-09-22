@@ -121,6 +121,7 @@ class TaskServer:
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
         theader = self.task_keeper.get_task()
+        transaction_system = self.client.transaction_system
 
         if theader is None:
             return None
@@ -131,6 +132,10 @@ class TaskServer:
         performance = env.get_performance(self.config_desc) or 0.0
         min_price = self.config_desc.min_price
         address = (theader.task_owner_address, theader.task_owner_port)
+        eth_account = None
+
+        if transaction_system:
+            eth_account = transaction_system.get_payment_address()
 
         args = {
             'task_id': theader.task_id,
@@ -138,10 +143,12 @@ class TaskServer:
             'price': self.config_desc.min_price,
             'max_disk': self.config_desc.max_resource_size,
             'max_memory': self.config_desc.max_memory_size,
-            'max_cpus': self.config_desc.num_cores
+            'max_cpus': self.config_desc.num_cores,
+            'eth_account': eth_account
         }
 
         try:
+            print('Request task', theader.task_id, address)
             self.task_manager.add_comp_task_request(theader, min_price)
             self.task_service.spawn_connect(
                 theader.task_owner_key_id,
@@ -189,13 +196,7 @@ class TaskServer:
 
         task_result_manager = self.task_manager.task_result_manager
         comp_task_keeper = self.task_manager.comp_task_keeper
-        transaction_system = self.client.transaction_system
-
         value = comp_task_keeper.get_value(task_id, computing_time)
-        eth_account = None
-
-        if transaction_system:
-            eth_account = transaction_system.get_payment_address()
 
         if self.client.transaction_system:
             self.client.transaction_system.incomes_keeper.expect(
@@ -219,7 +220,6 @@ class TaskServer:
                 path_and_hash[1],
                 resource_secret,
                 resource_options,
-                eth_account,
                 owner
             )
 
@@ -362,10 +362,10 @@ class TaskServer:
         logger.debug('Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
         return payment
 
-    def reject_result(self, subtask_id, account_info):
+    def reject_result(self, subtask_id, key_id):
         trust_mod = self.task_manager.get_trust_mod(subtask_id)
         mod = min(max(trust_mod, self.min_trust), self.max_trust)
-        Trust.WRONG_COMPUTED.decrease(account_info.key_id, mod)
+        Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
     # TRUST
 
@@ -539,8 +539,7 @@ class TaskServer:
             wtr.computing_time,
             wtr.resource_hash,
             wtr.resource_secret,
-            wtr.resource_options,
-            wtr.eth_account
+            wtr.resource_options
         )
 
     def _send_result_failure(self, wtr):
@@ -578,7 +577,7 @@ class TaskServer:
 
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, computing_time,
-                 resource_hash, resource_secret, resource_options, eth_account,
+                 resource_hash, resource_secret, resource_options,
                  owner, last_sending_trial=0, delay_time=0):
 
         self.task_id = task_id
@@ -587,7 +586,6 @@ class WaitingTaskResult(object):
         self.resource_hash = resource_hash
         self.resource_secret = resource_secret
         self.resource_options = resource_options
-        self.eth_account = eth_account
         self.owner = owner
 
         self.last_sending_trial = last_sending_trial
