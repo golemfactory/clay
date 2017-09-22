@@ -87,8 +87,11 @@ class MLPOCTask(CoreTask):
 
     def initialize(self, dir_manager):
         super().initialize(dir_manager)
-        self.spearmint_path = dir_manager.get_task_temporary_dir(self.task_definition.task_id)
-        self.local_spearmint = self.prepare_spearmint_localcomputer(self.spearmint_path)
+        # FIXME super ugly, the line length limit should be increased
+        self.spearmint_path = \
+            dir_manager.get_task_temporary_dir(self.task_definition.task_id)
+        self.local_spearmint = \
+            self.prepare_spearmint_localcomputer(self.spearmint_path)
         self.local_spearmint.run()
 
     def __spearmint_ctd(self) -> ComputeTaskDef:

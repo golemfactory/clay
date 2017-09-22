@@ -67,8 +67,10 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
         cls.code_link = os.path.join(cls.test_tmp, "code")
         cls.data_link = os.path.join(cls.test_tmp, "data")
 
-        shutil.copytree(code_dir, cls.code_link)  # copying instead of linking, because otherwise some some files are messed up
-        shutil.copytree(data_dir, cls.data_link)  # copying instead of linking, because otherwise some some files are messed up
+        # copying instead of linking
+        # because otherwise some some files are messed up
+        shutil.copytree(code_dir, cls.code_link)
+        shutil.copytree(data_dir, cls.data_link)
         assert cls.code_link
         assert cls.data_link
 
@@ -80,7 +82,10 @@ class TestDockerMLPOCTask(TempDirFixture, DockerTestCase):
                                    "mock_box_callback.py")
         mock_bb_dst = os.path.join(cls.code_link, "impl", "box_callback.py")
         os.remove(mock_bb_dst)
-        shutil.copy(mock_bb_src, mock_bb_dst)  # copying instead of linking, because otherwise some some files are messed up
+
+        # copying instead of linking
+        # because otherwise some some files are messed up
+        shutil.copy(mock_bb_src, mock_bb_dst)
 
     def tearDown(self):
         if self.node and self.node.client:

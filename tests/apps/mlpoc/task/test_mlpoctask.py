@@ -21,7 +21,7 @@ from golem.tools.assertlogs import LogTestCase
 
 class TestMLPOCTask(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
-    #     'apps/mlpoc/task/mlpoctask.py',
+        'apps/mlpoc/task/mlpoctask.py'
     ]
 
     def tearDown(self):
