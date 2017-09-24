@@ -9,7 +9,8 @@ from uuid import UUID
 from ethereum import keys
 from ethereum.slogging import get_logger
 from ethereum.utils import privtopub  # this is different  than the one used in devp2p.crypto
-from ethereum.utils import sha3, is_string, decode_hex, remove_0x_head
+from ethereum.utils import sha3, is_string, decode_hex, encode_hex, remove_0x_head
+from pprint import pprint
 log = get_logger('accounts')
 
 random = SystemRandom()
@@ -38,7 +39,7 @@ class Account(object):
     def __init__(self, keystore, password=None, path=None):
         self.keystore = keystore
         try:
-            self._address = self.keystore['address'].decode('hex')
+            self._address = decode_hex(self.keystore['address'])
         except KeyError:
             self._address = None
         self.locked = True
@@ -63,7 +64,7 @@ class Account(object):
             key = mk_random_privkey()
         keystore = keys.make_keystore_json(key, password)
         keystore['id'] = uuid
-        return Account(keystore, password, path)
+        return cls(keystore, password, path)
 
     @classmethod
     def load(cls, path, password=None):
@@ -76,7 +77,7 @@ class Account(object):
             keystore = json.load(f)
         if not keys.check_keystore_json(keystore):
             raise ValueError('Invalid keystore file')
-        return Account(keystore, password, path=path)
+        return cls(keystore, password, path=path)
 
     def dump(self, include_address=True, include_id=True):
         """Dump the keystore for later disk storage.
@@ -94,10 +95,25 @@ class Account(object):
         d['crypto'] = self.keystore['crypto']
         d['version'] = self.keystore['version']
         if include_address and self.address is not None:
-            d['address'] = self.address.encode('hex')
+            d['address'] = encode_hex(self.address)
         if include_id and self.uuid is not None:
             d['id'] = self.uuid
+
+        # Convert to string.
+        def bytes_to_string(d: dict) -> None:
+            for k, v in d.items():
+                if type(v) is dict:
+                    bytes_to_string(v)
+                if type(v) is bytes:
+                    d[k] = v.decode('ascii')
+
+        bytes_to_string(d)
+
         return json.dumps(d)
+
+    def save(self):
+        with open(self.path, 'w') as f:
+            f.write(self.dump())
 
     def unlock(self, password):
         """Unlock the account with a password.

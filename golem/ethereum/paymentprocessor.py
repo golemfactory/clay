@@ -52,6 +52,10 @@ def _encode_payments(payments):
     return args, value
 
 
+def is_nonempty_file(file_path: str) -> bool:
+    return path.isfile(file_path) and path.getsize(file_path) > 0
+
+
 class PaymentProcessor(Service):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
@@ -89,15 +93,21 @@ class PaymentProcessor(Service):
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
+        if len(account_password) == 0:
+            raise ValueError("Empty password provided")
+
         keystore_file = path.join(client.node.datadir,
                                   'golem_ethereum_account.json')
-        if path.exists(keystore_file):
+        t = time.clock()
+        if is_nonempty_file(keystore_file):
+            log.debug("Loading existing account: {}".format(keystore_file))
             self.account = Account.load(keystore_file, account_password)
         else:
             self.account = Account.new(account_password, path=keystore_file)
             self.account.save()
         log.info("Account {} unlocked ({})".format(self.account.address.hex(),
                                                    self.account.path))
+        log.debug("Unlock time: {} s".format(time.clock() - t))
 
     def wait_until_synchronized(self):
         is_synchronized = False
@@ -161,7 +171,7 @@ class PaymentProcessor(Service):
         return True
 
     def eth_address(self, zpad=True):
-        raw = keys.privtoaddr(self.__privkey)
+        address = self.account.address
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             raw = utils.zpad(raw, 32)
@@ -180,7 +190,7 @@ class PaymentProcessor(Service):
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            addr = keys.privtoaddr(self.__privkey)
+            addr = self.account.address
             data = self.__testGNT.encode('balanceOf', (addr,))
             r = self.__client.call(_from='0x' + encode_hex(addr),
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
@@ -277,7 +287,7 @@ class PaymentProcessor(Service):
         gas = 21000 + 800 + len(p) * 30000
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
                          value=0, data=data)
-        tx.sign(self.__privkey)
+        tx.sign(self.account.privkey)
         h = tx.hash
         log.info("Batch payments: {:.6}, value: {:.6f}"
                  .format(encode_hex(h), value / denoms.ether))
@@ -358,8 +368,7 @@ class PaymentProcessor(Service):
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 10 ** 15:
             log.info("Requesting tETH")
-            addr = keys.privtoaddr(self.__privkey)
-            tETH_faucet_donate(addr)
+            tETH_faucet_donate(self.account.address)
             return False
         return True
 
@@ -371,7 +380,7 @@ class PaymentProcessor(Service):
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
-            tx.sign(self.__privkey)
+            tx.sign(self.account.privkey)
             self.__client.send(tx)
             return False
         return True

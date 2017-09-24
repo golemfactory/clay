@@ -1,6 +1,8 @@
 import mock
 from mock import patch, MagicMock
 
+from ethereum.keys import PBKDF2_CONSTANTS
+
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -8,7 +10,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem
 )
 
-PRIV_KEY = '07' * 32
+PBKDF2_CONSTANTS['c'] = 10  # Limit KDF difficulty.
 
 
 class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
@@ -16,24 +18,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
 
     def test_init(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        e = EthereumTransactionSystem(self.tempdir, 'password')
         self.assertIsInstance(e, EthereumTransactionSystem)
         assert type(e.get_payment_address()) is str
 
-    def test_invalid_private_key(self):
+    def test_invalid_account_password(self):
         with self.assertRaises(ValueError):
-            EthereumTransactionSystem(self.tempdir, "not a private key")
+            EthereumTransactionSystem(self.tempdir, "")
 
-    @mock.patch(
-        'golem.transactions.ethereum.ethereumtransactionsystem.'
-        'EthereumTransactionSystem.get_payment_address',
-        new_callable=mock.PropertyMock)
-    def test_invalid_eth_adress_construction(self, mock_get_payment_address):
-        mock_get_payment_address().return_value = None
-
-        with self.assertRaisesRegexp(ValueError,
-                                     "Invalid Ethereum address constructed"):
-            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+    def test_get_balance(self):
+        e = EthereumTransactionSystem(self.tempdir, 'password')
+        assert e.get_balance() == (None, None, None)
 
     @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
@@ -50,7 +45,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         def error(*_):
             raise Exception
 
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        e = EthereumTransactionSystem(self.tempdir, 'password')
 
         sleep.call_count = 0
         with patch(
@@ -82,10 +77,11 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_stop(self, mock_is_service_running):
         pkg = 'golem.ethereum.'
 
-        def _init(self, *args, **kwargs):
+        def init(self, datadir):
             self.rpcport = 65001
             self._NodeProcess__ps = None
             self.web3 = MagicMock()
+            self.datadir = datadir
 
         with patch('twisted.internet.task.LoopingCall.start'), \
             patch('twisted.internet.task.LoopingCall.stop'), \
@@ -94,12 +90,10 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             patch(pkg + 'node.NodeProcess.__init__', _init), \
             patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
-            mock_is_service_running.return_value = False
-            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            assert e.incomes_keeper.processor. \
-                _loopingCall.start.called
-            assert e.incomes_keeper.processor \
-                ._PaymentProcessor__client.node.start.called
+            e = EthereumTransactionSystem(self.tempdir, 'password')
+
+            assert e._EthereumTransactionSystem__proc.start.called
+            assert e._EthereumTransactionSystem__eth_node.node.start.called
 
             mock_is_service_running.return_value = False
             e.stop()

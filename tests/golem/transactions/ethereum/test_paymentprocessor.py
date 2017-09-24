@@ -2,15 +2,15 @@ import json
 import random
 import time
 import unittest
-import rlp
 from os import urandom
 
 import mock
 import requests
 from ethereum import tester, processblock
+from ethereum.keys import PBKDF2_CONSTANTS
 from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
-from ethereum.utils import denoms, privtoaddr
+from ethereum.utils import denoms
 from mock import patch, Mock
 from twisted.internet.task import Clock
 
@@ -24,6 +24,7 @@ from golem.utils import encode_hex, decode_hex
 
 SYNC_TEST_INTERVAL = 0.01
 TEST_GNT_ABI = json.loads(TestGNT.ABI)
+PBKDF2_CONSTANTS['c'] = 10  # Limit KDF difficulty.
 
 # FIXME: upgrade to pyethereum 2.x
 setattr(processblock, 'unicode', str)
@@ -57,16 +58,16 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     """
     def setUp(self):
         DatabaseFixture.setUp(self)
-        self.privkey = urandom(32)
-        self.addr = privtoaddr(self.privkey)
+        self.password = urandom(10)
         self.client = mock.MagicMock(spec=Client)
-        self.client.web3 = mock.MagicMock()
+        self.client.datadir = self.tempdir
         self.client.get_balance.return_value = 0
         self.client.send.side_effect = lambda tx: '0x' + encode_hex(tx.hash)
         self.nonce = random.randint(0, 9999)
         self.client.get_transaction_count.return_value = self.nonce
         # FIXME: PaymentProcessor should be started and stopped!
-        self.pp = PaymentProcessor(self.client, self.privkey)
+        self.pp = PaymentProcessor(self.client, self.password)
+        self.addr = self.pp.account.address
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
 
     def test_eth_balance(self):
@@ -159,7 +160,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
     def test_add_invalid_payment_status(self):
         a1 = urandom(20)
-        p1 = Payment.create(subtask="p1", payee=a1, value=1, status=PaymentStatus.confirmed)
+        p1 = Payment.create(subtask="p1", payee=a1, value=1,
+                            status=PaymentStatus.confirmed)
         assert p1.status is PaymentStatus.confirmed
 
         with self.assertRaises(RuntimeError):
@@ -169,14 +171,15 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_faucet(self, get):
         response = Mock(spec=requests.Response)
         response.status_code = 200
-        pp = PaymentProcessor(self.client, self.privkey, faucet=True)
+        print(self.client.datadir)
+        pp = PaymentProcessor(self.client, self.password, faucet=True)
         pp.get_ether_from_faucet()
         assert get.call_count == 1
         assert encode_hex(self.addr) in get.call_args[0][0]
 
     def test_gnt_faucet(self):
         self.client.call.return_value = '0x00'
-        pp = PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp = PaymentProcessor(self.client, self.password, faucet=True)
         pp.get_gnt_from_faucet()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
@@ -270,7 +273,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_synchronized(self):
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
         PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        pp = PaymentProcessor(self.client, self.privkey, faucet=False)
+        pp = PaymentProcessor(self.client, self.password, faucet=False)
         syncing_status = {'startingBlock': '0x384',
                           'currentBlock': '0x386',
                           'highestBlock': '0x454'}
@@ -302,7 +305,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_synchronized_unstable(self):
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
         PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        pp = PaymentProcessor(self.client, self.privkey, faucet=False)
+        pp = PaymentProcessor(self.client, self.password, faucet=False)
         syncing_status = {'startingBlock': '0x0',
                           'currentBlock': '0x1',
                           'highestBlock': '0x4096'}
@@ -420,6 +423,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         PaymentProcessor.TESTGNT_ADDR = decode_hex(gnt_addr)
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
+        self.client.datadir = self.tempdir
         self.client.get_peer_count.return_value = 0
         self.client.is_syncing.return_value = False
         self.client.get_transaction_count.side_effect = \
@@ -453,7 +457,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         self.client.call.side_effect = call
         self.client.send.side_effect = send
-        self.pp = PaymentProcessor(self.client, self.privkey)
+        self.pp = PaymentProcessor(self.client, 'password')
         self.clock = Clock()
         self.pp._loopingCall.clock = self.clock
 

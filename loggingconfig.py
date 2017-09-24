@@ -31,7 +31,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'DEBUG',
             'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
