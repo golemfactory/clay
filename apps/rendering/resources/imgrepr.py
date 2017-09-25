@@ -40,6 +40,17 @@ class PILImgRepr(ImgRepr):
         self.img = None
         self.type = "PIL"
 
+    def __getstate__(self):
+        state = super().__getstate__()
+        state['_img_name'] = getattr(self.img, 'name', None)
+        return state
+
+    def __setstate__(self, state):
+        img_name = state.pop('_img_name')
+        super().__setstate__(state)
+        if self.img is not None:
+            self.img.name = img_name
+
     def load_from_file(self, file_):
         self.img = Image.open(file_)
         self.img = self.img.convert('RGB')
