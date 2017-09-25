@@ -36,6 +36,7 @@ def create_client(datadir):
 
 def create_proto():
     proto = Mock()
+    proto.peer.remote_pubkey = b'1' * 128
     proto.receive_reject_callbacks = []
     proto.receive_task_request_callbacks = []
     proto.receive_task_callbacks = []
@@ -132,10 +133,11 @@ class TestGolemService(unittest.TestCase):
         max_disk = 'unlimited'
         max_memory = 'unlimited'
         max_cpus = 'unlimited'
+        eth_account = b'f000' * 32
         proto.send_task_request = Mock()
         proto.peer.ip_port = ['10.10.10.1', 0]
         gservice.send_task_request(proto, task_id, performance, price, max_disk,
-            max_memory, max_cpus)
+                                   max_memory, max_cpus, eth_account)
         assert proto.send_task_request.called
 
     @patch('golem.network.p2p.peermanager.GolemPeerManager.disconnect')
@@ -149,39 +151,39 @@ class TestGolemService(unittest.TestCase):
         max_disk = 'unlimited'
         max_memory = 'unlimited'
         max_cpus = 'unlimited'
+        eth_account = b'f000' * 32
 
         proto.peer.ip_port = ['10.10.10.1', 0]
         proto.peer.connection.getpeername = Mock()
         proto.peer.connection.getpeername.return_value = ['10.10.10.1', 0]
 
+        receive_request_args = proto, task_id, performance, price, max_disk, \
+                               max_memory, max_cpus, eth_account
+
         gservice.task_manager.get_next_subtask = Mock(return_value=(Mock(),
             False, False))
         gservice.send_task = Mock()
-        gservice.receive_task_request(proto, task_id, performance, price, max_disk,
-                                   max_memory, max_cpus)
+        gservice.receive_task_request(*receive_request_args)
         assert gservice.send_task.called
 
         gservice.task_manager.get_next_subtask.return_value = (None,
             True, False)
         gservice.send_reject_task_request = Mock()
-        gservice.receive_task_request(proto, task_id, performance, price, max_disk,
-                                   max_memory, max_cpus)
+        gservice.receive_task_request(*receive_request_args)
         assert gservice.send_reject_task_request.called
         gservice.send_reject_task_request.assert_called_once_with(proto, task_id,
             TaskRequestRejection.TASK_ID_UNKNOWN)
 
         gservice.task_manager.get_next_subtask.return_value = (None,
             False, True)
-        gservice.receive_task_request(proto, task_id, performance, price, max_disk,
-                                   max_memory, max_cpus)
+        gservice.receive_task_request(*receive_request_args)
         assert gservice.send_reject_task_request.called
         gservice.send_reject_task_request.assert_called_with(proto, task_id,
             TaskRequestRejection.DOWNLOADING_RESULT)
 
         gservice.task_manager.get_next_subtask.return_value = (None,
             False, False)
-        gservice.receive_task_request(proto, task_id, performance, price, max_disk,
-                                   max_memory, max_cpus)
+        gservice.receive_task_request(*receive_request_args)
         assert gservice.send_reject_task_request.called
         gservice.send_reject_task_request.assert_called_with(proto, task_id,
             TaskRequestRejection.NO_MORE_SUBTASKS)
@@ -203,6 +205,20 @@ class TestGolemService(unittest.TestCase):
         gservice.task_computer.task_request_rejected = Mock()
         gservice.task_server.remove_task_header = Mock()
         gservice.task_computer.session_closed = Mock()
+
+        # Invalid remote public key
+        task_keeper = gservice.task_server.task_manager.comp_task_keeper
+        task_keeper.get_node_for_task_id.return_value = None
+
+        for reason in TaskRequestRejection.__dict__:
+            gservice._receive_reject_task_request(proto, reason, task_id)
+            assert not gservice.task_computer.task_request_rejected.called
+            assert not gservice.task_server.remove_task_header.called
+            assert not gservice.task_computer.session_closed.called
+
+        # Valid remote public key
+        task_keeper.get_node_for_task_id.return_value = proto.peer.remote_pubkey
+
         for reason in TaskRequestRejection.__dict__:
             gservice._receive_reject_task_request(proto, reason, task_id)
             if reason == TaskRequestRejection.DOWNLOADING_RESULT:
@@ -215,7 +231,6 @@ class TestGolemService(unittest.TestCase):
                 gservice.task_server.remove_task_header.assert_called_with(
                     task_id)
                 assert gservice.task_computer.session_closed.called
-
 
     def test_send_task(self):
         gservice = self.client.services['task_service']
@@ -296,10 +311,9 @@ class TestGolemService(unittest.TestCase):
         resource_hash = "ABCDEF12345"
         resource_secret = "secret"
         resource_options = Mock()
-        eth_account = "0xABCDEF12345"
 
         gservice.send_result(proto, subtask_id, computation_time, resource_hash,
-            resource_secret, resource_options, eth_account)
+            resource_secret, resource_options)
         assert proto.send_result.called
 
     def test_receive_result(self):
@@ -313,13 +327,27 @@ class TestGolemService(unittest.TestCase):
         resource_hash = "ABCDEF12345"
         resource_secret = "secret"
         resource_options = Mock()
-        eth_account = "0xABCDEF12345"
+
+        task = Mock()
 
         gservice._set_eth_account = Mock()
         gservice.task_manager.task_result_incoming = Mock()
         gservice.task_manager.task_result_manager.pull_package = Mock()
-        task = Mock()
-        gservice.task_manager.subtask2task_mapping = {subtask_id : task_id }
+        gservice.task_manager.subtask2task_mapping = {subtask_id: task_id}
+        gservice.task_manager.get_node_id_for_subtask.return_value = None
+
+        # Invalid remote public key
+        gservice.receive_result(proto, subtask_id, computation_time,
+                                resource_hash, resource_secret,
+                                resource_options)
+
+        assert not gservice._set_eth_account.called
+        assert not gservice.task_manager.task_result_incoming.called
+        assert not gservice.task_manager.task_result_manager.pull_package.called
+
+        # Valid remote public key
+        gservice.task_manager.get_node_id_for_subtask.return_value = \
+            proto.peer.remote_pubkey
 
         def test_callbacks(multihash, task_id, subtask_id, _,
                            success, error, **kwargs):
@@ -337,7 +365,7 @@ class TestGolemService(unittest.TestCase):
             error(exception, Mock(), task_id)
 
             gservice.task_server.reject_result.assert_called_with(
-                subtask_id, proto.eth_account_info)
+                subtask_id, proto.peer.remote_pubkey)
             gservice.task_manager.task_computation_failure.\
                 assert_called_once_with(subtask_id, ANY)
             gservice.send_reject_result.assert_called_with(
@@ -348,19 +376,25 @@ class TestGolemService(unittest.TestCase):
 
         gservice.task_manager.tasks = {task_id: None}
         gservice.send_reject_result = Mock()
-        gservice.receive_result(proto, subtask_id, computation_time, resource_hash,
-            resource_secret, resource_options, eth_account)
-        gservice.send_reject_result.assert_any_call(proto, subtask_id,
-            ResultRejection.SUBTASK_ID_UNKNOWN)
+        gservice.receive_result(proto, subtask_id, computation_time,
+                                resource_hash, resource_secret,
+                                resource_options)
+
+        reason = ResultRejection.SUBTASK_ID_UNKNOWN
+        gservice.send_reject_result.assert_any_call(proto, subtask_id, reason)
         assert not gservice.task_manager.task_result_manager.pull_package.called
 
         gservice.task_manager.tasks[task_id] = task
-        gservice.receive_result(proto, subtask_id, computation_time, resource_hash,
-            resource_secret, resource_options, eth_account)
-        gservice.task_manager.task_result_manager.pull_package.\
-            assert_called_with(resource_hash, task_id, subtask_id,
-                resource_secret, success=ANY, error=ANY,
-                    client_options=resource_options, output_dir=ANY)
+        gservice.receive_result(proto, subtask_id, computation_time,
+                                resource_hash, resource_secret,
+                                resource_options)
+
+        pull_package = gservice.task_manager.task_result_manager.pull_package
+        pull_package.assert_called_with(resource_hash, task_id, subtask_id,
+                                        resource_secret,
+                                        success=ANY, error=ANY,
+                                        client_options=resource_options,
+                                        output_dir=ANY)
 
     @patch('golem.model.Payment.subtask')
     @patch('golem.model.Payment.get')

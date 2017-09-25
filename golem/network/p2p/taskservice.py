@@ -3,6 +3,7 @@ import copy
 import gevent
 from devp2p import slogging
 from devp2p.service import WiredService
+from devp2p.utils import decode_hex
 from gevent.event import AsyncResult
 
 from golem.docker.environment import DockerEnvironment
@@ -82,7 +83,7 @@ class TaskService(WiredService):
             decoded = decode_hex(pubkey)
             logger.info("decoding key %r to %r ", pubkey, decoded)
         except Exception as exc:
-            logger.error('Invalid public key %r: %s', pubkey, exc)
+            logger.error('Invalid session "%s" public key "%r"', pubkey, exc)
             return None
 
         for peer in self.peer_manager.peers:
@@ -92,7 +93,8 @@ class TaskService(WiredService):
                                 decoded, peer.remote_pubkey)
                     return peer.protocols.get(protocol)
             except Exception as exc:
-                logger.info('Invalid pubkey: %r %s', peer.remote_pubkey, exc)
+                logger.debug('Session public key "%r" error: %r',
+                             peer.remote_pubkey, exc)
 
     # FIXME: Discover peer addresses if none were provided
     def connect(self, pubkey, addresses):
@@ -166,12 +168,12 @@ class TaskService(WiredService):
 
     @staticmethod
     def send_task_request(proto, task_id, performance, price, max_disk,
-                          max_memory, max_cpus):
+                          max_memory, max_cpus, eth_account):
         proto.send_task_request(task_id, performance, price, max_disk,
-                                max_memory, max_cpus)
+                                max_memory, max_cpus, eth_account)
 
     def receive_task_request(self, proto, task_id, performance, price,
-                             max_disk, max_memory, max_cpus):
+                             max_disk, max_memory, max_cpus, eth_account):
 
         pubkey = proto.peer.remote_pubkey
         name = proto.peer.node_name or ''
@@ -184,6 +186,8 @@ class TaskService(WiredService):
                 pubkey, name, task_id, performance, price,
                 max_disk, max_memory, max_cpus, ip
             )
+
+        self._set_eth_account(proto, eth_account)
 
         if ctd:
             return self.send_task(proto, ctd)
@@ -206,10 +210,18 @@ class TaskService(WiredService):
 
     def _receive_reject_task_request(self, proto, reason, payload):
         task_id = payload
+        pubkey = proto.peer.remote_pubkey
+        provider_pubkey = self._get_provider_key_by_task(task_id)
+
+        if not self._compare_keys(provider_pubkey, pubkey):
+            logger.error('Received a task "%s" request rejection with an '
+                         'unknown public key %r (%r expected)', task_id, pubkey,
+                         provider_pubkey)
+            return
 
         if reason != TaskRequestRejection.DOWNLOADING_RESULT:
             # TODO: Convert reason int to message str
-            logger.warning('Task %s request rejected: %r', task_id, reason)
+            logger.info('Task %s request rejected: %r', task_id, reason)
 
             self.task_computer.task_request_rejected(task_id, reason)
             self.task_server.remove_task_header(task_id)
@@ -232,7 +244,6 @@ class TaskService(WiredService):
         proto.send_task(ctd, resources, client_options)
 
     def receive_task(self, proto, definition, resources, resource_options):
-
         task_keeper = self.task_manager.comp_task_keeper
         pubkey = proto.peer.remote_pubkey
 
@@ -243,7 +254,7 @@ class TaskService(WiredService):
                 raise RuntimeError("No requests made for subtask_id")
 
         except (ValueError, RuntimeError) as exc:
-            logger.error("Received invalid task definition: %s", exc)
+            logger.error("Received an invalid task definition: %s", exc)
             self.task_computer.session_closed()
             return self.send_reject_task(proto, TaskRejection.INVALID_CTD,
                                          definition.subtask_id)
@@ -258,18 +269,24 @@ class TaskService(WiredService):
         self.task_server.pull_resources(definition.task_id, resources,
                                         client_options=resource_options)
 
-    def send_reject_task(self, proto, task_id, reason):
+    def send_reject_task(self, proto, subtask_id, reason):
         cmd_id = TaskProtocol.task.cmd_id
-        self.send_reject(proto, cmd_id, reason, task_id)
+        self.send_reject(proto, cmd_id, reason, subtask_id)
 
     def _receive_reject_task(self, proto, reason, payload):
-        pubkey = proto.peer.remote_pubkey
         subtask_id = payload
 
-        if self.task_manager.get_node_id_for_subtask(subtask_id) == pubkey:
-            msg = 'Subtask computation rejected: {}'.format(reason)
-            logger.error(msg)
-            self.task_manager.task_computation_failure(subtask_id, msg)
+        pubkey = proto.peer.remote_pubkey
+        provider_pubkey = self._get_provider_key_by_subtask(subtask_id)
+
+        if not self._compare_keys(provider_pubkey, pubkey):
+            logger.error('Received a subtask %s reject message with an'
+                         'invalid public key %s', subtask_id, pubkey)
+            return
+
+        msg = 'Subtask computation rejected: {}'.format(reason)
+        logger.error(msg)
+        self.task_manager.task_computation_failure(subtask_id, msg)
 
     # ======================================================================== #
     #                        TASK COMPUTATION RESULT
@@ -277,14 +294,20 @@ class TaskService(WiredService):
 
     @staticmethod
     def send_result(proto, subtask_id, computation_time, resource_hash,
-                    resource_secret, resource_options, eth_account):
+                    resource_secret, resource_options):
 
         proto.send_result(subtask_id, computation_time, resource_hash,
-                          resource_secret, resource_options, eth_account)
+                          resource_secret, resource_options)
 
     def receive_result(self, proto, subtask_id, computation_time,
-                       resource_hash, resource_secret, resource_options,
-                       eth_account):
+                       resource_hash, resource_secret, resource_options):
+
+        pubkey = proto.peer.remote_pubkey
+        provider_pubkey = self._get_provider_key_by_subtask(subtask_id)
+
+        if not self._compare_keys(provider_pubkey, pubkey):
+            return logger.error('Task result: invalid key %r for subtask %s',
+                                pubkey, subtask_id)
 
         logger.debug("Task result: received hash %r (options: %r)",
                      resource_hash, resource_options)
@@ -309,14 +332,12 @@ class TaskService(WiredService):
             logger.error("Task result: error downloading {} ({})"
                          .format(subtask_id, exc or "unspecified"))
 
-            self.task_server.reject_result(subtask_id, proto.eth_account_info)
+            self.task_server.reject_result(subtask_id, proto.peer.remote_pubkey)
             self.task_manager.task_computation_failure(
                 subtask_id, 'Error downloading task result')
 
             self.send_reject_result(proto, subtask_id,
                                     ResultRejection.DOWNLOAD_FAILED)
-
-        self._set_eth_account(proto, eth_account)
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
@@ -335,6 +356,16 @@ class TaskService(WiredService):
         proto.send_accept_result(subtask_id, remuneration)
 
     def receive_accept_result(self, proto, subtask_id, remuneration):
+        pubkey = proto.peer.remote_pubkey
+        requestor_pubkey = self._get_requestor_key_by_subtask(subtask_id)
+
+        if not self._compare_keys(requestor_pubkey, pubkey):
+            logger.error('Received subtask "%s" accept message with an '
+                         'invalid public key %r (%r expected)',
+                         subtask_id, pubkey, requestor_pubkey)
+            return
+
+        logger.info('Subtask "%s" accepted', subtask_id)
         self.task_server.subtask_accepted(subtask_id, remuneration)
 
     def send_reject_result(self, proto, subtask_id, reason):
@@ -342,7 +373,18 @@ class TaskService(WiredService):
         self.send_reject(proto, cmd_id, reason, subtask_id, drop_peer=True)
 
     def _receive_reject_result(self, proto, reason, payload):
-        self.task_server.subtask_rejected(payload)
+        subtask_id = payload
+        pubkey = proto.peer.remote_pubkey
+        requestor_pubkey = self._get_requestor_key_by_subtask(subtask_id)
+
+        if not self._compare_keys(requestor_pubkey, pubkey):
+            logger.error('Received a subtask "%s" reject message with an '
+                         'invalid public key %r (%r expected)',
+                         subtask_id, pubkey, requestor_pubkey)
+            return
+
+        logger.info('Computation result rejected for subtask "%s"', subtask_id)
+        self.task_server.subtask_rejected(subtask_id)
 
     # ======================================================================== #
     #                        TASK COMPUTATION FAILURE
@@ -353,6 +395,16 @@ class TaskService(WiredService):
         proto.send_failure(subtask_id, reason)
 
     def receive_failure(self, proto, subtask_id, reason):
+        pubkey = proto.peer.remote_pubkey
+        provider_pubkey = self._get_provider_key_by_subtask(subtask_id)
+
+        if not self._compare_keys(provider_pubkey, pubkey):
+            logger.error('Received a subtask %s failure message with an '
+                         'invalid public key %r (%r expected)',
+                         subtask_id, pubkey, provider_pubkey)
+            return
+
+        logger.info('Provider reported subtask "%s" failure', subtask_id)
         self.task_server.subtask_failure(subtask_id, reason)
 
     # ======================================================================== #
@@ -364,6 +416,7 @@ class TaskService(WiredService):
         proto.send_payment_request(subtask_id)
 
     def receive_payment_request(self, proto, subtask_id):
+        # FIXME: do we have to verify sender's public key?
         try:
             with db.atomic():
                 payment = Payment.get(Payment.subtask == subtask_id)
@@ -380,6 +433,7 @@ class TaskService(WiredService):
 
     @staticmethod
     def _receive_reject_payment_request(proto, reason, payload):
+        # For any other logic, check the public key first
         logger.error("Payment information request denied: %r %r",
                      reason, payload)
 
@@ -423,6 +477,7 @@ class TaskService(WiredService):
 
     @staticmethod
     def _receive_reject_payment(proto, reason, subtask_id):
+        # For any other logic, check the public key first
         logger.warning('Received payment rejection for subtask %s: %s',
                        subtask_id, reason)
 
@@ -467,11 +522,13 @@ class TaskService(WiredService):
         if subtask_id != result_subtask_id:
             logger.error("Subtask id mismatch: %s != %s",
                          subtask_id, result_subtask_id)
+            self.task_server.reject_result(subtask_id, proto.peer.remote_pubkey)
             return self.send_reject_result(proto, subtask_id,
                                            ResultRejection.SUBTASK_ID_MISMATCH)
 
         if result_type not in result_types.values():
             logger.error("Unknown result type: %s", result_type)
+            self.task_server.reject_result(subtask_id, proto.peer.remote_pubkey)
             return self.send_reject_result(proto, subtask_id,
                                            ResultRejection.RESULT_TYPE_UNKNOWN)
 
@@ -479,6 +536,7 @@ class TaskService(WiredService):
                                                  result_type)
 
         if not self.task_manager.verify_subtask(subtask_id):
+            self.task_server.reject_result(subtask_id, proto.peer.remote_pubkey)
             return self.send_reject_result(proto, subtask_id,
                                            ResultRejection.VERIFICATION_FAILED)
 
@@ -546,3 +604,27 @@ class TaskService(WiredService):
         account = EthAccountInfo(pubkey, port, ip, name, None, eth_account)
 
         proto.eth_account_info = account
+
+    def _get_requestor_key_by_subtask(self, subtask_id):
+        task_keeper = self.task_server.task_manager.comp_task_keeper
+        task_id = task_keeper.get_task_id_for_subtask(subtask_id)
+        return task_keeper.get_node_for_task_id(task_id)
+
+    def _get_provider_key_by_task(self, task_id):
+        task_keeper = self.task_server.task_manager.comp_task_keeper
+        return task_keeper.get_node_for_task_id(task_id)
+
+    def _get_provider_key_by_subtask(self, subtask_id):
+        return self.task_manager.get_node_id_for_subtask(subtask_id)
+
+    @staticmethod
+    def _compare_keys(first, second):
+        if not first or not second:
+            return False
+
+        if len(first) == 128:
+            first = decode_hex(first)
+        if len(second) == 128:
+            second = decode_hex(second)
+
+        return first == second
