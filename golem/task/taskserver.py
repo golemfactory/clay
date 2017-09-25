@@ -9,6 +9,7 @@ from pydispatch import dispatcher
 
 from golem import model
 from golem.core.async import async_run, AsyncRequest
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ranking.helper.trust import Trust
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
@@ -23,8 +24,13 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer:
-    def __init__(self, node, config_desc, keys_auth, client, task_service,
-                 use_ipv6=False, use_docker_machine_manager=True):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 task_service,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
 
         self.node = node
         self.client = client
@@ -121,24 +127,29 @@ class TaskServer:
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
         theader = self.task_keeper.get_task()
-        transaction_system = self.client.transaction_system
-
-        if theader is None:
+        if not isinstance(theader, TaskHeader):
             return None
-        if not self.should_accept_requestor(theader.task_owner_key_id):
+
+        task_id = theader.task_id
+        owner_id = theader.task_owner_key_id
+        max_price = theader.max_price
+
+        if not self.should_accept_requestor(owner_id):
+            return None
+        if self.config_desc.min_price > max_price:
             return None
 
         env = self.get_environment_by_id(theader.environment)
         performance = env.get_performance(self.config_desc) or 0.0
-        min_price = self.config_desc.min_price
         address = (theader.task_owner_address, theader.task_owner_port)
         eth_account = None
 
+        transaction_system = self.client.transaction_system
         if transaction_system:
             eth_account = transaction_system.get_payment_address()
 
-        args = {
-            'task_id': theader.task_id,
+        kwargs = {
+            'task_id': task_id,
             'performance': performance,
             'price': self.config_desc.min_price,
             'max_disk': self.config_desc.max_resource_size,
@@ -148,19 +159,19 @@ class TaskServer:
         }
 
         try:
-            print('Request task', theader.task_id, address)
-            self.task_manager.add_comp_task_request(theader, min_price)
+
+            self.task_manager.add_comp_task_request(theader, int(max_price))
             self.task_service.spawn_connect(
-                theader.task_owner_key_id,
+                owner_id,
                 [address],
-                lambda session: self._request_task_success(session, **args),
-                lambda error: self._request_task_error(error, theader.task_id)
+                lambda session: self._request_task_success(session, **kwargs),
+                lambda error: self._request_task_error(error, task_id)
             )
 
-            return theader.task_id
+            return task_id
 
         except Exception as err:
-            self._request_task_error(err, theader.task_id)
+            self._request_task_error(err, task_id)
 
     def _request_task_success(self, session, **args):
         task_id = args['task_id']
@@ -428,7 +439,9 @@ class TaskServer:
             return
         task_id = expected_income.task
         node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
+
+        # check that the reward has been successfully written in db
+        result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
             task_id=task_id,
             subtask_id=subtask_id,
@@ -436,7 +449,11 @@ class TaskServer:
             block_number=block_number,
             value=reward,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        # Trust is increased only after confirmation from incomes keeper
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def noop(self, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger

@@ -5,16 +5,24 @@ from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
 
 
-class TransactionSystem:
-    """ Transaction system. Keeps information about budget, expected payments, etc. """
+class TransactionSystem(object):
+    """ Transaction system.
+    Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
-        """Create new transaction system instance.
-        :param payments_keeper_class, payment keeper class,
-            an instance of this class will be used as a payment keeper
+    def __init__(self, payments_keeper=PaymentsKeeper(),
+                 incomes_keeper=IncomesKeeper()):
+        """ Create new transaction system instance.
+        :param payments_keeper:
+        default PaymentsKeeper, payment keeper class,
+        an instance of this class
+        while be used as a payment keeper
         """
-        self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
-        self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
+
+        # Keeps information about payments to send
+        self.payments_keeper = payments_keeper
+
+        # Keeps information about received payments
+        self.incomes_keeper = incomes_keeper
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask.
@@ -27,7 +35,8 @@ class TransactionSystem:
         """
         payee = account_info.eth_account.address
         if len(payee) != 20:
-            raise ValueError("Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
+            raise ValueError(
+                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
         return Payment.create(
             subtask=subtask_id,
             payee=payee,
@@ -57,7 +66,7 @@ class TransactionSystem:
 
         def item(o):
             status = PaymentStatus.confirmed if o.income.transaction \
-                     else PaymentStatus.awaiting
+                else PaymentStatus.awaiting
 
             return {
                 "task": to_unicode(o.task),
@@ -77,7 +86,8 @@ class TransactionSystem:
         # TODO Some code from taskkeeper
         # now = datetime.datetime.now()
         # after_deadline = []
-        # for subtask_id, [task_id, task_date, deadline] in self.completed.items():
+        # for subtask_id, [task_id, task_date, deadline]
+        # in self.completed.items():
         #     if deadline < now:
         #         after_deadline.append(task_id)
         #         del self.completed[subtask_id]
