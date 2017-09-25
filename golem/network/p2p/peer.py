@@ -9,6 +9,10 @@ COMPUTATION_CAPABILITY = 'computation'
 
 class GolemPeer(Peer):
 
+    def __init__(self, peermanager, connection, remote_pubkey=None):
+        super().__init__(peermanager, connection, remote_pubkey)
+        self.degree = 0
+
     @property
     def capabilities(self):
         capabilities = super().capabilities
