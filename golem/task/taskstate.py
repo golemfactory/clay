@@ -85,7 +85,6 @@ class TaskStatus(object):
     finished = "Finished"
     aborted = "Aborted"
     timeout = "Timeout"
-    paused = "Paused"
     restarted = "Restart"
 
 

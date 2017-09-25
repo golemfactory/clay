@@ -15,7 +15,7 @@ class TestTaskContextMenuCustomizer(TestCase):
         status = [TaskStatus.notStarted, TaskStatus.sending, TaskStatus.waiting,
                   TaskStatus.starting, TaskStatus.computing, TaskStatus.finished,
                   TaskStatus.finished, TaskStatus.aborted, TaskStatus.timeout,
-                  TaskStatus.paused, TaskStatus.restarted]
+                  TaskStatus.restarted]
         menu = None
         for st in status:
             td.task_state.status = st
@@ -37,9 +37,6 @@ class TestTaskContextMenuCustomizer(TestCase):
 
         menu._TaskContextMenuCustomizer__start_task_triggered()
         menu.logic.start_task.assert_called_with(TASK_ID)
-
-        menu._TaskContextMenuCustomizer__pause_task_triggered()
-        menu.logic.pause_task.assert_called_with(TASK_ID)
 
         menu._TaskContextMenuCustomizer__resume_task_triggered()
         menu.logic.resume_task.assert_called_with(TASK_ID)
