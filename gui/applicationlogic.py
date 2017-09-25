@@ -271,9 +271,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.update_tasks(self.tasks)
         self.client.create_task(self.build_and_serialize_task(ts, cbk))
 
-    def restart_task(self, task_id):
-        self.client.restart_task(task_id)
-
     def abort_task(self, task_id):
         self.client.abort_task(task_id)
 

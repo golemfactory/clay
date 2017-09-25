@@ -57,7 +57,6 @@ CORE_METHOD_MAP = dict(
     create_task=            Task.task_create,
     delete_task=            Task.task_delete,
     abort_task=             Task.task_abort,
-    restart_task=           Task.task_restart,
     resume_task=            Task.task_resume,
 
     get_subtasks=           Task.subtasks,
