@@ -19,6 +19,20 @@ from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 logger = logging.getLogger("apps.lux")
 
 
+def reference_imgs_pool_f(task, counter):
+    """Mapping function used in asynchronous verification."""
+    dm = task.dirManager
+    dir_ = os.path.join(
+        dm.get_ref_data_dir(task.header.task_id, counter=counter),
+        dm.tmp,
+        dm.output)
+
+    paths = glob.glob(os.path.join(dir_, '*.' + task.output_format))
+
+    ref_img_pil = load_as_PILImgRepr(paths.pop())
+    return ref_img_pil
+
+
 class LuxRenderVerificator(RenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
@@ -40,21 +54,9 @@ class LuxRenderVerificator(RenderingVerificator):
     def _get_reference_imgs(self, task):
         ref_imgs = []
 
-        def f(task, counter):
-            dm = task.dirManager
-            dir_ = os.path.join(
-                dm.get_ref_data_dir(task.header.task_id, counter=counter),
-                dm.tmp,
-                dm.output)
-
-            paths = glob.glob(os.path.join(dir_, '*.' + task.output_format))
-
-            ref_img_pil = load_as_PILImgRepr(paths.pop())
-            return ref_img_pil
-
         with multiprocessing.Pool() as pool:
             ref_imgs = pool.map(
-                f,
+                reference_imgs_pool_f,
                 ((task, i) for i in range(task.reference_runs))
             )
 
