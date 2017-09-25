@@ -19,8 +19,9 @@ from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 logger = logging.getLogger("apps.lux")
 
 
-def reference_imgs_pool_f(task, counter):
+def reference_imgs_pool_f(task_and_counter):
     """Mapping function used in asynchronous verification."""
+    task, counter = task_and_counter
     dm = task.dirManager
     dir_ = os.path.join(
         dm.get_ref_data_dir(task.header.task_id, counter=counter),
