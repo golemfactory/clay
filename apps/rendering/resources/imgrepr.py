@@ -34,6 +34,12 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
     def to_pil(self):
         return
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
 
 class PILImgRepr(ImgRepr):
     def __init__(self):
