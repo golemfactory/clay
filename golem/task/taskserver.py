@@ -8,6 +8,7 @@ from pydispatch import dispatcher
 import time
 
 from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
@@ -28,8 +29,12 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth, client,
-                 use_ipv6=False, use_docker_machine_manager=True):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -117,8 +122,12 @@ class TaskServer(PendingConnectionsServer):
                 performance = env.get_performance(self.config_desc)
             else:
                 performance = 0.0
-            if self.should_accept_requestor(theader.task_owner_key_id):
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+
+            is_requestor_accepted = self.should_accept_requestor(theader.task_owner_key_id)
+            is_price_accepted = self.config_desc.min_price < theader.max_price
+            if is_requestor_accepted and is_price_accepted:
+                self.task_manager.add_comp_task_request(theader=theader,
+                                                        price=int(theader.max_price))
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -363,7 +372,9 @@ class TaskServer(PendingConnectionsServer):
             return
         task_id = expected_income.task
         node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
+
+        # check that the reward has been successfully written in db
+        result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
             task_id=task_id,
             subtask_id=subtask_id,
@@ -371,7 +382,11 @@ class TaskServer(PendingConnectionsServer):
             block_number=block_number,
             value=reward,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        # Trust is increased only after confirmation from incomes keeper
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -389,6 +404,7 @@ class TaskServer(PendingConnectionsServer):
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
+
         if not value:
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return

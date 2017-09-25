@@ -3,7 +3,7 @@ from datetime import datetime
 from peewee import IntegrityError
 from golem.model import (Payment, PaymentStatus, LocalRank,
                          GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
-                         TaskPreset, PaymentDetails)
+                         TaskPreset, PaymentDetails )
 from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture, TempDirFixture
 
