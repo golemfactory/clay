@@ -94,9 +94,11 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from golem.network.p2p.peermanager import GolemPeerManager
         from golem.network.p2p.golemservice import GolemService
         from golem.network.p2p.taskservice import TaskService
+        from devp2p.discovery import DiscoveryProtocol
         GolemPeerManager.wire_protocol.version = protocol_id
         GolemService.wire_protocol.version = protocol_id
         TaskService.wire_protocol.version = protocol_id
+        DiscoveryProtocol.version = protocol_id
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
