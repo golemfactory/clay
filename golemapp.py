@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import sys
+
 # Set the default event loop
 os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
 import gevent
@@ -9,10 +10,11 @@ import logging
 
 from multiprocessing import freeze_support
 from ethereum import slogging
-#Monkey patch for ethereum.slogging.
-#SLogger aggressively mess up with python looger.
-#This patch is to settle down this.
-#It should be done before any SLogger is created.
+
+# Monkey patch for ethereum.slogging.
+# SLogger aggressively mess up with python looger.
+# This patch is to settle down this.
+# It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
 
 
@@ -22,6 +24,7 @@ def monkey_patched_getLogger(*args, **kwargs):
     logging.setLoggerClass(orig_class)
     return result
 
+
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
 from twisted.internet import asyncioreactor
@@ -29,6 +32,8 @@ from twisted.internet import asyncioreactor
 
 def monkey_patched_run(self, *args, **kwargs):
     self.startRunning(installSignalHandlers=True)
+
+
 asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 
@@ -47,6 +52,10 @@ asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or "
                    " <node_id>@<ipv6_addr>:<port>")
+@click.option('--protocol_id', type=click.INT,
+              help="Golem nodes will connect "
+                   "only inside sub-network with "
+                   "a given protocol id")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -65,7 +74,7 @@ asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+          qt, version, m, geth_port, protocol_id):
     freeze_support()
     delete_reactor()
 
@@ -80,6 +89,14 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
+
+    if protocol_id:
+        from golem.network.p2p.peermanager import GolemPeerManager
+        from golem.network.p2p.golemservice import GolemService
+        from golem.network.p2p.taskservice import TaskService
+        GolemPeerManager.wire_protocol.version = protocol_id
+        GolemService.wire_protocol.version = protocol_id
+        TaskService.wire_protocol.version = protocol_id
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
