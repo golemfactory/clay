@@ -169,7 +169,8 @@ class TaskService(WiredService):
                                 max_memory, max_cpus, eth_account)
 
     def receive_task_request(self, proto, task_id, performance, price,
-                             max_disk, max_memory, max_cpus, eth_account):
+                             max_disk, max_memory, max_cpus, eth_account,
+                             _msg_bytes=None):
 
         pubkey = proto.peer.remote_pubkey
         name = proto.peer.node_name or ''
@@ -239,7 +240,8 @@ class TaskService(WiredService):
 
         proto.send_task(ctd, resources, client_options)
 
-    def receive_task(self, proto, definition, resources, resource_options):
+    def receive_task(self, proto, definition, resources, resource_options,
+                     _msg_bytes=None):
         task_keeper = self.task_manager.comp_task_keeper
         pubkey = proto.peer.remote_pubkey
 
@@ -296,7 +298,8 @@ class TaskService(WiredService):
                           resource_secret, resource_options)
 
     def receive_result(self, proto, subtask_id, computation_time,
-                       resource_hash, resource_secret, resource_options):
+                       resource_hash, resource_secret, resource_options,
+                       _msg_bytes=None):
 
         pubkey = proto.peer.remote_pubkey
         provider_pubkey = self._get_provider_key_by_subtask(subtask_id)
@@ -351,7 +354,8 @@ class TaskService(WiredService):
     def send_accept_result(proto, subtask_id, remuneration):
         proto.send_accept_result(subtask_id, remuneration)
 
-    def receive_accept_result(self, proto, subtask_id, remuneration):
+    def receive_accept_result(self, proto, subtask_id, remuneration,
+                              _msg_bytes=None):
         pubkey = proto.peer.remote_pubkey
         requestor_pubkey = self._get_requestor_key_by_subtask(subtask_id)
 
@@ -390,7 +394,7 @@ class TaskService(WiredService):
     def send_failure(proto, subtask_id, reason):
         proto.send_failure(subtask_id, reason)
 
-    def receive_failure(self, proto, subtask_id, reason):
+    def receive_failure(self, proto, subtask_id, reason, _msg_bytes=None):
         pubkey = proto.peer.remote_pubkey
         provider_pubkey = self._get_provider_key_by_subtask(subtask_id)
 
@@ -411,7 +415,7 @@ class TaskService(WiredService):
     def send_payment_request(proto, subtask_id):
         proto.send_payment_request(subtask_id)
 
-    def receive_payment_request(self, proto, subtask_id):
+    def receive_payment_request(self, proto, subtask_id, _msg_bytes=None):
         # FIXME: do we have to verify sender's public key?
         try:
             with db.atomic():
@@ -446,7 +450,8 @@ class TaskService(WiredService):
         )
 
     def receive_payment(self, proto, subtask_id, transaction_id, remuneration,
-                        block_number):
+                        block_number, _msg_bytes=None):
+
         if transaction_id is None:
             logger.debug(
                 'PAYMENT PENDING %r for %r',
@@ -487,7 +492,7 @@ class TaskService(WiredService):
         if drop_peer:
             pass  # TODO: should we drop peers here?
 
-    def receive_reject(self, proto, cmd_id, reason, payload):
+    def receive_reject(self, proto, cmd_id, reason, payload, _msg_bytes=None):
         # Task request rejected
         if cmd_id == TaskProtocol.task_request.cmd_id:
             return self._receive_reject_task_request(proto, reason, payload)

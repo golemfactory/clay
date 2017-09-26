@@ -1,13 +1,14 @@
+import itertools
 import rlp
-from devp2p.protocol import BaseProtocol
 from ethereum import slogging
 
-from golem.task.taskbase import TaskHeader
+from golem.core.simpleserializer import CBORSedes
+from golem.network.p2p.protocol import SigningProtocol
 
 log = slogging.get_logger('golem.protocol')
 
 
-class GolemProtocol(BaseProtocol):
+class GolemProtocol(SigningProtocol):
     protocol_id = 18317  # just a random number; not sure what to put here
     version = 1
     name = b'golem_proto'
@@ -15,9 +16,9 @@ class GolemProtocol(BaseProtocol):
     def __init__(self, peer, service):
         # required by P2PProtocol
         self.config = peer.config
-        BaseProtocol.__init__(self, peer, service)
+        SigningProtocol.__init__(self, peer, service)
 
-    class get_tasks(BaseProtocol.command):
+    class get_tasks(SigningProtocol.command):
         """
         Peer want tasks information
         """
@@ -25,23 +26,21 @@ class GolemProtocol(BaseProtocol):
 
         structure = []
 
-    class task_headers(BaseProtocol.command):
+    class task_headers(SigningProtocol.command):
         """
         Sends tasks descriptors
         """
         cmd_id = 1
 
-        structure = rlp.sedes.CountableList(TaskHeader)
+        structure = rlp.sedes.CountableList(CBORSedes)
 
-        def create(self, proto, *args, **kwargs):
-            return list(args[0])
+        def received(self, decoded):
+            if isinstance(decoded, tuple):
+                # flatten the contents
+                return list(itertools.chain.from_iterable(decoded))
+            return []
 
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            return [TaskHeader.deserialize(task_header, mutable=True)
-                    for task_header in rlp.decode_lazy(rlp_data)]
-
-    class remove_task(BaseProtocol.command):
+    class remove_task(SigningProtocol.command):
         """
         Remove given task from p2p network
         """
@@ -49,7 +48,7 @@ class GolemProtocol(BaseProtocol):
 
         structure = [('task_id', rlp.sedes.binary)]
 
-    class get_node_name(BaseProtocol.command):
+    class get_node_name(SigningProtocol.command):
         """
         Request node name
         """
@@ -57,7 +56,7 @@ class GolemProtocol(BaseProtocol):
 
         structure = []
 
-    class node_name(BaseProtocol.command):
+    class node_name(SigningProtocol.command):
         """
         Deliver node name
         """

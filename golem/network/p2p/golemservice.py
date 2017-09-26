@@ -57,7 +57,7 @@ class GolemService(WiredService):
         gevent.spawn(self.peer_manager.broadcast, GolemProtocol, 'remove_task',
                      task_id)
 
-    def receive_get_tasks(self, proto):
+    def receive_get_tasks(self, proto, _msg_bytes=None):
         if not self.task_server:
             return
 
@@ -65,15 +65,15 @@ class GolemService(WiredService):
         if task_headers:
             proto.send_task_headers(task_headers)
 
-    def receive_task_headers(self, proto, task_headers):
+    def receive_task_headers(self, proto, task_headers, _msg_bytes=None):
         for t in task_headers:
             self.task_server.add_task_header(t.to_dict())
 
-    def receive_remove_task(self, proto, task_id):
+    def receive_remove_task(self, proto, task_id, _msg_bytes=None):
         self.task_server.remove_task_header(task_id)
 
-    def receive_get_node_name(self, proto):
+    def receive_get_node_name(self, proto, _msg_bytes=None):
         proto.send_node_name(self.client.config_desc.node_name)
 
-    def receive_node_name(self, proto, node_name):
+    def receive_node_name(self, proto, node_name, _msg_bytes=None):
         proto.peer.node_name = node_name
