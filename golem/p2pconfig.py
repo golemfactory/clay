@@ -6,8 +6,8 @@ p2pconfig = {
         "listen_port": 20171,
         "bootstrap_nodes": [
             b'enode://'
-            b'a9ac7cb82f08929e3253372b0c7fab7589fd37c9ee5cc2ad1cc9da75ffa8b7839'
-            b'8450aa5a25f1836d4984700570f69aa8356a94ca9bd55c5d226d051c5bd6742'
+            b'2e139700d5284d8b0c1d9f6dba6515d476123e27130e8079a6905f8b76b07adf6'
+            b'fd3dc5b618bc144caab30e338c5f8a48c4de5695ca9dfd3573904a1abe87ccb'
             b'@94.23.17.170:20171'
         ]
     },
