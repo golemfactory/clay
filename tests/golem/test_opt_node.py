@@ -222,7 +222,7 @@ class TestOptNode(TempDirFixture):
                             peers=self.parsed_peer)
 
         self.node._setup_docker = Mock()
-        self.node.client.connect = Mock()
+        self.node.connect_from_main = Mock()
         self.node.client.start = Mock()
         self.node.client.environments_manager = Mock()
         self.node.run()
@@ -230,7 +230,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.start.called
         assert self.node._apps_manager is not None
         assert not self.node._setup_docker.called
-        self.node.client.connect.assert_called_with(self.parsed_peer[0])
+        self.node.connect_from_main.assert_called_with(self.parsed_peer[0])
 
     @patch('gevent.hub.Hub.join')
     @patch('golem.docker.image.DockerImage')

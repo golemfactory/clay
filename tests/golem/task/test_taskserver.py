@@ -167,8 +167,15 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             subtask=ctd.subtask_id,
             value=1
         )
+
+        from golem.model import Income
+        ts.client.transaction_system.\
+            incomes_keeper.received.\
+            return_value = Income()
+
         ts.reward_for_subtask_paid(subtask_id="xxyyzz", reward=1,
                                    transaction_id=None, block_number=None)
+
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")

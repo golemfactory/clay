@@ -9,6 +9,7 @@ from pydispatch import dispatcher
 
 from golem import model
 from golem.core.async import async_run, AsyncRequest
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ranking.helper.trust import Trust
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
@@ -23,8 +24,13 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer:
-    def __init__(self, node, config_desc, keys_auth, client, task_service,
-                 use_ipv6=False, use_docker_machine_manager=True):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 task_service,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
 
         self.node = node
         self.client = client
@@ -48,7 +54,8 @@ class TaskServer:
             use_docker_machine_manager=use_docker_machine_manager
         )
 
-        self.task_manager.listen_address = self.node.pub_addr
+        self.task_manager.listen_address =\
+            self.node.pub_addr or self.node.prv_addr
         self.task_manager.listen_port = self.client.get_p2p_port()
         self.task_manager.node = self.node
         self.task_service = task_service
@@ -120,39 +127,51 @@ class TaskServer:
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
         theader = self.task_keeper.get_task()
-
-        if theader is None:
+        if not isinstance(theader, TaskHeader):
             return None
-        if not self.should_accept_requestor(theader.task_owner_key_id):
+
+        task_id = theader.task_id
+        owner_id = theader.task_owner_key_id
+        max_price = theader.max_price
+
+        if not self.should_accept_requestor(owner_id):
+            return None
+        if self.config_desc.min_price > max_price:
             return None
 
         env = self.get_environment_by_id(theader.environment)
         performance = env.get_performance(self.config_desc) or 0.0
-        min_price = self.config_desc.min_price
         address = (theader.task_owner_address, theader.task_owner_port)
+        eth_account = None
 
-        args = {
-            'task_id': theader.task_id,
+        transaction_system = self.client.transaction_system
+        if transaction_system:
+            eth_account = transaction_system.get_payment_address()
+
+        kwargs = {
+            'task_id': task_id,
             'performance': performance,
             'price': self.config_desc.min_price,
             'max_disk': self.config_desc.max_resource_size,
             'max_memory': self.config_desc.max_memory_size,
-            'max_cpus': self.config_desc.num_cores
+            'max_cpus': self.config_desc.num_cores,
+            'eth_account': eth_account
         }
 
         try:
-            self.task_manager.add_comp_task_request(theader, min_price)
+
+            self.task_manager.add_comp_task_request(theader, int(max_price))
             self.task_service.spawn_connect(
-                theader.task_owner_key_id,
+                owner_id,
                 [address],
-                lambda session: self._request_task_success(session, **args),
-                lambda error: self._request_task_error(error, theader.task_id)
+                lambda session: self._request_task_success(session, **kwargs),
+                lambda error: self._request_task_error(error, task_id)
             )
 
-            return theader.task_id
+            return task_id
 
         except Exception as err:
-            self._request_task_error(err, theader.task_id)
+            self._request_task_error(err, task_id)
 
     def _request_task_success(self, session, **args):
         task_id = args['task_id']
@@ -188,13 +207,7 @@ class TaskServer:
 
         task_result_manager = self.task_manager.task_result_manager
         comp_task_keeper = self.task_manager.comp_task_keeper
-        transaction_system = self.client.transaction_system
-
         value = comp_task_keeper.get_value(task_id, computing_time)
-        eth_account = None
-
-        if transaction_system:
-            eth_account = transaction_system.get_payment_address()
 
         if self.client.transaction_system:
             self.client.transaction_system.incomes_keeper.expect(
@@ -218,7 +231,6 @@ class TaskServer:
                 path_and_hash[1],
                 resource_secret,
                 resource_options,
-                eth_account,
                 owner
             )
 
@@ -361,10 +373,10 @@ class TaskServer:
         logger.debug('Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
         return payment
 
-    def reject_result(self, subtask_id, account_info):
+    def reject_result(self, subtask_id, key_id):
         trust_mod = self.task_manager.get_trust_mod(subtask_id)
         mod = min(max(trust_mod, self.min_trust), self.max_trust)
-        Trust.WRONG_COMPUTED.decrease(account_info.key_id, mod)
+        Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
     # TRUST
 
@@ -427,7 +439,9 @@ class TaskServer:
             return
         task_id = expected_income.task
         node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
+
+        # check that the reward has been successfully written in db
+        result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
             task_id=task_id,
             subtask_id=subtask_id,
@@ -435,7 +449,11 @@ class TaskServer:
             block_number=block_number,
             value=reward,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        # Trust is increased only after confirmation from incomes keeper
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def noop(self, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
@@ -538,8 +556,7 @@ class TaskServer:
             wtr.computing_time,
             wtr.resource_hash,
             wtr.resource_secret,
-            wtr.resource_options,
-            wtr.eth_account
+            wtr.resource_options
         )
 
     def _send_result_failure(self, wtr):
@@ -577,7 +594,7 @@ class TaskServer:
 
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, computing_time,
-                 resource_hash, resource_secret, resource_options, eth_account,
+                 resource_hash, resource_secret, resource_options,
                  owner, last_sending_trial=0, delay_time=0):
 
         self.task_id = task_id
@@ -586,7 +603,6 @@ class WaitingTaskResult(object):
         self.resource_hash = resource_hash
         self.resource_secret = resource_secret
         self.resource_options = resource_options
-        self.eth_account = eth_account
         self.owner = owner
 
         self.last_sending_trial = last_sending_trial

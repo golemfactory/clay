@@ -44,6 +44,7 @@ from golem.network.p2p.taskservice import TaskService
 from golem.network.socketaddress import SocketAddress
 from golem.p2pconfig import p2pconfig
 from golem.ranking.helper.trust import Trust
+from golem.ranking.manager.gossip_manager import GossipManager
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -89,7 +90,7 @@ class Client(HardwarePresetsMixin):
             geth_port=None,
             **config_overrides):
 
-        slogging.configure(u':info')
+        slogging.configure(u':info', log_file="devp2p.log")
         devp2plog.info('starting')
 
         if not datadir:
@@ -144,6 +145,7 @@ class Client(HardwarePresetsMixin):
 
         self.task_server = None
         self.resource_server = None
+        self.gossip_keeper = None
         self.diag_service = None
         self.daemon_manager = None
         self.rpc_publisher = None
@@ -171,7 +173,9 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key), geth_port)
+                datadir,
+                self.keys_auth._private_key,
+                geth_port)
         else:
             self.transaction_system = None
 
@@ -277,6 +281,9 @@ class Client(HardwarePresetsMixin):
                                                       dir_manager,
                                                       self.keys_auth, self)
 
+        if not self.gossip_keeper:
+            self.gossip_keeper = GossipManager()
+
         from twisted.internet import reactor
         reactor.callFromThread(self._start_devp2p)
 
@@ -341,8 +348,11 @@ class Client(HardwarePresetsMixin):
         if isinstance(address, SocketAddress):
             address = (address.address, address.port)
 
+        if node_id.startswith("enode://"):
+            node_id = node_id[8:]
         try:
-            self.services['peermanager'].connect(address, decode_hex(node_id))
+            self.services['peermanager'].connect(address,
+                decode_hex(node_id))
         except Exception as exc:
             log.error('Cannot connect to node %s (%s): %r',
                       node_id, address, exc)
@@ -490,17 +500,11 @@ class Client(HardwarePresetsMixin):
         name = self.config_desc.node_name
         return str(name) if name else ''
 
-    def get_neighbours_degree(self):
-        pass
-
     def get_suggested_addr(self, key_id):
         return self.services['golem_service'].suggested_address.get(key_id)
 
     def get_suggested_conn_reverse(self, key_id):
         return self.services['golem_service'].get_suggested_conn_reverse(key_id)
-
-    def get_resource_peers(self):
-        pass
 
     def get_peers(self):
         return self.services['peermanager'].peers
@@ -678,22 +682,6 @@ class Client(HardwarePresetsMixin):
     def use_ranking(self):
         return bool(self.ranking)
 
-    def want_to_start_task_session(self, key_id, node_id, conn_id):
-        pass
-
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-            ):
-        pass
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        pass
-
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):
         self.rpc_server = rpc_server
@@ -839,30 +827,75 @@ class Client(HardwarePresetsMixin):
     def disable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, False)
 
+    #############################
+    # RANKING FUNCTIONS         #
+    #############################
+    def get_neighbours_degree(self):
+        peers = list(self.services['peermanager'].peers)
+        return {peer.key_id: peer.degree for peer in peers}
+
     def send_gossip(self, gossip, send_to):
-        pass
+        """ send gossip to given peers
+        :param list gossip: list of gossips that should be sent
+        :param list send_to: list of ids of peers that should receive gossip
+        """
+        peers = list(self.services['peermanager'].peers)
+        for peer_id in send_to:
+            # FIXME: maintain a key => peer map
+            for peer in peers:
+                if peer.remote_pubkey == peer_id:
+                    peer.send_gossip(gossip)
+                    break
+
+    # TODO: call on receiving a 'gossip' message
+    def hear_gossip(self, gossip):
+        """ Add newly heard gossip to the gossip list
+        :param list gossip: list of gossips from one peer
+        """
+        self.gossip_keeper.add_gossip(gossip)
 
     def send_stop_gossip(self):
-        pass
+        """ Send stop gossip message to all peers
+        """
+        peers = list(self.services['peermanager'].peers)
+        for peer in peers:
+            self.gossip_keeper.register_that_peer_stopped_gossiping(
+                peer.remote_pubkey
+            )
 
     def collect_gossip(self):
-        return []
+        """ Return all gathered gossips and clear gossip buffer
+        :return list: list of all gossips
+        """
+        return self.gossip_keeper.pop_gossips()
 
     def collect_stopped_peers(self):
-        pass
+        """ Return set of all peers that has stopped gossiping
+        :return set: set of peers id's
+        """
+        return self.gossip_keeper.pop_peers_that_stopped_gossiping()
 
     def collect_neighbours_loc_ranks(self):
-        return []
+        """Return all local ranks that was collected in that round
+           and clear the rank list
+        :return list: list of all neighbours local rank sent to this node
+        """
+        return self.gossip_keeper.pop_neighbour_loc_ranks()
 
     def push_local_rank(self, node_id, loc_rank):
-        self.p2pservice.push_local_rank(node_id, loc_rank)
+        """ Send local rank to peers
+        :param str node_id: id of anode that this opinion is about
+        :param list loc_rank: opinion about this node
+        :return:
+        """
+        # FIXME: re-introduce the 'gossip' message
+        # peers = list(self.services['peermanager'].peers)
+        # for peer in peers:
+        #    peer.send_loc_rank(node_id, loc_rank)
 
-    def check_payments(self):
-        if not self.transaction_system:
-            return
-        after_deadline_nodes = self.transaction_system.check_payments()
-        for node_id in after_deadline_nodes:
-            Trust.PAYMENT.decrease(node_id)
+    #############################
+    # TASK PRESETS              #
+    #############################
 
     @staticmethod
     def save_task_preset(preset_name, task_type, data):
@@ -876,6 +909,13 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def delete_task_preset(task_type, preset_name):
         taskpreset.delete_task_preset(task_type, preset_name)
+
+    def check_payments(self):
+        if not self.transaction_system:
+            return
+        after_deadline_nodes = self.transaction_system.check_payments()
+        for node_id in after_deadline_nodes:
+            Trust.PAYMENT.decrease(node_id)
 
     def get_estimated_cost(self, task_type, options):
         options['price'] = float(options['price'])
@@ -925,7 +965,7 @@ class Client(HardwarePresetsMixin):
         try:
             self.services['golem_service'].get_tasks()
         except Exception:
-            log.exception("golem service task roadcast failed")
+            log.exception("golem service task broadcast failed")
         try:
             self.task_server.sync_network()
         except Exception:
@@ -988,6 +1028,7 @@ class Client(HardwarePresetsMixin):
 
     def __make_node_state_snapshot(self, is_running=True):
         peers_num = 0  # len(self.p2pservice.peers)
+        # TODO: Is it necessary to collect and send network messages?
         last_network_messages = ''  # self.p2pservice.get_last_messages()
 
         if self.task_server:
@@ -1000,8 +1041,8 @@ class Client(HardwarePresetsMixin):
                 self.config_desc.node_name,
                 peers_num,
                 tasks_num,
-                '',  # self.p2pservice.node.pub_addr,
-                '',  # self.p2pservice.node.pub_port,
+                self.node.pub_addr,
+                self.node.pub_port,
                 last_network_messages,
                 last_task_messages,
                 r_tasks_progs,

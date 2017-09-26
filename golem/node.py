@@ -68,10 +68,18 @@ class Node(object):
         try:
             self.client.start()
             for peer in self._peers:
-                self.client.connect(peer)
+                self.connect_from_main(peer)
         except SystemExit:
             from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)
+
+    def connect_from_main(self, peer):
+        from twisted.internet import reactor
+        reactor.callFromThread(self.connect_on_greenlet, peer)
+
+    def connect_on_greenlet(self, peer):
+        gevent.spawn(self.client.connect,
+                     peer[0], peer[1])
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter
@@ -100,6 +108,7 @@ class Node(object):
         for env in self._apps_manager.get_env_list():
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
+        self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
         from twisted.internet import reactor

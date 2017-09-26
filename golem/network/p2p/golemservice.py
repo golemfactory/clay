@@ -1,3 +1,4 @@
+import gevent
 from devp2p.service import WiredService
 from devp2p import slogging
 
@@ -25,13 +26,17 @@ class GolemService(WiredService):
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_start', proto=proto)
 
+        proto.peer.node_name = None
+
         # register callbacks
         proto.receive_get_tasks_callbacks.append(self.receive_get_tasks)
         proto.receive_task_headers_callbacks.append(self.receive_task_headers)
         proto.receive_get_node_name_callbacks.append(self.receive_get_node_name)
         proto.receive_node_name_callbacks.append(self.receive_node_name)
 
-        proto.send_get_node_name()
+        # do not call send_get_node_name directly here
+        import gevent
+        gevent.spawn_later(1., proto.send_get_node_name)
 
     def on_wire_protocol_stop(self, proto):
         assert isinstance(proto, self.wire_protocol)
@@ -46,10 +51,11 @@ class GolemService(WiredService):
         self.task_server = task_server
 
     def get_tasks(self):
-        self.peer_manager.broadcast(GolemProtocol, 'get_tasks')
+        gevent.spawn(self.peer_manager.broadcast, GolemProtocol, 'get_tasks')
 
     def remove_task(self, task_id):
-        self.peer_manager.broadcast(GolemProtocol, 'remove_task', task_id)
+        gevent.spawn(self.peer_manager.broadcast, GolemProtocol, 'remove_task',
+                     task_id)
 
     def receive_get_tasks(self, proto, _msg_bytes=None):
         if not self.task_server:
@@ -59,15 +65,14 @@ class GolemService(WiredService):
         if task_headers:
             proto.send_task_headers(task_headers)
 
-    def receive_task_headers(self, proto, task_headers,
-                             _payload=None, _sig=None):
+    def receive_task_headers(self, proto, task_headers, _msg_bytes=None):
         for t in task_headers:
             self.task_server.add_task_header(t.to_dict())
 
     def receive_remove_task(self, proto, task_id, _msg_bytes=None):
         self.task_server.remove_task_header(task_id)
 
-    def receive_get_node_name(self, proto, _payload=None, _sig=None):
+    def receive_get_node_name(self, proto, _msg_bytes=None):
         proto.send_node_name(self.client.config_desc.node_name)
 
     def receive_node_name(self, proto, node_name, _msg_bytes=None):

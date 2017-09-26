@@ -87,7 +87,8 @@ class TaskHeader(rlp.Serializable):
                  docker_images=None,
                  signature=None):
         """
-        :param float max_price: maximum price that this node may par for an hour of computation
+        :param float max_price: maximum price that this (requestor) node may
+        pay for an hour of computation
         :param docker_images: docker image specification
         """
 
