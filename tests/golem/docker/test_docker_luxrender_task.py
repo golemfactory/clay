@@ -107,8 +107,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             pub_addr='1.2.3.4',
             pub_port=10000,
             nat_type=None,
-            p2p_prv_port=10000,
-            p2p_pub_port=10000,
             prv_addresses=None
         )
 

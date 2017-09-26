@@ -601,7 +601,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         node = Node(
             node_name="node", key="key_id", prv_addr="10.0.0.10",
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
-            nat_type=None, p2p_prv_port=40102, p2p_pub_port=40102
+            nat_type=None
         )
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
                                "key_id", "environment", task_owner=node), '', Mock())
