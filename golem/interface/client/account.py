@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
@@ -5,7 +7,7 @@ from golem.interface.command import command
 
 
 @command(help="Display account & financial info", root=True)
-def account():
+def account() -> Dict[str, Any]:
 
     client = account.client
 
@@ -41,5 +43,5 @@ def account():
     )
 
 
-def _fmt(value, unit="GNT"):
+def _fmt(value: float, unit: str = "GNT") -> str:
     return "{:.6f} {}".format(value / denoms.ether, unit)
