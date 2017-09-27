@@ -100,7 +100,6 @@ class Client(HardwarePresetsMixin):
         self.__lock_datadir()
         self.lock = Lock()
         self.task_tester = None
-        self.devp2p_is_running = None
 
         # Read and validate configuration
         config = AppConfig.load_config(datadir)
@@ -194,6 +193,7 @@ class Client(HardwarePresetsMixin):
 
     def _init_devp2p(self):
         self.devp2p_app = BaseApp(p2pconfig)
+        self.devp2p_app.running = False
         self.devp2p_app.config['node'] = {
             'privkey_hex': encode_hex(self.keys_auth._private_key),
             'pubkey_hex': encode_hex(self.keys_auth.public_key),
@@ -204,6 +204,25 @@ class Client(HardwarePresetsMixin):
         for service in [NodeDiscovery, GolemPeerManager,
                         GolemService, TaskService]:
             service.register_with_app(self.devp2p_app)
+
+    def _start_devp2p(self):
+        import gevent
+
+        try:
+            gevent.spawn(self.devp2p_app.start)
+            self.devp2p_app.running = True
+        except Exception as exc:
+            log.exception(exc)
+            self.quit()
+
+    def _stop_devp2p(self):
+        import gevent
+
+        from golem.network.p2p.peer import GolemPeer
+        GolemPeer.dumb_remote_timeout = 0
+
+        self.devp2p_app.running = False
+        gevent.spawn(self.devp2p_app.stop)
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
@@ -238,12 +257,8 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
-        import gevent
-        if self.devp2p_is_running:
-            self.devp2p_is_running = False
-            from devp2p.peer import Peer
-            Peer.dumb_remote_timeout = 0.1
-            gevent.spawn(self.stop_network)
+        if self.devp2p_app.running:
+            self._stop_devp2p()
         if self.do_work_task.running:
             self.do_work_task.stop()
         if self.publish_task.running:
@@ -296,25 +311,9 @@ class Client(HardwarePresetsMixin):
         dispatcher.send(signal='golem.p2p', event='listening',
                         port=[self.get_p2p_port()] + list(hyperdrive_ports))
 
-    def _start_devp2p(self):
-        try:
-            import gevent
-            self.devp2p_is_running = True
-            gevent.spawn(self.devp2p_app.start)
-        except Exception as exc:
-            self.devp2p_is_running = False
-            log.exception(exc)
-            self.quit()
-
     @property
     def services(self):
         return self.devp2p_app.services
-
-    def stop_network(self):
-        for service in self.services.values():
-            is_server = hasattr(service, 'server')
-            if not is_server or (is_server and service.server):
-                service.stop()
 
     def pause(self):
         if self.do_work_task.running:

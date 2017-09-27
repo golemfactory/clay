@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 
-from twisted.internet.error import ReactorAlreadyRunning
+from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -20,8 +20,10 @@ apps_manager.load_apps()
 
 def stop_reactor(*_):
     from twisted.internet import reactor
-    if reactor.running:
+    try:
         reactor.stop()
+    except ReactorNotRunning:
+        pass
 
 
 def load_environments():
@@ -59,6 +61,7 @@ def start_gui(address):
         stdin=DEVNULL,
         startupinfo=startupinfo
     )
+
 
 def start_client(start_ranking, datadir=None, transaction_system=False,
                  use_monitor=True, client=None, reactor=None, geth_port=None,

@@ -552,8 +552,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.client.start()
         self.client.stop()
-        import gevent
-        gevent.get_hub().join()
         assert not self.client.do_work_task.running
         assert not self.client.publish_task.running
 
