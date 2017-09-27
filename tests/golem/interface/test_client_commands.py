@@ -393,6 +393,8 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
+            assert tasks.restart('valid')
+            client.restart_task.assert_called_with('valid')
             assert tasks.abort('valid')
             client.abort_task.assert_called_with('valid')
             assert tasks.delete('valid')

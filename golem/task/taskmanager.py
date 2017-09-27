@@ -87,7 +87,7 @@ class TaskManager(TaskEventListener):
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting]
+                             TaskStatus.waiting, TaskStatus.restarted]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
@@ -467,6 +467,27 @@ class TaskManager(TaskEventListener):
     def get_resources(self, task_id, resource_header, resource_type=ResourceType.ZIP):
         task = self.tasks[task_id]
         return task.get_resources(resource_header, resource_type)
+
+    @handle_task_key_error
+    def restart_task(self, task_id):
+        logger.info("restarting task")
+        self.dir_manager.clear_temporary(task_id)
+        task = self.tasks[task_id]
+
+        task.restart()
+        task.task_status = TaskStatus.restarted
+        self.tasks_states[task_id].status = TaskStatus.restarted
+        task.header.deadline = timeout_to_deadline(
+            task.task_definition.full_task_timeout)
+        self.tasks_states[task_id].time_started = time.time()
+
+        for ss in list(self.tasks_states[task_id].subtask_states.values()):
+            if ss.subtask_status != SubtaskStatus.failure:
+                ss.subtask_status = SubtaskStatus.restarted
+
+        task.header.signature = self.sign_task_header(task.header)
+
+        self.notice_task_updated(task_id)
 
     @handle_subtask_key_error
     def restart_subtask(self, subtask_id):

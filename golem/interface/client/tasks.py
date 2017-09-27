@@ -120,6 +120,11 @@ class Tasks:
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
+    @command(argument=id_req, help="Restart a task")
+    def restart(self, id):
+        deferred = Tasks.client.restart_task(id)
+        return sync_wait(deferred)
+
     @command(argument=id_req, help="Abort a task")
     def abort(self, id):
         deferred = Tasks.client.abort_task(id)
