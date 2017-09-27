@@ -38,9 +38,6 @@ class TestTaskContextMenuCustomizer(TestCase):
         menu._TaskContextMenuCustomizer__start_task_triggered()
         menu.logic.start_task.assert_called_with(TASK_ID)
 
-        menu._TaskContextMenuCustomizer__resume_task_triggered()
-        menu.logic.resume_task.assert_called_with(TASK_ID)
-
         menu._TaskContextMenuCustomizer__show_task_details_triggered()
         menu.logic.show_task_details.assert_called_with(TASK_ID)
 

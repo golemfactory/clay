@@ -479,16 +479,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert ts is not None
         assert ts.progress == 0.3
 
-    def test_resume_task(self):
-        with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.resume_task("xyz") is None
-        t = self._get_task_mock()
-        self.tm.add_new_task(t)
-        with self.assertNoLogs(logger, level="WARNING"):
-            self.tm.resume_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.starting
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.starting
-
     def test_restart_task(self):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.restart_task("xyz") is None

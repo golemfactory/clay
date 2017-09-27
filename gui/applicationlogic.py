@@ -277,9 +277,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def abort_task(self, task_id):
         self.client.abort_task(task_id)
 
-    def resume_task(self, task_id):
-        self.client.resume_task(task_id)
-
     def delete_task(self, task_id):
         self.client.delete_task(task_id)
         self.customizer.remove_task(task_id)
