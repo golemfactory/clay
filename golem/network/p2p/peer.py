@@ -9,6 +9,8 @@ COMPUTATION_CAPABILITY = 'computation'
 
 class GolemPeer(Peer):
 
+    dumb_remote_timeout = 3
+
     def __init__(self, peermanager, connection, remote_pubkey=None):
         super().__init__(peermanager, connection, remote_pubkey)
         self.link_exception(self._on_unhandled_exception)
@@ -24,6 +26,23 @@ class GolemPeer(Peer):
     @property
     def computation_capability(self):
         return bool(self.peermanager.computation_capability)
+
+    def receive_hello(self, proto, version, client_version_string, capabilities,
+                      listen_port, remote_pubkey):
+
+        super().receive_hello(proto, version, client_version_string,
+                              capabilities, listen_port, remote_pubkey)
+
+        if self.protocols:
+            self.peermanager.peers.append(self)
+        else:
+            self.peermanager.disconnect(self)
+
+    def stop(self):
+        try:
+            super().stop()
+        except ValueError:
+            self.kill()
 
     def _on_unhandled_exception(self, peer, *args):
         """

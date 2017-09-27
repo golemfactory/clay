@@ -10,9 +10,9 @@ logger = slogging.get_logger('golem.protocol')
 
 class TaskProtocol(SigningProtocol):
 
-    protocol_id = 18318  # == GolemProtocol.protocol_id + 1
+    protocol_id = 9012
     version = 1
-    name = b'task_proto'
+    name = b'glmt'
 
     def __init__(self, peer, service):
         # required by P2PProtocol
