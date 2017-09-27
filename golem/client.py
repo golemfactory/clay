@@ -319,32 +319,6 @@ class Client(HardwarePresetsMixin):
             self.task_server.stop_accepting()
             self.task_server.disconnect()
 
-    def pause(self):
-        if self.do_work_task.running:
-            self.do_work_task.stop()
-        if self.publish_task.running:
-            self.publish_task.stop()
-
-        if self.p2pservice:
-            self.p2pservice.pause()
-            self.p2pservice.disconnect()
-        if self.task_server:
-            self.task_server.pause()
-            self.task_server.disconnect()
-            self.task_server.task_computer.quit()
-
-    def resume(self):
-        if not self.do_work_task.running:
-            self.do_work_task.start(1, False)
-        if not self.publish_task.running:
-            self.publish_task.start(1, True)
-
-        if self.p2pservice:
-            self.p2pservice.resume()
-            self.p2pservice.connect_to_network()
-        if self.task_server:
-            self.task_server.resume()
-
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
