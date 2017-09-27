@@ -9,7 +9,6 @@ from threading import Lock
 
 import ethereum.slogging as slogging
 from devp2p.app import BaseApp
-from devp2p.discovery import NodeDiscovery
 from eth_utils import decode_hex
 from pydispatch import dispatcher
 from twisted.internet import task
@@ -36,8 +35,10 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
+from golem.network.p2p.discovery import GolemNodeDiscovery
 from golem.network.p2p.golemservice import GolemService
 from golem.network.p2p.node import Node
+from golem.network.p2p.peer import GolemPeer
 from golem.network.p2p.peermanager import GolemPeerManager
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.p2p.taskservice import TaskService
@@ -201,7 +202,7 @@ class Client(HardwarePresetsMixin):
             'node_name': self.config_desc.node_name
         }
 
-        for service in [NodeDiscovery, GolemPeerManager,
+        for service in [GolemNodeDiscovery, GolemPeerManager,
                         GolemService, TaskService]:
             service.register_with_app(self.devp2p_app)
 
@@ -218,9 +219,7 @@ class Client(HardwarePresetsMixin):
     def _stop_devp2p(self):
         import gevent
 
-        from golem.network.p2p.peer import GolemPeer
         GolemPeer.dumb_remote_timeout = 0
-
         self.devp2p_app.running = False
         gevent.spawn(self.devp2p_app.stop)
 
