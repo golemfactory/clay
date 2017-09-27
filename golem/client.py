@@ -100,6 +100,7 @@ class Client(HardwarePresetsMixin):
         self.__lock_datadir()
         self.lock = Lock()
         self.task_tester = None
+        self.devp2p_is_running = None
 
         # Read and validate configuration
         config = AppConfig.load_config(datadir)
@@ -238,7 +239,11 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
         import gevent
-        gevent.spawn(self.stop_network)
+        if self.devp2p_is_running:
+            self.devp2p_is_running = False
+            from devp2p.peer import Peer
+            Peer.dumb_remote_timeout = 0.1
+            gevent.spawn(self.stop_network)
         if self.do_work_task.running:
             self.do_work_task.stop()
         if self.publish_task.running:
@@ -294,8 +299,10 @@ class Client(HardwarePresetsMixin):
     def _start_devp2p(self):
         try:
             import gevent
+            self.devp2p_is_running = True
             gevent.spawn(self.devp2p_app.start)
         except Exception as exc:
+            self.devp2p_is_running = False
             log.exception(exc)
             self.quit()
 
