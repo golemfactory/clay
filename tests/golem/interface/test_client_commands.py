@@ -413,7 +413,7 @@ class TestTasks(TempDirFixture):
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
-            tasks.create_from_json(def_str)
+            tasks._Tasks__create_from_json(def_str)
             task_def = json.loads(def_str)
             task_def['id'] = "new_uuid"
             client.create_task.assert_called_with(task_def)

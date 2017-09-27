@@ -7,6 +7,7 @@ from collections import Iterable
 from copy import copy
 from os import path, makedirs
 from threading import Lock
+from typing import Dict
 
 from pydispatch import dispatcher
 from twisted.internet import task
@@ -153,7 +154,9 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key), geth_port)
+                datadir,
+                self.keys_auth._private_key,
+                geth_port)
         else:
             self.transaction_system = None
 
@@ -635,7 +638,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
-    def get_task_stats(self):
+    def get_task_stats(self) -> Dict[str, int]:
         return {
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
@@ -644,7 +647,7 @@ class Client(HardwarePresetsMixin):
             'subtasks_with_timeout': self.get_timeout_task_count()
         }
 
-    def get_supported_task_count(self):
+    def get_supported_task_count(self) -> int:
         return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):

@@ -147,7 +147,7 @@ class Tasks:
     """)
     def create(self, file_name: str) -> Any:
         with open(file_name) as f:
-            self.create_from_json(f.read())
+            self.__create_from_json(f.read())
 
     @command(arguments=(id_req, outfile), help="Dump an existing task")
     def dump(self, id: str, outfile: Optional[str]) -> None:
@@ -181,7 +181,7 @@ class Tasks:
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 
-    def create_from_json(self, jsondata: str) -> Any:
+    def __create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
         # FIXME CHANGE TASKI ID
         dictionary['id'] = str(uuid4())

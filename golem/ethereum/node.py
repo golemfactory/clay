@@ -26,17 +26,17 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-def ropsten_faucet_donate(addr):
+def tETH_faucet_donate(addr):
     addr = normalize_address(addr)
     URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
     request = URL_TEMPLATE.format(addr.hex())
     response = requests.get(request)
     if response.status_code != 200:
-        log.error("Ropsten Faucet error code {}".format(response.status_code))
+        log.error("tETH Faucet error code {}".format(response.status_code))
         return False
     response = response.json()
     if response['paydate'] == 0:
-        log.warning("Ropsten Faucet warning {}".format(response['message']))
+        log.warning("tETH Faucet warning {}".format(response['message']))
         return False
     # The paydate is not actually very reliable, usually some day in the past.
     paydate = datetime.fromtimestamp(response['paydate'])
