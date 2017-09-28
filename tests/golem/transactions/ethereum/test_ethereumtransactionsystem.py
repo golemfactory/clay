@@ -68,10 +68,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             e.sync()
             assert sleep.call_count == 0
 
-    def test_get_balance(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (None, None, None)
-
     @mock.patch('golem.transactions.service.Service.running',
                 new_callable=mock.PropertyMock)
     def test_stop(self, mock_is_service_running):

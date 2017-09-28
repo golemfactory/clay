@@ -1,6 +1,5 @@
 import os
 import random
-import unittest
 import uuid
 
 import mock

@@ -6,8 +6,6 @@ from ethereum.utils import privtoaddr
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.report import report_calls, Component
-from golem.transactions.ethereum.ethereumpaymentskeeper \
-    import EthereumAddress
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.transactionsystem import TransactionSystem
@@ -23,16 +21,14 @@ class EthereumTransactionSystem(TransactionSystem):
         :param account_password bytes: password for Ethereum account
         """
 
-        self.__eth_node = self.incomes_keeper.eth_node = Client(datadir, port)
         payment_processor = PaymentProcessor(
-            self.__eth_node,
+            Client(datadir, port),
             account_password,
             faucet=True
         )
 
         super(EthereumTransactionSystem, self).__init__(
-            incomes_keeper=EthereumIncomesKeeper(
-                payment_processor)
+            incomes_keeper=EthereumIncomesKeeper(payment_processor)
         )
 
         self.incomes_keeper.start()

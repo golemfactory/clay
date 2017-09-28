@@ -9,14 +9,12 @@ from .contracts import TestGNT
 from .node import tETH_faucet_donate
 
 from time import sleep
-from typing import List, Set, Dict, Any
 from pydispatch import dispatcher
 
-from ethereum import abi, utils, keys
+from ethereum import abi, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 
-from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
@@ -76,7 +74,8 @@ class PaymentProcessor(Service):
 
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, client: Client, account_password: bytes, faucet=False) -> None:
+    def __init__(self, client: Client, account_password: bytes, faucet=False) \
+            -> None:
         self.__client = client
         self.__eth_balance = None
         self.__gnt_balance = None
@@ -171,7 +170,7 @@ class PaymentProcessor(Service):
         return True
 
     def eth_address(self, zpad=True):
-        address = self.account.address
+        raw = self.account.address
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             raw = utils.zpad(raw, 32)
