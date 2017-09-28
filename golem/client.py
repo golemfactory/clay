@@ -1140,6 +1140,10 @@ class Client(HardwarePresetsMixin):
         return msg
 
     @staticmethod
+    def get_golem_version():
+        return APP_VERSION
+
+    @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
 
