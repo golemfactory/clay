@@ -7,15 +7,7 @@ from threading import Lock
 from pydispatch import dispatcher
 
 
-from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner, CoreBenchmark
-from apps.core.task.coretaskstate import TaskDesc
-from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
-from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
-from apps.lux.benchmark.benchmark import LuxBenchmark
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.core.common import deadline_to_timeout, to_unicode
+from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
