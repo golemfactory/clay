@@ -36,7 +36,11 @@ if pull_request_id not in ["", "false"]:
             sys.stderr.write("Raw reply:{}".format(json_data))
             raise ApprovalError
 
-        result = [a for a in json_data if a["state"] == "APPROVED"]
+        check_states = ["APPROVED", "CHANGES_REQUESTED"]
+        review_states = [a for a in json_data if a["state"] in check_states]
+        unique_reviews = {x['user']['login']: x for x in review_states}.values()
+
+        result = [a for a in unique_reviews if a["state"] == "APPROVED"]
         approvals = len(result)
         run_slow = approvals >= required_approvals
     except(requests.HTTPError, requests.Timeout, ApprovalError) as e:
