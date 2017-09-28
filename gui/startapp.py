@@ -131,9 +131,10 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
         logger.info('Starting process monitor...')
         process_monitor.start()
 
-    reactor.addSystemEventTrigger("before", "shutdown", client.quit)
-    reactor.addSystemEventTrigger("before", "shutdown", router.stop)
-    router.start(reactor, router_ready, start_error)
+    # reactor.addSystemEventTrigger("before", "shutdown", client.quit)
+    # reactor.addSystemEventTrigger("before", "shutdown", router.stop)
+    
+    router.start(router_ready, start_error)
 
     if start_ranking:
         client.ranking.run(reactor)

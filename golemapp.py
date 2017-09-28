@@ -24,12 +24,6 @@ def monkey_patched_getLogger(*args, **kwargs):
 
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
-from twisted.internet import asyncioreactor
-
-
-def monkey_patched_run(self, *args, **kwargs):
-    self.startRunning(installSignalHandlers=True)
-asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 
 @click.command()
@@ -67,7 +61,6 @@ asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
           qt, version, m, geth_port):
     freeze_support()
-    delete_reactor()
 
     if version:
         from golem.core.variables import APP_VERSION
@@ -102,22 +95,9 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     else:
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
-        install_reactor()
         node = OptNode(peers=peer, node_address=node_address,
                        use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
-
-
-def delete_reactor():
-    if 'twisted.internet.reactor' in sys.modules:
-        del sys.modules['twisted.internet.reactor']
-
-
-def install_reactor():
-    from twisted.internet import asyncioreactor
-    asyncioreactor.install(gevent.get_hub().loop.aio)
-    from twisted.internet import reactor
-    return reactor
 
 
 def start_crossbar_worker(module):

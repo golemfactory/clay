@@ -1,17 +1,70 @@
+import asyncio
 import logging
+import multiprocessing
 import os
+import queue
+import time
 from collections import namedtuple
 
-from crossbar.common import checkconfig
-from crossbar.controller.node import Node
-from twisted.internet.defer import inlineCallbacks
+import txaio
+txaio.use_twisted = lambda: None
 
+from crossbar.common import checkconfig
+from multiprocessing import Process
+
+from golem.core.async import run_in_executor
+from golem.core.common import is_windows, is_osx
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
 
-CrossbarRouterOptions = namedtuple('CrossbarRouterOptions', ['cbdir', 'logdir', 'loglevel',
-                                                             'argv', 'config'])
+
+CrossbarRouterOptions = namedtuple(
+    'CrossbarRouterOptions',
+    ['cbdir', 'logdir', 'loglevel', 'argv', 'config']
+)
+
+
+def _start_router(options, node_config, queue):
+    # Patch txaio with multiprocessing
+    import txaio
+    from txaio import tx
+
+    txaio._explicit_framework = 'twisted'
+    txaio._use_framework(tx)
+    txaio.using_twisted = True
+    txaio.using_asyncio = False
+
+    # Import node
+    from crossbar.controller.node import Node
+
+    try:
+
+        node = Node(options.cbdir)
+        node.maybe_generate_key(options.cbdir)
+
+        checkconfig.check_config(node_config)
+
+        node._config = node_config
+        start_result = node.start()
+        start_result.addBoth(queue.put)
+
+    except Exception as exc:
+        queue.put(exc)
+
+    _start_router_reactor()
+
+
+def _start_router_reactor():
+    if is_osx():
+        from twisted.internet import kqreactor
+        kqreactor.install()
+    elif is_windows():
+        from twisted.internet import iocpreactor
+        iocpreactor.install()
+
+    from twisted.internet import reactor
+    reactor.run()
 
 
 class CrossbarRouter(object):
@@ -38,28 +91,40 @@ class CrossbarRouter(object):
 
         self.options = self._build_options()
         self.config = self._build_config(self.address, self.serializers)
+
+        self._queue = multiprocessing.Queue()
+        self.router_proc = multiprocessing.Process(target=_start_router,
+                                                   args=(self.options,
+                                                         self.config,
+                                                         self._queue))
+
         logger.debug('xbar init with cfg: %s', self.config)
 
-    def start(self, reactor, callback, errback):
-        reactor.callWhenRunning(self._start,
-                                self.options,
-                                reactor,
-                                callback, errback)
+    async def start(self, callback, errback):
+        def queue_wait(timeout=30):
+            deadline = time.time() + timeout
 
-    @inlineCallbacks
+            while True:
+                try:
+                    result = self._queue.get(block=False)
+                except queue.Empty:
+                    asyncio.sleep(0.25)
+                    if time.time() > deadline:
+                        errback(TimeoutError('Router startup timeout'))
+                else:
+                    if isinstance(result, Exception):
+                        return errback(result)
+                    return callback(result)
+
+        logger.debug('Starting Crossbar router ...')
+
+        self.router_proc.start()
+        await run_in_executor(queue_wait)
+
     def stop(self):
-        yield self.node._controller.shutdown()
-
-    def _start(self, options, reactor, callback, errback):
-        self._start_node(options, reactor).addCallbacks(callback, errback)
-
-    def _start_node(self, options, reactor):
-        self.node = Node(options.cbdir, reactor=reactor)
-        self.pubkey = self.node.maybe_generate_key(options.cbdir)
-
-        checkconfig.check_config(self.config)
-        self.node._config = self.config
-        return self.node.start()
+        if self.router_proc:
+            self.router_proc.terminate()
+            self.router_proc.wait()
 
     def _build_options(self, argv=None, config=None):
         return CrossbarRouterOptions(
@@ -71,7 +136,9 @@ class CrossbarRouter(object):
         )
 
     @staticmethod
-    def _build_config(address, serializers, allowed_origins='*', realm='golem', enable_webstatus=False):
+    def _build_config(address, serializers, allowed_origins='*', realm='golem',
+                      enable_webstatus=False):
+
         return {
             'version': 2,
             'workers': [{

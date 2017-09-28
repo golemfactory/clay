@@ -1,5 +1,5 @@
 """Compute Node"""
-
+import asyncio
 from ipaddress import AddressValueError
 
 import click
@@ -7,7 +7,7 @@ import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.async import async_callback
+from golem.core.async import async_callback, run_in_executor
 from golem.core.common import to_unicode
 from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -42,8 +42,6 @@ class Node(object):
         self.logger = logging.getLogger("app")
 
     def run(self, use_rpc=False):
-        from twisted.internet import reactor
-
         try:
             if use_rpc:
                 self._setup_rpc()
@@ -51,10 +49,9 @@ class Node(object):
             else:
                 self._run()
 
-            reactor.run()
             gevent.get_hub().join()
         except Exception as exc:
-            self.logger.error("Application error: {}".format(exc))
+            self.logger.exception("Application error: {}".format(exc))
         finally:
             self.client.quit()
 
@@ -70,12 +67,10 @@ class Node(object):
             for peer in self._peers:
                 self.connect_from_main(peer)
         except SystemExit:
-            from twisted.internet import reactor
-            reactor.callFromThread(reactor.stop)
+            self._quit()
 
     def connect_from_main(self, peer):
-        from twisted.internet import reactor
-        reactor.callFromThread(self.connect_on_greenlet, peer)
+        run_in_executor(self.connect_on_greenlet, peer)
 
     def connect_on_greenlet(self, peer):
         gevent.spawn(self.client.connect,
@@ -111,14 +106,8 @@ class Node(object):
         self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
-        from twisted.internet import reactor
-
-        reactor.addSystemEventTrigger("before", "shutdown",
-                                      self.client.quit)
-        reactor.addSystemEventTrigger("before", "shutdown",
-                                      self.rpc_router.stop)
-
-        self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
+        asyncio.ensure_future(self.rpc_router.start(self._rpc_router_ready,
+                                                    self._rpc_error))
 
     def _rpc_router_ready(self, *_):
         self.rpc_session.connect().addCallbacks(async_callback(self._run),
@@ -126,6 +115,11 @@ class Node(object):
 
     def _rpc_error(self, err):
         self.logger.error("RPC error: {}".format(err))
+        self._quit()
+
+    def _quit(self):
+        self.client.quit()
+        asyncio.get_event_loop().stop()
 
 
 class OptNode(Node):

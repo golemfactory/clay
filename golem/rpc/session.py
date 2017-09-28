@@ -1,11 +1,11 @@
 import logging
+from asyncio import Future
 
-from autobahn.twisted import ApplicationSession
-from autobahn.twisted.wamp import ApplicationRunner
-from autobahn.twisted.websocket import WampWebSocketClientFactory
+from autobahn.asyncio import ApplicationSession
+from autobahn.asyncio.wamp import ApplicationRunner
+from autobahn.asyncio.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
-from twisted.internet.defer import inlineCallbacks, Deferred
 
 logger = logging.getLogger('golem.rpc')
 
@@ -57,7 +57,7 @@ class Session(ApplicationSession):
         self.events = events or []
         self.subs = {}
 
-        self.ready = Deferred()
+        self.ready = Future()
         self.connected = False
 
         self.config = types.ComponentConfig(realm=address.realm)
@@ -74,53 +74,46 @@ class Session(ApplicationSession):
             headers=headers
         )
 
-        deferred = runner.run(
-            make=self,
-            start_reactor=False,
-            auto_reconnect=auto_reconnect,
-            log_level=log_level
-        )
+        future = runner.run(make=self, start_loop=True)
 
-        deferred.addErrback(self.ready.errback)
+        def done(f):
+            try:
+                self.ready.set_result(f.result())
+            except Exception as exc:
+                self.ready.set_exception(exc)
+
+        future.add_done_callback(done)
         return self.ready
 
-    @inlineCallbacks
-    def onJoin(self, details):
-        yield self.register_methods(self.methods)
-        yield self.register_events(self.events)
+    async def onJoin(self, details):
+        await self.register_methods(self.methods)
+        await self.register_events(self.events)
         self.connected = True
-        if not self.ready.called:
-            self.ready.callback(details)
+        if not self.ready.done():
+            self.ready.set_result(details)
 
     def onLeave(self, details):
         self.connected = False
-        if not self.ready.called:
-            self.ready.errback(details or "Unknown error occurred")
+        if not self.ready.done():
+            self.ready.set_exception(Exception(details or "Unknown error"))
         super(Session, self).onLeave(details)
 
     def onDisconnect(self):
         self.connected = False
         super(Session, self).onDisconnect()
 
-    @inlineCallbacks
-    def register_methods(self, methods):
+    async def register_methods(self, methods):
         for method, rpc_name in methods:
-            deferred = self.register(method, str(rpc_name))
-            deferred.addErrback(self._on_error)
-            yield deferred
+            await self.register(method, str(rpc_name))
 
-    @inlineCallbacks
-    def register_events(self, events):
+    async def register_events(self, events):
         for method, rpc_name in events:
-            deferred = self.subscribe(method, str(rpc_name))
-            deferred.addErrback(self._on_error)
-            self.subs[rpc_name] = yield deferred
+            await self.subscribe(method, str(rpc_name))
 
-    @inlineCallbacks
-    def unregister_events(self, event_names):
+    async def unregister_events(self, event_names):
         for event_name in event_names:
             if event_name in self.subs:
-                yield self.subs[event_name].unsubscribe()
+                await self.subs[event_name].unsubscribe()
                 self.subs.pop(event_name, None)
             else:
                 logger.error("RPC: Not subscribed to: {}".format(event_name))
@@ -151,18 +144,17 @@ class Client(object):
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.is_open():
-            deferred = self._session.call(str(method_alias),
-                                          *args, **kwargs)
-            deferred.addErrback(self._on_error)
+            future = self._session.call(str(method_alias), *args, **kwargs)
+            future.add_done_callback(self._on_error)
         else:
-            deferred = Deferred()
+            future = Future()
             if not self._session.is_closing():
-                deferred.errback(ProtocolError("RPC: session is not "
-                                               "yet established"))
-        return deferred
+                future.set_exception(ProtocolError("RPC: session is not "
+                                                   "yet established"))
+        return future
 
     def _on_error(self, err):
-        if not self._session.is_closing():
+        if isinstance(err, Exception) and not self._session.is_closing():
             logger.error("RPC: call error: {}".format(err))
             return err
 

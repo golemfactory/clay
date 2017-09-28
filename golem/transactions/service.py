@@ -1,7 +1,6 @@
 import logging
 
-from golem.core.async import AsyncRequest, async_run
-from twisted.internet.task import LoopingCall
+from golem.core.async import AsyncRequest, async_run, LoopingCall
 
 log = logging.getLogger("golem")
 
@@ -31,17 +30,19 @@ class Service(object):
     def start(self):
         if self.running:
             raise RuntimeError("service already started")
-        deferred = self._loopingCall.start(self.__interval)
-        deferred.addErrback(self._exceptionHandler)
+        future = self._loopingCall.start(self.__interval)
+        future.add_done_callback(self._exceptionHandler)
 
     def stop(self):
         if not self.running:
             raise RuntimeError("service not started")
         self._loopingCall.stop()
 
-    def _exceptionHandler(self, failure):
-        log.exception("Service Error: " + failure.getTraceback())
-        return None  # Stop processing the failure.
+    def _exceptionHandler(self, future):
+        try:
+            future.result()
+        except Exception as failure:
+            log.exception("Service Error: %r", failure)
 
     def _run_async(self):
         return async_run(AsyncRequest(self._run),

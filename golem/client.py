@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 import uuid
+from asyncio import Future
 from copy import copy
 from os import path, makedirs
 from threading import Lock
@@ -12,14 +13,12 @@ from devp2p.app import BaseApp
 from devp2p.discovery import NodeDiscovery
 from eth_utils import decode_hex
 from pydispatch import dispatcher
-from twisted.internet import task
-from twisted.internet.defer import (inlineCallbacks, returnValue, Deferred)
 
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
-from golem.core.async import AsyncRequest, async_run
+from golem.core.async import AsyncRequest, async_run, LoopingCall
 from golem.core.common import to_unicode
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -163,8 +162,8 @@ class Client(HardwarePresetsMixin):
         self.last_get_resource_peers_time = time.time()
         self.last_node_state_snapshot = None
 
-        self.do_work_task = task.LoopingCall(self.__do_work)
-        self.publish_task = task.LoopingCall(self.__publish_events)
+        self.do_work_task = LoopingCall(self.__do_work)
+        self.publish_task = LoopingCall(self.__publish_events)
 
         self.ranking = Ranking(self)
         if transaction_system:
@@ -304,8 +303,9 @@ class Client(HardwarePresetsMixin):
         if not self.gossip_keeper:
             self.gossip_keeper = GossipManager()
 
-        from twisted.internet import reactor
-        reactor.callFromThread(self._start_devp2p)
+        log.info("Starting DEVp2p ...")
+
+        self._start_devp2p()
 
         hyperdrive_ports = self.daemon_manager.ports()
         dispatcher.send(signal='golem.p2p', event='listening',
@@ -642,14 +642,13 @@ class Client(HardwarePresetsMixin):
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
 
-    @inlineCallbacks
-    def get_balance(self):
+    async def get_balance(self):
         if self.use_transaction_system():
             req = AsyncRequest(self.transaction_system.get_balance)
-            b, ab, d = yield async_run(req)
+            b, ab, d = await async_run(req)
             if b is not None:
-                returnValue((str(b), str(ab), str(d)))
-        returnValue((None, None, None))
+                return str(b), str(ab), str(d)
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -800,32 +799,30 @@ class Client(HardwarePresetsMixin):
             'description': str(env.short_description)
         } for env in envs]
 
-    @inlineCallbacks
-    def run_benchmark(self, env_id):
+    async def run_benchmark(self, env_id):
         # TODO: move benchmarks to environments
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
         from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
-        deferred = Deferred()
+        future = Future()
 
         if env_id == BlenderEnvironment.get_id():
             self.task_server.task_computer.run_blender_benchmark(
-                deferred.callback, deferred.errback
+                future.set_result, future.set_exception
             )
         elif env_id == LuxRenderEnvironment.get_id():
             self.task_server.task_computer.run_lux_benchmark(
-                deferred.callback, deferred.errback
+                future.set_result, future.set_exception
             )
         elif env_id == DummyTaskEnvironment.get_id():
             self.task_server.task_computer.run_dummytask_benchmark(
-                deferred.callback, deferred.errback
+                future.set_result, future.set_exception
             )
         else:
             raise Exception("Unknown environment: {}".format(env_id))
 
-        result = yield deferred
-        returnValue(result)
+        return await future
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -989,8 +986,7 @@ class Client(HardwarePresetsMixin):
         except Exception:
             log.exception("check_payments failed")
 
-    @inlineCallbacks
-    def __publish_events(self):
+    async def __publish_events(self):
         now = time.time()
         delta = now - self.last_nss_time
 
@@ -1022,7 +1018,7 @@ class Client(HardwarePresetsMixin):
 
         if now - self.last_balance_time >= PUBLISH_BALANCE_INTERVAL:
             try:
-                gnt, av_gnt, eth = yield self.get_balance()
+                gnt, av_gnt, eth = await self.get_balance()
             except Exception as exc:
                 log.debug('Error retrieving balance: {}'.format(exc))
             else:

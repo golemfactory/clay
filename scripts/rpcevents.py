@@ -1,6 +1,7 @@
+import asyncio
+
 import click
 import logging
-from twisted.internet.defer import inlineCallbacks
 
 from golem.core.common import config_logging
 from golem.node import OptNode
@@ -14,9 +15,8 @@ class EventLoggingSession(Session):
         super(EventLoggingSession, self).__init__(address, methods, events)
         self.logger = logger
 
-    @inlineCallbacks
-    def onJoin(self, details):
-        yield super(EventLoggingSession, self).onJoin(details)
+    async def onJoin(self, details):
+        await super(EventLoggingSession, self).onJoin(details)
         self.logger.info('| onJoin(%s)', details)
 
     def onUserError(self, fail, msg):
@@ -58,7 +58,7 @@ def build_handlers(logger):
 
 def is_event(prop, value):
     return not prop.startswith('_') \
-           and isinstance(value, basestring) \
+           and isinstance(value, str) \
            and value.startswith('evt.')
 
 
@@ -69,7 +69,6 @@ def is_event(prop, value):
               callback=OptNode.parse_rpc_address,
               help="RPC server address: <ip_addr>:<port>")
 def main(datadir, rpc_address):
-    from twisted.internet import reactor
 
     if rpc_address:
         host = rpc_address.address
@@ -87,7 +86,7 @@ def main(datadir, rpc_address):
     rpc_session = EventLoggingSession(logger, address, events=events)
     rpc_session.connect(auto_reconnect=True)
 
-    reactor.run()
+    asyncio.get_event_loop().run_forever()
 
 
 if __name__ == '__main__':
