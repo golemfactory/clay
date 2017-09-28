@@ -1,5 +1,0 @@
-[master]
-buildbot.golem.network
-
-[master:vars]
-tls_enabled=True

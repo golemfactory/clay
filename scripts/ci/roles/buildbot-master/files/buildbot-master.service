@@ -8,6 +8,7 @@ Group=buildbot
 WorkingDirectory=/home/buildbot/master
 ExecStart=/var/lib/virtualenv/buildbot-master/bin/buildbot  start --nodaemon
 Environment=BUILDBOT_SETTINGS=/home/buildbot/site_settings.json
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
