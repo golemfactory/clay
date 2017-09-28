@@ -122,3 +122,10 @@ class ThreadQueueExecutor(QueueExecutor):
             job.setDaemon(True)
             job.start()
         job.join()
+
+
+def callback_wrapper(func, callback, errback, **kwargs):
+    try:
+        callback(func(**kwargs))
+    except Exception as err:
+        errback(err)

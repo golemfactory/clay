@@ -6,7 +6,7 @@ import uuid
 from collections import Iterable
 from copy import copy
 from os import path, makedirs
-from threading import Lock
+from threading import Lock, Thread
 
 from pydispatch import dispatcher
 from twisted.internet import task
@@ -24,6 +24,7 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import callback_wrapper
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -875,9 +876,15 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             returnValue(result)
         else:
-            performance = DefaultEnvironment.run_default_benchmark(
-                self.config_desc.num_cores, save=True)
-            returnValue(performance)
+
+            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
+                      'callback': deferred.callback,
+                      'errback': deferred.errback,
+                      'num_cores': self.config_desc.num_cores,
+                      'save': True}
+            Thread(target=callback_wrapper, kwargs=kwargs).start()
+            result = yield deferred
+            returnValue(result)
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)

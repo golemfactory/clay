@@ -817,6 +817,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           LuxBenchmark)
 
+        result = sync_wait(self.client.run_benchmark(
+            DefaultEnvironment.get_id()))
+        assert result > 100.0
+        assert benchmark_manager.run_benchmark.call_count == 2
+
+
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
         benchmark_manager = self.client.task_server.benchmark_manager
