@@ -18,7 +18,7 @@ from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
-from golem.core.async import run_threaded, LoopingCall
+from golem.core.async import run_threaded, LoopingCall, handle_future
 from golem.core.common import to_unicode
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -408,8 +408,8 @@ class Client(HardwarePresetsMixin):
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
 
-        deferred = self.resource_server.add_task(files, task_id, options)
-        deferred.addCallbacks(add_task, error)
+        future = self.resource_server.add_task(files, task_id, options)
+        handle_future(future, add_task, error)
         return task
 
     def task_resource_send(self, task_id):

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import subprocess
@@ -7,7 +8,7 @@ from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.async import handle_future
+from golem.core.async import handle_future, async_queue
 from golem.core.common import config_logging, DEVNULL, is_windows, is_frozen
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
@@ -16,14 +17,6 @@ from golem.rpc.session import Session, object_method_map
 
 apps_manager = AppsManager()
 apps_manager.load_apps()
-
-
-def stop_reactor(*_):
-    from twisted.internet import reactor
-    try:
-        reactor.stop()
-    except ReactorNotRunning:
-        pass
 
 
 def load_environments():
@@ -70,10 +63,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
     import gevent
-    if not reactor:
-        from twisted.internet import asyncioreactor
-        asyncioreactor.install(gevent.get_hub().loop.aio)
-        from twisted.internet import reactor
+    event_loop = asyncio.get_event_loop()
 
     process_monitor = None
 
@@ -119,7 +109,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
             client.start()
             logger.debug('after client.start()')
         except SystemExit:
-            reactor.callFromThread(stop_reactor)
+            event_loop.stop()
         except Exception as exc:
             logger.exception("Client process error: {}"
                              .format(exc))
@@ -127,20 +117,16 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
         logger.info('Starting GUI process...')
         gui_process = start_gui(router.address)
         process_monitor = ProcessMonitor(gui_process)
-        process_monitor.add_callbacks(stop_reactor)
+        process_monitor.add_callbacks(event_loop.stop)
         logger.info('Starting process monitor...')
         process_monitor.start()
 
-    # reactor.addSystemEventTrigger("before", "shutdown", client.quit)
-    # reactor.addSystemEventTrigger("before", "shutdown", router.stop)
-    
-    router.start(router_ready, start_error)
+    async_queue(router.start, router_ready, start_error)
 
     if start_ranking:
         client.ranking.run(reactor)
 
     try:
-        reactor.run()
         gevent.get_hub().join()
     except ReactorAlreadyRunning:
         logger.debug("Client process: reactor is already running")

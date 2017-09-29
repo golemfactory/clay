@@ -2,6 +2,8 @@ import logging
 from enum import Enum
 from threading import Lock
 
+from golem.core.async import handle_future
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,10 +56,10 @@ class BaseResourceServer(object):
         self._download_resources()
 
     def add_task(self, files, task_id, client_options=None):
-        result = self.resource_manager.add_task(files, task_id,
+        future = self.resource_manager.add_task(files, task_id,
                                                 client_options=client_options)
-        result.addErrback(self._add_task_error)
-        return result
+        handle_future(future, error=self._add_task_error)
+        return future
 
     @staticmethod
     def _add_task_error(error):

@@ -3,6 +3,7 @@ import shutil
 import time
 import uuid
 
+from golem.core.async import handle_future
 from golem.core.fileshelper import common_dir
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base import resourcesmanager
@@ -123,21 +124,22 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         return rm, rs.add_task(existing_paths, self.task_id)
 
     def testAddTask(self):
-        rm, deferred = self._add_task()
+        rm, future = self._add_task()
 
         def test(*_):
             resources = rm.storage.get_resources(self.task_id)
             assert resources
             assert len(resources) == len(self.target_resources)
 
-        deferred.addCallbacks(
+        handle_future(
+            future,
             test,
             lambda e: self.fail(e)
         )
 
         started = time.time()
 
-        while not deferred.called:
+        while not future.called:
             if time.time() - started > 10:
                 self.fail("Test timed out")
             time.sleep(0.1)
