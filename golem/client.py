@@ -391,11 +391,6 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def key_changed(self):
-        self.node.key = self.keys_auth.get_key_id()
-        self.task_server.key_changed()
-        self.p2pservice.key_changed()
-
     def enqueue_new_task(self, task_dict):
         # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):

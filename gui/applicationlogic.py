@@ -606,9 +606,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         if self.customizer.current_task_highlighted.definition.task_id == task_id:
             self.customizer.update_task_additional_info(self.tasks[task_id])
 
-    def key_changed(self):
-        self.client.key_changed()
-
     @inlineCallbacks
     def get_payments(self):
         payments_list = yield self.client.get_payments_list()
