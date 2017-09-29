@@ -3,7 +3,7 @@ import logging
 import os
 
 from golem.core.fileencrypt import FileEncryptor
-from golem.core.async import AsyncRequest, async_run
+from golem.core.async import run_threaded
 from .resultpackage import EncryptingTaskResultPackager
 
 logger = logging.getLogger(__name__)
@@ -47,10 +47,8 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(file_path)
 
         def package_downloaded(*args, **kwargs):
-            request = AsyncRequest(self.extract, file_path,
-                                   output_dir=output_dir,
-                                   key_or_secret=key_or_secret)
-            async_run(request, package_extracted, error)
+            run_threaded(self.extract, file_path, output_dir, key_or_secret,
+                         success=package_extracted, error=error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, multihash, task_id, subtask_id)

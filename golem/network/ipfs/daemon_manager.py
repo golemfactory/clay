@@ -2,6 +2,7 @@ import logging
 
 import ipaddress
 
+from golem.core.async import run_threaded
 from golem.core.common import to_unicode
 from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFSAddress
 
@@ -163,8 +164,7 @@ class IPFSDaemonManager(IPFSClientHandler):
             return url
 
         if async:
-            self._async_call(closure, success, error,
-                             obj_id=obj_id)
+            run_threaded(closure)
         else:
             try:
                 return closure()

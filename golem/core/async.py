@@ -4,15 +4,6 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class AsyncRequest:
-
-    """ Deferred job descriptor """
-
-    def __init__(self, method, *args):
-        self.method = method
-        self.args = args or []
-
-
 class LoopingCall:
 
     def __init__(self, f, *args, **kwargs):
@@ -45,50 +36,34 @@ class LoopingCall:
             await asyncio.sleep(self._interval)
 
 
-def async_run(call, success=None, error=None):
+def handle_future(future, success=None, error=None):
+    assert isinstance(future, asyncio.Future)
+
+    def handler(f):
+        try:
+            result = f.result()
+        except Exception as exc:
+            error and error(exc)
+        else:
+            success and success(result)
+
+    future.add_done_callback(handler)
+
+
+def run_threaded(method, *args, success=None, error=None):
     """Execute a deferred job in a separate thread"""
-    error = error or default_errback
-
-    def done(f):
-        try:
-            result = f.result()
-            if success:
-                success(result)
-        except Exception as exc:
-            if error:
-                error(exc)
-
     loop = asyncio.get_event_loop()
-    future = loop.run_in_executor(None, call.method, *call.args)
-    future.add_done_callback(done)
+    future = loop.run_in_executor(None, method, *args)
+    handle_future(future, success, error or default_errback)
     return future
 
 
-# FIXME: unify / introduce pooling
-def run_in_executor(method, *args, success=None, error=None):
-    error = error or default_errback
-
-    import traceback
-    tb = traceback.format_stack()
-
-    def done(f):
-        try:
-            result = f.result()
-            if success:
-                success(result)
-        except Exception as exc:
-            if error:
-                error(exc, tb)
-
-    future = asyncio.get_event_loop().run_in_executor(None, method, *args)
-    future.add_done_callback(done)
-    return future
+def async_queue(method, *args):
+    return asyncio.get_event_loop().call_soon(method, *args)
 
 
-def async_callback(func):
-    def callback(result):
-        return async_run(AsyncRequest(func, result))
-    return callback
+def async_queue_threadsafe(method, *args):
+    return asyncio.get_event_loop().call_soon_threadsafe(method, *args)
 
 
 def default_errback(failure, *args):

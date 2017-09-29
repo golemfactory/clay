@@ -17,7 +17,6 @@ from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
     ReadTimeoutError, ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
 
-from golem.core.async import AsyncRequest, async_run
 
 log = logging.getLogger(__name__)
 
@@ -79,11 +78,6 @@ class IClientHandler(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _handle_retries(self, method, cmd, *args, **kwargs):
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def _async_call(method, success, error, *args, **kwargs):
         pass
 
     @staticmethod
@@ -200,11 +194,6 @@ class ClientHandler(IClientHandler, metaclass=abc.ABCMeta):
             else:
                 self._clear_retry(cmd, obj_id)
                 return result
-
-    @staticmethod
-    def _async_call(method, success, error, *args, **kwargs):
-        call = AsyncRequest(method, *args, **kwargs)
-        async_run(call, success, error)
 
     @staticmethod
     def _exception_type(exc):

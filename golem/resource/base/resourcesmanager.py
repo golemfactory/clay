@@ -10,7 +10,7 @@ from golem.core.common import to_unicode
 from golem.core.fileshelper import copy_file_tree, common_dir
 from golem.resource.client import IClientHandler, ClientCommands, \
     ClientHandler, ClientConfig, TestClient
-from golem.core.async import AsyncRequest, async_run
+from golem.core.async import run_threaded
 
 logger = logging.getLogger(__name__)
 
@@ -335,9 +335,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
     def add_task(self, files, task_id,
                  client=None, client_options=None):
 
-        request = AsyncRequest(self._add_task, files, task_id,
-                               client=client, client_options=client_options)
-        return async_run(request)
+        return run_threaded(self._add_task, files, task_id,
+                            client, client_options)
 
     def _add_task(self, files, task_id,
                   client=None, client_options=None):
@@ -516,28 +515,26 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             logger.warn("Resource does not exist: {}"
                         .format(resource.path))
 
-    def __pull(self, resource, task_id,
-               success, error,
+    def __pull(self, resource, task_id, success, error,
                client=None, client_options=None, async=True):
 
         client = client or self.new_client()
         directory = self.storage.get_dir(task_id)
         file_name = self.storage.relative_path(resource.path, task_id)
 
-        kwargs = dict(
-            multihash=resource.hash,
-            filename=file_name,
-            filepath=directory,
-            client_options=client_options
+        args = (
+            resource.hash,
+            client_options,
+            file_name,
+            directory
         )
 
         if async:
-            self._async_call(client.get_file,
-                             success, error,
-                             **kwargs)
+            run_threaded(client.get_file, *args,
+                         success=success, error=error)
         else:
             try:
-                data = client.get_file(**kwargs)
+                data = client.get_file(*args)
                 success(data)
             except Exception as e:
                 error(e)

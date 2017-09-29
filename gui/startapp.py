@@ -7,7 +7,7 @@ from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.async import async_callback
+from golem.core.async import handle_future
 from golem.core.common import config_logging, DEVNULL, is_windows, is_frozen
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
@@ -96,8 +96,8 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
     session = Session(router.address, methods=methods)
 
     def router_ready(*_):
-        session.connect().addCallbacks(async_callback(session_ready),
-                                       start_error)
+        future = session.connect()
+        handle_future(future, session_ready, start_error)
 
     def session_ready(*_):
         global process_monitor

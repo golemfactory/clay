@@ -8,7 +8,7 @@ import time
 from pydispatch import dispatcher
 
 from golem import model
-from golem.core.async import async_run, AsyncRequest
+from golem.core.async import run_threaded
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ranking.helper.trust import Trust
 from golem.task.deny import get_deny_set
@@ -243,15 +243,14 @@ class TaskServer:
             else:
                 self.send_task_failed(subtask_id, task_id, str(exc), owner)
 
-        request = AsyncRequest(task_result_manager.create,
-                               self.node,
-                               # FIXME: introduced for backwards compatibility
-                               TaskResultWrapper(task_id, subtask_id,
-                                                 result, owner),
-                               client_options=resource_options,
-                               key_or_secret=resource_secret)
+        run_threaded(task_result_manager.create,
+                     self.node,
+                     # FIXME: introduced for backwards compatibility
+                     TaskResultWrapper(task_id, subtask_id, result, owner),
+                     resource_options,
+                     resource_secret,
+                     success=success, error=error)
 
-        async_run(request, success=success, error=error)
         return True
 
     def get_task_headers(self):

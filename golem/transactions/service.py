@@ -1,6 +1,6 @@
 import logging
 
-from golem.core.async import AsyncRequest, async_run, LoopingCall
+from golem.core.async import run_threaded, LoopingCall
 
 log = logging.getLogger("golem")
 
@@ -45,8 +45,8 @@ class Service(object):
             log.exception("Service Error: %r", failure)
 
     def _run_async(self):
-        return async_run(AsyncRequest(self._run),
-                         error=self._exceptionHandler)
+        return run_threaded(self._run,
+                            error=self._exceptionHandler)
 
     def _run(self):
         """ Implement this in the derived class."""

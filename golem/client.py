@@ -18,7 +18,7 @@ from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
-from golem.core.async import AsyncRequest, async_run, LoopingCall
+from golem.core.async import run_threaded, LoopingCall
 from golem.core.common import to_unicode
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -402,8 +402,8 @@ class Client(HardwarePresetsMixin):
         files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
-            request = AsyncRequest(task_manager.start_task, task_id)
-            async_run(request, None, error)
+            run_threaded(task_manager.start_task, task_id,
+                         success=None, error=error)
 
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
@@ -426,8 +426,7 @@ class Client(HardwarePresetsMixin):
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
-            request = AsyncRequest(self._run_test_task, t_dict)
-            async_run(request)
+            run_threaded(self._run_test_task, t_dict)
             return True
 
         if self.rpc_publisher:
@@ -644,8 +643,7 @@ class Client(HardwarePresetsMixin):
 
     async def get_balance(self):
         if self.use_transaction_system():
-            req = AsyncRequest(self.transaction_system.get_balance)
-            b, ab, d = await async_run(req)
+            b, ab, d = await run_threaded(self.transaction_system.get_balance)
             if b is not None:
                 return str(b), str(ab), str(d)
         return None, None, None

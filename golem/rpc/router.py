@@ -7,6 +7,9 @@ import time
 from collections import namedtuple
 
 import txaio
+
+from golem.core.async import async_queue_threadsafe
+
 txaio.use_twisted = lambda: None
 
 from crossbar.common import checkconfig
@@ -104,8 +107,9 @@ class CrossbarRouter(object):
         logger.debug('xbar init with cfg: %s', self.config)
 
     def start(self, callback, errback):
+
         async def queue_wait(timeout=30):
-            call = asyncio.get_event_loop().call_soon_threadsafe
+            call = async_queue_threadsafe
             deadline = time.time() + timeout
 
             while True:
@@ -128,7 +132,7 @@ class CrossbarRouter(object):
     def stop(self):
         if self.router_proc:
             self.router_proc.terminate()
-            self.router_proc.wait()
+            self.router_proc.join()
 
     def _build_options(self, argv=None, config=None):
         return CrossbarRouterOptions(

@@ -7,7 +7,7 @@ import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.async import async_callback, run_in_executor
+from golem.core.async import run_threaded, async_queue, handle_future
 from golem.core.common import to_unicode
 from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -65,12 +65,9 @@ class Node(object):
         try:
             self.client.start()
             for peer in self._peers:
-                self.connect_from_main(peer)
+                run_threaded(self.connect_on_greenlet, peer)
         except SystemExit:
             self._quit()
-
-    def connect_from_main(self, peer):
-        run_in_executor(self.connect_on_greenlet, peer)
 
     def connect_on_greenlet(self, peer):
         gevent.spawn(self.client.connect,
@@ -106,21 +103,12 @@ class Node(object):
         self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
-        asyncio.get_event_loop().call_soon(self.rpc_router.start,
-                                           self._rpc_router_ready,
-                                           self._rpc_error)
+        async_queue(self.rpc_router.start, self._rpc_router_ready,
+                    self._rpc_error)
 
     def _rpc_router_ready(self, *_):
-        def done(f):
-            try:
-                f.result()
-            except Exception as exc:
-                self._rpc_error(exc)
-            else:
-                self._run()
-
         future = self.rpc_session.connect()
-        future.add_done_callback(done)
+        handle_future(future, self._run, self._rpc_error)
 
     def _rpc_error(self, err):
         self.logger.error("RPC error: {}".format(err))
