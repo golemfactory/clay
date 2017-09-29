@@ -1,15 +1,18 @@
+from asyncio import Future
 from queue import Queue, Empty
 
-from twisted.internet.defer import DebugInfo, Deferred, TimeoutError
+from twisted.internet.defer import DebugInfo
 from twisted.python.failure import Failure
 
+from golem.core.async import handle_future
 
-def sync_wait(deferred, timeout=10):
-    if not isinstance(deferred, Deferred):
-        return deferred
+
+def sync_wait(future, timeout=10):
+    if not isinstance(future, Future):
+        return future
 
     queue = Queue()
-    deferred.addBoth(queue.put)
+    handle_future(future, queue.put, queue.put)
 
     try:
         result = queue.get(True, timeout)
