@@ -106,12 +106,21 @@ class Node(object):
         self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
-        asyncio.ensure_future(self.rpc_router.start(self._rpc_router_ready,
-                                                    self._rpc_error))
+        asyncio.get_event_loop().call_soon(self.rpc_router.start,
+                                           self._rpc_router_ready,
+                                           self._rpc_error)
 
     def _rpc_router_ready(self, *_):
-        self.rpc_session.connect().addCallbacks(async_callback(self._run),
-                                                self._rpc_error)
+        def done(f):
+            try:
+                f.result()
+            except Exception as exc:
+                self._rpc_error(exc)
+            else:
+                self._run()
+
+        future = self.rpc_session.connect()
+        future.add_done_callback(done)
 
     def _rpc_error(self, err):
         self.logger.error("RPC error: {}".format(err))

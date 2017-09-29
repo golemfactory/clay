@@ -1,6 +1,7 @@
 import logging
 from asyncio import Future
 
+import asyncio
 from autobahn.asyncio import ApplicationSession
 from autobahn.asyncio.wamp import ApplicationRunner
 from autobahn.asyncio.websocket import WampWebSocketClientFactory
@@ -63,8 +64,8 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
 
-    def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True,
-                log_level='info'):
+    def connect(self, ssl=None, proxy=None, headers=None,
+                      auto_reconnect=True, log_level='info'):
 
         runner = ApplicationRunner(
             url=str(self.address),
@@ -74,15 +75,7 @@ class Session(ApplicationSession):
             headers=headers
         )
 
-        future = runner.run(make=self, start_loop=True)
-
-        def done(f):
-            try:
-                self.ready.set_result(f.result())
-            except Exception as exc:
-                self.ready.set_exception(exc)
-
-        future.add_done_callback(done)
+        self.ready = asyncio.ensure_future(runner.run(self, start_loop=False))
         return self.ready
 
     async def onJoin(self, details):

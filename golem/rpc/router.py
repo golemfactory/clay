@@ -37,13 +37,15 @@ def _start_router(options, node_config, queue):
 
     # Import node
     from crossbar.controller.node import Node
+    from crossbar.controller.node import default_native_workers
 
     try:
 
+        workers = default_native_workers()
         node = Node(options.cbdir)
         node.maybe_generate_key(options.cbdir)
 
-        checkconfig.check_config(node_config)
+        checkconfig.check_config(node_config, workers)
 
         node._config = node_config
         start_result = node.start()
@@ -100,26 +102,27 @@ class CrossbarRouter(object):
 
         logger.debug('xbar init with cfg: %s', self.config)
 
-    async def start(self, callback, errback):
-        def queue_wait(timeout=30):
+    def start(self, callback, errback):
+        async def queue_wait(timeout=30):
+            call = asyncio.get_event_loop().call_soon_threadsafe
             deadline = time.time() + timeout
 
             while True:
                 try:
                     result = self._queue.get(block=False)
                 except queue.Empty:
-                    asyncio.sleep(0.25)
+                    await asyncio.sleep(0.25)
                     if time.time() > deadline:
-                        errback(TimeoutError('Router startup timeout'))
+                        call(errback, TimeoutError('Router startup timeout'))
                 else:
                     if isinstance(result, Exception):
-                        return errback(result)
-                    return callback(result)
+                        call(errback, result)
+                    return call(callback, result)
 
-        logger.debug('Starting Crossbar router ...')
+        logger.info('Starting Crossbar router ...')
 
         self.router_proc.start()
-        await run_in_executor(queue_wait)
+        asyncio.ensure_future(queue_wait())
 
     def stop(self):
         if self.router_proc:
