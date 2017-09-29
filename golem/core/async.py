@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 log = logging.getLogger(__name__)
+executor = ThreadPoolExecutor(max_workers=10)
 
 
 class LoopingCall:
@@ -53,7 +55,7 @@ def handle_future(future, success=None, error=None):
 def run_threaded(method, *args, success=None, error=None):
     """Execute a deferred job in a separate thread"""
     loop = asyncio.get_event_loop()
-    future = loop.run_in_executor(None, method, *args)
+    future = loop.run_in_executor(executor, method, *args)
     handle_future(future, success, error or default_errback)
     return future
 
