@@ -1,12 +1,15 @@
 """Compute Node"""
 
+from ipaddress import AddressValueError
+
 import click
+import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
 from golem.core.common import to_unicode
-from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
 
@@ -49,6 +52,7 @@ class Node(object):
                 self._run()
 
             reactor.run()
+            gevent.get_hub().join()
         except Exception as exc:
             self.logger.error("Application error: {}".format(exc))
         finally:
@@ -64,10 +68,18 @@ class Node(object):
         try:
             self.client.start()
             for peer in self._peers:
-                self.client.connect(peer)
+                self.connect_from_main(peer)
         except SystemExit:
             from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)
+
+    def connect_from_main(self, peer):
+        from twisted.internet import reactor
+        reactor.callFromThread(self.connect_on_greenlet, peer)
+
+    def connect_on_greenlet(self, peer):
+        gevent.spawn(self.client.connect,
+                     peer[0], peer[1])
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter
@@ -96,6 +108,7 @@ class Node(object):
         for env in self._apps_manager.get_env_list():
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
+        self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
         from twisted.internet import reactor
@@ -146,8 +159,9 @@ class OptNode(Node):
         addresses = []
         for arg in value:
             try:
-                addresses.append(SocketAddress.parse(arg))
-            except AddressValueError as e:
+                node_id, sock_addr = arg.split('@', 1)
+                addresses.append([SocketAddress.parse(sock_addr), node_id])
+            except (AddressValueError, ValueError) as e:
                 raise click.BadParameter(
                     "Invalid peer address specified: {}".format(e))
         return addresses

@@ -3,13 +3,15 @@ import pickle
 import time
 
 from pathlib import Path
+
+from ethereum.utils import encode_hex
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     timeout_to_deadline, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.socketaddress import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
@@ -129,12 +131,13 @@ class TaskManager(TaskEventListener):
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
                                                self.listen_port):
-            raise IOError("Incorrect socket address")
+            raise IOError("Incorrect socket address: {}:{}"
+                          .format(self.listen_address, self.listen_port))
 
         task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
-        task.header.task_owner_key_id = self.key_id
+        task.header.task_owner_key_id = encode_hex(self.keys_auth.public_key)
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
@@ -286,7 +289,7 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         return ctd, False, extra_data.should_wait
 
-    def get_tasks_headers(self):
+    def get_task_headers(self):
         ret = []
         for t in list(self.tasks.values()):
             if t.needs_computation() and t.task_status in self.activeStatus:
@@ -344,8 +347,7 @@ class TaskManager(TaskEventListener):
         :return long: price that should be paid for given subtask
         """
         task_id = self.subtask2task_mapping[subtask_id]
-        value = self.tasks_states[task_id].subtask_states[subtask_id].value
-        return value
+        return self.tasks_states[task_id].subtask_states[subtask_id].value
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result, result_type):
@@ -588,7 +590,8 @@ class TaskManager(TaskEventListener):
         return [sub.subtask_id for sub in
                 list(self.tasks_states[task_id].subtask_states.values())]
 
-    def change_config(self, root_path, use_distributed_resource_management):
+    def change_config(self, root_path,
+                      use_distributed_resource_management=True):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 

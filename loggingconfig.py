@@ -80,6 +80,11 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'py.warnings': {
+            'level': 'DEBUG',
+            'propagate': False,
+            'handlers': ['file', ],
+        },
         'test': {
             'level': 'DEBUG',
             'propagate': False,

@@ -50,9 +50,6 @@ class BaseResourceServer(object):
     def get_distributed_resource_root(self):
         return self.resource_manager.storage.get_root()
 
-    def get_peers(self):
-        self.client.get_resource_peers()
-
     def sync_network(self):
         self._download_resources()
 
@@ -77,7 +74,7 @@ class BaseResourceServer(object):
             collected = not self.pending_resources.get(task_id)
 
         if collected:
-            self.client.task_resource_collected(task_id, unpack_delta=False)
+            self.client.task_resource_collected(task_id)
 
     def _add_pending_resource(self, resource, task_id, client_options):
         if task_id not in self.pending_resources:

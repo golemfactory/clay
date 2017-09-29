@@ -1,21 +1,35 @@
 #!/usr/bin/env python
+import os
 import sys
+# Set the default event loop
+os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
+import gevent
 import click
-from multiprocessing import freeze_support
 import logging
+
+from multiprocessing import freeze_support
 from ethereum import slogging
 #Monkey patch for ethereum.slogging.
 #SLogger aggressively mess up with python looger.
 #This patch is to settle down this.
 #It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
+
+
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
+from twisted.internet import asyncioreactor
+
+
+def monkey_patched_run(self, *args, **kwargs):
+    self.startRunning(installSignalHandlers=True)
+asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 
 @click.command()
@@ -31,8 +45,8 @@ from golem.node import OptNode
               help="RPC server address to use: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or "
-                   "[<ipv6_addr>]:<port>")
+              help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or "
+                   " <node_id>@<ipv6_addr>:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -89,7 +103,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
-
         node = OptNode(peers=peer, node_address=node_address,
                        use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
@@ -101,10 +114,8 @@ def delete_reactor():
 
 
 def install_reactor():
-    from golem.core.common import is_windows
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install(gevent.get_hub().loop.aio)
     from twisted.internet import reactor
     return reactor
 

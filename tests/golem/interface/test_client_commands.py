@@ -30,6 +30,8 @@ from golem.testutils import TempDirFixture
 
 reference_client = Client(Mock(), CORE_METHOD_MAP)
 
+example_node_id = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9\
+c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8"
 
 def assert_client_method(instance, name):
     assert hasattr(reference_client, name)
@@ -143,11 +145,10 @@ class TestNetwork(unittest.TestCase):
 
         peer_info = [
             dict(
-                address='10.0.0.{}'.format(i),
-                port='2500{}'.format(i),
-                key_id='deadbeef0{}'.format(i) * 8,
-                node_name='node_{}'.format(i),
-                client_ver='0.0.0') for i in range(1, 1 + 6)
+                ip_port=['10.0.0.{}'.format(i),'2500{}'.format(i)],
+                remote_pubkey='deadbeef0{}'.format(i) * 8,
+                node_name='node_' + str(i)
+            ) for i in range(1, 1 + 6)
         ]
 
         client = Mock()
@@ -179,10 +180,10 @@ class TestNetwork(unittest.TestCase):
     def test_connect(self):
         with client_ctx(Network, self.client):
             with self.assertRaises(CommandException):
-                Network().connect('266.266.0.1', '25000')
+                Network().connect('266.266.0.1', '25000', example_node_id)
                 assert not self.client.connect.called
 
-            assert Network().connect('127.0.0.1', '25000') is None
+            assert Network().connect('127.0.0.1', '25000', example_node_id) is None
             assert self.client.connect.called
 
     def test_show(self):
@@ -199,7 +200,9 @@ class TestNetwork(unittest.TestCase):
             net = Network()
 
             result_1 = net.dht(None, full=False)
+            print(result_1)
             result_2 = net.dht(None, full=True)
+            print(result_2)
 
             self.__assert_peer_result(result_1, result_2)
 
@@ -207,17 +210,15 @@ class TestNetwork(unittest.TestCase):
         self.assertEqual(result_1.data[1][0], [
             '10.0.0.1',
             '25001',
-            'deadbeef01deadbe...beef01deadbeef01',
-            'node_1',
-            '0.0.0'
+            b'6465616462656566...6164626565663031',
+            'node_1'
         ])
 
         self.assertEqual(result_2.data[1][0], [
             '10.0.0.1',
             '25001',
-            'deadbeef01' * 8,
-            'node_1',
-            '0.0.0'
+            b'64656164626565663031' * 8,
+            'node_1'
         ])
 
         assert isinstance(result_1, CommandResult)

@@ -7,6 +7,8 @@ machine:
     - docker
   post:
     - pyenv global 3.5.2
+  environment:
+    GEVENT_LOOP: tulipcore.Loop
 
 checkout:
   post:

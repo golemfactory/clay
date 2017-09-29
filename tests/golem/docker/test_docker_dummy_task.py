@@ -130,7 +130,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
+        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client, Mock(),
                                  use_docker_machine_manager=False)
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer

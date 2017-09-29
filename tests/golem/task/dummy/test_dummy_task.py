@@ -2,7 +2,7 @@ import unittest
 
 from tests.golem.task.dummy import runner
 
-@unittest.skip("It doesn't work, using new dummy task instead")
+
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 

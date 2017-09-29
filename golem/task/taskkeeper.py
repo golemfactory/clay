@@ -390,6 +390,3 @@ class TaskHeaderKeeper(object):
             cur_time = time.time()
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
-
-    def request_failure(self, task_id):
-        self.remove_task_header(task_id)

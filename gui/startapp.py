@@ -3,7 +3,7 @@ import os
 import subprocess
 import sys
 
-from twisted.internet.error import ReactorAlreadyRunning
+from twisted.internet.error import ReactorAlreadyRunning, ReactorNotRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -20,8 +20,10 @@ apps_manager.load_apps()
 
 def stop_reactor(*_):
     from twisted.internet import reactor
-    if reactor.running:
+    try:
         reactor.stop()
+    except ReactorNotRunning:
+        pass
 
 
 def load_environments():
@@ -60,18 +62,17 @@ def start_gui(address):
         startupinfo=startupinfo
     )
 
+
 def start_client(start_ranking, datadir=None, transaction_system=False,
                  use_monitor=True, client=None, reactor=None, geth_port=None,
                  **config_overrides):
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
-
+    import gevent
     if not reactor:
-        from golem.core.common import is_windows
-        if is_windows():
-            from twisted.internet import iocpreactor
-            iocpreactor.install()
+        from twisted.internet import asyncioreactor
+        asyncioreactor.install(gevent.get_hub().loop.aio)
         from twisted.internet import reactor
 
     process_monitor = None
@@ -139,6 +140,7 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
 
     try:
         reactor.run()
+        gevent.get_hub().join()
     except ReactorAlreadyRunning:
         logger.debug("Client process: reactor is already running")
 

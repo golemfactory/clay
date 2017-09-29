@@ -10,6 +10,7 @@ platform:
   - x64
 
 environment:
+  GEVENT_LOOP: tulipcore.Loop
   matrix:
     - PYTHON: "C:\\Python35-x64"
       PYTHON_VERSION: "3.5.0"
