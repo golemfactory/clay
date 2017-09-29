@@ -12,7 +12,6 @@ txaio.use_twisted = lambda: None
 from crossbar.common import checkconfig
 from multiprocessing import Process
 
-from golem.core.async import run_in_executor
 from golem.core.common import is_windows, is_osx
 from golem.rpc.session import WebSocketAddress
 
@@ -26,6 +25,8 @@ CrossbarRouterOptions = namedtuple(
 
 
 def _start_router(options, node_config, queue):
+    reactor = _install_reactor()
+
     # Patch txaio with multiprocessing
     import txaio
     from txaio import tx
@@ -54,10 +55,10 @@ def _start_router(options, node_config, queue):
     except Exception as exc:
         queue.put(exc)
 
-    _start_router_reactor()
+    reactor.run()
 
 
-def _start_router_reactor():
+def _install_reactor():
     if is_osx():
         from twisted.internet import kqreactor
         kqreactor.install()
@@ -66,7 +67,7 @@ def _start_router_reactor():
         iocpreactor.install()
 
     from twisted.internet import reactor
-    reactor.run()
+    return reactor
 
 
 class CrossbarRouter(object):
