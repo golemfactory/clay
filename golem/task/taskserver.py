@@ -13,6 +13,7 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
+from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -45,8 +46,13 @@ class TaskServer(PendingConnectionsServer):
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management,
                                         tasks_dir=os.path.join(client.datadir, 'tasks'))
-        self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
-                                          use_docker_machine_manager=use_docker_machine_manager)
+        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
+                                                  client.datadir, benchmarks)
+        udmm = use_docker_machine_manager
+        self.task_computer = TaskComputer(config_desc.node_name,
+                                          task_server=self,
+                                          use_docker_machine_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -119,15 +125,16 @@ class TaskServer(PendingConnectionsServer):
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
-                performance = env.get_performance(self.config_desc)
+                performance = env.get_performance()
             else:
                 performance = 0.0
-
-            is_requestor_accepted = self.should_accept_requestor(theader.task_owner_key_id)
+            is_requestor_accepted = self.should_accept_requestor(
+                theader.task_owner_key_id)
             is_price_accepted = self.config_desc.min_price < theader.max_price
             if is_requestor_accepted and is_price_accepted:
+                price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
-                                                        price=int(theader.max_price))
+                                                        price=price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -138,7 +145,11 @@ class TaskServer(PendingConnectionsServer):
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
                 }
-                self._add_pending_request(TASK_CONN_TYPES['task_request'], theader.task_owner, theader.task_owner_port, theader.task_owner_key_id, args)
+                self._add_pending_request(TASK_CONN_TYPES['task_request'],
+                                          theader.task_owner,
+                                          theader.task_owner_port,
+                                          theader.task_owner_key_id,
+                                          args)
 
                 return theader.task_id
         except Exception as err:

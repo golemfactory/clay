@@ -127,6 +127,7 @@ class Computation:
     enable_environment      = 'comp.environment.enable'
     disable_environment     = 'comp.environment.disable'
     benchmark_environment   = 'comp.environment.benchmark'
+    get_performance_values  = 'comp.environment.performance'
 
     evt_comp_started        = 'comp.started'
     evt_comp_finished       = 'comp.finished'

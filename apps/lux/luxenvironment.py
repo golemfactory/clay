@@ -11,6 +11,3 @@ class LuxRenderEnvironment(DockerEnvironment):
     APP_DIR = path.join(get_golem_path(), 'apps', 'lux')
     SCRIPT_NAME = "docker_luxtask.py"
     SHORT_DESCRIPTION = "LuxRender (www.luxrender.net)"
-
-    def get_performance(self, cfg_desc):
-        return cfg_desc.estimated_lux_performance

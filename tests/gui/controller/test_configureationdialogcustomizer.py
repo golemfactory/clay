@@ -7,7 +7,8 @@ from mock import MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from gui.application import Gui
-from gui.controller.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
+from gui.controller.configurationdialogcustomizer import \
+    ConfigurationDialogCustomizer, logger
 from gui.view.appmainwindow import AppMainWindow
 from golem.tools.assertlogs import LogTestCase
 
@@ -51,6 +52,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         self.assertEqual(float(customizer.gui.ui.minPriceLineEdit.text()), 2.0)
         customizer.gui.ui.maxPriceLineEdit.setText("{}".format(1))
         customizer.gui.ui.minPriceLineEdit.setText("{}".format(0.0011))
+        self.logic.recount_performance.return_value = 123
         self.__click_ok(customizer)
         ccd = self.logic.change_config.call_args_list[0][0][0]
         self.assertEqual(ccd.min_price, int(0.0011 * denoms.ether))

@@ -8,6 +8,7 @@ from twisted.internet.selectreactor import SelectReactor
 from twisted.internet.task import Clock
 
 from golem.testutils import TempDirFixture as TestDirFixture
+from golem.testutils import DatabaseFixture
 
 
 __all__ = ['TestWithReactor', 'TestDirFixtureWithReactor']
@@ -139,3 +140,14 @@ class TestDirFixtureWithReactor(TestDirFixture, TestWithReactor):
         TestWithReactor.tearDownClass()
         TestDirFixture.tearDownClass()
 
+
+class TestDatabaseWithReactor(DatabaseFixture, TestWithReactor):
+    @classmethod
+    def setUpClass(cls):
+        DatabaseFixture.setUpClass()
+        TestWithReactor.setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        TestWithReactor.tearDownClass()
+        DatabaseFixture.tearDownClass()

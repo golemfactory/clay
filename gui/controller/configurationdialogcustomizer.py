@@ -32,17 +32,23 @@ class ConfigurationDialogCustomizer(Customizer):
         self.docker_config_changed = False
 
     def load_data(self):
+        def load_benchmarks(benchmarks):
+            self.__load_performance(benchmarks)
+
         def load(config_desc):
             self.__load_basic_config(config_desc)
             self.__load_advance_config(config_desc)
             self.__load_resource_config()
             self.__load_payment_config(config_desc)
             self.docker_config_changed = False
+            self.logic.get_performance_values().addCallback(load_benchmarks)
 
         self.logic.get_config().addCallback(load)
 
+
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
+
         self.gui.ui.recountLuxButton.clicked.connect(
             self.__run_lux_benchmark_button_clicked)
         self.gui.ui.recountBlenderButton.clicked.connect(
@@ -88,12 +94,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.hostAddressLineEdit.setText(
             "{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText("{}".format(config_desc.seed_port))
-        self.gui.ui.performanceLabel.setText(
-            "{}".format(config_desc.estimated_performance))
-        self.gui.ui.luxPerformanceLabel.setText(
-            "{}".format(config_desc.estimated_lux_performance))
-        self.gui.ui.blenderPerformanceLabel.setText(
-            "{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.gui.ui.nodeNameLineEdit.setText("{}".format(config_desc.node_name))
 
@@ -141,13 +141,11 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __run_lux_benchmark_button_clicked(self):
         self.logic.run_benchmark(LuxBenchmark(),
-                                 self.gui.ui.luxPerformanceLabel,
-                                 cfg_param_name="estimated_lux_performance")
+                                 self.gui.ui.luxPerformanceLabel)
 
     def __run_blender_benchmark_button_clicked(self):
         self.logic.run_benchmark(BlenderBenchmark(),
-                                 self.gui.ui.blenderPerformanceLabel,
-                                 cfg_param_name="estimated_blender_performance")
+                                 self.gui.ui.blenderPerformanceLabel)
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust,
@@ -168,6 +166,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_advance_config(self, config_desc):
         self.gui.ui.advanceSettingsWidget.hide()
+
         self.gui.ui.showAdvanceButton.setText(
             ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
 
@@ -210,6 +209,7 @@ class ConfigurationDialogCustomizer(Customizer):
                 checked = True
         except ValueError:
             checked = True
+
             logger.error(
                 "Wrong configuration parameter {}: {}".format(param_name,
                                                               param))
@@ -227,8 +227,20 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.diskWidget.hide()
         self.gui.ui.showDiskButton.setText(
             self.SHOW_DISK_USAGE_BUTTON_MESSAGES[0])
+
         self.__refresh_disk_computed()
         self.__refresh_disk_received()
+
+    def __load_performance(self, performance_values):
+        try:
+            self.gui.ui.luxPerformanceLabel.setText("{}".format(
+                "{:.2f}".format(performance_values["LUXRENDER"])))
+            self.gui.ui.blenderPerformanceLabel.setText("{}".format(
+                "{:.2f}".format(performance_values["BLENDER"])))
+            self.gui.ui.performanceLabel.setText("{:.2f}".format(
+                performance_values['DEFAULT']))
+        except (ValueError, KeyError):
+            logger.exception("Can't read performance")
 
     def __refresh_disk_received(self):
         def change(res_dirs):
@@ -333,12 +345,7 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.seed_port = "{}".format(self.gui.ui.hostIPLineEdit.text())
 
         cfg_desc.num_cores = "{}".format(self.gui.ui.numCoresSpinBox.value())
-        cfg_desc.estimated_performance = "{}".format(
-            self.gui.ui.performanceLabel.text())
-        cfg_desc.estimated_lux_performance = "{}".format(
-            self.gui.ui.luxPerformanceLabel.text())
-        cfg_desc.estimated_blender_performance = "{}".format(
-            self.gui.ui.blenderPerformanceLabel.text())
+
         max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
         cfg_desc.max_resource_size = "{}".format(
@@ -347,6 +354,7 @@ class ConfigurationDialogCustomizer(Customizer):
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
         cfg_desc.max_memory_size = "{}".format(
             self.__count_resource_size(max_memory_size, index))
+
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
         cfg_desc.node_name = "{}".format(self.gui.ui.nodeNameLineEdit.text())
@@ -412,7 +420,7 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(
-            str(self.logic.recount_performance(num_cores)))
+            "{:.2f}".format(self.logic.recount_performance(num_cores)))
 
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = "{}".format(
