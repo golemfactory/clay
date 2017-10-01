@@ -22,6 +22,7 @@ coverage:
     - "save/*"
     - "scripts/*"
     - "tests/*"
+    - "conftest.py"
     - "setup.py"
     - "Installer/*"
     - "setup_util/*"
