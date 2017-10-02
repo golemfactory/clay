@@ -221,7 +221,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_stop_reactor(self, reactor, *_):
         reactor.running = False
         stop_reactor()
-        assert not reactor.stop.called
+        assert reactor.stop.called
+
+        reactor.reset_mock()
 
         reactor.running = True
         stop_reactor()

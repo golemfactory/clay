@@ -23,14 +23,20 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(ValueError):
             EthereumTransactionSystem(self.tempdir, "not a private key")
 
-    def test_get_balance(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (None, None, None)
+    @mock.patch(
+        'golem.transactions.ethereum.ethereumtransactionsystem.'
+        'EthereumTransactionSystem.get_payment_address',
+        new_callable=mock.PropertyMock)
+    def test_invalid_eth_adress_construction(self, mock_get_payment_address):
+        mock_get_payment_address().return_value = None
+
+        with self.assertRaisesRegexp(ValueError,
+                                     "Invalid Ethereum address constructed"):
+            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
     @mock.patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
     @mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
     def test_sync(self, sleep, *_):
-
         switch_value = [True]
 
         def false():
@@ -46,50 +52,64 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
         sleep.call_count = 0
-        with mock.patch('golem.ethereum.Client.is_syncing', side_effect=false):
+        with mock.patch(
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
+                side_effect=false):
             e.sync()
             assert sleep.call_count == 1
 
         sleep.call_count = 0
-        with mock.patch('golem.ethereum.Client.is_syncing', side_effect=switch):
+        with mock.patch(
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
+                side_effect=switch):
             e.sync()
             assert sleep.call_count == 2
 
         sleep.call_count = 0
-        with mock.patch('golem.ethereum.Client.is_syncing', side_effect=error):
+        with mock.patch(
+                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
+                side_effect=error):
             e.sync()
             assert sleep.call_count == 0
 
-    def test_stop(self):
+    def test_get_balance(self):
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        assert e.get_balance() == (None, None, None)
 
+    @mock.patch('golem.transactions.service.Service.running',
+                new_callable=mock.PropertyMock)
+    def test_stop(self, mock_is_service_running):
         pkg = 'golem.ethereum.'
 
-        def init(self, *args, **kwargs):
+        def _init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
             self.web3 = mock.MagicMock()
 
-        with mock.patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
-                mock.patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
-                mock.patch(pkg + 'node.NodeProcess.start'), \
-                mock.patch(pkg + 'node.NodeProcess.stop'), \
-                mock.patch(pkg + 'node.NodeProcess.__init__', init), \
-                mock.patch('web3.providers.rpc.HTTPProvider.__init__', init):
+        with mock.patch('twisted.internet.task.LoopingCall.start'), \
+            mock.patch('twisted.internet.task.LoopingCall.stop'), \
+            mock.patch(pkg + 'node.NodeProcess.start'), \
+            mock.patch(pkg + 'node.NodeProcess.stop'), \
+            mock.patch(pkg + 'node.NodeProcess.__init__', _init), \
+            mock.patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
+            mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            assert e.incomes_keeper.processor. \
+                _loopingCall.start.called
+            assert e.incomes_keeper.processor \
+                ._PaymentProcessor__client.node.start.called
 
-            assert e._EthereumTransactionSystem__proc.start.called
-            assert e._EthereumTransactionSystem__eth_node.node.start.called
-
+            mock_is_service_running.return_value = False
             e.stop()
+            assert not e.incomes_keeper.processor. \
+                _PaymentProcessor__client.node.stop.called
+            assert not e.incomes_keeper.processor. \
+                _loopingCall.stop.called
 
-            assert not e._EthereumTransactionSystem__proc.stop.called
-            assert e._EthereumTransactionSystem__eth_node.node.stop.called
-
-            e._EthereumTransactionSystem__eth_node.node.stop.called = False
-            e._EthereumTransactionSystem__proc._loopingCall.running = True
-
+            mock_is_service_running.return_value = True
             e.stop()
-
-            assert e._EthereumTransactionSystem__proc.stop.called
-            assert e._EthereumTransactionSystem__eth_node.node.stop.called
+            assert e.incomes_keeper.processor. \
+                _PaymentProcessor__client.node is None
+            assert e.incomes_keeper.processor. \
+                _loopingCall.stop.called

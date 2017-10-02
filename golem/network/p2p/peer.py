@@ -9,6 +9,11 @@ COMPUTATION_CAPABILITY = 'computation'
 
 class GolemPeer(Peer):
 
+    def __init__(self, peermanager, connection, remote_pubkey=None):
+        super().__init__(peermanager, connection, remote_pubkey)
+        self.link_exception(self._on_unhandled_exception)
+        self.degree = 0
+
     @property
     def capabilities(self):
         capabilities = super().capabilities
@@ -19,6 +24,15 @@ class GolemPeer(Peer):
     @property
     def computation_capability(self):
         return bool(self.peermanager.computation_capability)
+
+    def _on_unhandled_exception(self, peer, *args):
+        """
+        Unhandled exception callback.
+
+        :param peer: GolemPeer instance
+        :return: None
+        """
+        self.stop()
 
     def _run_ingress_message(self):
         """

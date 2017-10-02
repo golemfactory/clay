@@ -12,64 +12,72 @@ import subprocess
 import sys
 import tempfile
 import time
+
 from os import path
 from threading import Thread
-import gevent
-
-if 'twisted.internet.reactor' in sys.modules:
-    del sys.modules['twisted.internet.reactor']
-from twisted.internet import asyncioreactor
-print("Installing reactor")
-asyncioreactor.install(gevent.get_hub().loop.aio)
-from twisted.internet import reactor
-
-def monkey_patched_run(self, *args, **kwargs):
-    self.startRunning(installSignalHandlers=True)
-asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
-
 from ethereum import slogging
-#Monkey patch for ethereum.slogging.
-#SLogger aggressively mess up with python looger.
-#This patch is to settle down this.
-#It should be done before any SLogger is created.
-orig_getLogger = slogging.SManager.getLogger
-def monkey_patched_getLogger(*args, **kwargs):
-    orig_class = logging.getLoggerClass()
-    result = orig_getLogger(*args, **kwargs)
-    logging.setLoggerClass(orig_class)
-    return result
-slogging.SManager.getLogger = monkey_patched_getLogger
 
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.socketaddress import SocketAddress
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
+# Monkey patch for ethereum.slogging.
+# SLogger aggressively mess up with python logger.
+# This patch is to settle down this.
+# It should be done before any SLogger is created.
+orig_getLogger = slogging.SManager.getLogger
+
+
+def monkey_patched_getLogger(*args, **kwargs):
+    orig_class = logging.getLoggerClass()
+    result = orig_getLogger(*args, **kwargs)
+    logging.setLoggerClass(orig_class)
+    return result
+
+slogging.SManager.getLogger = monkey_patched_getLogger
+
+
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 BASE_PORT = 20200
+
+node_kind = ""
+
+
+def install_event_loop():
+    # Set the default event loop
+    os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
+    import gevent
+
+    print("Installing reactor")
+
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
+
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install(gevent.get_hub().loop.aio)
+    selector = asyncioreactor.AsyncioSelectorReactor
+    selector.run = selector.startRunning
+
+    from twisted.internet import reactor
+    return gevent, reactor
 
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
 
 
-node_kind = ""
-
-
 def report(msg):
     print(format_msg(node_kind, os.getpid(), msg))
 
 
-def override_ip_info(*_, **__):
-    from golem.network.stun.pystun import OpenInternet
-    return OpenInternet, '1.2.3.4', 20171
-
-
-def create_client(datadir):
+def create_client(datadir, port):
     # executed in a subprocess
     from golem.network.stun import pystun
-    pystun.get_ip_info = override_ip_info
+    from golem.network.stun.pystun import OpenInternet
+
+    pystun.get_ip_info = lambda *_, **__: (OpenInternet, '127.0.0.1', port)
 
     from golem.client import Client
     return Client(datadir=datadir,
@@ -82,6 +90,7 @@ def create_client(datadir):
 
 
 def run_requesting_node(datadir, num_subtasks=3):
+    gevent, reactor = install_event_loop()
     client = None
 
     def shutdown():
@@ -96,9 +105,12 @@ def run_requesting_node(datadir, num_subtasks=3):
     global node_kind
     node_kind = "REQUESTOR"
 
+    from golem.p2pconfig import p2pconfig
+    p2pconfig['discovery']["bootstrap_nodes"] = []
+
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = create_client(datadir)
+    client = create_client(datadir, p2pconfig['p2p']['listen_port'])
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
@@ -129,6 +141,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
 
 def run_computing_node(datadir, seed_addr, seed_id, node_num, fail_after=None):
+    gevent, reactor = install_event_loop()
     client = None
 
     def shutdown():
@@ -149,11 +162,12 @@ def run_computing_node(datadir, seed_addr, seed_id, node_num, fail_after=None):
     from golem.p2pconfig import p2pconfig
 
     port = BASE_PORT + node_num
+    p2pconfig['discovery']["bootstrap_nodes"] = []
     p2pconfig['discovery']["listen_port"] = port
     p2pconfig['p2p']["listen_port"] = port
 
     config_logging(datadir=datadir)
-    client = create_client(datadir)
+    client = create_client(datadir, port)
 
     client.start()
     client.task_server.task_computer.support_direct_computation = True

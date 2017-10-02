@@ -160,10 +160,17 @@ class TaskComputer(object):
             except ValueError:  # not in list
                 pass
 
-        time_ = task_thread.end_time - task_thread.start_time
+        work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtasks.pop(subtask_id)
+            # get paid for max working time,
+            # thus task withholding won't make profit
+            task_header = \
+                self.task_server.task_keeper.task_headers[subtask.task_id]
+            work_time_to_be_paid = task_header.subtask_timeout
+
+
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
             return
@@ -176,20 +183,30 @@ class TaskComputer(object):
             self.task_server.send_task_failed(subtask_id, subtask.task_id,
                                               task_thread.error_msg,
                                               subtask.task_owner)
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
+            dispatcher.send(signal='golem.monitor',
+                            event='computation_time_spent',
+                            success=False, value=work_time_to_be_paid)
+
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
-            logger.info("Task %r computed", subtask_id)
+            logger.info("Task %r computed, work_wall_clock_time %s",
+                        subtask_id,
+                        str(work_wall_clock_time))
             self.stats.increase_stat('computed_tasks')
             self.task_server.send_result(subtask_id, subtask.task_id,
-                                         time_, task_thread.result,
+                                         work_time_to_be_paid,
+                                         task_thread.result,
                                          subtask.task_owner)
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=time_)
+            dispatcher.send(signal='golem.monitor',
+                            event='computation_time_spent',
+                            success=True, value=work_time_to_be_paid)
         else:
             self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id,
                                               "Wrong result format",
                                               subtask.task_owner)
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
+            dispatcher.send(signal='golem.monitor',
+                            event='computation_time_spent',
+                            success=False, value=work_time_to_be_paid)
         self.counting_task = None
 
     def run(self):

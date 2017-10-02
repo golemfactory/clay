@@ -15,16 +15,23 @@ from golem.tools.testdirfixture import TestDirFixture
 
 @ci_skip
 class TestTaskComputer(TestDirFixture, LogTestCase):
-    def test_init(self):
+
+    def setUp(self):
+        super(TestTaskComputer, self).setUp()
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = config_desc()
+
+        self.task_server = task_server
+
+    def test_init(self):
+        task_server = self.task_server
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
-        task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server = self.task_server
+
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
         task_server.config_desc.waiting_for_task_timeout = 1
@@ -70,8 +77,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc2.session_timeout()
 
     def test_resource_failure(self):
-        task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server = self.task_server
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         task_id = 'xyz'
@@ -89,13 +95,6 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.resource_request_rejected(subtask_id, 'reason')
 
     def test_computation(self):
-        task_server = mock.MagicMock()
-        task_server.get_task_computer_root.return_value = self.path
-        task_server.config_desc = config_desc()
-        task_server.task_keeper.task_headers["xyz"].deadline = \
-            timeout_to_deadline(20)
-        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
-
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
@@ -111,6 +110,16 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.extra_data = {}
         ctd.short_description = "add cnt"
         ctd.deadline = timeout_to_deadline(10)
+
+        task_server = self.task_server
+        task_server.task_keeper.task_headers[
+            ctd.subtask_id].subtask_timeout = 5
+
+        task_server.task_keeper.task_headers["xyz"].deadline = \
+            timeout_to_deadline(20)
+
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
@@ -190,8 +199,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
             tt.join(timeout=5)
 
     def test_change_config(self):
-        task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server = self.task_server
 
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = mock.Mock()
@@ -213,8 +221,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_event_listeners(self):
         client = mock.Mock()
-        task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server = self.task_server
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         tc.lock_config(True)
@@ -234,7 +241,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         [t.join() for t in tc.current_computations]
 
     def test_request_rejected(self):
-        task_server = mock.MagicMock()
+        task_server = self.task_server
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         with self.assertLogs(logger, level="INFO"):
             tc.task_request_rejected("xyz", "my rejection reason")
@@ -245,6 +252,7 @@ class TestTaskThread(TestDirFixture):
     def test_thread(self):
         ts = mock.MagicMock()
         ts.config_desc = config_desc()
+
         tc = TaskComputer("ABC", ts, use_docker_machine_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
@@ -314,6 +322,8 @@ class TestTaskMonitor(TestDirFixture):
         def prepare():
             subtask = mock.MagicMock()
             subtask_id = random.randint(3000, 4000)
+            task_server.task_keeper.task_headers[subtask_id].subtask_timeout = duration
+
             task.assigned_subtasks[subtask_id] = subtask
             task_thread.subtask_id = subtask_id
 

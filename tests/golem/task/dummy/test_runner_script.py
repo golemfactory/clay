@@ -80,7 +80,8 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch('devp2p.app.BaseApp.stop')
     @mock.patch('golem.core.common.config_logging')
     @mock.patch("golem.client.Client.enqueue_new_task")
-    @mock.patch("tests.golem.task.dummy.runner.reactor")
+    @mock.patch("tests.golem.task.dummy.runner.install_event_loop",
+                return_value=(mock.Mock(), mock.Mock()))
     def test_run_requesting_node(self, mock_reactor, enqueue_new_task, *_):
         client = runner.run_requesting_node(self.path, 3)
         self.assertTrue(enqueue_new_task.called)
@@ -89,7 +90,8 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch('gevent.greenlet.Greenlet')
     @mock.patch('gevent.hub.get_hub')
     @mock.patch('golem.core.common.config_logging')
-    @mock.patch("tests.golem.task.dummy.runner.reactor")
+    @mock.patch("tests.golem.task.dummy.runner.install_event_loop",
+                return_value=(mock.Mock(), mock.Mock()))
     def test_run_computing_node(self, *_):
         client = runner.run_computing_node(
             self.path, SocketAddress("127.0.0.1", 20200),

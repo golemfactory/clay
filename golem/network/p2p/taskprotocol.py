@@ -1,14 +1,14 @@
 from devp2p import slogging
-from devp2p.protocol import BaseProtocol
 from rlp import sedes
 
 from golem.core.common import to_unicode
 from golem.core.simpleserializer import CBORSedes, unicode_sedes
+from golem.network.p2p.protocol import SigningProtocol
 
 logger = slogging.get_logger('golem.protocol')
 
 
-class TaskProtocol(BaseProtocol):
+class TaskProtocol(SigningProtocol):
 
     protocol_id = 18318  # == GolemProtocol.protocol_id + 1
     version = 1
@@ -18,9 +18,9 @@ class TaskProtocol(BaseProtocol):
         # required by P2PProtocol
         self.config = peer.config
         self.eth_account_info = None
-        BaseProtocol.__init__(self, peer, service)
+        SigningProtocol.__init__(self, peer, service)
 
-    class reject(BaseProtocol.command):
+    class reject(SigningProtocol.command):
         """
         Generic reject message,
         sent by both requestors and providers
@@ -33,7 +33,7 @@ class TaskProtocol(BaseProtocol):
             ('payload', CBORSedes)
         ]
 
-    class task_request(BaseProtocol.command):
+    class task_request(SigningProtocol.command):
         """
         ComputeTaskDef request,
         sent by providers
@@ -46,10 +46,15 @@ class TaskProtocol(BaseProtocol):
             ('price', sedes.big_endian_int),
             ('max_disk', sedes.big_endian_int),
             ('max_memory', sedes.big_endian_int),
-            ('max_cpus', sedes.big_endian_int)
+            ('max_cpus', sedes.big_endian_int),
+            ('eth_account', CBORSedes)
         ]
 
-    class task(BaseProtocol.command):
+        def received(self, decoded):
+            decoded['eth_account'] = to_unicode(decoded['eth_account'])
+            return decoded
+
+    class task(SigningProtocol.command):
         """
         ComputeTaskDef and resources,
         sent by requestors
@@ -62,9 +67,7 @@ class TaskProtocol(BaseProtocol):
             ('resource_options', CBORSedes)
         ]
 
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
+        def received(self, decoded):
             try:
                 ctd = decoded['definition']
                 ctd.task_id = to_unicode(ctd.task_id)
@@ -75,7 +78,7 @@ class TaskProtocol(BaseProtocol):
                 logger.error("Error decoding task definition %s", exc)
             return decoded
 
-    class failure(BaseProtocol.command):
+    class failure(SigningProtocol.command):
         """
         Computation failure,
         sent by providers
@@ -86,7 +89,7 @@ class TaskProtocol(BaseProtocol):
             ('reason', sedes.binary)
         ]
 
-    class result(BaseProtocol.command):
+    class result(SigningProtocol.command):
         """
         Task computation result,
         sent by providers
@@ -98,17 +101,10 @@ class TaskProtocol(BaseProtocol):
             ('computation_time', CBORSedes),
             ('resource_hash', unicode_sedes),
             ('resource_secret', sedes.binary),
-            ('resource_options', CBORSedes),
-            ('eth_account', CBORSedes)
+            ('resource_options', CBORSedes)
         ]
 
-        @classmethod
-        def decode_payload(cls, rlp_data):
-            decoded = super().decode_payload(rlp_data)
-            decoded['eth_account'] = to_unicode(decoded['eth_account'])
-            return decoded
-
-    class accept_result(BaseProtocol.command):
+    class accept_result(SigningProtocol.command):
         """
         Accept task computation result,
         sent by requestors
@@ -120,7 +116,7 @@ class TaskProtocol(BaseProtocol):
             ('remuneration', CBORSedes)
         ]
 
-    class payment_request(BaseProtocol.command):
+    class payment_request(SigningProtocol.command):
         """
         Payment information request,
         sent by providers
@@ -131,7 +127,7 @@ class TaskProtocol(BaseProtocol):
             ('subtask_id', unicode_sedes),
         ]
 
-    class payment(BaseProtocol.command):
+    class payment(SigningProtocol.command):
         """
         Payment information,
         sent by requestors

@@ -108,6 +108,7 @@ class Node(object):
         for env in self._apps_manager.get_env_list():
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
+        self.client.environments_manager.load_config(self.client.datadir)
 
     def _start_rpc_router(self):
         from twisted.internet import reactor

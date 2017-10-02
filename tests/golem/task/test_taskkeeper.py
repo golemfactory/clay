@@ -260,8 +260,9 @@ def get_task_header():
                       header["task_owner_port"], header["task_owner_key_id"],
                       header["environment"], header["task_owner"],
                       header["deadline"],
-                      header["subtask_timeout"],
-                      1024, 1.0, 1000, docker_images=[])
+                      header["subtask_timeout"], 1024, 1.0, 1000,
+                      header['max_price'],
+                      docker_images=[])
 
 
 class TestCompSubtaskInfo(TestCase):
