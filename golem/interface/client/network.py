@@ -58,13 +58,18 @@ class Network(object):
         values = []
 
         for peer in peers:
-            ip = peer['ip_port'][0]
+            ip = str(peer['ip_port'][0])
             port = str(peer['ip_port'][1])
+            remote_pubkey = Network.__key_id(encode_hex(peer['remote_pubkey']), full)
+            node_name = str(peer['node_name']) \
+                if 'node_name' in peer \
+                else 'missing node name'
+
             values.append([
-                str(ip),
+                ip,
                 port,
-                Network.__key_id(encode_hex(peer['remote_pubkey']), full),
-                str(peer['node_name'])
+                remote_pubkey,
+                node_name
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,
