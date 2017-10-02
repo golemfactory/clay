@@ -35,6 +35,10 @@ class ProcessMonitor(Thread):
                     if self.working:
                         self.run_callbacks(process)
                     self._child_processes.pop(i)
+                    if isinstance(process, (psutil.Popen, subprocess.Popen)):
+                        stdout_data, stderr_data = process.communicate()
+                        print("STDOUT: {}\nSTDERR: {}"
+                            .format(stdout_data, stderr_data))
 
             time.sleep(0.5)
 
