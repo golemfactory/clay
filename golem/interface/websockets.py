@@ -1,5 +1,6 @@
 import sys
-
+import asyncio
+import functools
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
 
@@ -17,12 +18,17 @@ class WebSocketCLI(object):
         self.session = Session(address)
 
     def execute(self, *args, **kwargs):
-        from twisted.internet import reactor, threads
-
-        def on_connected(_):
-            core_client = Client(self.session, CORE_METHOD_MAP)
-            self.cli.register_client(core_client)
-            threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
+        def on_connected(f):
+            try:
+                f.result()
+            except Exception as exc:
+                self.on_error(exc)
+            else:
+                core_client = Client(self.session, CORE_METHOD_MAP)
+                self.cli.register_client(core_client)
+                f = asyncio.get_event_loop().run_in_executor(None,
+                    functools.partial(self.cli.execute, *args, **kwargs))
+                f.add_done_callback(self.shutdown)
 
         def on_error(_):
             sys.stderr.write("Error connecting to Golem instance ({})\n"
@@ -33,23 +39,22 @@ class WebSocketCLI(object):
             self.shutdown()
 
         def connect():
-            self.session.connect(
+            future = self.session.connect(
                 auto_reconnect=False
-            ).addCallbacks(on_connected, on_error)
+            )
+            future.add_done_callback(on_connected)
 
-        reactor.callWhenRunning(connect)
-        reactor.run()
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.call_soon(connect)
+        loop.run_forever()
+
 
     def shutdown(self, *_):
-        from twisted.internet import reactor
-        from twisted.internet.error import ReactorNotRunning
-
         if self.cli:
             self.cli.shutdown()
         if self.session:
             self.session.disconnect()
 
-        try:
-            reactor.stop()
-        except ReactorNotRunning:
-            pass
+        loop = asyncio.get_event_loop()
+        loop.stop()
