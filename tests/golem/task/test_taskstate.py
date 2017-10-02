@@ -38,20 +38,27 @@ class TestSubtaskState(unittest.TestCase):
         ss.computer.port = 1311
 
         ss_dict = ss.to_dictionary()
+        assert ss_dict['description'] == "My long task definition"
         assert ss_dict['subtask_id'] == "ABCDEF"
+        assert ss_dict['progress'] == 0.92
+        assert ss_dict['time_started'] <= time.time()
+
+        assert ss_dict.get('deadline') is None
+        assert ss_dict.get('extra_data') is None
+
+        assert ss_dict['time_remaining'] <= 5
+        assert ss_dict['status'] == SubtaskStatus.starting
+
+        assert ss_dict.get('value') is None
+
+        assert ss_dict['stdout'] == "path/to/file"
+        assert ss_dict['stderr'] == "path/to/file2"
+        assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]
+
+        assert ss_dict.get('computation_time') is None
+
         assert ss_dict['node_name'] == "NODE1"
         assert ss_dict['node_id'] == "abc131"
         assert ss_dict['node_performance'] == "180"
         assert ss_dict['node_ip_address'] == "10.10.10.1"
         assert ss_dict['node_port'] == 1311
-        assert ss_dict['status'] == SubtaskStatus.starting
-        assert ss_dict['progress'] == 0.92
-        assert time.time() - ss_dict['time_started'] >= 0
-        assert ss_dict['time_remaining'] <= 5
-        assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]
-        assert ss_dict['stderr'] == "path/to/file2"
-        assert ss_dict['stdout'] == "path/to/file"
-        assert ss_dict['description'] == "My long task definition"
-
-
-
