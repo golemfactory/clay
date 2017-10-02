@@ -77,7 +77,7 @@ class TestGolemService(unittest.TestCase):
         self.assertEqual(call_pkt.cmd_id, pkt.cmd_id)
         self.assertNotEqual(call_pkt.payload, pkt.payload)
 
-        gservice.on_wire_protocol_start.assert_called_once()
+        self.assertEquals(gservice.on_wire_protocol_start.call_count, 1)
 
     @mock.patch('gevent.spawn_later')
     def test_wire_proto_start(self, spawn_later):
