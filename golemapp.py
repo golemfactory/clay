@@ -90,15 +90,43 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
 
     config = dict(datadir=datadir, transaction_system=payments)
 
-    if protocol_id:
-        from golem.network.p2p.peermanager import GolemPeerManager
-        from golem.network.p2p.golemservice import GolemService
-        from golem.network.p2p.taskservice import TaskService
-        from devp2p.discovery import DiscoveryProtocol
-        GolemPeerManager.wire_protocol.version = protocol_id
-        GolemService.wire_protocol.version = protocol_id
-        TaskService.wire_protocol.version = protocol_id
-        DiscoveryProtocol.version = protocol_id
+    # protocol_id = 666
+    # if protocol_id:
+    #     from golem.network.p2p.peermanager import GolemPeerManager
+    #     from golem.network.p2p.golemservice import GolemService
+    #     from golem.network.p2p.taskservice import TaskService
+    #     from golem.network.p2p.golemprotocol import GolemProtocol
+    #
+    #     from devp2p.discovery import DiscoveryProtocol
+    #     from devp2p.p2p_protocol import P2PProtocol
+    #     from golem.network.p2p.taskprotocol import TaskProtocol
+    #
+    #
+    #     TaskService.wire_protocol.version = protocol_id
+    #     TaskProtocol.version = protocol_id
+    #
+    #     GolemService.wire_protocol.version = protocol_id
+    #     GolemProtocol.version = protocol_id
+
+        # DiscoveryProtocol.version = protocol_id
+        #
+        # GolemPeerManager.wire_protocol.version = protocol_id
+        # P2PProtocol.version = protocol_id
+
+        ###########
+        # x = TaskService.wire_protocol.version
+        # x2 = TaskProtocol.version
+        # TaskService.wire_protocol.version = 6661
+        # TaskProtocol.version = 6662
+        #
+        # GolemService.wire_protocol.version = 6663
+        # GolemProtocol.version = 6664
+        #
+        # DiscoveryProtocol.version = 6665
+        #
+        # GolemPeerManager.wire_protocol.version = 6666
+        # P2PProtocol.version = 6667
+
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
