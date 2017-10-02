@@ -90,7 +90,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
 
     config = dict(datadir=datadir, transaction_system=payments)
 
-    protocol_id = 666
     if protocol_id:
         from golem.network.p2p.peermanager import GolemPeerManager
         from golem.network.p2p.golemservice import GolemService
@@ -100,7 +99,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from devp2p.discovery import DiscoveryProtocol
         from devp2p.p2p_protocol import P2PProtocol
         from golem.network.p2p.taskprotocol import TaskProtocol
-
 
         TaskService.wire_protocol.version = protocol_id
         TaskProtocol.version = protocol_id
@@ -112,21 +110,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
 
         GolemPeerManager.wire_protocol.version = protocol_id
         P2PProtocol.version = protocol_id
-
-        ###########
-        # x = TaskService.wire_protocol.version
-        # x2 = TaskProtocol.version
-        # TaskService.wire_protocol.version = 6661
-        # TaskProtocol.version = 6662
-        #
-        # GolemService.wire_protocol.version = 6663
-        # GolemProtocol.version = 6664
-        #
-        # DiscoveryProtocol.version = 6665
-        #
-        # GolemPeerManager.wire_protocol.version = 6666
-        # P2PProtocol.version = 6667
-
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address

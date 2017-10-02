@@ -4,9 +4,6 @@ from golem.diag.service import DiagnosticsProvider
 
 logger = logging.getLogger(__name__)
 
-P2P_PROTOCOL_ID = 14
-
-
 class PeerSessionInfo(object):
 
     attributes = [

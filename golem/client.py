@@ -90,7 +90,7 @@ class Client(HardwarePresetsMixin):
             geth_port=None,
             **config_overrides):
 
-        slogging.configure(u':info', log_file="devp2p.log")
+        slogging.configure(u':debug', log_file="devp2p.log")
         devp2plog.info('starting')
 
         if not datadir:
