@@ -108,10 +108,10 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         GolemService.wire_protocol.version = protocol_id
         GolemProtocol.version = protocol_id
 
-        # DiscoveryProtocol.version = protocol_id
-        #
-        # GolemPeerManager.wire_protocol.version = protocol_id
-        # P2PProtocol.version = protocol_id
+        DiscoveryProtocol.version = protocol_id
+
+        GolemPeerManager.wire_protocol.version = protocol_id
+        P2PProtocol.version = protocol_id
 
         ###########
         # x = TaskService.wire_protocol.version
