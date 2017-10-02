@@ -20,10 +20,10 @@ from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.core.variables import TASK_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
 
-TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):

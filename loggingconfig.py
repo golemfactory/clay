@@ -58,6 +58,10 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'golem.version': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
             'level': 'INFO',
             'propagate': True,
