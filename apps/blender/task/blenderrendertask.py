@@ -315,8 +315,7 @@ class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
-        self.compositing = self.use_frames\
-            and (len(self.frames) > len(self.frames_subtasks))
+        self.compositing = true
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -329,7 +328,6 @@ class BlenderRenderTask(FrameRenderingTask):
     # Task methods #
     ################
     def __init__(self, task_definition, **kwargs):
-        self.compositing = task_definition.options.compositing
         self.preview_updater = None
         self.preview_updaters = None
 
@@ -337,6 +335,9 @@ class BlenderRenderTask(FrameRenderingTask):
                                     **kwargs)
 
         definition = self.task_definition
+        self.compositing = definition.options.compositing\
+            and self.use_frames\
+            and (len(self.frames) > len(self.frames_subtasks))
         self.verificator.compositing = self.compositing
         self.verificator.output_format = self.output_format
         self.verificator.src_code = self.src_code
