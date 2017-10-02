@@ -1,6 +1,5 @@
 import os
 import unittest.mock as mock
-import unittest.mock as mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
