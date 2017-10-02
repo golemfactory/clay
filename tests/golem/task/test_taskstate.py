@@ -1,7 +1,8 @@
 import time
 import unittest
 
-from golem.core.common import timeout_to_deadline, deadline_to_timeout
+from golem.core.common import timeout_to_deadline, deadline_to_timeout, \
+    get_timestamp_utc
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 
 
@@ -21,7 +22,7 @@ class TestSubtaskState(unittest.TestCase):
         ss.subtask_definition = "My long task definition"
         ss.subtask_id = "ABCDEF"
         ss.subtask_progress = 0.92
-        ss.time_started = time.time()
+        ss.time_started = get_timestamp_utc()
         ss.deadline = timeout_to_deadline(ss.time_started + 5)
         ss.extra_data = {"param1": 1323, "param2": "myparam"}
         ss.subtask_rem_time = deadline_to_timeout(ss.deadline) - ss.time_started
