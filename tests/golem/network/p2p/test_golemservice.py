@@ -28,7 +28,7 @@ def create_client(datadir):
                     estimated_lux_performance=1000.0,
                     estimated_blender_performance=1000.0)
 
-    task_server = Mock(keys_auth=mock.Mock(
+    task_server = mock.Mock(keys_auth=mock.Mock(
         sign=lambda x: x,
         verify=lambda *_: True
     ))
