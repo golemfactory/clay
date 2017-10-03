@@ -39,7 +39,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.waiting_for_task)
         tc.last_task_request = 0
         tc.run()
@@ -48,7 +48,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc.accept_tasks = False
         tc2 = TaskComputer("DEF", task_server, use_docker_machine_manager=False)
         tc2.counting_task = False
-        tc2.current_computations = []
+        tc2.counting_thread = None
         tc2.waiting_for_task = None
         tc2.last_task_request = 0
 
@@ -61,7 +61,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc2.counting_task = False
 
         tc2.last_task_request = 0
-        tc2.current_computations = []
+        tc2.counting_thread = None
 
         tc2.run()
 
@@ -128,7 +128,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
 
         assert tc.resource_given("xyz")
-        assert len(tc.current_computations) == 0
+        assert tc.counting_thread is None
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported", "owner")
@@ -137,14 +137,14 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.task_given(ctd)
         assert tc.resource_given("xyz")
         assert not tc.waiting_for_task
-        assert len(tc.current_computations) == 1
-        self.assertGreater(tc.current_computations[0].time_to_compute, 9)
-        self.assertLessEqual(tc.current_computations[0].time_to_compute, 10)
+        assert tc.counting_thread is not None
+        self.assertGreater(tc.counting_thread.time_to_compute, 9)
+        self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
         self.__wait_for_tasks(tc)
 
         prev_task_failed_count = task_server.send_task_failed.call_count
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_result.called)
@@ -169,7 +169,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.__wait_for_tasks(tc)
 
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception', "owner")
@@ -188,9 +188,9 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.timeout = timeout_to_deadline(1)
         tc.task_given(ctd)
         self.assertTrue(tc.resource_given("xyz"))
-        tt = tc.current_computations[0]
-        tc.task_computed(tc.current_computations[0])
-        self.assertEqual(len(tc.current_computations), 0)
+        tt = tc.counting_thread
+        tc.task_computed(tc.counting_thread)
+        self.assertIsNone(tc.counting_thread)
         task_server.send_task_failed.assert_called_with(
             "xxyyzz2", "xyz", "Wrong result format", "owner")
         tt.end_comp()
@@ -238,7 +238,9 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     @staticmethod
     def __wait_for_tasks(tc):
-        [t.join() for t in tc.current_computations]
+        if tc.counting_thread is None:
+            return
+        tc.counting_thread.join()
 
     def test_request_rejected(self):
         task_server = self.task_server

@@ -421,7 +421,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.task_server.task_sessions = {str(uuid.uuid4()): mock.Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.current_computations = []
+        c.task_server.task_computer.counting_thread = None
         c.task_server.task_computer.stats = dict()
 
         c.get_balance = get_balance
