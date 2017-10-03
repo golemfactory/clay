@@ -25,7 +25,6 @@ from golem.core.variables import TASK_PROTOCOL_ID
 logger = logging.getLogger(__name__)
 
 
-
 def drop_after_attr_error(*args, **kwargs):
     logger.warning("Attribute error occur")
     args[0].dropped()

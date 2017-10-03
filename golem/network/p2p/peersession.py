@@ -10,7 +10,6 @@ from golem.core.variables import P2P_PROTOCOL_ID
 logger = logging.getLogger(__name__)
 
 
-
 class PeerSessionInfo(object):
     attributes = [
         'address', 'port',
