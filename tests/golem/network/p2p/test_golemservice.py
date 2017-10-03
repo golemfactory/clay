@@ -1,9 +1,9 @@
 import tempfile
 import unittest
+import unittest.mock as mock
 
 from devp2p.multiplexer import Packet
 from devp2p.peer import Peer
-from mock import patch, Mock, sentinel
 
 from golem.network.p2p.golemservice import GolemService
 from golem.network.p2p.golemprotocol import GolemProtocol
@@ -28,7 +28,7 @@ def create_client(datadir):
                     estimated_lux_performance=1000.0,
                     estimated_blender_performance=1000.0)
 
-    task_server = Mock(keys_auth=Mock(
+    task_server = mock.Mock(keys_auth=mock.Mock(
         sign=lambda x: x,
         verify=lambda *_: True
     ))
@@ -38,7 +38,7 @@ def create_client(datadir):
 
 
 def create_proto():
-        proto = Mock()
+        proto = mock.Mock()
         proto.receive_get_tasks_callbacks = []
         proto.receive_task_headers_callbacks = []
         proto.receive_get_node_name_callbacks = []
@@ -56,9 +56,9 @@ class TestGolemService(unittest.TestCase):
     def tearDown(self):
         self.client.quit()
 
-    @patch('gevent._socket2.socket')
-    @patch('devp2p.peer.Peer.send_packet')
-    @patch('golem.network.p2p.golemservice.GolemService.on_wire_protocol_start')
+    @mock.patch('gevent._socket2.socket')
+    @mock.patch('devp2p.peer.Peer.send_packet')
+    @mock.patch('golem.network.p2p.golemservice.GolemService.on_wire_protocol_start')
     def test_broadcast(self, on_wire_protocol_start, send_packet, socket):
         gservice = self.client.services['golem_service']
         peer = Peer(self.client.services['peermanager'], socket)
@@ -77,11 +77,11 @@ class TestGolemService(unittest.TestCase):
         self.assertEqual(call_pkt.cmd_id, pkt.cmd_id)
         self.assertNotEqual(call_pkt.payload, pkt.payload)
 
-        gservice.on_wire_protocol_start.assert_called_once()
+        self.assertEquals(gservice.on_wire_protocol_start.call_count, 1)
 
-    @patch('gevent.spawn_later')
+    @mock.patch('gevent.spawn_later')
     def test_wire_proto_start(self, spawn_later):
-        app = Mock(config={}, services={})
+        app = mock.Mock(config={}, services={})
         gservice = GolemService(app)
         gservice.wire_protocol = object
 
@@ -97,7 +97,7 @@ class TestGolemService(unittest.TestCase):
         spawn_later.assert_called_with(1., proto.send_get_node_name)
 
     def test_receive_get_tasks(self):
-        app = Mock(config={}, services={})
+        app = mock.Mock(config={}, services={})
         gservice = GolemService(app)
         gservice.wire_protocol = object
         proto = create_proto()
@@ -111,8 +111,8 @@ class TestGolemService(unittest.TestCase):
 
         proto.send_task_headers.assert_not_called()
 
-        client = Mock()
-        task_server = Mock()
+        client = mock.Mock()
+        task_server = mock.Mock()
         gservice.setup(client, task_server)
 
         task_server.get_task_headers.return_value = []
@@ -121,13 +121,13 @@ class TestGolemService(unittest.TestCase):
         proto.send_task_headers.assert_not_called()
 
         def assert_headers(headers):
-            self.assertIn(sentinel.task_hdr1, headers)
-            self.assertIn(sentinel.task_hdr2, headers)
+            self.assertIn(mock.sentinel.task_hdr1, headers)
+            self.assertIn(mock.sentinel.task_hdr2, headers)
 
         proto.send_task_headers.side_effect = assert_headers
 
         task_server.get_task_headers.return_value = \
-            [sentinel.task_hdr1, sentinel.task_hdr2]
+            [mock.sentinel.task_hdr1, mock.sentinel.task_hdr2]
         get_tasks()
 
         self.assertTrue(proto.send_task_headers.called)
@@ -136,12 +136,12 @@ class TestGolemService(unittest.TestCase):
 class TestGolemService2(unittest.TestCase):
 
     def setUp(self):
-        app = Mock(config={}, services={})
+        app = mock.Mock(config={}, services={})
         self.gservice = GolemService(app)
         self.gservice.wire_protocol = object
 
-        self.client = Mock()
-        self.task_server = Mock()
+        self.client = mock.Mock()
+        self.task_server = mock.Mock()
         self.gservice.setup(self.client, self.task_server)
 
         self.proto = create_proto()
@@ -149,19 +149,19 @@ class TestGolemService2(unittest.TestCase):
 
     def test_receive_task_headers(self):
         def make_task(d):
-            task = Mock()
+            task = mock.Mock()
             task.to_dict.return_value = d
             return task
 
         # TODO: test on actual task headers
-        task_headers = [make_task(sentinel.th_dict1),
-                        make_task(sentinel.th_dict2)]
+        task_headers = [make_task(mock.sentinel.th_dict1),
+                        make_task(mock.sentinel.th_dict2)]
 
         for cb in self.proto.receive_task_headers_callbacks:
             cb(self.proto, task_headers=task_headers)
 
-        self.task_server.add_task_header.assert_any_call(sentinel.th_dict1)
-        self.task_server.add_task_header.assert_any_call(sentinel.th_dict2)
+        self.task_server.add_task_header.assert_any_call(mock.sentinel.th_dict1)
+        self.task_server.add_task_header.assert_any_call(mock.sentinel.th_dict2)
 
     # TODO: implement task events (new, update, remove)
     @unittest.skip('Not implemented')

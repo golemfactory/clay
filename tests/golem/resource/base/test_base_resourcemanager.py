@@ -1,8 +1,7 @@
 import os
 import unittest
+import unittest.mock as mock
 import uuid
-
-from mock import patch
 
 from golem.resource.base import resourcesmanager
 from golem.resource.dirmanager import DirManager
@@ -321,7 +320,7 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         assert not self.resource_manager.storage.get_resources(self.task_id)
 
     def test_command_failed(self):
-        with patch('golem.resource.base.resourcesmanager.logger') as logger:
+        with mock.patch('golem.resource.base.resourcesmanager.logger') as logger:
             self.resource_manager.command_failed(
                 Exception('Unknown error'),
                 self.resource_manager.commands.id,

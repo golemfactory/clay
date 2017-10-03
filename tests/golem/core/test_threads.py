@@ -1,8 +1,7 @@
-import unittest
-
-import time
 import threading
-from mock import Mock
+import time
+import unittest
+import unittest.mock as mock
 
 from golem.core.threads import ThreadQueueExecutor, QueueExecutor
 
@@ -33,8 +32,8 @@ class TestQueueExecutor(unittest.TestCase):
 
     def test_queue(self):
 
-        method_1 = Mock()
-        method_2 = Mock()
+        method_1 = mock.Mock()
+        method_2 = mock.Mock()
 
         executor = QueueExecutor()
 
@@ -46,7 +45,7 @@ class TestQueueExecutor(unittest.TestCase):
         method_1.assert_called_once_with(0, 1, kw_arg=0)
         method_2.assert_called_once_with()
 
-        inner_mock = Mock()
+        inner_mock = mock.Mock()
 
         def method_3():
             inner_mock()
@@ -63,7 +62,7 @@ class TestThreadExecutor(unittest.TestCase):
 
     def test_queue(self):
         executor = ThreadQueueExecutor()
-        executor.start = Mock()
+        executor.start = mock.Mock()
 
         j1 = Thread(30)
         j2 = Thread(30)

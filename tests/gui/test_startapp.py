@@ -1,10 +1,10 @@
-import sys
-import time
 from queue import Queue
+import sys
 from threading import Thread
-
-from mock import Mock, patch, ANY
+import time
 from twisted.internet.defer import Deferred
+from twisted.python import failure
+import unittest.mock as mock
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -15,7 +15,6 @@ from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.startapp import load_environments, start_client, stop_reactor, start_app
-from twisted.python import failure
 
 
 def router_start(fail_on_start):
@@ -23,7 +22,7 @@ def router_start(fail_on_start):
         if fail_on_start:
             errback("Router error")
         else:
-            callback(Mock())
+            callback(mock.Mock())
 
     return start
 
@@ -35,7 +34,7 @@ def session_connect(fail_on_start):
             deferred.errback(failure.Failure(ValueError("Session error")))
         else:
             instance.connected = True
-            deferred.callback(Mock())
+            deferred.callback(mock.Mock())
         return deferred
 
     return connect
@@ -61,22 +60,22 @@ def docker_command(key, *args, **kwargs):
     return ''
 
 
-@patch('golem.docker.manager.DockerManager.command', side_effect=docker_command)
-@patch('twisted.internet.iocpreactor', create=True)
+@mock.patch('golem.docker.manager.DockerManager.command', side_effect=docker_command)
+@mock.patch('twisted.internet.iocpreactor', create=True)
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def _start_client(self, router_fails=False, session_fails=False, expected_result=None):
 
         queue = Queue()
 
-        @patch('devp2p.app.BaseApp.start')
-        @patch('devp2p.app.BaseApp.stop')
-        @patch('gui.startapp.start_gui')
-        @patch('golem.client.Client.start', side_effect=lambda *_: queue.put("Success"))
-        @patch('golem.client.Client.sync')
-        @patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))
-        @patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails))
-        @patch('golem.rpc.session.Session.connect', session_connect(session_fails))
+        @mock.patch('devp2p.app.BaseApp.start')
+        @mock.patch('devp2p.app.BaseApp.stop')
+        @mock.patch('gui.startapp.start_gui')
+        @mock.patch('golem.client.Client.start', side_effect=lambda *_: queue.put("Success"))
+        @mock.patch('golem.client.Client.sync')
+        @mock.patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))
+        @mock.patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails))
+        @mock.patch('golem.rpc.session.Session.connect', session_connect(session_fails))
         def inner(*mocks):
             client = None
             try:
@@ -105,7 +104,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def _start_gui(self, session_fails=False, expected_result=None):
 
         address = WebSocketAddress('127.0.0.1', 50000, realm='golem')
-        logger = Mock()
+        logger = mock.Mock()
 
         def resolve_call(alias, *args, **kwargs):
             if alias == aliases.Environment.datadir:
@@ -132,12 +131,12 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 return ''
             return 1
 
-        with patch('logging.getLogger', return_value=logger), \
-             patch('gui.startgui.start_error', side_effect=lambda err: logger.error(err)), \
-             patch('gui.startgui.GUIApp.start', side_effect=lambda *a, **kw: logger.error("Success")), \
-             patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor), \
-             patch('golem.rpc.session.Session.connect', session_connect(session_fails)), \
-             patch('golem.rpc.session.Session.call', session_call(resolve_call)):
+        with mock.patch('logging.getLogger', return_value=logger), \
+             mock.patch('gui.startgui.start_error', side_effect=lambda err: logger.error(err)), \
+             mock.patch('gui.startgui.GUIApp.start', side_effect=lambda *a, **kw: logger.error("Success")), \
+             mock.patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor), \
+             mock.patch('golem.rpc.session.Session.connect', session_connect(session_fails)), \
+             mock.patch('golem.rpc.session.Session.call', session_call(resolve_call)):
 
             try:
 
@@ -145,7 +144,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
                 gui_app = GUIApp(rendering=True)
                 gui_app.gui.execute = lambda *a, **kw: logger.error("Success")
-                gui_app.logic.customizer = Mock()
+                gui_app.logic.customizer = mock.Mock()
 
                 thread = Thread(target=lambda: start_gui(address, gui_app))
                 thread.daemon = True
@@ -174,7 +173,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             except Exception as exc:
                 self.fail("Cannot start gui process: {}".format(exc))
 
-    @patch('logging.config.fileConfig')
+    @mock.patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
@@ -182,7 +181,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_client_success(self, *_):
         self._start_client(expected_result="Success")
 
-    @patch('logging.config.fileConfig')
+    @mock.patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
@@ -191,7 +190,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         self._start_client(router_fails=True,
                            expected_result="Router error")
 
-    @patch('logging.config.fileConfig')
+    @mock.patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
@@ -200,7 +199,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         self._start_client(session_fails=True,
                            expected_result="Session error")
 
-    @patch('logging.config.fileConfig')
+    @mock.patch('logging.config.fileConfig')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
@@ -208,8 +207,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_gui_success(self, *_):
         self._start_gui(expected_result="Success")
 
-    @patch('logging.config.fileConfig')
-    @patch('gui.startgui.config_logging')
+    @mock.patch('logging.config.fileConfig')
+    @mock.patch('gui.startgui.config_logging')
     @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
@@ -218,7 +217,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         self._start_gui(session_fails=True,
                         expected_result="Session error")
 
-    @patch('twisted.internet.reactor')
+    @mock.patch('twisted.internet.reactor')
     def test_stop_reactor(self, reactor, *_):
         reactor.running = False
         stop_reactor()
@@ -230,7 +229,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         stop_reactor()
         assert reactor.stop.called
 
-    @patch('gui.startapp.start_client')
+    @mock.patch('gui.startapp.start_client')
     def test_start_app(self, _start_client, *_):
         start_app(datadir=self.tempdir)
         _start_client.assert_called_with(False, self.tempdir, False,
@@ -249,31 +248,31 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         rpc_address = WebSocketAddress('127.0.0.1', 12345, 'golem')
         address_str = '{}:{}'.format(rpc_address.host, rpc_address.port)
 
-        with patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor):
+        with mock.patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor):
 
             expected_kwargs = dict(
-                startupinfo=ANY,
+                startupinfo=mock.ANY,
                 stdout=-1,
                 stderr=-1,
-                stdin=ANY
+                stdin=mock.ANY
             )
 
-            with patch('subprocess.Popen') as popen:
+            with mock.patch('subprocess.Popen') as popen:
                 _start_gui(rpc_address)
-                popen.assert_called_with([sys.executable, ANY,
+                popen.assert_called_with([sys.executable, mock.ANY,
                                           '--qt', '-r', address_str],
                                          **expected_kwargs)
 
-            with patch('subprocess.Popen') as popen, \
-                 patch.object(sys, 'executable', 'python_binary'):
+            with mock.patch('subprocess.Popen') as popen, \
+                 mock.patch.object(sys, 'executable', 'python_binary'):
 
                 _start_gui(rpc_address)
-                popen.assert_called_with(['python_binary', ANY,
+                popen.assert_called_with(['python_binary', mock.ANY,
                                           '--qt', '-r', address_str],
                                          **expected_kwargs)
 
-            with patch('subprocess.Popen') as popen, \
-                 patch.object(sys, 'frozen', True, create=True):
+            with mock.patch('subprocess.Popen') as popen, \
+                 mock.patch.object(sys, 'frozen', True, create=True):
 
                 _start_gui(rpc_address)
                 popen.assert_called_with([sys.executable,

@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+import unittest.mock as mock
 import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
 import golem
@@ -36,7 +36,7 @@ from gui.view.appmainwindow import AppMainWindow
 
 class TTask(Task):
     def __init__(self):
-        Task.__init__(self, Mock(), Mock(), Mock())
+        Task.__init__(self, mock.Mock(), mock.Mock(), mock.Mock())
         self.src_code = ""
         self.extra_data = {}
         self.test_finished = False
@@ -179,8 +179,8 @@ class TestGuiApplicationLogic(DatabaseFixture):
 
     def test_update_payments_view(self):
         logic = GuiApplicationLogic()
-        logic.client = Mock()
-        logic.customizer = Mock()
+        logic.client = mock.Mock()
+        logic.customizer = mock.Mock()
         ether = denoms.ether
 
         balance_deferred = Deferred()
@@ -200,8 +200,8 @@ class TestGuiApplicationLogic(DatabaseFixture):
 
     def test_update_stats(self):
         logic = GuiApplicationLogic()
-        logic.client = Mock()
-        logic.customizer = Mock()
+        logic.client = mock.Mock()
+        logic.customizer = mock.Mock()
 
         deferred = Deferred()
         deferred.callback(None)
@@ -228,12 +228,12 @@ class TestGuiApplicationLogic(DatabaseFixture):
 
     def test_start_task(self):
         logic = GuiApplicationLogic()
-        logic.customizer = Mock()
-        logic.client = Mock()
+        logic.customizer = mock.Mock()
+        logic.client = mock.Mock()
         task_desc = TaskDesc()
         task_desc.task_state.status = TaskStatus.notStarted
         task_desc.definition.task_type = "TASKTYPE1"
-        task_type = Mock()
+        task_type = mock.Mock()
         task_type.task_builder_type.return_value = TTaskBuilder(self.path)
         logic.task_types["TASKTYPE1"] = task_type
         logic.tasks["xyz"] = task_desc
@@ -259,7 +259,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def test_change_config(self):
         logic = GuiApplicationLogic()
-        logic.customizer = Mock()
+        logic.customizer = mock.Mock()
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
         rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
@@ -269,7 +269,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def test_add_tasks(self):
         logic = GuiApplicationLogic()
-        logic.customizer = Mock()
+        logic.customizer = mock.Mock()
         td = TestGuiApplicationLogicWithClient._get_task_definition()
         logic.add_task_from_definition(td)
         self.assertIn("xyz", logic.tasks, "Task was not added")
@@ -313,11 +313,11 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
             deferred.callback(DictSerializer.dump(task))
             return deferred
 
-        logic.client = Mock()
-        logic.client.query_task_state = Mock()
+        logic.client = mock.Mock()
+        logic.client.query_task_state = mock.Mock()
         logic.client.query_task_state.side_effect = get_logic_task
 
-        logic.customizer = Mock()
+        logic.customizer = mock.Mock()
 
         logic.task_status_changed('wrong_task')
         assert not logic.customizer.update_tasks.called
@@ -351,7 +351,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         from apps.appsmanager import AppsManager
 
         logic = GuiApplicationLogic()
-        logic.customizer = Mock()
+        logic.customizer = mock.Mock()
         logic.client = self.client
 
         apps_manager = AppsManager()
@@ -407,7 +407,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_updating_config_dialog(self):
         logic = self.logic
         app = self.app
-        logic.client = Mock()
+        logic.client = mock.Mock()
         logic.register_gui(app.get_main_window(),
                            MainWindowCustomizer)
 
@@ -426,23 +426,23 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ))
 
     def test_main_window(self):
-        self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
+        self.app.main_window.ui.taskTableWidget.setColumnWidth = mock.Mock()
         self.app.main_window.show()
 
         n = self.app.main_window.ui.taskTableWidget.columnCount()
 
         set_width = self.app.main_window.ui.taskTableWidget.setColumnWidth
-        set_width.assert_has_calls([call(i, ANY) for i in range(0, n)])
+        set_width.assert_has_calls([mock.call(i, mock.ANY) for i in range(0, n)])
 
     def test_update_peers_view(self):
         logic = self.logic
         gui = self.app
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
-        logic.customizer.new_task_dialog_customizer = Mock()
-        peer = Mock()
+        logic.customizer.new_task_dialog_customizer = mock.Mock()
+        peer = mock.Mock()
         peer.ip_port = ("10.10.10.10", 1031)
         peer.remote_pubkey = "KEYID"
-        peer2 = Mock()
+        peer2 = mock.Mock()
         peer2.ip_port = ("10.10.10.20", 1034)
         peer2.remote_pubkey = "KEYID2"
         logic._update_peers_view([DictSerializer.dump(peer),
@@ -458,7 +458,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
     def test_change_verification_options(self):
         logic = self.logic
-        logic.client = Mock()
+        logic.client = mock.Mock()
         logic.client.datadir = self.path
         self.logic.customizer = MainWindowCustomizer(self.app.main_window,
                                                      self.logic)
@@ -480,16 +480,16 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
             logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    @patch('PyQt5.QtWidgets.QMessageBox')
+    @mock.patch('PyQt5.QtWidgets.QMessageBox')
     def test_messages(self, msg_box):
         msg_box.return_value = msg_box
         logic = self.logic
         self.logic.datadir = self.path
         logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
-        logic.customizer.show_error_window = Mock()
-        logic.customizer.show_warning_window = Mock()
-        logic.customizer.current_task_highlighted = Mock()
-        logic.client = Mock()
+        logic.customizer.show_error_window = mock.Mock()
+        logic.customizer.show_warning_window = mock.Mock()
+        logic.customizer.current_task_highlighted = mock.Mock()
+        logic.client = mock.Mock()
         self.logic.dir_manager = DirManager(self.path)
         register_task_types(logic)
 
@@ -501,11 +501,11 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         rts.definition.main_program_file = f[1]
         rts.definition.main_scene_file = f[2]
         self.assertTrue(logic._validate_task_state(rts))
-        m = Mock()
+        m = mock.Mock()
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_program_file = 'Bździągwa'
-        logic.customizer.show_error_window = Mock()
+        logic.customizer.show_error_window = mock.Mock()
         logic.run_benchmark(broken_benchmark, m, m)
         logic.progress_dialog.close()
         if logic.br.tt:
@@ -582,7 +582,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         with self.assertLogs(logger, level="WARNING"):
             logic.task_status_changed("unknown id")
 
-        task_type = Mock()
+        task_type = mock.Mock()
         task_type.name = "NAME1"
         logic.register_new_task_type(task_type)
         with self.assertLogs(int_logger, level="ERROR"):
@@ -595,9 +595,9 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_test_task_status(self):
 
         def reset():
-            self.logic.test_task_started = Mock()
-            self.logic.test_task_computation_success = Mock()
-            self.logic.test_task_computation_error = Mock()
+            self.logic.test_task_started = mock.Mock()
+            self.logic.test_task_computation_success = mock.Mock()
+            self.logic.test_task_computation_error = mock.Mock()
 
         args = ['first', 'second']
 
@@ -639,9 +639,9 @@ def mock_tester_run(self):
     self.tt.join()
 
 
-@patch('devp2p.app.BaseApp.start')
-@patch('golem.client.async_run', side_effect=mock_async_run)
-@patch.object(golem.client.TaskTester, 'run', mock_tester_run)
+@mock.patch('devp2p.app.BaseApp.start')
+@mock.patch('golem.client.async_run', side_effect=mock_async_run)
+@mock.patch.object(golem.client.TaskTester, 'run', mock_tester_run)
 class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
     def setUp(self):
@@ -659,9 +659,9 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         self.app.app.deleteLater()
         TestDirFixtureWithReactor.tearDown(self)
 
-    @patch('gui.view.dialog.QDialogPlus.enable_close',
+    @mock.patch('gui.view.dialog.QDialogPlus.enable_close',
            side_effect=lambda *_: True)
-    @patch('gui.view.dialog.QDialogPlus.show')
+    @mock.patch('gui.view.dialog.QDialogPlus.show')
     def test_run_test_task(self, *_):
         logic = self.logic
         gui = self.app
@@ -678,14 +678,14 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         self.client.start()
         self.client.task_tester = None
 
-        task_type = Mock()
+        task_type = mock.Mock()
         ttb = TTaskBuilder(self.path)
         task_type.task_builder_type.return_value = ttb
         self.client.task_server.task_manager.task_types["testtask"] = task_type
 
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
-        logic.customizer.new_task_dialog_customizer = Mock()
-        logic.customizer.show_warning_window = Mock()
+        logic.customizer.new_task_dialog_customizer = mock.Mock()
+        logic.customizer.show_warning_window = mock.Mock()
 
         ts = TaskDesc()
         files = self.additional_dir_content([3])

@@ -1,10 +1,9 @@
+from ethereum.utils import denoms
 import os
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
-from ethereum.utils import denoms
-from mock import MagicMock, patch
 from twisted.internet.defer import Deferred
+import unittest.mock as mock
 
 from gui.application import Gui
 from gui.controller.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
@@ -16,9 +15,9 @@ class TestConfigurationDialogCustomizer(LogTestCase):
 
     def setUp(self):
         super(TestConfigurationDialogCustomizer, self).setUp()
-        self.logic = MagicMock()
+        self.logic = mock.MagicMock()
         self.gui = Gui(self.logic, AppMainWindow)
-        self.gui.main_window.show = MagicMock()
+        self.gui.main_window.show = mock.MagicMock()
 
     def tearDown(self):
         super(TestConfigurationDialogCustomizer, self).tearDown()
@@ -30,7 +29,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
                                                 'distributed': os.getcwd(),
                                                 'received': os.getcwd()}
 
-        config_mock = MagicMock()
+        config_mock = mock.MagicMock()
         config_mock.max_price = int(2.01 * denoms.ether)
         config_mock.min_price = int(2.0 * denoms.ether)
 
@@ -39,7 +38,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         config_deferred.called = True
 
         res_dirs_deferred = Deferred()
-        res_dirs_deferred.result = MagicMock()
+        res_dirs_deferred.result = mock.MagicMock()
         res_dirs_deferred.called = True
 
         self.logic.get_config.return_value = config_deferred
@@ -63,7 +62,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         with self.assertLogs(logger, level='WARNING'):
             self.__click_ok(customizer)
 
-    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    @mock.patch('gui.controller.configurationdialogcustomizer.QMessageBox')
     def test_remove_from_computing(self, msg_box):
         msg_box.return_value = msg_box
         msg_box.Yes = 1
@@ -81,7 +80,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer._ConfigurationDialogCustomizer__remove_from_computing()
         assert self.logic.remove_computed_files.called
 
-    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    @mock.patch('gui.controller.configurationdialogcustomizer.QMessageBox')
     def test_remove_from_distributed(self, msg_box):
         msg_box.return_value = msg_box
         msg_box.Yes = 1
@@ -99,7 +98,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer._ConfigurationDialogCustomizer__remove_from_distributed()
         assert self.logic.remove_distributed_files.called
 
-    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    @mock.patch('gui.controller.configurationdialogcustomizer.QMessageBox')
     def test_remove_from_received(self, msg_box):
         msg_box.return_value = msg_box
         msg_box.Yes = 1

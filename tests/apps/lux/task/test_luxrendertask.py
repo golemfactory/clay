@@ -1,11 +1,11 @@
 import os
+from pathlib import Path
 import pickle
 import unittest
-from pathlib import Path
+import unittest.mock as mock
 
 from PIL import Image
 from ethereum.utils import denoms
-from mock import Mock, patch
 
 from apps.core.task.coretask import AcceptClientVerdict, CoreTaskTypeInfo
 from apps.lux.task.luxrendertask import (
@@ -35,7 +35,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    @patch(
+    @mock.patch(
         "apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation")  # since we dont need it, lets patch it to speed up the tests
     def get_test_lux_task(self, create_reference_data_for_task_validation_mock, haltspp=20, total_subtasks=10):
         create_reference_data_for_task_validation_mock.return_value = None
@@ -68,13 +68,13 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_query_extra_data(self):
         luxtask = self.get_test_lux_task()
-        luxtask._get_scene_file_rel_path = Mock()
+        luxtask._get_scene_file_rel_path = mock.Mock()
         luxtask._get_scene_file_rel_path.return_value = os.path.join(
             self.path, 'scene'
         )
         luxtask.main_program_file = os.path.join(self.path, 'program.py')
 
-        luxtask._accept_client = Mock()
+        luxtask._accept_client = mock.Mock()
         luxtask._accept_client.return_value = AcceptClientVerdict.ACCEPTED
 
         result = luxtask.query_extra_data(0)
@@ -206,7 +206,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_query_extra_data_for_test_task(self):
         # make sure that test task path is created
         luxtask = self.get_test_lux_task()
-        luxtask._get_scene_file_rel_path = Mock()
+        luxtask._get_scene_file_rel_path = mock.Mock()
         luxtask._get_scene_file_rel_path.return_value = os.path.join(
             self.path,
             'scene'
@@ -231,7 +231,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert LuxRenderTaskTypeInfo.get_preview(luxtask)
         assert not LuxRenderTaskTypeInfo.get_preview(None)
 
-    @patch("golem.resource.dirmanager.find_task_script")
+    @mock.patch("golem.resource.dirmanager.find_task_script")
     def test_get_merge_ctd_error(self, find_task_script_mock):
         # If Lux cannot find merge script, an error log should be returned
         find_task_script_mock.return_value = None
@@ -416,7 +416,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
 
 
 class TestLuxRenderTaskBuilder(TempDirFixture):
-    @patch(
+    @mock.patch(
         "apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation")  # since we dont need it, lets patch it to speed up the tests
     def get_task(self, create_reference_data_for_task_validation_mock):
         create_reference_data_for_task_validation_mock.return_value = None

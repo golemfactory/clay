@@ -1,4 +1,4 @@
-from mock import Mock, patch, ANY
+import unittest.mock as mock
 
 from apps.blender.gui.controller.blenderrenderdialogcustomizer import \
     BlenderRenderDialogCustomizer
@@ -20,21 +20,21 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
     def setUp(self):
         super(TestBlenderRenderDialogCustomizer, self).setUp()
         self.logic = GuiApplicationLogic()
-        self.gui = Gui(Mock(), AppMainWindow)
+        self.gui = Gui(mock.Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestBlenderRenderDialogCustomizer, self).tearDown()
         self.gui.app.exit(0)
         self.gui.app.deleteLater()
 
-    @patch("gui.controller.customizer.QMessageBox")
+    @mock.patch("gui.controller.customizer.QMessageBox")
     def test_blender_customizer(self, mock_messagebox):
         self.logic.customizer = MainWindowCustomizer(self.gui.main_window,
                                                      self.logic)
         self.logic.register_new_task_type(
             BlenderTaskTypeInfo(TaskWidget(Ui_BlenderWidget),
                                 BlenderRenderDialogCustomizer))
-        self.logic.client = Mock()
+        self.logic.client = mock.Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
         self.logic.client.config_desc.use_ipv6 = False
         self.logic.client.config_desc.max_price = 0
@@ -62,5 +62,5 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
         mock_messagebox.assert_called_with(
             mock_messagebox.Critical, "Error",
             "Wrong frame format. Frame list expected, e.g. 1;3;5-12.",
-            ANY, ANY
+            mock.ANY, mock.ANY
         )

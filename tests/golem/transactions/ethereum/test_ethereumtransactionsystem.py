@@ -1,5 +1,4 @@
-import mock
-from mock import patch, MagicMock
+import unittest.mock as mock
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
@@ -35,8 +34,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                                      "Invalid Ethereum address constructed"):
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
-    @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
+    @mock.patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
+    @mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
     def test_sync(self, sleep, *_):
         switch_value = [True]
 
@@ -53,21 +52,21 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
         sleep.call_count = 0
-        with patch(
+        with mock.patch(
                 'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=false):
             e.sync()
             assert sleep.call_count == 1
 
         sleep.call_count = 0
-        with patch(
+        with mock.patch(
                 'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=switch):
             e.sync()
             assert sleep.call_count == 2
 
         sleep.call_count = 0
-        with patch(
+        with mock.patch(
                 'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
                 side_effect=error):
             e.sync()
@@ -85,14 +84,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         def _init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
-            self.web3 = MagicMock()
+            self.web3 = mock.MagicMock()
 
-        with patch('twisted.internet.task.LoopingCall.start'), \
-            patch('twisted.internet.task.LoopingCall.stop'), \
-            patch(pkg + 'node.NodeProcess.start'), \
-            patch(pkg + 'node.NodeProcess.stop'), \
-            patch(pkg + 'node.NodeProcess.__init__', _init), \
-            patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+        with mock.patch('twisted.internet.task.LoopingCall.start'), \
+            mock.patch('twisted.internet.task.LoopingCall.stop'), \
+            mock.patch(pkg + 'node.NodeProcess.start'), \
+            mock.patch(pkg + 'node.NodeProcess.stop'), \
+            mock.patch(pkg + 'node.NodeProcess.__init__', _init), \
+            mock.patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)

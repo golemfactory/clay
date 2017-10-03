@@ -1,6 +1,6 @@
-import mock
 import random
 from unittest import TestCase
+import unittest.mock as mock
 
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor

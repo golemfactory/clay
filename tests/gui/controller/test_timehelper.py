@@ -1,13 +1,12 @@
-from unittest import TestCase
-
-from mock import Mock
+import unittest
+import unittest.mock as mock
 
 from gui.controller.timehelper import get_subtask_hours, get_time_values
 
 
-class TestTimeHelper(TestCase):
+class TestTimeHelper(unittest.TestCase):
     def test_get_subtask_hours(self):
-        gui = Mock()
+        gui = mock.Mock()
         gui.ui.subtaskTimeoutHourSpinBox.value.return_value = 3
         gui.ui.subtaskTimeoutMinSpinBox.value.return_value = 20
         gui.ui.subtaskTimeoutSecSpinBox.value.return_value = 36

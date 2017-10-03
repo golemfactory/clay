@@ -1,5 +1,5 @@
-from mock import patch, Mock, call
 from requests import ConnectionError
+import unittest.mock as mock
 
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
@@ -7,10 +7,10 @@ from golem.testutils import TempDirFixture
 
 class TestHyperdriveDaemonManager(TempDirFixture):
 
-    @patch('golem.core.processmonitor.ProcessMonitor.start')
-    @patch('golem.core.processmonitor.ProcessMonitor.add_callbacks')
-    @patch('golem.core.processmonitor.ProcessMonitor.add_child_processes')
-    @patch('atexit.register')
+    @mock.patch('golem.core.processmonitor.ProcessMonitor.start')
+    @mock.patch('golem.core.processmonitor.ProcessMonitor.add_callbacks')
+    @mock.patch('golem.core.processmonitor.ProcessMonitor.add_child_processes')
+    @mock.patch('atexit.register')
     def test_start(self, register, *_):
 
         def ports(*_):
@@ -28,7 +28,7 @@ class TestHyperdriveDaemonManager(TempDirFixture):
         def none(*_):
             pass
 
-        process = Mock()
+        process = mock.Mock()
         process.poll.return_value = None
 
         daemon_manager = HyperdriveDaemonManager(self.path)
@@ -36,17 +36,17 @@ class TestHyperdriveDaemonManager(TempDirFixture):
 
         assert register.call_count == 2
         register.assert_has_calls(
-            [call()(daemon_manager._monitor.exit)],
-            [call()(daemon_manager.stop)]
+            [mock.call()(daemon_manager._monitor.exit)],
+            [mock.call()(daemon_manager.stop)]
         )
 
         # hyperdrive not running
         process.poll.return_value = True
         daemon_manager._monitor.add_child_processes.called = False
 
-        with patch.object(daemon_manager, 'addresses', side_effect=none), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+        with mock.patch.object(daemon_manager, 'addresses', side_effect=none), \
+             mock.patch('subprocess.Popen', return_value=process), \
+             mock.patch('os.makedirs') as makedirs:
 
             with self.assertRaises(RuntimeError):
                 daemon_manager.start()
@@ -61,9 +61,9 @@ class TestHyperdriveDaemonManager(TempDirFixture):
         process.poll.return_value = None
         daemon_manager._monitor.add_child_processes.called = False
 
-        with patch.object(daemon_manager, 'addresses', side_effect=none), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+        with mock.patch.object(daemon_manager, 'addresses', side_effect=none), \
+             mock.patch('subprocess.Popen', return_value=process), \
+             mock.patch('os.makedirs') as makedirs:
 
             daemon_manager.start()
 
@@ -77,9 +77,9 @@ class TestHyperdriveDaemonManager(TempDirFixture):
         process.poll.return_value = True
         daemon_manager._monitor.add_child_processes.called = False
 
-        with patch.object(daemon_manager, 'addresses', side_effect=ports), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+        with mock.patch.object(daemon_manager, 'addresses', side_effect=ports), \
+             mock.patch('subprocess.Popen', return_value=process), \
+             mock.patch('os.makedirs') as makedirs:
 
             daemon_manager.start()
 
@@ -96,11 +96,11 @@ class TestHyperdriveDaemonManager(TempDirFixture):
         def raise_exc():
             raise ConnectionError()
 
-        with patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
+        with mock.patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
                    side_effect=raise_exc):
             assert not daemon_manager.addresses()
 
-        with patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
+        with mock.patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
                    side_effect=lambda *_: {'TCP': {'port': 1234}}):
             assert daemon_manager.addresses()
 

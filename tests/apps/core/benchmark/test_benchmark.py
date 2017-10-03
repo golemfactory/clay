@@ -1,5 +1,5 @@
-import mock
 from PIL import Image
+import unittest.mock as mock
 
 from apps.rendering.benchmark import renderingbenchmark
 from golem.testutils import TempDirFixture

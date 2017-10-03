@@ -1,5 +1,5 @@
-from unittest import TestCase
-from mock import MagicMock
+import unittest
+import unittest.mock as mock
 
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.testutils import TestGui
@@ -9,7 +9,7 @@ from apps.core.task.coretaskstate import TaskDesc
 from gui.controller.previewcontroller import subtasks_priority, PreviewController
 
 
-class TestPriorites(TestCase):
+class TestPriorites(unittest.TestCase):
     def test_subtask_priority(self):
         s_rst = SubtaskState()
         s_rst.subtask_status = SubtaskStatus.restarted
@@ -30,14 +30,14 @@ class TestPriorites(TestCase):
         assert subtasks_priority(s_fin) > subtasks_priority(s_wai)
 
 
-class MagicPoint(MagicMock):
+class MagicPoint(mock.MagicMock):
     def __init__(self, x, y):
         super(MagicPoint, self).__init__()
         self.x = x
         self.y = y
 
     def pos(self):
-        pos = MagicMock()
+        pos = mock.MagicMock()
         pos.x.return_value = self.x
         pos.y.return_value = self.y
         return pos
@@ -45,7 +45,7 @@ class MagicPoint(MagicMock):
 
 class TestPreviewController(TestGui):
     def test_output_file(self):
-        maincontroller = MagicMock()
+        maincontroller = mock.MagicMock()
         pc = PreviewController(self.gui.get_main_window(), self.logic, maincontroller)
         td = TaskDesc()
 
@@ -67,7 +67,7 @@ class TestPreviewController(TestGui):
         assert pc.gui.ui.outputFile.text() == ""
 
     def test_pixmap(self):
-        maincontroller = MagicMock()
+        maincontroller = mock.MagicMock()
         pc = PreviewController(self.gui.get_main_window(), self.logic, maincontroller)
         td = TaskDesc()
         pc.set_preview(td)
@@ -86,10 +86,10 @@ class TestPreviewController(TestGui):
         pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
-        task_type_mock = MagicMock()
+        task_type_mock = mock.MagicMock()
         pc.logic.get_task_type.return_value = task_type_mock
         task_type_mock.get_task_num_from_pixels.return_value = 1
-        subtask_mock = MagicMock()
+        subtask_mock = mock.MagicMock()
         subtask_mock.extra_data = {'start_task': 4, 'end_task': 5}
         subtask_mock.subtask_status = SubtaskStatus.finished
         td.task_state.subtask_states["abc"] = subtask_mock

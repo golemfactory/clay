@@ -1,11 +1,10 @@
-import os
-
-from PyQt5.QtCore import QObject
 from ethereum.utils import denoms
-from mock import patch, MagicMock, ANY, Mock
+import os
 from PIL import Image
+from PyQt5.QtCore import QObject
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
+import unittest.mock as mock
 
 from golem.testutils import TempDirFixture, TestGui
 
@@ -20,7 +19,7 @@ class MagicQObject(QObject):
 
     def __init__(self, *args):
         super(MagicQObject, self).__init__(*args)
-        self.ui = MagicMock()
+        self.ui = mock.MagicMock()
 
     @staticmethod
     def setMouseTracking(*args):
@@ -30,7 +29,7 @@ class MagicQObject(QObject):
 class TestMainWindowCustomizer(TestGui):
 
     def test_table(self):
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), mock.MagicMock())
         task1 = TaskDesc()
         task1.definition.task_id = "TASK ID 1"
         task1.status = "Finished"
@@ -84,16 +83,16 @@ class TestMainWindowCustomizer(TestGui):
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), mock.MagicMock())
 
         customizer.gui.ui.showResourceButton.click()
-        customizer.current_task_highlighted = MagicMock()
+        customizer.current_task_highlighted = mock.MagicMock()
         customizer.current_task_highlighted.definition.main_scene_file = tmp_files[0]
         customizer.current_task_highlighted.definition.resources = tmp_files
         customizer.gui.ui.showResourceButton.click()
 
     def test_update_preview(self):
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), mock.MagicMock())
         rts = TaskDesc(definition_class=RenderingTaskDefinition)
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
@@ -118,16 +117,16 @@ class TestMainWindowCustomizer(TestGui):
         assert customizer.gui.ui.previewLabel.pixmap().height() == 206
 
         rts.definition.task_type = "Blender"
-        rts.definition.options = MagicMock()
+        rts.definition.options = mock.MagicMock()
         rts.definition.options.use_frames = True
         rts.definition.options.frames = list(range(10))
         rts.task_state.outputs = ["result"] * 10
         rts.task_state.extra_data = {"result_preview": [img_path]}
         customizer.update_task_additional_info(rts)
 
-    @patch("gui.controller.customizer.QMessageBox")
+    @mock.patch("gui.controller.customizer.QMessageBox")
     def test_show_task_result(self, mock_messagebox):
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), mock.MagicMock())
         td = TaskDesc()
         td.definition.task_type = "Blender"
         td.definition.options.use_frames = True
@@ -144,32 +143,32 @@ class TestMainWindowCustomizer(TestGui):
         expected_file = td.task_state.outputs[0]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + " is not a file",
-                                           ANY, ANY)
+                                           mock.ANY, mock.ANY)
         customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[1]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + " is not a file",
-                                           ANY, ANY)
+                                           mock.ANY, mock.ANY)
         customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[2]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + " is not a file",
-                                           ANY, ANY)
+                                           mock.ANY, mock.ANY)
 
-    @patch("gui.controller.mainwindowcustomizer.QMessageBox")
+    @mock.patch("gui.controller.mainwindowcustomizer.QMessageBox")
     def test_load_task(self, mock_messagebox):
 
         mock_messagebox.return_value = mock_messagebox
-        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
-        customizer._load_new_task_from_definition = Mock()
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), mock.MagicMock())
+        customizer._load_new_task_from_definition = mock.Mock()
         task_path = os.path.join(self.path, "file.gt")
 
-        f = Mock()
+        f = mock.Mock()
         f.read.return_value = '[{"key": "value"}]'
 
-        with patch('builtins.open', create=True) as mock_open:
+        with mock.patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 
@@ -184,7 +183,7 @@ class TestMainWindowCustomizer(TestGui):
         f.read = _raise
         customizer._load_new_task_from_definition.called = False
 
-        with patch('builtins.open', create=True) as mock_open:
+        with mock.patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 

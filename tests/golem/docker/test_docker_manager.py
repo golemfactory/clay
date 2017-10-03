@@ -1,11 +1,11 @@
+from contextlib import contextmanager
 import json
 import os
-import unittest
-from contextlib import contextmanager
 from subprocess import CalledProcessError
-
-import mock
 import sys
+import unittest
+import unittest.mock as mock
+
 
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
     Hypervisor, logger

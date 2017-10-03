@@ -1,13 +1,12 @@
-from unittest import TestCase
-
-from mock import Mock, patch
+import unittest
+import unittest.mock as mock
 
 from gui.controller.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from golem.task.taskstate import TaskStatus, TaskState
 from apps.core.task.coretaskstate import TaskDesc
 
-class TestTaskContextMenuCustomizer(TestCase):
-    @patch("gui.controller.taskcontexmenucustomizer.QAction")
+class TestTaskContextMenuCustomizer(unittest.TestCase):
+    @mock.patch("gui.controller.taskcontexmenucustomizer.QAction")
     def test_menu(self, mock_action):
         td = TaskDesc()
         TASK_ID = "TESTTTASK"
@@ -19,7 +18,7 @@ class TestTaskContextMenuCustomizer(TestCase):
         menu = None
         for st in status:
             td.task_state.status = st
-            menu = TaskContextMenuCustomizer(Mock(), Mock(), td)
+            menu = TaskContextMenuCustomizer(mock.Mock(), mock.Mock(), td)
 
         assert menu is not None
         menu._TaskContextMenuCustomizer__abort_task_triggered()

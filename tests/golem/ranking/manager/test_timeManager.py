@@ -1,12 +1,11 @@
 from unittest import TestCase
-
-from mock import patch
+import unittest.mock as mock
 
 from golem.ranking.manager.time_manager import TimeManager
 
 
 class TestTimeManager(TestCase):
-    @patch("golem.ranking.manager.time_manager.time")
+    @mock.patch("golem.ranking.manager.time_manager.time")
     def test_oracle(self, mock_time):
         oracle = TimeManager(200, 50, 110, 1000)
         self.assertEqual(oracle.break_time, 200)

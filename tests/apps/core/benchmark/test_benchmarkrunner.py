@@ -1,6 +1,5 @@
 import time
-
-import mock
+import unittest.mock as mock
 
 from apps.core.benchmark import benchmarkrunner
 from golem.task.taskbase import Task
@@ -189,4 +188,4 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
         )
         instance.run()
         instance.success_callback.assert_not_called()
-        instance.error_callback.assert_called_once()
+        self.assertEquals(instance.error_callback.call_count, 1)

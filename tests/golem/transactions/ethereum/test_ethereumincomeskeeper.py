@@ -1,6 +1,6 @@
-import mock
 import random
 import sys
+import unittest.mock as mock
 import uuid
 
 from golem.model import db

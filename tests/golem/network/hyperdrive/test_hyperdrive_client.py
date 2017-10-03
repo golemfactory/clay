@@ -1,7 +1,6 @@
 import unittest
+import unittest.mock as mock
 import uuid
-
-import mock
 
 from golem.network.hyperdrive.client import HyperdriveClient
 

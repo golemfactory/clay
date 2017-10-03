@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
-from mock import Mock
+import unittest.mock as mock
 
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -26,10 +26,10 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
         self.gui.app.deleteLater()
 
     def test_add_resource(self):
-        self.gui.show = Mock()
-        self.gui.main_window.show = Mock()
-        self.logic.client = Mock()
-        self.logic.customizer = Mock()
+        self.gui.show = mock.Mock()
+        self.gui.main_window.show = mock.Mock()
+        self.logic.client = mock.Mock()
+        self.logic.customizer = mock.Mock()
         register_task_types(self.logic)
         ard = AddTaskResourcesDialog(self.gui.main_window.window)
         ardc = AddResourcesDialogCustomizer(ard, self.logic)

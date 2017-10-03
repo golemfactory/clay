@@ -1,16 +1,14 @@
-import unittest
-from collections import OrderedDict
-
 import autobahn
-from mock import Mock, patch
+import collections
 from twisted.internet.defer import Deferred
+import unittest
+import unittest.mock as mock
 
 from golem.rpc.session import (
     RPCAddress, WebSocketAddress, Publisher, Client, Session,
     object_method_map, logger
 )
 from golem.tools.assertlogs import LogTestCase
-import collections
 
 
 class TestRPCAddress(unittest.TestCase):
@@ -48,7 +46,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_valid_method_map(self):
 
         obj = self.MockObject()
-        valid_method_map = OrderedDict([
+        valid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_2', 'alias_2')
         ])
@@ -62,7 +60,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_invalid_method_map(self):
 
         obj = self.MockObject()
-        invalid_method_map = OrderedDict([
+        invalid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_x', 'alias_x')
         ])
@@ -77,9 +75,9 @@ class TestPublisher(LogTestCase):
         session = Session(WebSocketAddress('localhost', 12345, 'golem'))
         publisher = Publisher(session)
 
-        session.publish = Mock()
-        session.is_closing = Mock()
-        session.is_attached = Mock()
+        session.publish = mock.Mock()
+        session.is_closing = mock.Mock()
+        session.is_attached = mock.Mock()
         session.is_attached.return_value = True
 
         # Not connected, session closing
@@ -110,7 +108,7 @@ def mock_report_calls(func):
     return func
 
 
-@patch('golem.client.report_calls', mock_report_calls)
+@mock.patch('golem.client.report_calls', mock_report_calls)
 class TestClient(unittest.TestCase):
 
     class Result(object):
@@ -121,7 +119,7 @@ class TestClient(unittest.TestCase):
             self.value = value
 
     def setUp(self):
-        self.session = Mock()
+        self.session = mock.Mock()
         self.session.is_attached.return_value = True
         self.session.call.return_value = Deferred()
         self.session.is_closing = lambda *_: self.session._goodbye_sent or \
@@ -151,7 +149,7 @@ class TestClient(unittest.TestCase):
         self.session._goodbye_sent = False
 
         client = Client(self.session, self.method_map)
-        client._on_error = Mock()
+        client._on_error = mock.Mock()
         deferred = client.method_1(arg1=1, arg2='2')
 
         assert isinstance(deferred, Deferred)
@@ -185,7 +183,7 @@ class TestClient(unittest.TestCase):
         self.session.connected = True
 
         client = Client(self.session, self.method_map)
-        client._on_error = Mock()
+        client._on_error = mock.Mock()
         deferred = client.method_1(arg1=1, arg2='2')
 
         assert isinstance(deferred, Deferred)

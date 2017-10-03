@@ -1,9 +1,5 @@
-from mock import Mock, patch
-
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
-
 
 from gui.application import Gui
 from gui.applicationlogic import GuiApplicationLogic

@@ -1,15 +1,14 @@
 import copy
-import unittest
-
 from ethereum.utils import encode_hex
-from mock import Mock, sentinel
+import unittest
+import unittest.mock as mock
 
 from golem.network.p2p.peermanager import GolemPeerManager
 from golem.network.p2p.peer import COMPUTATION_CAPABILITY
 
 
 def _mock_app():
-    return Mock(
+    return mock.Mock(
         config=dict(
             node=dict(
                 privkey_hex=encode_hex(b'1' * 32),
@@ -45,57 +44,57 @@ class TestGolemPeerManager(unittest.TestCase):
         app.config['p2p'] = {'max_peers': 3}
 
         remote_pubkey = b'3' * 32
-        peer = Mock(remote_pubkey=remote_pubkey)
-        peer2 = Mock(remote_pubkey=remote_pubkey)
-        proto = Mock(peer=peer)
+        peer = mock.Mock(remote_pubkey=remote_pubkey)
+        peer2 = mock.Mock(remote_pubkey=remote_pubkey)
+        proto = mock.Mock(peer=peer)
 
         peer_mgr = GolemPeerManager(app)
 
         peer_mgr.peers.append(peer)
-        self.assertTrue(peer_mgr.on_hello_received(proto, Mock(), Mock(), [],
-                                                   Mock(), remote_pubkey))
+        self.assertTrue(peer_mgr.on_hello_received(proto, mock.Mock(), mock.Mock(), [],
+                                                   mock.Mock(), remote_pubkey))
         proto.send_disconnect.assert_not_called()
 
-        proto.disconnect.reason.already_connected = sentinel.already_connected
+        proto.disconnect.reason.already_connected = mock.sentinel.already_connected
 
         peer_mgr.peers.append(peer2)
-        self.assertFalse(peer_mgr.on_hello_received(proto, Mock(), Mock(), [],
-                                                    Mock(), remote_pubkey))
+        self.assertFalse(peer_mgr.on_hello_received(proto, mock.Mock(), mock.Mock(), [],
+                                                    mock.Mock(), remote_pubkey))
         proto.send_disconnect.assert_called_once_with(
-            sentinel.already_connected)
+            mock.sentinel.already_connected)
 
         remote_pubkey3 = b'4' * 32
-        peer3 = Mock(remote_pubkey=remote_pubkey3)
-        proto3 = Mock(peer=peer3)
+        peer3 = mock.Mock(remote_pubkey=remote_pubkey3)
+        proto3 = mock.Mock(peer=peer3)
 
         peer_mgr.peers.append(peer3)
-        self.assertTrue(peer_mgr.on_hello_received(proto3, Mock(), Mock(), [],
-                                                   Mock(), remote_pubkey3))
+        self.assertTrue(peer_mgr.on_hello_received(proto3, mock.Mock(), mock.Mock(), [],
+                                                   mock.Mock(), remote_pubkey3))
         proto3.send_disconnect.assert_not_called()
 
         remote_pubkey4 = b'5' * 32
-        peer4 = Mock(remote_pubkey=remote_pubkey4)
-        proto4 = Mock(peer=peer4)
+        peer4 = mock.Mock(remote_pubkey=remote_pubkey4)
+        proto4 = mock.Mock(peer=peer4)
 
-        proto4.disconnect.reason.too_many_peers = sentinel.too_many_peers
+        proto4.disconnect.reason.too_many_peers = mock.sentinel.too_many_peers
 
         peer_mgr.peers.append(peer4)
-        self.assertFalse(peer_mgr.on_hello_received(proto4, Mock(), Mock(), [],
-                                                    Mock(), remote_pubkey4))
+        self.assertFalse(peer_mgr.on_hello_received(proto4, mock.Mock(), mock.Mock(), [],
+                                                    mock.Mock(), remote_pubkey4))
         proto4.send_disconnect.assert_called_once_with(
-            sentinel.too_many_peers)
+            mock.sentinel.too_many_peers)
 
         proto4.send_disconnect.reset_mock()
 
         peer_mgr.peers.append(peer4)
         self.assertTrue(peer_mgr.on_hello_received(
-            proto4, Mock(), Mock(), [(COMPUTATION_CAPABILITY, None)],
-            Mock(), remote_pubkey4))
+            proto4, mock.Mock(), mock.Mock(), [(COMPUTATION_CAPABILITY, None)],
+            mock.Mock(), remote_pubkey4))
         proto3.send_disconnect.assert_not_called()
 
     def test_disconnect(self):
         def mock_proto(name):
-            p = Mock()
+            p = mock.Mock()
             p.name = name
             return p
 
@@ -103,7 +102,7 @@ class TestGolemPeerManager(unittest.TestCase):
         p2 = mock_proto("coolprotocol")
         p3 = mock_proto("totally-not-p2p")
         p4_p2p = mock_proto("p2p")
-        peer = Mock()
+        peer = mock.Mock()
         peer.protocols = [p1, p2, p3]
 
         reason = "I have a bad day"

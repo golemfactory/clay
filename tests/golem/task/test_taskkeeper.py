@@ -3,9 +3,7 @@ from pathlib import Path
 import random
 import time
 from unittest import TestCase
-
-from mock import Mock
-from mock import patch
+import unittest.mock as mock
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.variables import APP_VERSION
@@ -46,7 +44,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
         self.assertTrue(tk.check_support(task))
-        config_desc = Mock()
+        config_desc = mock.Mock()
         config_desc.min_price = 13.0
         tk.change_config(config_desc)
         self.assertFalse(tk.check_support(task))
@@ -106,7 +104,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.add_task_header(task_header)
         self.assertIn("abc", tk.supported_tasks)
         self.assertIsNotNone(tk.task_headers["abc"])
-        config_desc = Mock()
+        config_desc = mock.Mock()
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertNotIn("xyz", tk.supported_tasks)
@@ -299,7 +297,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         for header in test_headers:
             self.assertIn(header.task_id, ctk.active_tasks)
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
@@ -372,7 +370,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 1
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_get_task_env(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):

@@ -1,7 +1,7 @@
-import mock
 import os
 import random
 import time
+import unittest.mock as mock
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor

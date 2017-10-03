@@ -1,12 +1,11 @@
 import json
 import io
 import unittest
+import unittest.mock as mock
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
-
 from ethereum.utils import denoms
-from mock import Mock, mock_open, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
@@ -28,14 +27,14 @@ from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-reference_client = Client(Mock(), CORE_METHOD_MAP)
+reference_client = Client(mock.Mock(), CORE_METHOD_MAP)
 
 example_node_id = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8954b9\
 c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8"
 
 def assert_client_method(instance, name):
     assert hasattr(reference_client, name)
-    return super(Mock, instance).__getattribute__(name)
+    return super(mock.Mock, instance).__getattribute__(name)
 
 
 class TestAccount(unittest.TestCase):
@@ -43,7 +42,7 @@ class TestAccount(unittest.TestCase):
 
         node = dict(node_name='node1', key='deadbeef')
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
@@ -93,7 +92,7 @@ class TestEnvironments(unittest.TestCase):
             },
         ]
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
         client.run_benchmark = lambda x: x
         client.get_environments.return_value = environments
@@ -151,7 +150,7 @@ class TestNetwork(unittest.TestCase):
             ) for i in range(1, 1 + 6)
         ]
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
         client.get_connected_peers.return_value = peer_info
         client.get_known_peers.return_value = peer_info
@@ -253,7 +252,7 @@ class TestPayments(unittest.TestCase):
             'status': 'waiting',
         } for i in range(1, 6)]
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
@@ -293,7 +292,7 @@ class TestPayments(unittest.TestCase):
 class TestResources(unittest.TestCase):
     def setUp(self):
         super(TestResources, self).setUp()
-        self.client = Mock()
+        self.client = mock.Mock()
         self.client.__getattribute__ = assert_client_method
 
     def test_show(self):
@@ -376,7 +375,7 @@ class TestTasks(TempDirFixture):
     def setUp(self):
         super(TestTasks, self).setUp()
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
 
         client.get_datadir.return_value = self.path
@@ -405,7 +404,7 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-    @patch("golem.interface.client.tasks.uuid4")
+    @mock.patch("golem.interface.client.tasks.uuid4")
     def test_create(self, mock_uuid) -> None:
         client = self.client
         mock_uuid.return_value = "new_uuid"
@@ -422,7 +421,7 @@ class TestTasks(TempDirFixture):
             client.create_task.assert_called_with(task_def)
 
             patched_open = "golem.interface.client.tasks.open"
-            with patch(patched_open, mock_open(read_data='{}')):
+            with mock.patch(patched_open, mock.mock_open(read_data='{}')):
                 tasks.create("foo")
                 task_def = json.loads('{"id": "new_uuid"}')
                 client.create_task.assert_called_with(task_def)
@@ -430,7 +429,7 @@ class TestTasks(TempDirFixture):
     def test_template(self) -> None:
         tasks = Tasks()
 
-        with patch('sys.stdout', io.StringIO()) as mock_io:
+        with mock.patch('sys.stdout', io.StringIO()) as mock_io:
             tasks.template(None)
             output = mock_io.getvalue()
 
@@ -504,7 +503,7 @@ class TestSubtasks(unittest.TestCase):
     def setUp(self):
         super(TestSubtasks, self).setUp()
 
-        self.client = Mock()
+        self.client = mock.Mock()
         self.client.__getattribute__ = assert_client_method
 
     def test_show(self):
@@ -541,7 +540,7 @@ class TestSettings(TempDirFixture):
         config_desc = ClientConfigDescriptor()
         config_desc.init_from_app_config(app_config)
 
-        client = Mock()
+        client = mock.Mock()
         client.__getattribute__ = assert_client_method
         client.get_settings.return_value = config_desc.__dict__
 
@@ -648,7 +647,7 @@ class TestDebug(unittest.TestCase):
     def setUp(self):
         super(TestDebug, self).setUp()
 
-        self.client = Mock()
+        self.client = mock.Mock()
         self.client.__getattribute__ = assert_client_method
 
     def test_show(self):

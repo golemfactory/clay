@@ -1,16 +1,13 @@
-import unittest
-import uuid
-from unittest import skipIf
-
-from mock import patch, Mock
-
 import requests
+import unittest
+import unittest.mock as mock
+import uuid
 
 from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig, ipfs_running
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
-@skipIf(not ipfs_running(), "IPFS daemon isn't running")
+@unittest.skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIPFSDaemonManager(unittest.TestCase):
 
     def testStoreInfo(self):
@@ -44,7 +41,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
             if IPFSAddress.allowed_ip_address(ipfs_addr.ip_address):
                 assert metadata['ipfs']['addresses']
 
-    @patch('twisted.internet.reactor', create=True)
+    @mock.patch('twisted.internet.reactor', create=True)
     def testInterpretMetadata(self, mock_reactor):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
@@ -143,15 +140,15 @@ class TestIPFSDaemonManager(unittest.TestCase):
 
         assert not status[0]
 
-    @patch('golem.network.ipfs.client.IPFSClient')
-    @patch('golem.network.ipfs.client.IPFSClient.bootstrap_list', create=True)
+    @mock.patch('golem.network.ipfs.client.IPFSClient')
+    @mock.patch('golem.network.ipfs.client.IPFSClient.bootstrap_list', create=True)
     def testConnectToBootstrapNodes(self, *_):
         invalid_node = 'invalid node'
 
         config = IPFSConfig(bootstrap_nodes=IPFS_BOOTSTRAP_NODES + [invalid_node])
         dm = IPFSDaemonManager(config=config)
 
-        client = Mock()
+        client = mock.Mock()
         dm.bootstrap_nodes = IPFS_BOOTSTRAP_NODES
         dm.connect_to_bootstrap_nodes(async=False, client=client)
         assert client.swarm_connect.called

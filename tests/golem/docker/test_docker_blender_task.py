@@ -1,9 +1,8 @@
+import json
+from os import makedirs, path
 import shutil
 import time
-from os import makedirs, path
-
-import json
-from mock import Mock
+import unittest.mock as mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -109,15 +108,15 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
-        self.node.client.ranking = Mock()
-        self.node.client.start = Mock()
+        self.node.client.ranking = mock.Mock()
+        self.node.client.start = mock.Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
         ccd.estimated_blender_performance = 2000.0
         ccd.estimated_lux_performance = 2000.0
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client, Mock(),
+        task_server = TaskServer(mock.Mock(), ccd, mock.Mock(), self.node.client, mock.Mock(),
                                  use_docker_machine_manager=False)
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
@@ -174,7 +173,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_test_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
-        task_computer = TaskTester(render_task, self.path, Mock(), Mock())
+        task_computer = TaskTester(render_task, self.path, mock.Mock(), mock.Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
@@ -182,7 +181,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(
-            render_task, self.tempdir, Mock(), Mock(),
+            render_task, self.tempdir, mock.Mock(), mock.Mock(),
             render_task.query_extra_data_for_test_task)
         local_computer.run()
         local_computer.tt.join(60)

@@ -17,9 +17,9 @@ def ci_skip(obj):
 
 
 def ci_patch(*args, **kwargs):
-    import mock
+    import unittest.mock
     if in_appveyor() or in_travis():
-        return mock.patch(*args, **kwargs)
+        return unittest.mock.patch(*args, **kwargs)
     return _identity
 
 

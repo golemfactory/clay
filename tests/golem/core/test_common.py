@@ -2,9 +2,7 @@
 
 import os
 import unittest
-from unittest import TestCase
-
-from mock import patch, ANY
+import unittest.mock as mock
 
 from golem.core.common import HandleKeyError, HandleAttributeError, \
     config_logging, get_timestamp_utc, timestamp_to_datetime, \
@@ -17,7 +15,7 @@ def handle_error(*args, **kwargs):
     return 6
 
 
-class TestHandleKeyError(TestCase):
+class TestHandleKeyError(unittest.TestCase):
     h = HandleKeyError(handle_error)
 
     @staticmethod
@@ -30,7 +28,7 @@ class TestHandleKeyError(TestCase):
         assert self.add_to_el_in_dict(d, 'kwa', 3) == 6
 
 
-class TestHandleAttibuteError(TestCase):
+class TestHandleAttibuteError(unittest.TestCase):
     h = HandleAttributeError(handle_error)
 
     @staticmethod
@@ -55,9 +53,9 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
         logsdir = os.path.join(datadir, "logs")
 
         suffix = "_tests"
-        with patch('logging.config.dictConfig') as m_dconfig:
+        with mock.patch('logging.config.dictConfig') as m_dconfig:
             config_logging(suffix, datadir=datadir)
-            m_dconfig.assert_called_once_with(ANY)
+            m_dconfig.assert_called_once_with(mock.ANY)
         self.assertTrue(os.path.exists(logsdir))
 
 
