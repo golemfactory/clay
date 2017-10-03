@@ -25,7 +25,7 @@ from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
-from golem.core.variables import P2P_PROTOCOL_ID
+from golem.core.variables import TASK_PROTOCOL_ID
 
 
 class DockerEnvironmentMock(DockerEnvironment):
