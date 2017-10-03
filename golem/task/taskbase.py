@@ -187,6 +187,7 @@ class Task(metaclass=abc.ABCMeta):
     # TODO why do we need that instead of calling .build() directly?
     @classmethod
     def build_task(cls, task_builder: TaskBuilder) -> 'Task':
+        # FIXME remove isinstance or replace with @enfoce
         if not isinstance(task_builder, TaskBuilder):
             raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()

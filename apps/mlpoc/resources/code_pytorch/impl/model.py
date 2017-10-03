@@ -54,7 +54,7 @@ class Model(metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def net(self) -> torch.Module:
+    def net(self) -> torch.nn.Module:
         pass
 
 
@@ -199,7 +199,9 @@ class HonestModelRunner(object):
 
         self.serializer = ModelSerializer(self.model, shared_path,
                                           save_model_as_dict)
-        self.state = ComputationState(self.model, self.model)
+
+        self.state = ComputationState(start_model=self.model,
+                                      end_model=self.model)
         self.num_epochs = number_of_epochs
 
     def run_full_training(self):

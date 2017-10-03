@@ -549,6 +549,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        # it is used to construct test task (in test run)
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_id = dictionary.get('id', str(uuid.uuid4()))

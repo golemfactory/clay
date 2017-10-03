@@ -197,7 +197,10 @@ class DockerTaskThread(TaskThread):
         # it's just that they should be unique
         HASH = lambda x: hashlib.md5(x.encode()).hexdigest()
         if self.job:
+
             data_dump = json.dumps(data)
+            # TODO change hash of data_dump to something other
+            # becaues data_dump is always {"decision":True/False}
 
             msg_filename = HASH(data_dump)
             msg_path = os.path.join(self.MESSAGES_IN_DIR, msg_filename)

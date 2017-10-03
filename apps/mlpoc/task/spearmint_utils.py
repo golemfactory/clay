@@ -13,6 +13,7 @@ from typing import Tuple, List, Optional, Dict, Callable
 logger = logging.getLogger("apps.mlpoc")
 
 # files which are used by spearmint
+# do not change these names
 RESULT_FILE = "results.dat"
 CONFIG = "config.json"
 
@@ -90,6 +91,8 @@ def run_one_evaluation(directory: str, params: Dict[str, List[str]]) -> None:
 def create_conf(directory: str):
     # TODO this config should be constructed dynamically
     # or just read from user input
+
+    # important note - it has to be OrderedDict, the order is important
     conf = OrderedDict([
         ("HIDDEN_LAYER_SIZE", {
             "name": "HIDDEN_LAYER_SIZE",
@@ -99,7 +102,7 @@ def create_conf(directory: str):
             "size": 1
         })])
 
-    with open(os.path.join(directory, CONFIG), "w+") as f:
+    with open(os.path.join(directory, CONFIG), "w") as f:
         json.dump(conf, f)
 
 

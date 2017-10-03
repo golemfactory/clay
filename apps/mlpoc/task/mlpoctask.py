@@ -31,7 +31,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.mlpoc")
 
 
-@enforce.runtime_validation(group="mlpoc")
+# @enforce.runtime_validation(group="mlpoc")
 class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super().__init__(
@@ -46,7 +46,7 @@ class MLPOCTaskTypeInfo(CoreTaskTypeInfo):
 
 
 # TODO refactor it to inherit from DummyTask
-@enforce.runtime_validation(group="mlpoc")
+# @enforce.runtime_validation(group="mlpoc")
 class MLPOCTask(CoreTask):
     ENVIRONMENT_CLASS = MLPOCTorchEnvironment
     VERIFICATOR_CLASS = MLPOCTaskVerificator
@@ -79,7 +79,7 @@ class MLPOCTask(CoreTask):
         )
 
         ver_opts = self.verificator.verification_options
-        ver_opts["no_verification"] = False
+        ver_opts["no_verification"] = False # useful for debugging
         ver_opts["data_place"] = task_definition.data_place
         ver_opts["code_place"] = task_definition.code_place
         ver_opts["result_extension"] = self.RESULT_EXT
@@ -106,11 +106,10 @@ class MLPOCTask(CoreTask):
         :return: ComputeTaskDef with extra_data specified above
         """
         env = self.SPEARMINT_ENV()
-        src_code = env.get_source_code()
         ctd = ComputeTaskDef()
         ctd.environment = env.ENV_ID
         ctd.docker_images = env.docker_images
-        ctd.src_code = src_code
+        ctd.src_code = env.get_source_code()
 
         # we should set not working directory, but LocalComputer.temp_dir
         ctd.working_directory = ""
@@ -130,28 +129,30 @@ class MLPOCTask(CoreTask):
         spearmint_utils.generate_new_suggestions(
             os.path.join(self.signal_dir, some_random_name))
 
-    def prepare_spearmint_localcomputer(self, tmp_path):
+    def prepare_spearmint_localcomputer(self, spearmint_path):
         local_spearmint = LocalComputer(
             task=None,  # we don't use task at all
-            root_path=tmp_path,  # root_path/temp is used to store resources
+            root_path=spearmint_path,  # root_path/temp is used to store resources
             # inside LocalComputer, because DirManager
             # is constructed from root_path
             success_callback=lambda *_: self.__spearmint_exit("=0"),
             error_callback=lambda *_: self.__spearmint_exit("!=0"),
-            get_compute_task_def=lambda: self.__spearmint_ctd(),
+            get_compute_task_def=self.__spearmint_ctd,
             use_task_resources=False,
             additional_resources=None,
-            tmp_dir=tmp_path
+            tmp_dir=spearmint_path
         )
-        self.experiment_dir = os.path.join(tmp_path, self.SPEARMINT_EXP_DIR)
-        self.signal_dir = os.path.join(tmp_path, self.SPEARMINT_SIGNAL_DIR)
+        self.experiment_dir = os.path.join(spearmint_path,
+                                           self.SPEARMINT_EXP_DIR)
+        self.signal_dir = os.path.join(spearmint_path,
+                                       self.SPEARMINT_SIGNAL_DIR)
 
         # experiment dir has to be created AFTER local_spearmint
-        # since it destroys LocalComputer.tmp_dir
+        # LocalComputer.tmp_dir destroys it
         os.makedirs(self.experiment_dir)
 
         # signal dir has to be created AFTER local_spearmint
-        # since it destroys LocalComputer.tmp_dir
+        # LocalComputer.tmp_dir destroys it
         os.makedirs(self.signal_dir)
 
         spearmint_utils.create_conf(self.experiment_dir)
@@ -194,6 +195,7 @@ class MLPOCTask(CoreTask):
         extra_data = {
             "data_file": input_data_file_base,
             "network_configuration": network_configuration,
+            # TODO replace that with BatchManager
             "order_of_batches": list(range(100)),
             "RESULT_EXT": self.RESULT_EXT
         }
@@ -254,10 +256,12 @@ class MLPOCTask(CoreTask):
         but maybe in the future we would want to return trained network model
         :return: None
         """
+
         out_file = self.task_definition.output_file
         logger.info("Genereting final answer in {}".format(out_file))
         result_file = find_file_with_ext(self.spearmint_path, [".dat"])
         shutil.copy(result_file, out_file)
+        self.local_spearmint.end_comp()
 
     def __get_new_subtask_id(self) -> str:
         """
@@ -346,6 +350,8 @@ class MLPOCTaskBuilder(CoreTaskBuilder):
             raise Exception("Num of steps per epoch should be greater than 0")
         if number_of_epochs < 0:
             raise Exception("Num of epochs should be greater than 0")
+        if not (0 <= probability_of_save <= 1):
+            raise Exception("Probablity of save should be between 0 and 1")
 
         definition.options.number_of_epochs = number_of_epochs
         definition.options.steps_per_epoch = steps_per_epoch

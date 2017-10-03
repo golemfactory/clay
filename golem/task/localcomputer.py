@@ -122,6 +122,8 @@ class LocalComputer(object):
         #  get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
+        # TODO in MLPOC task I am creating resources path beforehand
+        # and I don't wat it to be deleted here
         # else:
             # shutil.rmtree(self.test_task_res_path, True)
             # os.makedirs(self.test_task_res_path)

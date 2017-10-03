@@ -1,6 +1,6 @@
 {
   "options": {
-    "frames": "",
+      "frames": "",
     "resolution": [
       100,
       100
@@ -16,7 +16,7 @@
   "subtasks": "2",
   "bid": "4",
   "resources": [
-    "/home/jacek/golem/apps/mlpoc/test_data/IRIS.csv"
+    "$GOLEM_HOME/apps/mlpoc/test_data/IRIS.csv"
   ],
   "type": "MLPOC",
   "subtask_timeout": "00:05:00",

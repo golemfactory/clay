@@ -108,8 +108,10 @@ def run():
         batch_manager = batchmanager.IrisBatchManager(data_file)
 
         # one epoch of training
+        # x are training examples
+        # y are answers to training examples
         for i, (x, y) in enumerate(itertools.islice(batch_manager,
-                                                    config.STEPS_PER_EPOCH)):
+                            params.STEPS_PER_EPOCH)):
             startmodel.run_one_batch(x, y)
 
         # weights checking

@@ -38,14 +38,13 @@ def run_one_update():
 
 # check if any new messages were added - if yes, update results.dat file
 def run():
-    while (True):
+    while True:
         time.sleep(params.EVENT_LOOP_SLEEP)
         signal_files = os.listdir(params.SIGNAL_DIR)
-        if signal_files:
-            for f in signal_files:
-                run_one_update()
-                # signal file has to be removed AFTER updating
-                os.remove(os.path.join(params.SIGNAL_DIR, f))
+        for f in signal_files:
+            run_one_update()
+            # signal file has to be removed AFTER updating
+            os.remove(os.path.join(params.SIGNAL_DIR, f))
 
 
 run()
