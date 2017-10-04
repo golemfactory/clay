@@ -1,15 +1,11 @@
 """Compute Node"""
 import asyncio
-from ipaddress import AddressValueError
 
-import click
 import gevent
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import run_threaded, async_queue, handle_future
-from golem.core.common import to_unicode
-from golem.network.socketaddress import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
 
@@ -117,42 +113,3 @@ class Node(object):
     def _quit(self):
         self.client.quit()
         asyncio.get_event_loop().stop()
-
-
-class OptNode(Node):
-
-    @staticmethod
-    def parse_node_addr(ctx, param, value):
-        del ctx, param
-        if value:
-            try:
-                SocketAddress(value, 1)
-                return value
-            except AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid network address specified: {}".format(e))
-        return ''
-
-    @staticmethod
-    def parse_rpc_address(ctx, param, value):
-        del ctx, param
-        value = to_unicode(value)
-        if value:
-            try:
-                return SocketAddress.parse(value)
-            except AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid RPC address specified: {}".format(e))
-
-    @staticmethod
-    def parse_peer(ctx, param, value):
-        del ctx, param
-        addresses = []
-        for arg in value:
-            try:
-                node_id, sock_addr = arg.split('@', 1)
-                addresses.append([SocketAddress.parse(sock_addr), node_id])
-            except (AddressValueError, ValueError) as e:
-                raise click.BadParameter(
-                    "Invalid peer address specified: {}".format(e))
-        return addresses

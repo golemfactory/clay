@@ -12,7 +12,7 @@ from gui import startapp, startgui
 
 class TestGolemApp(TempDirFixture):
     @ci_skip
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--nogui', '--datadir', self.path], catch_exceptions=False)
@@ -53,7 +53,7 @@ class TestGolemApp(TempDirFixture):
         assert start_app.called
 
     @ci_skip
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     @patch.object(startgui, 'start_gui')
     @patch.object(sys, 'modules')
     def test_start_node(self, modules, start_gui, node_class):

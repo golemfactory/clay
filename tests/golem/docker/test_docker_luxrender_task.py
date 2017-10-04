@@ -12,7 +12,7 @@ from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
 from golem.network.p2p.node import Node
-from golem.node import OptNode
+from golem.node import Node
 
 from golem.task.taskbase import ResultType
 from golem.resource.dirmanager import DirManager
@@ -123,7 +123,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd.task_owner = render_task.header.task_owner
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.start = Mock()
         self.node._run()
 

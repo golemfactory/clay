@@ -4,7 +4,7 @@ import click
 import logging
 
 from golem.core.common import config_logging
-from golem.node import OptNode
+from golem.network.address import parse_rpc_address
 from golem.rpc.mapping.core import NAMESPACES
 from golem.rpc.session import Session, WebSocketAddress
 
@@ -66,7 +66,7 @@ def is_event(prop, value):
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--rpc-address', '-r',
               multiple=False,
-              callback=OptNode.parse_rpc_address,
+              callback=parse_rpc_address,
               help="RPC server address: <ip_addr>:<port>")
 def main(datadir, rpc_address):
 

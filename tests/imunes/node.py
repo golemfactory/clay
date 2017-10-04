@@ -1,17 +1,17 @@
 import click
 
 from golemapp import start
-from golem.node import OptNode
+from golem.node import Node
 
 
 def disable_blender(ctx, param, value):
     del ctx, param
     if not value:
-        OptNode.default_environments = []
+        Node.default_environments = []
 
 
 def set_network_info(ctx, param, value):
-    addr = OptNode.parse_node_addr(ctx, param, value)
+    addr = Node.parse_node_addr(ctx, param, value)
     if addr:
         import golem.network.p2p.node
         # Patch the Node.collect_network_info() method to set the provided
