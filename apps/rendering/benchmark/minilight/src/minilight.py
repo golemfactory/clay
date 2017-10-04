@@ -5,7 +5,6 @@
 #  http://www.hxa.name/minilight
 
 
-import multiprocessing
 from sys import argv, stdout
 from time import time
 import sys
@@ -15,7 +14,7 @@ from .camera import Camera
 from .image import Image
 from .scene import Scene
 from .randommini import Random
-
+from golem.core.common import get_cpu_count
 
 BANNER = '''
   MiniLight 1.6 Python - http://www.hxa.name/minilight
@@ -65,7 +64,7 @@ with a newline. E.g.:
 '''
 MODEL_FORMAT_ID = '#MiniLight'
 
-def makePerfTest(filename, cfg_filename, num_cores):
+def make_perf_test(filename, cfg_filename=None, num_cores=1):
     model_file_pathname = filename
     image_file_pathname = model_file_pathname + '.ppm'
     model_file = open(model_file_pathname, 'r')
@@ -89,11 +88,12 @@ def makePerfTest(filename, cfg_filename, num_cores):
           .format(numSamples, duration))
     print("    giving an average speed of {} rays/s"
           .format(float(numSamples) / duration))
-    cfg_file = open(cfg_filename, 'w')
+
     average = float(numSamples) / duration
     average = average * num_cores
-    cfg_file.write("{0:.1f}".format(average))
-    cfg_file.close()
+    if cfg_filename:
+        with open(cfg_filename, 'w') as cfg_file:
+            cfg_file.write("{0:.1f}".format(average))
     return average
 
 def timedafunc(function):
@@ -190,7 +190,7 @@ def main():
               .format(float(numSamples) / duration))
         cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
-        average = average * multiprocessing.cpu_count()
+        average = average * get_cpu_count()
         cfg_file.write("{0:.1f}".format(average))
         cfg_file.close()
 

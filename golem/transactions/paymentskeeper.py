@@ -71,10 +71,10 @@ class PaymentsDatabase(object):
         return query.execute()
 
 
-class PaymentsKeeper(object):
+class PaymentsKeeper:
     """ Keeps information about payments for tasks that should be processed and send or received. """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """ Create new payments keeper instance"""
         self.db = PaymentsDatabase()
 
@@ -85,9 +85,9 @@ class PaymentsKeeper(object):
             "payee": to_unicode(encode_hex(payment.payee)),
             "value": to_unicode(payment.value),
             "status": to_unicode(payment.status.name),
-            "fee": to_unicode(payment.details.get('fee')),
-            "block_number": to_unicode(payment.details.get('block_number')),
-            "transaction": to_unicode(payment.details.get('tx')),
+            "fee": to_unicode(payment.details.fee),
+            "block_number": to_unicode(payment.details.block_number),
+            "transaction": to_unicode(payment.details.tx),
             "created": datetime_to_timestamp(payment.created_date),
             "modified": datetime_to_timestamp(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
@@ -116,19 +116,3 @@ class PaymentInfo(object):
         self.value = value
         self.computer = computer
 
-
-class AccountInfo(object):
-    """ Information about node's payment account """
-    # FIXME: Remove this class
-
-    def __init__(self, key_id, port, addr, node_name, node_info):
-        self.key_id = key_id
-        self.port = port
-        self.addr = addr
-        self.node_name = node_name
-        self.node_info = node_info
-
-    def __eq__(self, other):
-        if type(other) is type(self):
-            return self.key_id == other.key_id
-        return False

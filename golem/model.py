@@ -1,24 +1,26 @@
 import datetime
+import json
 import logging
 from enum import Enum
 from os import path
+# Type is used for old-style (pre Python 3.6) type annotation
+from typing import Optional, Type  # pylint: disable=unused-import
 
-import jsonpickle as json
+
 from ethereum.utils import denoms
-from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField,
-                    SmallIntegerField)
+from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
+                    FloatField, IntegerField, Model, SmallIntegerField,
+                    SqliteDatabase, TextField)
 
-from golem.utils import encode_hex, decode_hex
+from golem.core.simpleserializer import DictSerializable
+from golem.network.p2p.node import Node
+from golem.ranking.helper.trust_const import NEUTRAL_TRUST
+from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
-NEUTRAL_TRUST = 0.0
-
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-
-
 db = SqliteDatabase(None, threadlocals=True,
                     pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
@@ -35,15 +37,15 @@ class Database:
         self.create_database()
 
     @staticmethod
-    def _get_user_version():
-        return db.execute_sql('PRAGMA user_version').fetchone()[0]
+    def _get_user_version() -> int:
+        return int(db.execute_sql('PRAGMA user_version').fetchone()[0])
 
     @staticmethod
-    def _set_user_version(version):
+    def _set_user_version(version: int) -> None:
         db.execute_sql('PRAGMA user_version = {}'.format(version))
 
     @staticmethod
-    def create_database():
+    def create_database() -> None:
         tables = [
             Account,
             ExpectedIncome,
@@ -54,9 +56,9 @@ class Database:
             LocalRank,
             NeighbourLocRank,
             Payment,
-            ReceivedPayment,
             Stats,
             TaskPreset,
+            Performance,
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -74,6 +76,7 @@ class Database:
 class BaseModel(Model):
     class Meta:
         database = db
+
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
 
@@ -81,6 +84,7 @@ class BaseModel(Model):
 ##################
 # PAYMENT MODELS #
 ##################
+
 
 class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
@@ -133,31 +137,92 @@ class JsonField(TextField):
         return json.loads(value)
 
 
+class DictSerializableJSONField(TextField):
+    """ Database field that stores a Node in JSON format. """
+    objtype = None  # type: Type[DictSerializable]
+
+    def db_value(self, value: Optional[DictSerializable]) -> str:
+        if value is None:
+            return json.dumps(None)
+        return json.dumps(value.to_dict())
+
+    def python_value(self, value: str) -> DictSerializable:
+        return self.objtype.from_dict(json.loads(value))
+
+
 class PaymentStatus(Enum):
     """ The status of a payment. """
-    awaiting = 1    # Created but not introduced to the payment network.
-    sent = 2        # Sent to the payment network.
-    confirmed = 3   # Confirmed on the payment network.
+    awaiting = 1  # Created but not introduced to the payment network.
+    sent = 2  # Sent to the payment network.
+    confirmed = 3  # Confirmed on the payment network.
+
+
+class PaymentDetails(DictSerializable):
+    def __init__(self,
+                 node_info: Optional[Node] = None,
+                 fee: Optional[int] = None,
+                 block_hash: Optional[str] = None,
+                 block_number: Optional[int] = None,
+                 check: Optional[bool] = None,
+                 tx: Optional[str] = None) -> None:
+        self.node_info = node_info
+        self.fee = fee
+        self.block_hash = block_hash
+        self.block_number = block_number
+        self.check = check
+        self.tx = tx
+
+    def to_dict(self) -> dict:
+        d = self.__dict__.copy()
+        if self.node_info:
+            d['node_info'] = self.node_info.to_dict()
+        return d
+
+    @staticmethod
+    def from_dict(data: dict) -> 'PaymentDetails':
+        det = PaymentDetails()
+        det.__dict__.update(data)
+        det.__dict__['node_info'] = Node.from_dict(data['node_info'])
+        return det
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PaymentDetails):
+            raise TypeError(
+                "Mismatched types: expected PaymentDetails, got {}".format(
+                    type(other)))
+        return self.__dict__ == other.__dict__
+
+
+class NodeField(DictSerializableJSONField):
+    """ Database field that stores a Node in JSON format. """
+    objtype = Node
+
+
+class PaymentDetailsField(DictSerializableJSONField):
+    """ Database field that stores a PaymentDetails in JSON format. """
+    objtype = PaymentDetails
 
 
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    status = EnumField(enum_type=PaymentStatus,
+                       index=True,
+                       default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
-    details = JsonField()
+    details = PaymentDetailsField()
 
     def __init__(self, *args, **kwargs):
         super(Payment, self).__init__(*args, **kwargs)
         # For convenience always have .details as a dictionary
         if self.details is None:
-            self.details = {}
+            self.details = PaymentDetails()
 
-    def __repr__(self):
-        tx = self.details.get('tx', None)
-        bn = self.details.get('block_number', None)
+    def __repr__(self) -> str:
+        tx = self.details.tx
+        bn = self.details.block_number
         return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
             .format(
                 self.subtask,
@@ -167,13 +232,13 @@ class Payment(BaseModel):
                 bn
             )
 
-    def get_sender_node(self):
-        return self.details.get('node_info', None)
+    def get_sender_node(self) -> Optional[Node]:
+        return self.details.node_info
 
 
 class ExpectedIncome(BaseModel):
     sender_node = CharField()
-    sender_node_details = JsonField()  # golem.network.p2p.node.Node()
+    sender_node_details = NodeField()
     task = CharField()
     subtask = CharField()
     value = BigIntegerField()
@@ -207,21 +272,6 @@ class Income(BaseModel):
                 self.transaction,
                 self.block_number
             )
-
-
-class ReceivedPayment(BaseModel):
-    """ Represent payments that nodes on this machine receive from other nodes
-    """
-    from_node_id = CharField()
-    task = CharField()
-    val = BigIntegerField()
-    expected_val = BigIntegerField()
-    state = CharField()
-    details = CharField(default="")
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('from_node_id', 'task')
 
 
 ##################
@@ -272,6 +322,7 @@ class NeighbourLocRank(BaseModel):
 # NETWORK MODELS #
 ##################
 
+
 class KnownHosts(BaseModel):
     ip_address = CharField()
     port = IntegerField()
@@ -289,9 +340,9 @@ class KnownHosts(BaseModel):
 # ACCOUNT MODELS #
 ##################
 
+
 class Account(BaseModel):
     node_id = CharField(unique=True)
-    description = TextField(default="")
 
     class Meta:
         database = db
@@ -320,13 +371,18 @@ class HardwarePreset(BaseModel):
             'disk': self.disk
         }
 
-    def apply(self, dictionary):
+    def apply(self, dictionary: dict) -> None:
         self.cpu_cores = dictionary['cpu_cores']
         self.memory = dictionary['memory']
         self.disk = dictionary['disk']
 
     class Meta:
         database = db
+
+
+##############
+# APP MODELS #
+##############
 
 
 class TaskPreset(BaseModel):
@@ -337,3 +393,22 @@ class TaskPreset(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_type', 'name')
+
+
+class Performance(BaseModel):
+    """ Keeps information about benchmark performance """
+    environment_id = CharField(null=False, index=True, unique=True)
+    value = FloatField(default=0.0)
+
+    class Meta:
+        database = db
+
+    @classmethod
+    def update_or_create(cl, env_id, performance):
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+            perf.value = performance
+            perf.save()
+        except Performance.DoesNotExist:
+            perf = Performance(environment_id=env_id, value=performance)
+            perf.save()

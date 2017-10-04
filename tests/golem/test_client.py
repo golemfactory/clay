@@ -1,3 +1,4 @@
+from copy import copy
 import os
 import time
 import unittest
@@ -6,13 +7,13 @@ import uuid
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
-from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -20,19 +21,21 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, resource_types
+from golem.task.taskbase import Task, TaskHeader, ResourceType
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 
 
 def mock_async_run(req, success, error):
     try:
         result = req.method(*req.args, **req.kwargs)
+    # pylint: disable=broad-except
     except Exception as e:
         error(e)
     else:
@@ -40,20 +43,22 @@ def mock_async_run(req, success, error):
             success(result)
 
 
-def random_hex_str():
+def random_hex_str() -> str:
     return str(uuid.uuid4()).replace('-', '')
 
 
-class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/client.py', ]
-
+class TestCreateClient(TestDirFixture):
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
-        c = Client(datadir=self.path, node_address='1.0.0.0',
-                   transaction_system=False, connect_to_known_hosts=False,
-                   use_docker_machine_manager=False,
-                   use_monitor=False)
+        c = Client(
+            datadir=self.path,
+            node_address='1.0.0.0',
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
@@ -64,26 +69,35 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
         """
         self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
         with self.assertRaises(AttributeError):
-            Client(datadir=self.path, node_colour='magenta',
-                   transaction_system=False, connect_to_known_hosts=False,
-                   use_docker_machine_manager=False,
-                   use_monitor=False)
+            Client(
+                datadir=self.path,
+                node_colour='magenta',
+                transaction_system=False,
+                connect_to_known_hosts=False,
+                use_docker_machine_manager=False,
+                use_monitor=False
+            )
 
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase):
+class TestClient(TestWithDatabase, TestWithReactor):
+    # FIXME: if we someday decide to run parallel tests,
+    # this may completely break
+    # pylint: disable=attribute-defined-outside-init
 
     def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
 
     def test_get_payments(self, *_):
-        self.client = Client(datadir=self.path,
-                             transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         n = 9
         payments = [
@@ -91,11 +105,10 @@ class TestClient(TestWithDatabase):
                 subtask=uuid.uuid4(),
                 status=PaymentStatus.awaiting,
                 payee=decode_hex(random_hex_str()),
-                value=i * 10 ** 18,
+                value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
                 modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
-            )
-            for i in range(n + 1)
+            ) for i in range(n + 1)
         ]
 
         db = Mock()
@@ -107,34 +120,40 @@ class TestClient(TestWithDatabase):
         self.assertEqual(len(received_payments), len(payments))
 
         for i in range(len(payments)):
-            self.assertEqual(received_payments[i]['subtask'],
-                             str(payments[n - i].subtask))
-            self.assertEqual(received_payments[i]['status'],
-                             payments[n - i].status.name)
-            self.assertEqual(received_payments[i]['payee'],
-                             encode_hex(payments[n - i].payee))
-            self.assertEqual(received_payments[i]['value'],
-                             str(payments[n - i].value))
+            self.assertEqual(
+                received_payments[i]['subtask'], str(payments[n - i].subtask)
+            )
+            self.assertEqual(
+                received_payments[i]['status'], payments[n - i].status.name
+            )
+            self.assertEqual(
+                received_payments[i]['payee'],
+                encode_hex(payments[n - i].payee)
+            )
+            self.assertEqual(
+                received_payments[i]['value'], str(payments[n - i].value)
+            )
 
     def test_get_incomes(self, *_):
-        self.client = Client(datadir=self.path,
-                             transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         n = 9
         incomes = [
             ExpectedIncome(
                 sender_node=random_hex_str(),
-                sender_node_details={},
+                sender_node_details=Node(),
                 task=random_hex_str(),
                 subtask=random_hex_str(),
-                value=i * 10 ** 18,
+                value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
                 modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
-            )
-            for i in range(n + 1)
+            ) for i in range(n + 1)
         ]
 
         for income in incomes:
@@ -144,38 +163,57 @@ class TestClient(TestWithDatabase):
         self.assertEqual(len(received_incomes), len(incomes))
 
         for i in range(len(incomes)):
-            self.assertEqual(received_incomes[i]['subtask'],
-                             str(incomes[n - i].subtask))
-            self.assertEqual(received_incomes[i]['status'],
-                             str(PaymentStatus.awaiting.name))
-            self.assertEqual(received_incomes[i]['payer'],
-                             str(incomes[n - i].sender_node))
-            self.assertEqual(received_incomes[i]['value'],
-                             str(incomes[n - i].value))
+            self.assertEqual(
+                received_incomes[i]['subtask'], str(incomes[n - i].subtask)
+            )
+            self.assertEqual(
+                received_incomes[i]['status'],
+                str(PaymentStatus.awaiting.name)
+            )
+            self.assertEqual(
+                received_incomes[i]['payer'], str(incomes[n - i].sender_node)
+            )
+            self.assertEqual(
+                received_incomes[i]['value'], str(incomes[n - i].value)
+            )
 
     def test_payment_address(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         payment_address = self.client.get_payment_address()
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-           'EthereumTransactionSystem.sync')
+    @patch(
+        'golem.transactions.ethereum.ethereumtransactionsystem.'
+        'EthereumTransactionSystem.sync'
+    )
     def test_sync(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=True,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         self.client.sync()
         # TODO: assertTrue when re-enabled
         self.assertFalse(self.client.transaction_system.sync.called)
 
     def test_remove_resources(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         def unique_dir():
             d = os.path.join(self.path, str(uuid.uuid4()))
@@ -186,10 +224,12 @@ class TestClient(TestWithDatabase):
         c = self.client
         c.task_server = Mock()
         c.task_server.get_task_computer_root.return_value = unique_dir()
-        c.task_server.task_manager.get_task_manager_root.return_value = unique_dir()
+        c.task_server.task_manager.get_task_manager_root.return_value = \
+            unique_dir()
 
         c.resource_server = Mock()
-        c.resource_server.get_distributed_resource_root.return_value = unique_dir()
+        c.resource_server.get_distributed_resource_root.return_value = \
+            unique_dir()
 
         d = c.get_computed_files_dir()
         self.assertIn(self.path, d)
@@ -213,28 +253,26 @@ class TestClient(TestWithDatabase):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
         datadir = os.path.join(self.path, "non-existing-dir")
-        self.client = Client(datadir=datadir, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(
+            datadir=datadir,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir)
 
-    def test_description(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
-
-        self.assertEqual(self.client.get_description(), "")
-        desc = "ADVANCE DESCRIPTION\n\tSOME TEXT"
-        self.client.change_description(desc)
-        self.assertEqual(self.client.get_description(), desc)
-
     def test_get_status(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         c = self.client
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
@@ -248,7 +286,8 @@ class TestClient(TestWithDatabase):
         mock1.get_progress.return_value = 0.25
         mock2 = MagicMock()
         mock2.get_progress.return_value = 0.33
-        c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
+        c.task_server.task_computer.get_progresses.return_value = \
+            {"id1": mock1, "id2": mock2}
         c.p2pservice.get_peers.return_value = []
         status = c.get_status()
         self.assertIn("Computing 2 subtask(s)", status)
@@ -267,21 +306,30 @@ class TestClient(TestWithDatabase):
         self.client.db = None
         self.client.quit()
 
-    @patch('twisted.internet.reactor', create=True)
     def test_collect_gossip(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         self.client.start_network()
         self.client.collect_gossip()
 
     @patch('golem.client.log')
     def test_do_work(self, log, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        # FIXME: Pylint has real problems here
+        # https://github.com/PyCQA/pylint/issues/1643
+        # https://github.com/PyCQA/pylint/issues/1645
+        # pylint: disable=no-member
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         c = self.client
         c.sync = Mock()
@@ -301,9 +349,7 @@ class TestClient(TestWithDatabase):
 
         # Test calls with p2pservice
         c.p2pservice = Mock()
-        c.p2pservice.peers = {
-            str(uuid.uuid4()): Mock()
-        }
+        c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
 
         c._Client__do_work()
 
@@ -328,7 +374,9 @@ class TestClient(TestWithDatabase):
         c.ranking.sync_network = raise_exc
         c.check_payments = raise_exc
 
-        c._Client__do_work()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__do_work()  # pylint: disable=no-member
 
         assert c.p2pservice.ping_peers.called
         assert log.exception.call_count == 5
@@ -336,9 +384,13 @@ class TestClient(TestWithDatabase):
     @patch('golem.client.log')
     @patch('golem.client.dispatcher.send')
     def test_publish_events(self, send, log, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
         c = self.client
 
         def get_balance(*_):
@@ -347,9 +399,7 @@ class TestClient(TestWithDatabase):
             return d
 
         c.task_server = Mock()
-        c.task_server.task_sessions = {
-            str(uuid.uuid4()): Mock()
-        }
+        c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.current_computations = []
@@ -365,15 +415,17 @@ class TestClient(TestWithDatabase):
 
         c._publish = Mock()
 
-        past_time = time.time() - 10 ** 10
-        future_time = time.time() + 10 ** 10
+        past_time = time.time() - 10**10
+        future_time = time.time() + 10**10
 
         c.last_nss_time = future_time
         c.last_net_check_time = future_time
         c.last_balance_time = future_time
         c.last_tasks_time = future_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert not send.called
         assert not log.debug.called
@@ -384,7 +436,9 @@ class TestClient(TestWithDatabase):
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert not log.debug.called
         assert send.call_count == 2
@@ -402,17 +456,22 @@ class TestClient(TestWithDatabase):
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
 
-        c._Client__publish_events()
+        # FIXME: Pylint doesn't handle mangled members well:
+        # https://github.com/PyCQA/pylint/issues/1643
+        c._Client__publish_events()  # pylint: disable=no-member
 
         assert log.debug.called
         assert send.call_count == 2
         assert c._publish.call_count == 2
 
     def test_activate_hw_preset(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         config = self.client.config_desc
         config.hardware_preset_name = 'non-existing'
@@ -428,10 +487,13 @@ class TestClient(TestWithDatabase):
         assert config.max_resource_size > 0
 
     def test_restart_by_frame(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False,
-                             use_monitor=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         self.client.task_server = Mock()
         self.client.restart_frame_subtasks('tid', 10)
@@ -463,9 +525,12 @@ class TestClient(TestWithDatabase):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_start_stop(self, connect_to_network, *_):
-        self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False,
-                             use_docker_machine_manager=False)
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False
+        )
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
@@ -490,24 +555,29 @@ class TestClient(TestWithDatabase):
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
-
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        client = Client(datadir=self.path,
-                        transaction_system=False,
-                        connect_to_known_hosts=False,
-                        use_docker_machine_manager=False,
-                        use_monitor=False)
+        client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
 
         client.sync = Mock()
         client.keys_auth = Mock()
         client.keys_auth.key_id = str(uuid.uuid4())
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
-        client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
-                                        Mock(), client,
-                                        use_docker_machine_manager=False)
+        client.task_server = TaskServer(
+            Node(),
+            ClientConfigDescriptor(),
+            Mock(),
+            client,
+            use_docker_machine_manager=False
+        )
         client.monitor = Mock()
 
         self.client = client
@@ -520,7 +590,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth = EllipticalKeysAuth(self.path)
 
         self.assertIsInstance(c.get_node(), dict)
-        self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
         self.assertIsInstance(c.get_node_key(), str)
         self.assertIsNotNone(c.get_node_key())
@@ -561,9 +630,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_get_estimated_cost(self, *_):
         c = self.client
-        assert c.get_estimated_cost("task type", {"price": 150,
-                                                  "subtask_time": 2.5,
-                                                  "num_subtasks": 5}) == 1875
+        assert c.get_estimated_cost(
+            "task type",
+            {"price": 150,
+             "subtask_time": 2.5,
+             "num_subtasks": 5}
+        ) == 1875
 
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
@@ -577,11 +649,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth.key_id = str(uuid.uuid4())
 
         task = Mock()
-        task.header.max_price = 1 * 10 ** 18
+        task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, resource_types["hashes"])
+        task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
         assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
@@ -677,40 +749,43 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.blender.benchmark.benchmark import BlenderBenchmark
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.lux.benchmark.benchmark import LuxBenchmark
 
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_benchmark = Mock()
+        benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
+            c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
-        assert task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        assert benchmark_manager.run_benchmark.call_count == 1
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          BlenderBenchmark)
 
         sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert task_computer.run_lux_benchmark.called
+        assert benchmark_manager.run_benchmark.call_count == 2
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          LuxBenchmark)
 
-    def test_run_benchmarks(self, *_):
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda *_: 1
+        result = sync_wait(self.client.run_benchmark(
+            DefaultEnvironment.get_id()))
+        assert result > 100.0
+        assert benchmark_manager.run_benchmark.call_count == 2
 
-        task_computer.run_benchmarks()
-        assert task_computer.run_lux_benchmark.called
-        assert task_computer.run_blender_benchmark.called
+
+    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
+    def test_run_benchmarks(self, br_mock, *_):
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_all_benchmarks()
+        f = br_mock.call_args[0][2]  # get success callback
+        f(1)
+        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -767,6 +842,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
         c = self.client
         c.enqueue_new_task = Mock()
@@ -775,7 +851,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         t = Task(TaskHeader("node_name", "task_id",
                             "10.10.10.10", 123,
                             "owner_id", "DEFAULT"),
-                 src_code="print('hello')")
+                 src_code="print('hello')",
+                 task_definition=Mock())
+
 
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
@@ -799,7 +877,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.get_task_preview(task_id)
         c.task_server.task_manager.get_task_preview.assert_called_with(
-            task_id, single=False)
+            task_id, single=False
+        )
 
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
@@ -809,14 +888,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.get_subtasks_borders(task_id)
         c.task_server.task_manager.get_subtasks_borders.assert_called_with(
-            task_id, 1)
+            task_id, 1
+        )
 
     def test_connection_status(self, *_):
         c = self.client
 
         # not connected
-        self.assertTrue(c.connection_status()
-                        .startswith("Application not listening"))
+        self.assertTrue(
+            c.connection_status().startswith("Application not listening")
+        )
 
         # status without peers
         c.p2pservice.cur_port = 12345
@@ -826,8 +907,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(c.connection_status().startswith("Not connected"))
 
         # peers
-        c.p2pservice.incoming_peers = {str(i): self.__new_incoming_peer()
-                                       for i in range(3)}
+        c.p2pservice.incoming_peers = {
+            str(i): self.__new_incoming_peer()
+            for i in range(3)
+        }
         c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
 
         known_peers = c.get_known_peers()
@@ -843,7 +926,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # status without ports
         c.p2pservice.cur_port = 0
-        self.assertTrue(c.connection_status().startswith("Application not listening"))
+        self.assertTrue(
+            c.connection_status().startswith("Application not listening")
+        )
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
@@ -867,12 +952,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         port = random.randint(1, 50000)
         self.assertFalse(self.client.node.port_status)
-        dispatcher.send(signal="golem.p2p", event="no event at all", port=port,
-                        description="port 1234: closed")
+        dispatcher.send(
+            signal="golem.p2p",
+            event="no event at all",
+            port=port,
+            description="port 1234: closed"
+        )
         self.assertFalse(self.client.node.port_status)
-        dispatcher.send(signal="golem.p2p", event="unreachable", port=port,
-                        description="port 1234: closed")
+        dispatcher.send(
+            signal="golem.p2p",
+            event="unreachable",
+            port=port,
+            description="port 1234: closed"
+        )
         self.assertTrue(self.client.node.port_status)
+
+    def test_get_performance_values(self, *_):
+        expected_perf = {DefaultEnvironment.get_id(): 0.0}
+        assert self.client.get_performance_values() == expected_perf
 
     @classmethod
     def __new_incoming_peer(cls):
@@ -887,7 +984,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
 
 class TestEventListener(unittest.TestCase):
-
     def test_task_computer_event_listener(self):
 
         client = Mock()

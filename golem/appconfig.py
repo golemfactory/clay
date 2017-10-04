@@ -1,13 +1,15 @@
-
-
 import logging
 from os import path
 
+from typing import Set,Any
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
-from golem.core.simpleenv import SimpleEnv
+
+from golem.ranking.helper.trust_const import \
+    REQUESTING_TRUST, \
+    COMPUTING_TRUST
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +28,6 @@ END_PORT = 60102
 RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
-
-ESTIMATED_DEFAULT = 2220.0
 
 USE_IP6 = 0
 ACCEPT_TASKS = 1
@@ -56,13 +56,9 @@ MAX_PRICE = int(5.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
 
-REQUESTING_TRUST = -1.0
-COMPUTING_TRUST = -1.0
-
 
 # FIXME: deprecated
 class CommonConfig:
-
     def __init__(self, section="Common", **kwargs):
         self._section = section
 
@@ -82,27 +78,9 @@ class CommonConfig:
 
 
 class NodeConfig:
-    @classmethod
-    def read_estimated_performance(cls):
-        estm_file = SimpleEnv.env_file_name(ESTM_FILENAME)
-        res = 0
-        try:
-            with open(estm_file, 'r') as file_:
-                val = file_.read()
-                res = "{0:.1f}".format(float(val))
-        except IOError as err:
-            logger.warning("Can't open file {}: {}".format(estm_file, str(err)))
-        except ValueError as err:
-            logger.warning("Can't change {} to float: {}".format(val, str(err)))
-        return res
 
     def __init__(self, **kwargs):
         self._section = "Node"
-
-        estimated_performance = NodeConfig.read_estimated_performance()
-        if estimated_performance == 0:
-            estimated_performance = ESTIMATED_DEFAULT
-        kwargs["estimated_performance"] = estimated_performance
 
         for k, v in list(kwargs.items()):
             ConfigEntry.create_property(
@@ -120,7 +98,7 @@ class NodeConfig:
 
 
 class AppConfig:
-    __loaded_configs = set()
+    __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
@@ -155,9 +133,6 @@ class AppConfig:
             max_price=MAX_PRICE,
             requesting_trust=REQUESTING_TRUST,
             computing_trust=COMPUTING_TRUST,
-            # benchmarks
-            estimated_lux_performance="0",
-            estimated_blender_performance="0",
             # intervals
             pings_interval=PINGS_INTERVALS,
             getting_peers_interval=GETTING_PEERS_INTERVAL,

@@ -1,10 +1,8 @@
-
-
 import logging
 import os
-from PyQt5 import QtCore
 
 import jsonpickle
+from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QTableWidgetItem
 from ethereum.utils import denoms
@@ -12,16 +10,17 @@ from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
+
 from golem.core.common import get_golem_path
-from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState, TaskTestStatus
 from golem.task.taskstate import TaskStatus
+
 from gui.controller.testingtaskprogresscustomizer import \
     TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import \
@@ -84,7 +83,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
         payment_address = yield client.get_payment_address()
-        description = yield client.get_description()
 
         config = DictSerializer.load(config_dict)
 
@@ -94,7 +92,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.dir_manager = DirManager(self.datadir)
 
         self.customizer.init_config()
-        self.customizer.set_options(config, client_id, payment_address, description)
+        self.customizer.set_options(config, client_id, payment_address)
 
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
@@ -230,9 +228,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def get_config(self):
         config_dict = yield self.client.get_settings()
         returnValue(DictSerializer.load(config_dict))
-
-    def change_description(self, description):
-        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()
@@ -393,9 +388,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @staticmethod
     def recount_performance(num_cores):
-        test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')
-        result_file = SimpleEnv.env_file_name("minilight.ini")
-        estimated_perf = makePerfTest(test_file, result_file, num_cores)
+        estimated_perf = Environment.run_default_benchmark(num_cores)
         return estimated_perf
 
     def lock_config(self, on=True):
@@ -485,7 +478,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.client.abort_test_task()
 
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label, cfg_param_name):
+    def run_benchmark(self, benchmark, label):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
@@ -497,37 +490,43 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         reactor = self.__get_reactor()
 
         self.br = BenchmarkRunner(t, self.datadir,
-                                  lambda p: reactor.callFromThread(self._benchmark_computation_success,
-                                                                   performance=p, label=label,
-                                                                   cfg_param=cfg_param_name),
+                                  lambda p: reactor.callFromThread(
+                                      self._benchmark_computation_success,
+                                      performance=p, label=label,),
                                   self._benchmark_computation_error,
                                   benchmark)
-
-        self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-        self.progress_dialog_customizer.enable_ok_button(False) # disable 'ok' button
-        self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
+        self.progress_dialog = \
+            TestingTaskProgressDialog(self.customizer.gui.window)
+        self.progress_dialog_customizer = \
+            TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        # disable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(False)
+        # disable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', False)
         self.progress_dialog.show()
 
         self.br.run()
 
-    @inlineCallbacks
-    def _benchmark_computation_success(self, performance, label, cfg_param):
+    def _benchmark_computation_success(self, performance, label):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message("Recounted")
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
+        # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)
 
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
-        yield self.client.update_setting(cfg_param, perf)
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
         self.progress_dialog.stop_progress_bar()
-        self.progress_dialog_customizer.show_message("Recounting failed: {}".format(error))
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
+        self.progress_dialog_customizer.show_message(
+            "Recounting failed: {}".format(error))
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
+        # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)
 
     @inlineCallbacks
     def get_environments(self):
@@ -667,6 +666,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.current_task_type = self.task_types[name]
         else:
             logger.error("Unknown task type chosen {}, known task_types: {}".format(name, self.task_types))
+
+    @inlineCallbacks
+    def get_performance_values(self):
+        performance_values = yield self.client.get_performance_values()
+        returnValue(performance_values)
 
     def _validate_task_state(self, task_state):
         td = task_state.definition

@@ -1,16 +1,15 @@
-
-
 import logging
-import multiprocessing
+
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-
-from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPalette
+from PyQt5.QtWidgets import QMessageBox
+from ethereum.utils import denoms
+
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
-from ethereum.utils import denoms
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_cpu_count
 from golem.core.fileshelper import du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from gui.controller.customizer import Customizer
@@ -20,7 +19,9 @@ logger = logging.getLogger("gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):
-    """ Customizer for gui with all golem configuration option that can be changed by user
+    """ Customizer for gui
+    with all golem configuration options
+    that can be changed by user
     """
 
     SHOW_ADVANCE_BUTTON_MESSAGES = ["Show more", "Hide"]
@@ -31,48 +32,68 @@ class ConfigurationDialogCustomizer(Customizer):
         self.docker_config_changed = False
 
     def load_data(self):
+        def load_benchmarks(benchmarks):
+            self.__load_performance(benchmarks)
+
         def load(config_desc):
             self.__load_basic_config(config_desc)
             self.__load_advance_config(config_desc)
             self.__load_resource_config()
             self.__load_payment_config(config_desc)
             self.docker_config_changed = False
+            self.logic.get_performance_values().addCallback(load_benchmarks)
 
         self.logic.get_config().addCallback(load)
 
+
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
-        self.gui.ui.recountLuxButton.clicked.connect(self.__run_lux_benchmark_button_clicked)
-        self.gui.ui.recountBlenderButton.clicked.connect(self.__run_blender_benchmark_button_clicked)
+
+        self.gui.ui.recountLuxButton.clicked.connect(
+            self.__run_lux_benchmark_button_clicked)
+        self.gui.ui.recountBlenderButton.clicked.connect(
+            self.__run_blender_benchmark_button_clicked)
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
-        self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
+        self.gui.ui.settingsCancelButton.clicked.connect(
+            lambda: self.load_data())
 
-        self.gui.ui.numCoresSpinBox.valueChanged.connect(self.__docker_config_changed)
-        self.gui.ui.maxMemoryUsageComboBox.currentIndexChanged.connect(self.__docker_config_changed)
-        self.gui.ui.maxMemoryUsageSpinBox.valueChanged.connect(self.__docker_config_changed)
+        self.gui.ui.numCoresSpinBox.valueChanged.connect(
+            self.__docker_config_changed)
+        self.gui.ui.maxMemoryUsageComboBox.currentIndexChanged.connect(
+            self.__docker_config_changed)
+        self.gui.ui.maxMemoryUsageSpinBox.valueChanged.connect(
+            self.__docker_config_changed)
 
-        self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
-        self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
-        self.gui.ui.removeReceivedButton.clicked.connect(self.__remove_from_received)
-        self.gui.ui.refreshComputingButton.clicked.connect(self.__refresh_disk_computed)
-        self.gui.ui.refreshReceivedButton.clicked.connect(self.__refresh_disk_received)
+        self.gui.ui.showDiskButton.clicked.connect(
+            self.__show_disk_button_clicked)
+        self.gui.ui.removeComputingButton.clicked.connect(
+            self.__remove_from_computing)
+        self.gui.ui.removeReceivedButton.clicked.connect(
+            self.__remove_from_received)
+        self.gui.ui.refreshComputingButton.clicked.connect(
+            self.__refresh_disk_computed)
+        self.gui.ui.refreshReceivedButton.clicked.connect(
+            self.__refresh_disk_received)
 
-        self.gui.ui.requestingTrustSlider.valueChanged.connect(self.__requesting_trust_slider_changed)
-        self.gui.ui.computingTrustSlider.valueChanged.connect(self.__computing_trust_slider_changed)
-        self.gui.ui.requestingTrustLineEdit.textEdited.connect(self.__requesting_trust_edited)
-        self.gui.ui.computingTrustLineEdit.textEdited.connect(self.__computing_trust_edited)
+        self.gui.ui.requestingTrustSlider.valueChanged.connect(
+            self.__requesting_trust_slider_changed)
+        self.gui.ui.computingTrustSlider.valueChanged.connect(
+            self.__computing_trust_slider_changed)
+        self.gui.ui.requestingTrustLineEdit.textEdited.connect(
+            self.__requesting_trust_edited)
+        self.gui.ui.computingTrustLineEdit.textEdited.connect(
+            self.__computing_trust_edited)
 
-        self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
+        self.gui.ui.showAdvanceButton.clicked.connect(
+            self.__show_advance_clicked)
 
     def __docker_config_changed(self):
         self.docker_config_changed = True
 
     def __load_basic_config(self, config_desc):
-        self.gui.ui.hostAddressLineEdit.setText("{}".format(config_desc.seed_host))
+        self.gui.ui.hostAddressLineEdit.setText(
+            "{}".format(config_desc.seed_host))
         self.gui.ui.hostIPLineEdit.setText("{}".format(config_desc.seed_port))
-        self.gui.ui.performanceLabel.setText("{}".format(config_desc.estimated_performance))
-        self.gui.ui.luxPerformanceLabel.setText("{}".format(config_desc.estimated_lux_performance))
-        self.gui.ui.blenderPerformanceLabel.setText("{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.gui.ui.nodeNameLineEdit.setText("{}".format(config_desc.node_name))
 
@@ -81,9 +102,10 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__load_trust_config(config_desc)
 
     def __load_num_cores(self, config_desc):
-        max_num_cores = multiprocessing.cpu_count()
+        max_num_cores = get_cpu_count()
         self.gui.ui.numCoresSpinBox.setMaximum(max_num_cores)
-        self.gui.ui.numCoresRangeLabel.setText("Range: 1 - {}".format(max_num_cores))
+        self.gui.ui.numCoresRangeLabel.setText(
+            "Range: 1 - {}".format(max_num_cores))
 
         try:
             num_cores = int(config_desc.num_cores)
@@ -100,7 +122,8 @@ class ConfigurationDialogCustomizer(Customizer):
             max_resource_size = int(config_desc.max_resource_size)
         except (ValueError, AttributeError, TypeError) as err:
             max_resource_size = 250 * 1024
-            logger.error("Wrong value for maximum resource size: {}".format(err))
+            logger.error(
+                "Wrong value for maximum resource size: {}".format(err))
 
         try:
             max_memory_size = int(config_desc.max_memory_size)
@@ -117,15 +140,19 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
 
     def __run_lux_benchmark_button_clicked(self):
-        self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel, cfg_param_name="estimated_lux_performance")
+        self.logic.run_benchmark(LuxBenchmark(),
+                                 self.gui.ui.luxPerformanceLabel)
 
     def __run_blender_benchmark_button_clicked(self):
-        self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel, cfg_param_name="estimated_blender_performance")
+        self.logic.run_benchmark(BlenderBenchmark(),
+                                 self.gui.ui.blenderPerformanceLabel)
 
     def __load_trust_config(self, config_desc):
-        self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,
+        self.__load_trust(config_desc.computing_trust,
+                          self.gui.ui.computingTrustLineEdit,
                           self.gui.ui.computingTrustSlider)
-        self.__load_trust(config_desc.requesting_trust, self.gui.ui.requestingTrustLineEdit,
+        self.__load_trust(config_desc.requesting_trust,
+                          self.gui.ui.requestingTrustLineEdit,
                           self.gui.ui.requestingTrustSlider)
 
     def __load_trust(self, value, line_edit, slider):
@@ -139,23 +166,37 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_advance_config(self, config_desc):
         self.gui.ui.advanceSettingsWidget.hide()
-        self.gui.ui.showAdvanceButton.setText(ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
 
-        self.gui.ui.optimalPeerNumLineEdit.setText("{}".format(config_desc.opt_peer_num))
+        self.gui.ui.showAdvanceButton.setText(
+            ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
+
+        self.gui.ui.optimalPeerNumLineEdit.setText(
+            "{}".format(config_desc.opt_peer_num))
         self.__load_checkbox_param(config_desc.use_waiting_for_task_timeout,
-                                   self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
-        self.gui.ui.waitingForTaskTimeoutLineEdit.setText("{}".format(config_desc.waiting_for_task_timeout))
+                                   self.gui.ui.useWaitingForTaskTimeoutCheckBox,
+                                   'waiting for task timeout')
+        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(
+            "{}".format(config_desc.waiting_for_task_timeout))
 
-        self.__load_checkbox_param(config_desc.send_pings, self.gui.ui.sendPingsCheckBox, 'send pings''')
-        self.gui.ui.sendPingsLineEdit.setText("{}".format(config_desc.pings_interval))
+        self.__load_checkbox_param(config_desc.send_pings,
+                                   self.gui.ui.sendPingsCheckBox,
+                                   'send pings''')
+        self.gui.ui.sendPingsLineEdit.setText(
+            "{}".format(config_desc.pings_interval))
 
-        self.gui.ui.gettingPeersLineEdit.setText("{}".format(config_desc.getting_peers_interval))
-        self.gui.ui.gettingTasksIntervalLineEdit.setText("{}".format(config_desc.getting_tasks_interval))
-        self.gui.ui.maxSendingDelayLineEdit.setText("{}".format(config_desc.max_results_sending_delay))
+        self.gui.ui.gettingPeersLineEdit.setText(
+            "{}".format(config_desc.getting_peers_interval))
+        self.gui.ui.gettingTasksIntervalLineEdit.setText(
+            "{}".format(config_desc.getting_tasks_interval))
+        self.gui.ui.maxSendingDelayLineEdit.setText(
+            "{}".format(config_desc.max_results_sending_delay))
 
-        self.gui.ui.p2pSessionTimeoutLineEdit.setText("{}".format(config_desc.p2p_session_timeout))
-        self.gui.ui.taskSessionTimeoutLineEdit.setText("{}".format(config_desc.task_session_timeout))
-        self.__load_checkbox_param(not config_desc.accept_tasks, self.gui.ui.dontAcceptTasksCheckBox,
+        self.gui.ui.p2pSessionTimeoutLineEdit.setText(
+            "{}".format(config_desc.p2p_session_timeout))
+        self.gui.ui.taskSessionTimeoutLineEdit.setText(
+            "{}".format(config_desc.task_session_timeout))
+        self.__load_checkbox_param(not config_desc.accept_tasks,
+                                   self.gui.ui.dontAcceptTasksCheckBox,
                                    "don't accept tasks")
 
     @staticmethod
@@ -168,11 +209,15 @@ class ConfigurationDialogCustomizer(Customizer):
                 checked = True
         except ValueError:
             checked = True
-            logger.error("Wrong configuration parameter {}: {}".format(param_name, param))
+
+            logger.error(
+                "Wrong configuration parameter {}: {}".format(param_name,
+                                                              param))
         check_box.setChecked(checked)
 
     def __load_payment_config(self, config_desc):
-        self.gui.ui.ethAccountLineEdit.setText("{}".format(config_desc.eth_account))
+        self.gui.ui.ethAccountLineEdit.setText(
+            "{}".format(config_desc.eth_account))
         min_price = config_desc.min_price / denoms.ether
         max_price = config_desc.max_price / denoms.ether
         self.gui.ui.minPriceLineEdit.setText("{:.6f}".format(min_price))
@@ -180,23 +225,39 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_resource_config(self):
         self.gui.ui.diskWidget.hide()
-        self.gui.ui.showDiskButton.setText(self.SHOW_DISK_USAGE_BUTTON_MESSAGES[0])
+        self.gui.ui.showDiskButton.setText(
+            self.SHOW_DISK_USAGE_BUTTON_MESSAGES[0])
+
         self.__refresh_disk_computed()
         self.__refresh_disk_received()
+
+    def __load_performance(self, performance_values):
+        try:
+            self.gui.ui.luxPerformanceLabel.setText("{}".format(
+                "{:.2f}".format(performance_values["LUXRENDER"])))
+            self.gui.ui.blenderPerformanceLabel.setText("{}".format(
+                "{:.2f}".format(performance_values["BLENDER"])))
+            self.gui.ui.performanceLabel.setText("{:.2f}".format(
+                performance_values['DEFAULT']))
+        except (ValueError, KeyError):
+            logger.exception("Can't read performance")
 
     def __refresh_disk_received(self):
         def change(res_dirs):
             self.gui.ui.receivedResSize.setText(du(res_dirs['received']))
+
         self.logic.get_res_dirs().addCallback(change)
 
     def __refresh_disk_computed(self):
         def change(res_dirs):
             self.gui.ui.computingResSize.setText(du(res_dirs['computing']))
+
         self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all computed files?",
+                              "Are you sure you want to "
+                              "remove all computed files?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
@@ -209,7 +270,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __remove_from_distributed(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all distributed resources?",
+                              "Are you sure you want to "
+                              "remove all distributed resources?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
@@ -222,7 +284,8 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __remove_from_received(self):
         msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
-                              "Are you sure you want to remove all received task results?",
+                              "Are you sure you want to "
+                              "remove all received task results?",
                               QMessageBox.Yes | QMessageBox.No, self.gui.window)
         msg_box.setDefaultButton(QMessageBox.No)
         msg_box.setWindowModality(Qt.WindowModal)
@@ -241,10 +304,12 @@ class ConfigurationDialogCustomizer(Customizer):
         return size
 
     def __computing_trust_slider_changed(self):
-        self.gui.ui.computingTrustLineEdit.setText("{}".format(self.gui.ui.computingTrustSlider.value()))
+        self.gui.ui.computingTrustLineEdit.setText(
+            "{}".format(self.gui.ui.computingTrustSlider.value()))
 
     def __requesting_trust_slider_changed(self):
-        self.gui.ui.requestingTrustLineEdit.setText("{}".format(self.gui.ui.requestingTrustSlider.value()))
+        self.gui.ui.requestingTrustLineEdit.setText(
+            "{}".format(self.gui.ui.requestingTrustSlider.value()))
 
     def __computing_trust_edited(self):
         try:
@@ -262,11 +327,12 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
-        
+
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
-        self.logic.change_config(cfg_desc, run_benchmarks=self.docker_config_changed)
+        self.logic.change_config(cfg_desc,
+                                 run_benchmarks=self.docker_config_changed)
         self.__recount_performance()
         self.load_data()
         self.docker_config_changed = False
@@ -279,15 +345,16 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.seed_port = "{}".format(self.gui.ui.hostIPLineEdit.text())
 
         cfg_desc.num_cores = "{}".format(self.gui.ui.numCoresSpinBox.value())
-        cfg_desc.estimated_performance = "{}".format(self.gui.ui.performanceLabel.text())
-        cfg_desc.estimated_lux_performance = "{}".format(self.gui.ui.luxPerformanceLabel.text())
-        cfg_desc.estimated_blender_performance = "{}".format(self.gui.ui.blenderPerformanceLabel.text())
+
         max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
-        cfg_desc.max_resource_size = "{}".format(self.__count_resource_size(max_resource_size, index))
+        cfg_desc.max_resource_size = "{}".format(
+            self.__count_resource_size(max_resource_size, index))
         max_memory_size = int(self.gui.ui.maxMemoryUsageSpinBox.value())
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
-        cfg_desc.max_memory_size = "{}".format(self.__count_resource_size(max_memory_size, index))
+        cfg_desc.max_memory_size = "{}".format(
+            self.__count_resource_size(max_memory_size, index))
+
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
         cfg_desc.node_name = "{}".format(self.gui.ui.nodeNameLineEdit.text())
@@ -295,30 +362,48 @@ class ConfigurationDialogCustomizer(Customizer):
             self.show_error_window("Empty node name")
 
     def __read_advance_config(self, cfg_desc):
-        cfg_desc.opt_peer_num = "{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
-        cfg_desc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
-        cfg_desc.waiting_for_task_timeout = "{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
-        cfg_desc.p2p_session_timeout = "{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
-        cfg_desc.task_session_timeout = "{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
+        cfg_desc.opt_peer_num = "{}".format(
+            self.gui.ui.optimalPeerNumLineEdit.text())
+        cfg_desc.use_waiting_for_task_timeout = int(
+            self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
+        cfg_desc.waiting_for_task_timeout = "{}".format(
+            self.gui.ui.waitingForTaskTimeoutLineEdit.text())
+        cfg_desc.p2p_session_timeout = "{}".format(
+            self.gui.ui.p2pSessionTimeoutLineEdit.text())
+        cfg_desc.task_session_timeout = "{}".format(
+            self.gui.ui.taskSessionTimeoutLineEdit.text())
         cfg_desc.send_pings = int(self.gui.ui.sendPingsCheckBox.isChecked())
-        cfg_desc.pings_interval = "{}".format(self.gui.ui.sendPingsLineEdit.text())
-        cfg_desc.getting_peers_interval = "{}".format(self.gui.ui.gettingPeersLineEdit.text())
-        cfg_desc.getting_tasks_interval = "{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
-        cfg_desc.max_results_sending_delay = "{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
-        cfg_desc.accept_tasks = int(not self.gui.ui.dontAcceptTasksCheckBox.isChecked())
+        cfg_desc.pings_interval = "{}".format(
+            self.gui.ui.sendPingsLineEdit.text())
+        cfg_desc.getting_peers_interval = "{}".format(
+            self.gui.ui.gettingPeersLineEdit.text())
+        cfg_desc.getting_tasks_interval = "{}".format(
+            self.gui.ui.gettingTasksIntervalLineEdit.text())
+        cfg_desc.max_results_sending_delay = "{}".format(
+            self.gui.ui.maxSendingDelayLineEdit.text())
+        cfg_desc.accept_tasks = int(
+            not self.gui.ui.dontAcceptTasksCheckBox.isChecked())
 
     def __read_trust_config(self, cfg_desc):
-        requesting_trust = self.__read_trust(self.gui.ui.requestingTrustLineEdit, self.gui.ui.requestingTrustSlider)
-        computing_trust = self.__read_trust(self.gui.ui.computingTrustLineEdit, self.gui.ui.computingTrustSlider)
-        cfg_desc.requesting_trust = self.__trust_to_config_trust(requesting_trust)
+        requesting_trust = self.__read_trust(
+            self.gui.ui.requestingTrustLineEdit,
+            self.gui.ui.requestingTrustSlider)
+        computing_trust = self.__read_trust(self.gui.ui.computingTrustLineEdit,
+                                            self.gui.ui.computingTrustSlider)
+        cfg_desc.requesting_trust = self.__trust_to_config_trust(
+            requesting_trust)
         cfg_desc.computing_trust = self.__trust_to_config_trust(computing_trust)
 
     def __trust_to_config_trust(self, trust):
         try:
-            trust = max(min(float(trust) / 100.0, 1.0), -1.0)
+            from golem.ranking.helper.trust_const import \
+                MIN_TRUST, \
+                MAX_TRUST
+
+            trust = max(min(float(trust) / 100.0, MAX_TRUST), MIN_TRUST)
         except ValueError:
             logger.error("Wrong trust value {}".format(trust))
-            trust = -1
+            trust = MIN_TRUST
         return trust
 
     def __read_trust(self, line_edit, slider):
@@ -334,10 +419,12 @@ class ConfigurationDialogCustomizer(Customizer):
             num_cores = int(self.gui.ui.numCoresSpinBox.value())
         except ValueError:
             num_cores = 1
-        self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
+        self.gui.ui.performanceLabel.setText(
+            "{:.2f}".format(self.logic.recount_performance(num_cores)))
 
     def __read_payment_config(self, cfg_desc):
-        cfg_desc.eth_account = "{}".format(self.gui.ui.ethAccountLineEdit.text())
+        cfg_desc.eth_account = "{}".format(
+            self.gui.ui.ethAccountLineEdit.text())
         try:
             min_price = float(self.gui.ui.minPriceLineEdit.text())
             cfg_desc.min_price = int(min_price * denoms.ether)
@@ -370,11 +457,15 @@ class ConfigurationDialogCustomizer(Customizer):
             logger.info("Wrong ethereum address in gui: %r", text)
 
     def __show_advance_clicked(self):
-        self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
+        self.gui.ui.advanceSettingsWidget.setVisible(
+            not self.gui.ui.advanceSettingsWidget.isVisible())
         self.gui.ui.showAdvanceButton.setText(
-            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.advanceSettingsWidget.isVisible()])
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[
+                self.gui.ui.advanceSettingsWidget.isVisible()])
 
     def __show_disk_button_clicked(self):
-        self.gui.ui.diskWidget.setVisible(not self.gui.ui.diskWidget.isVisible())
+        self.gui.ui.diskWidget.setVisible(
+            not self.gui.ui.diskWidget.isVisible())
         self.gui.ui.showDiskButton.setText(
-            self.SHOW_ADVANCE_BUTTON_MESSAGES[self.gui.ui.diskWidget.isVisible()])
+            self.SHOW_ADVANCE_BUTTON_MESSAGES[
+                self.gui.ui.diskWidget.isVisible()])

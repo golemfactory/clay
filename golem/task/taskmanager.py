@@ -13,7 +13,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, ResourceType
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState
@@ -44,6 +44,7 @@ subtask_priority = {
 
 class TaskManager(TaskEventListener):
     """ Keeps and manages information about requested tasks
+    Requestor uses TaskManager to assign task to providers
     """
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
@@ -113,7 +114,7 @@ class TaskManager(TaskEventListener):
 
         return Task.build_task(builder)
 
-    def get_task_definition_dict(self, task):
+    def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
             return task
         definition = task.task_definition
@@ -343,7 +344,8 @@ class TaskManager(TaskEventListener):
         :return long: price that should be paid for given subtask
         """
         task_id = self.subtask2task_mapping[subtask_id]
-        return self.tasks_states[task_id].subtask_states[subtask_id].value
+        value = self.tasks_states[task_id].subtask_states[subtask_id].value
+        return value
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result, result_type):
@@ -458,13 +460,13 @@ class TaskManager(TaskEventListener):
         for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
                 ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))
+                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0)) # FIXME in short_extra_data_repr should there be extra data
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses
 
     @handle_task_key_error
-    def get_resources(self, task_id, resource_header, resource_type=0):
+    def get_resources(self, task_id, resource_header, resource_type=ResourceType.ZIP):
         task = self.tasks[task_id]
         return task.get_resources(resource_header, resource_type)
 
@@ -658,7 +660,9 @@ class TaskManager(TaskEventListener):
         """
         Set computation time for subtask and also compute and set new value based on saved price for this subtask
         :param str subtask_id: subtask which was computed in given computation_time
-        :param float computation_time: how long does it take to compute this task
+        :param float computation_time: how long does it take to compute
+        this task = max timeout
+
         :return:
         """
         task_id = self.subtask2task_mapping[subtask_id]

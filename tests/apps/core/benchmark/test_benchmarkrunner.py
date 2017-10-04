@@ -1,16 +1,20 @@
-from apps.core.benchmark import benchmarkrunner
-import golem.task.taskbase
-from golem.testutils import TempDirFixture
-import mock
 import time
+
+import mock
+
+from apps.core.benchmark import benchmarkrunner
+from golem.task.taskbase import Task
+from golem.testutils import TempDirFixture
 
 
 class BenchmarkRunnerTest(TempDirFixture):
+
+    @mock.patch.multiple(Task, __abstractmethods__=frozenset())
     def setUp(self):
         super(self.__class__, self).setUp()
         self.benchmark = mock.MagicMock()
         self.instance = benchmarkrunner.BenchmarkRunner(
-            task=golem.task.taskbase.Task(None, None),
+            task=Task(None, None, None),
             root_path=self.tempdir,
             success_callback=lambda: self._success(),
             error_callback=lambda *args: self._error(args),
@@ -167,17 +171,17 @@ class BenchmarkRunnerTest(TempDirFixture):
         assert not self.instance.is_success(task_thread)
 
 
-class WrongTask(golem.task.taskbase.Task):
-    def query_extra_data(self, perf_index):
+class WrongTask(Task):
+    def query_extra_data(*args, **kwargs):
         raise ValueError("Wrong task")
 
-
+@mock.patch.multiple(WrongTask, __abstractmethods__=frozenset())
 class BenchmarkRunnerWrongTaskTest(TempDirFixture):
 
     def test_run_with_error(self):
         benchmark = mock.MagicMock()
         instance = benchmarkrunner.BenchmarkRunner(
-            task=WrongTask(None, None),
+            task=WrongTask(None, None, None),
             root_path=self.tempdir,
             success_callback=mock.Mock(),
             error_callback=mock.Mock(),
