@@ -5,7 +5,8 @@ import sys
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
-from golem.interface.client import account, debug
+from golem.interface.client import debug
+from golem.interface.client.account import Account
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
 from golem.interface.client.payments import payments, incomes
@@ -17,7 +18,7 @@ from golem.interface.websockets import WebSocketCLI
 # prevent 'unused' warnings
 _ = {
     Tasks, Subtasks, Network, Environments, Resources, Settings,
-    account, incomes, payments, debug
+    Account, incomes, payments, debug
 }
 
 

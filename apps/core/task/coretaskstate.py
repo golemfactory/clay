@@ -7,20 +7,7 @@ from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
 
-class Options(object):
-    """ Task specific options """
-    def __init__(self):
-        self.environment = Environment()
-        self.name = ''
-
-    def add_to_resources(self, resources):
-        pass
-
-    def remove_from_resources(self, resources):
-        pass
-
-
-class CoreTaskDefaults(object):
+class TaskDefaults(object):
     """ Suggested default values for task parameters """
 
     def __init__(self):
@@ -42,6 +29,7 @@ class CoreTaskDefaults(object):
 
 class TaskDefinition(object):
     """ Task description used in GUI and in save file format"""
+
     def __init__(self):
         self.task_id = ""
         self.full_task_timeout = 0
@@ -152,7 +140,9 @@ class AdvanceVerificationOptions(object):
 
 
 class TaskDesc(object):
-    def __init__(self, definition_class=TaskDefinition, state_class=TaskState):
+    def __init__(self,
+                 definition_class=TaskDefinition,
+                 state_class=TaskState):
         self.definition = definition_class()
         self.task_state = state_class()
 
@@ -163,3 +153,17 @@ class TaskDesc(object):
         :param int num_outputs:
         """
         return len(self.task_state.outputs) >= num_outputs
+
+
+class Options(object):
+    """ Task specific options """
+
+    def __init__(self):
+        self.environment = Environment()
+        self.name = ''
+
+    def add_to_resources(self, resources):
+        pass
+
+    def remove_from_resources(self, resources):
+        pass

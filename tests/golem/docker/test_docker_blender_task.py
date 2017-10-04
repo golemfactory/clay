@@ -3,6 +3,7 @@ import time
 from os import makedirs, path
 
 import json
+import pytest
 from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
@@ -13,7 +14,7 @@ from golem.docker.image import DockerImage
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import result_types, TaskHeader
+from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -88,11 +89,10 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node._run()
 
         ccd = ClientConfigDescriptor()
-        ccd.estimated_blender_performance = 2000.0
-        ccd.estimated_lux_performance = 2000.0
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
+        task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
 
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
@@ -155,8 +155,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
-        local_computer = LocalComputer(render_task, self.tempdir, Mock(), Mock(),
-                                       render_task.query_extra_data_for_test_task)
+        local_computer = LocalComputer(
+            render_task, self.tempdir, Mock(), Mock(),
+            render_task.query_extra_data_for_test_task)
         local_computer.run()
         local_computer.tt.join(60)
         return local_computer.tt
@@ -169,12 +170,15 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        assert result["result_type"] == result_types["files"]
+        assert result["result_type"] == ResultType.FILES
         assert len(result["data"]) >= 3
-        assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"])
-        assert any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"])
+        assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE
+                   for f in result["data"])
+        assert any(path.basename(f) == DockerTaskThread.STDERR_FILE
+                   for f in result["data"])
         assert any(f.endswith(".png") for f in result["data"])
 
+    @pytest.mark.slow
     def test_blender_test(self):
         render_task = self._create_test_task()
         tt = self._run_docker_test_task(render_task)
@@ -190,7 +194,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         node_name = "some_node"
         task_def = self._load_test_task_definition(self.CYCLES_TASK_FILE)
         dir_manager = DirManager(self.path)
-        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir,
+                                           dir_manager)
         task = builder.build()
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
@@ -217,7 +222,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert not task.header.signature
         assert task.listeners == []
         assert len(task.task_resources) == 1
-        assert task.task_resources[0].endswith('scene-Helicopter-27-cycles.blend')
+        assert task.task_resources[0].endswith(
+            'scene-Helicopter-27-cycles.blend')
         assert task.total_tasks == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
@@ -232,9 +238,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert path.isdir(task.tmp_dir)
         assert task.verificator.verification_options is None
 
+    @pytest.mark.slow
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
 
+    @pytest.mark.slow
     def test_blender_cycles_subtask(self):
         self._test_blender_subtask(self.CYCLES_TASK_FILE)
 

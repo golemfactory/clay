@@ -6,7 +6,8 @@ import uuid
 from collections import Iterable
 from copy import copy
 from os import path, makedirs
-from threading import Lock
+from threading import Lock, Thread
+from typing import Dict
 
 from pydispatch import dispatcher
 from twisted.internet import task
@@ -24,9 +25,11 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import callback_wrapper
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
@@ -48,7 +51,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import resource_types
+from golem.task.taskbase import ResourceType
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -153,7 +156,9 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key), geth_port)
+                datadir,
+                self.keys_auth._private_key,
+                geth_port)
         else:
             self.transaction_system = None
 
@@ -394,7 +399,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.key_changed()
 
     def enqueue_new_task(self, task_dict):
-        # FIXME: Statement only for DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
             task = self.task_server.task_manager.create_task(task_dict)
         else:
@@ -408,7 +413,7 @@ class Client(HardwarePresetsMixin):
         key_id = self.keys_auth.key_id
 
         options = resource_manager.build_client_options(key_id)
-        files = task.get_resources(None, resource_types["hashes"])
+        files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
             request = AsyncRequest(task_manager.start_task, task_id)
@@ -641,7 +646,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
-    def get_task_stats(self):
+    def get_task_stats(self) -> Dict[str, int]:
         return {
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
@@ -650,7 +655,7 @@ class Client(HardwarePresetsMixin):
             'subtasks_with_timeout': self.get_timeout_task_count()
         }
 
-    def get_supported_task_count(self):
+    def get_supported_task_count(self) -> int:
         return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
@@ -710,19 +715,6 @@ class Client(HardwarePresetsMixin):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
-
-    def get_description(self):
-        try:
-            account, _ = Account.get_or_create(node_id=self.get_client_id())
-            return account.description
-        except Exception as e:
-            return "An error has occurred {}".format(e)
-
-    def change_description(self, description):
-        self.get_description()
-        q = Account.update(description=description)\
-            .where(Account.node_id == self.get_client_id())
-        q.execute()
 
     def use_ranking(self):
         return bool(self.ranking)
@@ -869,33 +861,33 @@ class Client(HardwarePresetsMixin):
         envs = copy(self.environments_manager.get_environments())
         return [{
             'id': str(env.get_id()),
-            'supported': env.supported(),
+            'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
-            'performance': env.get_performance(self.config_desc),
+            'performance': env.get_performance(),
             'description': str(env.short_description)
         } for env in envs]
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        # TODO: move benchmarks to environments
-        from apps.blender.blenderenvironment import BlenderEnvironment
-        from apps.lux.luxenvironment import LuxRenderEnvironment
-
         deferred = Deferred()
 
-        if env_id == BlenderEnvironment.get_id():
-            self.task_server.task_computer.run_blender_benchmark(
-                deferred.callback, deferred.errback
-            )
-        elif env_id == LuxRenderEnvironment.get_id():
-            self.task_server.task_computer.run_lux_benchmark(
-                deferred.callback, deferred.errback
-            )
+        if env_id != DefaultEnvironment.get_id():
+            benchmark_manager = self.task_server.benchmark_manager
+            benchmark_manager.run_benchmark_for_env_id(env_id,
+                                                       deferred.callback,
+                                                       deferred.errback)
+            result = yield deferred
+            returnValue(result)
         else:
-            raise Exception("Unknown environment: {}".format(env_id))
 
-        result = yield deferred
-        returnValue(result)
+            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
+                      'callback': deferred.callback,
+                      'errback': deferred.errback,
+                      'num_cores': self.config_desc.num_cores,
+                      'save': True}
+            Thread(target=callback_wrapper, kwargs=kwargs).start()
+            result = yield deferred
+            returnValue(result)
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -948,6 +940,9 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
 
+    def get_performance_values(self):
+        return self.environments_manager.get_performance_values()
+
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
             self.rpc_publisher.publish(event_name, *args, **kwargs)
@@ -964,7 +959,6 @@ class Client(HardwarePresetsMixin):
             self.session_id,
             sys.platform,
             APP_VERSION,
-            self.get_description(),
             self.config_desc
         )
 

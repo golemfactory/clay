@@ -3,44 +3,87 @@ import shutil
 import unittest
 import zipfile
 import zlib
-from copy import copy
+from copy import copy, deepcopy
 
-from mock import MagicMock
+from mock import MagicMock, Mock
 
-
-from golem.core.common import is_linux
+from golem.core.common import is_linux, timeout_to_deadline
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader
 from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import result_types, TaskEventListener
+from golem.task.taskbase import ResultType, TaskEventListener, ResourceType, ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.core.task.coretask import (CoreTask, logger, log_key_error, TaskTypeInfo,
+from apps.core.task.coretask import (CoreTask, logger, log_key_error, CoreTaskTypeInfo,
                                      CoreTaskBuilder, AcceptClientVerdict)
 from apps.core.task.coretaskstate import TaskDefinition
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
-    def _get_core_task(self):
+
+    # CoreTask is abstract, so in order to be able to instantiate it
+    # we have to override some stuff
+    class CoreTaskDeabstracted(CoreTask):
+        ENVIRONMENT_CLASS = MagicMock()
+        def query_extra_data(self, *args, **kwargs):
+            pass
+        def short_extra_data_repr(self, extra_data):
+            pass
+        def query_extra_data_for_test_task(self):
+            pass
+
+    @staticmethod
+    def _get_core_task_definition():
         task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
         task_definition.full_task_timeout = 3000
         task_definition.subtask_timeout = 30
-        task = CoreTask(
-            src_code="src code",
-            task_definition=task_definition,
+        return task_definition
+
+    def test_instantiation(self):
+        task_def = self._get_core_task_definition()
+
+        # abstract class cannot be instantiated
+        with self.assertRaises(TypeError):
+            CoreTask(task_def, "node_name")
+
+        class CoreTaskDeabstacted(CoreTask):
+            def query_extra_data(self, *args, **kwargs):
+                pass
+            def short_extra_data_repr(self, extra_data):
+                pass
+
+        # ENVIRONMENT has to be set
+        with self.assertRaises(TypeError):
+            CoreTaskDeabstacted(task_def, "node_name")
+
+        class CoreTaskDeabstractedEnv(CoreTask):
+            ENVIRONMENT_CLASS = MagicMock()
+            def query_extra_data(self, *args, **kwargs):
+                pass
+            def short_extra_data_repr(self, extra_data):
+                pass
+            def query_extra_data_for_test_task(self):
+                pass
+
+        self.assertTrue(isinstance(
+            CoreTaskDeabstractedEnv(task_def, "node_name"), CoreTask))
+
+    def _get_core_task(self):
+        task_def = TestCoreTask._get_core_task_definition()
+        task = self.CoreTaskDeabstracted(
+            task_definition=task_def,
             node_name="ABC",
             owner_address="10.10.10.10",
             owner_port=123,
             owner_key_id="key",
-            environment="environment",
-            resource_size=1024,
+            resource_size=1024
         )
         dm = DirManager(self.path)
         task.initialize(dm)
@@ -113,14 +156,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
         files_copy = copy(files)
 
-        task.interpret_task_results(subtask_id, files, result_types["files"], False)
+        task.interpret_task_results(subtask_id, files, ResultType.FILES, False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -134,7 +177,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             with open(f, 'w'):
                 pass
 
-        task.interpret_task_results(subtask_id, files_copy, result_types["files"], False)
+        task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
@@ -142,7 +185,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         os.remove(files[0])
         os.makedirs(files[0])
         with self.assertLogs(logger, level="WARNING"):
-            task.interpret_task_results(subtask_id, files_copy, result_types["files"], False)
+            task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
         assert task.results[subtask_id] == [files[1], files[4]]
 
         os.removedirs(files[0])
@@ -156,18 +199,18 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
-        res = [self.__compress_and_dump_file(files[0], "abc"*1000),
-               self.__compress_and_dump_file(files[1], "def"*100),
+        res = [self.__compress_and_dump_file(files[0], "abc" * 1000),
+               self.__compress_and_dump_file(files[1], "def" * 100),
                self.__compress_and_dump_file(files[2], "outputlog"),
                self.__compress_and_dump_file(files[3], "errlog"),
                self.__compress_and_dump_file(files[4], "ghi")]
 
-        task.interpret_task_results(subtask_id, res, result_types["data"], False)
+        task.interpret_task_results(subtask_id, res, ResultType.DATA, False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -198,12 +241,12 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
-        task.interpret_task_results(subtask_id, files, result_types["files"])
+        task.interpret_task_results(subtask_id, files, ResultType.FILES)
 
         sorted_files = sorted([files[0], files[1], files[4]])
 
@@ -272,7 +315,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert task._interpret_log(files[0]) == "Some information from log"
         # no access to the file
         if is_linux():
-
             with open(files[1], 'w') as f:
                 f.write("No access to this information")
             os.chmod(files[1], 0o200)
@@ -365,9 +407,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         in_z = z.namelist()
         assert len(in_z) == 6
 
-        assert c.get_resources(th, 2) == files[1:]
+        assert c.get_resources(th, ResourceType.HASHES) == files[1:]
 
-        th2, p = c.get_resources(th, 1)
+        th2, p = c.get_resources(th, ResourceType.PARTS)
         assert p == []
         assert th2.files_data == []
         assert th2.sub_dir_headers == []
@@ -378,12 +420,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         drm = DistributedResourceManager(os.path.dirname(files[0]))
         res_files = drm.split_file(files[0])
         c.add_resources({files[0]: res_files})
-        th2, p = c.get_resources(th, 1)
+        th2, p = c.get_resources(th, ResourceType.PARTS)
         assert len(p) == 1
         assert len(th2.files_data) == 1
         assert th2.sub_dir_headers == []
 
         assert c.get_resources(th, 3) is None
+        assert c.get_resources(th, "aaa") is None
+        assert c.get_resources(th, None) is None
 
     def test_result_incoming(self):
         c = self._get_core_task()
@@ -396,11 +440,58 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c._mark_subtask_failed("subtask1")
         assert c._accept_client("Node 1") == AcceptClientVerdict.REJECTED
 
+    def test_accept_results(self):
+        c = self._get_core_task()
+
+        c.subtasks_given["SUBTASK1"] = {}
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.finished
+        }
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.finished
+        }
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        # this one should be ok
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.downloading
+        }
+        c.accept_results("SUBTASK1", None)
+
     def test_create_path_in_load_task_result(self):
         c = self._get_core_task()
         assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
-        c.load_task_results(MagicMock(), result_types['data'], "subtask1")
+        c.load_task_results(MagicMock(), ResultType.DATA, "subtask1")
         assert os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
+
+    def test_new_compute_task_def(self):
+        c = self._get_core_task()
+        c.header.subtask_timeout = 1
+
+        hash = "aaa"
+        extra_data = Mock()
+        working_directory = "."
+        perf_index = 0
+
+        ctd = c._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        assert isinstance(ctd, ComputeTaskDef)
+        assert ctd.task_id == c.header.task_id
+        assert ctd.subtask_id == hash
+        assert ctd.extra_data == extra_data
+        assert ctd.short_description == c.short_extra_data_repr(extra_data)
+        assert ctd.src_code == c.src_code
+        assert ctd.performance == perf_index
+        assert ctd.working_directory == working_directory
+        assert ctd.docker_images == c.header.docker_images
+        assert ctd.task_owner == c.header.task_owner
+        assert ctd.environment == c.header.environment
 
 
 class TestLogKeyError(LogTestCase):
@@ -412,7 +503,7 @@ class TestLogKeyError(LogTestCase):
 
 class TestTaskTypeInfo(unittest.TestCase):
     def test_init(self):
-        tti = TaskTypeInfo("Name1", "Definition1", "Defaults", "Options", "builder")
+        tti = CoreTaskTypeInfo("Name1", "Definition1", "Defaults", "Options", "builder")
         assert tti.name == "Name1"
         assert tti.defaults == "Defaults"
         assert tti.options == "Options"
@@ -423,7 +514,7 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 
-        tti = TaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2", "builder2", "dialog",
+        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2", "builder2", "dialog",
                            "controller")
         assert tti.name == "Name2"
         assert tti.defaults == "Defaults2"
@@ -436,14 +527,13 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert tti.output_file_ext == []
 
     def test_preview_methods(self):
-        assert TaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
-        assert TaskTypeInfo.get_task_border("subtask1", None, 10) == []
+        assert CoreTaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
+        assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 
 class TestCoreTaskBuilder(unittest.TestCase):
-
     def _get_core_task_builder(self):
-        return CoreTaskBuilder("Node1", MagicMock(), "path", "manager")
+        return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())
 
     def test_init(self):
         builder = self._get_core_task_builder()
@@ -452,7 +542,7 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert builder.task_definition is not None
         assert builder.node_name == "Node1"
         assert builder.root_path == "path"
-        assert builder.dir_manager == "manager"
+        assert isinstance(builder.dir_manager, MagicMock)
 
     def test_get_task_kwargs(self):
         builder = self._get_core_task_builder()
@@ -466,10 +556,10 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert kwargs["arg2"] == 1380
         assert kwargs["arg3"] == c
         assert kwargs["node_name"] == "Node1"
-        assert kwargs["src_code"] == ""
-        assert kwargs["environment"] is None
         assert isinstance(kwargs["task_definition"], MagicMock)
 
     def test_build(self):
         builder = self._get_core_task_builder()
-        assert isinstance(builder.build(), CoreTask)
+        # CoreTask is now abstract
+        with self.assertRaises(TypeError):
+            builder.build()

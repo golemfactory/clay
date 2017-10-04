@@ -8,10 +8,12 @@ from pydispatch import dispatcher
 import time
 
 from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
+from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -28,8 +30,12 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth, client,
-                 use_ipv6=False, use_docker_machine_manager=True):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -40,8 +46,13 @@ class TaskServer(PendingConnectionsServer):
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management,
                                         tasks_dir=os.path.join(client.datadir, 'tasks'))
-        self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
-                                          use_docker_machine_manager=use_docker_machine_manager)
+        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
+                                                  client.datadir, benchmarks)
+        udmm = use_docker_machine_manager
+        self.task_computer = TaskComputer(config_desc.node_name,
+                                          task_server=self,
+                                          use_docker_machine_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -114,11 +125,16 @@ class TaskServer(PendingConnectionsServer):
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
-                performance = env.get_performance(self.config_desc)
+                performance = env.get_performance()
             else:
                 performance = 0.0
-            if self.should_accept_requestor(theader.task_owner_key_id):
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+            is_requestor_accepted = self.should_accept_requestor(
+                theader.task_owner_key_id)
+            is_price_accepted = self.config_desc.min_price < theader.max_price
+            if is_requestor_accepted and is_price_accepted:
+                price = int(theader.max_price)
+                self.task_manager.add_comp_task_request(theader=theader,
+                                                        price=price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -129,7 +145,11 @@ class TaskServer(PendingConnectionsServer):
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
                 }
-                self._add_pending_request(TASK_CONN_TYPES['task_request'], theader.task_owner, theader.task_owner_port, theader.task_owner_key_id, args)
+                self._add_pending_request(TASK_CONN_TYPES['task_request'],
+                                          theader.task_owner,
+                                          theader.task_owner_port,
+                                          theader.task_owner_key_id,
+                                          args)
 
                 return theader.task_id
         except Exception as err:
@@ -363,7 +383,9 @@ class TaskServer(PendingConnectionsServer):
             return
         task_id = expected_income.task
         node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
+
+        # check that the reward has been successfully written in db
+        result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=node_id,
             task_id=task_id,
             subtask_id=subtask_id,
@@ -371,7 +393,11 @@ class TaskServer(PendingConnectionsServer):
             block_number=block_number,
             value=reward,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        # Trust is increased only after confirmation from incomes keeper
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -389,6 +415,7 @@ class TaskServer(PendingConnectionsServer):
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
+
         if not value:
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
@@ -908,13 +935,16 @@ class TaskServer(PendingConnectionsServer):
     def __remove_old_sessions(self):
         cur_time = time.time()
         sessions_to_remove = []
-        for subtask_id, session in self.task_sessions.items():
-            if cur_time - session.last_message_time > self.last_message_time_threshold:
+        sessions = dict(self.task_sessions)
+
+        for subtask_id, session in sessions.items():
+            dt = cur_time - session.last_message_time
+            if dt > self.last_message_time_threshold:
                 sessions_to_remove.append(subtask_id)
         for subtask_id in sessions_to_remove:
-            if self.task_sessions[subtask_id].task_computer is not None:
-                self.task_sessions[subtask_id].task_computer.session_timeout()
-            self.task_sessions[subtask_id].dropped()
+            if sessions[subtask_id].task_computer is not None:
+                sessions[subtask_id].task_computer.session_timeout()
+            sessions[subtask_id].dropped()
 
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:

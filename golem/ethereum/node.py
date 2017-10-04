@@ -26,17 +26,17 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-def ropsten_faucet_donate(addr):
+def tETH_faucet_donate(addr):
     addr = normalize_address(addr)
     URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
     request = URL_TEMPLATE.format(addr.hex())
     response = requests.get(request)
     if response.status_code != 200:
-        log.error("Ropsten Faucet error code {}".format(response.status_code))
+        log.error("tETH Faucet error code {}".format(response.status_code))
         return False
     response = response.json()
     if response['paydate'] == 0:
-        log.warning("Ropsten Faucet warning {}".format(response['message']))
+        log.warning("tETH Faucet warning {}".format(response['message']))
         return False
     # The paydate is not actually very reliable, usually some day in the past.
     paydate = datetime.fromtimestamp(response['paydate'])
@@ -65,7 +65,7 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.6.1'
-    MAX_GETH_VERSION = '1.6.999'
+    MAX_GETH_VERSION = '1.7.999'
     IPC_CONNECTION_TIMEOUT = 10
 
     SUBPROCESS_PIPES = dict(
@@ -128,8 +128,10 @@ class NodeProcess(object):
         init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
-            raise OSError(
-                "geth init failed with code {}".format(init_subp.returncode))
+            error_msg = "geth init failed with code {}".format(
+                init_subp.returncode)
+            log.error(error_msg)
+            raise OSError(error_msg)
 
         if port is None:
             port = find_free_net_port()
@@ -154,7 +156,8 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+                                     stderr=subprocess.PIPE,
+                                     stdin=DEVNULL)
 
         tee_kwargs = {
             'prefix': 'geth: ',

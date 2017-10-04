@@ -8,8 +8,6 @@ CORE_METHOD_MAP = dict(
     get_setting=            Environment.opt,
     update_setting=         Environment.opt_update,
     get_datadir=            Environment.datadir,
-    get_description=        Environment.opt_description,
-    change_description=     Environment.opt_description_update,
 
     get_hw_caps=            Environment.hardware_caps,
     get_hw_presets=         Environment.presets,
@@ -80,6 +78,7 @@ CORE_METHOD_MAP = dict(
     enable_environment=     Computation.enable_environment,
     disable_environment=    Computation.disable_environment,
     run_benchmark=          Computation.benchmark_environment,
+    get_performance_values= Computation.get_performance_values,
 
     get_payment_address=    Payments.ident,
     get_balance=            Payments.balance,
@@ -90,4 +89,3 @@ CORE_METHOD_MAP = dict(
     resume=                 UI.start,
     pause=                  UI.stop
 )
-

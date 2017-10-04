@@ -1,11 +1,11 @@
 
-
 from ethereum.utils import denoms
 import logging
 import functools
 import os
 import struct
 import time
+import threading
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
@@ -18,7 +18,7 @@ from golem.model import Payment
 from golem.network.transport import tcpnetwork
 from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
-from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
+from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,7 @@ class TaskSession(MiddlemanSafeSession):
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
+        # self.threads = []
     ########################
     # BasicSession methods #
     ########################
@@ -249,7 +250,7 @@ class TaskSession(MiddlemanSafeSession):
             self._reject_subtask_result(subtask_id)
             return
 
-        if result_type == result_types['data']:
+        if result_type == ResultType.DATA:
             try:
                 if decrypt:
                     result = self.decrypt(result)
@@ -365,9 +366,9 @@ class TaskSession(MiddlemanSafeSession):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == result_types['data']:
+        if task_result.result_type == ResultType.DATA:
             extra_data = []
-        elif task_result.result_type == result_types['files']:
+        elif task_result.result_type == ResultType.FILES:
             extra_data = [os.path.basename(x) for x in task_result.result]
         else:
             logger.error(
@@ -791,12 +792,22 @@ class TaskSession(MiddlemanSafeSession):
                 msg.transaction_id
             )
             return
-        self.task_server.reward_for_subtask_paid(
-            subtask_id=msg.subtask_id,
-            reward=msg.reward,
-            transaction_id=msg.transaction_id,
-            block_number=msg.block_number
+
+        # reward_for_subtask_paid -> ethereum incomes keeper requires
+        # being sync with blockchain
+        # run it in separate thread to prevent hanging the main thread
+        thread = threading.Thread(
+            target=self.task_server.reward_for_subtask_paid,
+            args=(),
+            kwargs={
+                'subtask_id': msg.subtask_id,
+                'reward': msg.reward,
+                'transaction_id': msg.transaction_id,
+                'block_number': msg.block_number
+            }
         )
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
 
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
@@ -872,7 +883,7 @@ class TaskSession(MiddlemanSafeSession):
         res_file_path = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["zip"]
+            ResourceType.ZIP
         )
 
         if not res_file_path:
@@ -890,7 +901,7 @@ class TaskSession(MiddlemanSafeSession):
         res = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["parts"]
+            ResourceType.PARTS
         )
         if res is None:
             return

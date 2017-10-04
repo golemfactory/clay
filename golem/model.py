@@ -58,6 +58,7 @@ class Database:
             Payment,
             Stats,
             TaskPreset,
+            Performance,
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -342,7 +343,6 @@ class KnownHosts(BaseModel):
 
 class Account(BaseModel):
     node_id = CharField(unique=True)
-    description = TextField(default="")
 
     class Meta:
         database = db
@@ -380,6 +380,11 @@ class HardwarePreset(BaseModel):
         database = db
 
 
+##############
+# APP MODELS #
+##############
+
+
 class TaskPreset(BaseModel):
     name = CharField(null=False)
     task_type = CharField(null=False, index=True)
@@ -388,3 +393,22 @@ class TaskPreset(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_type', 'name')
+
+
+class Performance(BaseModel):
+    """ Keeps information about benchmark performance """
+    environment_id = CharField(null=False, index=True, unique=True)
+    value = FloatField(default=0.0)
+
+    class Meta:
+        database = db
+
+    @classmethod
+    def update_or_create(cl, env_id, performance):
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+            perf.value = performance
+            perf.save()
+        except Performance.DoesNotExist:
+            perf = Performance(environment_id=env_id, value=performance)
+            perf.save()

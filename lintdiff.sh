@@ -57,17 +57,17 @@ fi
 
 cleanup_artifacts() {
     git reset --hard HEAD
-    git checkout "$CURRENT_BRANCH" || exit 1
+    git checkout "$CURRENT_BRANCH" -- || exit 1
 }
 
 # we checkout the reference branch first in case there are
 # uncommitted changes to be overwritten by the merge
-git checkout "$REF_BRANCH" || exit 1
+git checkout "$REF_BRANCH" -- || exit 1
 trap cleanup_artifacts EXIT
 commit=$(git rev-parse HEAD)
 # We need to take files responsible for the linting configuration from
 # the new commit.
-git checkout "$CURRENT_BRANCH" .pylintrc setup.cfg
+git checkout "$CURRENT_BRANCH" -- .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo $@
 $@ >$REF_OUT
@@ -75,7 +75,7 @@ check_errcode $?
 
 # Now take back the checked out config, go back to the new branch
 git reset --hard HEAD
-git checkout "$CURRENT_BRANCH" || exit 1
+git checkout "$CURRENT_BRANCH" -- || exit 1
 # The trap is no longer needed
 trap - EXIT
 commit=$(git rev-parse HEAD)
