@@ -1,19 +1,22 @@
-
 from rlp.utils import decode_hex
 from sha3 import sha3_256
 
 from golem.transactions.paymentskeeper import PaymentsKeeper
-from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, EthereumAddress,
+from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo,
+                                                                EthereumAddress,
                                                                 logger)
 from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.testutils import TempDirFixture
+from golem.testutils import (TempDirFixture, PEP8MixIn)
+
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.network.p2p.node import Node
 
 
-class TestEthereumPaymentsKeeper(TestWithDatabase):
+class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
+    PEP8_FILES = ['golem/transactions/ethereum/ethereumpaymentskeeper.py', ]
+
     def test_get_list_of_payment(self):
         e = PaymentsKeeper()
 
@@ -51,11 +54,15 @@ class TestEthAccountInfo(TempDirFixture):
     def test_comparison(self):
         k = EllipticalKeysAuth(self.path)
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
-        a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), addr1)
-        b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), addr1)
+        a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+                           Node(), addr1)
+        b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+                           Node(), addr1)
         self.assertEqual(a, b)
-        n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10", pub_port=1032)
-        c = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", n, addr1)
+        n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10",
+                 pub_port=1032)
+        c = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+                           n, addr1)
         self.assertEqual(a, c)
         k.generate_new(2)
         c.key_id = k.get_key_id()
@@ -81,7 +88,8 @@ class TestEthereumAddress(LogTestCase):
             e = EthereumAddress(addr3)
         assert any("Invalid" in log for log in l.output)
         self.assertIsNone(e.address)
-        # We may think about allowing to add address in such formats in the future
+        # We may think about allowing
+        # to add address in such formats in the future
         addr4 = bin(int(addr1, 16))[2:].zfill(160)
         with self.assertLogs(logger, level='WARNING') as l:
             e = EthereumAddress(addr4)

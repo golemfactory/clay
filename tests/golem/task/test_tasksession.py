@@ -493,6 +493,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             subtask_id=subtask_id,
             reward=reward
         )
+
         self.task_session.interpret(msg)
         reward_mock.assert_not_called()
 
@@ -504,6 +505,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Proper/finished transaction
         msg.block_number = block_number
         self.task_session.interpret(msg)
+
         reward_mock.assert_called_once_with(
             subtask_id=subtask_id,
             reward=reward,

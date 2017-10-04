@@ -147,6 +147,7 @@ class PEP8MixIn(object):
     in this attribute.
     """
 
+
     def test_conformance(self):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(ignore=[], max_line_length=80)

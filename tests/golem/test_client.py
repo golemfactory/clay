@@ -1,3 +1,4 @@
+from copy import copy
 import os
 import time
 import unittest
@@ -12,6 +13,7 @@ from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -791,57 +793,43 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.blender.benchmark.benchmark import BlenderBenchmark
         from apps.lux.luxenvironment import LuxRenderEnvironment
-        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+        from apps.lux.benchmark.benchmark import LuxBenchmark
 
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_dummytask_benchmark = Mock()
-        task_computer.run_dummytask_benchmark.side_effect = lambda c, e: c(True)
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_benchmark = Mock()
+        benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
+            c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
-        assert task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-        assert not task_computer.run_dummytask_benchmark.called
-
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        assert benchmark_manager.run_benchmark.call_count == 1
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          BlenderBenchmark)
 
         sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert task_computer.run_lux_benchmark.called
-        assert not task_computer.run_dummytask_benchmark.called
+        assert benchmark_manager.run_benchmark.call_count == 2
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          LuxBenchmark)
 
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        result = sync_wait(self.client.run_benchmark(
+            DefaultEnvironment.get_id()))
+        assert result > 100.0
+        assert benchmark_manager.run_benchmark.call_count == 2
 
-        sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-        assert task_computer.run_dummytask_benchmark.called
-
-    def test_run_benchmarks(self, *_):
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda *_: 1
-        task_computer.run_dummytask_benchmark = Mock()
-        task_computer.run_dummytask_benchmark.side_effect = lambda c: c(1)
-
-        task_computer.run_benchmarks()
-        assert task_computer.run_lux_benchmark.called
-        assert task_computer.run_blender_benchmark.called
-        assert task_computer.run_dummytask_benchmark.called
+    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
+    def test_run_benchmarks(self, br_mock, *_):
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_all_benchmarks()
+        f = br_mock.call_args[0][2]  # get success callback
+        f(1)
+        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -1022,6 +1010,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             description="port 1234: closed"
         )
         self.assertTrue(self.client.node.port_status)
+
+    def test_get_performance_values(self, *_):
+        expected_perf = {DefaultEnvironment.get_id(): 0.0}
+        assert self.client.get_performance_values() == expected_perf
 
     @classmethod
     def __new_incoming_peer(cls):

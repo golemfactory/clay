@@ -1,10 +1,11 @@
 import json
 import logging
 import os
-import shutil
 from os import makedirs, path, remove
+import shutil
 
 from mock import Mock
+import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -101,8 +102,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.node._run()
 
         ccd = ClientConfigDescriptor()
-        ccd.estimated_blender_performance = 2000.0
-        ccd.estimated_lux_performance = 2000.0
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
@@ -209,6 +208,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return new_flm_file, new_file
 
+    @pytest.mark.slow
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
@@ -222,6 +222,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
         self._test_luxrender_real_task(task)
 
+    @pytest.mark.slow
     def test_luxrender_real_task_exr(self):
         task = self._test_task()
         task.output_format = "exr"

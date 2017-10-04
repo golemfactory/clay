@@ -512,7 +512,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_program_file = 'Bździągwa'
         logic.customizer.show_error_window = Mock()
-        logic.run_benchmark(broken_benchmark, m, m)
+        logic.run_benchmark(broken_benchmark, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
@@ -521,7 +521,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = '/x/y/Bździągwa'
-        logic.run_benchmark(broken_benchmark, m, m)
+        logic.run_benchmark(broken_benchmark, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
@@ -532,7 +532,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
         output_file = os.path.join(self.path, str(uuid.uuid4()))
         broken_benchmark.task_definition.output_file = output_file
-        logic.run_benchmark(broken_benchmark, m, m)
+        logic.run_benchmark(broken_benchmark, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
@@ -758,3 +758,6 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         assert logic.run_test_task(ts.definition)
         assert not logic.run_test_task(None)
+
+    def test_recount_performance(self, *_):
+        assert self.logic.recount_performance(3) > 0.0

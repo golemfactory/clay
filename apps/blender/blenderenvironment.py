@@ -11,6 +11,3 @@ class BlenderEnvironment(DockerEnvironment):
     APP_DIR = path.join(get_golem_path(), 'apps', 'blender')
     SCRIPT_NAME = "docker_blendertask.py"
     SHORT_DESCRIPTION = "Blender (www.blender.org)"
-
-    def get_performance(self, cfg_desc):
-        return cfg_desc.estimated_blender_performance

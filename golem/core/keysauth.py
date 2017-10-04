@@ -162,7 +162,7 @@ class KeysAuth(object):
         """
 
     @abstractmethod
-    def save_to_files(self, private_key_loc, public_key_loc):
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
         :param str public_key_loc: where should public key be saved
@@ -312,7 +312,7 @@ class RSAKeysAuth(KeysAuth):
         self._set_and_save(priv_key, pub_key)
         return True
 
-    def save_to_files(self, private_key_loc, public_key_loc):
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
         :param str public_key_loc: where should public key be saved
@@ -503,7 +503,7 @@ class EllipticalKeysAuth(KeysAuth):
         self._set_and_save(priv_key, pub_key)
         return True
 
-    def save_to_files(self, private_key_loc, public_key_loc):
+    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
         :param str public_key_loc: where should public key be saved

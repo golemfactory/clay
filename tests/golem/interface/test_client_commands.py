@@ -11,7 +11,7 @@ from mock import Mock, mock_open, patch
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.interface.client.account import account
+from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
@@ -53,8 +53,8 @@ class TestAccount(unittest.TestCase):
             denoms.ether
         )
 
-        with client_ctx(account, client):
-            result = account()
+        with client_ctx(Account, client):
+            result = Account().info()
             assert result == {
                 'node_name': 'node1',
                 'provider_reputation': 1,
@@ -415,7 +415,7 @@ class TestTasks(TempDirFixture):
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
-            tasks.create_from_json(def_str)
+            tasks._Tasks__create_from_json(def_str)
             task_def = json.loads(def_str)
             task_def['id'] = "new_uuid"
             client.create_task.assert_called_with(task_def)
