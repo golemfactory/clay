@@ -1,9 +1,11 @@
 import abc
 import logging
+import math
 import os
 from _pysha3 import sha3_256 as _sha3_256
 from abc import abstractmethod
 from hashlib import sha256
+from typing import Optional, Union
 
 import bitcoin
 from Crypto.Cipher import PKCS1_OAEP
@@ -16,6 +18,8 @@ from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
+
+IntFloatT = Union[int, float]
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +79,28 @@ def get_random_float():
 class KeysAuth(object):
     """ Cryptographic authorization manager. Create and keeps private and public keys."""
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
+    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY,
+                 difficulty: IntFloatT = 0):
         """
         Create new keys authorization manager, load or create keys
         :param prviate_key_name str: name of the file containing private key
         :param public_key_name str: name of the file containing public key
         """
+        self.difficulty = difficulty
         self.get_keys_dir(datadir)
         self.private_key_name = private_key_name
         self.public_key_name = public_key_name
         self._private_key = self._load_private_key()
         self.public_key = self._load_public_key()
         self.key_id = self.cnt_key_id(self.public_key)
+
+    @classmethod
+    def is_pubkey_difficult(cls, pub_key: Union[bytes, str],
+                            difficulty: IntFloatT) -> bool:
+        if isinstance(pub_key, bytes):
+            return pub_key.count(0) >= difficulty
+        else:
+            return pub_key.count('0') >= difficulty
 
     def get_difficulty(self, key_id=None):
         """ Count key_id difficulty in hashcash-like puzzle
@@ -399,18 +413,33 @@ class EllipticalKeysAuth(KeysAuth):
     """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
     (curve secp256k1)."""
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
+    PUBKEY_BYTES = 64
+
+    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY,
+                 difficulty: IntFloatT = 0):
         """
         Create new ECC keys authorization manager, load or create keys.
-        :param uuid|None uuid: application identifier (to read keys)
+
+        :param difficulty:
+            desired key difficulty level.
+            It's a number of leading zeros in binary representation of
+            public key. Works with floats too.
+            Value in range <0, PUBKEY_BYTES*8>. 0 is not difficult.
+            Maximum is impossible.
         """
-        KeysAuth.__init__(self, datadir, private_key_name, public_key_name)
+        KeysAuth.__init__(self, datadir, private_key_name, public_key_name,
+                          difficulty)
+
+        if not self.is_difficult(difficulty):
+            logger.warning("Current key is not difficult enough. Creating new one.")
+            self.generate_new(difficulty)
+
         try:
             self.ecc = ECCx(None, self._private_key)
         except AssertionError:
             private_key_loc = self._get_private_key_loc(private_key_name)
             public_key_loc = self._get_public_key_loc(public_key_name)
-            self._generate_keys(private_key_loc, public_key_loc)
+            self._generate_keys(private_key_loc, public_key_loc, difficulty)
 
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key (in hex format).
@@ -472,20 +501,56 @@ class EllipticalKeysAuth(KeysAuth):
             logger.error("Cannot verify signature: {}".format(exc))
         return False
 
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        :raise TypeError: in case of incorrect @difficulty type
-        """
-        if not isinstance(difficulty, int):
-            raise TypeError("Incorrect 'difficulty' type: {}".format(type(difficulty)))
-        min_hash = self._count_min_hash(difficulty)
-        priv_key = mk_privkey(str(get_random_float()))
-        pub_key = privtopub(priv_key)
-        while sha2(self.cnt_key_id(pub_key)) > min_hash:
+    @classmethod
+    def _count_max_hash(cls, difficulty: IntFloatT) -> int:
+        return pow(2, cls.PUBKEY_BYTES*8-difficulty)
+
+    @staticmethod
+    def _is_pubkey_difficult(pub_key: bytes, max_hash: int) -> bool:
+        return int.from_bytes(pub_key, 'big') < max_hash
+
+    @classmethod
+    def is_pubkey_difficult(cls, pub_key: Union[bytes, str],
+                            difficulty: IntFloatT) -> bool:
+        if isinstance(pub_key, str):
+            pub_key = decode_hex(pub_key)
+        max_hash = cls._count_max_hash(difficulty)
+        return cls._is_pubkey_difficult(pub_key, max_hash)
+
+    def is_difficult(self, difficulty: IntFloatT) -> bool:
+        return self.is_pubkey_difficult(self.public_key, difficulty)
+
+    @classmethod
+    def _generate_new_keys(cls, difficulty: IntFloatT) -> (bytes, bytes):
+        if not (isinstance(difficulty, int) or isinstance(difficulty, float)):
+            raise TypeError("Incorrect 'difficulty' type: {}"
+                            .format(type(difficulty)))
+
+        max_hash = cls._count_max_hash(difficulty)
+
+        while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
+            if cls._is_pubkey_difficult(pub_key, max_hash):
+                break
+        return (priv_key, pub_key)
+
+    def generate_new(self, difficulty: IntFloatT) -> None:
+        """ Generate new pair of keys with given difficulty
+        :param difficulty: see __init__
+        :raise TypeError: in case of incorrect @difficulty type
+        """
+        priv_key, pub_key = self._generate_new_keys(difficulty)
         self._set_and_save(priv_key, pub_key)
+
+    def get_difficulty(self, key_id: Optional[str] = None) -> float:
+        """
+        :param key_id: *Default: None* count difficulty of given key.
+                       If key_id is None then use default key_id
+        :return: key_id difficulty
+        """
+        pub_key = decode_hex(key_id) if key_id else self.public_key
+        return self.PUBKEY_BYTES*8 - math.log2(int.from_bytes(pub_key, 'big'))
 
     def load_from_file(self, file_name):
         """ Load private key from given file. If it's proper key, then generate public key and
@@ -539,7 +604,8 @@ class EllipticalKeysAuth(KeysAuth):
         private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
         public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
         if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
+            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc,
+                                              self.difficulty)
         with open(private_key_loc, 'rb') as f:
             key = f.read()
         return key
@@ -548,15 +614,16 @@ class EllipticalKeysAuth(KeysAuth):
         private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
         public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
         if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
+            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc,
+                                              self.difficulty)
         with open(public_key_loc, 'rb') as f:
             key = f.read()
         return key
 
-    @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
-        key = mk_privkey(str(get_random_float()))
-        pub_key = privtopub(key)
+    @classmethod
+    def _generate_keys(cls, private_key_loc, public_key_loc,
+                       difficulty: IntFloatT):
+        key, pub_key = cls._generate_new_keys(difficulty)
 
         # Create dir for the keys.
         # FIXME: It assumes private and public keys are stored in the same dir.

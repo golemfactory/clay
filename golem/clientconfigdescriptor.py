@@ -18,6 +18,7 @@ class ClientConfigDescriptor(object):
         self.send_pings = 0
         self.pings_interval = 0.0
         self.use_ipv6 = 0
+        self.key_difficulty = 0
 
         self.seed_host = ""
         self.seed_port = 0

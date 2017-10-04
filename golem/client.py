@@ -124,7 +124,9 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
+        self.keys_auth = EllipticalKeysAuth(
+            self.datadir,
+            difficulty=self.config_desc.key_difficulty)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,

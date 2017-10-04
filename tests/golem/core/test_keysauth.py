@@ -146,7 +146,8 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
 
     def test_elliptical_init(self):
         for i in range(100):
-            ek = EllipticalKeysAuth(path.join(self.path), str(random()))
+            ek = EllipticalKeysAuth(path.join(self.path),
+                                    private_key_name=str(random()))
             self.assertEqual(len(ek._private_key), 32)
             self.assertEqual(len(ek.public_key), 64)
             self.assertEqual(len(ek.key_id), 128)
@@ -281,3 +282,29 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
         with self.assertRaises(TypeError):
             ek2.encrypt(None)
+
+    def test_difficulty(self):
+        difficulty = 8
+        ek = EllipticalKeysAuth(self.path, difficulty=difficulty)
+        # first 8 bits must be 0
+        self.assertEqual(ek.public_key[0], 0)
+        self.assertEqual(ek.key_id[0:2], "00")
+        self.assertGreaterEqual(ek.get_difficulty(), difficulty)
+
+    def test_key_recreate_on_increased_difficulty(self):
+        old_difficulty = 0
+        new_difficulty = 8
+
+        self.assertLess(old_difficulty, new_difficulty)
+
+        # create key that has difficulty lower than new_difficulty
+        ek = EllipticalKeysAuth(self.path, difficulty=old_difficulty)
+        while ek.is_difficult(new_difficulty):
+            ek.generate_new(old_difficulty)
+
+        self.assertGreaterEqual(ek.get_difficulty(), old_difficulty)
+        self.assertLess(ek.get_difficulty(), new_difficulty)
+
+        ek = EllipticalKeysAuth(self.path, difficulty=new_difficulty)
+
+        self.assertGreaterEqual(ek.get_difficulty(), new_difficulty)

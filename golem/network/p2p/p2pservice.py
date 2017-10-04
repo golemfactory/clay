@@ -89,6 +89,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
+        self.key_difficulty = config_desc.key_difficulty
 
         # Peers options
         self.peers = {}  # active peers
