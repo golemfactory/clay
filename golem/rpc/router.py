@@ -5,16 +5,9 @@ import os
 import queue
 import time
 from collections import namedtuple
-
-import txaio
-
-from golem.core.async import async_queue_threadsafe
-
-txaio.use_twisted = lambda: None
-
-from crossbar.common import checkconfig
 from multiprocessing import Process
 
+from golem.core.async import async_queue_threadsafe
 from golem.core.common import is_windows, is_osx
 from golem.rpc.session import WebSocketAddress
 
@@ -28,20 +21,20 @@ CrossbarRouterOptions = namedtuple(
 
 
 def _start_router(options, node_config, queue):
-    reactor = _install_reactor()
-
     # Patch txaio with multiprocessing
     import txaio
     from txaio import tx
-
+    
     txaio._explicit_framework = 'twisted'
     txaio._use_framework(tx)
     txaio.using_twisted = True
     txaio.using_asyncio = False
 
+    reactor = _install_reactor()
+
     # Import node
-    from crossbar.controller.node import Node
-    from crossbar.controller.node import default_native_workers
+    from crossbar.controller.node import Node, default_native_workers
+    from crossbar.common import checkconfig
 
     try:
 

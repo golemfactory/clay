@@ -193,10 +193,11 @@ def config_logging(suffix='', datadir=None):
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
 
-    from txaio import set_global_log_level
+    import txaio
+    txaio.use_asyncio()
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
-    set_global_log_level(crossbar_log_lvl)
+    txaio.set_global_log_level(crossbar_log_lvl)
 
 
 def get_cpu_count():

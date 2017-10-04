@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import os
 import sys
-# Set the default event loop
-os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
-import gevent
 import click
 import logging
+
+
+from golem.core.common import is_windows
 
 from multiprocessing import freeze_support
 from ethereum import slogging
@@ -13,8 +13,9 @@ from ethereum import slogging
 #SLogger aggressively mess up with python looger.
 #This patch is to settle down this.
 #It should be done before any SLogger is created.
-orig_getLogger = slogging.SManager.getLogger
+from golem.network.address import parse_peer, parse_rpc_address, parse_node_addr
 
+orig_getLogger = slogging.SManager.getLogger
 
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
@@ -23,7 +24,6 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 
 slogging.SManager.getLogger = monkey_patched_getLogger
-from golem.node import OptNode
 
 
 @click.command()
@@ -32,13 +32,13 @@ from golem.node import OptNode
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
-              callback=OptNode.parse_node_addr,
+              callback=parse_node_addr,
               help="Network address to use for this node")
 @click.option('--rpc-address', '-r', multiple=False,
-              callback=OptNode.parse_rpc_address,
+              callback=parse_rpc_address,
               help="RPC server address to use: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
+@click.option('--peer', '-p', multiple=True, callback=parse_peer,
               help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or "
                    " <node_id>@<ipv6_addr>:<port>")
 @click.option('--qt', is_flag=True, default=False,
@@ -95,9 +95,28 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     else:
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
-        node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, geth_port=geth_port, **config)
+
+        install_event_loop()
+        import gevent
+
+        from golem.node import Node
+
+        node = Node(peers=peer, node_address=node_address,
+                    use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
+
+
+def install_event_loop():
+    if is_windows():
+        import asyncio
+        from golem.asyncio.iocp import WindowsProactorEventLoopPolicy
+
+        policy = WindowsProactorEventLoopPolicy()
+        asyncio.set_event_loop_policy(policy)
+        print('Installed', asyncio.get_event_loop(), 'event loop')
+
+    # Set the default event loop
+    os.environ['GEVENT_LOOP'] = 'tulipcore.Loop'
 
 
 def start_crossbar_worker(module):

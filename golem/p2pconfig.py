@@ -17,6 +17,5 @@ p2pconfig = {
         "min_peers": 3,
         "max_peers": 15
     },
-    "log_disconnects": True,
     "client_version_string": '{} {}'.format(APP_NAME, APP_VERSION)
 }
