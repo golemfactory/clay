@@ -67,6 +67,7 @@
   copy:
     src: buildbot-worker.service
     dest: /etc/systemd/system/buildbot-worker.service
+  notify: restart buildbot worker service
 
 
 - systemd:
