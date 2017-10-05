@@ -12,7 +12,7 @@ from win32file import FD_CLOSE, WSAEnumNetworkEvents, WSAEventSelect, FD_READ, \
     FD_ACCEPT, FD_CONNECT
 
 from devp2p import slogging
-from tulipcore import Watcher
+from tulipcore import IoWatcher
 
 log = slogging.get_logger('iocp')
 main_loop = None
@@ -38,7 +38,7 @@ def _invoke(self):
         self.loop.handle_error(self, *sys.exc_info())
 
 
-Watcher._invoke = _invoke
+IoWatcher._invoke = _invoke
 
 
 # Based on twisted.internet.selectreactor.win32select
