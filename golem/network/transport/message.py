@@ -1,6 +1,7 @@
 import collections
 import logging
 import time
+from typing import Optional
 
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
@@ -1226,6 +1227,54 @@ class MessageResourceList(Message):
         super(MessageResourceList, self).__init__(**kwargs)
 
 
+class MessageResourceHandshakeStart(Message):
+    TYPE = RESOURCE_MSG_BASE + 8
+
+    MAPPING = {
+        'resource': 'resource'
+    }
+
+    def __init__(self,
+                 resource: Optional[str]=None,
+                 **kwargs):
+
+        self.resource = resource
+        super().__init__(**kwargs)
+
+
+class MessageResourceHandshakeNonce(Message):
+    TYPE = RESOURCE_MSG_BASE + 9
+
+    MAPPING = {
+        'nonce': 'nonce'
+    }
+
+    def __init__(self,
+                 nonce: Optional[str]=None,
+                 **kwargs):
+
+        self.nonce = nonce
+        super().__init__(**kwargs)
+
+
+class MessageResourceHandshakeVerdict(Message):
+    TYPE = RESOURCE_MSG_BASE + 10
+
+    MAPPING = {
+        'accepted': 'accepted',
+        'nonce': 'nonce'
+    }
+
+    def __init__(self,
+                 nonce: Optional[str]=None,
+                 accepted: Optional[bool] = False,
+                 **kwargs):
+
+        self.nonce = nonce
+        self.accepted = accepted
+        super().__init__(**kwargs)
+
+
 def init_messages():
     """Add supported messages to register messages list"""
     if Message.registered_message_types:
@@ -1291,6 +1340,10 @@ def init_messages():
             MessagePullResource,
             MessagePullAnswer,
             MessageResourceList,
+
+            MessageResourceHandshakeStart,
+            MessageResourceHandshakeNonce,
+            MessageResourceHandshakeVerdict,
 
             MessageSubtaskPayment,
             MessageSubtaskPaymentRequest,

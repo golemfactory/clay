@@ -104,7 +104,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             self.assertEqual(ts.encrypt(data), data)
 
     def test_request_task(self):
-        ts = TaskSession(Mock())
+        conn = Mock(server=Mock(deny_set=set()))
+        ts = TaskSession(conn)
         ts.verified = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
@@ -116,7 +117,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(mt.max_resource_size, 3)
         self.assertEqual(mt.max_memory_size, 1)
         self.assertEqual(mt.num_cores, 8)
-        ts2 = TaskSession(Mock())
+        ts2 = TaskSession(conn)
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
