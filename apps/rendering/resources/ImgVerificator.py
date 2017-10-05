@@ -122,7 +122,7 @@ class ImgVerificator(object):
     def get_random_crop_window(self, coverage=0.2, window=(0, 1, 0, 1)):
         """
         :param coverage:
-        determines coverage ratio
+        determines area coverage ratio
         :param window:
         if the window is already set then make a subwindow from it
         :return:
