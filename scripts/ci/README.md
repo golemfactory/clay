@@ -25,6 +25,14 @@ To apply the configuration:
     ansible-playbook --key-file=~/.ssh/your_ssh_key -i inventory/ site.yml
 
 
+# Note about HTTPS
+
+TLS certificate handling is not automated at the moment.  You will need
+to use certbot manually if you want to get a certificate from letsencrypt.
+If you wish to disable HTTPS completely you can do so by adding
+a `-e '{"tls_enabled": false}'` switch to your `ansible-playbook` command.
+
+
 # Instance Identification
 
 Instances need to be properly tagged to be found by ansible.  The tags are:
