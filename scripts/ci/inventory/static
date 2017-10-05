@@ -1,2 +1,8 @@
+[master:children]
+tag_role_buildbot_master
+
+[linux_worker:children]
+tag_role_buildbot_linux_worker
+
 [mac_worker]
 ;TODO
