@@ -37,10 +37,10 @@
   become_user: buildbot
 
 
-- name: copy master.cfg
+- name: copy buildbot sources
   copy:
-    src: master.cfg
-    dest: /home/buildbot/master/master.cfg
+    src: src/
+    dest: /home/buildbot/master/
     owner: buildbot
     group: buildbot
     mode: 0400

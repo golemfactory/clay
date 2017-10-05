@@ -1,70 +1,7 @@
-# -*- python -*-
-# ex: set filetype=python:
+from buildbot.plugins import steps, util
 
-import os
-import json
+from .settings import buildbot_host
 
-from buildbot.plugins import *
-
-local_settings = json.load(open(os.environ['BUILDBOT_SETTINGS']))
-buildbot_host = local_settings['host']
-
-# This is a sample buildmaster config file. It must be installed as
-# 'master.cfg' in your buildmaster's base directory.
-
-# This is the dictionary that the buildmaster pays attention to. We also use
-# a shorter alias to save typing.
-c = BuildmasterConfig = {}
-
-####### WORKERS
-
-# The 'workers' list defines the set of recognized workers. Each element is
-# a Worker object, specifying a unique worker name and password.  The same
-# worker name and password must be configured on the worker.
-c['workers'] = [
-    worker.Worker("macOS", local_settings['worker_pass']),
-    worker.Worker("linux", local_settings['worker_pass']),
-    worker.Worker('windows_server_2016', local_settings['worker_pass']),
-]
-
-# 'protocols' contains information about protocols which master will use for
-# communicating with workers. You must define at least 'port' option that workers
-# could connect to your master with this protocol.
-# 'port' must match the value configured into the workers (with their
-# --master option)
-c['protocols'] = {'pb': {'port': 9989}}
-
-####### CHANGESOURCES
-
-# the 'change_source' setting tells the buildmaster how it should find out
-# about source code changes.  Here we point to the buildbot clone of pyflakes.
-
-c['change_source'] = []
-#c['change_source'].append(
-    #changes.GitPoller(
-        #'https://github.com/golemfactory/golem.git',
-        #workdir='gitpoller-workdir', branches=True,
-        #pollinterval=300))
-
-####### SCHEDULERS
-
-# Configure the Schedulers, which decide how to react to incoming changes.  In this
-# case, just kick off a 'buildpackage' build
-
-c['schedulers'] = []
-c['schedulers'].append(schedulers.AnyBranchScheduler(
-                            name="all",
-                            treeStableTimer=20,
-                            builderNames=["buildpackage_macOS", "buildpackage_linux", "buildpackage_windows"]))
-c['schedulers'].append(schedulers.ForceScheduler(
-                            name="force",
-                            builderNames=["buildpackage_macOS", "buildpackage_linux", "buildpackage_windows"]))
-
-####### BUILDERS
-
-# The 'builders' list defines the Builders, which tell Buildbot how to perform a build:
-# what steps, and which workers can execute them.  Note that any particular build will
-# only take place on one worker.
 
 class StepsFactory(object):
     extra_requirements = [
@@ -215,76 +152,14 @@ class MacOsStepsFactory(PosixStepsFactory):
     platform = 'macOS'
 
 
-c['builders'] = []
-c['builders'].append(
+builders = [
     util.BuilderConfig(name="buildpackage_macOS",
         workernames=["macOS"],
-        factory=MacOsStepsFactory().build_factory()))
-c['builders'].append(
+        factory=MacOsStepsFactory().build_factory()),
     util.BuilderConfig(name="buildpackage_linux",
         workernames=["linux"],
-        factory=LinuxStepsFactory().build_factory()))
-c['builders'].append(
+        factory=LinuxStepsFactory().build_factory()),
     util.BuilderConfig(name="buildpackage_windows",
         workernames=["windows_server_2016"],
-        factory=WindowsStepsFactory().build_factory()))
-
-####### BUILDBOT SERVICES
-
-# 'services' is a list of BuildbotService items like reporter targets. The
-# status of each build will be pushed to these targets. buildbot/reporters/*.py
-# has a variety to choose from, like IRC bots.
-
-c['services'] = []
-c['services'].append(
-    reporters.GitHubStatusPush(
-        token=local_settings['github_api_token'],
-        context=util.Interpolate("buildbot/%(prop:buildername)s"),
-        startDescription='Build started.',
-        endDescription='Build done.'))
-
-####### PROJECT IDENTITY
-
-# the 'title' string will appear at the top of this buildbot installation's
-# home pages (linked to the 'titleURL').
-
-c['title'] = "Golem"
-c['titleURL'] = "https://github.com/golemfactory/golem"
-
-# the 'buildbotURL' string should point to the location where the buildbot's
-# internal web server is visible. This typically uses the port number set in
-# the 'www' entry below, but with an externally-visible host name which the
-# buildbot cannot figure out without some help.
-
-c['buildbotURL'] = buildbot_host + '/buildbot/'
-
-# minimalistic config to activate new web UI
-c['www'] = dict(
-    port=8010,
-    plugins=dict(waterfall_view={}, console_view={}),
-    auth=util.GitHubAuth(
-        local_settings['github_client_id'],
-        local_settings['github_client_secret'],
-        apiVersion=4, getTeamsMembership=True),
-    authz=util.Authz(
-        allowRules=[
-            util.AnyControlEndpointMatcher(role="golem"),
-        ],
-        roleMatchers=[
-            util.RolesFromGroups(groupPrefix='golemfactory/')
-        ]),
-    change_hook_dialects={
-        'github': {
-            'strict': True,
-            'secret': local_settings['github_webhook_secret'],
-        },
-    },
-)
-
-####### DB URL
-
-c['db'] = {
-    # This specifies what database buildbot uses to store its state.  You can leave
-    # this at its default for all but the largest installations.
-    'db_url' : "sqlite:///state.sqlite",
-}
+        factory=WindowsStepsFactory().build_factory()),
+]
