@@ -88,9 +88,9 @@ class TestIPFSClient(TestDirFixture):
     def testBuildOptions(self):
         from golem.resource.client import ClientError
         client = IPFSClient()
-        client_options = {'options': {'option1': 1, 'option2': 'abcd', 'option3': None}}
-        option = client.build_options("id", **client_options)
-        print(option)
+        client_options = {'options': {'option1': 1, 'option2': 'abcd',
+                                      'option3': None}}
+        option = client.build_options(**client_options)
         assert option.client_id == client.CLIENT_ID
         assert option.version == client.VERSION
         with self.assertRaises(ClientError):
