@@ -51,7 +51,7 @@ def _encode_payments(payments):
 
 class PaymentProcessor(Service):
     # Default deadline in seconds for new payments.
-    DEFAULT_DEADLINE = 10 * 60 # GG todo commented to speed up tests
+    DEFAULT_DEADLINE = 10 * 60
 
     # Gas price: 20 shannons, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9

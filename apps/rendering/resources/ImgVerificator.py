@@ -119,7 +119,7 @@ class ImgVerificator(object):
         p.load_from_pil_object(cropped_img, img.get_name())
         return p
 
-    def get_random_crop_window(self, coverage=0.2, window=(0, 1, 0, 1)):
+    def get_random_crop_window(self, coverage=0.33, window=(0, 1, 0, 1)):
         """
         :param coverage:
         determines area coverage ratio
