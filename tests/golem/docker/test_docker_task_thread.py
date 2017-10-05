@@ -46,7 +46,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
                                   self.work_dir, script, None,
                                   "test task thread", self.resources_dir,
                                   self.output_dir, timeout=30)
-            task_computer.current_computations.append(tt)
+            task_computer.counting_thread = tt
             task_computer.counting_task = True
             tt.setDaemon(True)
             tt.start()
@@ -57,16 +57,14 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         parent_thread.start()
         time.sleep(1)
 
-        ct = task_computer.current_computations[0]
+        ct = task_computer.counting_thread
 
         while ct and ct.is_alive():
             task_computer.run()
 
             if time.time() - started > 15:
                 self.fail("Job timed out")
-            elif task_computer.current_computations:
-                ct = task_computer.current_computations[0]
             else:
-                ct = None
+                ct = task_computer.counting_thread
 
             time.sleep(1)
