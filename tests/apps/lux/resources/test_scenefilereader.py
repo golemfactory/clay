@@ -65,8 +65,10 @@ class TestScenFileReader(TestCase):
         random.seed(0)
         window = sfr.get_random_crop_window_for_verification(src)
 
-        assert window == (0.24946508682591728, 0.39088644306322684, 0.7443999409582027, 0.8858212971955123)
+        assert window == (0.24946508682591728, 0.39088644306322684,
+                          0.7443999409582027, 0.8858212971955123)
 
         random.seed(0)
         window2 = sfr.get_random_crop_window_for_verification("")
-        assert window2 == (0.3593384289059209, 0.9337946935597237, 0.32254274784931297, 0.8969990125031158)
+        assert window2 == (0.3593384289059209, 0.9337946935597237,
+                           0.32254274784931297, 0.8969990125031158)
