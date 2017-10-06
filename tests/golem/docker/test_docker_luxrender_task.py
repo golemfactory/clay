@@ -136,10 +136,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertTrue(result)
 
         # Thread for task computation should be created by now
-        task_thread = None
         with task_computer.lock:
-            if task_computer.current_computations:
-                task_thread = task_computer.current_computations[0]
+            task_thread = task_computer.counting_thread
 
         if task_thread:
             task_thread.join(60.0)
