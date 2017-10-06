@@ -59,11 +59,13 @@ from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.utils import encode_hex
+from golem.version import check_update
 
 log = logging.getLogger("golem.client")
 
 
 class ClientTaskComputerEventListener(object):
+
     def __init__(self, client):
         self.client = client
 
@@ -75,6 +77,7 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(HardwarePresetsMixin):
+
     def __init__(
             self,
             datadir=None,
@@ -729,7 +732,7 @@ class Client(HardwarePresetsMixin):
             addr,
             port,
             ans_conn_id
-            ):
+    ):
         self.p2pservice.inform_about_task_nat_hole(
             key_id,
             rv_key_id,
@@ -1138,6 +1141,9 @@ class Client(HardwarePresetsMixin):
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
+
+    def check_golem_update(self):
+        return check_update()
 
     @staticmethod
     def get_golem_status():

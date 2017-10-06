@@ -1,6 +1,7 @@
 from golem.rpc.mapping.aliases import *
 
 CORE_METHOD_MAP = dict(
+    check_golem_update=     Golem.update,
     get_golem_status=       Golem.status,
 
     get_settings=           Environment.opts,

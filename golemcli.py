@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import json
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
@@ -14,6 +15,7 @@ from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings
 from golem.interface.client.tasks import Tasks, Subtasks
 from golem.interface.websockets import WebSocketCLI
+from golem.version import check_update
 
 # prevent 'unused' warnings
 _ = {
@@ -23,6 +25,19 @@ _ = {
 
 
 def start():
+
+    is_updated = check_update()
+    if not isinstance(is_updated, bool):
+        is_updated = json.loads(is_updated)
+        print()
+        print('#######################################################################################################')
+        print()
+        print('\t\x1b[0;33;40m' + "We released new version of Golem Brass (v{}). Update your instance for best results!".format(
+            is_updated['version']) + '\x1b[0m')
+        print()
+        print('#######################################################################################################')
+        print()
+
     flags = dict(
         interactive=('-i', '--interactive'),
         address=('-a', '--address'),
