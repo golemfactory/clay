@@ -18,7 +18,7 @@
 #define MyAppNumber ReadIni(Repository+"\\.version.ini", "version", "number", "0.1.0")
 #expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
-#define Geth "geth-windows-amd64-1.7.0-6c6c7b2a.exe"
+#define Geth "geth-windows-amd64-1.7.1-05101641.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
