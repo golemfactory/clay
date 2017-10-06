@@ -269,9 +269,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     @staticmethod
     def __wait_for_tasks(tc):
-        if tc.counting_thread is None:
-            return
-        tc.counting_thread.join()
+        if tc.counting_thread is not None:
+            tc.counting_thread.join()
 
     def test_request_rejected(self):
         task_server = self.task_server
