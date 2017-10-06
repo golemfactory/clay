@@ -106,6 +106,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_request_task(self):
         conn = Mock(server=Mock(deny_set=set()))
         ts = TaskSession(conn)
+        ts._get_handshake = Mock(return_value={})
         ts.verified = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
