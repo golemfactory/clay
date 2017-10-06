@@ -101,6 +101,9 @@ class TaskComputer(object):
 
                 with self.lock:
                     if self.counting_thread is not None:
+                        logger.error("Got resource for task: %r"
+                            "But I'm busy with another one. Ignoring.",
+                            task_id)
                         return  # busy
                     self.__compute_task(subtask_id, subtask.docker_images,
                                         subtask.src_code, subtask.extra_data,
