@@ -38,6 +38,7 @@ class PeerSession(BasicSafeSession):
     DCRDuplicatePeers = "Duplicate peers"
     DCRTooManyPeers = "Too many peers"
     DCRRefresh = "Refresh"
+    DCRNotValid = "NotValid"
 
     def __init__(self, conn):
         """
@@ -407,15 +408,18 @@ class PeerSession(BasicSafeSession):
             if solve_challenge and not self.verified:
                 self._solve_challenge(challenge, difficulty)
         else:
-            self.p2p_service.add_peer(self.key_id, self)
-            if solve_challenge:
-                self._solve_challenge(challenge, difficulty)
+            if not self.p2p_service.add_peer(self.key_id, self):
+                self.disconnect(PeerSession.DCRNotValid)
+                return
             else:
-                self.send(
-                    message.MessageRandVal(rand_val=msg.rand_val),
-                    send_unverified=True
-                )
-            self.__send_hello()
+                if solve_challenge:
+                    self._solve_challenge(challenge, difficulty)
+                else:
+                    self.send(
+                        message.MessageRandVal(rand_val=msg.rand_val),
+                        send_unverified=True
+                    )
+                self.__send_hello()
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(
