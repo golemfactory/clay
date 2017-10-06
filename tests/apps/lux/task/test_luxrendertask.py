@@ -1,6 +1,7 @@
 import os
 import pickle
 import unittest
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 from PIL import Image

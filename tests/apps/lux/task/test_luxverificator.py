@@ -1,5 +1,5 @@
 import os
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -7,8 +7,6 @@ from golem.tools.assertlogs import LogTestCase
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
-
-
 
 
 class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):

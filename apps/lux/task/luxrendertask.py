@@ -497,6 +497,7 @@ class LuxTask(renderingtask.RenderingTask):
         img_current.close()
 
     def create_reference_data_for_task_validation(self):
+        reference_threads = set()
         for i in range(0, self.reference_runs):
             path = \
                 self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
@@ -509,6 +510,9 @@ class LuxTask(renderingtask.RenderingTask):
                 lambda: self.query_extra_data_for_reference_task(counter=i)
             )
             computer.run()
+            reference_threads.add(computer)
+
+        for computer in reference_threads:
             computer.tt.join()
 
         path = self.dirManager.get_ref_data_dir(
