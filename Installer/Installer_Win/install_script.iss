@@ -31,7 +31,7 @@ AppVersion={#MyAppVersion}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={pf64}\{#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile={#Repository}\LICENSE.txt
 OutputDir={#Repository}\Installer\Installer_Win
@@ -51,7 +51,7 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('OpenSSL');
     
 ; Add HyperG to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf64}\HyperG"; Check: NeedsAddPath('HyperG');
 
 [Setup]
 AlwaysRestart = yes
@@ -73,7 +73,7 @@ Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir:
 ; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
 Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf64}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
