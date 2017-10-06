@@ -82,7 +82,6 @@ class UnsupportReason(enum.Enum):
     APP_VERSION = 'app_version'
 
 
-
 class Environment():
 
     @classmethod
