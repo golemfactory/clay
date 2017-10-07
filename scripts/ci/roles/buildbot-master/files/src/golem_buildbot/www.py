@@ -6,16 +6,13 @@ from .settings import local_settings
 www = dict(
     port=8010,
     plugins=dict(waterfall_view={}, console_view={}),
-    auth=util.GitHubAuth(
-        local_settings['github_client_id'],
-        local_settings['github_client_secret'],
-        apiVersion=4, getTeamsMembership=True),
+    auth=util.UserPasswordAuth({'maaktweluit@gmail.com': local_settings['worker_pass']}),
     authz=util.Authz(
         allowRules=[
-            util.AnyControlEndpointMatcher(role="golem"),
+            util.AnyControlEndpointMatcher(role="admins"),
         ],
         roleMatchers=[
-            util.RolesFromGroups(groupPrefix='golemfactory/')
+            util.RolesFromEmails(admins=local_settings['admin_emails'])
         ]),
     change_hook_dialects={
         'github': {
