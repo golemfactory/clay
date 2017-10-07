@@ -99,8 +99,7 @@ class OrderedClassMembers(type):
         return collections.OrderedDict()
 
     def __new__(self, name, bases, classdict):
-        classdict['__ordered__'] = [
-            key for key in classdict.keys()
-                if key not in ('__module__', '__qualname__')
-            ]
+        keys = [key for key in classdict.keys()
+                if key not in ('__module__', '__qualname__')]
+        classdict['__ordered__'] = keys
         return type.__new__(self, name, bases, classdict)
