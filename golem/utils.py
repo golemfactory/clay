@@ -86,7 +86,7 @@ def tee_target(prefix, proc, path):
 
 
 class OrderedClassMembers(type):
-    # Using to get ordered class properties
+    # Using to get class properties in order
     # In Python v3.6 and above could be solved with iteration on dict
     # @see https://www.python.org/dev/peps/pep-0520/
     # @example
@@ -99,6 +99,8 @@ class OrderedClassMembers(type):
         return collections.OrderedDict()
 
     def __new__(self, name, bases, classdict):
-        classdict['__ordered__'] = [key for key in classdict.keys()
-                                    if key not in ('__module__', '__qualname__')]
+        classdict['__ordered__'] = [
+            key for key in classdict.keys()
+                if key not in ('__module__', '__qualname__')
+            ]
         return type.__new__(self, name, bases, classdict)
