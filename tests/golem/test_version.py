@@ -5,7 +5,6 @@ from functools import partial
 from unittest import mock
 from golem.version import check_update, Importance
 
-importance = Importance()
 
 # This method will be used by the mock to replace requests.get
 def mocked_requests_get(*args, **kwargs):
@@ -37,7 +36,7 @@ def test_outdated_patch():
         result = check_update()
         assert isinstance(result, object)
         result = json.loads(result)
-        assert result['importance'] == importance.PATCH
+        assert result['importance'] == Importance.PATCH
     except Exception:
         pytest.fail("Unexpected error ..")
 
@@ -48,7 +47,7 @@ def test_outdated_minor():
         result = check_update()
         assert isinstance(result, object)
         result = json.loads(result)
-        assert result['importance'] == importance.MINOR
+        assert result['importance'] == Importance.MINOR
     except Exception:
         pytest.fail("Unexpected error ..")
 
