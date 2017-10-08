@@ -7,9 +7,8 @@ from golem.core.async import AsyncRequest, async_run
 from golem.network.transport.message import MessageWantToComputeTask, \
     MessageResourceHandshakeVerdict, MessageResourceHandshakeNonce, \
     MessageResourceHandshakeStart
-from golem.resource.base.resourcesmanager import FileResource
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.resources')
 
 
 class ResourceHandshakeStatus(Enum):
@@ -22,15 +21,16 @@ class ResourceHandshakeStatus(Enum):
 
 class ResourceHandshake:
 
-    __slots__ = ('nonce', 'status', 'file', 'message',
+    __slots__ = ('key_id', 'nonce', 'status', 'file', 'message',
                  'local_verified', 'remote_verified')
 
-    def __init__(self, message=None):
+    def __init__(self, key_id, message=None):
+        self.key_id = key_id
         self.status = ResourceHandshakeStatus.INITIAL
-        self.message = None
-        self.file = message
+        self.message = message
+        self.file = None
 
-        self.nonce = None
+        self.nonce = str(uuid.uuid4())
         self.local_verified = None
         self.remote_verified = None
 
@@ -39,11 +39,10 @@ class ResourceHandshake:
         with open(nonce_file, 'r') as f:
             return f.read().strip()
 
-    def start(self, directory, nonce=None):
+    def start(self, directory):
         self.local_verified = None
         self.remote_verified = None
-        self.nonce = nonce or str(uuid.uuid4())
-        self.file = os.path.join(directory, self.nonce)
+        self.file = os.path.join(directory, self.key_id)
         self.status = ResourceHandshakeStatus.STARTED
 
         with open(self.file, 'w') as f:
@@ -70,14 +69,10 @@ class ResourceHandshakeSessionMixin:
 
     HANDSHAKE_TIMEOUT = 20  # s
 
-    DCRResourceHandshakeTimeout = 'Resource handshake timeout'
     DCRResourceHandshakeFailure = 'Resource handshake failure'
 
-    __sub_dir = 'nonces'
-    __task_id = 'nonce'
-
     def __init__(self):
-        self.key_id = None
+        self.key_id = 0
         self.task_server = getattr(self, 'task_server', None)
         self._interpretation = getattr(self, '_interpretation', dict())
         self.__set_msg_interpretations()
@@ -133,20 +128,22 @@ class ResourceHandshakeSessionMixin:
             return
 
         if not handshake:
-            self._start_handshake(key_id, self._task_request_message)
+            self._start_handshake(key_id)
         self._download_handshake_nonce(key_id, msg.resource)
 
     def _react_to_resource_handshake_nonce(self, msg):
         key_id = self.key_id
         handshake = self._get_handshake(key_id)
         accepted = handshake and handshake.verify_local(msg.nonce)
+        nonce = handshake.nonce if handshake else None
+
+        self.send(MessageResourceHandshakeVerdict(msg.nonce, accepted))
 
         if accepted:
             self._finalize_handshake(key_id)
         else:
-            nonce = handshake.nonce if handshake else None
-            self._handshake_error(key_id, 'nonce mismatch')
-            self.send(MessageResourceHandshakeVerdict(nonce, accepted=False))
+            error = 'nonce mismatch: {} != {}'.format(nonce, msg.nonce)
+            self._handshake_error(key_id, error)
 
     def _react_to_resource_handshake_verdict(self, msg):
         key_id = self.key_id
@@ -180,13 +177,18 @@ class ResourceHandshakeSessionMixin:
         handshake = self._get_handshake(key_id)
         return handshake and not handshake.finished()
 
-    def _start_handshake(self, key_id, message=None):
-        handshake = ResourceHandshake(message)
-        directory = self.resource_manager.storage.get_dir(self.__sub_dir)
+    def _start_handshake(self, key_id):
+        logger.info('Starting resource handshake with %r', key_id)
+
+        handshake = ResourceHandshake(self.task_server.node.key,
+                                      self._task_request_message)
+        directory = self.resource_manager.storage.get_dir(handshake.nonce)
 
         try:
             handshake.start(directory)
         except Exception as err:
+            import traceback
+            traceback.print_exc()
             self._handshake_error(key_id, 'writing nonce to dir "{}": {}'
                                   .format(directory, err))
             return
@@ -199,18 +201,24 @@ class ResourceHandshakeSessionMixin:
         from twisted.internet import task
         from twisted.internet import reactor
 
-        self._handshake_timer = task.deferLater(reactor,
-                                                self.HANDSHAKE_TIMEOUT,
-                                                self._handshake_timeout)
+        self._handshake_timer = task.deferLater(
+            reactor,
+            self.HANDSHAKE_TIMEOUT,
+            lambda *_: self._handshake_error(self.key_id, 'timeout')
+        )
 
     # ########################
     #    FINALIZE HANDSHAKE
     # ########################
 
     def _finalize_handshake(self, key_id):
-        self._task_request_message = None
         handshake = self._get_handshake(key_id)
-        if handshake and handshake.success() and handshake.message:
+        if not handshake:
+            return
+
+        if handshake.finished():
+            logger.info('Finished resource handshake with %r', key_id)
+        if handshake.success() and handshake.message:
             self.send(MessageWantToComputeTask(**handshake.message))
 
     def _stop_handshake_timer(self):
@@ -223,10 +231,12 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        client_options = self.task_server.get_share_options(self.__task_id,
+        client_options = self.task_server.get_share_options(handshake.nonce,
                                                             key_id)
+
         async_req = AsyncRequest(self.resource_manager.add_file,
-                                 handshake.file, self.__task_id,
+                                 handshake.file,
+                                 handshake.nonce,
                                  absolute_path=True,
                                  client_options=client_options)
         async_run(async_req,
@@ -234,9 +244,9 @@ class ResourceHandshakeSessionMixin:
                   error=lambda exc: self._handshake_error(key_id, exc))
 
     def _nonce_shared(self, key_id, result):
-        result_path, result_hash = result
+        _, result_hash = result
         logger.debug("Resource handshake: sending resource hash: "
-                     "%r (%r) to %r", result_path, result_hash, key_id)
+                     "%r to peer %r", result_hash, key_id)
 
         self.send(MessageResourceHandshakeStart(result_hash))
 
@@ -245,44 +255,41 @@ class ResourceHandshakeSessionMixin:
     # ########################
 
     def _download_handshake_nonce(self, key_id, resource):
-        task_id = self.__task_id
-        file_resource = FileResource(file_name=key_id, resource_hash=resource,
-                                     task_id=task_id),
+        entry = resource, key_id
+        handshake = self._get_handshake(key_id)
+        nonce = handshake.nonce if handshake else 'nonce'
 
         self.resource_manager.pull_resource(
-            file_resource, task_id,
+            entry, nonce,
             success=lambda res, _: self._nonce_downloaded(key_id, res),
-            error=lambda exc: self._handshake_error(key_id, exc),
+            error=lambda exc, *_: self._handshake_error(key_id, exc),
             client_options=self.task_server.get_download_options(key_id)
         )
 
     def _nonce_downloaded(self, key_id, result):
         handshake = self._get_handshake(key_id)
-        result_path, result_hash = result
+        result_hash, result_path = result
 
         try:
-            handshake.read_nonce(result_path)
+            full_path = self.resource_manager.storage.get_path(result_path,
+                                                               handshake.nonce)
+            nonce = handshake.read_nonce(full_path)
         except OSError as err:
             self._handshake_error(key_id, 'reading nonce from file "{}": {}'
                                   .format(result_path, err))
         else:
-            self.send(MessageResourceHandshakeNonce(
-                handshake.remote_nonce)
-            )
+            self.send(MessageResourceHandshakeNonce(nonce))
 
     # ########################
     #     ERROR HANDLERS
     # ########################
 
     def _handshake_error(self, key_id, error):
-        logger.debug("Resource handshake error (%r): %r", key_id, error)
+        logger.error("Resource handshake error (%r): %r", key_id, error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
         self.task_server.task_computer.session_closed()
-
-    def _handshake_timeout(self, key_id):
-        self._handshake_error(key_id, 'timeout')
-        self.disconnect(self.DCRResourceHandshakeTimeout)
+        self.dropped()
 
     # ########################
     #      ACCESS HELPERS

@@ -458,9 +458,9 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         if self.task_server.should_accept_provider(self.key_id):
 
             if self._handshake_required(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is required', self.key_id)
                 return self._start_handshake(self.key_id)
-            elif self._handshake_in_progress(self.key_id):
-                return
 
             ctd, wrong_task, wait = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
