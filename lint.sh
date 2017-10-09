@@ -1,5 +1,4 @@
 #!/bin/bash
-# a more basic version of lint.sh from marmistrz/lintdiff
 
 hline() {
     printf %"$COLUMNS"s | tr " " "-"
@@ -33,6 +32,11 @@ GREEN=$(
     tput setaf 2
 ) 2>/dev/null
 RESET=$(tput sgr0) 2>/dev/null
+
+if ! git diff-index --quiet HEAD --; then
+    echo "${RED}You have uncommitted changes, aborting!${RESET}"
+    exit 1
+fi
 
 nfailed=0
 
