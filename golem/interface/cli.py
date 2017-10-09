@@ -120,17 +120,11 @@ class CLI(object):
         output = sys.stderr
         started = time.time()
 
-        namespace = self.parser.parse_args(args)
-        clean = self._clean_namespace(namespace)
-        formatter = self.get_formatter(clean)
-
-        if not hasattr(clean, 'callback'):
-            return "No callback found", output
-
         try:
 
-            print(namespace)
-            print(clean.__dict__)
+            namespace = self.parser.parse_args(args)
+            clean = self._clean_namespace(namespace)
+            formatter = self.get_formatter(clean)
             callback = clean.__dict__.pop('callback')
             normalized = self._normalize_namespace(clean)
             result = callback(**normalized)
@@ -150,8 +144,6 @@ class CLI(object):
             result = ExecutionException("Command timed out", " ".join(args), started)
 
         except Exception as exc:
-            import traceback
-            traceback.print_exc()
             result = ExecutionException("Exception: {}".format(exc), " ".join(args), started)
 
         else:
