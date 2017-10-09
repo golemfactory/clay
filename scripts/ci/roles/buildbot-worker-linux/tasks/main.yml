@@ -112,7 +112,7 @@
     creates: /home/buildbot-worker/.ipfs
 
 
-- name: instll golemapp dependencies
+- name: install golemapp dependencies
   apt:
     name: "{{ item }}"
   with_items:
