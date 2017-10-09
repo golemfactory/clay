@@ -1,6 +1,7 @@
 import logging
 import socket
 import sys
+import collections
 
 import binascii
 
@@ -33,6 +34,7 @@ class UnicodeFormatter(logging.Formatter):
     problems when logging bytestrings with special characters.
     SEE: tests.test_logging.TestLogging.test_unicode_formatter
     """
+
     def format(self, record):
         u_record = UnicodeRecord.from_record(record)
         s = super(UnicodeFormatter, self).format(u_record)
@@ -81,3 +83,23 @@ def tee_target(prefix, proc, path):
                 if line:
                     out.write(prefix + str(line))
                     log_f.write(stream_prefix + str(line))
+
+
+class OrderedClassMembers(type):
+    # Using to get class properties in order
+    # In Python v3.6 and above could be solved with iteration on dict
+    # @see https://www.python.org/dev/peps/pep-0520/
+    # @example
+    # def __iter__(self):
+    #     for count, (key, value) in enumerate(self.__dict__.items(), 0):
+    #         yield count, value
+
+    @classmethod
+    def __prepare__(self, name, bases):
+        return collections.OrderedDict()
+
+    def __new__(self, name, bases, classdict):
+        keys = [key for key in classdict.keys()
+                if key not in ('__module__', '__qualname__')]
+        classdict['__ordered__'] = keys
+        return type.__new__(self, name, bases, classdict)
