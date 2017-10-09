@@ -72,7 +72,8 @@ class SubtaskState(object):
             'time_remaining': self.subtask_rem_time,
             'results': [to_unicode(r) for r in self.results],
             'stderr': to_unicode(self.stderr),
-            'stdout': to_unicode(self.stdout)
+            'stdout': to_unicode(self.stdout),
+            'description': self.subtask_definition,
         }
 
 

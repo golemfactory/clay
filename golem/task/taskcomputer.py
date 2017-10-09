@@ -47,10 +47,10 @@ class TaskComputer(object):
         self.task_server = task_server
         self.waiting_for_task = None
         self.counting_task = False
+        self.counting_thread = None
         self.task_requested = False
         self.runnable = True
         self.listeners = []
-        self.current_computations = []
         self.last_task_request = time.time()
 
         self.waiting_ttl = 0
@@ -99,10 +99,16 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
 
-                self.__compute_task(subtask_id, subtask.docker_images,
-                                    subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, subtask.deadline)
-                self.waiting_for_task = None
+                with self.lock:
+                    if self.counting_thread is not None:
+                        logger.error("Got resource for task: %r"
+                            "But I'm busy with another one. Ignoring.",
+                            task_id)
+                        return  # busy
+                    self.__compute_task(subtask_id, subtask.docker_images,
+                                        subtask.src_code, subtask.extra_data,
+                                        subtask.short_description, subtask.deadline)
+                    self.waiting_for_task = None
                 return True
             else:
                 return False
@@ -152,10 +158,8 @@ class TaskComputer(object):
             task_thread.end_time = time.time()
 
         with self.lock:
-            try:
-                self.current_computations.remove(task_thread)
-            except ValueError:  # not in list
-                pass
+            if self.counting_thread is task_thread:
+                self.counting_thread = None
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
@@ -202,12 +206,12 @@ class TaskComputer(object):
 
     def run(self):
         if self.counting_task:
-            for task_thread in self.current_computations:
-                task_thread.check_timeout()
+            if self.counting_thread is not None:
+                self.counting_thread.check_timeout()
         elif self.compute_tasks and self.runnable:
             if not self.waiting_for_task:
                 if time.time() - self.last_task_request > self.task_request_frequency:
-                    if len(self.current_computations) == 0:
+                    if self.counting_thread is None:
                         self.__request_task()
             elif self.use_waiting_ttl:
                 time_ = time.time()
@@ -218,10 +222,18 @@ class TaskComputer(object):
 
     def get_progresses(self):
         ret = {}
-        for c in self.current_computations:
-            tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.get_progress(),
-                                          c.get_task_short_desc())  # FIXME: cpu power and estimated time left
-            ret[c.subtask_id] = tcss
+        if self.counting_thread is None:
+            return ret
+
+        c = self.counting_thread
+        tcss = TaskChunkStateSnapshot(
+            c.get_subtask_id(),
+            0.0,
+            0.0,
+            c.get_progress(),
+            c.get_task_short_desc()
+        )  # FIXME: cpu power and estimated time left
+        ret[c.subtask_id] = tcss
 
         return ret
 
@@ -359,12 +371,12 @@ class TaskComputer(object):
             self.counting_task = None
             return
 
-        self.current_computations.append(tt)
+        self.counting_thread = tt
         tt.start()
 
     def quit(self):
-        for t in self.current_computations:
-            t.end_comp()
+        if self.counting_thread is not None:
+            self.counting_thread.end_comp()
 
 
 class AssignedSubTask(object):
