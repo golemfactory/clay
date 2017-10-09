@@ -45,43 +45,6 @@ class UnsupportReason(enum.Enum):
     APP_VERSION = 'app_version'
 
 
-class SupportStatus(object):
-    def __init__(self, ok, desc=None) -> None:
-        self.desc = desc or {}
-        self._ok = ok
-
-    def is_ok(self) -> bool:
-        return self._ok
-
-    def __bool__(self) -> bool:
-        return self.is_ok()
-
-    def join(self, other) -> 'SupportStatus':
-        desc = self.desc.copy()
-        desc.update(other.desc)
-        return SupportStatus(self.is_ok() and other.is_ok(), desc)
-
-    @classmethod
-    def ok(cls) -> 'SupportStatus':
-        return cls(True)
-
-    @classmethod
-    def err(cls, desc) -> 'SupportStatus':
-        return cls(False, desc)
-
-    def __repr__(self) -> str:
-        return '<SupportStatus %s (%r)>' % \
-            ('ok' if self._ok else 'err', self.desc)
-
-
-class UnsupportReason(enum.Enum):
-    ENVIRONMENT_MISSING = 'environment_missing'
-    ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
-    ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
-    MAX_PRICE = 'max_price'
-    APP_VERSION = 'app_version'
-
-
 class Environment():
 
     @classmethod
