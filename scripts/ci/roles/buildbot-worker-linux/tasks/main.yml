@@ -66,12 +66,28 @@
     src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_linux-x64.tar.gz
     dest: /opt
     remote_src: yes
+  creates: /opt/hyperg
 
 
 - name: Link hyperg
   file:
     src: /opt/hyperg/hyperg
     dest: /usr/local/bin/hyperg
+    state: link
+
+
+- name: Install ipfs
+  unarchive:
+    src: https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz
+    dest: /opt
+    remote_src: yes
+  creates: /opt/go-ipfs
+
+
+- name: Link ipfs
+  file:
+    src: /opt/go-ipfs/ipfs
+    dest: /usr/local/bin/ipfs
     state: link
 
 
@@ -87,6 +103,14 @@
     groups: 
       - docker
     home: /home/buildbot-worker
+
+
+- name: Init ipfs
+  command: ipfs init
+  become_user: buildbot-worker
+  args:
+    creates: /home/buildbot-worker/.ipfs
+
 
 - name: instll golemapp dependencies
   apt:

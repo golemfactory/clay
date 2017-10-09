@@ -20,7 +20,7 @@ class StepsFactory(object):
     def git_step(self):
         return steps.Git(
             repourl='https://github.com/maaktweluit/golem.git',
-            mode='full', method='fresh', branch='no_gui')
+            mode='full', method='fresh', branch='no_gui-bb')
 
     def venv_step(self):
         return steps.ShellCommand(
@@ -110,7 +110,7 @@ class StepsFactory(object):
                     logfile='install missing requirement',
                     haltOnFailure=True,
                     command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                'coverage', 'codecov']),
+                                                'codecov', 'pytest-cov']),
                 util.ShellArg(
                     logfile='prepare for test',
                     haltOnFailure=True,
@@ -118,22 +118,24 @@ class StepsFactory(object):
                 util.ShellArg(
                     logfile='start hyperg',
                     haltOnFailure=True,
-                    command=['scripts/test-deamon-start.sh']),
+                    command=['scripts/test-daemon-start.sh']),
                 # TODO: add xml results
                 # TODO 2: add run slow
                 util.ShellArg(
                     logfile='run tests',
-                    command=self.python_command + ['-m', 'coverage', 'run',
-                                                   '--branch', '--source=.',
-                                                   'setup.py', 'test',
-                                                   '-a', '"-rxs --runslow"']),
+                    warnOnFailure=True,
+                    command=self.python_command + ['-m', 'pytest',
+                                                   '--cov=golem',
+                                                   '--durations=5',
+                                                   '-rxs', '--runslow']),
                 util.ShellArg(
                     logfile='handle coverage',
+                    warnOnFailure=True,
                     command=self.python_command + ['-m', 'codecov']),
                 util.ShellArg(
                     logfile='stop hyperg',
                     haltOnFailure=True,
-                    command=['scripts/test-deamon-stop.sh']),
+                    command=['scripts/test-daemon-stop.sh']),
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for some tests
