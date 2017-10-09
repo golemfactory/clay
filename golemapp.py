@@ -89,6 +89,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
+        log_golem_version()
 
         node = OptNode(peers=peer, node_address=node_address,
                        use_monitor=monitor, geth_port=geth_port, **config)
@@ -121,6 +122,15 @@ def start_crossbar_worker(module):
     import importlib
     module = importlib.import_module(module)
     module.run()
+
+def log_golem_version():
+    log = logging.getLogger('golem.version')
+    #initial version info
+    from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+
+    log.info("GOLEM Version: " + APP_VERSION)
+    log.info("P2P Protocol Version: " + str(P2P_PROTOCOL_ID))
+    log.info("Task Protocol Version: " + str(TASK_PROTOCOL_ID))
 
 
 if __name__ == '__main__':

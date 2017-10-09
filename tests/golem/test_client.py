@@ -30,6 +30,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
+from golem.core.variables import APP_VERSION
 
 
 def mock_async_run(req, success, error):
@@ -929,6 +930,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(
             c.connection_status().startswith("Application not listening")
         )
+
+    def test_golem_version(self, *_):
+        assert self.client.get_golem_version() == APP_VERSION
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'

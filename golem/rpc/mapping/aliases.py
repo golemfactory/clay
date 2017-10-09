@@ -1,4 +1,5 @@
 class Golem:
+    version                 = 'golem.version'
     status                  = 'golem.status'
 
     evt_golem_status        = 'evt.golem.status'
