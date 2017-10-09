@@ -177,7 +177,7 @@ class FrameRenderingTask(RenderingTask):
 
     @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
-        if not isinstance(self.preview_file_path, list):
+        if not isinstance(self.preview_file_path, (list, tuple)):
             return super()._remove_from_preview(subtask_id)
         empty_color = (0, 0, 0)
         sub = self.subtasks_given[subtask_id]
