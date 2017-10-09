@@ -26,17 +26,20 @@ _ = {
 
 def start():
 
-    is_updated = check_update()
-    if not isinstance(is_updated, bool):
-        is_updated = json.loads(is_updated)
-        print()
-        print('#######################################################################################################')
-        print()
-        print('\t\x1b[0;33;40m' + "We released new version of Golem Brass (v{}). Update your instance for best results!".format(
-            is_updated['version']) + '\x1b[0m')
-        print()
-        print('#######################################################################################################')
-        print()
+    try:
+        is_updated = check_update()
+        if not isinstance(is_updated, bool):
+            is_updated = json.loads(is_updated)
+            print()
+            print('#######################################################################################################')
+            print()
+            print('\t\x1b[0;33;40m' + "We released new version of Golem Brass (v{}). Update your instance for best results!".format(
+                is_updated['version']) + '\x1b[0m')
+            print()
+            print('#######################################################################################################')
+            print()
+    except Exception as e:
+        print(e)
 
     flags = dict(
         interactive=('-i', '--interactive'),

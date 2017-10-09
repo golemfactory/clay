@@ -13,6 +13,22 @@ class Importance(metaclass=OrderedClassMembers):
     MINOR = "MINOR"
     PATCH = "PATCH"
 
+# To prove if we're getting latest version number from github
+# we're sorting version numbers
+# instead of trusting github json ordered by version number.
+
+def max_version(version_list):
+    latest_version = "0.0.0"
+    for version in version_list:
+        version_number = version['tag_name']
+        if Version(version_number, partial=True) > Version(latest_version, partial=True):
+            latest_version = version_number
+    return latest_version
+
+
+# If the current version is latest one, just returned boolean
+# instead of sending json message about it, and we're checking the type
+# on client-side if message is boolean or not.
 
 def check_update():
     GITHUB_RELEASE_URL = "https://api.github.com/repos/golemfactory/golem/releases"
@@ -23,8 +39,7 @@ def check_update():
             response.status_code))
         response.raise_for_status()
 
-    latest_release = max(response.json(), key=lambda ev: ev['tag_name'])
-    latest_release = latest_release['tag_name']
+    latest_release = max_version(response.json())
     latest_version = Version(latest_release, partial=True)
     current_version = Version(APP_VERSION, partial=True)
 
