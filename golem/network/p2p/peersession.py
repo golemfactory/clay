@@ -119,17 +119,16 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
+    def sign(self, data):
+        """ Sign given bytes
+        :param Message data: data to be signed
+        :return Message: signed data
         """
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
 
-        msg.sig = self.p2p_service.sign(msg.get_short_hash())
-        return msg
+        return self.p2p_service.sign(data)
 
     def verify(self, msg):
         """Verify signature on given message. Check if message was signed

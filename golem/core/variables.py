@@ -5,7 +5,7 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.8.1"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"

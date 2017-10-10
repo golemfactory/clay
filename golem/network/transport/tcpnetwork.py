@@ -553,36 +553,20 @@ class SafeProtocol(ServerProtocol):
             logger.error("Wrong session, not sending message")
             return None
 
-        msg = self.session.sign(msg)
-        if not msg:
-            logger.error("Wrong session, not sending message")
-            return None
-        ser_msg = msg.serialize()
-        enc_msg = self.session.encrypt(ser_msg)
-
-        db = DataBuffer()
-        db.append_len_prefixed_string(enc_msg)
-        return db.read_all()
+        serialized = msg.serialize(self.session.sign, self.session.encrypt)
+        length = struct.pack("!L", len(serialized))
+        return length + serialized
 
     def _data_to_messages(self):
         if not isinstance(self.db, DataBuffer):
-            raise TypeError("incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
+            raise TypeError("incorrect db type: {}. Should be: DataBuffer"
+                            .format(type(self.db)))
         messages = []
 
-        for msg in self.db.get_len_prefixed_string():
-            dec_msg = self.session.decrypt(msg)
-            if not dec_msg:
-                logger.warning("Decryption of message failed")
-                break
-
-            m = Message.deserialize_message(dec_msg)
-            if not m:
-                logger.warning("Deserialization of message failed")
-                break
-
-            m.encrypted = dec_msg != msg
-            messages.append(m)
-
+        for buf in self.db.get_len_prefixed_string():
+            msg = Message.deserialize_message(buf, self.session.decrypt)
+            if msg:
+                messages.append(msg)
         return messages
 
 

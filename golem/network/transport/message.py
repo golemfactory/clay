@@ -1,8 +1,8 @@
-import collections
 import logging
+import struct
 import time
 
-from golem.core.common import to_unicode
+
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
@@ -11,117 +11,99 @@ from golem.task.taskbase import ResultType
 logger = logging.getLogger('golem.network.transport.message')
 
 
-# TODO: Separate class logic from payload by implementing dict interface.
-#       All message payload should be stored as dict not as instance
-#       attributes.
+# Message types that are allowed to be sent in the network
+registered_message_types = {}
+
+
 class Message(object):
     """ Communication message that is sent in all networks """
 
-    # Message types that are allowed to be sent in the network
-    registered_message_types = {}
+    __slots__ = ['timestamp', 'encrypted', 'sig', 'payload', '_raw']
 
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """ Create new message"""
-        if not self.registered_message_types:
+    def __init__(self, timestamp=None, encrypted=False, sig=None,
+                 payload=None, raw=None, slots=None):
+
+        """Create a new message
+        :param timestamp: message timestamp
+        :param encrypted: whether message was encrypted
+        :param payload: payload bytes
+        :param sig: signed message hash
+        :param raw: original message bytes
+        """
+        if not registered_message_types:
             init_messages()
-        # signature (short data representation signed with private key)
-        self.sig = sig
-        if timestamp is None:
-            timestamp = time.time()
-        self.timestamp = timestamp
-        self.encrypted = False  # inform if message was encrypted
 
-        self.load_dict_repr(dict_repr)
+        self.load_slots(slots)
+
+        # Header
+        self.timestamp = timestamp or time.time()
+        self.encrypted = encrypted
+        self.sig = sig
+
+        self.payload = payload
+        self._raw = raw
+
+    @property
+    def raw(self):
+        return self._raw[:]
 
     def get_short_hash(self):
         """Return short message representation for signature
-        :return str: short hash of serialized and sorted message dictionary
-                     representation
+        :return bytes: sha1(TYPE, timestamp, encrypted, payload)
         """
-        sorted_dict = self._sort_obj(self.dict_repr())
-        return SimpleHash.hash(CBORSerializer.dumps(sorted_dict))
+        sha = SimpleHash.hash_object()
+        sha.update(self.serialize_header())
+        sha.update(self.payload or b'')
+        return sha.digest()
 
-    def _sort_obj(self, v):
-        if isinstance(v, dict):
-            return self._sort_dict(v)
-        # treat objects as dictionaries
-        elif hasattr(v, '__dict__'):
-            return self._sort_dict(v.__dict__, filter_properties=True)
-        elif isinstance(v, str):
-            return to_unicode(v)
-        elif isinstance(v, collections.Iterable):
-            return v.__class__([self._sort_obj(_v) for _v in v])
-        return v
-
-    def _sort_dict(self, dictionary, filter_properties=False):
-        result = dict()
-        for k, v in dictionary.items():
-            if filter_properties and (k.startswith('_') or
-                                      isinstance(v, collections.Callable)):
-                continue
-            result[to_unicode(k)] = self._sort_obj(v)
-        return sorted(result.items())
-
-    def serialize(self):
+    def serialize(self, sign_func, encrypt_func=None):
         """ Return serialized message
         :return str: serialized message """
         try:
-            return CBORSerializer.dumps(
-                [self.TYPE, self.sig, self.timestamp, self.dict_repr()]
+            self.payload = self.serialize_payload()
+
+            if encrypt_func:
+                self.encrypted = True
+                self.payload = encrypt_func(self.payload)
+
+            self.sig = sign_func(self.get_short_hash())
+
+            return (
+                self.serialize_header() +
+                self.sig +
+                self.payload
             )
+
         except Exception:
             logger.exception("Error serializing message:")
             raise
 
-    def serialize_to_buffer(self, db_):
+    def serialize_header(self):
+        """ Serialize message's header
+        I unsigned short (2 bytes) big-endian
+        Q unsigned long long (8 bytes) big-endian
+        ? bool (1 byte)
+
+        11 bytes in total
+
+        :return: serialized header
         """
-        Append serialized message to given data buffer
-        :param DataBuffer db_: data buffer that message should be attached to
-        """
-        if not isinstance(db_, DataBuffer):
-            raise TypeError(
-                "Incorrect db type: {}. Should be: DataBuffer".format(db_)
-            )
-        db_.append_len_prefixed_string(self.serialize())
+        return struct.pack('!HQ?', self.TYPE,
+                           int(self.timestamp * 10 ** 6),
+                           self.encrypted)
+
+    def serialize_payload(self):
+        return CBORSerializer.dumps(self.slots())
 
     @classmethod
-    def decrypt_and_deserialize(cls, db_, server):
-        """Take out messages from data buffer, decrypt them using server if
-           they are encrypted and deserialize them
-        :param DataBuffer db_: data buffer containing messages
-        :param SafeServer server: server that is able to decrypt data
-        :return list: list of decrypted and deserialized messages
+    def deserialize_header(cls, data):
+        """ Deserialize message's header
+
+        :param data: bytes
+        :return: tuple of (TYPE, timestamp, encrypted)
         """
-        if not isinstance(db_, DataBuffer):
-            raise TypeError(
-                "Incorrect db type: {}. Should be: DataBuffer".format(db_)
-            )
-        messages_ = []
-
-        for msg in db_.get_len_prefixed_string():
-
-            encrypted = True
-            try:
-                msg = server.decrypt(msg)
-            except AssertionError:
-                logger.info(
-                    "Failed to decrypt message, maybe it's not encrypted?"
-                )
-                encrypted = False
-            except Exception as err:
-                logger.info("Failed to decrypt message {}".format(str(err)))
-                continue
-
-            m = cls.deserialize_message(msg)
-
-            if m is None:
-                logger.info("Failed to deserialize message {}".format(msg))
-                continue
-
-            m.encrypted = encrypted
-            messages_.append(m)
-
-        return messages_
+        assert len(data) == 11
+        return struct.unpack('!HQ?', data)
 
     @classmethod
     def deserialize(cls, db_):
@@ -151,36 +133,42 @@ class Message(object):
         return messages_
 
     @classmethod
-    def deserialize_message(cls, msg_):
+    def deserialize_message(cls, msg_, decrypt_func=None):
         """
         Deserialize single message
         :param str msg_: serialized message
         :return Message|None: deserialized message or none if this message
                               type is unknown
         """
+
+        if len(msg_) <= 76:  # len(header) + len(sig) = 11 + 65
+            logger.error("Message error: invalid length %d", len(msg_))
+            return
+
+        msg_hdr = msg_[:11]
+        msg_sig = msg_[11:76]
+        msg_payload = msg_[76:]
+
         try:
-            msg_repr = CBORSerializer.loads(msg_)
+            msg_type, msg_ts, msg_enc = cls.deserialize_header(msg_hdr)
+            if msg_enc:
+                msg_payload = decrypt_func(msg_payload)
+            slots = CBORSerializer.loads(msg_payload)
         except Exception as exc:
-            logger.error("Error deserializing message: {}".format(exc))
-            msg_repr = None
-
-        if not (isinstance(msg_repr, list) and len(msg_repr) >= 4):
-            logger.info('Invalid message representation: %r', msg_repr)
+            logger.error("Message error: invalid data: %r", exc)
             return
 
-        msg_type = msg_repr[0]
-        msg_sig = msg_repr[1]
-        msg_timestamp = msg_repr[2]
-        d_repr = msg_repr[3]
-
-        if msg_type not in cls.registered_message_types:
-            logger.info('Unrecognized message type: %r', msg_type)
+        if msg_type not in registered_message_types:
+            logger.error('Message error: invalid type %d', msg_type)
             return
 
-        return cls.registered_message_types[msg_type](
+        return registered_message_types[msg_type](
+            timestamp=msg_ts // 10 ** 6,
+            encrypted=msg_enc,
             sig=msg_sig,
-            timestamp=msg_timestamp,
-            dict_repr=d_repr
+            payload=msg_payload,
+            raw=msg_,
+            slots=slots
         )
 
     def __str__(self):
@@ -189,24 +177,18 @@ class Message(object):
     def __repr__(self):
         return "{}".format(self.__class__)
 
-    def load_dict_repr(self, dict_repr):
-        if dict_repr is None:
+    def load_slots(self, slots):
+        if not slots:
             return
-        try:
-            mapping = self.MAPPING
-        except AttributeError:
-            logger.debug('MAPPING not set in %r', self.__class__)
-            return
-        for attr_name in mapping:
-            k = mapping[attr_name]
-            setattr(self, attr_name, dict_repr[k])
+        for key, value in slots:
+            setattr(self, key, value)
 
-    def dict_repr(self):
-        """Returns dictionary/list representation of  any subclass message"""
-        return dict(
-            (self.MAPPING[attr_name], getattr(self, attr_name))
-            for attr_name in self.MAPPING
-        )
+    def slots(self):
+        """Returns a list representation of any subclass message"""
+        return [
+            (attr_name, getattr(self, attr_name))
+            for attr_name in self.__slots__
+        ]
 
 
 ##################
@@ -217,19 +199,19 @@ class Message(object):
 class MessageHello(Message):
     TYPE = 0
 
-    MAPPING = {
-        'proto_id': "PROTO_ID",
-        'client_ver': "CLI_VER",
-        'port': "PORT",
-        'node_name': "NODE_NAME",
-        'client_key_id': "CLIENT_KEY_ID",
-        'rand_val': "RAND_VAL",
-        'node_info': "NODE_INFO",
-        'solve_challenge': "SOLVE_CHALLENGE",
-        'challenge': "CHALLENGE",
-        'difficulty': "DIFFICULTY",
-        'metadata': "METADATA",
-    }
+    __slots__ = [
+        'proto_id',
+        'client_ver',
+        'port',
+        'node_name',
+        'client_key_id',
+        'rand_val',
+        'node_info',
+        'solve_challenge',
+        'challenge',
+        'difficulty',
+        'metadata',
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -278,9 +260,7 @@ class MessageHello(Message):
 class MessageRandVal(Message):
     TYPE = 1
 
-    MAPPING = {
-        'rand_val': "RAND_VAL",
-    }
+    __slots__ = ['rand_val'] + Message.__slots__
 
     def __init__(self, rand_val=0, **kwargs):
         """
@@ -294,9 +274,7 @@ class MessageRandVal(Message):
 class MessageDisconnect(Message):
     TYPE = 2
 
-    MAPPING = {
-        'reason': "DISCONNECT_REASON",
-    }
+    __slots__ = ['reason'] + Message.__slots__
 
     def __init__(self, reason=-1, **kwargs):
         """
@@ -310,9 +288,7 @@ class MessageDisconnect(Message):
 class MessageChallengeSolution(Message):
     TYPE = 3
 
-    MAPPING = {
-        'solution': "SOLUTION",
-    }
+    __slots__ = ['solution'] + Message.__slots__
 
     def __init__(self, solution="", **kwargs):
         """
@@ -332,67 +308,52 @@ P2P_MESSAGE_BASE = 1000
 
 class MessagePing(Message):
     TYPE = P2P_MESSAGE_BASE + 1
-    MAPPING = {}
 
 
 class MessagePong(Message):
     TYPE = P2P_MESSAGE_BASE + 2
-    MAPPING = {}
 
 
 class MessageGetPeers(Message):
     TYPE = P2P_MESSAGE_BASE + 3
-    MAPPING = {}
 
 
 class MessagePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 4
 
-    MAPPING = {
-        'peers_array': "PEERS",
-    }
+    __slots__ = ['peers_array'] + Message.__slots__
 
     def __init__(self, peers_array=None, **kwargs):
         """
         Create message containing information about peers
         :param list peers_array: list of peers information
         """
-        if peers_array is None:
-            peers_array = []
-
-        self.peers_array = peers_array
+        self.peers_array = peers_array or []
         super(MessagePeers, self).__init__(**kwargs)
 
 
 class MessageGetTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 5
-    MAPPING = {}
 
 
 class MessageTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 6
 
-    MAPPING = {
-        'tasks_array': "TASKS",
-    }
+    __slots__ = ['tasks_array'] + Message.__slots__
 
     def __init__(self, tasks_array=None, **kwargs):
         """
         Create message containing information about tasks
         :param list tasks_array: list of peers information
         """
-        if tasks_array is None:
-            tasks_array = []
-        self.tasks_array = tasks_array
+        self.tasks_array = tasks_array or []
         super(MessageTasks, self).__init__(**kwargs)
 
 
 class MessageRemoveTask(Message):
     TYPE = P2P_MESSAGE_BASE + 7
 
-    MAPPING = {
-        'task_id': "REMOVE_TASK",
-    }
+    __slots__ = ['task_id'] + Message.__slots__
 
     def __init__(self, task_id=None, **kwargs):
         """
@@ -406,33 +367,26 @@ class MessageRemoveTask(Message):
 class MessageGetResourcePeers(Message):
     """Request for resource peers"""
     TYPE = P2P_MESSAGE_BASE + 8
-    MAPPING = {}
 
 
 class MessageResourcePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 9
 
-    MAPPING = {
-        'resource_peers': "RESOURCE_PEERS",
-    }
+    __slots__ = ['resource_peers'] + Message.__slots__
 
     def __init__(self, resource_peers=None, **kwargs):
         """
         Create message containing information about resource peers
         :param list resource_peers: list of peers information
         """
-        if resource_peers is None:
-            resource_peers = []
-        self.resource_peers = resource_peers
+        self.resource_peers = resource_peers or []
         super(MessageResourcePeers, self).__init__(**kwargs)
 
 
 class MessageDegree(Message):
     TYPE = P2P_MESSAGE_BASE + 10
 
-    MAPPING = {
-        'degree': "DEGREE",
-    }
+    __slots__ = ['degree'] + Message.__slots__
 
     def __init__(self, degree=None, **kwargs):
         """
@@ -446,34 +400,26 @@ class MessageDegree(Message):
 class MessageGossip(Message):
     TYPE = P2P_MESSAGE_BASE + 11
 
-    MAPPING = {
-        'gossip': "GOSSIP",
-    }
+    __slots__ = ['gossip'] + Message.__slots__
 
     def __init__(self, gossip=None, **kwargs):
         """
         Create gossip message
         :param list gossip: gossip to be send
         """
-        if gossip is None:
-            gossip = []
-        self.gossip = gossip
+        self.gossip = gossip or []
         super(MessageGossip, self).__init__(**kwargs)
 
 
 class MessageStopGossip(Message):
     """Create stop gossip message"""
     TYPE = P2P_MESSAGE_BASE + 12
-    MAPPING = {}
 
 
 class MessageLocRank(Message):
     TYPE = P2P_MESSAGE_BASE + 13
 
-    MAPPING = {
-        'node_id': "NODE_ID",
-        'loc_rank': "LOC_RANK",
-    }
+    __slots__ = ['node_id', 'loc_rank'] + Message.__slots__
 
     def __init__(self, node_id='', loc_rank='', **kwargs):
         """
@@ -489,9 +435,7 @@ class MessageLocRank(Message):
 class MessageFindNode(Message):
     TYPE = P2P_MESSAGE_BASE + 14
 
-    MAPPING = {
-        'node_key_id': "NODE_KEY_ID",
-    }
+    __slots__ = ['node_key_id'] + Message.__slots__
 
     def __init__(self, node_key_id='', **kwargs):
         """
@@ -505,11 +449,11 @@ class MessageFindNode(Message):
 class MessageWantToStartTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 15
 
-    MAPPING = {
-        'node_info': "NODE_INFO",
-        'conn_id': "CONN_ID",
-        'super_node_info': "SUPER_NODE_INFO",
-    }
+    __slots__ = [
+        'node_info',
+        'conn_id',
+        'super_node_info'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -532,12 +476,12 @@ class MessageWantToStartTaskSession(Message):
 class MessageSetTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 16
 
-    MAPPING = {
-        'key_id': "KEY_ID",
-        'node_info': "NODE_INFO",
-        'conn_id': "CONN_ID",
-        'super_node_info': "SUPER_NODE_INFO",
-    }
+    __slots__ = [
+        'key_id',
+        'node_info',
+        'conn_id',
+        'super_node_info',
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -563,12 +507,12 @@ class MessageSetTaskSession(Message):
 class MessageNatHole(Message):
     TYPE = P2P_MESSAGE_BASE + 17
 
-    MAPPING = {
-        'key_id': "KEY_ID",
-        'address': "ADDR",
-        'port': "PORT",
-        'conn_id': "CONN_ID",
-    }
+    __slots__ = [
+        'key_id',
+        'address',
+        'port',
+        'conn_id'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -594,9 +538,7 @@ class MessageNatHole(Message):
 class MessageNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 18
 
-    MAPPING = {
-        'conn_id': "CONN_ID",
-    }
+    __slots__ = ['conn_id'] + Message.__slots__
 
     def __init__(self, conn_id=None, **kwargs):
         """
@@ -610,10 +552,10 @@ class MessageNatTraverseFailure(Message):
 class MessageInformAboutNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 19
 
-    MAPPING = {
-        'key_id': "KEY_ID",
-        'conn_id': "CONN_ID",
-    }
+    __slots__ = [
+        'key_id',
+        'conn_id',
+    ] + Message.__slots__
 
     def __init__(self, key_id=None, conn_id=None, **kwargs):
         """Create request to inform node with key_id about unsuccessful
@@ -632,15 +574,15 @@ TASK_MSG_BASE = 2000
 class MessageWantToComputeTask(Message):
     TYPE = TASK_MSG_BASE + 1
 
-    MAPPING = {
-        'node_name': "NODE_NAME",
-        'task_id': "TASK_ID",
-        'perf_index': "PERF_INDEX",
-        'max_resource_size': "MAX_RES",
-        'max_memory_size': "MAX_MEM",
-        'num_cores': "NUM_CORES",
-        'price': "PRICE",
-    }
+    __slots__ = [
+        'node_name',
+        'task_id',
+        'perf_index',
+        'max_resource_size',
+        'max_memory_size',
+        'num_cores',
+        'price'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -674,9 +616,7 @@ class MessageWantToComputeTask(Message):
 class MessageTaskToCompute(Message):
     TYPE = TASK_MSG_BASE + 2
 
-    MAPPING = {
-        'compute_task_def': "COMPUTE_TASK_DEF",
-    }
+    __slots__ = ['compute_task_def'] + Message.__slots__
 
     def __init__(self, compute_task_def=None, **kwargs):
         """
@@ -691,10 +631,10 @@ class MessageTaskToCompute(Message):
 class MessageCannotAssignTask(Message):
     TYPE = TASK_MSG_BASE + 3
 
-    MAPPING = {
-        'reason': "REASON",
-        'task_id': "TASK_ID",
-    }
+    __slots__ = [
+        'reason',
+        'task_id'
+    ] + Message.__slots__
 
     def __init__(self, task_id=0, reason="", **kwargs):
         """
@@ -711,18 +651,18 @@ class MessageReportComputedTask(Message):
     # FIXME this message should be simpler
     TYPE = TASK_MSG_BASE + 4
 
-    MAPPING = {
-        'subtask_id': "SUB_TASK_ID",
-        'result_type': "RESULT_TYPE",
-        'computation_time': "COMPUTATION_TIME",
-        'node_name': "NODE_NAME",
-        'address': "ADDR",
-        'node_info': "NODE_INFO",
-        'port': "PORT",
-        'key_id': "KEY_ID",
-        'extra_data': "EXTRA_DATA",
-        'eth_account': "ETH_ACCOUNT",
-    }
+    __slots__ = [
+        'subtask_id',
+        'result_type',
+        'computation_time',
+        'node_name',
+        'address',
+        'node_info',
+        'port',
+        'key_id',
+        'extra_data',
+        'eth_account',
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -768,9 +708,7 @@ class MessageReportComputedTask(Message):
 class MessageGetTaskResult(Message):
     TYPE = TASK_MSG_BASE + 5
 
-    MAPPING = {
-        'subtask_id': "SUB_TASK_ID",
-    }
+    __slots__ = ['subtask_id'] + Message.__slots__
 
     def __init__(self, subtask_id="", **kwargs):
         """
@@ -784,12 +722,12 @@ class MessageGetTaskResult(Message):
 class MessageTaskResultHash(Message):
     TYPE = TASK_MSG_BASE + 7
 
-    MAPPING = {
-        'subtask_id': "SUB_TASK_ID",
-        'multihash': "MULTIHASH",
-        'secret': "SECRET",
-        'options': "OPTIONS",
-    }
+    __slots__ = [
+        'subtask_id',
+        'multihash',
+        'secret',
+        'options'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -808,10 +746,10 @@ class MessageTaskResultHash(Message):
 class MessageGetResource(Message):
     TYPE = TASK_MSG_BASE + 8
 
-    MAPPING = {
-        'task_id': "SUB_TASK_ID",
-        'resource_header': "RESOURCE_HEADER",
-    }
+    __slots__ = [
+        'task_id',
+        'resource_header'
+    ] + Message.__slots__
 
     def __init__(self, task_id="", resource_header=None, **kwargs):
         """
@@ -828,10 +766,10 @@ class MessageGetResource(Message):
 class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
-    MAPPING = {
-        'subtask_id': "SUB_TASK_ID",
-        'reward': "REWARD",
-    }
+    __slots = [
+        'subtask_id',
+        'reward'
+    ] + Message.__slots__
 
     def __init__(self, subtask_id=0, reward=0, **kwargs):
         """
@@ -847,9 +785,7 @@ class MessageSubtaskResultAccepted(Message):
 class MessageSubtaskResultRejected(Message):
     TYPE = TASK_MSG_BASE + 11
 
-    MAPPING = {
-        'subtask_id': "SUB_TASK_ID",
-    }
+    __slots__ = ['subtask_id'] + Message.__slots__
 
     def __init__(self, subtask_id=0, **kwargs):
         """
@@ -863,15 +799,15 @@ class MessageSubtaskResultRejected(Message):
 class MessageDeltaParts(Message):
     TYPE = TASK_MSG_BASE + 12
 
-    MAPPING = {
-        'task_id': "TASK_ID",
-        'delta_header': "DELTA_HEADER",
-        'parts': "PARTS",
-        'node_name': "NODE_NAME",
-        'address': "ADDR",
-        'port': "PORT",
-        'node_info': "node info",
-    }
+    __slots__ = [
+        'task_id',
+        'delta_header',
+        'parts',
+        'node_name',
+        'address',
+        'port',
+        'node_info',
+    ] + Message.__slots__
 
     def __init__(self, task_id=0, delta_header=None, parts=None, node_name='',
                  node_info=None, address='', port='', **kwargs):
@@ -901,10 +837,10 @@ class MessageDeltaParts(Message):
 class MessageTaskFailure(Message):
     TYPE = TASK_MSG_BASE + 15
 
-    MAPPING = {
-        'subtask_id': "SUBTASK_ID",
-        'err': "ERR",
-    }
+    __slots__ = [
+        'subtask_id',
+        'err'
+    ] + Message.__slots__
 
     def __init__(self, subtask_id="", err="", **kwargs):
         """
@@ -920,9 +856,7 @@ class MessageTaskFailure(Message):
 class MessageStartSessionResponse(Message):
     TYPE = TASK_MSG_BASE + 16
 
-    MAPPING = {
-        'conn_id': "CONN_ID",
-    }
+    __slots__ = ['conn_id'] + Message.__slots__
 
     def __init__(self, conn_id=None, **kwargs):
         """Create message with information that this session was started as
@@ -936,11 +870,11 @@ class MessageStartSessionResponse(Message):
 class MessageMiddleman(Message):
     TYPE = TASK_MSG_BASE + 17
 
-    MAPPING = {
-        'asking_node': "ASKING_NODE",
-        'dest_node': "DEST_NODE",
-        'ask_conn_id': "ASK_CONN_ID",
-    }
+    __slots__ = [
+        'asking_node',
+        'dest_node',
+        'ask_conn_id'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -964,11 +898,11 @@ class MessageMiddleman(Message):
 class MessageJoinMiddlemanConn(Message):
     TYPE = TASK_MSG_BASE + 18
 
-    MAPPING = {
-        'conn_id': "CONN_ID",
-        'key_id': "KEY_ID",
-        'dest_node_key_id': "DEST_NODE_KEY_ID",
-    }
+    __slots__ = [
+        'conn_id',
+        'key_id',
+        'dest_node_key_id'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -993,7 +927,6 @@ class MessageJoinMiddlemanConn(Message):
 class MessageBeingMiddlemanAccepted(Message):
     """Create message with information that node accepted being a middleman"""
     TYPE = TASK_MSG_BASE + 19
-    MAPPING = {}
 
 
 class MessageMiddlemanAccepted(Message):
@@ -1001,7 +934,6 @@ class MessageMiddlemanAccepted(Message):
        with middleman
     """
     TYPE = TASK_MSG_BASE + 20
-    MAPPING = {}
 
 
 class MessageMiddlemanReady(Message):
@@ -1009,17 +941,16 @@ class MessageMiddlemanReady(Message):
        middleman session may be started
     """
     TYPE = TASK_MSG_BASE + 21
-    MAPPING = {}
 
 
 class MessageNatPunch(Message):
     TYPE = TASK_MSG_BASE + 22
 
-    MAPPING = {
-        'asking_node': "ASKING_NODE",
-        'dest_node': "DEST_NODE",
-        'ask_conn_id': "ASK_CONN_ID",
-    }
+    __slots__ = [
+        'asking_node',
+        'dest_node',
+        'ask_conn_id'
+    ] + Message.__slots__
 
     def __init__(
             self,
@@ -1045,9 +976,7 @@ class MessageNatPunch(Message):
 class MessageWaitForNatTraverse(Message):
     TYPE = TASK_MSG_BASE + 23
 
-    MAPPING = {
-        'port': "PORT",
-    }
+    __slots__ = ['port'] + Message.__slots__
 
     def __init__(self, port=None, **kwargs):
         """Create message that inform node that it should start listening on
@@ -1062,21 +991,19 @@ class MessageWaitForNatTraverse(Message):
 class MessageNatPunchFailure(Message):
     """Create message that informs node about unsuccessful nat punch"""
     TYPE = TASK_MSG_BASE + 24
-    MAPPING = {}
 
 
 class MessageWaitingForResults(Message):
     TYPE = TASK_MSG_BASE + 25
-    MAPPING = {}
 
 
 class MessageCannotComputeTask(Message):
     TYPE = TASK_MSG_BASE + 26
 
-    MAPPING = {
-        'reason': "REASON",
-        'subtask_id': "SUBTASK_ID",
-    }
+    __slots__ = [
+        'reason',
+        'subtask_id'
+    ] + Message.__slots__
 
     def __init__(self, subtask_id=None, reason=None, **kwargs):
         """
@@ -1090,12 +1017,12 @@ class MessageCannotComputeTask(Message):
 class MessageSubtaskPayment(Message):
     TYPE = TASK_MSG_BASE + 27
 
-    MAPPING = {
-        'subtask_id': 'SUB_TASK_ID',
-        'reward': 'REWARD_STR',
-        'transaction_id': 'TRANSACTION_ID',
-        'block_number': 'BLOCK_NUMBER',
-    }
+    __slots__ = [
+        'subtask_id',
+        'reward',
+        'transaction_id',
+        'block_number'
+    ] + Message.__slots__
 
     def __init__(self, subtask_id=None, reward=None, transaction_id=None,
                  block_number=None, **kwargs):
@@ -1124,9 +1051,7 @@ class MessageSubtaskPayment(Message):
 class MessageSubtaskPaymentRequest(Message):
     TYPE = TASK_MSG_BASE + 28
 
-    MAPPING = {
-        'subtask_id': 'SUB_TASK_ID',
-    }
+    __slots__ = ['subtask_id'] + Message.__slots__
 
     def __init__(self, subtask_id=None, **kwargs):
         """Requests information about payment for a subtask.
@@ -1145,9 +1070,7 @@ RESOURCE_MSG_BASE = 3000
 
 
 class AbstractResource(Message):
-    MAPPING = {
-        'resource': 'resource',
-    }
+    __slots__ = ['resource'] + Message.__slots__
 
     def __init__(self, resource=None, **kwargs):
         """
@@ -1160,10 +1083,10 @@ class AbstractResource(Message):
 class MessagePushResource(AbstractResource):
     TYPE = RESOURCE_MSG_BASE + 1
 
-    MAPPING = {
-        'resource': "resource",
-        'copies': "copies",
-    }
+    __slots__ = [
+        'resource',
+        'copies'
+    ] + Message.__slots__
 
     def __init__(self, copies=0, **kwargs):
         """Create message with information that expected number of copies of
@@ -1192,10 +1115,10 @@ class MessagePullResource(AbstractResource):
 class MessagePullAnswer(Message):
     TYPE = RESOURCE_MSG_BASE + 5
 
-    MAPPING = {
-        'resource': "resource",
-        'has_resource': "has resource",
-    }
+    __slots__ = [
+        'resource',
+        'has_resource'
+    ] + Message.__slots__
 
     def __init__(self, resource=None, has_resource=False, **kwargs):
         """Create message with information whether current peer has given
@@ -1211,10 +1134,10 @@ class MessagePullAnswer(Message):
 class MessageResourceList(Message):
     TYPE = RESOURCE_MSG_BASE + 7
 
-    MAPPING = {
-        'resources': "resources",
-        'options': "options",
-    }
+    __slots__ = [
+        'resources',
+        'options'
+    ] + Message.__slots__
 
     def __init__(self, resources=None, options=None, **kwargs):
         """
@@ -1228,7 +1151,7 @@ class MessageResourceList(Message):
 
 def init_messages():
     """Add supported messages to register messages list"""
-    if Message.registered_message_types:
+    if registered_message_types:
         return
     for message_class in \
             (
@@ -1295,9 +1218,9 @@ def init_messages():
             MessageSubtaskPayment,
             MessageSubtaskPaymentRequest,
             ):
-        if message_class.TYPE in Message.registered_message_types:
+        if message_class.TYPE in registered_message_types:
             raise RuntimeError(
                 "Duplicated message {}.TYPE: {}"
                 .format(message_class.__name__, message_class.TYPE)
             )
-        Message.registered_message_types[message_class.TYPE] = message_class
+        registered_message_types[message_class.TYPE] = message_class
