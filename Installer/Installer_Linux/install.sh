@@ -117,7 +117,7 @@ function install_dependencies()
     fi
 
     declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
-               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
+               libssl-dev autoconf libgmp-dev libtool libffi-dev \
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
                ethereum )
 

@@ -44,15 +44,13 @@ class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
 
 
 class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
-    def __init__(self, dialog, customizer):
+    def __init__(self):
         super(LuxRenderTaskTypeInfo, self).__init__(
             "LuxRender",
             renderingtaskstate.RenderingTaskDefinition,
             LuxRenderDefaults(),
             LuxRenderOptions,
-            LuxRenderTaskBuilder,
-            dialog,
-            customizer
+            LuxRenderTaskBuilder
         )
         self.output_formats = ["EXR", "PNG", "TGA"]
         self.output_file_ext = ["lxs"]
