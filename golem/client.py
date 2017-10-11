@@ -64,6 +64,7 @@ log = logging.getLogger("golem.client")
 
 
 class ClientTaskComputerEventListener(object):
+
     def __init__(self, client):
         self.client = client
 
@@ -75,6 +76,7 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(HardwarePresetsMixin):
+
     def __init__(
             self,
             datadir=None,
@@ -676,14 +678,12 @@ class Client(HardwarePresetsMixin):
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
 
-    @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            req = AsyncRequest(self.transaction_system.get_balance)
-            b, ab, d = yield async_run(req)
+            b, ab, d = self.transaction_system.get_balance()
             if b is not None:
-                returnValue((str(b), str(ab), str(d)))
-        returnValue((None, None, None))
+                return str(b), str(ab), str(d)
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -732,7 +732,7 @@ class Client(HardwarePresetsMixin):
             addr,
             port,
             ans_conn_id
-            ):
+    ):
         self.p2pservice.inform_about_task_nat_hole(
             key_id,
             rv_key_id,
@@ -1011,7 +1011,6 @@ class Client(HardwarePresetsMixin):
         except Exception:
             log.exception("check_payments failed")
 
-    @inlineCallbacks
     def __publish_events(self):
         now = time.time()
         delta = now - self.last_nss_time
@@ -1038,21 +1037,6 @@ class Client(HardwarePresetsMixin):
         if delta >= self.config_desc.network_check_interval:
             self.last_net_check_time = time.time()
             self._publish(Network.evt_connection, self.connection_status())
-
-        if now - self.last_tasks_time >= PUBLISH_TASKS_INTERVAL:
-            self._publish(Task.evt_task_list, self.get_tasks())
-
-        if now - self.last_balance_time >= PUBLISH_BALANCE_INTERVAL:
-            try:
-                gnt, av_gnt, eth = yield self.get_balance()
-            except Exception as exc:
-                log.debug('Error retrieving balance: {}'.format(exc))
-            else:
-                self._publish(Payments.evt_balance, {
-                    'GNT': str(gnt),
-                    'GNT_available': str(av_gnt),
-                    'ETH': str(eth)
-                })
 
     def __make_node_state_snapshot(self, is_running=True):
         peers_num = len(self.p2pservice.peers)

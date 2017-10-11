@@ -59,7 +59,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def start(self):
         task_status = task.LoopingCall(self.get_status)
         task_peers = task.LoopingCall(self.update_peers_view)
-        task_payments = task.LoopingCall(self.update_payments_view)
         task_computing_stats = task.LoopingCall(self.update_stats)
         task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
         task_status.start(3.0)
@@ -161,27 +160,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 1, QTableWidgetItem(str(peer['port'])))
             table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
-
-    def update_payments_view(self):
-        self.client.get_balance().addCallbacks(
-            self._update_payments_view, self._rpc_error
-        )
-
-    def _update_payments_view(self, result_tuple):
-        if any(b is None for b in result_tuple):
-            return
-        gnt_balance, gnt_available, eth_balance = result_tuple
-        gnt_balance = int(gnt_balance)
-        gnt_available = int(gnt_available)
-        eth_balance = int(eth_balance)
-
-        gnt_reserved = gnt_balance - gnt_available
-        ui = self.customizer.gui.ui
-        ui.localBalanceLabel.setText("{:.8f} GNT".format(gnt_balance / denoms.ether))
-        ui.availableBalanceLabel.setText("{:.8f} GNT".format(gnt_available / denoms.ether))
-        ui.reservedBalanceLabel.setText("{:.8f} GNT".format(gnt_reserved / denoms.ether))
-        ui.depositBalanceLabel.setText("{:.8f} ETH".format(eth_balance / denoms.ether))
-        ui.totalBalanceLabel.setText("N/A")
 
     @staticmethod
     def _rpc_error(error):
