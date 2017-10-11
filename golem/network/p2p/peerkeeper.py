@@ -28,7 +28,7 @@ class PeerKeeper(object):
         self.k = K  # bucket size
         self.concurrency = CONCURRENCY  # parallel find node lookup
         self.k_size = k_size  # pubkey size
-        self.buckets = [KBucket(0, 2 ** k_size - 1, self.k)]
+        self.buckets = [KBucket(0, 2 ** k_size, self.k)]
         self.pong_timeout = PONG_TIMEOUT
         self.request_timeout = REQUEST_TIMEOUT
         self.idle_refresh = IDLE_REFRESH
@@ -45,7 +45,7 @@ class PeerKeeper(object):
         """
         self.key = key
         self.key_num = int(key, 16)
-        self.buckets = [KBucket(0, 2 ** self.k_size - 1, self.k)]
+        self.buckets = [KBucket(0, 2 ** self.k_size, self.k)]
         self.expected_pongs = {}
         self.find_requests = {}
         self.sessions_to_end = []
@@ -66,7 +66,7 @@ class PeerKeeper(object):
         bucket = self.bucket_for_peer(key_num)
         peer_to_remove = bucket.add_peer(peer_info)
         if peer_to_remove:
-            if bucket.start <= self.key_num <= bucket.end:
+            if bucket.start <= self.key_num < bucket.end:
                 self.split_bucket(bucket)
                 return self.add_peer(peer_info)
             else:
@@ -116,6 +116,7 @@ class PeerKeeper(object):
         for bucket in self.buckets:
             if bucket.start <= key_num < bucket.end:
                 return bucket
+        logger.error("Did not find a bucket for {}".format(key_num))
 
     def split_bucket(self, bucket):
         """ Split given bucket into two buckets
@@ -190,7 +191,7 @@ class PeerKeeper(object):
         cur_time = time.time()
         for bucket in self.buckets:
             if cur_time - bucket.last_updated > self.idle_refresh:
-                key_num = random.randint(bucket.start, bucket.end)
+                key_num = random.randint(bucket.start, bucket.end - 1)
                 self.find_requests[key_num] = cur_time
                 peers_to_find[key_num] = self.neighbours(key_num)
                 bucket.last_updated = cur_time
@@ -276,7 +277,7 @@ class KBucket(object):
         """
         midpoint = (self.start + self.end) / 2
         lower = KBucket(self.start, midpoint, self.k)
-        upper = KBucket(midpoint + 1, self.end, self.k)
+        upper = KBucket(midpoint, self.end, self.k)
         for peer in self.peers:
             if int(peer.key, 16) < midpoint:
                 lower.add_peer(peer)
@@ -286,10 +287,3 @@ class KBucket(object):
 
     def __str__(self):
         return "Bucket: {} - {} peers {}".format(self.start, self.end, len(self.peers))
-
-    @staticmethod
-    def __num_to_pow(num):
-        pow_ = 512
-        while 2 ** pow_ - 1 > num:
-            pow_ -= 1
-        return pow_
