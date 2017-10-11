@@ -3,7 +3,7 @@ import sys
 import time
 import json
 
-from .contracts import TestGNT
+from .contracts import TestGNT, GNTW_Faucet, GNTW, GNTDeposit
 from .node import tETH_faucet_donate
 
 from time import sleep
@@ -65,7 +65,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
+    TESTGNT_ADDR = decode_hex("34cB7577690e01A1C53597730e2e1112f72DBeB5")
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -81,7 +81,7 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))
+        self.__testGNT = abi.ContractTranslator(json.loads(GNTW_Faucet.ABI))
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
