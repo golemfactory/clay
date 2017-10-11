@@ -395,20 +395,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
         c = self.client
 
-        # def get_balance(*_):
-        #     d = Deferred()
-        #     d.callback((1, 2, 3))
-        #     return d
-
         c.task_server = Mock()
         c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.counting_thread = None
         c.task_server.task_computer.stats = dict()
-
-        # c.get_balance = get_balance
-        # c.get_task_count = lambda *_: 0
+        
         c.get_supported_task_count = lambda *_: 0
         c.connection_status = lambda *_: 'test'
 
@@ -425,9 +418,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_balance_time = future_time
         c.last_tasks_time = future_time
 
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        # c._Client__publish_events()  # pylint: disable=no-member
         pub_evt = yield from getattr(Client, '__publish_events')
         pub_evt()
 
@@ -439,10 +429,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        # c._Client__publish_events()  # pylint: disable=no-member
 
         assert not log.debug.called
         assert send.call_count == 2
@@ -459,10 +445,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
         c.last_tasks_time = past_time
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        # c._Client__publish_events()  # pylint: disable=no-member
 
         assert log.debug.called
         assert send.call_count == 2
@@ -719,17 +701,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         frames = c.get_subtasks_frames(task_id)
         assert frames is not None
 
-    @patch('golem.client.async_run')
-    def test_get_balance(self, async_run, *_):
+    def test_get_balance(self, *_):
         c = self.client
 
         result = (None, None, None)
-
-        deferred = Deferred()
-        deferred.result = result
-        deferred.called = True
-
-        async_run.return_value = deferred
 
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
@@ -738,12 +713,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert balance == (None, None, None)
 
         result = (None, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == ("1", "1", "None")
         assert all(isinstance(entry, str) for entry in balance)

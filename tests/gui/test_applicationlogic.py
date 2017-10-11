@@ -35,6 +35,7 @@ from gui.view.appmainwindow import AppMainWindow
 
 
 class TTask(Task):
+
     def __init__(self):
         Task.__init__(self, Mock(), Mock(), Mock())
         self.src_code = ""
@@ -64,10 +65,12 @@ class TTask(Task):
 
 
 class TTaskWithDef(TTask):
+
     def __init__(self):
         super(TTaskWithDef, self).__init__()
         self.task_definition = TaskDefinition()
         self.task_definition.max_price = 100 * denoms.ether
+
 
 class TTaskBuilder(CoreTaskBuilder):
 
@@ -177,27 +180,6 @@ class TestGuiApplicationLogic(DatabaseFixture):
         logic = GuiApplicationLogic()
         self.assertTrue(os.path.isdir(logic.root_path))
 
-    def test_update_payments_view(self):
-        logic = GuiApplicationLogic()
-        logic.client = Mock()
-        logic.customizer = Mock()
-        ether = denoms.ether
-
-        balance_deferred = Deferred()
-        balance_deferred.result = (3 * ether, 1 * ether, 0.3 * ether)
-        balance_deferred.called = True
-
-        logic.client.get_balance.return_value = balance_deferred
-        logic.update_payments_view()
-
-        ui = logic.customizer.gui.ui
-        ui.localBalanceLabel.setText.assert_called_once_with("3.00000000 GNT")
-        ui.reservedBalanceLabel.setText.assert_called_once_with(
-            "2.00000000 GNT")
-        ui.availableBalanceLabel.setText.assert_called_once_with(
-            "1.00000000 GNT")
-        ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
-
     def test_update_stats(self):
         logic = GuiApplicationLogic()
         logic.client = Mock()
@@ -239,7 +221,8 @@ class TestGuiApplicationLogic(DatabaseFixture):
         logic.tasks["xyz"] = task_desc
         logic.start_task("xyz")
         assert task_desc.task_state.status == TaskStatus.starting
-        assert task_desc.task_state.outputs == ["output1", "output2", "output3"]
+        assert task_desc.task_state.outputs == [
+            "output1", "output2", "output3"]
 
 
 class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
@@ -388,6 +371,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
 
 class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
+
     def setUp(self):
         DatabaseFixture.setUp(self)
         LogTestCase.setUp(self)
@@ -751,7 +735,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         self.assertEqual(
             logic.customizer.new_task_dialog_customizer.
-                load_task_definition.call_args[0][0], ts.definition)
+            load_task_definition.call_args[0][0], ts.definition)
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         self.client.task_server.task_manager.task_types["testtask"] = ttb
