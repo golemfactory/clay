@@ -19,10 +19,9 @@ from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.core.variables import TASK_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
-
-TASK_PROTOCOL_ID = 16
 
 
 def drop_after_attr_error(*args, **kwargs):

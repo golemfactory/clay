@@ -30,6 +30,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
+from golem.core.variables import APP_VERSION
 
 
 def mock_async_run(req, success, error):
@@ -402,7 +403,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.current_computations = []
+        c.task_server.task_computer.counting_thread = None
         c.task_server.task_computer.stats = dict()
 
         c.get_balance = get_balance
@@ -929,6 +930,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(
             c.connection_status().startswith("Application not listening")
         )
+
+    def test_golem_version(self, *_):
+        assert self.client.get_golem_version() == APP_VERSION
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'

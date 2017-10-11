@@ -1050,8 +1050,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self.seeds.add((ip_address, port))
 
     def __remove_sessions_to_end_from_peer_keeper(self):
-        for peer_id in self.peer_keeper.sessions_to_end:
-            self.remove_peer_by_id(peer_id)
+        for node in self.peer_keeper.sessions_to_end:
+            self.remove_peer_by_id(node.key)
         self.peer_keeper.sessions_to_end = []
 
     @staticmethod

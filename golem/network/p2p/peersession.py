@@ -5,10 +5,9 @@ from devp2p.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
+from golem.core.variables import P2P_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
-
-P2P_PROTOCOL_ID = 14
 
 
 class PeerSessionInfo(object):
