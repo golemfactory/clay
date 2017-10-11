@@ -113,6 +113,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_refresh_peers = time.time()
 
         self.last_messages = []
+        random.seed()
 
     def _listening_established(self, port):
         super(P2PService, self)._listening_established(port)
@@ -140,13 +141,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for ip_address, port in self.seeds:
+        for ip_address, port in random.sample(self.seeds, k=len(self.seeds)):
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
             except Exception as exc:
-                logger.error("Cannot connect to seed {}:{}: {}"
-                             .format(ip_address, port, exc))
+                logger.error("Cannot connect to seed %s:%s: %s",
+                             ip_address, port, exc)
+                continue
+            break  # connected
 
     def connect(self, socket_address):
         if not self.active:
@@ -257,12 +260,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return dict: dictionary of peers sessions
         """
         return self.peers
-
-    def get_seeds(self):
-        """ Return all known seed peers
-        :return dict: a list of (address, port) tuples
-        """
-        return self.seeds
 
     def add_peer(self, key_id, peer):
         """ Add a new open connection with a peer to the list of peers
