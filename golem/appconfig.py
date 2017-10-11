@@ -57,26 +57,6 @@ MAX_PRICE = int(5.0 * denoms.ether)
 MIN_PRICE = MAX_PRICE // 10
 
 
-# FIXME: deprecated
-class CommonConfig:
-    def __init__(self, section="Common", **kwargs):
-        self._section = section
-
-        for k, v in list(kwargs.items()):
-            ConfigEntry.create_property(
-                section,
-                k.replace("_", " "),
-                v,
-                self,
-                k
-            )
-
-        self.prop_names = list(kwargs.keys())
-
-    def section(self):
-        return self._section
-
-
 class NodeConfig:
 
     def __init__(self, **kwargs):
@@ -122,6 +102,7 @@ class AppConfig:
             # peers
             seed_host="",
             seed_port=START_PORT,
+            seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
             # flags
             accept_tasks=ACCEPT_TASKS,

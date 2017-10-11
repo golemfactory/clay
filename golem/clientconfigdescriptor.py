@@ -21,6 +21,7 @@ class ClientConfigDescriptor(object):
 
         self.seed_host = ""
         self.seed_port = 0
+        self.seeds = ""
 
         self.getting_peers_interval = 0.0
         self.getting_tasks_interval = 0.0
