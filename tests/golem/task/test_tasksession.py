@@ -50,21 +50,21 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_hello(self, send_mock):
         self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000,)
         self.task_session.send_hello()
-        expected = {
-            'CHALLENGE': None,
-            'CLIENT_KEY_ID': key_id,
-            'CLI_VER': 0,
-            'DIFFICULTY': 0,
-            'METADATA': None,
-            'NODE_INFO': None,
-            'NODE_NAME': None,
-            'PORT': 0,
-            'PROTO_ID': TASK_PROTOCOL_ID,
-            'RAND_VAL': self.task_session.rand_val,
-            'SOLVE_CHALLENGE': False,
-        }
+        expected = [
+            ['rand_val', self.task_session.rand_val],
+            ['proto_id', TASK_PROTOCOL_ID],
+            ['node_name', None],
+            ['node_info', None],
+            ['port', 0],
+            ['client_ver', 0],
+            ['client_key_id', key_id],
+            ['solve_challenge', False],
+            ['challenge', None],
+            ['difficulty', 0],
+            ['metadata', None],
+        ]
         msg = send_mock.call_args[0][0]
-        self.assertEqual(msg.dict_repr(), expected)
+        self.assertEqual(msg.slots(), expected)
 
     def test_encrypt(self):
         ts = TaskSession(Mock())
@@ -535,13 +535,13 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             )
         )
         self.task_session.inform_worker_about_payment(payment)
-        expected = {
-            'BLOCK_NUMBER': block_number,
-            'REWARD_STR': payment.value,
-            'SUB_TASK_ID': payment.subtask,
-            'TRANSACTION_ID': transaction_id,
-        }
-        self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
+        expected = [
+            ['subtask_id', payment.subtask],
+            ['reward', payment.value],
+            ['transaction_id', transaction_id],
+            ['block_number', block_number],
+        ]
+        self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_request_payment(self, send_mock):
@@ -554,10 +554,10 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             task=str(uuid.uuid4())
         )
         self.task_session.request_payment(expected_income)
-        expected = {
-            'SUB_TASK_ID': subtask_id,
-        }
-        self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
+        expected = [
+            ['subtask_id', subtask_id],
+        ]
+        self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
     @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
     def test_react_to_subtask_payment_request(self, inform_mock) -> None:
