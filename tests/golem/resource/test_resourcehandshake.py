@@ -38,7 +38,7 @@ class TestResourceHandshake(TempDirFixture):
 
     def test_start(self):
         handshake = self.handshake
-        assert not handshake.started()
+        assert not handshake.started
 
         handshake.start(self.tempdir)
         assert os.path.exists(handshake.file)
@@ -287,6 +287,12 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         session._set_handshake(session.key_id, handshake)
 
+        assert session._handshake_required(session.key_id)
+        assert not session._handshake_error.called
+
+        handshake.local_verified = True
+        handshake.remote_verified = True
+
         assert not session._handshake_required(session.key_id)
         assert not session._handshake_error.called
 
@@ -384,6 +390,28 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert session._finalize_handshake.called
         assert session.task_server.task_computer.session_closed.called
         assert not session.disconnect.called
+
+    def test_handshake_timeout(self, *_):
+        session = MockTaskSession(self.tempdir)
+        session._block_peer = Mock()
+        session._finalize_handshake = Mock()
+
+        session._handshake_timeout(session.key_id)
+        assert not session._block_peer.called
+        assert not session._finalize_handshake.called
+        assert not session.task_server.task_computer.session_closed.called
+        assert not session.dropped.called
+
+        handshake = ResourceHandshake(self.key_id)
+        handshake.local_verified = False
+        handshake.remote_verified = True
+        session._set_handshake(session.key_id, handshake)
+
+        session._handshake_timeout(session.key_id)
+        assert session._block_peer.called
+        assert session._finalize_handshake.called
+        assert session.task_server.task_computer.session_closed.called
+        assert session.dropped.called
 
     def test_get_set_remove_handshake(self, *_):
         session = MockTaskSession(self.tempdir)
