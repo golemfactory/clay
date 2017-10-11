@@ -150,17 +150,16 @@ class TaskSession(MiddlemanSafeSession):
 
         return data
 
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
+    def sign(self, data):
+        """ Sign given bytes
+        :param Message data: bytes to be signed
+        :return Message: signed bytes
         """
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
 
-        msg.sig = self.task_server.sign(msg.get_short_hash())
-        return msg
+        return self.task_server.sign(data)
 
     def verify(self, msg):
         """Verify signature on given message. Check if message was signed
@@ -1020,4 +1019,11 @@ class TaskSession(MiddlemanSafeSession):
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
         self.can_be_unsigned.append(message.MessageHello.TYPE)
-        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE])  # noqa
+        self.can_be_unverified.extend(
+            [
+                message.MessageHello.TYPE,
+                message.MessageRandVal.TYPE,
+                message.MessageChallengeSolution.TYPE
+            ]
+        )
+        self.can_be_not_encrypted.extend([message.MessageHello.TYPE])

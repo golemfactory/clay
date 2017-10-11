@@ -430,7 +430,7 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        peers_info = msg.peers_array
+        peers_info = msg.peers
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.try_to_add_peer(pi)
@@ -440,7 +440,7 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
-        for t in msg.tasks_array:
+        for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
 

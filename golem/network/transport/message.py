@@ -18,7 +18,10 @@ registered_message_types = {}
 class Message(object):
     """ Communication message that is sent in all networks """
 
-    __slots__ = ['timestamp', 'encrypted', 'sig', 'payload', '_raw']
+    __slots__ = ['timestamp', 'encrypted', 'sig', '_payload', '_raw']
+
+    TS_SCALE = 10 ** 6
+    ENCRYPT = True
 
     def __init__(self, timestamp=None, encrypted=False, sig=None,
                  payload=None, raw=None, slots=None):
@@ -33,18 +36,21 @@ class Message(object):
         if not registered_message_types:
             init_messages()
 
+        # Child message slots
         self.load_slots(slots)
 
         # Header
-        self.timestamp = timestamp or time.time()
+        self.timestamp = timestamp or round(time.time(), 6)
         self.encrypted = encrypted
         self.sig = sig
 
-        self.payload = payload
-        self._raw = raw
+        # Encoded data
+        self._payload = payload  # child's payload only (may be encrypted)
+        self._raw = raw  # whole message
 
     @property
     def raw(self):
+        """Returns a raw copy of the message"""
         return self._raw[:]
 
     def get_short_hash(self):
@@ -53,29 +59,34 @@ class Message(object):
         """
         sha = SimpleHash.hash_object()
         sha.update(self.serialize_header())
-        sha.update(self.payload or b'')
+        sha.update(self._payload or b'')
         return sha.digest()
 
-    def serialize(self, sign_func, encrypt_func=None):
+    def serialize(self, sign_func=None, encrypt_func=None):
         """ Return serialized message
         :return str: serialized message """
         try:
-            self.payload = self.serialize_payload()
+            self.encrypted = self.ENCRYPT and encrypt_func
+            payload = self.serialize_payload()
 
-            if encrypt_func:
-                self.encrypted = True
-                self.payload = encrypt_func(self.payload)
+            if self.encrypted:
+                self._payload = encrypt_func(payload)
+            else:
+                self._payload = payload
 
-            self.sig = sign_func(self.get_short_hash())
+            if sign_func:
+                self.sig = sign_func(self.get_short_hash())
+            else:
+                self.sig = b'0' * 65
 
             return (
                 self.serialize_header() +
                 self.sig +
-                self.payload
+                self._payload
             )
 
-        except Exception:
-            logger.exception("Error serializing message:")
+        except Exception as exc:
+            logger.exception("Error serializing message: %r", exc)
             raise
 
     def serialize_header(self):
@@ -89,7 +100,7 @@ class Message(object):
         :return: serialized header
         """
         return struct.pack('!HQ?', self.TYPE,
-                           int(self.timestamp * 10 ** 6),
+                           int(self.timestamp * self.TS_SCALE),
                            self.encrypted)
 
     def serialize_payload(self):
@@ -106,10 +117,11 @@ class Message(object):
         return struct.unpack('!HQ?', data)
 
     @classmethod
-    def deserialize(cls, db_):
+    def deserialize(cls, db_, decrypt_func=None):
         """
         Take out messages from data buffer and deserialize them
         :param DataBuffer db_: data buffer containing messages
+        :param function(data) decrypt_func: decryption function
         :return list: list of deserialized messages
         """
         if not isinstance(db_, DataBuffer):
@@ -121,7 +133,7 @@ class Message(object):
         msg_ = db_.read_len_prefixed_string()
 
         while msg_:
-            m = cls.deserialize_message(msg_)
+            m = cls.deserialize_message(msg_, decrypt_func)
 
             if m:
                 messages_.append(m)
@@ -137,23 +149,23 @@ class Message(object):
         """
         Deserialize single message
         :param str msg_: serialized message
+        :param function(data) decrypt_func: decryption function
         :return Message|None: deserialized message or none if this message
                               type is unknown
         """
 
-        if len(msg_) <= 76:  # len(header) + len(sig) = 11 + 65
-            logger.error("Message error: invalid length %d", len(msg_))
+        if not msg_ or len(msg_) <= 76:  # len(header) + len(sig) = 11 + 65
+            logger.error("Message error: message too short")
             return
 
-        msg_hdr = msg_[:11]
-        msg_sig = msg_[11:76]
-        msg_payload = msg_[76:]
+        header, sig, payload = msg_[:11], msg_[11:76], msg_[76:]
+        data = payload
 
         try:
-            msg_type, msg_ts, msg_enc = cls.deserialize_header(msg_hdr)
+            msg_type, msg_ts, msg_enc = cls.deserialize_header(header)
             if msg_enc:
-                msg_payload = decrypt_func(msg_payload)
-            slots = CBORSerializer.loads(msg_payload)
+                data = decrypt_func(payload)
+            slots = CBORSerializer.loads(data)
         except Exception as exc:
             logger.error("Message error: invalid data: %r", exc)
             return
@@ -163,10 +175,10 @@ class Message(object):
             return
 
         return registered_message_types[msg_type](
-            timestamp=msg_ts // 10 ** 6,
+            timestamp=msg_ts / cls.TS_SCALE,
             encrypted=msg_enc,
-            sig=msg_sig,
-            payload=msg_payload,
+            sig=sig,
+            payload=payload,
             raw=msg_,
             slots=slots
         )
@@ -180,15 +192,20 @@ class Message(object):
     def load_slots(self, slots):
         if not slots:
             return
-        for key, value in slots:
-            setattr(self, key, value)
+        for slot, value in slots:
+            if self.valid_slot(slot):
+                setattr(self, slot, value)
 
     def slots(self):
         """Returns a list representation of any subclass message"""
         return [
-            (attr_name, getattr(self, attr_name))
-            for attr_name in self.__slots__
+            [slot, getattr(self, slot)]
+            for slot in self.__slots__
+            if self.valid_slot(slot)
         ]
+
+    def valid_slot(self, name):
+        return hasattr(self, name) and name not in Message.__slots__
 
 
 ##################
@@ -198,15 +215,16 @@ class Message(object):
 
 class MessageHello(Message):
     TYPE = 0
+    ENCRYPT = False
 
     __slots__ = [
-        'proto_id',
-        'client_ver',
-        'port',
-        'node_name',
-        'client_key_id',
         'rand_val',
+        'proto_id',
+        'node_name',
         'node_info',
+        'port',
+        'client_ver',
+        'client_key_id',
         'solve_challenge',
         'challenge',
         'difficulty',
@@ -273,6 +291,7 @@ class MessageRandVal(Message):
 
 class MessageDisconnect(Message):
     TYPE = 2
+    ENCRYPT = False
 
     __slots__ = ['reason'] + Message.__slots__
 
@@ -321,14 +340,14 @@ class MessageGetPeers(Message):
 class MessagePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 4
 
-    __slots__ = ['peers_array'] + Message.__slots__
+    __slots__ = ['peers'] + Message.__slots__
 
-    def __init__(self, peers_array=None, **kwargs):
+    def __init__(self, peers=None, **kwargs):
         """
         Create message containing information about peers
-        :param list peers_array: list of peers information
+        :param list peers: list of peers information
         """
-        self.peers_array = peers_array or []
+        self.peers = peers or []
         super(MessagePeers, self).__init__(**kwargs)
 
 
@@ -339,14 +358,14 @@ class MessageGetTasks(Message):
 class MessageTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 6
 
-    __slots__ = ['tasks_array'] + Message.__slots__
+    __slots__ = ['tasks'] + Message.__slots__
 
-    def __init__(self, tasks_array=None, **kwargs):
+    def __init__(self, tasks=None, **kwargs):
         """
         Create message containing information about tasks
-        :param list tasks_array: list of peers information
+        :param list tasks: list of peers information
         """
-        self.tasks_array = tasks_array or []
+        self.tasks = tasks or []
         super(MessageTasks, self).__init__(**kwargs)
 
 
