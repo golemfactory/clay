@@ -1,8 +1,7 @@
 
-class GNTW:
+class GNTW(object):
     ABI = """
-     [
-            {
+            [{
                 "constant": true,
                 "inputs": [],
                 "name": "name",
@@ -406,5 +405,4 @@ class GNTW:
                 ],
                 "name": "Refund",
                 "type": "event"
-            }
-        ]"""  # noqa
+            }]"""  # noqa

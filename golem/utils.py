@@ -5,6 +5,15 @@ import sys
 import binascii
 
 
+def get_raw_string(some_str) -> str:
+    """
+    this method removes all spaces and new lines from string
+    """
+    raw_str = some_str. \
+        replace('\n', "").replace('\r', ""). \
+        replace('\t', "").replace(' ', "")
+    return raw_str
+
 def find_free_net_port():
     """Finds a free port on the host"""
     s = socket.socket()

@@ -3,7 +3,9 @@ import sys
 import time
 import json
 
-from .contracts import TestGNT, GNTW_Faucet, GNTW, GNTDeposit
+from .contracts import TestGNT, GNTDeposit
+from .contracts.GNTW import GNTW
+from .contracts.GNTW_Faucet import GNTW_Faucet
 from .node import tETH_faucet_donate
 
 from time import sleep
@@ -18,7 +20,7 @@ from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
-from golem.utils import decode_hex, encode_hex
+from golem.utils import decode_hex, encode_hex, get_raw_string
 
 log = logging.getLogger("golem.pay")
 
@@ -81,7 +83,12 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__testGNT = abi.ContractTranslator(json.loads(GNTW_Faucet.ABI))
+
+        self.__GNTW_Contract = abi.ContractTranslator(
+            json.loads(get_raw_string(GNTW.ABI)))
+        self.__GNTW_Faucet_Contract = abi.ContractTranslator(
+            json.loads(get_raw_string(GNTW_Faucet.ABI)))
+
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
@@ -169,7 +176,7 @@ class PaymentProcessor(Service):
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
-            data = self.__testGNT.encode('balanceOf', (addr,))
+            data = self.__GNTW_Contract.encode_function_call('balanceOf', (addr,))
             r = self.__client.call(_from='0x' + encode_hex(addr),
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
                                    data='0x' + encode_hex(data),
@@ -356,7 +363,7 @@ class PaymentProcessor(Service):
             log.info("Requesting tGNT")
             addr = self.eth_address(zpad=False)
             nonce = self.__client.get_transaction_count(addr)
-            data = self.__testGNT.encode_function_call('create', ())
+            data = self.__GNTW_Faucet_Contract.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
             tx.sign(self.__privkey)
