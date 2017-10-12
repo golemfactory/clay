@@ -194,9 +194,13 @@ class Client(HardwarePresetsMixin):
         StatusPublisher.set_publisher(self.rpc_publisher)
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
-        if event != 'unreachable':
+        if event == 'unreachable':
+            self.node.port_status = kwargs.get('description', '')
             return
-        self.node.port_status = kwargs.get('description', '')
+        if event == 'new_version':
+            log.warning('New version of golem available: %r',
+                kwargs['version'])
+            return
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':

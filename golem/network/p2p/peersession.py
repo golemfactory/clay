@@ -1,13 +1,30 @@
+from devp2p.crypto import ECIESDecryptionError
 import logging
+from pydispatch import dispatcher
 import time
 
-from devp2p.crypto import ECIESDecryptionError
+from golem.core import variables
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
-from golem.core.variables import P2P_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
+
+
+def compare_version(client_ver):
+    def _machine_version(v):
+        try:
+            return [int(s) for s in v.split('.')]
+        except (ValueError, AttributeError):
+            return []
+
+    mv_client = _machine_version(client_ver)
+    if _machine_version(variables.APP_VERSION) < mv_client:
+        dispatcher.send(
+            signal='golem.p2p',
+            event='new_version',
+            version='.'.join(str(i) for i in mv_client)
+        )
 
 
 class PeerSessionInfo(object):
@@ -354,12 +371,16 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
-        if msg.proto_id != P2P_PROTOCOL_ID:
+        # Check if sender is a seed/bootstrap node
+        if (self.address, int(msg.port)) in self.p2p_service.seeds:
+            compare_version(msg.client_ver)
+
+        if msg.proto_id != variables.P2P_PROTOCOL_ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
-                P2P_PROTOCOL_ID,
+                variables.P2P_PROTOCOL_ID,
                 self.address,
                 self.port
             )
@@ -534,7 +555,6 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePong())
 
     def __send_hello(self):
-        from golem.core.variables import APP_VERSION
         self.solve_challenge = self.key_id and \
             self.p2p_service.should_solve_challenge or False
         challenge_kwargs = {}
@@ -544,12 +564,12 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.MessageHello(
-            proto_id=P2P_PROTOCOL_ID,
+            proto_id=variables.P2P_PROTOCOL_ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
-            client_ver=APP_VERSION,
+            client_ver=variables.APP_VERSION,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,

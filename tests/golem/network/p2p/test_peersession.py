@@ -1,6 +1,9 @@
-import mock
+import ipaddress
+import unittest.mock as mock
 from mock import MagicMock, Mock
+from pydispatch import dispatcher
 import random
+import sys
 import unittest
 
 from golem import testutils
@@ -120,6 +123,70 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
             PeerSession.DCRDuplicatePeers)
+
+    @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
+    def test_react_to_hello_new_version(self, m_verify):
+        listener = mock.MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+        self.peer_session.p2p_service.seeds = {
+            (host, random.randint(0, 65535))
+            for host in
+            ipaddress.ip_network('192.0.2.0/29').hosts()
+        }
+
+        peer_info = mock.MagicMock()
+        peer_info.key = (
+            'What is human warfare but just this;'
+            'an effort to make the laws of God and nature'
+            'take sides with one party.'
+        )
+        msg_kwargs = {
+            'port': random.randint(0, 65535),
+            'node_name': 'How could youths better learn to live than by at once trying the experiment of living? --HDT',
+            'client_key_id': peer_info.key,
+            'node_info': peer_info,
+            'proto_id': random.randint(0, sys.maxsize),
+        }
+
+        # Test unverified
+        msg = MessageHello(**msg_kwargs)
+        m_verify.return_value = False
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Test verified, not seed
+        msg = MessageHello(**msg_kwargs)
+        m_verify.return_value = True
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Choose one seed
+        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        msg_kwargs['port'] = chosen_seed[1]
+        self.peer_session.address = chosen_seed[0]
+
+        # Test verified, with seed, default version (0)
+        msg = MessageHello(**msg_kwargs)
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Test verified, with seed, newer version
+        list_version = [int(s) for s in APP_VERSION.split('.')]
+        list_version[-1] += 1
+        str_version = '.'.join(str(i) for i in list_version)
+        msg_kwargs['client_ver'] = str_version
+        msg = MessageHello(**msg_kwargs)
+        self.peer_session._react_to_hello(msg)
+        listener.assert_called_once_with(
+            signal='golem.p2p',
+            event='new_version',
+            version=str_version,
+            sender=mock.ANY,
+        )
+        listener.reset_mock()
 
     def test_disconnect(self):
         conn = MagicMock()
