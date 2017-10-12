@@ -371,7 +371,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.retry_sending_task_result(subtask_id)
 
         ts.sync_network()
-        ts._add_pending_request.assert_called()
+        self.assertEquals(ts._add_pending_request.call_count, 1)
 
         ts._add_pending_request.reset_mock()
         ts.task_sessions[subtask_id] = Mock()
@@ -395,7 +395,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        ts._add_pending_request.assert_called()
+        self.assertEquals(ts._add_pending_request.call_count, 1)
         self.assertEqual(ts.failures_to_send, {})
 
     def test_add_task_session(self):
