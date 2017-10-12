@@ -2,6 +2,7 @@ import os
 import unittest
 
 import mock
+import pytest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask
@@ -44,6 +45,7 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
 @ci_skip
 class TestBenchmarkRunner(testutils.TempDirFixture):
 
+    @pytest.mark.slow
     def test_run(self):
         benchmark = BlenderBenchmark()
         task_definition = benchmark.task_definition

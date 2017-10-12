@@ -3,6 +3,7 @@ import time
 from os import makedirs, path
 
 import json
+import pytest
 from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
@@ -88,8 +89,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node._run()
 
         ccd = ClientConfigDescriptor()
-        ccd.estimated_blender_performance = 2000.0
-        ccd.estimated_lux_performance = 2000.0
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
@@ -125,10 +124,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert result
 
         # Thread for task computation should be created by now
-        task_thread = None
         with task_computer.lock:
-            if task_computer.current_computations:
-                task_thread = task_computer.current_computations[0]
+            task_thread = task_computer.counting_thread
 
         if task_thread:
             started = time.time()
@@ -179,6 +176,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
                    for f in result["data"])
         assert any(f.endswith(".png") for f in result["data"])
 
+    @pytest.mark.slow
     def test_blender_test(self):
         render_task = self._create_test_task()
         tt = self._run_docker_test_task(render_task)
@@ -238,9 +236,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert path.isdir(task.tmp_dir)
         assert task.verificator.verification_options is None
 
+    @pytest.mark.slow
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
 
+    @pytest.mark.slow
     def test_blender_cycles_subtask(self):
         self._test_blender_subtask(self.CYCLES_TASK_FILE)
 

@@ -180,5 +180,15 @@ class DummyTaskBuilder(CoreTaskBuilder):
         return definition
 
 
+class DummyTaskMod(DummyTask):
+    def query_extra_data(self, *args, **kwargs):
+        ctd = self.query_extra_data_for_test_task()
+        return self.ExtraData(ctd=ctd)
+
+
+class DummyTaskBuilderMod(DummyTaskBuilder):
+    TASK_CLASS = DummyTaskMod
+
+
 # comment that line to enable type checking
 enforce.config({'groups': {'set': {'dummy': False}}})

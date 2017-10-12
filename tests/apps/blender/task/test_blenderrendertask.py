@@ -1,10 +1,12 @@
-import OpenEXR
-import array
 import os
-import unittest
 from os import path
-from random import randrange, shuffle
 
+import array
+import unittest
+from random import randrange, shuffle
+import pytest
+
+import OpenEXR
 from PIL import Image
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
@@ -473,6 +475,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         assert not extra_data.should_wait
 
     @ci_skip
+    @pytest.mark.slow
     def test_advanced_verification(self):
         bb = BlenderBenchmark()
         td = bb.task_definition

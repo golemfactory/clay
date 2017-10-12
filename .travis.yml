@@ -19,23 +19,31 @@ cache:
     - $HOME/Library/Caches/pip
 
 before_install:
+  - brew update
   - brew install python3 qt5 openexr freeimage
 
+  # geth
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz
   - tar xvf ${GETH_VER}.tar.gz
   - sudo -HE mv ${GETH_VER}/geth /usr/local/bin
 
+   # golem-hyperdrive
   - wget https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v${HYPERG_VER}/hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - tar xvf hyperg_${HYPERG_VER}_darwin-x64.tar.gz
   - ./hyperg/hyperg &
 
+  # requirements
   - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
   - sudo -HE pip3 install -r requirements-test.txt
   - sudo -HE python3 setup.py develop
 
+  # Slow tests only on branches and PRs with enough approvals
+  - export ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
+
 script:
-  - python3 -m pytest --cov=golem
+  - python3 -m pytest --cov=golem${ARG_RUNSLOW}
+  - if [ -z "${ARG_RUNSLOW}" ]; then echo "Not enough approvals."; exit 1; fi
 
 after_success:
   - python3 -m codecov

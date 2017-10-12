@@ -1,3 +1,4 @@
+from copy import copy
 import os
 import time
 import unittest
@@ -12,6 +13,7 @@ from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -28,6 +30,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
+from golem.core.variables import APP_VERSION
 
 
 def mock_async_run(req, success, error):
@@ -263,47 +266,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         with self.assertRaises(IOError):
             Client(datadir=datadir)
 
-    def test_metadata(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-
-        meta = self.client.get_metadata()
-        self.assertIsNotNone(meta)
-        self.assertEqual(meta, dict())
-
-    @unittest.skip('IPFS metadata is currently disabled')
-    def test_interpret_metadata(self, *_):
-        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-        from golem.network.p2p.p2pservice import P2PService
-
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False
-        )
-
-        self.client.p2pservice = P2PService(
-            MagicMock(), self.client.config_desc, self.client.keys_auth
-        )
-        self.client.ipfs_manager = IPFSDaemonManager()
-        meta = self.client.get_metadata()
-        assert meta and meta['ipfs']
-
-        ip = '127.0.0.1'
-        port = 40102
-
-        node = MagicMock()
-        node.prv_addr = ip
-        node.prv_port = port
-
-        self.client.interpret_metadata(meta, ip, port, node)
-
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -441,7 +403,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
 
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.current_computations = []
+        c.task_server.task_computer.counting_thread = None
         c.task_server.task_computer.stats = dict()
 
         c.get_balance = get_balance
@@ -694,9 +656,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
-        c.resource_server.resource_manager.build_client_options \
-            .assert_called_with(c.keys_auth.key_id)
-
+        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called
 
@@ -744,8 +704,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert isinstance(task, Task)
         assert task.header.task_id
 
-        c.resource_server.resource_manager.build_client_options\
-            .assert_called_with(c.keys_auth.key_id)
+        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
@@ -791,57 +750,43 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.blender.benchmark.benchmark import BlenderBenchmark
         from apps.lux.luxenvironment import LuxRenderEnvironment
-        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+        from apps.lux.benchmark.benchmark import LuxBenchmark
 
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
-        task_computer.run_dummytask_benchmark = Mock()
-        task_computer.run_dummytask_benchmark.side_effect = lambda c, e: c(True)
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_benchmark = Mock()
+        benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
+            c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
-        assert task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-        assert not task_computer.run_dummytask_benchmark.called
-
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        assert benchmark_manager.run_benchmark.call_count == 1
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          BlenderBenchmark)
 
         sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert task_computer.run_lux_benchmark.called
-        assert not task_computer.run_dummytask_benchmark.called
+        assert benchmark_manager.run_benchmark.call_count == 2
+        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
+                          LuxBenchmark)
 
-        task_computer.run_blender_benchmark.called = False
-        task_computer.run_lux_benchmark.called = False
+        result = sync_wait(self.client.run_benchmark(
+            DefaultEnvironment.get_id()))
+        assert result > 100.0
+        assert benchmark_manager.run_benchmark.call_count == 2
 
-        sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-        assert not task_computer.run_blender_benchmark.called
-        assert not task_computer.run_lux_benchmark.called
-        assert task_computer.run_dummytask_benchmark.called
-
-    def test_run_benchmarks(self, *_):
-        task_computer = self.client.task_server.task_computer
-        task_computer.run_lux_benchmark = Mock()
-        task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
-        task_computer.run_blender_benchmark = Mock()
-        task_computer.run_blender_benchmark.side_effect = lambda *_: 1
-        task_computer.run_dummytask_benchmark = Mock()
-        task_computer.run_dummytask_benchmark.side_effect = lambda c: c(1)
-
-        task_computer.run_benchmarks()
-        assert task_computer.run_lux_benchmark.called
-        assert task_computer.run_blender_benchmark.called
-        assert task_computer.run_dummytask_benchmark.called
+    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
+    def test_run_benchmarks(self, br_mock, *_):
+        benchmark_manager = self.client.task_server.benchmark_manager
+        benchmark_manager.run_all_benchmarks()
+        f = br_mock.call_args[0][2]  # get success callback
+        f(1)
+        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -986,6 +931,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             c.connection_status().startswith("Application not listening")
         )
 
+    def test_golem_version(self, *_):
+        assert self.client.get_golem_version() == APP_VERSION
+
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
 
@@ -1022,6 +970,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             description="port 1234: closed"
         )
         self.assertTrue(self.client.node.port_status)
+
+    def test_get_performance_values(self, *_):
+        expected_perf = {DefaultEnvironment.get_id(): 0.0}
+        assert self.client.get_performance_values() == expected_perf
 
     @classmethod
     def __new_incoming_peer(cls):

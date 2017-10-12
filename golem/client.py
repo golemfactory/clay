@@ -6,7 +6,7 @@ import uuid
 from collections import Iterable
 from copy import copy
 from os import path, makedirs
-from threading import Lock
+from threading import Lock, Thread
 from typing import Dict
 
 from pydispatch import dispatcher
@@ -25,9 +25,11 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import callback_wrapper
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
@@ -261,14 +263,19 @@ class Client(HardwarePresetsMixin):
             self.daemon_manager = HyperdriveDaemonManager(self.datadir)
             self.daemon_manager.start()
 
+        hyperdrive_addrs = self.daemon_manager.public_addresses(
+            self.node.pub_addr)
+        hyperdrive_ports = self.daemon_manager.ports()
+
         if not self.resource_server:
-            resource_manager = HyperdriveResourceManager(dir_manager)
+            resource_manager = HyperdriveResourceManager(dir_manager,
+                                                         hyperdrive_addrs)
             self.resource_server = BaseResourceServer(resource_manager,
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        def connect(xxx_todo_changeme):
-            (p2p_port, task_port) = xxx_todo_changeme
+        def connect(ports):
+            p2p_port, task_port = ports
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
@@ -296,14 +303,14 @@ class Client(HardwarePresetsMixin):
 
         task = Deferred()
         p2p = Deferred()
-        hyperdrive_ports = self.daemon_manager.ports()
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
         log.info("Starting p2p server ...")
+        resource_manager = self.resource_server.resource_manager
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(self)
+        self.p2pservice.set_metadata_manager(resource_manager.peer_manager)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
@@ -382,9 +389,7 @@ class Client(HardwarePresetsMixin):
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        key_id = self.keys_auth.key_id
-
-        options = resource_manager.build_client_options(key_id)
+        options = resource_manager.build_client_options()
         files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
@@ -829,36 +834,31 @@ class Client(HardwarePresetsMixin):
             'id': str(env.get_id()),
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
-            'performance': env.get_performance(self.config_desc),
+            'performance': env.get_performance(),
             'description': str(env.short_description)
         } for env in envs]
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        # TODO: move benchmarks to environments
-        from apps.blender.blenderenvironment import BlenderEnvironment
-        from apps.lux.luxenvironment import LuxRenderEnvironment
-        from apps.dummy.dummyenvironment import DummyTaskEnvironment
-
         deferred = Deferred()
 
-        if env_id == BlenderEnvironment.get_id():
-            self.task_server.task_computer.run_blender_benchmark(
-                deferred.callback, deferred.errback
-            )
-        elif env_id == LuxRenderEnvironment.get_id():
-            self.task_server.task_computer.run_lux_benchmark(
-                deferred.callback, deferred.errback
-            )
-        elif env_id == DummyTaskEnvironment.get_id():
-            self.task_server.task_computer.run_dummytask_benchmark(
-                deferred.callback, deferred.errback
-            )
+        if env_id != DefaultEnvironment.get_id():
+            benchmark_manager = self.task_server.benchmark_manager
+            benchmark_manager.run_benchmark_for_env_id(env_id,
+                                                       deferred.callback,
+                                                       deferred.errback)
+            result = yield deferred
+            returnValue(result)
         else:
-            raise Exception("Unknown environment: {}".format(env_id))
 
-        result = yield deferred
-        returnValue(result)
+            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
+                      'callback': deferred.callback,
+                      'errback': deferred.errback,
+                      'num_cores': self.config_desc.num_cores,
+                      'save': True}
+            Thread(target=callback_wrapper, kwargs=kwargs).start()
+            result = yield deferred
+            returnValue(result)
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -910,6 +910,9 @@ class Client(HardwarePresetsMixin):
         options['num_subtasks'] = int(options['num_subtasks'])
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
+
+    def get_performance_values(self):
+        return self.environments_manager.get_performance_values()
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
@@ -1073,24 +1076,6 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-    def get_metadata(self):
-        metadata = dict()
-        # if self.ipfs_manager:
-        #     metadata.update(self.ipfs_manager.get_metadata())
-        return metadata
-
-    def interpret_metadata(self, metadata, address, port, node_info):
-        pass
-        # if self.config_desc and node_info and metadata:
-        #     seed_addresses = self.p2pservice.get_seeds()
-        #     node_addresses = [
-        #         (address, port),
-        #         (node_info.pub_addr, node_info.pub_port)
-        #     ]
-        #     self.ipfs_manager.interpret_metadata(metadata,
-        #                                          seed_addresses,
-        #                                          node_addresses)
-
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
@@ -1106,6 +1091,10 @@ class Client(HardwarePresetsMixin):
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
+
+    @staticmethod
+    def get_golem_version():
+        return APP_VERSION
 
     @staticmethod
     def get_golem_status():

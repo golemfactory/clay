@@ -6,23 +6,15 @@ from threading import Lock
 
 from pydispatch import dispatcher
 
-from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner, CoreBenchmark
-from apps.core.task.coretaskstate import TaskDesc
-from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
-from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
-from apps.lux.benchmark.benchmark import LuxBenchmark
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.core.common import deadline_to_timeout, to_unicode
+
+from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskStatus
+
 from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
@@ -55,10 +47,10 @@ class TaskComputer(object):
         self.task_server = task_server
         self.waiting_for_task = None
         self.counting_task = False
+        self.counting_thread = None
         self.task_requested = False
         self.runnable = True
         self.listeners = []
-        self.current_computations = []
         self.last_task_request = time.time()
 
         self.waiting_ttl = 0
@@ -75,27 +67,10 @@ class TaskComputer(object):
         if use_docker_machine_manager:
             self.docker_manager.check_environment()
 
-        try:
-            lux_perf = float(task_server.config_desc.estimated_lux_performance)
-            blender_perf = float(task_server.config_desc.estimated_blender_performance)
-            dummytask_perf = float(task_server.config_desc.estimated_dummytask_performance)
-        except:
-            lux_perf = 0
-            blender_perf = 0
-            dummytask_perf = 0
-
-        if int(lux_perf) == 0 \
-                or int(blender_perf) == 0 \
-                or int(dummytask_perf) == 0:
-            run_benchmarks = True
-        else:
-            run_benchmarks = False
-
         self.use_docker_machine_manager = use_docker_machine_manager
-        self.change_config(task_server.config_desc,
-                           in_background=False,
+        run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
+        self.change_config(task_server.config_desc, in_background=False,
                            run_benchmarks=run_benchmarks)
-
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
@@ -124,10 +99,16 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
 
-                self.__compute_task(subtask_id, subtask.docker_images,
-                                    subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, subtask.deadline)
-                self.waiting_for_task = None
+                with self.lock:
+                    if self.counting_thread is not None:
+                        logger.error("Got resource for task: %r"
+                            "But I'm busy with another one. Ignoring.",
+                            task_id)
+                        return  # busy
+                    self.__compute_task(subtask_id, subtask.docker_images,
+                                        subtask.src_code, subtask.extra_data,
+                                        subtask.short_description, subtask.deadline)
+                    self.waiting_for_task = None
                 return True
             else:
                 return False
@@ -177,10 +158,8 @@ class TaskComputer(object):
             task_thread.end_time = time.time()
 
         with self.lock:
-            try:
-                self.current_computations.remove(task_thread)
-            except ValueError:  # not in list
-                pass
+            if self.counting_thread is task_thread:
+                self.counting_thread = None
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
@@ -227,12 +206,12 @@ class TaskComputer(object):
 
     def run(self):
         if self.counting_task:
-            for task_thread in self.current_computations:
-                task_thread.check_timeout()
+            if self.counting_thread is not None:
+                self.counting_thread.check_timeout()
         elif self.compute_tasks and self.runnable:
             if not self.waiting_for_task:
                 if time.time() - self.last_task_request > self.task_request_frequency:
-                    if len(self.current_computations) == 0:
+                    if self.counting_thread is None:
                         self.__request_task()
             elif self.use_waiting_ttl:
                 time_ = time.time()
@@ -243,10 +222,18 @@ class TaskComputer(object):
 
     def get_progresses(self):
         ret = {}
-        for c in self.current_computations:
-            tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.get_progress(),
-                                          c.get_task_short_desc())  # FIXME: cpu power and estimated time left
-            ret[c.subtask_id] = tcss
+        if self.counting_thread is None:
+            return ret
+
+        c = self.counting_thread
+        tcss = TaskChunkStateSnapshot(
+            c.get_subtask_id(),
+            0.0,
+            0.0,
+            c.get_progress(),
+            c.get_task_short_desc()
+        )  # FIXME: cpu power and estimated time left
+        ret[c.subtask_id] = tcss
 
         return ret
 
@@ -259,121 +246,17 @@ class TaskComputer(object):
         self.compute_tasks = config_desc.accept_tasks
         self.change_docker_config(config_desc, run_benchmarks, in_background)
 
-    def _validate_task_state(self, task_state):
-        td = task_state.definition
-        if not os.path.exists(td.main_program_file):
-            logger.error("Main program file does not exist: {}".format(td.main_program_file))
-            return False
-        return True
-
-    # TODO change the way benchmarks are run
-    def run_benchmark(self, benchmark: CoreBenchmark, task_builder, datadir, node_name, success_callback,
-                      error_callback):
-        task_state = TaskDesc()
-        task_state.status = TaskStatus.notStarted
-        task_state.definition = benchmark.task_definition
-        self._validate_task_state(task_state)
-        builder = task_builder(node_name, task_state.definition, datadir, self.dir_manager)
-        t = Task.build_task(builder)
-        br = BenchmarkRunner(t, datadir, success_callback, error_callback, benchmark)
-        br.run()
-
-    def run_lux_benchmark(self, success=None, error=None):
-
-        def success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_lux_performance = performance
-            client.change_config(cfg_desc)
-            self.config_changed()
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run lux benchmark: {}".format(err_msg))
-            if error:
-                error(to_unicode(err_msg))
-
-        client = self.task_server.client
-        node_name = client.get_node_name()
-        datadir = client.datadir
-
-        lux_benchmark = LuxBenchmark()
-        lux_builder = LuxRenderTaskBuilder
-        self.run_benchmark(lux_benchmark, lux_builder, datadir,
-                           node_name, success_callback, error_callback)
-
-    def run_blender_benchmark(self, success=None, error=None):
-
-        def success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_blender_performance = performance
-            client.change_config(cfg_desc)
-            self.config_changed()
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run blender benchmark: {}".format(err_msg))
-            if error:
-                error(to_unicode(err_msg))
-
-        client = self.task_server.client
-        node_name = client.get_node_name()
-        datadir = client.datadir
-        blender_benchmark = BlenderBenchmark()
-        blender_builder = BlenderRenderTaskBuilder
-        self.run_benchmark(blender_benchmark, blender_builder, datadir,
-                           node_name, success_callback, error_callback)
-
-    def run_dummytask_benchmark(self, success=None, error=None):
-
-        def success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_dummytask_performance = performance
-            client.change_config(cfg_desc)
-            self.config_changed()
-            if success:
-                success(performance)
-
-        def error_callback(err_msg):
-            logger.error("Unable to run dummytask benchmark: {}".format(err_msg))
-            if error:
-                error(to_unicode(err_msg))
-
-        client = self.task_server.client
-        node_name = client.get_node_name()
-        datadir = client.datadir
-        dummy_benchmark = DummyTaskBenchmark()
-
-        # TODO very ugly, change that while refactoring benchmarks
-        class DummyTaskMod(DummyTask):
-            def query_extra_data(self, *args, **kwargs):
-                ctd = self.query_extra_data_for_test_task()
-                return self.ExtraData(ctd=ctd)
-
-        class DummyTaskBuilderMod(DummyTaskBuilder):
-            TASK_CLASS = DummyTaskMod
-
-        dummy_builder = DummyTaskBuilderMod
-        self.run_benchmark(dummy_benchmark, dummy_builder, datadir,
-                           node_name, success_callback, error_callback)
-
-    def run_benchmarks(self):
-        # Benchmarks are run sequentially, via callbacks
-        self.run_dummytask_benchmark(lambda _:
-            self.run_lux_benchmark(lambda _:
-            self.run_blender_benchmark()))
-
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
 
-    def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
+    def change_docker_config(self, config_desc, run_benchmarks,
+                             in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
         if not dm.docker_machine and run_benchmarks:
-            self.run_benchmarks()
+            self.task_server.benchmark_manager.run_all_benchmarks()
             return
 
         if dm.docker_machine and self.use_docker_machine_manager:
@@ -385,7 +268,7 @@ class TaskComputer(object):
 
             def done_callback():
                 if run_benchmarks:
-                    self.run_benchmarks()
+                    self.task_server.benchmark_manager.run_all_benchmarks()
                 logger.debug("Resuming new task computation")
                 self.lock_config(False)
                 self.runnable = True
@@ -488,12 +371,12 @@ class TaskComputer(object):
             self.counting_task = None
             return
 
-        self.current_computations.append(tt)
+        self.counting_thread = tt
         tt.start()
 
     def quit(self):
-        for t in self.current_computations:
-            t.end_comp()
+        if self.counting_thread is not None:
+            self.counting_thread.end_comp()
 
 
 class AssignedSubTask(object):

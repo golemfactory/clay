@@ -66,7 +66,7 @@ class IPFSClient(IClient):
         self._api = ipfsapi.connect(**kwargs)
 
     @staticmethod
-    def build_options(node_id, **kwargs):
+    def build_options(**kwargs):
         return ClientOptions(IPFSClient.CLIENT_ID, IPFSClient.VERSION, **kwargs)
 
     def get_file(self, multihash, client_options=None, **kwargs):

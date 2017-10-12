@@ -1,6 +1,7 @@
 from golem.rpc.mapping.aliases import *
 
 CORE_METHOD_MAP = dict(
+    get_golem_version=      Golem.version,
     get_golem_status=       Golem.status,
 
     get_settings=           Environment.opts,
@@ -76,6 +77,7 @@ CORE_METHOD_MAP = dict(
     enable_environment=     Computation.enable_environment,
     disable_environment=    Computation.disable_environment,
     run_benchmark=          Computation.benchmark_environment,
+    get_performance_values= Computation.get_performance_values,
 
     get_payment_address=    Payments.ident,
     get_balance=            Payments.balance,

@@ -1,10 +1,11 @@
-class Golem(object):
+class Golem:
+    version                 = 'golem.version'
     status                  = 'golem.status'
 
     evt_golem_status        = 'evt.golem.status'
 
 
-class Environment(object):
+class Environment:
 
     opts                    = 'env.opts'
     opts_update             = 'env.opts.update'
@@ -28,14 +29,14 @@ class Environment(object):
     evt_opts_changed        = 'evt.env.opts'
 
 
-class Crypto(object):
+class Crypto:
 
     key_id                  = 'crypto.keys.id'
     pub_key                 = 'crypto.keys.pub'
     difficulty              = 'crypto.difficulty'
 
 
-class Network(object):
+class Network:
 
     ident                   = 'net.ident'
     ident_key               = 'net.ident.key'
@@ -62,14 +63,14 @@ class Network(object):
     evt_connection          = 'evt.net.connection'
 
 
-class Reputation(object):
+class Reputation:
 
     computing               = 'rep.comp'
     requesting              = 'rep.requesting'
     evt_peer                = 'evt.rep.peer'
 
 
-class Task(object):
+class Task:
 
     tasks                   = 'comp.tasks'
     tasks_check             = 'comp.tasks.check'
@@ -109,7 +110,7 @@ class Task(object):
     evt_task_test_status    = 'evt.comp.task.test.status'
 
 
-class Resources(object):
+class Resources:
 
     directories             = 'res.dirs'
     directories_size        = 'res.dirs.size'
@@ -120,19 +121,20 @@ class Resources(object):
     evt_limit_exceeded      = 'evt.res.limit.exceeded'
 
 
-class Computation(object):
+class Computation:
 
     status                  = 'comp.status'
     environments            = 'comp.environments'
     enable_environment      = 'comp.environment.enable'
     disable_environment     = 'comp.environment.disable'
     benchmark_environment   = 'comp.environment.benchmark'
+    get_performance_values  = 'comp.environment.performance'
 
     evt_comp_started        = 'comp.started'
     evt_comp_finished       = 'comp.finished'
 
 
-class Payments(object):
+class Payments:
 
     ident                   = 'pay.ident'
     balance                 = 'pay.balance'
@@ -148,7 +150,7 @@ class Payments(object):
     evt_income              = 'evt.pay.income'
 
 
-class UI(object):
+class UI:
 
     quit                    = 'ui.quit'
     start                   = 'ui.start'
@@ -157,7 +159,7 @@ class UI(object):
     evt_lock_config         = 'evt.ui.widget.config.lock'
 
 
-class Applications(object):
+class Applications:
     # 'app'
     pass
 

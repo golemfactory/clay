@@ -8,19 +8,19 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.testutils import DatabaseFixture, TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
 
 
 @ci_skip
-class TestTaskComputer(TestDirFixture, LogTestCase):
+class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def setUp(self):
         super(TestTaskComputer, self).setUp()
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
 
         self.task_server = task_server
 
@@ -31,7 +31,6 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_run(self):
         task_server = self.task_server
-
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
         task_server.config_desc.waiting_for_task_timeout = 1
@@ -39,7 +38,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.waiting_for_task)
         tc.last_task_request = 0
         tc.run()
@@ -48,7 +47,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc.accept_tasks = False
         tc2 = TaskComputer("DEF", task_server, use_docker_machine_manager=False)
         tc2.counting_task = False
-        tc2.current_computations = []
+        tc2.counting_thread = None
         tc2.waiting_for_task = None
         tc2.last_task_request = 0
 
@@ -61,7 +60,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc2.counting_task = False
 
         tc2.last_task_request = 0
-        tc2.current_computations = []
+        tc2.counting_thread = None
 
         tc2.run()
 
@@ -78,6 +77,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_resource_failure(self):
         task_server = self.task_server
+
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         task_id = 'xyz'
@@ -129,27 +129,29 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.task_server.request_resource.assert_called_with(
             "xyz",  tc.resource_manager.get_resource_header("xyz"),
             "10.10.10.10", 10203, "key", "owner")
+
         assert tc.task_resource_collected("xyz")
         tc.task_server.unpack_delta.assert_called_with(
             tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
-        assert len(tc.current_computations) == 0
+        assert tc.counting_thread is None
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported",
             "10.10.10.10", 10203, "key", "owner", "ABC")
 
+
         tc.support_direct_computation = True
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
         assert not tc.waiting_for_task
-        assert len(tc.current_computations) == 1
-        self.assertGreater(tc.current_computations[0].time_to_compute, 9)
-        self.assertLessEqual(tc.current_computations[0].time_to_compute, 10)
+        assert tc.counting_thread is not None
+        self.assertGreater(tc.counting_thread.time_to_compute, 9)
+        self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
         self.__wait_for_tasks(tc)
 
         prev_task_failed_count = task_server.send_task_failed.call_count
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
@@ -180,11 +182,12 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.__wait_for_tasks(tc)
 
         self.assertFalse(tc.counting_task)
-        self.assertEqual(len(tc.current_computations), 0)
+        self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception', "10.10.10.10",
             10203, "key", "owner", "ABC")
+
 
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print('Hello world')"
@@ -204,18 +207,18 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.deadline = timeout_to_deadline(40)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
-        self.assertEqual(len(tc.current_computations), 1)
-        self.assertGreater(tc.current_computations[0].time_to_compute, 10)
-        self.assertLessEqual(tc.current_computations[0].time_to_compute, 20)
+        self.assertIsNotNone(tc.counting_thread)
+        self.assertGreater(tc.counting_thread.time_to_compute, 10)
+        self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
         self.__wait_for_tasks(tc)
 
         ctd.subtask_id = "xxyyzz2"
         ctd.timeout = timeout_to_deadline(1)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
-        tt = tc.current_computations[0]
-        tc.task_computed(tc.current_computations[0])
-        self.assertEqual(len(tc.current_computations), 0)
+        tt = tc.counting_thread
+        tc.task_computed(tc.counting_thread)
+        self.assertIsNone(tc.counting_thread)
         task_server.send_task_failed.assert_called_with(
             "xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
             "key", "owner", "ABC")
@@ -226,6 +229,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_change_config(self):
         task_server = self.task_server
+
 
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = mock.Mock()
@@ -248,6 +252,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_event_listeners(self):
         client = mock.Mock()
         task_server = self.task_server
+
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         tc.lock_config(True)
@@ -264,7 +269,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     @staticmethod
     def __wait_for_tasks(tc):
-        [t.join() for t in tc.current_computations]
+        if tc.counting_thread is not None:
+            tc.counting_thread.join()
 
     def test_request_rejected(self):
         task_server = self.task_server
@@ -274,10 +280,10 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
 
 @ci_skip
-class TestTaskThread(TestDirFixture):
+class TestTaskThread(DatabaseFixture):
     def test_thread(self):
         ts = mock.MagicMock()
-        ts.config_desc = config_desc()
+        ts.config_desc = ClientConfigDescriptor()
 
         tc = TaskComputer("ABC", ts, use_docker_machine_manager=False)
         tc.counting_task = True
@@ -325,7 +331,7 @@ class TestTaskThread(TestDirFixture):
                             timeout=20)
 
 
-class TestTaskMonitor(TestDirFixture):
+class TestTaskMonitor(DatabaseFixture):
     def test_task_computed(self):
         """golem.monitor signal"""
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -333,10 +339,11 @@ class TestTaskMonitor(TestDirFixture):
         from golem.monitorconfig import MONITOR_CONFIG
         monitor = SystemMonitor(
             NodeMetadataModel(
-                "CLIID", "SESSID", "hackix", "3.1337", config_desc()),
+                "CLIID", "SESSID", "hackix", "3.1337",
+                ClientConfigDescriptor()),
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         task = TaskComputer("ABC", task_server,
                             use_docker_machine_manager=False)
 
@@ -385,10 +392,3 @@ class TestTaskMonitor(TestDirFixture):
         prepare()
         task_thread.result = None
         check(False)
-
-
-def config_desc():
-    ccd = ClientConfigDescriptor()
-    ccd.estimated_blender_performance = 2000.0
-    ccd.estimated_lux_performance = 2000.0
-    return ccd

@@ -1,0 +1,77 @@
+- include_vars:
+    file: site_settings.yml
+    name: site_settings
+
+
+- local_action:
+    module: ec2_instance_facts
+    filters:
+      "tag:role": buildbot-master
+  register: master_instances
+  become: no
+
+
+- group:
+    name: buildbot-worker
+
+
+- user:
+    name: buildbot-worker
+    group: buildbot-worker
+    home: /home/buildbot-worker
+
+
+- apt:
+    name: "{{ item }}"
+  with_items:
+    - python-pip
+    - python-virtualenv
+    - python3
+    - python3-venv
+    - python3-dev
+    - openssl
+    - pkg-config
+    - libjpeg-dev
+    - libopenexr-dev
+    - libssl-dev
+    - autoconf
+    - libgmp-dev
+    - libtool
+    - qt5-default
+    - libffi-dev
+    - libgtk2.0-0
+    - libxss1
+    - libgconf-2-4
+    - libnss3
+    - libasound2
+
+- name: install buildbot and its requirements
+  pip:
+    name: buildbot-worker
+  become_user: buildbot-worker
+
+
+# NOTE: master address will not be updated once configuration is generated
+- name: initialized workspace for the worker
+  command:
+    /home/buildbot-worker/.local/bin/buildbot-worker create-worker
+      /home/buildbot-worker/worker
+      {{master_instances.instances.0.private_dns_name}}
+      linux
+      {{site_settings.worker_pass}}
+    creates=/home/buildbot-worker/worker/
+  become_user: buildbot-worker
+
+
+- name: copy a systemd unit file
+  copy:
+    src: buildbot-worker.service
+    dest: /etc/systemd/system/buildbot-worker.service
+  notify: restart buildbot worker service
+
+
+- systemd:
+    name: buildbot-worker.service
+    daemon_reload: yes
+    enabled: yes
+    state: started

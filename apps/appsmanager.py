@@ -16,6 +16,8 @@ class App(object):
         self.widget = None  # inherit from TaskWidget
         self.controller = None  # inherit from Customizer
         self.task_type_info = None  # inherit from TaskTypeInfo
+        self.benchmark = None  # inherit from Benchmark
+        self.benchmark_builder = None #inherit from TaskBuilder
 
 
 class AppsManager(object):
@@ -43,3 +45,11 @@ class AppsManager(object):
 
     def get_env_list(self):
         return [app.env() for app in self.apps.values()]
+
+    def get_benchmarks(self):
+        """ Returns list of data representing benchmark for registered app
+        :return dict: dictionary, where environment ids are the keys and values
+        are defined as pairs of instance of Benchmark and class of task builder
+        """
+        return {app.env().get_id(): (app.benchmark(), app.benchmark_builder)
+                for app in self.apps.values()}

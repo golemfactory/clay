@@ -90,12 +90,19 @@ install:
   - pip install -r requirements-win.txt
   - python setup.py develop
 
+  # Slow tests only on branches and PRs with enough approvals
+  - set TMP_FILE="approvals.txt"
+  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
+  - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0
+  - del %TMP_FILE%
+
 build_script:
   - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /p:Platform=x64 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
   - venv\Scripts\activate.bat
-  - pytest --cov=golem
+  - if NOT defined ARG_RUNSLOW pytest --cov=golem && echo "Not enough approvals." && exit 1
+  - if defined ARG_RUNSLOW pytest --cov=golem --runslow
 
 after_test:
   - venv\Scripts\activate.bat
