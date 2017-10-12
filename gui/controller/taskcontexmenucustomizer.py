@@ -73,8 +73,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = False
             enabled["Start Task"] = True
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -82,8 +80,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = False
             enabled["Start Task"] = True
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -91,8 +87,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = True
             enabled["Start Task"] = False
-            enabled["Pause"] = True
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -100,8 +94,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = True
             enabled["Start Task"] = False
-            enabled["Pause"] = True
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -109,8 +101,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = True
             enabled["Start Task"] = False
-            enabled["Pause"] = True
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -118,8 +108,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = False
             enabled["Restart"] = True
             enabled["Start Task"] = False
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = True
 
@@ -127,8 +115,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = False
             enabled["Restart"] = False
             enabled["Start Task"] = False
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -136,8 +122,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = False
             enabled["Restart"] = True
             enabled["Start Task"] = False
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
@@ -145,8 +129,6 @@ class TaskContextMenuCustomizer:
             enabled["Abort Task"] = True
             enabled["Restart"] = False
             enabled["Start Task"] = False
-            enabled["Pause"] = False
-            enabled["Resume"] = False
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 

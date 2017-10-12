@@ -59,7 +59,7 @@ class TestMainWindowCustomizer(TestGui):
         assert time_ != "00:00:00"
         task1.task_state.status = "Computing"
         task2.task_state.progress = 0.3
-        task2.task_state.status = "Paused"
+        task2.task_state.status = "SomethingRandom"
         task2.task_state.progress = 1.0
         customizer.logic.get_cost_for_task_id.return_value = 2.342 * denoms.ether
         tasks = {'TASK ID 1': task1, 'TASK ID 2': task2}
