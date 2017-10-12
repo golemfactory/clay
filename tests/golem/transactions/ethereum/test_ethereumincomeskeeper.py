@@ -51,6 +51,12 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.processor.get_logs.return_value = None
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()
+        self.instance.processor.wait_until_synchronized.assert_not_called()
+
+        self.instance.processor.is_synchronized.return_value = False
+        self.instance.received(**received_kwargs)
+        assert self.instance.processor.wait_until_synchronized.call_count == 1
+        self.instance.processor.is_synchronized.return_value = True
 
         # Payment for someone else
         self.instance.processor.get_logs.return_value = [
