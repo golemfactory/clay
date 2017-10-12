@@ -1,5 +1,5 @@
 
-class GNTW_Faucet(object):
+class GNT_Deposit(object):
     ABI = """
             [{
                 "constant": true,
