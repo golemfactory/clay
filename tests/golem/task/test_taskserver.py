@@ -5,7 +5,7 @@ import uuid
 from collections import deque
 from math import ceil
 
-from mock import Mock, MagicMock, patch, ANY
+from unittest.mock import Mock, MagicMock, patch, ANY
 
 from golem import model
 from golem import testutils
@@ -759,6 +759,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         elem = MagicMock()
         elem.subtask_id = 's' + str(uuid.uuid4())
         elem.p2p_node = MagicMock()
+        elem.p2p_node.prv_port = random.randint(0, 2**16-1)
         kwargs = {
             'elems_set': {elem},
             'subtask_id_getter': lambda x: x.subtask_id,
@@ -807,6 +808,20 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
         self.assertEqual(0, len(kwargs['elems_set']))
+        add_pending_mock.reset_mock()
+
+        # Test None instead of a port
+        elem.p2p_node.prv_port = None
+        kwargs['elems_set'] = {elem}
+        session = tasksession.TaskSession(conn=MagicMock())
+        find_sessions_mock.return_value = [session]
+        elem._last_try = datetime.datetime.min
+        self.ts._send_waiting(**kwargs)
+        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.reset_mock()
+        session_cbk.assert_called_once_with(session, elem)
+        self.assertEquals(add_pending_mock.call_count, 0)
+        session_cbk.reset_mock()
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
