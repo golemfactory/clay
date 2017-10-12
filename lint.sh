@@ -1,4 +1,5 @@
 #!/bin/bash
+# a more basic version of lint.sh from marmistrz/lintdiff
 
 hline() {
     printf %"$COLUMNS"s | tr " " "-"
