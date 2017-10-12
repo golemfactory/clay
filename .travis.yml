@@ -19,6 +19,7 @@ cache:
     - $HOME/Library/Caches/pip
 
 before_install:
+  - brew update
   - brew install python3 qt5 openexr freeimage
 
   # geth
