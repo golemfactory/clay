@@ -33,11 +33,6 @@ GREEN=$(
 ) 2>/dev/null
 RESET=$(tput sgr0) 2>/dev/null
 
-if ! git diff-index --quiet HEAD --; then
-    echo "${RED}You have uncommitted changes, aborting!${RESET}"
-    exit 1
-fi
-
 nfailed=0
 
 status() {
