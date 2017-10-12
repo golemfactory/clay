@@ -178,8 +178,6 @@ class ResourceHandshakeSessionMixin:
         try:
             handshake.start(directory)
         except Exception as err:
-            import traceback
-            traceback.print_exc()
             self._handshake_error(key_id, 'writing nonce to dir "{}": {}'
                                   .format(directory, err))
             return

@@ -2,7 +2,7 @@ import os
 import types
 import uuid
 
-from mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY
 
 from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
