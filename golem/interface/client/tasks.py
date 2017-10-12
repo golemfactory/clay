@@ -189,6 +189,8 @@ class Tasks:
     def __create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
         # FIXME CHANGE TASKI ID
+        if 'id' in dictionary:
+            print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)
