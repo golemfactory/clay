@@ -47,6 +47,28 @@ def _encode_payments(payments):
     return args, value
 
 
+class GolemContracts(object):
+    """
+    GolemContracs stores contracts abi and its addresses
+    """
+
+    tGNT_addr = decode_hex("34cB7577690e01A1C53597730e2e1112f72DBeB5")
+    tGNT_Contract = abi.ContractTranslator(
+        json.loads(get_raw_string(TestGNT.ABI)))
+
+    GNT_Deposit_addr = decode_hex("7047c04EB5337bf4fD7033B24d411D50b57feb5C")
+    GNT_Deposit_Contract = abi.ContractTranslator(
+        json.loads(get_raw_string(GNT_Deposit.ABI)))
+
+    tGNT_Faucet_addr = decode_hex("37Ce6582eB657D46a4EB802538C02FE69b48a348")
+    tGNT_Faucet_Contract = abi.ContractTranslator(
+        json.loads(get_raw_string(Test_GNT_Faucet.ABI)))
+
+    GNTW_addr = decode_hex("584d53B8C2D0d0d7e27815D8482df8c96a8CD32D")
+    GNTW_Contract = abi.ContractTranslator(
+        json.loads(get_raw_string(GNTW.ABI)))
+
+
 class PaymentProcessor(Service):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
@@ -63,8 +85,13 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR_OLD = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
-    TESTGNT_ADDR = decode_hex("34cB7577690e01A1C53597730e2e1112f72DBeB5")
+    # TESTGNT_ADDR_OLD = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
+    # TEST_GNT_ADDR = decode_hex("34cB7577690e01A1C53597730e2e1112f72DBeB5")
+    # FAUCET_ADDR = decode_hex("37Ce6582eB657D46a4EB802538C02FE69b48a348")
+    # GNTW_ADDR = decode_hex("584d53B8C2D0d0d7e27815D8482df8c96a8CD32D")
+    # GNT_DEPOSIT_ADDR = decode_hex("7047c04EB5337bf4fD7033B24d411D50b57feb5C")
+
+
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -81,10 +108,11 @@ class PaymentProcessor(Service):
         self.__temp_sync = False
         self.__faucet = faucet
 
-        self.__GNT_Deposit_Contract = abi.ContractTranslator(
-            json.loads(get_raw_string(GNT_Deposit.ABI)))
         self.__tGNT_Contract = abi.ContractTranslator(
             json.loads(get_raw_string(TestGNT.ABI)))
+
+        self.__GNT_Deposit_Contract = abi.ContractTranslator(
+            json.loads(get_raw_string(GNT_Deposit.ABI)))
         self.__tGNT_Faucet_Contract = abi.ContractTranslator(
             json.loads(get_raw_string(Test_GNT_Faucet.ABI)))
         self.__GNTW_Contract = abi.ContractTranslator(
@@ -184,14 +212,15 @@ class PaymentProcessor(Service):
                 'balanceOf',(addr,))
 
             r_tGNT = self.__client.call(_from='0x' + encode_hex(addr),
-                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
-                                   data='0x' + encode_hex(data_tGNT),
-                                   block='pending')
+                                        to='0x' + encode_hex(
+                                            GolemContracts.tGNT_addr),  # GG a moze faucet addr?
+                                        data='0x' + encode_hex(data_tGNT),
+                                        block='pending')
 
-            t_GNTW = self.__client.call(_from='0x' + encode_hex(addr),
-                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
-                                   data='0x' + encode_hex(data_GNTW),
-                                   block='pending')
+            r_GNTW = self.__client.call(_from='0x' + encode_hex(addr),
+                                        to='0x' + encode_hex(GolemContracts.GNTW_addr),
+                                        data='0x' + encode_hex(data_GNTW),
+                                        block='pending')
 
             if r_tGNT is None or r_tGNT == '0x':
                 self.__gnt_balance = 0
@@ -285,7 +314,7 @@ class PaymentProcessor(Service):
             encode_function_call('batchTransfer', [p]) # GG temp
 
         gas = 21000 + 800 + len(p) * 30000
-        tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
+        tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TEST_GNT_ADDR,
                          value=0, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
@@ -379,8 +408,8 @@ class PaymentProcessor(Service):
             addr = self.eth_address(zpad=False)
             nonce = self.__client.get_transaction_count(addr)
             data = self.__tGNT_Faucet_Contract.encode_function_call('create', ())
-            tx = Transaction(nonce, self.GAS_PRICE + 1, 90000,
-                             to=self.TESTGNT_ADDR,
+            tx = Transaction(nonce, self.GAS_PRICE, 90000,
+                             to=GolemContracts.self.TEST_GNT_ADDR,
                              value=0, data=data)
             tx.sign(self.__privkey)
             self.__client.send(tx)
