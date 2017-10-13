@@ -286,25 +286,26 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
     def test_difficulty(self):
         difficulty = 8
         ek = EllipticalKeysAuth(self.path, difficulty=difficulty)
-        # first 8 bits must be 0
-        self.assertEqual(ek.public_key[0], 0)
-        self.assertEqual(ek.key_id[0:2], "00")
-        self.assertGreaterEqual(ek.get_difficulty(), difficulty)
+        # first 8 bits of digest must be 0
+        assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
+        assert ek.get_difficulty() >= difficulty
+        assert EllipticalKeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
+        assert EllipticalKeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
 
     def test_key_recreate_on_increased_difficulty(self):
         old_difficulty = 0
         new_difficulty = 8
 
-        self.assertLess(old_difficulty, new_difficulty)
+        assert old_difficulty < new_difficulty  # just in case
 
         # create key that has difficulty lower than new_difficulty
         ek = EllipticalKeysAuth(self.path, difficulty=old_difficulty)
         while ek.is_difficult(new_difficulty):
             ek.generate_new(old_difficulty)
 
-        self.assertGreaterEqual(ek.get_difficulty(), old_difficulty)
-        self.assertLess(ek.get_difficulty(), new_difficulty)
+        assert ek.get_difficulty() >= old_difficulty
+        assert ek.get_difficulty() < new_difficulty
 
         ek = EllipticalKeysAuth(self.path, difficulty=new_difficulty)
 
-        self.assertGreaterEqual(ek.get_difficulty(), new_difficulty)
+        assert ek.get_difficulty() >= new_difficulty

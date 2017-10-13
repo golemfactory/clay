@@ -37,7 +37,7 @@ def sha3(seed):
 def sha2(seed):
     if isinstance(seed, str):
         seed = seed.encode()
-    return int("0x" + sha256(seed).hexdigest(), 16)
+    return int.from_bytes(sha256(seed).digest(), 'big')
 
 
 def privtopub(raw_privkey):
@@ -94,8 +94,8 @@ class KeysAuth(object):
         self.public_key = self._load_public_key()
         self.key_id = self.cnt_key_id(self.public_key)
 
-    @classmethod
-    def is_pubkey_difficult(cls, pub_key: Union[bytes, str],
+    @staticmethod
+    def is_pubkey_difficult(pub_key: Union[bytes, str],
                             difficulty: IntFloatT) -> bool:
         if isinstance(pub_key, bytes):
             return pub_key.count(0) >= difficulty
@@ -413,8 +413,6 @@ class EllipticalKeysAuth(KeysAuth):
     """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
     (curve secp256k1)."""
 
-    PUBKEY_BYTES = 64
-
     def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY,
                  difficulty: IntFloatT = 0):
         """
@@ -424,7 +422,7 @@ class EllipticalKeysAuth(KeysAuth):
             desired key difficulty level.
             It's a number of leading zeros in binary representation of
             public key. Works with floats too.
-            Value in range <0, PUBKEY_BYTES*8>. 0 is not difficult.
+            Value in range <0, 256>. 0 is not difficult.
             Maximum is impossible.
         """
         KeysAuth.__init__(self, datadir, private_key_name, public_key_name,
@@ -501,37 +499,37 @@ class EllipticalKeysAuth(KeysAuth):
             logger.error("Cannot verify signature: {}".format(exc))
         return False
 
-    @classmethod
-    def _count_max_hash(cls, difficulty: IntFloatT) -> int:
-        return pow(2, cls.PUBKEY_BYTES*8-difficulty)
+    @staticmethod
+    def _count_max_hash(difficulty: IntFloatT) -> int:
+        return pow(2, 256-difficulty)
 
     @staticmethod
     def _is_pubkey_difficult(pub_key: bytes, max_hash: int) -> bool:
-        return int.from_bytes(pub_key, 'big') < max_hash
+        return sha2(pub_key) < max_hash
 
-    @classmethod
-    def is_pubkey_difficult(cls, pub_key: Union[bytes, str],
+    @staticmethod
+    def is_pubkey_difficult(pub_key: Union[bytes, str],
                             difficulty: IntFloatT) -> bool:
         if isinstance(pub_key, str):
             pub_key = decode_hex(pub_key)
-        max_hash = cls._count_max_hash(difficulty)
-        return cls._is_pubkey_difficult(pub_key, max_hash)
+        max_hash = EllipticalKeysAuth._count_max_hash(difficulty)
+        return EllipticalKeysAuth._is_pubkey_difficult(pub_key, max_hash)
 
     def is_difficult(self, difficulty: IntFloatT) -> bool:
         return self.is_pubkey_difficult(self.public_key, difficulty)
 
-    @classmethod
-    def _generate_new_keys(cls, difficulty: IntFloatT) -> (bytes, bytes):
+    @staticmethod
+    def _generate_new_keys(difficulty: IntFloatT) -> (bytes, bytes):
         if not (isinstance(difficulty, int) or isinstance(difficulty, float)):
             raise TypeError("Incorrect 'difficulty' type: {}"
                             .format(type(difficulty)))
 
-        max_hash = cls._count_max_hash(difficulty)
+        max_hash = EllipticalKeysAuth._count_max_hash(difficulty)
 
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
-            if cls._is_pubkey_difficult(pub_key, max_hash):
+            if EllipticalKeysAuth._is_pubkey_difficult(pub_key, max_hash):
                 break
         return (priv_key, pub_key)
 
@@ -550,7 +548,7 @@ class EllipticalKeysAuth(KeysAuth):
         :return: key_id difficulty
         """
         pub_key = decode_hex(key_id) if key_id else self.public_key
-        return self.PUBKEY_BYTES*8 - math.log2(int.from_bytes(pub_key, 'big'))
+        return 256 - math.log2(sha2(pub_key))
 
     def load_from_file(self, file_name):
         """ Load private key from given file. If it's proper key, then generate public key and
