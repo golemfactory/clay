@@ -17,6 +17,17 @@ from golem.tools.testwithappconfig import TestWithKeysAuth
 class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py',]
 
+    def createNode(self):
+        node = MagicMock()
+        node.key = EllipticalKeysAuth(self.path, "PRIVTEST",
+                                      "PUBTEST").get_key_id()
+        node.key_id = node.key
+        node.pub_addr = '127.0.0.1'
+        node.pub_port = 10000
+        node.p2p_pub_port = 10000
+        node.p2p_prv_port = 10000
+        return node
+
     def setUp(self):
         super(TestPeerSession, self).setUp()
         random.seed()
@@ -86,6 +97,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.send = MagicMock()
         peer_session.disconnect = MagicMock()
         peer_session._solve_challenge = MagicMock()
+        peer_session.node_info = self.createNode()
+        peer_session.address = '127.0.0.1'
 
         def create_verify(value):
             def verify(*args):
@@ -93,10 +106,9 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             return verify
 
         key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
+        peer_session.node_info.key = key_id
         msg = MessageHello(port=1, node_name='node2', client_key_id=key_id,
-                           node_info=peer_info, proto_id=-1)
+                           node_info=peer_session.node_info, proto_id=-1)
 
         peer_session.verify = create_verify(False)
         peer_session._react_to_hello(msg)

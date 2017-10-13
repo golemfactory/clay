@@ -16,6 +16,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper
+from golem.network.transport.tcpnetwork import SocketAddress
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,16 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param str key_id: peer id
         :param PeerSession peer: peer session with given peer
         """
+        if peer.address == peer.node_info.pub_addr:
+            port = peer.node_info.p2p_pub_port or peer.node_info.p2p_prv_port
+        else:
+            port = peer.node_info.p2p_prv_port
+
+        if not SocketAddress.is_proper_address(peer.address, port):
+            logger.warning("Peer has not valid socket address {} {}".format(
+                peer.address, port))
+            return False
+
         logger.info(
             "Adding peer %r, key id difficulty: %r",
             key_id,
@@ -278,6 +289,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
         self.__send_degree()
+        return True
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
