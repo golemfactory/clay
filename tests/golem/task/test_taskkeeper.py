@@ -211,36 +211,145 @@ class TestTaskHeaderKeeper(LogTestCase):
         correct, err = tk.is_correct(th)
         assert correct
         assert err is None
+        tk.check_correct(th)  # shouldn't raise
 
         th['deadline'] = datetime.now()
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Deadline is not a timestamp"
+        with self.assertRaisesRegex(TypeError, "Deadline is not a timestamp"):
+            tk.check_correct(th)
 
         th['deadline'] = get_timestamp_utc() - 10
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Deadline already passed"
+        with self.assertRaisesRegex(TypeError, "Deadline already passed"):
+            tk.check_correct(th)
 
         th['deadline'] = get_timestamp_utc() + 20
         correct, err = tk.is_correct(th)
         assert correct
         assert err is None
+        tk.check_correct(th)  # shouldn't raise
 
         th['subtask_timeout'] = "abc"
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Subtask timeout is not a number"
+        with self.assertRaisesRegex(TypeError,
+                                    "Subtask timeout is not a number"):
+            tk.check_correct(th)
 
         th['subtask_timeout'] = -131
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Subtask timeout is less than 0"
+        with self.assertRaisesRegex(TypeError,
+                                    "Subtask timeout is less than 0"):
+            tk.check_correct(th)
+
+    def test_task_limit(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        limit = tk.max_tasks_per_requestor
+
+        thd = get_dict_task_header("ta0")
+        thd["deadline"] = timeout_to_deadline(0.1)
+        tk.add_task_header(thd)
+
+        for i in range(1, limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+        last_add_time = time.time()
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        thd = get_dict_task_header("tb0")
+        thd["task_owner_key_id"] = "zzzz"
+        tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        self.assertIn("tb0", tk.task_headers)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
+
+        thd = get_dict_task_header("ta%d" % limit)
+        tk.add_task_header(thd)
+        self.assertNotIn("ta%d" % limit, tk.task_headers)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+        time.sleep(0.1)
+        tk.remove_old_tasks()
+
+        thd = get_dict_task_header("ta%d" % (limit + 1))
+        tk.add_task_header(thd)
+        self.assertIn("ta%d" % (limit + 1), tk.task_headers)
+
+        self.assertNotIn("ta0", tk.task_headers)
+        for i in range(1, limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+    def test_check_max_tasks_per_owner(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10,
+                              max_tasks_per_requestor=10)
+        limit = tk.max_tasks_per_requestor
+        new_limit = 3
+
+        for i in range(new_limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+        last_add_time = time.time()
+
+        thd = get_dict_task_header("tb0")
+        thd["task_owner_key_id"] = "zzzz"
+        tk.add_task_header(thd)
+
+        for i in range(new_limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
+
+        for i in range(new_limit, limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(limit + 1, len(tk.task_headers))
+
+        # shouldn't remove any tasks
+        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(limit + 1, len(tk.task_headers))
+
+        tk.max_tasks_per_requestor = new_limit
+
+        # should remove ta{3..9}
+        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+
+        for i in range(new_limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(new_limit + 1, len(tk.task_headers))
 
 
-def get_dict_task_header():
+def get_dict_task_header(task_id="xyz"):
     return {
-        "task_id": "xyz",
+        "task_id": task_id,
         "node_name": "ABC",
         "task_owner": dict(),
         "task_owner_address": "10.10.10.10",

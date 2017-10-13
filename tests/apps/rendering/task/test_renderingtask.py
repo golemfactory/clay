@@ -2,7 +2,7 @@ import ntpath
 import os
 from os import makedirs, path, remove
 
-from mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
@@ -145,9 +145,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert img.getpixel((max_x, max_y)) == (1, 255, 255)
 
         img.close()
-
-        rt.preview_file_path = []
-        rt._remove_from_preview("abc")
 
     def test_update_task_state(self):
         task = self.task

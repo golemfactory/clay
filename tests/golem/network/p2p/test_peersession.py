@@ -5,11 +5,10 @@ import unittest
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
-from golem.core.variables import APP_VERSION
+from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import (PeerSession, logger, P2P_PROTOCOL_ID,
-    PeerSessionInfo)
+from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
 from golem.network.transport.message import MessageHello, MessageStopGossip
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth

@@ -4,14 +4,14 @@ import shutil
 import time
 import uuid
 from collections import OrderedDict
-
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
+from golem.resource import dirmanager
 from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
     TaskEventListener, ResultType
@@ -479,16 +479,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert ts is not None
         assert ts.progress == 0.3
 
-    def test_resume_task(self):
-        with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.resume_task("xyz") is None
-        t = self._get_task_mock()
-        self.tm.add_new_task(t)
-        with self.assertNoLogs(logger, level="WARNING"):
-            self.tm.resume_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.starting
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.starting
-
     def test_restart_task(self):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.restart_task("xyz") is None
@@ -520,16 +510,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             self.tm.abort_task("xyz")
         assert self.tm.tasks["xyz"].task_status == TaskStatus.aborted
         assert self.tm.tasks_states["xyz"].status == TaskStatus.aborted
-
-    def test_pause_task(self):
-        with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.pause_task("xyz") is None
-        t = self._get_task_mock()
-        self.tm.add_new_task(t)
-        with self.assertNoLogs(logger, level="WARNING"):
-            self.tm.pause_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.paused
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.paused
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
@@ -664,7 +644,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         _, subtask_id = self.__build_tasks(tm, 3)
 
         # Successful call
-        for task_id in list(tm.tasks.keys()):
+        for task_id in list(tm.tasks):
             for i in range(3):
                 tm.restart_frame_subtasks(task_id, i + 1)
         assert tm.notice_task_updated.called
@@ -719,6 +699,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
                                      task_definition=definition,
                                      total_tasks=n,
                                      root_path=self.path)
+            task.initialize(dirmanager.DirManager(self.path))
             task.get_total_tasks = Mock()
             task.get_progress = Mock()
             task.get_total_tasks.return_value = i + 2
@@ -726,6 +707,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.subtask_states = subtask_states
 
             task.preview_updater = Mock()
+            task.preview_updater.preview_res_x = 100
+            task.preview_updater.get_offset = Mock(wraps=lambda part: part*10)
             task.preview_updaters = [Mock()] * n
             task.use_frames = fixed_frames or i % 2 == 0
 

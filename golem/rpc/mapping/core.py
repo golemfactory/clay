@@ -1,6 +1,7 @@
 from golem.rpc.mapping.aliases import *
 
 CORE_METHOD_MAP = dict(
+    get_golem_version=      Golem.version,
     get_golem_status=       Golem.status,
 
     get_settings=           Environment.opts,
@@ -58,8 +59,6 @@ CORE_METHOD_MAP = dict(
     delete_task=            Task.task_delete,
     abort_task=             Task.task_abort,
     restart_task=           Task.task_restart,
-    pause_task=             Task.task_pause,
-    resume_task=            Task.task_resume,
 
     get_subtasks=           Task.subtasks,
     get_subtasks_borders=   Task.subtasks_borders,

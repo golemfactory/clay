@@ -107,8 +107,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.resource_dir_2 = self.resource_manager_2.storage.get_dir(
             self.task_id)
 
-        client_options = self.resource_manager_1.build_client_options(
-            task_server_1.get_key_id())
+        client_options = self.resource_manager_1.build_client_options()
 
         self.resources_relative, self.resources = self._create_resources(
             self.resource_dir_1)

@@ -1,5 +1,3 @@
-
-from ethereum.utils import denoms
 import logging
 import functools
 import os
@@ -20,10 +18,9 @@ from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.core.variables import TASK_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
-
-TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -108,6 +105,8 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
+            if self.key_id:
+                self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -582,7 +581,7 @@ class TaskSession(MiddlemanSafeSession):
         secret = msg.secret
         multihash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -634,18 +633,16 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
-        res = resource_manager.get_resources(msg.task_id)
-        res = resource_manager.to_wire(res)
-        self.send(
-            message.MessageResourceList(
-                resources=res,
-                options=client_options
-            )
-        )
+        key_id = self.task_server.get_key_id()
+        task_id = msg.task_id
+
+        resources = self.task_server.get_resources(task_id)
+        options = self.task_server.get_share_options(task_id, key_id)
+
+        self.send(message.MessageResourceList(
+            resources=resources,
+            options=options
+        ))
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -919,9 +916,7 @@ class TaskSession(MiddlemanSafeSession):
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
+        client_options = resource_manager.build_client_options()
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()

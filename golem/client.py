@@ -263,14 +263,19 @@ class Client(HardwarePresetsMixin):
             self.daemon_manager = HyperdriveDaemonManager(self.datadir)
             self.daemon_manager.start()
 
+        hyperdrive_addrs = self.daemon_manager.public_addresses(
+            self.node.pub_addr)
+        hyperdrive_ports = self.daemon_manager.ports()
+
         if not self.resource_server:
-            resource_manager = HyperdriveResourceManager(dir_manager)
+            resource_manager = HyperdriveResourceManager(dir_manager,
+                                                         hyperdrive_addrs)
             self.resource_server = BaseResourceServer(resource_manager,
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        def connect(xxx_todo_changeme):
-            (p2p_port, task_port) = xxx_todo_changeme
+        def connect(ports):
+            p2p_port, task_port = ports
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
@@ -298,14 +303,14 @@ class Client(HardwarePresetsMixin):
 
         task = Deferred()
         p2p = Deferred()
-        hyperdrive_ports = self.daemon_manager.ports()
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
         log.info("Starting p2p server ...")
+        resource_manager = self.resource_server.resource_manager
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(self)
+        self.p2pservice.set_metadata_manager(resource_manager.peer_manager)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
@@ -410,9 +415,7 @@ class Client(HardwarePresetsMixin):
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        key_id = self.keys_auth.key_id
-
-        options = resource_manager.build_client_options(key_id)
+        options = resource_manager.build_client_options()
         files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(_):
@@ -508,12 +511,6 @@ class Client(HardwarePresetsMixin):
 
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)
-
-    def pause_task(self, task_id):
-        self.task_server.task_manager.pause_task(task_id)
-
-    def resume_task(self, task_id):
-        self.task_server.task_manager.resume_task(task_id)
 
     def delete_task(self, task_id):
         self.remove_task_header(task_id)
@@ -1105,24 +1102,6 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-    def get_metadata(self):
-        metadata = dict()
-        # if self.ipfs_manager:
-        #     metadata.update(self.ipfs_manager.get_metadata())
-        return metadata
-
-    def interpret_metadata(self, metadata, address, port, node_info):
-        pass
-        # if self.config_desc and node_info and metadata:
-        #     seed_addresses = self.p2pservice.get_seeds()
-        #     node_addresses = [
-        #         (address, port),
-        #         (node_info.pub_addr, node_info.pub_port)
-        #     ]
-        #     self.ipfs_manager.interpret_metadata(metadata,
-        #                                          seed_addresses,
-        #                                          node_addresses)
-
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
@@ -1138,6 +1117,10 @@ class Client(HardwarePresetsMixin):
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
+
+    @staticmethod
+    def get_golem_version():
+        return APP_VERSION
 
     @staticmethod
     def get_golem_status():
