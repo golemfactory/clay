@@ -30,7 +30,7 @@ from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 logger = logging.getLogger("app")
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted]
 
 
 class GuiApplicationLogic(QtCore.QObject, AppLogic):
@@ -275,12 +275,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     def abort_task(self, task_id):
         self.client.abort_task(task_id)
-
-    def pause_task(self, task_id):
-        self.client.pause_task(task_id)
-
-    def resume_task(self, task_id):
-        self.client.resume_task(task_id)
 
     def delete_task(self, task_id):
         self.client.delete_task(task_id)

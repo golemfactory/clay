@@ -531,20 +531,6 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def pause_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.paused
-        self.tasks_states[task_id].status = TaskStatus.paused
-
-        self.notice_task_updated(task_id)
-
-    @handle_task_key_error
-    def resume_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.starting
-        self.tasks_states[task_id].status = TaskStatus.starting
-
-        self.notice_task_updated(task_id)
-
-    @handle_task_key_error
     def get_output_states(self, task_id):
         return self.tasks[task_id].get_output_states()
 

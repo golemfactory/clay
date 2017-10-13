@@ -135,16 +135,6 @@ class Tasks:
         deferred = Tasks.client.delete_task(id)
         return sync_wait(deferred)
 
-    @command(argument=id_req, help="Pause a task")
-    def pause(self, id):
-        deferred = Tasks.client.pause_task(id)
-        return sync_wait(deferred)
-
-    @command(argument=id_req, help="Resume a task")
-    def resume(self, id):
-        deferred = Tasks.client.resume_task(id)
-        return sync_wait(deferred)
-
     @command(argument=file_name, help="""
         Create a task from file.
         Note: no client-side validation is performed yet.

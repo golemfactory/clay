@@ -512,12 +512,6 @@ class Client(HardwarePresetsMixin):
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)
 
-    def pause_task(self, task_id):
-        self.task_server.task_manager.pause_task(task_id)
-
-    def resume_task(self, task_id):
-        self.task_server.task_manager.resume_task(task_id)
-
     def delete_task(self, task_id):
         self.remove_task_header(task_id)
         self.remove_task(task_id)
