@@ -417,7 +417,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         print('gnt_addr %s', gnt_addr)
         self.state.mine()
         self.gnt = tester.ABIContract(self.state, TEST_GNT_ABI, gnt_addr)
-        PaymentProcessor.TEST_GNT_ADDR = decode_hex(gnt_addr)
+        PaymentProcessor.TESTGNT_ADDR = decode_hex(gnt_addr)
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
         self.client.get_peer_count.return_value = 0
