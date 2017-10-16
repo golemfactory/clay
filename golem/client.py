@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 import uuid
+import json
 from collections import Iterable
 from copy import copy
 from os import path, makedirs
@@ -170,6 +171,7 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = None
 
         self.rpc_publisher = None
+        self.task_test_status = None
 
         self.ipfs_manager = None
         self.resource_server = None
@@ -456,25 +458,19 @@ class Client(HardwarePresetsMixin):
             async_run(request)
             return True
 
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(
-                Task.evt_task_test_status,
-                TaskTestStatus.error,
-                "Another test is running"
-            )
+        if self.task_test_status:
+            self.task_test_status = json.dumps({"status": TaskTestStatus.error, "error": "Another test is running"})
         return False
 
     def _run_test_task(self, t_dict):
 
         def on_success(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_test_status,
-                          TaskTestStatus.success, *args, **kwargs)
+            self.task_test_status = json.dumps({"status": TaskTestStatus.success, "error": args, "more": kwargs})
 
         def on_error(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_test_status,
-                          TaskTestStatus.error, *args, **kwargs)
+            self.task_test_status = json.dumps({"status": TaskTestStatus.error, "error": args, "more": kwargs})
 
         try:
             dictionary = DictSerializer.load(t_dict)
@@ -486,7 +482,7 @@ class Client(HardwarePresetsMixin):
 
         self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
         self.task_tester.run()
-        self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
+        self.task_test_status = json.dumps({"status": TaskTestStatus.started, "error": True})
 
     def abort_test_task(self):
         with self.lock:
@@ -494,6 +490,16 @@ class Client(HardwarePresetsMixin):
                 self.task_tester.end_comp()
                 return True
             return False
+
+    def check_test_status(self):
+        if self.task_test_status is None:
+            return False
+        if not json.loads(self.task_test_status)['status'] == TaskTestStatus.started:
+            result = copy(self.task_test_status)
+            # when client receive the eventual result we'll clean result for the next one.
+            self.task_test_status = None
+            return result
+        return self.task_test_status
 
     def create_task(self, t_dict):
         try:

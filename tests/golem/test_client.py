@@ -3,6 +3,7 @@ import os
 import time
 import unittest
 import uuid
+import json
 
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
@@ -31,6 +32,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 from golem.core.variables import APP_VERSION
+from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
@@ -401,7 +403,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.counting_thread = None
         c.task_server.task_computer.stats = dict()
-        
+
         c.get_supported_task_count = lambda *_: 0
         c.connection_status = lambda *_: 'test'
 
@@ -415,8 +417,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         c.last_nss_time = future_time
         c.last_net_check_time = future_time
-        c.last_balance_time = future_time
-        c.last_tasks_time = future_time
 
         pub_evt = yield from getattr(Client, '__publish_events')
         pub_evt()
@@ -427,8 +427,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
-        c.last_balance_time = past_time
-        c.last_tasks_time = past_time
 
         assert not log.debug.called
         assert send.call_count == 2
@@ -443,8 +441,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
-        c.last_balance_time = past_time
-        c.last_tasks_time = past_time
 
         assert log.debug.called
         assert send.call_count == 2
@@ -820,6 +816,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
+
+    def test_test_status(self, *_):
+        c = self.client
+
+        result = c.check_test_status()
+        self.assertFalse(result)
+
+        c.task_test_status = json.dumps({"status": TaskTestStatus.started})
+        result = c.check_test_status()
+        self.assertEqual(c.task_test_status, result)
+
+        c.task_test_status = json.dumps({"status": TaskTestStatus.success})
+        result = c.check_test_status()
+        self.assertEqual(c.task_test_status, None)
 
     @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):

@@ -75,6 +75,7 @@ class Task:
     tasks                   = 'comp.tasks'
     tasks_check             = 'comp.tasks.check'
     tasks_check_abort       = 'comp.tasks.check.abort'
+    task_test_status        = 'comp.task.test.status'
     tasks_stats             = 'comp.tasks.stats'
     tasks_known             = 'comp.tasks.known'
     tasks_known_delete      = 'comp.tasks.known.delete'
@@ -107,7 +108,7 @@ class Task:
     # evt_task_list           = 'evt.comp.task.list'
     evt_task_status         = 'evt.comp.task.status'
     evt_subtask_status      = 'evt.comp.subtask.status'
-    evt_task_test_status    = 'evt.comp.task.test.status'
+    #evt_task_test_status    = 'evt.comp.task.test.status'
 
 
 class Resources:

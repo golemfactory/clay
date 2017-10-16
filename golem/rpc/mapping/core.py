@@ -43,6 +43,7 @@ CORE_METHOD_MAP = dict(
     get_tasks=              Task.tasks,
     run_test_task=          Task.tasks_check,
     abort_test_task=        Task.tasks_check_abort,
+    check_test_status=      Task.task_test_status,
     get_task_stats=         Task.tasks_stats,
     get_known_tasks=        Task.tasks_known,
     remove_task_header=     Task.tasks_known_delete,
