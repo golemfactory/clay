@@ -1,11 +1,13 @@
 import logging
 import time
+import random
 
 from devp2p.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import P2P_PROTOCOL_ID
+from golem.core.variables import TASK_HEADERS_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +56,6 @@ class PeerSession(BasicSafeSession):
         self.node_info = None
         self.client_ver = None
         self.listen_port = None
-
         self.conn_id = None
 
         # Verification by challenge not a random value
@@ -438,7 +439,16 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.send(message.MessageTasks(tasks))
+        max_ind = len(tasks) - 1
+        if max_ind < 0:
+            return
+        tasks_to_send = []
+        if len(tasks) > TASK_HEADERS_LIMIT:
+            for i in range(0, TASK_HEADERS_LIMIT):
+                tasks_to_send.append(tasks[random.randint(0, max_ind)])
+            self.send(message.MessageTasks(tasks_to_send))
+        else:
+            self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks_array:
