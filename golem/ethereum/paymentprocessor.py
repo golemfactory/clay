@@ -84,7 +84,6 @@ class PaymentProcessor(Service):
         self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))  # todo GG obsolete
 
         self.__golem_contracts = GolemContracts
-        self.__tGNT_Faucet_Contract = GolemContracts.Test_GNT_Faucet.ABI
 
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
@@ -289,14 +288,14 @@ class PaymentProcessor(Service):
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         # data = gnt_contract.encode('batchTransfer', [p]) # todo GG old one
-        data = self.__tGNT_Contract. \
+        data = self.__golem_contracts.GNTW_Contract. \
             encode_function_call('batchTransfer', [p])  # GG temp  -> GNTW
 
         gas = 21000 + 800 + len(p) * 30000
         tx = Transaction(nonce=nonce,
                          gasprice=self.GAS_PRICE,
                          startgas=gas,
-                         to=GolemContracts.tGNT_addr, # GG todo -> GNTW
+                         to=GolemContracts.GNTW_addr, # GG todo -> GNTW
                          value=0,
                          data=data)
         tx.sign(self.__privkey)
