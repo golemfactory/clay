@@ -486,24 +486,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """ Return node public key in a form of an id """
         return self.peer_keeper.key_num
 
-    def key_changed(self):
-        """React to the fact that key id has been changed. Drop all
-           connections with peer,
-        restart peer keeper and connect to the network with new key id.
-        """
-        self.peer_keeper.restart(self.keys_auth.get_key_id())
-        for p in list(self.peers.values()):
-            p.dropped()
-
-        try:
-            socket_address = tcpnetwork.SocketAddress(
-                self.config_desc.seed_host,
-                self.config_desc.seed_port
-            )
-            self.connect(socket_address)
-        except AddressValueError as err:
-            logger.error("Invalid seed address: %s", err)
-
     def encrypt(self, data, public_key):
         """Encrypt data with given public_key. If no public_key is given,
            or it's equal to zero
