@@ -434,7 +434,10 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        peers_info = msg.peers_array
+        if not isinstance(msg.peers_array, list):
+            return
+
+        peers_info = msg.peers_array[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.try_to_add_peer(pi)
