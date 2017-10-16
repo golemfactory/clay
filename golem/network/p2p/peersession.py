@@ -611,7 +611,6 @@ class PeerSession(BasicSafeSession):
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            message.MessageDegree.TYPE: self._react_to_degree,
             message.MessageGossip.TYPE: self._react_to_gossip,
             message.MessageLocRank.TYPE: self._react_to_loc_rank,
             message.MessageStopGossip.TYPE: self._react_to_stop_gossip,
