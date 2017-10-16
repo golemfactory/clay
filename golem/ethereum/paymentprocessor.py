@@ -84,9 +84,7 @@ class PaymentProcessor(Service):
         self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))  # todo GG obsolete
 
         self.__golem_contracts = GolemContracts
-        self.__GNT_Contract = GolemContracts.GNT.ABI
         self.__tGNT_Faucet_Contract = GolemContracts.Test_GNT_Faucet.ABI
-        self.__GNTW_Contract = GolemContracts.GNTW.ABI
 
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
@@ -185,7 +183,7 @@ class PaymentProcessor(Service):
 
             r_tGNT = self.__client.call(_from='0x' + encode_hex(addr),
                                         to='0x' + encode_hex(
-                                            GolemContracts.GNT),
+                                            GolemContracts.tGNT_addr),
                                         # GG a moze faucet addr?
                                         data='0x' + encode_hex(data_tGNT),
                                         block='pending')
@@ -404,8 +402,10 @@ class PaymentProcessor(Service):
             log.info("Requesting tGNT")
             addr = self.eth_address(zpad=False)
             nonce = self.__client.get_transaction_count(addr)
-            data = self.__tGNT_Faucet_Contract.\
-                encode_function_call('create',())
+
+            data = self.__golem_contracts.\
+                tGNT_Faucet_Contract.encode_function_call('create',())
+
             tx = Transaction(nonce,
                              gasprice=self.GAS_PRICE,
                              startgas=90000,
