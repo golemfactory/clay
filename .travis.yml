@@ -10,7 +10,7 @@ branches:
 
 env:
   global:
-    - GETH_VER=geth-darwin-amd64-1.6.4-9c2882b2
+    - GETH_VER=geth-darwin-amd64-1.7.2-1db4ecdc
     - HYPERG_VER=0.2.1
 
 cache:
