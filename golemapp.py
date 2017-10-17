@@ -32,6 +32,7 @@ from golem.node import OptNode
 @click.option('--protocol_id', type=click.INT,
               callback=PROTOCOL_ID.patch_protocol_id,
               is_eager=True,
+              expose_value=False,
               help="Golem nodes will connect "
                    "only inside sub-network with "
                    "a given protocol id")
@@ -64,9 +65,7 @@ from golem.node import OptNode
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor,
           datadir, node_address, rpc_address,
-          peer, qt, version, m,
-          geth_port, protocol_id
-          ):
+          peer, qt, version, m, geth_port):
     freeze_support()
     delete_reactor()
 

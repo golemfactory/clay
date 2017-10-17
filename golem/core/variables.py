@@ -30,6 +30,10 @@ LISTEN_PORT_TTL = 3600
 # PROTOCOL ID #
 ###############
 class PROTOCOL_ID(object):
+    """
+    https://docs.python.org/2/faq/programming.html#how-do-i-share-global-variables-across-modules
+    https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules
+    """
     P2P_ID = 14
     TASK_ID = 15
 
@@ -37,8 +41,6 @@ class PROTOCOL_ID(object):
     def patch_protocol_id(ctx, param, value):
         """
         Used during golem startup for changing the protocol id
-        https://docs.python.org/2/faq/programming.html#how-do-i-share-global-variables-across-modules
-        https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules
         """
         del ctx, param
         if value:
