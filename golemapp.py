@@ -21,7 +21,7 @@ def monkey_patched_getLogger(*args, **kwargs):
 
 slogging.SManager.getLogger = monkey_patched_getLogger
 
-from golem.core.variables import monkey_patch_protocol
+from golem.core.variables import PROTOCOL_ID
 from golem.node import OptNode
 
 @click.command()
@@ -30,7 +30,7 @@ from golem.node import OptNode
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--protocol_id', type=click.INT,
-              callback=monkey_patch_protocol,
+              callback=PROTOCOL_ID.patch_protocol_id,
               is_eager=True,
               help="Golem nodes will connect "
                    "only inside sub-network with "
@@ -45,11 +45,6 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-
-# @click.option('--protocol_id', type=click.INT,
-#               help="Golem nodes will connect "
-#                    "only inside sub-network with "
-#                    "a given protocol id")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -86,10 +81,6 @@ def start(gui, payments, monitor,
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
-    from golem.core.variables import P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
-
-    print(P2P_PROTOCOL_ID, TASK_PROTOCOL_ID)
-
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -152,11 +143,11 @@ def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
     from golem.core.variables import APP_VERSION, \
-        P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+        PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)
-    log.info("P2P Protocol Version: " + str(P2P_PROTOCOL_ID))
-    log.info("Task Protocol Version: " + str(TASK_PROTOCOL_ID))
+    log.info("P2P Protocol Version: " + str(PROTOCOL_ID.P2P_ID))
+    log.info("Task Protocol Version: " + str(PROTOCOL_ID.TASK_ID))
 
 
 if __name__ == '__main__':

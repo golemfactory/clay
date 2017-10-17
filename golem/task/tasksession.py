@@ -18,9 +18,7 @@ from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.core.variables import TASK_PROTOCOL_ID
-# from golemapp import TASK_PROTOCOL_ID
-
+from golem.core.variables import PROTOCOL_ID
 logger = logging.getLogger(__name__)
 
 
@@ -414,7 +412,7 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageHello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=TASK_PROTOCOL_ID
+                proto_id=PROTOCOL_ID.TASK_ID
             ),
             send_unverified=True
         )
@@ -689,11 +687,11 @@ class TaskSession(MiddlemanSafeSession):
             self.disconnect(TaskSession.DCRUnverified)
             return
 
-        if msg.proto_id != TASK_PROTOCOL_ID:
+        if msg.proto_id != PROTOCOL_ID.TASK_ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                TASK_PROTOCOL_ID
+                PROTOCOL_ID.TASK_ID
             )
             self.disconnect(TaskSession.DCRProtocolVersion)
             return

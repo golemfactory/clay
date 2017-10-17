@@ -29,27 +29,21 @@ LISTEN_PORT_TTL = 3600
 ###############
 # PROTOCOL ID #
 ###############
-P2P_PROTOCOL_ID = 14
-TASK_PROTOCOL_ID = 15
+class PROTOCOL_ID(object):
+    P2P_ID = 14
+    TASK_ID = 15
 
-# class Protocol_Id(object):
-#     P2P_PROTOCOL_ID = 123
-#
-#     def set_p2p_protocol_id(self, new_id):
-#         Protocol_Id.P2P_PROTOCOL_ID = new_id
-
-
-
-def monkey_patch_protocol(ctx, param, value):
-    """
-    Used at golem startup
-    """
-    del ctx, param
-    if value:
-        # from golem.core.variables import P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
-        global P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
-        P2P_PROTOCOL_ID = value
-        TASK_PROTOCOL_ID = value
+    @staticmethod
+    def patch_protocol_id(ctx, param, value):
+        """
+        Used during golem startup for changing the protocol id
+        https://docs.python.org/2/faq/programming.html#how-do-i-share-global-variables-across-modules
+        https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules
+        """
+        del ctx, param
+        if value:
+            PROTOCOL_ID.P2P_ID = value
+            PROTOCOL_ID.TASK_ID = value
 
 
 #####################
