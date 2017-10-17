@@ -1,6 +1,9 @@
 import struct
+from golem.core.common import to_unicode
 
 from .variables import LONG_STANDARD_SIZE
+
+MAX_BUFFER_SIZE = 2 * 1024 * 1024
 
 
 class DataBuffer:
@@ -18,12 +21,19 @@ class DataBuffer:
             raise AttributeError("num must be grater than 0")
         str_num_rep = struct.pack("!L", num)
         self.buffered_data = b"".join([self.buffered_data, str_num_rep])
+        return str_num_rep
 
-    def append_string(self, data):
+    def append_string(self, data, check_size=True, overflow_prefix=None):
         """ Append given string to data buffer
+        :param check_size: keep buffer size below MAX_BUFFER_SIZE
+        :param overflow_prefix: string to prepend on overflow
         :param str data: string to append
         """
-        self.buffered_data = b"".join([self.buffered_data, data])
+        new_size = self.data_size() + len(data)
+        if check_size and new_size > MAX_BUFFER_SIZE:
+            self.buffered_data = b"".join([overflow_prefix or '', data])
+        else:
+            self.buffered_data = b"".join([self.buffered_data, data])
 
     def data_size(self):
         """ Return size of data in buffer
@@ -104,8 +114,8 @@ class DataBuffer:
         """ Append length of a given data and then given data to the buffer
         :param str data: data to append
         """
-        self.append_ulong(len(data))
-        self.append_string(data)
+        prefix = self.append_ulong(len(data))
+        self.append_string(data, overflow_prefix=prefix)
 
     def clear_buffer(self):
         """ Remove all data from the buffer """
