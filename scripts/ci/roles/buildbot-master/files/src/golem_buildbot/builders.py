@@ -136,10 +136,7 @@ class StepsFactory(object):
                     logfile='stop hyperg',
                     haltOnFailure=True,
                     command=['scripts/test-daemon-stop.sh']),
-            ],
-            env={
-                'LANG': 'en_US.UTF-8',  # required for some tests
-            })
+            ])
 
 
 class WindowsStepsFactory(StepsFactory):
