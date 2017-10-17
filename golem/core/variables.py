@@ -25,16 +25,32 @@ LISTEN_WAIT_TIME = 1
 LISTENING_REFRESH_TIME = 120
 LISTEN_PORT_TTL = 3600
 
-#P2P PROTOCOL
-P2P_PROTOCOL_ID = 14
-#TASK PROTOCOL
-TASK_PROTOCOL_ID = 15
-def patch_protocol(ctx, param, value):
 
+###############
+# PROTOCOL ID #
+###############
+P2P_PROTOCOL_ID = 14
+TASK_PROTOCOL_ID = 15
+
+# class Protocol_Id(object):
+#     P2P_PROTOCOL_ID = 123
+#
+#     def set_p2p_protocol_id(self, new_id):
+#         Protocol_Id.P2P_PROTOCOL_ID = new_id
+
+
+
+def monkey_patch_protocol(ctx, param, value):
+    """
+    Used at golem startup
+    """
+    del ctx, param
     if value:
+        # from golem.core.variables import P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
         global P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
         P2P_PROTOCOL_ID = value
         TASK_PROTOCOL_ID = value
+
 
 #####################
 # SESSION VARIABLES #

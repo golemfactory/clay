@@ -6,7 +6,6 @@ from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import P2P_PROTOCOL_ID
-# from golemapp import P2P_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +354,7 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
+        from golem.core.variables import P2P_PROTOCOL_ID
         if msg.proto_id != P2P_PROTOCOL_ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"

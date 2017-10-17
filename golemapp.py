@@ -4,25 +4,37 @@ import click
 from multiprocessing import freeze_support
 import logging
 from ethereum import slogging
-#Monkey patch for ethereum.slogging.
-#SLogger aggressively mess up with python looger.
-#This patch is to settle down this.
-#It should be done before any SLogger is created.
+
+# Monkey patch for ethereum.slogging.
+# SLogger aggressively mess up with python looger.
+# This patch is to settle down this.
+# It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
+
+
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
+
 slogging.SManager.getLogger = monkey_patched_getLogger
+
+from golem.core.variables import monkey_patch_protocol
 from golem.node import OptNode
-from golem.core.variables import patch_protocol
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
+@click.option('--protocol_id', type=click.INT,
+              callback=monkey_patch_protocol,
+              is_eager=True,
+              help="Golem nodes will connect "
+                   "only inside sub-network with "
+                   "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
               help="Network address to use for this node")
@@ -33,10 +45,7 @@ from golem.core.variables import patch_protocol
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-# @click.option('--protocol_id', type=click.INT, callback=patch_protocol,
-#               help="Golem nodes will connect "
-#                    "only inside sub-network with "
-#                    "a given protocol id")
+
 # @click.option('--protocol_id', type=click.INT,
 #               help="Golem nodes will connect "
 #                    "only inside sub-network with "
@@ -58,9 +67,10 @@ from golem.core.variables import patch_protocol
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port,
-          # protocol_id
+def start(gui, payments, monitor,
+          datadir, node_address, rpc_address,
+          peer, qt, version, m,
+          geth_port, protocol_id
           ):
     freeze_support()
     delete_reactor()
@@ -76,11 +86,10 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
+    from golem.core.variables import P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
 
-    # if protocol_id:
-    #     global P2P_PROTOCOL_ID,TASK_PROTOCOL_ID
-    #     P2P_PROTOCOL_ID = protocol_id
-    #     TASK_PROTOCOL_ID = protocol_id
+    print(P2P_PROTOCOL_ID, TASK_PROTOCOL_ID)
+
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -138,12 +147,12 @@ def start_crossbar_worker(module):
     module = importlib.import_module(module)
     module.run()
 
+
 def log_golem_version():
     log = logging.getLogger('golem.version')
-    #initial version info
+    # initial version info
     from golem.core.variables import APP_VERSION, \
         P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
-
 
     log.info("GOLEM Version: " + APP_VERSION)
     log.info("P2P Protocol Version: " + str(P2P_PROTOCOL_ID))
