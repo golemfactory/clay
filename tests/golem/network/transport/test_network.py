@@ -27,7 +27,7 @@ class ASession(object):
         self.msgs.append(msg)
 
     def sign(self, msg):
-        return b'1' * 65
+        return b'1' * Message.SIG_LEN
 
     def encrypt(self, msg):
         return b"ASessionEncrypt" + bytes(msg)
@@ -400,6 +400,6 @@ class TestSaferProtocol(unittest.TestCase):
         p.dataReceived(p.transport.buff[0])
         self.assertIsInstance(p.session.msgs[0], MessageHello)
         self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
-        self.assertEqual(msg.sig, b'1' * 65)
+        self.assertEqual(msg.sig, b'1' * Message.SIG_LEN)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

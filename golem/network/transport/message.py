@@ -21,6 +21,8 @@ class Message(object):
     __slots__ = ['timestamp', 'encrypted', 'sig', '_payload', '_raw']
 
     TS_SCALE = 10 ** 6
+    HDR_LEN = 11
+    SIG_LEN = 65
 
     TYPE = None
     ENCRYPT = True
@@ -79,7 +81,7 @@ class Message(object):
             if sign_func:
                 self.sig = sign_func(self.get_short_hash())
             else:
-                self.sig = b'0' * 65
+                self.sig = b'0' * self.SIG_LEN
 
             return (
                 self.serialize_header() +
@@ -93,7 +95,7 @@ class Message(object):
 
     def serialize_header(self):
         """ Serialize message's header
-        I unsigned short (2 bytes) big-endian
+        H unsigned short (2 bytes) big-endian
         Q unsigned long long (8 bytes) big-endian
         ? bool (1 byte)
 
@@ -115,7 +117,7 @@ class Message(object):
         :param data: bytes
         :return: tuple of (TYPE, timestamp, encrypted)
         """
-        assert len(data) == 11
+        assert len(data) == cls.HDR_LEN
         return struct.unpack('!HQ?', data)
 
     @classmethod
@@ -156,11 +158,15 @@ class Message(object):
                               type is unknown
         """
 
-        if not msg_ or len(msg_) <= 76:  # len(header) + len(sig) = 11 + 65
+        payload_idx = cls.HDR_LEN + cls.SIG_LEN
+
+        if not msg_ or len(msg_) <= payload_idx:
             logger.error("Message error: message too short")
             return
 
-        header, sig, payload = msg_[:11], msg_[11:76], msg_[76:]
+        header = msg_[:cls.HDR_LEN]
+        sig = msg_[cls.HDR_LEN:payload_idx]
+        payload = msg_[payload_idx:]
         data = payload
 
         try:
