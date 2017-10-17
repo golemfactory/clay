@@ -24,10 +24,17 @@ DEFAULT_CONNECT_TO_PORT = 80
 LISTEN_WAIT_TIME = 1
 LISTENING_REFRESH_TIME = 120
 LISTEN_PORT_TTL = 3600
+
 #P2P PROTOCOL
 P2P_PROTOCOL_ID = 14
 #TASK PROTOCOL
 TASK_PROTOCOL_ID = 15
+def patch_protocol(ctx, param, value):
+
+    if value:
+        global P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+        P2P_PROTOCOL_ID = value
+        TASK_PROTOCOL_ID = value
 
 #####################
 # SESSION VARIABLES #

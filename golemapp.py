@@ -16,12 +16,7 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
-
-
-# #P2P PROTOCOL
-P2P_PROTOCOL_ID = 14
-#TASK PROTOCOL
-TASK_PROTOCOL_ID = 15
+from golem.core.variables import patch_protocol
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -38,10 +33,14 @@ TASK_PROTOCOL_ID = 15
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--protocol_id', type=click.INT,
-              help="Golem nodes will connect "
-                   "only inside sub-network with "
-                   "a given protocol id")
+# @click.option('--protocol_id', type=click.INT, callback=patch_protocol,
+#               help="Golem nodes will connect "
+#                    "only inside sub-network with "
+#                    "a given protocol id")
+# @click.option('--protocol_id', type=click.INT,
+#               help="Golem nodes will connect "
+#                    "only inside sub-network with "
+#                    "a given protocol id")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -60,7 +59,9 @@ TASK_PROTOCOL_ID = 15
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port, protocol_id):
+          qt, version, m, geth_port,
+          # protocol_id
+          ):
     freeze_support()
     delete_reactor()
 
@@ -76,8 +77,10 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
 
     config = dict(datadir=datadir, transaction_system=payments)
 
-    if protocol_id:
-
+    # if protocol_id:
+    #     global P2P_PROTOCOL_ID,TASK_PROTOCOL_ID
+    #     P2P_PROTOCOL_ID = protocol_id
+    #     TASK_PROTOCOL_ID = protocol_id
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -138,7 +141,9 @@ def start_crossbar_worker(module):
 def log_golem_version():
     log = logging.getLogger('golem.version')
     #initial version info
-    from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+    from golem.core.variables import APP_VERSION, \
+        P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+
 
     log.info("GOLEM Version: " + APP_VERSION)
     log.info("P2P Protocol Version: " + str(P2P_PROTOCOL_ID))

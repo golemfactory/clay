@@ -1,6 +1,10 @@
 from golem.monitorconfig import MONITOR_CONFIG
-from golem.network.p2p.peersession import P2P_PROTOCOL_ID
-from golem.task.tasksession import TASK_PROTOCOL_ID
+from golem.core.variables import TASK_PROTOCOL_ID
+from golem.core.variables import P2P_PROTOCOL_ID
+# from golemapp import TASK_PROTOCOL_ID
+# from golemapp import P2P_PROTOCOL_ID
+
+
 
 from .modelbase import BasicModel
 
