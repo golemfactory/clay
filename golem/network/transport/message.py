@@ -21,6 +21,8 @@ class Message(object):
     __slots__ = ['timestamp', 'encrypted', 'sig', '_payload', '_raw']
 
     TS_SCALE = 10 ** 6
+
+    TYPE = None
     ENCRYPT = True
 
     def __init__(self, timestamp=None, encrypted=False, sig=None,
