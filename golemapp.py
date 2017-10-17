@@ -24,6 +24,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.core.variables import PROTOCOL_ID
 from golem.node import OptNode
 
+
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
