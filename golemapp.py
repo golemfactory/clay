@@ -18,6 +18,11 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
 
 
+# #P2P PROTOCOL
+P2P_PROTOCOL_ID = 14
+#TASK PROTOCOL
+TASK_PROTOCOL_ID = 15
+
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
@@ -33,6 +38,10 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
+@click.option('--protocol_id', type=click.INT,
+              help="Golem nodes will connect "
+                   "only inside sub-network with "
+                   "a given protocol id")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -51,7 +60,7 @@ from golem.node import OptNode
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+          qt, version, m, geth_port, protocol_id):
     freeze_support()
     delete_reactor()
 
@@ -66,6 +75,9 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
+
+    if protocol_id:
+
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
