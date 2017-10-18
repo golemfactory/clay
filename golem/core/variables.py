@@ -28,7 +28,7 @@ LISTEN_PORT_TTL = 3600
 P2P_PROTOCOL_ID = 14
 #TASK PROTOCOL
 TASK_PROTOCOL_ID = 15
-#Number of transimitted task headers
+#Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
 
 #####################
