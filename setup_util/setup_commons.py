@@ -125,7 +125,7 @@ class PyInstaller(Command):
 
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golem'), ver_dir)
+
         if is_windows():
             shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
             shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
