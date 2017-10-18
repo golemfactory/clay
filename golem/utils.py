@@ -65,7 +65,7 @@ def encode_hex(b):
 
 def tee_target(prefix, proc, input_stream, path, stream):
     """tee emulation for use with threading
-    
+
     First stream is open to a file pointed by `path`
     Second stream is `stream` arg.
     """
