@@ -73,9 +73,6 @@ class PyInstaller(Command):
         print("> Copying examples")
         self.copy_examples(dist_dir)
 
-        print("> Copying chain")
-        self.copy_chain(dist_dir)
-
         print("> Compressing distribution")
         archive_dir = self.move(dist_dir)
         archive_file = self.compress(archive_dir, dist_dir)
@@ -99,15 +96,6 @@ class PyInstaller(Command):
         )
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
-
-    def copy_chain(self, dist_dir):
-        from shutil import copy
-        from os import makedirs
-
-        chain_files = path.join('golem', 'ethereum', 'rinkeby.json')
-        dist_dir = path.join(dist_dir, 'golem', 'ethereum')
-        makedirs(dist_dir)
-        copy(chain_files, dist_dir)
 
     def copy_examples(self, dist_dir):
         import shutil
