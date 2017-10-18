@@ -157,16 +157,25 @@ class NodeProcess(object):
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
-                                     stdin=DEVNULL)
+                                     stdin=DEVNULL,
+                                     bufsize=-1)
 
         tee_kwargs = {
-            'prefix': 'geth: ',
             'proc': self.__ps,
             'path': geth_log_path,
         }
-        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
-                                      kwargs=tee_kwargs)
-        tee_thread.start()
+        channels = (
+            ('geth-out', self.__ps.stderr, sys.stderr),
+            ('geth-err', self.__ps.stdout, sys.stdout),
+        )
+        for prefix, in_, out in channels:
+            tee_kwargs['prefix'] = prefix + ': '
+            tee_kwargs['input_stream'] = in_
+            tee_kwargs['stream'] = out
+            thread_name = 'tee-' + prefix
+            tee_thread = threading.Thread(name=thread_name, target=tee_target,
+                                          kwargs=tee_kwargs)
+            tee_thread.start()
 
         atexit.register(lambda: self.stop())
 
