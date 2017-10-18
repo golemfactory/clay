@@ -102,19 +102,23 @@ def get_timestamp_utc():
 
 
 def timeout_to_deadline(timeout):
-    return get_timestamp_utc() + timeout
+    result = get_timestamp_utc() + timeout
+    return result
 
 
 def deadline_to_timeout(timestamp):
-    return timestamp - get_timestamp_utc()
+    result = timestamp - get_timestamp_utc()
+    return result
 
 
 def timestamp_to_datetime(ts):
-    return datetime.fromtimestamp(ts, pytz.utc)
+    result = datetime.fromtimestamp(ts, pytz.utc)
+    return result
 
 
 def datetime_to_timestamp(then):
-    return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
+    result = timegm(then.utctimetuple()) + then.microsecond / 1000000.0
+    return result
 
 
 def timeout_to_string(timeout):
