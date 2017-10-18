@@ -511,7 +511,20 @@ class BasicProtocol(SessionProtocol):
                         "too short?".format(self.session.address, self.session.port))
 
     def _data_to_messages(self):
-        return Message.deserialize(self.db)
+        messages = []
+        data = self.db.read_len_prefixed_string()
+
+        while data:
+            message = Message.deserialize(data)
+
+            if message:
+                messages.append(message)
+            else:
+                logger.error("Failed to deserialize message {}".format(data))
+
+            data = self.db.read_len_prefixed_string()
+
+        return messages
 
 
 class ServerProtocol(BasicProtocol):
@@ -558,13 +571,9 @@ class SafeProtocol(ServerProtocol):
         return length + serialized
 
     def _data_to_messages(self):
-        if not isinstance(self.db, DataBuffer):
-            raise TypeError("incorrect db type: {}. Should be: DataBuffer"
-                            .format(type(self.db)))
         messages = []
-
         for buf in self.db.get_len_prefixed_string():
-            msg = Message.deserialize_message(buf, self.session.decrypt)
+            msg = Message.deserialize(buf, self.session.decrypt)
             if msg:
                 messages.append(msg)
         return messages

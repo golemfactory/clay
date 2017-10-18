@@ -261,7 +261,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
 
         dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
-        loaded_l = Message.deserialize_message(dumped_l, ek.decrypt)
+        loaded_l = Message.deserialize(dumped_l, ek.decrypt)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
         self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), ek.key_id))

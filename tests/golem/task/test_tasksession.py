@@ -465,7 +465,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         sess._can_send = lambda *_: True
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
-        assert Message.deserialize_message(db.buffered_data)
+        assert Message.deserialize(db.buffered_data)
 
     def test_verify(self):
         keys_auth = EllipticalKeysAuth(self.path)

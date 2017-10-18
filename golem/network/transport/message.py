@@ -3,7 +3,6 @@ import struct
 import time
 
 
-from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
@@ -121,38 +120,10 @@ class Message(object):
         return struct.unpack('!HQ?', data)
 
     @classmethod
-    def deserialize(cls, db_, decrypt_func=None):
-        """
-        Take out messages from data buffer and deserialize them
-        :param DataBuffer db_: data buffer containing messages
-        :param function(data) decrypt_func: decryption function
-        :return list: list of deserialized messages
-        """
-        if not isinstance(db_, DataBuffer):
-            raise TypeError(
-                "Incorrect db type: {}. Should be: DataBuffer"
-                .format(db_)
-            )
-        messages_ = []
-        msg_ = db_.read_len_prefixed_string()
-
-        while msg_:
-            m = cls.deserialize_message(msg_, decrypt_func)
-
-            if m:
-                messages_.append(m)
-            else:
-                logger.error("Failed to deserialize message {}".format(msg_))
-
-            msg_ = db_.read_len_prefixed_string()
-
-        return messages_
-
-    @classmethod
-    def deserialize_message(cls, msg_, decrypt_func=None):
+    def deserialize(cls, msg, decrypt_func=None):
         """
         Deserialize single message
-        :param str msg_: serialized message
+        :param str msg: serialized message
         :param function(data) decrypt_func: decryption function
         :return Message|None: deserialized message or none if this message
                               type is unknown
@@ -160,13 +131,13 @@ class Message(object):
 
         payload_idx = cls.HDR_LEN + cls.SIG_LEN
 
-        if not msg_ or len(msg_) <= payload_idx:
+        if not msg or len(msg) <= payload_idx:
             logger.error("Message error: message too short")
             return
 
-        header = msg_[:cls.HDR_LEN]
-        sig = msg_[cls.HDR_LEN:payload_idx]
-        payload = msg_[payload_idx:]
+        header = msg[:cls.HDR_LEN]
+        sig = msg[cls.HDR_LEN:payload_idx]
+        payload = msg[payload_idx:]
         data = payload
 
         try:
@@ -187,7 +158,7 @@ class Message(object):
             encrypted=msg_enc,
             sig=sig,
             payload=payload,
-            raw=msg_,
+            raw=msg,
             slots=slots
         )
 

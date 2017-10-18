@@ -4,10 +4,11 @@ import time
 import unittest
 from contextlib import contextmanager
 
-from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import Message, MessageHello
-from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
+from golem.network.transport.message import MessageHello, Message
+from golem.network.transport.network import ProtocolFactory, SessionFactory, \
+    SessionProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
+    TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.tools.testwithreactor import TestWithReactor
 
@@ -365,9 +366,9 @@ class TestBasicProtocol(unittest.TestCase):
         self.assertNotEqual(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
-        db = DataBuffer()
+        db = p.db
         db.append_string(p.transport.buff[1])
-        m = Message.deserialize(db)[0]
+        m = p._data_to_messages()[0]
         self.assertEqual(m.timestamp, msg.timestamp)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

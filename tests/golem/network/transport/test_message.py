@@ -1,18 +1,19 @@
 # -*- encoding: utf-8 -*-
 
-from copy import copy
 import os
 import random
 import time
 import unittest
 import uuid
+from copy import copy
+
+import mock
 
 from golem.core.common import to_unicode
-from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
+from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ResultType
 from golem.testutils import PEP8MixIn
-import mock
 
 
 class FailingMessage(message.Message):
@@ -31,6 +32,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def setUp(self):
         random.seed()
         super(TestMessages, self).setUp()
+        self.protocol = BasicProtocol()
 
     def test_message_want_to_compute_task(self):
         node_id = 'test-ni-{}'.format(uuid.uuid4())
@@ -105,7 +107,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         except:
             pass
         assert not serialized
-        assert not message.Message.deserialize_message(None)
+        assert not message.Message.deserialize(None)
 
     def test_unicode(self):
         source = str("test string")
@@ -138,17 +140,16 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = message.MessageHello(timestamp=epoch_t)
-        db = DataBuffer()
-        db.append_len_prefixed_string(m.serialize())
+        self.protocol.db.append_len_prefixed_string(m.serialize())
         set_tz('US/Eastern')
-        msgs = message.Message.deserialize(db)
+        msgs = self.protocol._data_to_messages()
         assert len(msgs) == 1
         newyork_time = time.localtime(msgs[0].timestamp)
         assert warsaw_time != newyork_time
         assert time.gmtime(epoch_t) == time.gmtime(msgs[0].timestamp)
 
     def test_decrypt_and_deserialize(self):
-        db = DataBuffer()
+        db = self.protocol.db
         n_messages = 10
 
         def serialize_messages(_b):
@@ -156,13 +157,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 db.append_len_prefixed_string(m.serialize())
 
         serialize_messages(db)
-        assert len(message.Message.deserialize(db)) == n_messages
+        assert len(self.protocol._data_to_messages()) == n_messages
 
         patch_method = 'golem.network.transport.message.Message' \
-                       '.deserialize_message'
+                       '.deserialize'
         with mock.patch(patch_method, side_effect=lambda *_: None):
             serialize_messages(db)
-            assert len(message.Message.deserialize(db)) == 0
+            assert len(self.protocol._data_to_messages()) == 0
 
         def raise_assertion(*_):
             raise AssertionError()
@@ -172,20 +173,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
         serialize_messages(db)
 
-        result = message.Message.deserialize(db)
+        result = self.protocol._data_to_messages()
         assert len(result) == n_messages
         assert all(not m.encrypted for m in result)
 
-        serialize_messages(db)
-        result = message.Message.deserialize(db, raise_error)
-
-        assert len(result) == n_messages
-        assert all(not m.encrypted for m in result)
-
-    def test_message_errors(self):
-        m = message.MessageReportComputedTask()
-        with self.assertRaises(TypeError):
-            m.deserialize("not a db")
+        result = self.protocol._data_to_messages()
+        assert len(result) == 0
 
     def test_message_randval(self):
         rand_val = random.random()
