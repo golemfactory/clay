@@ -2,6 +2,8 @@ import logging
 import time
 
 from devp2p.crypto import ECIESDecryptionError
+
+from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
@@ -431,7 +433,10 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        peers_info = msg.peers_array
+        if not isinstance(msg.peers_array, list):
+            return
+
+        peers_info = msg.peers_array[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.try_to_add_peer(pi)
@@ -561,7 +566,8 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePing())
 
     def _send_peers(self, node_key_id=None):
-        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
+        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
+                                                alpha=SEND_PEERS_NUM)
         self.send(message.MessagePeers(nodes_info))
 
     def __set_verified_conn(self):
