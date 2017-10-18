@@ -277,7 +277,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
-        self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
@@ -347,9 +346,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             if peer_id in self.peer_order:
                 self.peer_order.remove(peer_id)
 
-        if peer:
-            self.__send_degree()
-        else:
+        if not peer:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
 
     def refresh_peer(self, peer):
@@ -993,12 +990,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
                 peer.disconnect(PeerSession.DCRRefresh)
-
-    # TODO: throttle the tx rate of MessageDegree
-    def __send_degree(self):
-        degree = len(self.peers)
-        for p in list(self.peers.values()):
-            p.send_degree(degree)
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():
