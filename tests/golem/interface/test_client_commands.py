@@ -399,8 +399,6 @@ class TestTasks(TempDirFixture):
             client.abort_task.assert_called_with('valid')
             assert tasks.delete('valid')
             client.delete_task.assert_called_with('valid')
-            assert tasks.resume('valid')
-            client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
