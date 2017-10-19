@@ -35,6 +35,8 @@ from golem.node import OptNode
                    "[<ipv6_addr>]:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
+@click.option('--start-geth', is_flag=True, default=False,
+              help="Start geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
@@ -51,7 +53,7 @@ from golem.node import OptNode
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+          qt, start_geth, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -81,9 +83,9 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
                                     address=address))
     # Golem
     elif gui:
-        from gui.startapp import start_app
-        start_app(rendering=True, use_monitor=monitor, geth_port=geth_port,
-                  **config)
+        from gui.startapp import start_client
+        start_client(use_monitor=monitor, start_geth=start_geth,
+                     geth_port=geth_port, **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
@@ -92,7 +94,8 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         log_golem_version()
 
         node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, geth_port=geth_port, **config)
+                       use_monitor=monitor, start_geth=start_geth,
+                       geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
@@ -123,9 +126,10 @@ def start_crossbar_worker(module):
     module = importlib.import_module(module)
     module.run()
 
+
 def log_golem_version():
     log = logging.getLogger('golem.version')
-    #initial version info
+    # initial version info
     from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)

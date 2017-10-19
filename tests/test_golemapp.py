@@ -43,14 +43,18 @@ class TestGolemApp(TempDirFixture):
         super(TestGolemApp, self).tearDown()
 
     @ci_skip
-    @patch.object(startapp, 'start_app')
+    @patch.object(startapp, 'start_client')
     @patch('twisted.internet.reactor', create=True)
-    def test_start_gui(self, reactor, start_app):
+    def test_start_gui(self, reactor, start_client):
         runner = CliRunner()
-        runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
-        assert start_app.called
-        runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
-        assert start_app.called
+        runner.invoke(start, ['--datadir', self.path],
+                      catch_exceptions=False)
+        assert start_client.called
+
+        start_client.reset_mock()
+        runner.invoke(start, ['--gui', '--datadir', self.path],
+                      catch_exceptions=False)
+        assert start_client.called
 
     @ci_skip
     @patch('golemapp.OptNode')

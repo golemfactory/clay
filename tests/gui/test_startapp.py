@@ -14,7 +14,7 @@ from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from gui.startapp import load_environments, start_client, stop_reactor, start_app
+from gui.startapp import load_environments, start_client, stop_reactor
 from twisted.python import failure
 
 
@@ -228,12 +228,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         reactor.running = True
         stop_reactor()
         assert reactor.stop.called
-
-    @patch('gui.startapp.start_client')
-    def test_start_app(self, _start_client, *_):
-        start_app(datadir=self.tempdir)
-        _start_client.assert_called_with(False, self.tempdir, False,
-                                         use_monitor=True, geth_port=None)
 
     def test_load_environments(self, *_):
         envs = load_environments()
