@@ -282,7 +282,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def get_tasks_headers(self):
         ths_tk = self.task_keeper.get_all_tasks()
         ths_tm = self.task_manager.get_tasks_headers()
-
         ret  = [th.to_dict() for th in ths_tk + ths_tm]
         return  ret
 
@@ -305,7 +304,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
             return True
         except Exception as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
 
     def verify_header_sig(self, th_dict_repr):
