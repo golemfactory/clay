@@ -165,8 +165,8 @@ class NodeProcess(object):
             'path': geth_log_path,
         }
         channels = (
-            ('geth-out', self.__ps.stderr, sys.stderr),
-            ('geth-err', self.__ps.stdout, sys.stdout),
+            ('GETH', self.__ps.stderr, sys.stderr),
+            ('GETHO', self.__ps.stdout, sys.stdout),
         )
         for prefix, in_, out in channels:
             tee_kwargs['prefix'] = prefix + ': '

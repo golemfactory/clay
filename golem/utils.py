@@ -76,7 +76,7 @@ def tee_target(prefix, proc, input_stream, path, stream):
     # bility issues.
     with open(path, 'a') as log_f:
         while proc.poll() is None:
-            line = input_stream.readline(80)
+            line = input_stream.readline(256)
             if line:
                 line = line.decode('utf-8', 'replace')
                 if not line.endswith('\n'):
