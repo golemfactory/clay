@@ -1,8 +1,7 @@
 import logging
 import time
 
-from devp2p.crypto import ECIESDecryptionError
-
+from golem.core.crypto import ECIESDecryptionError
 from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
