@@ -6,7 +6,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
 from tests.golem.task.dummy import runner, task
 
-@unittest.skip("It doesn't work, using new dummy task instead")
+
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
@@ -70,15 +70,18 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
-    @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
-    def test_run_requesting_node(self, mock_reactor, enqueue_new_task):
+    @mock.patch("golem.client.Client.enqueue_new_task")
+    @mock.patch("golem.core.common.config_logging")
+    def test_run_requesting_node(self, mock_reactor, enqueue_new_task,
+                                 mock_config_logging):
         client = runner.run_requesting_node(self.path, 3)
         self.assertTrue(enqueue_new_task.called)
         client.quit()
 
     @mock.patch("tests.golem.task.dummy.runner.reactor")
-    def test_run_computing_node(self, mock_reactor):
+    @mock.patch("golem.core.common.config_logging")
+    def test_run_computing_node(self, mock_reactor, mock_config_logging):
         client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
         environments = list(client.environments_manager.environments)

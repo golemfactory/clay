@@ -72,6 +72,8 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir)
     client = create_client(datadir)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
@@ -115,6 +117,8 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir)
     client = create_client(datadir)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
