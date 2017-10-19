@@ -4,17 +4,24 @@ import click
 from multiprocessing import freeze_support
 import logging
 from ethereum import slogging
-#Monkey patch for ethereum.slogging.
-#SLogger aggressively mess up with python looger.
-#This patch is to settle down this.
-#It should be done before any SLogger is created.
+
+# Monkey patch for ethereum.slogging.
+# SLogger aggressively mess up with python looger.
+# This patch is to settle down this.
+# It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
+
+
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
+
 slogging.SManager.getLogger = monkey_patched_getLogger
+
+from golem.core.variables import PROTOCOL_ID
 from golem.node import OptNode
 
 
@@ -23,6 +30,13 @@ from golem.node import OptNode
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
+@click.option('--protocol_id', type=click.INT,
+              callback=PROTOCOL_ID.patch_protocol_id,
+              is_eager=True,
+              expose_value=False,
+              help="Golem nodes will connect "
+                   "only inside sub-network with "
+                   "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
               help="Network address to use for this node")
@@ -50,8 +64,9 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+def start(gui, payments, monitor,
+          datadir, node_address, rpc_address,
+          peer, qt, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -123,14 +138,16 @@ def start_crossbar_worker(module):
     module = importlib.import_module(module)
     module.run()
 
+
 def log_golem_version():
     log = logging.getLogger('golem.version')
-    #initial version info
-    from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+    # initial version info
+    from golem.core.variables import APP_VERSION, \
+        PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)
-    log.info("P2P Protocol Version: " + str(P2P_PROTOCOL_ID))
-    log.info("Task Protocol Version: " + str(TASK_PROTOCOL_ID))
+    log.info("P2P Protocol Version: " + str(PROTOCOL_ID.P2P_ID))
+    log.info("Task Protocol Version: " + str(PROTOCOL_ID.TASK_ID))
 
 
 if __name__ == '__main__':

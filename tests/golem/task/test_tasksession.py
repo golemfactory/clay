@@ -25,7 +25,7 @@ from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
-from golem.core.variables import TASK_PROTOCOL_ID
+from golem.core.variables import PROTOCOL_ID
 
 
 class DockerEnvironmentMock(DockerEnvironment):
@@ -59,7 +59,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             'NODE_INFO': None,
             'NODE_NAME': None,
             'PORT': 0,
-            'PROTO_ID': TASK_PROTOCOL_ID,
+            'PROTO_ID': PROTOCOL_ID.TASK_ID,
             'RAND_VAL': self.task_session.rand_val,
             'SOLVE_CHALLENGE': False,
         }
