@@ -331,8 +331,14 @@ class TaskComputer(object):
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id].task_id
+        task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
-        task_header = self.task_server.task_keeper.task_headers[task_id]
+        if not task_header:
+            logger.warning("Subtask '%s' of task '%s' cannot be computed: "
+                           "task header has been unexpectedly removed",
+                           subtask_id, task_id)
+            return self.session_closed()
+
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
 
