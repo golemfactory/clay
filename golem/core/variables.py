@@ -1,9 +1,9 @@
-# CONST
+
+####################
+#      CONST       #
+####################
 LONG_STANDARD_SIZE = 4
 
-############################
-#       VARIABLES          #
-############################
 APP_NAME = "Brass Golem"
 APP_VERSION = "0.8.0"
 PRIVATE_KEY = "golem_private_key.peb"
@@ -11,9 +11,9 @@ PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
 
-#####################
-# NETWORK VARIABLES #
-#####################
+#################
+# NETWORK CONST #
+#################
 BUFF_SIZE = 1024 * 1024
 MIN_PORT = 1
 MAX_PORT = 65535
@@ -48,16 +48,16 @@ class PROTOCOL_ID(object):
             PROTOCOL_ID.TASK_ID = value
 
 
-#####################
-# SESSION VARIABLES #
-#####################
+#################
+# SESSION CONST #
+#################
 MSG_TTL = 600
 FUTURE_TIME_TOLERANCE = 300
 UNVERIFIED_CNT = 15
 
-#####################
-# RANKING VARIABLES #
-#####################
+#################
+# RANKING CONST #
+#################
 BREAK_TIME = 2400
 END_ROUND_TIME = 1200
 ROUND_TIME = 600
