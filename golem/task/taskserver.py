@@ -195,7 +195,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 performance = 0.0
             is_requestor_accepted = self.should_accept_requestor(
                 theader.task_owner_key_id)
-            is_price_accepted = self.config_desc.min_price < theader.max_price
+            is_price_accepted = self.config_desc.min_price <= theader.max_price
             if is_requestor_accepted and is_price_accepted:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
