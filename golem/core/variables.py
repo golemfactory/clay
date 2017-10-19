@@ -34,7 +34,7 @@ class PROTOCOL_ID(object):
     https://docs.python.org/2/faq/programming.html#how-do-i-share-global-variables-across-modules
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules
     """
-    P2P_ID = 14
+    P2P_ID = 15
     TASK_ID = 15
 
     @staticmethod
