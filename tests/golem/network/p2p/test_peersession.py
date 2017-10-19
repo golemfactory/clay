@@ -107,7 +107,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.disconnect.assert_called_with(
             PeerSession.DCRProtocolVersion)
 
-        msg.proto_id = P2P_PROTOCOL_ID
+        msg.proto_id = PROTOCOL_ID.P2P_ID
 
         peer_session._react_to_hello(msg)
         assert key_id in peer_session.p2p_service.peers

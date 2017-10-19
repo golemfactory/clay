@@ -213,7 +213,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(TaskSession.DCRProtocolVersion)
 
-        msg.proto_id = TASK_PROTOCOL_ID
+        msg.proto_id = PROTOCOL_ID.TASK_ID
 
         ts._react_to_hello(msg)
         assert ts.send.called

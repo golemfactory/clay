@@ -66,7 +66,7 @@ class TestGolemApp(TempDirFixture):
         from golem.core.variables import PROTOCOL_ID
         runner = CliRunner()
 
-        assert PROTOCOL_ID.P2P_ID == 14 \
+        assert PROTOCOL_ID.P2P_ID == 15 \
                and PROTOCOL_ID.TASK_ID == 15
 
         runner.invoke(
