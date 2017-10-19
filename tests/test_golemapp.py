@@ -10,15 +10,21 @@ from golemapp import start
 from gui import startapp, startgui
 
 
+@ci_skip
 class TestGolemApp(TempDirFixture):
-    @ci_skip
+
+    def setUp(self):
+        super(TestGolemApp, self).setUp()
+
+    def tearDown(self):
+        super(TestGolemApp, self).tearDown()
+
     @patch('golemapp.OptNode')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--nogui', '--datadir', self.path], catch_exceptions=False)
         assert node_class.called
 
-    @ci_skip
     def test_start_crossbar_worker(self):
         runner = CliRunner()
         args = ['--nogui', '--datadir', self.path, '-m', 'crossbar.worker.process']
@@ -36,13 +42,8 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
-    def setUp(self):
-        super(TestGolemApp, self).setUp()
 
-    def tearDown(self):
-        super(TestGolemApp, self).tearDown()
 
-    @ci_skip
     @patch.object(startapp, 'start_app')
     @patch('twisted.internet.reactor', create=True)
     def test_start_gui(self, reactor, start_app):
@@ -52,7 +53,6 @@ class TestGolemApp(TempDirFixture):
         runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
         assert start_app.called
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch.object(startgui, 'start_gui')
     @patch.object(sys, 'modules')
@@ -60,3 +60,19 @@ class TestGolemApp(TempDirFixture):
         runner = CliRunner()
         runner.invoke(start, ['--qt', '-r', '127.0.0.1:50000'], catch_exceptions=False)
         assert start_gui.called
+
+    @patch.object(startapp, 'start_app')
+    def test_patch_protocol_id(self, start_app):
+        from golem.core.variables import PROTOCOL_ID
+        runner = CliRunner()
+
+        assert PROTOCOL_ID.P2P_ID == 14 \
+               and PROTOCOL_ID.TASK_ID == 15
+
+        runner.invoke(
+            start, ['--protocol_id', 123456],
+            catch_exceptions=False)
+
+        assert start_app.called
+        assert PROTOCOL_ID.P2P_ID == 123456 \
+               and PROTOCOL_ID.TASK_ID == 123456
