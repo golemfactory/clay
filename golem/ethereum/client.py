@@ -14,9 +14,9 @@ class Client(object):
 
     node = None
 
-    def __init__(self, datadir, port=None):
+    def __init__(self, datadir, port=None, start_node=False):
         if not Client.node:
-            Client.node = NodeProcess(datadir)
+            Client.node = NodeProcess(datadir, start_node)
         if not Client.node.is_running():
             Client.node.start(port)
         self.web3 = Client.node.web3

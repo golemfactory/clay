@@ -1,4 +1,5 @@
 import unittest
+from distutils.version import StrictVersion
 from os import urandom, path
 
 import requests
@@ -50,7 +51,7 @@ class RopstenFaucetTest(unittest.TestCase, PEP8MixIn):
 
 class EthereumNodeTest(TempDirFixture, LogTestCase):
     def test_ethereum_node(self):
-        np = NodeProcess(self.tempdir)
+        np = NodeProcess(self.tempdir, start_node=True)
         assert np.is_running() is False
         np.start()
         assert np.is_running() is True
@@ -70,24 +71,23 @@ class EthereumNodeTest(TempDirFixture, LogTestCase):
         assert np.is_running() is False
 
     def test_ethereum_node_reuse(self):
-        np = NodeProcess(self.tempdir)
+        np = NodeProcess(self.tempdir, start_node=True)
         np.start()
 
         # Reuse but with different directory
         ndir = path.join(self.tempdir, "ndir")
-        np1 = NodeProcess(ndir)
+        np1 = NodeProcess(ndir, start_node=True)
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True
         np.stop()
         np1.stop()
 
+    @patch('golem.ethereum.node.NodeProcess.MIN_GETH_VERSION',
+           StrictVersion('0.1.0'))
+    @patch('golem.ethereum.node.NodeProcess.MAX_GETH_VERSION',
+           StrictVersion('0.2.0'))
     def test_geth_version_check(self):
-        min = NodeProcess.MIN_GETH_VERSION
-        max = NodeProcess.MAX_GETH_VERSION
-        NodeProcess.MIN_GETH_VERSION = "0.1.0"
-        NodeProcess.MAX_GETH_VERSION = "0.2.0"
+        node = NodeProcess(self.tempdir, start_node=True)
         with self.assertRaises(OSError):
-            NodeProcess(self.tempdir)
-        NodeProcess.MIN_GETH_VERSION = min
-        NodeProcess.MAX_GETH_VERSION = max
+            node.start()
