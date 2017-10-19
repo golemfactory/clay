@@ -280,9 +280,11 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + \
-              self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths]
+        ths_tk = self.task_keeper.get_all_tasks()
+        ths_tm = self.task_manager.get_tasks_headers()
+
+        ret  = [th.to_dict() for th in ths_tk + ths_tm]
+        return  ret
 
     def add_task_header(self, th_dict_repr):
         try:
@@ -976,26 +978,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     # SYNC METHODS
     #############################
     def __remove_old_tasks(self):
-        self.task_keeper.remove_old_tasks() # GG todo this seems to be only for node in provider role
+        self.task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)
-
-        # GG todo move to another method
-        ths1 = self.task_keeper.get_all_tasks()
-        ths2 = self.task_manager.get_tasks_headers()
-
-        ths =ths1 + ths2
-
-        from golem.core.common import get_timestamp_utc
-        # for t in list(self.task_headers.values()):
-        for t in list(ths):
-            cur_time = get_timestamp_utc()
-            if cur_time > t.deadline:
-                logger.warning("Task {} dies".format(t.task_id))
-                del self.task_manager.tasks[t.task_id]
-
-                self.remove_task_header(t.task_id)
 
     def __remove_old_sessions(self):
         cur_time = time.time()

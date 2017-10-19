@@ -341,7 +341,9 @@ class TaskHeaderKeeper(object):
             self.check_correct(th_dict_repr)
 
             if id_ in list(self.removed_tasks.keys()):  # recent
-                # silently ignore
+                logger.info("Received a task which has been already "
+                            "cancelled/removed/timeout/banned/etc "
+                            "Task id %s .", id_)
                 return True
 
             th = TaskHeader.from_dict(th_dict_repr)
