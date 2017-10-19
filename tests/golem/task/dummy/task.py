@@ -66,7 +66,7 @@ class DummyTask(Task):
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=MIN_PRICE)
+            max_price=MIN_PRICE, docker_images=[])
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -75,7 +75,7 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        Task.__init__(self, header, src_code)
+        Task.__init__(self, header, src_code, None)
 
         self.task_id = task_id
         self.task_params = params
@@ -187,9 +187,10 @@ class DummyTask(Task):
         return all(self.subtask_results.values())
 
     def verify_subtask(self, subtask_id):
-        result = self.subtask_results[subtask_id]
+        from golem.core.simpleserializer import CBORSerializer
+        result = CBORSerializer.loads(self.subtask_results[subtask_id])
 
-        if len(result) != self.task_params.result_size:
+        if not result or len(result) != self.task_params.result_size:
             return False
 
         if self.task_params.difficulty == 0:
@@ -221,3 +222,25 @@ class DummyTask(Task):
         :param map[str, list[str]] resource_parts:
         """
         self.resource_parts = resource_parts
+
+    def computation_failed(self, subtask_id):
+        print('DummyTask.computation_failed called')
+        self.computation_finished(subtask_id, None)
+
+    def restart(self):
+        print('DummyTask.restart called')
+
+    def restart_subtask(self, subtask_id):
+        print('DummyTask.restart_subtask called')
+
+    def abort(self):
+        print('DummyTask.abort called')
+
+    def update_task_state(self, task_state):
+        print('DummyTask.update_task_state called')
+
+    def get_active_tasks(self):
+        return self.assigned_subtasks
+
+    def get_progress(self):
+        return 0
