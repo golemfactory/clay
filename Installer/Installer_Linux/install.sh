@@ -212,7 +212,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
 
@@ -230,7 +230,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
     return 0
