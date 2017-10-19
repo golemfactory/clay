@@ -225,26 +225,27 @@ class TaskHeaderKeeper(object):
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
         if th_dict_repr['deadline'] < get_timestamp_utc():
-            msg  = "Deadline already passed \n " \
-                   "task_id = %s \n " \
-                   "node name = %s " % \
-                   (th_dict_repr['task_id'],
-                    th_dict_repr['task_owner']['node_name'])
+            msg = "Deadline already passed \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
             return False, msg
         if not isinstance(th_dict_repr['subtask_timeout'], int):
-            msg  = "Subtask timeout is not a number \n " \
-                    "task_id = %s \n " \
-                    "node name = %s " % \
-                    (th_dict_repr['task_id'],
-                     th_dict_repr['task_owner']['node_name'])
+            msg = "Subtask timeout is not a number \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
             return False, msg
         if th_dict_repr['subtask_timeout'] < 0:
-            msg  = "Subtask timeout is less than 0 \n " \
-                    "task_id = %s \n " \
-                    "node name = %s " % \
-                    (th_dict_repr['task_id'],
-                     th_dict_repr['task_owner']['node_name'])
+            msg = "Subtask timeout is less than 0 \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
             return False, msg
+        return True, None
 
     def check_environment(self, th_dict_repr) -> SupportStatus:
         """Checks if this node supports environment necessary to compute task
@@ -374,7 +375,7 @@ class TaskHeaderKeeper(object):
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self,  th_dict_repr, update_header):
+    def update_supported_set(self, th_dict_repr, update_header):
         id_ = th_dict_repr["task_id"]
 
         support = self.check_support(th_dict_repr)
