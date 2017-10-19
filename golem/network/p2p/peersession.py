@@ -442,10 +442,8 @@ class PeerSession(BasicSafeSession):
         max_ind = len(tasks) - 1
         if max_ind < 0:
             return
-        tasks_to_send = []
         if len(tasks) > TASK_HEADERS_LIMIT:
-            for i in range(0, TASK_HEADERS_LIMIT):
-                tasks_to_send.append(tasks[random.randint(0, max_ind)])
+            tasks_to_send = random.sample(tasks, TASK_HEADERS_LIMIT)
             self.send(message.MessageTasks(tasks_to_send))
         else:
             self.send(message.MessageTasks(tasks))

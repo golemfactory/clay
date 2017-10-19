@@ -12,6 +12,7 @@ from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
 from golem.network.transport.message import MessageHello, MessageStopGossip
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
+from golem.core.variables import TASK_HEADERS_LIMIT
 
 
 class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
@@ -186,6 +187,30 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.interpret(msg)
         assert peer_session.p2p_service.set_last_message.called
 
+    def test_react_to_get_tasks(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service.get_tasks_headers = Mock()
+        peer_session.send = MagicMock()
+
+        peer_session.p2p_service.get_tasks_headers.return_value = []
+        peer_session._react_to_get_tasks(Mock())
+        assert not peer_session.send.called
+
+        peer_session.p2p_service.get_tasks_headers.return_value = list(
+            range(0, 100))
+        peer_session._react_to_get_tasks(Mock())
+
+        sent_tasks = peer_session.send.call_args_list[0][0][0].tasks_array
+        assert len(sent_tasks) <= TASK_HEADERS_LIMIT
+        assert len(sent_tasks) == len(set(sent_tasks))
+
+        peer_session.p2p_service.get_tasks_headers.return_value = list(
+            range(0, TASK_HEADERS_LIMIT-1))
+        peer_session._react_to_get_tasks(Mock())
+        sent_tasks = peer_session.send.call_args_list[0][0][0].tasks_array
+        assert len(sent_tasks) <= TASK_HEADERS_LIMIT
+        assert len(sent_tasks) == len(set(sent_tasks))
 
 class TestPeerSessionInfo(unittest.TestCase):
 
