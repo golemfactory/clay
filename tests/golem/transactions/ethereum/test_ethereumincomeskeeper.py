@@ -1,4 +1,4 @@
-import mock
+import unittest.mock as mock
 import random
 import sys
 import uuid
@@ -9,16 +9,11 @@ from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 
+from tests.golem.transactions.test_incomeskeeper import generate_some_id, \
+    MAX_INT
+from golem.network.p2p.node import Node
+from golem.model import ExpectedIncome, Income, BigIntegerField
 
-# SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
-
-# bigint - 8 Bytes
-# -2^63 (-9,223,372,036,854,775,808) to
-#  2^63-1 (9,223,372,036,854,775,807)
-
-MAX_INT = 2 ** 63
-# this proves that Golem's BigIntegerField wrapper does not
-# overflows in contrast to standard SQL implementation
 
 def get_some_id():
     return str(uuid.uuid4())
@@ -36,10 +31,10 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     def setUp(self, ):
         super(TestEthereumIncomesKeeper, self).setUp()
         random.seed()
-        processor_old = mock.MagicMock()
-        processor_old.eth_address.return_value = get_receiver_id()
-        processor_old.is_synchronized.return_value = True
-        self.instance = EthereumIncomesKeeper(processor_old)
+        payment_processor = mock.MagicMock()
+        payment_processor.eth_address.return_value = get_receiver_id()
+        payment_processor.is_synchronized.return_value = True
+        self.instance = EthereumIncomesKeeper(payment_processor)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
@@ -56,6 +51,12 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.processor.get_logs.return_value = None
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()
+        self.instance.processor.wait_until_synchronized.assert_not_called()
+
+        self.instance.processor.is_synchronized.return_value = False
+        self.instance.received(**received_kwargs)
+        assert self.instance.processor.wait_until_synchronized.call_count == 1
+        self.instance.processor.is_synchronized.return_value = True
 
         # Payment for someone else
         self.instance.processor.get_logs.return_value = [
@@ -111,7 +112,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
 
-
     def test_received_double_spending(self):
         received_kwargs = {
             'sender_node_id': get_some_id(),
@@ -121,21 +121,16 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'block_number': random.randint(0, int(MAX_INT / 2)),
             'value': MAX_INT,
         }
+        db_value = BigIntegerField().db_value(received_kwargs['value'])
 
-        from golem.model import BigIntegerField
-        bigIntegerField = BigIntegerField()
-        db_value = bigIntegerField.db_value(received_kwargs['value'])
-
-        self.instance.processor.get_logs.return_value = [
-            {
-                'topics': [
-                    EthereumIncomesKeeper.LOG_ID,
-                    get_some_id(),  # sender
-                    self.instance.processor.eth_address(),  # receiver
-                ],
-                'data': db_value
-            },
-        ]
+        self.instance.processor.get_logs.return_value = [{
+            'topics': [
+                EthereumIncomesKeeper.LOG_ID,
+                get_some_id(),  # sender
+                self.instance.processor.eth_address(),  # receiver
+            ],
+            'data': db_value
+        }]
 
         self.instance.received(**received_kwargs)
 
@@ -145,9 +140,9 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 1,
                 model.Income.select().where(
                     model.Income.subtask == received_kwargs['subtask_id']
-                )
-                .count()
+                ).count()
             )
+
             getincome = model.Income.get(
                 sender_node=received_kwargs['sender_node_id'],
                 task=received_kwargs['task_id'],
@@ -165,8 +160,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             0,
             model.Income.select().where(
                 model.Income.subtask == received_kwargs['subtask_id']
-            )
-            .count(),
+            ).count(),
             "Paranoid duplicated subtask check failed"
         )
 
@@ -175,6 +169,64 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             0,
             model.Income.select().where(
                 model.Income.subtask == received_kwargs['subtask_id']
-            )
-            .count()
+            ).count()
         )
+
+    def test_batched_payment(self):
+        # ARRANGE
+        sender_node_id = generate_some_id('sender_node_id')
+        task_id = generate_some_id('task_id')
+        subtask_ids = [generate_some_id('subtask_id'),
+                       generate_some_id('subtask_id2')]
+        node = Node()
+        value = random.randint(MAX_INT, MAX_INT + 10)
+
+        self.assertEqual(ExpectedIncome.select().count(), 0)
+        for subtask_id in subtask_ids:
+            self.instance.expect(
+                sender_node_id=sender_node_id,
+                task_id=task_id,
+                subtask_id=subtask_id,
+                p2p_node=node,
+                value=value
+            )
+        self.assertEqual(ExpectedIncome.select().count(), 2)
+
+        # Batched Payment with exact value
+        db_value = BigIntegerField().db_value(2 * value)
+        self.instance.processor.get_logs.return_value = [{
+            'topics': [
+                EthereumIncomesKeeper.LOG_ID,
+                get_some_id(),  # sender
+                self.instance.processor.eth_address(),  # receiver
+            ],
+            'data': db_value}]
+
+        # ACT
+        # inform about the payment for the first subtask
+        transaction_id = get_some_id()
+        block_number = random.randint(0, int(MAX_INT / 2))
+        received_kwargs = {
+            'sender_node_id': sender_node_id,
+            'task_id': task_id,
+            'subtask_id': subtask_ids[0],
+            'transaction_id': transaction_id,
+            'block_number': block_number,
+            'value': value,
+        }
+        self.instance.received(**received_kwargs)
+
+        # inform about the payment for the second subtask
+        received_kwargs = {
+            'sender_node_id': sender_node_id,
+            'task_id': task_id,
+            'subtask_id': subtask_ids[1],
+            'transaction_id': transaction_id,
+            'block_number': block_number,
+            'value': value,
+        }
+        self.instance.received(**received_kwargs)
+
+        # ASSERT
+        self.assertEqual(Income.select().count(), 2)
+        self.assertEqual(ExpectedIncome.select().count(), 0)

@@ -1,19 +1,17 @@
-from collections import deque
-from ipaddress import AddressValueError
 import logging
 import random
-from threading import Lock
 import time
-
+from collections import deque
+from ipaddress import AddressValueError
+from threading import Lock
 
 from golem.core import simplechallenge
-
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
-from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
+from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper
 
@@ -274,7 +272,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
-        self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
@@ -344,9 +341,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             if peer_id in self.peer_order:
                 self.peer_order.remove(peer_id)
 
-        if peer:
-            self.__send_degree()
-        else:
+        if not peer:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
 
     def refresh_peer(self, peer):
@@ -592,14 +587,19 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     # Find node
     #############################
-    def find_node(self, node_key_id):
+    def find_node(self, node_key_id, alpha=None):
         """Kademlia find node function. Find closest neighbours of a node
            with given public key
         :param node_key_id: public key of a sought node
+        :param alpha: number of neighbours to find
         :return list: list of information about closest neighbours
         """
+        alpha = alpha or self.peer_keeper.concurrency
+
         if node_key_id is None:
-            neighbours = list(self.peers.values())
+            peers = list(self.peers.values())
+            alpha = min(alpha, len(peers))
+            neighbours = random.sample(peers, alpha)
 
             def _mapper(peer):
                 return {
@@ -608,9 +608,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                     'node_name': peer.node_name,
                     'node': peer.node_info,
                 }
-
         else:
-            neighbours = self.peer_keeper.neighbours(node_key_id)
+            neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
 
             def _mapper(peer):
                 return {
@@ -620,10 +619,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                     "node": peer,
                     "node_name": peer.node_name,
                 }
-        peer_infos = []
-        for peer in neighbours:
-            peer_infos.append(_mapper(peer))
-        return peer_infos
+
+        return [_mapper(peer) for peer in neighbours]
 
     # Resource functions
     #############################
@@ -990,12 +987,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
                 peer.disconnect(PeerSession.DCRRefresh)
-
-    # TODO: throttle the tx rate of MessageDegree
-    def __send_degree(self):
-        degree = len(self.peers)
-        for p in list(self.peers.values()):
-            p.send_degree(degree)
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():

@@ -13,7 +13,7 @@ class EthereumClientTest(TempDirFixture):
         super(EthereumClientTest, self).setUp()
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
-        self.client = Client(self.tempdir)
+        self.client = Client(self.tempdir, start_node=True)
 
     def tearDown(self):
         self.client.node.stop()
