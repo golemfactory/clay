@@ -31,6 +31,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 from golem.core.variables import APP_VERSION
+from apps.appsmanager import AppsManager
 
 
 def mock_async_run(req, success, error):
@@ -532,6 +533,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
             connect_to_known_hosts=False,
             use_docker_machine_manager=False
         )
+
+        self._apps_manager = AppsManager()
+        self._apps_manager.load_apps()
+
+        for env in self._apps_manager.get_env_list():
+            env.accept_tasks = True
+            self.client.environments_manager.add_environment(env)
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)

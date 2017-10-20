@@ -32,6 +32,7 @@ from gui.applicationlogic import (GuiApplicationLogic, logger,
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
+from apps.appsmanager import AppsManager
 
 
 class TTask(Task):
@@ -680,6 +681,13 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         logic.root_path = self.path
         logic.client = rpc_client
+
+        self._apps_manager = AppsManager()
+        self._apps_manager.load_apps()
+
+        for env in self._apps_manager.get_env_list():
+            env.accept_tasks = True
+            self.client.environments_manager.add_environment(env)
 
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
