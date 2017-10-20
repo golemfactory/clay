@@ -82,6 +82,4 @@ def tee_target(prefix, proc, input_stream, path, stream):
                 if not line.endswith('\n'):
                     line += '\n'
                 stream.write(prefix + line)
-                stream.flush()
                 log_f.write(prefix + line)
-                log_f.flush()

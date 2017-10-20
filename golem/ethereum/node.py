@@ -157,8 +157,7 @@ class NodeProcess(object):
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
-                                     stdin=DEVNULL,
-                                     bufsize=-1)
+                                     stdin=DEVNULL)
 
         tee_kwargs = {
             'proc': self.__ps,
