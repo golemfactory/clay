@@ -192,6 +192,10 @@ class NodeProcess(object):
         ipc_file = '{}-{}'.format(chain, port)
         ipc_path = os.path.join(tempdir, ipc_file)
 
+        if is_windows():
+            # On Windows expand to full named pipe path.
+            ipc_path = r'\\.\pipe\{}'.format(self.start_node)
+
         args = [
             self.__prog,
             '--datadir={}'.format(geth_datadir),
@@ -217,10 +221,6 @@ class NodeProcess(object):
         tee_thread = threading.Thread(name='geth-tee', target=tee_target,
                                       kwargs=tee_kwargs)
         tee_thread.start()
-
-        if is_windows():
-            # On Windows expand to full named pipe path.
-            ipc_path = r'\\.\pipe\{}'.format(self.start_node)
 
         return IPCProvider(ipc_path)
 
