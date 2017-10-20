@@ -32,14 +32,12 @@ tabulate
 PyYAML>=3.12
 crossbar==17.3.1
 txaio==2.6.2
-jsonpickle
 pydispatcher
 Crypto
 scrypt
 packaging
 pyreadline
 pytest>=3.0.5
-qt5reactor
 GitPython>=2.1.0
 semantic_version
 pyOpenSSL==16.2.0
@@ -48,7 +46,6 @@ Automat==0.5.0
 zope.interface==4.3.3
 incremental==16.10.1
 OpenEXR
-PyQt5
 pycparser==2.17
 numpy==1.13.1
 scipy
