@@ -30,7 +30,7 @@ setup(
     long_description=get_long_description(directory),
     url='https://golem.network',
     author='Golem Team',
-    author_email='contact@golemproject.net',
+    author_email='contact@golem.network',
     license="GPL-3.0",
     classifiers=[
         'Development Status :: 3 - Alpha',

@@ -15,7 +15,7 @@ environment:
       PYTHON_VERSION: "3.5.0"
       PYTHON_ARCH: "64"
 
-      VER_GETH: geth-windows-amd64-1.6.7-ab5646c5
+      VER_GETH: geth-windows-amd64-1.7.2-1db4ecdc
       VER_IPFS: go-ipfs_v0.4.4_windows-386
       VER_HYPERG: 0.2.1
 
@@ -28,7 +28,6 @@ environment:
       PYWIN32: pywin32-221.win-amd64-py3.5.exe
 
       WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
-      BINARIES_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'

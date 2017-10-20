@@ -1,5 +1,5 @@
 import atexit
-from devp2p.crypto import privtopub
+from golem.core.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
@@ -64,7 +64,7 @@ class Faucet(object):
 
 
 class NodeProcess(object):
-    MIN_GETH_VERSION = '1.6.1'
+    MIN_GETH_VERSION = '1.7.2'
     MAX_GETH_VERSION = '1.7.999'
     IPC_CONNECTION_TIMEOUT = 10
 
@@ -106,11 +106,9 @@ class NodeProcess(object):
             raise RuntimeError("Ethereum node already started by us")
 
         if is_frozen():
-            pipes = self.SUBPROCESS_PIPES
             this_dir = os.path.join(os.path.dirname(sys.executable),
                                     'golem', 'ethereum')
         else:
-            pipes = dict()
             this_dir = os.path.dirname(__file__)
 
         # Init geth datadir
@@ -123,15 +121,6 @@ class NodeProcess(object):
         geth_log_path = os.path.join(geth_log_dir, "geth.log")
         geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
-        genesis_args = [self.__prog, datadir_arg,
-                        'init', init_file]
-        init_subp = subprocess.Popen(genesis_args, **pipes)
-        init_subp.wait()
-        if init_subp.returncode != 0:
-            error_msg = "geth init failed with code {}".format(
-                init_subp.returncode)
-            log.error(error_msg)
-            raise OSError(error_msg)
 
         if port is None:
             port = find_free_net_port()

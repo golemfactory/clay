@@ -225,11 +225,26 @@ class TaskHeaderKeeper(object):
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
         if th_dict_repr['deadline'] < get_timestamp_utc():
-            return False, "Deadline already passed"
+            msg = "Deadline already passed \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         if not isinstance(th_dict_repr['subtask_timeout'], int):
-            return False, "Subtask timeout is not a number"
+            msg = "Subtask timeout is not a number \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         if th_dict_repr['subtask_timeout'] < 0:
-            return False, "Subtask timeout is less than 0"
+            msg = "Subtask timeout is less than 0 \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         return True, None
 
     def check_environment(self, th_dict_repr) -> SupportStatus:
@@ -341,7 +356,9 @@ class TaskHeaderKeeper(object):
             self.check_correct(th_dict_repr)
 
             if id_ in list(self.removed_tasks.keys()):  # recent
-                # silently ignore
+                logger.info("Received a task which has been already "
+                            "cancelled/removed/timeout/banned/etc "
+                            "Task id %s .", id_)
                 return True
 
             th = TaskHeader.from_dict(th_dict_repr)
@@ -355,10 +372,10 @@ class TaskHeaderKeeper(object):
 
             return True
         except (KeyError, TypeError) as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self,  th_dict_repr, update_header):
+    def update_supported_set(self, th_dict_repr, update_header):
         id_ = th_dict_repr["task_id"]
 
         support = self.check_support(th_dict_repr)
