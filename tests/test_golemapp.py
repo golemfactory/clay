@@ -7,6 +7,7 @@ from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golemapp import start
 
+
 class TestGolemApp(TempDirFixture):
     @ci_skip
     @patch('golemapp.OptNode')
