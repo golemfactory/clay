@@ -13,10 +13,16 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, ResourceType
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
-    SubtaskState
+
+from golem.task.taskbase import ComputeTaskDef, \
+    TaskEventListener, Task, \
+    ResourceType, TaskHeader
+
+from golem.task.taskkeeper import \
+    CompTaskKeeper, compute_subtask_value
+
+from golem.task.taskstate import TaskState, \
+    TaskStatus, SubtaskStatus, SubtaskState
 
 logger = logging.getLogger(__name__)
 
@@ -439,7 +445,7 @@ class TaskManager(TaskEventListener):
             cur_time = get_timestamp_utc()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
-                t.task_stats = TaskStatus.timeout
+                t.task_status = TaskStatus.timeout
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
