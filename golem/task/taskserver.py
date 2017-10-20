@@ -138,6 +138,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.forwarded_session_requests = {}
         self.response_list = {}
         self.deny_set = get_deny_set(datadir=client.datadir)
+        self.resource_handshakes = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
@@ -280,9 +281,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + \
-              self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths]
+        ths_tk = self.task_keeper.get_all_tasks()
+        ths_tm = self.task_manager.get_tasks_headers()
+        ret  = [th.to_dict() for th in ths_tk + ths_tm]
+        return  ret
 
     def add_task_header(self, th_dict_repr):
         try:
@@ -303,7 +305,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
             return True
         except Exception as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
 
     def verify_header_sig(self, th_dict_repr):

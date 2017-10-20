@@ -19,7 +19,6 @@ from golem.node import OptNode
 
 
 @click.command()
-@click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
@@ -33,8 +32,6 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--qt', is_flag=True, default=False,
-              help="Spawn Qt GUI only")
 @click.option('--start-geth', is_flag=True, default=False,
               help="Start geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -52,8 +49,8 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, start_geth, version, m, geth_port):
+def start(payments, monitor, datadir, node_address, rpc_address, peer,
+          start_geth,version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -75,17 +72,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
-    # Qt GUI
-    elif qt:
-        from gui.startgui import start_gui, check_rpc_address
-        address = '{}:{}'.format(rpc_address.address, rpc_address.port)
-        start_gui(check_rpc_address(ctx=None, param=None,
-                                    address=address))
-    # Golem
-    elif gui:
-        from gui.startapp import start_client
-        start_client(use_monitor=monitor, start_geth=start_geth,
-                     geth_port=geth_port, **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
