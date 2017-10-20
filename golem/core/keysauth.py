@@ -10,8 +10,8 @@ from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from devp2p.crypto import ECCx, mk_privkey
 
+from golem.core.crypto import ECCx, mk_privkey
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
