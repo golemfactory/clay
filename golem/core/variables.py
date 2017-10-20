@@ -5,7 +5,7 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.8.1"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
@@ -27,7 +27,7 @@ LISTEN_PORT_TTL = 3600
 #P2P PROTOCOL
 P2P_PROTOCOL_ID = 15
 #TASK PROTOCOL
-TASK_PROTOCOL_ID = 15
+TASK_PROTOCOL_ID = 16
 
 #####################
 # SESSION VARIABLES #
