@@ -22,8 +22,6 @@ class Message(object):
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message"""
-        if not self.registered_message_types:
-            init_messages()
         # signature (short data representation signed with private key)
         self.sig = sig
         if timestamp is None:
@@ -1301,3 +1299,6 @@ def init_messages():
                 .format(message_class.__name__, message_class.TYPE)
             )
         Message.registered_message_types[message_class.TYPE] = message_class
+
+
+init_messages()
