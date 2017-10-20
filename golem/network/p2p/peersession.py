@@ -120,17 +120,16 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
+    def sign(self, data):
+        """ Sign given bytes
+        :param Message data: data to be signed
+        :return Message: signed data
         """
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
 
-        msg.sig = self.p2p_service.sign(msg.get_short_hash())
-        return msg
+        return self.p2p_service.sign(data)
 
     def verify(self, msg):
         """Verify signature on given message. Check if message was signed
@@ -432,10 +431,10 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        if not isinstance(msg.peers_array, list):
+        if not isinstance(msg.peers, list):
             return
 
-        peers_info = msg.peers_array[:SEND_PEERS_NUM]
+        peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.try_to_add_peer(pi)
@@ -445,7 +444,7 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
-        for t in msg.tasks_array:
+        for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
 

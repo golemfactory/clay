@@ -6,7 +6,7 @@ from golem.core.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
-from golem.network.transport.message import MessageWantToComputeTask
+from golem.network.transport.message import MessageWantToComputeTask, Message
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 
@@ -259,20 +259,11 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
 
-        src = [1000, signature, time.time(), msg.dict_repr()]
-        dumped_l = CBORSerializer.dumps(src)
-        loaded_l = CBORSerializer.loads(dumped_l)
+        dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
+        loaded_l = Message.deserialize(dumped_l, ek.decrypt)
 
-        self.assertEqual(src, loaded_l)
-        self.assertEqual(signature, loaded_l[1])
-
-        msg_2 = MessageWantToComputeTask(dict_repr=loaded_l[3])
-
-        self.assertEqual(msg.get_short_hash(), msg_2.get_short_hash())
-        self.assertTrue(ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id))
-
-        self.assertEqual(type(loaded_l[1]), type(expected_result))
-        self.assertEqual(loaded_l[1], decode_hex(expected_result))
+        self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
+        self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), ek.key_id))
 
     def test_encrypt_decrypt_elliptical(self):
         """ Test encryption and decryption with EllipticalKeysAuth """
