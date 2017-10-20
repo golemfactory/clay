@@ -32,6 +32,8 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
+@click.option('--start-geth', is_flag=True, default=False,
+              help="Start geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
@@ -47,8 +49,8 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(payments, monitor, datadir, node_address, rpc_address, peer, version,
-          m, geth_port):
+def start(payments, monitor, datadir, node_address, rpc_address, peer,
+          start_geth,version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -78,7 +80,8 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer, version,
         log_golem_version()
 
         node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, geth_port=geth_port, **config)
+                       use_monitor=monitor, start_geth=start_geth,
+                       geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
@@ -109,9 +112,10 @@ def start_crossbar_worker(module):
     module = importlib.import_module(module)
     module.run()
 
+
 def log_golem_version():
     log = logging.getLogger('golem.version')
-    #initial version info
+    # initial version info
     from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)
