@@ -1,5 +1,3 @@
-import collections
-
 from golem.core.common import to_unicode
 
 
@@ -86,7 +84,6 @@ class TaskStatus(object):
     finished = "Finished"
     aborted = "Aborted"
     timeout = "Timeout"
-    paused = "Paused"
     restarted = "Restart"
 
 
