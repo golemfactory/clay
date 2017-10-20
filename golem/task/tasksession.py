@@ -1,21 +1,22 @@
-import logging
 import functools
+import logging
 import os
 import struct
-import time
 import threading
+import time
 
+from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.network.transport import message
-from golem.network.transport.session import MiddlemanSafeSession
-from golem.model import db
 from golem.model import Payment
+from golem.model import db
+from golem.network.transport import message
 from golem.network.transport import tcpnetwork
-from golem.core.async import AsyncRequest, async_run
+from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
+from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.core.variables import TASK_PROTOCOL_ID
@@ -45,7 +46,7 @@ def dropped_after():
     return inner
 
 
-class TaskSession(MiddlemanSafeSession):
+class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.MidAndFilesProtocol
@@ -62,6 +63,7 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         MiddlemanSafeSession.__init__(self, conn)
+        ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
@@ -297,38 +299,6 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.reject_result(subtask_id, self.result_owner)
         self.send_result_rejected(subtask_id)
 
-    def request_task(
-            self,
-            node_name,
-            task_id,
-            performance_index,
-            price,
-            max_resource_size,
-            max_memory_size,
-            num_cores
-            ):
-        """ Inform that node wants to compute given task
-        :param str node_name: name of that node
-        :param uuid task_id: if of a task that node wants to compute
-        :param float performance_index: benchmark result for this task type
-        :param float price: price for an hour
-        :param int max_resource_size: how much disk space can this node offer
-        :param int max_memory_size: how much ram can this node offer
-        :param int num_cores: how many cpu cores this node can offer
-        :return:
-        """
-        self.send(
-            message.MessageWantToComputeTask(
-                node_name=node_name,
-                task_id=task_id,
-                perf_index=performance_index,
-                price=price,
-                max_resource_size=max_resource_size,
-                max_memory_size=max_memory_size,
-                num_cores=num_cores
-            )
-        )
-
     def request_resource(self, task_id, resource_header):
         """Ask for a resources for a given task. Task owner should compare
            given resource header with resources for that task and send only
@@ -484,6 +454,18 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_want_to_compute_task(self, msg):
         if self.task_server.should_accept_provider(self.key_id):
+
+            if self._handshake_required(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is required', self.key_id)
+                self._start_handshake(self.key_id)
+                return
+
+            elif self._handshake_in_progress(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is in progress', self.key_id)
+                return
+
             ctd, wrong_task, wait = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,

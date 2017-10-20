@@ -138,6 +138,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.forwarded_session_requests = {}
         self.response_list = {}
         self.deny_set = get_deny_set(datadir=client.datadir)
+        self.resource_handshakes = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
