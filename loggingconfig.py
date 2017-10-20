@@ -31,7 +31,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'DEBUG',
             'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
@@ -67,7 +67,11 @@ LOGGING = {
             'propagate': True,
         },
         'golem.ethereum': {
-            'level': 'INFO',
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'golem.pay': {
+            'level': 'DEBUG',
             'propagate': True,
         },
         'golem.rpc.crossbar': {
