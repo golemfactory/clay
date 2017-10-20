@@ -117,14 +117,12 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not session.disconnect.called
         assert session.send.called
 
-        call_dict = session.send.call_args[0][0].__dict__
-        call_dict.pop('timestamp')
+        slots = session.send.call_args[0][0].__slots__
 
         msg = MessageWantToComputeTask(**self.message)
-        msg_dict = msg.__dict__
-        msg_dict.pop('timestamp')
+        msg_slots = msg.__slots__
 
-        assert call_dict == msg_dict
+        assert slots == msg_slots
 
     def test_request_task_failure(self, *_):
         session = MockTaskSession(self.tempdir)
