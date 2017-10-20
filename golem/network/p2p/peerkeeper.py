@@ -10,7 +10,7 @@ logger = logging.getLogger("golem.network.p2p.peerkeeper")
 K = 16  # Bucket size
 CONCURRENCY = 3  # parallel find node lookup
 K_SIZE = 512  # pubkey size
-PONG_TIMEOUT = 5   # don't wait for pong longer than this time
+PONG_TIMEOUT = 5  # don't wait for pong longer than this time
 REQUEST_TIMEOUT = 10  # find node requests timeout after this time
 IDLE_REFRESH = 3  # refresh idle buckets after this time
 
