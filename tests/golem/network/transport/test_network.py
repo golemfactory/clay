@@ -4,10 +4,11 @@ import time
 import unittest
 from contextlib import contextmanager
 
-from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import Message, MessageHello
-from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
+from golem.network.transport.message import MessageHello, Message
+from golem.network.transport.network import ProtocolFactory, SessionFactory, \
+    SessionProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
+    TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.tools.testwithreactor import TestWithReactor
 
@@ -27,8 +28,7 @@ class ASession(object):
         self.msgs.append(msg)
 
     def sign(self, msg):
-        msg.sig = "ASessionSign"
-        return msg
+        return b'1' * Message.SIG_LEN
 
     def encrypt(self, msg):
         return b"ASessionEncrypt" + bytes(msg)
@@ -366,9 +366,9 @@ class TestBasicProtocol(unittest.TestCase):
         self.assertNotEqual(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
-        db = DataBuffer()
+        db = p.db
         db.append_string(p.transport.buff[1])
-        m = Message.deserialize(db)[0]
+        m = p._data_to_messages()[0]
         self.assertEqual(m.timestamp, msg.timestamp)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)
@@ -393,7 +393,7 @@ class TestSaferProtocol(unittest.TestCase):
         p.set_session_factory(session_factory)
         self.assertFalse(p.send_message("123"))
         msg = MessageHello()
-        self.assertEqual(msg.sig, "")
+        self.assertIsNone(msg.sig)
         self.assertFalse(p.send_message(msg))
         p.connectionMade()
         self.assertTrue(p.send_message(msg))
@@ -401,6 +401,6 @@ class TestSaferProtocol(unittest.TestCase):
         p.dataReceived(p.transport.buff[0])
         self.assertIsInstance(p.session.msgs[0], MessageHello)
         self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
-        self.assertEqual(msg.sig, "ASessionSign")
+        self.assertEqual(msg.sig, b'1' * Message.SIG_LEN)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

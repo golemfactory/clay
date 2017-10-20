@@ -1,7 +1,7 @@
 import atexit
 import random
 
-from devp2p.crypto import privtopub
+from golem.core.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
