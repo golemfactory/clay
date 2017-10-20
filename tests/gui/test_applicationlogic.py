@@ -671,7 +671,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
     @patch('gui.view.dialog.QDialogPlus.enable_close',
            side_effect=lambda *_: True)
     @patch('gui.view.dialog.QDialogPlus.show')
-    def test_run_test_task(self, *_):
+    @patch('golem.environments.environmentsmanager.EnvironmentsManager.load_config')
+    def test_run_test_task(self, load_config, *_):
         logic = self.logic
         gui = self.app
 
@@ -681,13 +682,6 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         logic.root_path = self.path
         logic.client = rpc_client
-
-        self._apps_manager = AppsManager()
-        self._apps_manager.load_apps()
-
-        for env in self._apps_manager.get_env_list():
-            env.accept_tasks = True
-            self.client.environments_manager.add_environment(env)
 
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
