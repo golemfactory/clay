@@ -27,14 +27,21 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-PUBLIC_RPC_NODES = [
+NODE_LIST_URL = 'https://rinkeby.golem.network'
+FALLBACK_NODE_LIST = [
+    'https://rinkeby.golem.network:8545',
     'http://188.165.227.180:55555',
 ]
 
 
 def random_public_nodes():
     """Returns random geth RPC addresses"""
-    nodes = PUBLIC_RPC_NODES[:]
+    try:
+        return requests.get(NODE_LIST_URL).json()
+    except Exception as exc:
+        log.error("Error downloading node list: %s", exc)
+
+    nodes = FALLBACK_NODE_LIST[:]
     random.shuffle(nodes)
     return nodes
 
@@ -118,22 +125,22 @@ class NodeProcess(object):
         self.web3 = Web3(provider)
         atexit.register(lambda: self.stop())
 
-        CHECK_PERIOD = 0.1
-        wait_time = 0
+        started = time.time()
+        deadline = started + self.CONNECTION_TIMEOUT
+
         while not self.web3.isConnected():
-            if wait_time > self.CONNECTION_TIMEOUT:
+            if time.time() > deadline:
                 if not self.start_node and self.public_nodes:
                     return self.start(port)
                 self.public_nodes = random_public_nodes()
                 raise OSError("Cannot connect to geth at {}".format(provider))
-            time.sleep(CHECK_PERIOD)
-            wait_time += CHECK_PERIOD
+            time.sleep(0.1)
 
         identified_chain = self.identify_chain()
         if identified_chain != self.CHAIN:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
-        log.info("Connected to node in %ss", wait_time)
+        log.info("Connected to node in %ss", time.time() - started)
 
     @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
