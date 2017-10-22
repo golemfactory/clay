@@ -554,6 +554,22 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
+    @patch('golem.client.log')
+    def test_task_archiver_maintenance(self, log, *_):
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
+
+        c = self.client
+        c.task_archiver.do_maintenance = Mock()
+        c._Client__task_archiver_maintenance()
+
+        assert c.task_archiver.do_maintenance.called
+
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -871,6 +887,50 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+
+    @patch('golem.client.log')
+    def test_get_unsupport_reasons(self, log, *_):
+        c = self.client
+        c.task_server.task_keeper.get_unsupport_reasons = Mock()
+        c.task_server.task_keeper.get_unsupport_reasons.return_value = [
+            {'avg': '17.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+        c.task_archiver.get_unsupport_reasons = Mock()
+        c.task_archiver.get_unsupport_reasons.side_effect = lambda days: [
+            {'avg': str(days*21)+'.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+
+        # get_unsupport_reasons(0) is supposed to read current stats from
+        # the task_keeper and should not look into archives
+        reasons = c.get_unsupport_reasons(0)
+        self.assertEqual(reasons[0]["avg"], "17.0.0")
+        c.task_server.task_keeper.get_unsupport_reasons.assert_called()
+        c.task_archiver.get_unsupport_reasons.assert_not_called()
+
+        c.task_server.task_keeper.get_unsupport_reasons.reset_mock()
+        c.task_archiver.get_unsupport_reasons.reset_mock()
+
+        # for more days it's the opposite
+        reasons = c.get_unsupport_reasons(2)
+        self.assertEqual(reasons[0]["avg"], "42.0.0")
+        c.task_archiver.get_unsupport_reasons.assert_called_with(2)
+        c.task_server.task_keeper.get_unsupport_reasons.assert_not_called()
+
+        # and for a negative number of days we should get an exception
+        with self.assertRaises(ValueError):
+            reasons = c.get_unsupport_reasons(-1)
 
     def test_task_preview(self, *_):
         task_id = str(uuid.uuid4())

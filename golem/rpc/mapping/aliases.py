@@ -76,6 +76,7 @@ class Task:
     tasks_check             = 'comp.tasks.check'
     tasks_check_abort       = 'comp.tasks.check.abort'
     tasks_stats             = 'comp.tasks.stats'
+    tasks_unsupport_reasons = 'comp.tasks.unsupport'
     tasks_known             = 'comp.tasks.known'
     tasks_known_delete      = 'comp.tasks.known.delete'
     tasks_save_preset       = 'comp.tasks.preset.save'

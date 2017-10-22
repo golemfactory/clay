@@ -17,6 +17,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -98,13 +99,17 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                  keys_auth,
                  client,
                  use_ipv6=False,
-                 use_docker_machine_manager=True):
+                 use_docker_machine_manager=True,
+                 task_archiver=None):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
 
         self.node = node
-        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
+        self.task_archiver = task_archiver
+        self.task_keeper = TaskHeaderKeeper(client.environments_manager,
+                                            min_price=config_desc.min_price,
+                                            task_archiver=task_archiver)
         self.task_manager = TaskManager(config_desc.node_name, self.node, self.keys_auth,
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management,
@@ -193,10 +198,14 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 performance = env.get_performance()
             else:
                 performance = 0.0
-            is_requestor_accepted = self.should_accept_requestor(
-                theader.task_owner_key_id)
-            is_price_accepted = self.config_desc.min_price <= theader.max_price
-            if is_requestor_accepted and is_price_accepted:
+            supported = self.should_accept_requestor(theader.task_owner_key_id)
+            if self.config_desc.min_price > theader.max_price:
+                supported = supported.join(SupportStatus.err({
+                    UnsupportReason.MAX_PRICE: theader.max_price}))
+            if not supported.is_ok() and self.task_archiver:
+                self.task_archiver.add_support_status(theader.task_id,
+                                                      supported)
+            else:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
                                                         price=price)
@@ -601,10 +610,14 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def should_accept_requestor(self, node_id):
         if node_id in self.deny_set:
-            return False
+            return SupportStatus.err(
+                {UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: {}".format(trust))
-        return trust >= self.config_desc.requesting_trust
+        if trust >= self.config_desc.requesting_trust:
+            return SupportStatus.ok()
+        else:
+            return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
