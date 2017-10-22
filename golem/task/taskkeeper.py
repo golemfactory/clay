@@ -7,6 +7,7 @@ import time
 from typing import Optional
 import typing
 from semantic_version import Version
+from collections import Counter
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
@@ -175,7 +176,8 @@ class TaskHeaderKeeper(object):
             app_version=APP_VERSION,
             remove_task_timeout=180,
             verification_timeout=3600,
-            max_tasks_per_requestor=10):
+            max_tasks_per_requestor=10,
+            task_archiver=None):
         # all computing tasks that this node knows about
         self.task_headers = {}
         # ids of tasks that this node may try to compute
@@ -194,6 +196,7 @@ class TaskHeaderKeeper(object):
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
         self.max_tasks_per_requestor = max_tasks_per_requestor
+        self.task_archiver = task_archiver
 
     def check_support(self, th_dict_repr) -> SupportStatus:
         """Checks if task described with given task header dict
@@ -339,6 +342,8 @@ class TaskHeaderKeeper(object):
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
+            if self.task_archiver:
+                self.task_archiver.add_support_status(id_, supported)
 
     def add_task_header(self, th_dict_repr):
         """This function will try to add to or update a task header
@@ -369,6 +374,11 @@ class TaskHeaderKeeper(object):
             self.update_supported_set(th_dict_repr, update)
 
             self.check_max_tasks_per_owner(th.task_owner_key_id)
+
+            if self.task_archiver and id_ in self.task_headers:
+                self.task_archiver.add_task(th)
+                self.task_archiver.add_support_status(id_,
+                                                      self.support_status[id_])
 
             return True
         except (KeyError, TypeError) as err:
@@ -460,3 +470,34 @@ class TaskHeaderKeeper(object):
 
     def request_failure(self, task_id):
         self.remove_task_header(task_id)
+
+    def get_unsupport_reasons(self):
+        """
+        :return: list of dictionaries of the form {'reason': reason_type,
+         'ntasks': task_count, 'avg': avg} where reason_type is one of
+         unsupport reason types, task_count is the number of tasks currently
+         affected with that reason, and avg (if available) is the current most
+         typical corresponding value.  For unsupport reason
+         MAX_PRICE avg is the average price of all tasks currently observed in
+         the network. For unsupport reason APP_VERSION avg is
+         the most popular app version of all tasks currently observed in the
+         network.
+        """
+        c_reasons = Counter({r: 0 for r in UnsupportReason})
+        for st in self.support_status.values():
+            c_reasons.update(st.desc.keys())
+        c_versions = Counter()
+        c_price = 0
+        for th in self.task_headers.values():
+            c_versions[th.min_version] += 1
+            c_price += th.max_price
+        ret = []
+        for (reason, count) in c_reasons.most_common():
+            if reason == UnsupportReason.MAX_PRICE and self.task_headers:
+                avg = int(c_price / len(self.task_headers))
+            elif reason == UnsupportReason.APP_VERSION and c_versions:
+                avg = c_versions.most_common(1)[0][0]
+            else:
+                avg = None
+            ret.append({'reason': reason.value, 'ntasks': count, 'avg': avg})
+        return ret

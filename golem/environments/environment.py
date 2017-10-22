@@ -19,6 +19,9 @@ class SupportStatus(object):
     def __bool__(self) -> bool:
         return self.is_ok()
 
+    def __eq__(self, other) -> bool:
+        return self.is_ok() == other.is_ok() and self.desc == other.desc
+
     def join(self, other) -> 'SupportStatus':
         desc = self.desc.copy()
         desc.update(other.desc)
@@ -43,6 +46,8 @@ class UnsupportReason(enum.Enum):
     ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
     MAX_PRICE = 'max_price'
     APP_VERSION = 'app_version'
+    DENY_LIST = 'deny_list'
+    REQUESTOR_TRUST = 'requesting_trust'
 
 
 class Environment():

@@ -13,9 +13,11 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
+from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
 from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
+from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import ComputeTaskDef, TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -62,7 +64,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         random.seed()
         self.ccd = ClientConfigDescriptor()
         self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
-                             self.client, use_docker_machine_manager=False)
+                             self.client, use_docker_machine_manager=False,
+                             task_archiver=None)
 
     def tearDown(self):
         LogTestCase.tearDown(self)
@@ -71,13 +74,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
-    def test_request(self):
+    @patch('golem.task.taskarchiver.TaskArchiver')
+    def test_request(self, tar):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=tar)
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
@@ -99,6 +103,57 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
         self.assertIsNone(ts.request_task())
         self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
+        ts.remove_task_header("uvw2")
+
+        # Task can be rejected for 3 reasons at this stage; in all cases
+        # the task should be reported TaskArchiver listed as unsupported:
+        # 1. Requestor's trust level is too low
+        tar.reset_mock()
+        ts.config_desc.requesting_trust = 0.5
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw3"
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw3",
+            SupportStatus(
+                False,
+                {UnsupportReason.REQUESTOR_TRUST: 0.3}))
+        ts.remove_task_header("uvw3")
+
+        # 2. Task's max price is too low
+        tar.reset_mock()
+        ts.config_desc.requesting_trust = 0.0
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw4"
+        task_header["max_price"] = 1
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw4",
+            SupportStatus(
+                False,
+                {UnsupportReason.MAX_PRICE: 1}))
+        ts.remove_task_header("uvw4")
+
+        # 3. Requestor is on a black list.
+        tar.reset_mock()
+        ts.deny_set.add("key")
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw5"
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw5",
+            SupportStatus(
+                False,
+                {UnsupportReason.DENY_LIST: "key"}))
+        ts.remove_task_header("uvw5")
+        ts.deny_set.remove("key")
+
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
@@ -107,7 +162,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
@@ -187,7 +242,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         session = Mock()
         session.address = "10.10.10.10"
@@ -212,7 +267,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ccd.waiting_for_task_timeout = 19
 
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
 
         ccd2 = ClientConfigDescriptor()
@@ -237,7 +292,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "2"))
 
         self.ts = ts = TaskServer(Node(), config, keys_auth, self.client,
-                                  use_docker_machine_manager=False)
+                                  use_docker_machine_manager=False,
+                                  task_archiver=None)
 
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
@@ -276,14 +332,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_sync(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.sync_network()
 
     def test_traverse_nat(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
@@ -293,7 +349,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_forwarded_session_requests(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
 
@@ -325,7 +381,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_retry_sending_task_result(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
 
@@ -341,7 +397,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_send_waiting_results(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         ts._mark_connected = Mock()
@@ -401,7 +457,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_add_task_session(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
 
@@ -416,7 +472,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         node.nat_type = FullCone
 
         ts = TaskServer(node, ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         ts._add_pending_request = Mock()
@@ -443,7 +499,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_remove_task_session(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
 
@@ -458,7 +514,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_respond_to(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         session = Mock()
@@ -474,7 +530,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_conn_for_task_failure_established(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         session = Mock()
@@ -493,7 +549,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         ts.final_conn_failure = Mock()
@@ -507,7 +563,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.network = Mock()
         ts.final_conn_failure = Mock()
@@ -570,7 +626,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_result"""
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         ts.network = MagicMock()
         ts.final_conn_failure = Mock()
         ts.task_computer = Mock()
@@ -600,7 +656,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_should_accept_provider(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         assert ts.should_accept_provider("ABC")
@@ -618,20 +674,26 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_should_accept_requestor(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.client.get_requesting_trust = Mock(return_value=0.4)
-        ts.config_desc.rquesting_trust = 0.2
-        assert ts.should_accept_requestor("ABC")
+        ts.config_desc.requesting_trust = 0.2
+        assert ts.should_accept_requestor("ABC").is_ok()
         ts.config_desc.requesting_trust = 0.4
-        assert ts.should_accept_requestor("ABC")
+        assert ts.should_accept_requestor("ABC").is_ok()
         ts.config_desc.requesting_trust = 0.5
-        assert not ts.should_accept_requestor("ABC")
+        ss = ts.should_accept_requestor("ABC")
+        assert not ss.is_ok()
+        assert UnsupportReason.REQUESTOR_TRUST in ss.desc
+        self.assertEqual(ss.desc[UnsupportReason.REQUESTOR_TRUST], 0.4)
 
         ts.config_desc.requesting_trust = 0.2
-        assert ts.should_accept_requestor("ABC")
+        assert ts.should_accept_requestor("ABC").is_ok()
 
         ts.deny_set.add("ABC")
-        assert not ts.should_accept_requestor("ABC")
+        ss = ts.should_accept_requestor("ABC")
+        assert not ss.is_ok()
+        assert UnsupportReason.DENY_LIST in ss.desc
+        self.assertEqual(ss.desc[UnsupportReason.DENY_LIST], "ABC")
 
     @patch('golem.task.taskserver.TaskServer._mark_connected')
     def test_new_session_prepare(self, mark_mock):
@@ -711,7 +773,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def test_new_connection(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         tss = TaskSession(Mock())
         ts.new_connection(tss)
         assert len(ts.task_sessions_incoming) == 1
@@ -726,7 +788,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         random.seed()
         self.ccd = self._get_config_desc()
         self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
-                             self.client, use_docker_machine_manager=False)
+                             self.client, use_docker_machine_manager=False,
+                             task_archiver=None)
         self.ts.task_computer = MagicMock()
 
     def tearDown(self):
@@ -813,7 +876,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
     def test_results(self, trust, dump_mock):
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         self.ts = ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
@@ -852,7 +915,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=None)
         ts.task_manager.listen_address = "10.10.10.10"
         ts.task_manager.listen_port = 1111
         ts.receive_subtask_computation_time("xxyyzz", 1031)
@@ -886,7 +949,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
 
     def test_disconnect(self):
         task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
-                                 self.client, use_docker_machine_manager=False)
+                                 self.client, use_docker_machine_manager=False,
+                                 task_archiver=None)
         task_server.task_sessions = {'task_id': Mock()}
         task_server.disconnect()
         assert task_server.task_sessions['task_id'].dropped.called
