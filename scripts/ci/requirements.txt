@@ -1,0 +1,3 @@
+git+https://github.com/ansible/ansible.git@60e98a363548454e03bedd09636e236c07b1666c#egg=ansible
+boto3
+pywinrm
