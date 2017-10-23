@@ -22,8 +22,10 @@ def key_to_number(key_bytes):
     return int.from_bytes(key_bytes, sys.byteorder)
 
 def is_sorted_by_distance(peers, key_num):
+    def dist(peer):
+        return node_id_distance(peer, key_num)
     for i in range(len(peers)-1):
-        if node_id_distance(peers[i], key_num) > node_id_distance(peers[i+1], key_num):
+        if dist(peers[i]) > dist(peers[i+1]):
             return False
     return True
 

@@ -74,10 +74,8 @@ class PeerKeeper(object):
             if bucket.start <= self.key_num < bucket.end:
                 self.split_bucket(bucket)
                 return self.add_peer(peer_info)
-            else:
-                self.expected_pongs[peer_to_remove.key] = (
-                    peer_info, time.time())
-                return peer_to_remove
+            self.expected_pongs[peer_to_remove.key] = (peer_info, time.time())
+            return peer_to_remove
 
         for bucket in self.buckets:
             logger.debug(str(bucket))
@@ -104,10 +102,9 @@ class PeerKeeper(object):
         :return Node|None: information about random peer
         """
         bucket = self.buckets[random.randint(0, len(self.buckets) - 1)]
-        if len(bucket.peers) > 0:
+        if bucket.peers:
             return bucket.peers[random.randint(0, len(bucket.peers) - 1)]
-        else:
-            return None
+        return None
 
     def pong_received(self, key):
         """
@@ -221,7 +218,7 @@ class PeerKeeper(object):
 
     def __remove_old_requests(self):
         cur_time = time.time()
-        for key_num, time_ in list(self.find_requests.items()):
+        for key_num, _ in list(self.find_requests.items()):
             if cur_time - time.time() > self.request_timeout:
                 del self.find_requests[key_num]
 
