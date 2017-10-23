@@ -8,6 +8,7 @@ import sys
 from golem.network.p2p.peerkeeper import PeerKeeper, K_SIZE, CONCURRENCY, \
     node_id_distance
 from golem.utils import encode_hex
+from golem import testutils
 
 
 def random_key(n_bytes, prefix=None):
@@ -21,7 +22,8 @@ def key_to_number(key_bytes):
     return int.from_bytes(key_bytes, sys.byteorder)
 
 
-class TestPeerKeeper(unittest.TestCase):
+class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/network/p2p/peerkeeper.py',]
 
     def setUp(self):
         self.n_bytes = K_SIZE // 8
@@ -35,8 +37,8 @@ class TestPeerKeeper(unittest.TestCase):
 
         for k in keys:
             peer = MockPeer(k)
-            peers.add(peer)
-            self.peer_keeper.add_peer(peer)
+            if self.peer_keeper.add_peer(peer) is None:
+                peers.add(peer)
 
         # Sort keys by distance to self.key
         distances = {p.key: node_id_distance(p, self.key_num) for p in peers}
@@ -47,13 +49,13 @@ class TestPeerKeeper(unittest.TestCase):
         expected_n = CONCURRENCY
         nodes = self.peer_keeper.neighbours(self.key_num)
         assert len(nodes) == expected_n
-        assert all(node.key in ordered[:16] for node in nodes)
+        assert all(node.key in ordered[:expected_n] for node in nodes)
 
         # Desired count
         expected_n = 10
         nodes = self.peer_keeper.neighbours(self.key_num, expected_n)
         assert len(nodes) == expected_n
-        assert all(node.key in ordered[:32] for node in nodes)
+        assert all(node.key in ordered[:expected_n] for node in nodes)
 
         nodes = self.peer_keeper.neighbours(self.key_num, 256)
         assert len(nodes) <= len(keys)
