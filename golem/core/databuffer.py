@@ -18,14 +18,14 @@ class DataBuffer:
         if num < 0:
             raise AttributeError("num must be grater than 0")
         str_num_rep = struct.pack("!L", num)
-        self.buffered_data = b"".join([self.buffered_data, str_num_rep])
+        self.buffered_data += str_num_rep
         return str_num_rep
 
-    def append_string(self, data):
-        """ Append given string to data buffer
-        :param str data: string to append
+    def append_bytes(self, data):
+        """ Append given bytes to data buffer
+        :param str data: bytes to append
         """
-        self.buffered_data = b"".join([self.buffered_data, data])
+        self.buffered_data += data
 
     def data_size(self):
         """ Return size of data in buffer
@@ -52,7 +52,7 @@ class DataBuffer:
 
         return val_
 
-    def peek_string(self, num_chars):
+    def peek_bytes(self, num_chars):
         """ Return first <num_chars> chars from buffer. Doesn't change the buffer.
         :param long num_chars: how many chars should be read from buffer
         :return str: first <num_chars> chars from buffer
@@ -63,12 +63,12 @@ class DataBuffer:
         ret_str = self.buffered_data[:num_chars]
         return ret_str
 
-    def read_string(self, num_chars):
+    def read_bytes(self, num_chars):
         """ Remove first <num_chars> chars from buffer and return them.
         :param long num_chars: how many chars should be read and removed from buffer
-        :return str: string removed form buffer
+        :return str: bytes removed form buffer
         """
-        val_ = self.peek_string(num_chars)
+        val_ = self.peek_bytes(num_chars)
         self.buffered_data = self.buffered_data[num_chars:]
 
         return val_
@@ -82,32 +82,32 @@ class DataBuffer:
 
         return ret_data
 
-    def read_len_prefixed_string(self):
-        """ Read long number from the buffer and then read string with that length from the buffer
-        :return str: first string from the buffer (after long)
+    def read_len_prefixed_bytes(self):
+        """ Read long number from the buffer and then read bytes with that length from the buffer
+        :return str: first bytes from the buffer (after long)
         """
         ret_str = None
 
         if (self.data_size() > LONG_STANDARD_SIZE and
                 self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE)):
             num_chars = self.read_ulong()
-            ret_str = self.read_string(num_chars)
+            ret_str = self.read_bytes(num_chars)
 
         return ret_str
 
-    def get_len_prefixed_string(self):
-        """Generator function that return from buffer strings preceded with their length (long) """
+    def get_len_prefixed_bytes(self):
+        """Generator function that return from buffer datas preceded with their length (long) """
         while (self.data_size() > LONG_STANDARD_SIZE and
                self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE)):
             num_chars = self.read_ulong()
-            yield self.read_string(num_chars)
+            yield self.read_bytes(num_chars)
 
-    def append_len_prefixed_string(self, data):
+    def append_len_prefixed_bytes(self, data):
         """ Append length of a given data and then given data to the buffer
         :param str data: data to append
         """
         self.append_ulong(len(data))
-        self.append_string(data)
+        self.append_bytes(data)
 
     def clear_buffer(self):
         """ Remove all data from the buffer """

@@ -494,7 +494,7 @@ class BasicProtocol(SessionProtocol):
         ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
 
         db = DataBuffer()
-        db.append_len_prefixed_string(ser_msg)
+        db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
     def _can_receive(self):
@@ -502,7 +502,7 @@ class BasicProtocol(SessionProtocol):
 
     def _interpret(self, data):
         with self.lock:
-            self.db.append_string(data)
+            self.db.append_bytes(data)
             mess = self._data_to_messages()
 
         if self.db.data_size() > MAX_MESSAGE_SIZE:
@@ -515,7 +515,7 @@ class BasicProtocol(SessionProtocol):
 
     def _data_to_messages(self):
         messages = []
-        data = self.db.read_len_prefixed_string()
+        data = self.db.read_len_prefixed_bytes()
 
         while data:
             message = Message.deserialize(data, lambda x: x)
@@ -525,7 +525,7 @@ class BasicProtocol(SessionProtocol):
             else:
                 logger.error("Failed to deserialize message {}".format(data))
 
-            data = self.db.read_len_prefixed_string()
+            data = self.db.read_len_prefixed_bytes()
 
         return messages
 
@@ -575,7 +575,7 @@ class SafeProtocol(ServerProtocol):
 
     def _data_to_messages(self):
         messages = []
-        for buf in self.db.get_len_prefixed_string():
+        for buf in self.db.get_len_prefixed_bytes():
             msg = Message.deserialize(buf, self.session.decrypt)
             if msg:
                 messages.append(msg)
@@ -644,7 +644,7 @@ class MidAndFilesProtocol(FilesProtocol):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
             with self.lock:
-                self.db.append_string(data, check_size=False)
+                self.db.append_bytes(data)
                 messages = self.db.read_all()
             self.session.interpret(messages)
         else:

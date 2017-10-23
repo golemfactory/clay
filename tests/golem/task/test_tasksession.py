@@ -457,7 +457,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         db = DataBuffer()
 
         sess = TaskSession(conn)
-        sess.send = lambda m: db.append_string(m.serialize(lambda x: b'\000'*65))
+        sess.send = lambda m: db.append_bytes(m.serialize(lambda x: b'\000'*65))
         sess._can_send = lambda *_: True
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
