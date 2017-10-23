@@ -176,12 +176,14 @@ class PeerKeeper(object):
 
         neigh = []
         for bucket in self.buckets_by_id_distance(key_num):
+            if len(neigh) == alpha:
+                break
             for peer in bucket.peers_by_id_distance(key_num):
                 if int(peer.key, 16) != key_num:
                     neigh.append(peer)
-                    if len(neigh) == alpha * 2:
+                    if len(neigh) == alpha:
                         break
-        return sorted(neigh, key=lambda p: node_id_distance(p, key_num))[:alpha]
+        return neigh
 
     def buckets_by_id_distance(self, key_num):
         """
