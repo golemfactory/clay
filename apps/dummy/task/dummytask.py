@@ -19,15 +19,13 @@ logger = logging.getLogger("apps.dummy")
 
 
 class DummyTaskTypeInfo(CoreTaskTypeInfo):
-    def __init__(self, dialog, customizer):
+    def __init__(self):
         super().__init__(
             "Dummy",
             DummyTaskDefinition,
             DummyTaskDefaults(),
             DummyTaskOptions,
-            DummyTaskBuilder,
-            dialog,
-            customizer
+            DummyTaskBuilder
         )
 
 

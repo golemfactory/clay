@@ -2,7 +2,8 @@ import logging
 import time
 import random
 
-from devp2p.crypto import ECIESDecryptionError
+from golem.core.crypto import ECIESDecryptionError
+from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
@@ -120,17 +121,16 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
+    def sign(self, data):
+        """ Sign given bytes
+        :param Message data: data to be signed
+        :return Message: signed data
         """
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
 
-        msg.sig = self.p2p_service.sign(msg.get_short_hash())
-        return msg
+        return self.p2p_service.sign(data)
 
     def verify(self, msg):
         """Verify signature on given message. Check if message was signed
@@ -432,7 +432,10 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        peers_info = msg.peers_array
+        if not isinstance(msg.peers, list):
+            return
+
+        peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
             self.p2p_service.try_to_add_peer(pi)
@@ -449,7 +452,7 @@ class PeerSession(BasicSafeSession):
             self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
-        for t in msg.tasks_array:
+        for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
 
@@ -569,7 +572,8 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePing())
 
     def _send_peers(self, node_key_id=None):
-        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
+        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
+                                                alpha=SEND_PEERS_NUM)
         self.send(message.MessagePeers(nodes_info))
 
     def __set_verified_conn(self):
@@ -619,7 +623,6 @@ class PeerSession(BasicSafeSession):
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            message.MessageDegree.TYPE: self._react_to_degree,
             message.MessageGossip.TYPE: self._react_to_gossip,
             message.MessageLocRank.TYPE: self._react_to_loc_rank,
             message.MessageStopGossip.TYPE: self._react_to_stop_gossip,

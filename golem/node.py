@@ -18,13 +18,14 @@ class Node(object):
 
     def __init__(self, datadir=None, peers=None, transaction_system=False,
                  use_monitor=False, use_docker_machine_manager=True,
-                 geth_port=None, **config_overrides):
+                 start_geth=False, geth_port=None, **config_overrides):
 
         self.client = Client(
             datadir=datadir,
             transaction_system=transaction_system,
             use_docker_machine_manager=use_docker_machine_manager,
             use_monitor=use_monitor,
+            start_geth=start_geth,
             geth_port=geth_port,
             **config_overrides
         )

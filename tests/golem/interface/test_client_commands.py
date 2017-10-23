@@ -584,7 +584,7 @@ class TestSettings(TempDirFixture):
 
         _setting_values = {
             'node_name': Values(['node'], ['', None, 12, lambda x: x]),
-            'accept_task': _bool,
+            'accept_tasks': _bool,
             'max_resource_size': _int_gt0,
             'use_waiting_for_task_timeout': _bool,
             'waiting_for_task_timeout': _int_gt0,

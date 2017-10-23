@@ -118,22 +118,6 @@ class DatabaseFixture(TempDirFixture):
         super(DatabaseFixture, self).tearDown()
 
 
-class TestGui(TempDirFixture):
-
-    def setUp(self):
-        super(TestGui, self).setUp()
-        from gui.application import Gui
-        from gui.view.appmainwindow import AppMainWindow
-
-        self.logic = MagicMock()
-        self.gui = Gui(self.logic, AppMainWindow)
-
-    def tearDown(self):
-        super(TestGui, self).tearDown()
-        self.gui.app.exit(0)
-        self.gui.app.deleteLater()
-
-
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.
     To use it in your TestCase just add it to inheritance list like so:

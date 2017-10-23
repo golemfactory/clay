@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger("gui")
+logger = logging.getLogger("tools")
 
 options = {
     0: 'kB',
