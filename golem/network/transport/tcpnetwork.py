@@ -24,6 +24,8 @@ from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
 
+MAX_MESSAGE_SIZE = 2 * 1024 * 1024
+
 ##########################
 # Network helper classes #
 ##########################
@@ -503,13 +505,13 @@ class BasicProtocol(SessionProtocol):
             self.db.append_string(data)
             mess = self._data_to_messages()
 
-        # Interpret messages
-        if mess:
-            for m in mess:
-                self.session.interpret(m)
-        elif data:
-            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+        if self.db.data_size() > MAX_MESSAGE_SIZE:
+            logger.warning("Too long pending message, closing connection")
+            self.close()
+            return
+
+        for m in mess:
+            self.session.interpret(m)
 
     def _data_to_messages(self):
         messages = []
