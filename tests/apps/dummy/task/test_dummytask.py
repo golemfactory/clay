@@ -131,7 +131,7 @@ class TestDummyTaskBuilder(TestCase):
                                           "difficulty": difficulty})
 
             return DummyTaskBuilder.build_full_definition(
-                DummyTaskTypeInfo(None, None), dictionary)  # noqa
+                DummyTaskTypeInfo(), dictionary)  # noqa
 
         difficulty = "0xf"
         sbs = 10
@@ -165,7 +165,7 @@ class TestDummyTaskBuilder(TestCase):
 
 class TestDummyTaskTypeInfo(TestCase):
     def test_init(self):
-        tti = DummyTaskTypeInfo(None, None)
+        tti = DummyTaskTypeInfo()
         assert tti.name == "Dummy"
         assert tti.options == DummyTaskOptions
         assert isinstance(tti.defaults, DummyTaskDefaults)

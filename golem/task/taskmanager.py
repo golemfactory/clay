@@ -13,10 +13,16 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, ResourceType
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
-    SubtaskState
+
+from golem.task.taskbase import ComputeTaskDef, \
+    TaskEventListener, Task, \
+    ResourceType, TaskHeader
+
+from golem.task.taskkeeper import \
+    CompTaskKeeper, compute_subtask_value
+
+from golem.task.taskstate import TaskState, \
+    TaskStatus, SubtaskStatus, SubtaskState
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +64,7 @@ class TaskManager(TaskEventListener):
         self.apps_manager.load_apps()
 
         apps = list(self.apps_manager.apps.values())
-        task_types = [app.task_type_info(None, app.controller) for app in apps]
+        task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
         self.node_name = node_name
@@ -439,7 +445,7 @@ class TaskManager(TaskEventListener):
             cur_time = get_timestamp_utc()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
-                t.task_stats = TaskStatus.timeout
+                t.task_status = TaskStatus.timeout
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
@@ -527,20 +533,6 @@ class TaskManager(TaskEventListener):
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
         self.tasks_states[task_id].subtask_states.clear()
-
-        self.notice_task_updated(task_id)
-
-    @handle_task_key_error
-    def pause_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.paused
-        self.tasks_states[task_id].status = TaskStatus.paused
-
-        self.notice_task_updated(task_id)
-
-    @handle_task_key_error
-    def resume_task(self, task_id):
-        self.tasks[task_id].task_status = TaskStatus.starting
-        self.tasks_states[task_id].status = TaskStatus.starting
 
         self.notice_task_updated(task_id)
 

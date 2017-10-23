@@ -129,14 +129,14 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_2.send = lambda x: send_buf_2.append(x)
 
         msg_get_resource = MessageGetResource(task_id=self.task_id)
-        msg = MessageGetResource.deserialize_message(
+        msg = MessageGetResource.deserialize(
             msg_get_resource.serialize())
         assert msg
 
         self.task_session_1._react_to_get_resource(msg)
 
         msg_resource_list = send_buf_1.pop()
-        msg = MessageResourceList.deserialize_message(
+        msg = MessageResourceList.deserialize(
             msg_resource_list.serialize())
         assert msg
 

@@ -32,7 +32,7 @@ from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database, Account
+from golem.model import Database
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -58,7 +58,6 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
-from golem.utils import encode_hex
 
 log = logging.getLogger("golem.client")
 
@@ -82,6 +81,7 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
+            start_geth=False,
             geth_port=None,
             **config_overrides):
 
@@ -158,7 +158,9 @@ class Client(HardwarePresetsMixin):
             self.transaction_system = EthereumTransactionSystem(
                 datadir,
                 self.keys_auth._private_key,
-                geth_port)
+                geth_port,
+                start_geth=start_geth
+            )
         else:
             self.transaction_system = None
 
@@ -213,6 +215,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
+        self.environments_manager.load_config(self.datadir)
         if self.use_monitor and not self.monitor:
             self.init_monitor()
         try:
@@ -515,12 +518,6 @@ class Client(HardwarePresetsMixin):
 
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)
-
-    def pause_task(self, task_id):
-        self.task_server.task_manager.pause_task(task_id)
-
-    def resume_task(self, task_id):
-        self.task_server.task_manager.resume_task(task_id)
 
     def delete_task(self, task_id):
         self.remove_task_header(task_id)

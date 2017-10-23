@@ -8,7 +8,6 @@ from setuptools import find_packages, Command
 from setuptools.command.test import test
 
 from golem.core.common import get_golem_path, is_windows, is_osx, is_linux
-from gui.view.generateui import generate_ui_files
 
 
 class PyTest(test):
@@ -73,9 +72,6 @@ class PyInstaller(Command):
         print("> Copying examples")
         self.copy_examples(dist_dir)
 
-        print("> Copying chain")
-        self.copy_chain(dist_dir)
-
         print("> Compressing distribution")
         archive_dir = self.move(dist_dir)
         archive_file = self.compress(archive_dir, dist_dir)
@@ -99,15 +95,6 @@ class PyInstaller(Command):
         )
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
-
-    def copy_chain(self, dist_dir):
-        from shutil import copy
-        from os import makedirs
-
-        chain_files = path.join('golem', 'ethereum', 'rinkeby.json')
-        dist_dir = path.join(dist_dir, 'golem', 'ethereum')
-        makedirs(dist_dir)
-        copy(chain_files, dist_dir)
 
     def copy_examples(self, dist_dir):
         import shutil
@@ -137,7 +124,7 @@ class PyInstaller(Command):
 
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golem'), ver_dir)
+
         if is_windows():
             shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
             shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
@@ -197,7 +184,7 @@ def get_long_description(my_path):
 def find_required_packages():
     if platform.startswith('darwin'):
         return find_packages(exclude=['examples', 'tests'])
-    return find_packages(include=['golem*', 'apps*', 'gui*'])
+    return find_packages(include=['golem*', 'apps*'])
 
 
 def parse_requirements(my_path):
@@ -226,21 +213,6 @@ def print_errors(*errors):
     for error in errors:
         if error:
             print(error)
-
-
-def generate_ui():
-    try:
-        generate_ui_files()
-    except EnvironmentError as err:
-        return \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
 
 def update_variables():
     import re

@@ -10,7 +10,7 @@
 ; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://download.docker.com/win/stable/DockerToolbox.exe
-; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.0-6c6c7b2a.exe
+; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.2-1db4ecdc.exe
 #define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
@@ -18,7 +18,7 @@
 #define MyAppNumber ReadIni(Repository+"\\.version.ini", "version", "number", "0.1.0")
 #expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
-#define Geth "geth-windows-amd64-1.7.0-6c6c7b2a.exe"
+#define Geth "geth-windows-amd64-1.7.2-1db4ecdc.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.

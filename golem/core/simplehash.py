@@ -64,3 +64,7 @@ class SimpleHash(object):
                 sha.update(data)
 
             return cls.base64_encode(sha.digest())
+
+    @classmethod
+    def hash_object(cls):
+        return hashlib.sha1()
