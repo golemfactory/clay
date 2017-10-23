@@ -442,8 +442,7 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        max_ind = len(tasks) - 1
-        if max_ind < 0:
+        if not tasks:
             return
         if len(tasks) > TASK_HEADERS_LIMIT:
             tasks_to_send = random.sample(tasks, TASK_HEADERS_LIMIT)
