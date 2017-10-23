@@ -21,6 +21,7 @@ def random_key(n_bytes, prefix=None):
 def key_to_number(key_bytes):
     return int.from_bytes(key_bytes, sys.byteorder)
 
+
 def is_sorted_by_distance(peers, key_num):
     def dist(peer):
         return node_id_distance(peer, key_num)
@@ -29,8 +30,9 @@ def is_sorted_by_distance(peers, key_num):
             return False
     return True
 
+
 class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/network/p2p/peerkeeper.py',]
+    PEP8_FILES = ['golem/network/p2p/peerkeeper.py']
 
     def setUp(self):
         self.n_bytes = K_SIZE // 8
