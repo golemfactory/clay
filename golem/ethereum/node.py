@@ -1,6 +1,8 @@
 import atexit
 import random
 
+import sys
+
 from golem.core.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
