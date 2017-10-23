@@ -367,7 +367,7 @@ class TestBasicProtocol(unittest.TestCase):
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
         db = p.db
-        db.append_string(p.transport.buff[1])
+        db.append_bytes(p.transport.buff[1])
         m = p._data_to_messages()[0]
         self.assertEqual(m.timestamp, msg.timestamp)
         p.connectionLost()
