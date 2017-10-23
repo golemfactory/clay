@@ -214,13 +214,21 @@ class NodeProcess(object):
                                      stdin=DEVNULL)
 
         tee_kwargs = {
-            'prefix': 'geth: ',
             'proc': self.__ps,
             'path': geth_log_path,
         }
-        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
-                                      kwargs=tee_kwargs)
-        tee_thread.start()
+        channels = (
+            ('GETH', self.__ps.stderr, sys.stderr),
+            ('GETHO', self.__ps.stdout, sys.stdout),
+        )
+        for prefix, in_, out in channels:
+            tee_kwargs['prefix'] = prefix + ': '
+            tee_kwargs['input_stream'] = in_
+            tee_kwargs['stream'] = out
+            thread_name = 'tee-' + prefix
+            tee_thread = threading.Thread(name=thread_name, target=tee_target,
+                                          kwargs=tee_kwargs)
+            tee_thread.start()
 
         return IPCProvider(ipc_path)
 
