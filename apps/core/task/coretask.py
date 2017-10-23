@@ -50,12 +50,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
                  definition: 'Type[TaskDefinition]',
                  defaults: 'TaskDefaults',
                  options: Type[Options],
-                 builder_type: Type[TaskBuilder],
-                 dialog=None,
-                 dialog_controller=None):
+                 builder_type: Type[TaskBuilder]):
         super().__init__(name, definition, defaults, options, builder_type)
-        self.dialog = dialog
-        self.dialog_controller = dialog_controller
         self.output_formats = []
         self.output_file_ext = []
 

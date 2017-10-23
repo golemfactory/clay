@@ -25,12 +25,11 @@ class CommandAppLogic(AppLogic):
 
     @staticmethod
     def instantiate(client, datadir):
-        args = (None, None)
         logic = CommandAppLogic(client, datadir)
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info(*args))
+            logic.register_new_task_type(app.task_type_info())
         return logic
 
 

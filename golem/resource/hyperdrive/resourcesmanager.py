@@ -2,6 +2,8 @@ import logging
 import os
 import uuid
 
+from collections import Iterable
+
 from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions
 from golem.resource.base.resourcesmanager import AbstractResourceManager, \
@@ -31,7 +33,8 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
         return list([r.hash, r.files_split] for r in iterator)
 
     def from_wire(self, resources):
-        iterator = filter(lambda x: x and len(x) > 1, resources)
+        iterator = filter(lambda x: isinstance(x, Iterable) and len(x) > 1,
+                          resources)
         return list([r[0], [os.path.join(*x) for x in r[1]]] for r in iterator)
 
     def add_files(self, files, task_id,
@@ -75,7 +78,9 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                         client_options=client_options,
                                         obj_id=str(uuid.uuid4()))
 
-        self._cache_response(list(files.values()), response, task_id)
+        file_list = list(files.values())
+        self._cache_response(file_list, response, task_id)
+        return file_list, response
 
     def wrap_file(self, resource):
         resource_path, resource_hash = resource
