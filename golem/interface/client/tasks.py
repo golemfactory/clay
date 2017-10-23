@@ -25,12 +25,11 @@ class CommandAppLogic(AppLogic):
 
     @staticmethod
     def instantiate(client, datadir):
-        args = (None, None)
         logic = CommandAppLogic(client, datadir)
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info(*args))
+            logic.register_new_task_type(app.task_type_info())
         return logic
 
 
@@ -135,16 +134,6 @@ class Tasks:
         deferred = Tasks.client.delete_task(id)
         return sync_wait(deferred)
 
-    @command(argument=id_req, help="Pause a task")
-    def pause(self, id):
-        deferred = Tasks.client.pause_task(id)
-        return sync_wait(deferred)
-
-    @command(argument=id_req, help="Resume a task")
-    def resume(self, id):
-        deferred = Tasks.client.resume_task(id)
-        return sync_wait(deferred)
-
     @command(argument=file_name, help="""
         Create a task from file.
         Note: no client-side validation is performed yet.
@@ -189,6 +178,8 @@ class Tasks:
     def __create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
         # FIXME CHANGE TASKI ID
+        if 'id' in dictionary:
+            print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)

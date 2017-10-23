@@ -223,7 +223,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['deadline'] = get_timestamp_utc() - 10
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Deadline already passed"
+        assert "Deadline already passed" in err
         with self.assertRaisesRegex(TypeError, "Deadline already passed"):
             tk.check_correct(th)
 
@@ -236,7 +236,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['subtask_timeout'] = "abc"
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is not a number"
+        assert "Subtask timeout is not a number" in err
         with self.assertRaisesRegex(TypeError,
                                     "Subtask timeout is not a number"):
             tk.check_correct(th)
@@ -244,7 +244,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['subtask_timeout'] = -131
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is less than 0"
+        assert "Subtask timeout is less than 0" in err
         with self.assertRaisesRegex(TypeError,
                                     "Subtask timeout is less than 0"):
             tk.check_correct(th)
@@ -351,7 +351,7 @@ def get_dict_task_header(task_id="xyz"):
     return {
         "task_id": task_id,
         "node_name": "ABC",
-        "task_owner": dict(),
+        "task_owner": {"node_name": "Bob's node"},
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
