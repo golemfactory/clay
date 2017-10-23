@@ -12,10 +12,6 @@ that there are two types of nodes in the Golem network: requestor nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-## Job offers
-
-- [C++ & Solidity Software Engineer](docs/jobs/cpp_and_solidity_software_engineer.md)
-
 ## Installing and testing
 
 For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
@@ -31,6 +27,12 @@ Then read the application description and [testing](https://github.com/golemfact
 [Golem MS Windows installer](https://github.com/golemfactory/golem/releases/)
 
 All released packages are located [here](https://github.com/golemfactory/golem/releases), however, we strongly encourage you to use prepared installers.
+
+## Usage & troubleshoothing
+
+Documentation for using app is here: https://docs.golem.network/
+
+The most common problems are described in section 10: https://docs.golem.network/10-troubleshooting.html
 
 ## Warning
 
@@ -60,6 +62,10 @@ Benchmarks:
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.
+
+## Job offers
+
+- [C++ & Solidity Software Engineer](docs/jobs/cpp_and_solidity_software_engineer.md)
 
 ## Contact  
 
