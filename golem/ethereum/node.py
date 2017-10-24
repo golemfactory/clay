@@ -36,8 +36,8 @@ FALLBACK_NODE_LIST = [
 ]
 
 
-def random_public_nodes():
-    """Returns random geth RPC addresses"""
+def get_public_nodes():
+    """Returns public geth RPC addresses"""
     try:
         return requests.get(NODE_LIST_URL).json()
     except Exception as exc:
@@ -106,7 +106,7 @@ class NodeProcess(object):
         self.datadir = datadir
         self.start_node = start_node
         self.web3 = None  # web3 client interface
-        self.public_nodes = random_public_nodes()
+        self.public_nodes = get_public_nodes()
 
         self.__prog = None  # geth location
         self.__ps = None  # child process
@@ -132,10 +132,10 @@ class NodeProcess(object):
 
         while not self.web3.isConnected():
             if time.time() > deadline:
-                if not self.start_node and self.public_nodes:
+                if not self.start_node:
+                    self.start_node = not self.public_nodes
                     return self.start(port)
-                self.public_nodes = random_public_nodes()
-                raise OSError("Cannot connect to geth at {}".format(provider))
+                raise OSError("Cannot connect to geth: {}".format(provider))
             time.sleep(0.1)
 
         identified_chain = self.identify_chain()
