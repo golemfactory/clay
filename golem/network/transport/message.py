@@ -133,7 +133,7 @@ class Message(object):
         payload_idx = cls.HDR_LEN + cls.SIG_LEN
 
         if not msg or len(msg) <= payload_idx:
-            logger.error("Message error: message too short")
+            logger.info("Message error: message too short")
             return
 
         header = msg[:cls.HDR_LEN]
@@ -147,11 +147,11 @@ class Message(object):
                 data = decrypt_func(payload)
             slots = CBORSerializer.loads(data)
         except Exception as exc:
-            logger.error("Message error: invalid data: %r", exc)
+            logger.info("Message error: invalid data: %r", exc)
             return
 
         if msg_type not in registered_message_types:
-            logger.error('Message error: invalid type %d', msg_type)
+            logger.info('Message error: invalid type %d', msg_type)
             return
 
         return registered_message_types[msg_type](

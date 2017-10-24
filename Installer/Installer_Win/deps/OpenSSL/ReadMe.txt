@@ -1,10 +1,10 @@
 =============================================================================
-OpenSSL v1.0.2j                                Precompiled Binaries for Win32
+OpenSSL v1.0.2l                                Precompiled Binaries for Win64
 -----------------------------------------------------------------------------
 
                          *** Release Information ***
 
-Release Date:     Okt 01, 2016
+Release Date:     May 29, 2017
 
 Author:           Frederik A. Winkelsdorf (opendec.wordpress.com)
                   for the Indy Project (www.indyproject.org)
@@ -15,7 +15,7 @@ Dependencies:     The libraries have no noteworthy dependencies
 
 Installation:     Copy both DLL files into your application directory
 
-Supported OS:     Windows 2000 up to Windows 10
+Supported OS:     Windows XP x64 up to Windows 10 x64
 
 -----------------------------------------------------------------------------
 
@@ -39,17 +39,18 @@ SOFTWARE AND/OR PATENTS.
 
 -----------------------------------------------------------------------------
 
-                       *** Build Information Win32 ***
+                       *** Build Information Win64 ***
 
-Built with:       Microsoft Visual C++ 2008 Express Edition
+Built with:       Windows Server 2003 SP1 Platform SDK for x64
                   The Netwide Assembler (NASM) v2.11.08 Win32
                   Strawberry Perl v5.22.0.1 Win32 Portable
                   Windows PowerShell
                   FinalBuilder 7
 
-Commands:         perl configure VC-WIN32
-                  ms\do_nasm
-                  adjusted ms\ntdll.mak       (replaced "/MD" with "/MT")
+Shell:            Windows XP x64 Build Environment (Retail)
+
+Commands:         perl configure VC-WIN64A
+                  ms\do_win64a
                   adjusted ms\version32.rc    (Indy Information inserted)
                   nmake -f ms\ntdll.mak
                   nmake -f ms\ntdll.mak test
