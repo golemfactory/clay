@@ -31,9 +31,9 @@ log = logging.getLogger('golem.ethereum')
 
 NODE_LIST_URL = 'https://rinkeby.golem.network'
 FALLBACK_NODE_LIST = [
-    'https://rinkeby.golem.network:8545',
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
+    'http://94.23.57.58:55555',
 ]
 
 
