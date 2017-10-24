@@ -619,7 +619,8 @@ class Client(HardwarePresetsMixin):
         return self.task_server.cur_port
 
     def get_task_count(self):
-        return len(self.task_server.task_keeper.get_all_tasks())
+        if self.task_server and self.task_server.task_keeper:
+            return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_task(self, task_id):
         return self.task_server.task_manager.get_task_dict(task_id)
@@ -656,22 +657,26 @@ class Client(HardwarePresetsMixin):
         }
 
     def get_supported_task_count(self) -> int:
-        return len(self.task_server.task_keeper.supported_tasks)
+        if self.task_server and self.task_server.task_keeper:
+            return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
-        return self.task_server.task_computer.stats.get_stats('computed_tasks')
+        return self.get_task_computer_stat('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server\
-            .task_computer.stats.get_stats('tasks_with_timeout')
+        return self.get_task_computer_stat('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server\
-            .task_computer.stats.get_stats('tasks_with_errors')
+        return self.get_task_computer_stat('tasks_with_errors')
 
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
+
+    def get_task_computer_stat(self, name):
+        if self.task_server and self.task_server.task_computer:
+            return self.task_server.task_computer.stats.get_stats(name)
+        return 0
 
     @inlineCallbacks
     def get_balance(self):
