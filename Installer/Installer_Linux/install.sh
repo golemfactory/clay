@@ -77,7 +77,7 @@ function ask_user()
 function release_url()
 {
     json=$(wget -qO- --header='Accept: application/json' $1)
-    echo ${json} | python -c '\
+    echo ${json} | python3 -c '\
         import sys, json;                          \
         j = json.load(sys.stdin);                  \
         k = "browser_download_url";                \
