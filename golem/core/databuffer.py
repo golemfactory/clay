@@ -37,11 +37,10 @@ class DataBuffer:
     def peek_ulong(self):
         """
         Check long number that is located at the beginning of this data buffer
-        :return long: number at the beginning of the buffer
+        :return (long|None): number at the beginning of the buffer if it's there
         """
         if len(self.buffered_data) < LONG_STANDARD_SIZE:
-            raise ValueError(
-                "buffer_data is shorter than {}".format(LONG_STANDARD_SIZE))
+            return None
 
         (ret_val,) = \
             struct.unpack("!L", self.buffered_data[0:LONG_STANDARD_SIZE])
@@ -53,7 +52,10 @@ class DataBuffer:
         :return long: long number removed from the beginning of buffer
         """
         val_ = self.peek_ulong()
-        self.buffered_data = self.buffered_data[4:]
+        if val_ is None:
+            raise ValueError(
+                "buffer_data is shorter than {}".format(LONG_STANDARD_SIZE))
+        self.buffered_data = self.buffered_data[LONG_STANDARD_SIZE:]
 
         return val_
 
