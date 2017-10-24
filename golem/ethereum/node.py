@@ -33,6 +33,7 @@ NODE_LIST_URL = 'https://rinkeby.golem.network'
 FALLBACK_NODE_LIST = [
     'https://rinkeby.golem.network:8545',
     'http://188.165.227.180:55555',
+    'http://94.23.17.170:55555',
 ]
 
 
@@ -130,7 +131,7 @@ class NodeProcess(object):
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
 
-        while not self.web3.isConnected():
+        while not self.is_connected():
             if time.time() > deadline:
                 if not self.start_node:
                     self.start_node = not self.public_nodes
@@ -159,6 +160,12 @@ class NodeProcess(object):
             self.__ps = None
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
+
+    def is_connected(self):
+        try:
+            return self.web3.isConnected()
+        except AssertionError:  # thrown if not all required APIs are available
+            return False
 
     def identify_chain(self):
         """Check what chain the Ethereum node is running."""
