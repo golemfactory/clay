@@ -19,8 +19,8 @@ class StepsFactory(object):
 
     def git_step(self):
         return steps.Git(
-            repourl='https://github.com/maaktweluit/golem.git',
-            mode='full', method='fresh', branch='no_gui-bb')
+            repourl='https://github.com/golemfactory/golem.git',
+            mode='full', method='fresh')
 
     def venv_step(self):
         return steps.ShellCommand(
