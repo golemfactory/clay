@@ -504,7 +504,7 @@ class BasicProtocol(SessionProtocol):
             self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        if self.db.data_size() > MAX_MESSAGE_SIZE:
+        if mess is None:
             logger.warning("Too long pending message, closing connection")
             self.close()
             return
@@ -514,6 +514,11 @@ class BasicProtocol(SessionProtocol):
 
     def _data_to_messages(self):
         messages = []
+        def valid_len():
+            msg_len = self.db.peek_ulong()
+            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
+        if not valid_len():
+            return None
         data = self.db.read_len_prefixed_bytes()
 
         while data:
@@ -524,6 +529,8 @@ class BasicProtocol(SessionProtocol):
             else:
                 logger.error("Failed to deserialize message {}".format(data))
 
+            if not valid_len():
+                return None
             data = self.db.read_len_prefixed_bytes()
 
         return messages
