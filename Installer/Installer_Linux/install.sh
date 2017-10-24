@@ -168,7 +168,7 @@ function install_dependencies()
         wget -qO- ${hyperg} > ${hyperg_pack}
         [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
         tar -xvf ${hyperg_pack} >/dev/null
-        mv hyperg $HOME/
+        mv hyperg $HOME/ 2>/dev/null
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f ${hyperg_pack} &>/dev/null
     fi
