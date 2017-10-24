@@ -1151,9 +1151,9 @@ class MessageResourceList(Message):
 class MessageResourceHandshakeStart(Message):
     TYPE = RESOURCE_MSG_BASE + 8
 
-    MAPPING = {
-        'resource': 'resource'
-    }
+    __slots__ = [
+        'resource'
+    ] + Message.__slots__
 
     def __init__(self,
                  resource: Optional[str]=None,
@@ -1166,9 +1166,9 @@ class MessageResourceHandshakeStart(Message):
 class MessageResourceHandshakeNonce(Message):
     TYPE = RESOURCE_MSG_BASE + 9
 
-    MAPPING = {
-        'nonce': 'nonce'
-    }
+    __slots__ = [
+        'nonce'
+    ] + Message.__slots__
 
     def __init__(self,
                  nonce: Optional[str]=None,
@@ -1181,10 +1181,10 @@ class MessageResourceHandshakeNonce(Message):
 class MessageResourceHandshakeVerdict(Message):
     TYPE = RESOURCE_MSG_BASE + 10
 
-    MAPPING = {
-        'accepted': 'accepted',
-        'nonce': 'nonce'
-    }
+    __slots__ = [
+        'accepted',
+        'nonce'
+    ] + Message.__slots__
 
     def __init__(self,
                  nonce: Optional[str]=None,
