@@ -145,7 +145,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 self.port
             )
         except Exception as err:
-            logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
             self.dropped()
             return None
