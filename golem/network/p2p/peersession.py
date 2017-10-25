@@ -17,6 +17,7 @@ def compare_version(client_ver):
         try:
             return [int(s) for s in v.split('.')]
         except (ValueError, AttributeError):
+            logger.debug("Couldn't parse version: %r", v)
             return []
 
     mv_client = _machine_version(client_ver)
@@ -372,7 +373,7 @@ class PeerSession(BasicSafeSession):
             return
 
         # Check if sender is a seed/bootstrap node
-        if (self.address, int(msg.port)) in self.p2p_service.seeds:
+        if (self.address, msg.port) in self.p2p_service.seeds:
             compare_version(msg.client_ver)
 
         if msg.proto_id != variables.P2P_PROTOCOL_ID:
