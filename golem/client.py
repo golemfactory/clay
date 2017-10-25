@@ -621,6 +621,7 @@ class Client(HardwarePresetsMixin):
     def get_task_count(self):
         if self.task_server and self.task_server.task_keeper:
             return len(self.task_server.task_keeper.get_all_tasks())
+        return 0
 
     def get_task(self, task_id):
         return self.task_server.task_manager.get_task_dict(task_id)
@@ -659,6 +660,7 @@ class Client(HardwarePresetsMixin):
     def get_supported_task_count(self) -> int:
         if self.task_server and self.task_server.task_keeper:
             return len(self.task_server.task_keeper.supported_tasks)
+        return 0
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -676,7 +678,7 @@ class Client(HardwarePresetsMixin):
     def get_task_computer_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
-        return 0
+        return None, None
 
     @inlineCallbacks
     def get_balance(self):
