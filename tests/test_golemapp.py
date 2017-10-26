@@ -3,6 +3,7 @@ import sys
 from click.testing import CliRunner
 from mock import patch
 
+from golem.core.variables import PROTOCOL_ID
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golemapp import start
@@ -40,37 +41,30 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
+        assert PROTOCOL_ID.P2P_ID == 15 \
+               and PROTOCOL_ID.TASK_ID == 16
 
+        with patch('crossbar.worker.process.run') as _run:
+            with patch.object(sys, 'argv', list(args + ['--protocol_id', 123456])):
+                runner.invoke(start, sys.argv, catch_exceptions=False)
+                assert _run.called
+                assert '-m' not in sys.argv
 
-    # @patch.object(startapp, 'start_app')
-    # @patch('twisted.internet.reactor', create=True)
-    # def test_start_gui(self, reactor, start_app):
-    #     runner = CliRunner()
-    #     runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
-    #     assert start_app.called
-    #     runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
-    #     assert start_app.called
-    #
-    # @patch('golemapp.OptNode')
-    # @patch.object(startgui, 'start_gui')
-    # @patch.object(sys, 'modules')
-    # def test_start_node(self, modules, start_gui, node_class):
-    #     runner = CliRunner()
-    #     runner.invoke(start, ['--qt', '-r', '127.0.0.1:50000'], catch_exceptions=False)
-    #     assert start_gui.called
-    #
-    # @patch.object(startapp, 'start_app')
-    def test_patch_protocol_id(self, start_app):
-        from golem.core.variables import PROTOCOL_ID
+                assert PROTOCOL_ID.P2P_ID == 123456 \
+                                   and PROTOCOL_ID.TASK_ID == 123456
+
+    @patch('golemapp.OptNode')
+    def test_patch_protocol_id(self, node_class):
         runner = CliRunner()
 
         assert PROTOCOL_ID.P2P_ID == 15 \
-               and PROTOCOL_ID.TASK_ID == 15
+               and PROTOCOL_ID.TASK_ID == 16
 
-        runner.invoke(
-            start, ['--protocol_id', 123456],
-            catch_exceptions=False)
+        runner.invoke(start,
+                      ['--datadir', self.path] + ['--protocol_id', 123456],
+                      catch_exceptions=False)
+        assert node_class.called
 
-        assert start_app.called
         assert PROTOCOL_ID.P2P_ID == 123456 \
                and PROTOCOL_ID.TASK_ID == 123456
+

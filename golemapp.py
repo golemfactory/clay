@@ -130,7 +130,7 @@ def start_crossbar_worker(module):
 def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
-    from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
+    from golem.core.variables import APP_VERSION, PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)
     log.info("P2P Protocol Version: " + str(PROTOCOL_ID.P2P_ID))
