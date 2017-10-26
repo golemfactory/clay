@@ -5,7 +5,7 @@
 LONG_STANDARD_SIZE = 4
 
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.8.1"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
@@ -35,7 +35,7 @@ class PROTOCOL_ID(object):
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules
     """
     P2P_ID = 15
-    TASK_ID = 15
+    TASK_ID = 16
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):

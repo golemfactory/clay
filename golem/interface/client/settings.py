@@ -52,7 +52,7 @@ class Settings(object):
             lambda x: str(x) if isinstance(x, str) else None,
             lambda x: x and len(x) > 0
         ),
-        'accept_task': Setting(
+        'accept_tasks': Setting(
             'Accept tasks',
             'int {0, 1}',
             _int,

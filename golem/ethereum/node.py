@@ -1,5 +1,9 @@
 import atexit
-from devp2p.crypto import privtopub
+import random
+
+import sys
+
+from golem.core.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
@@ -10,13 +14,12 @@ import os
 import re
 import requests
 import subprocess
-import sys
 import tempfile
 import threading
 import time
-from web3 import Web3, IPCProvider
+from web3 import Web3, IPCProvider, HTTPProvider
 
-from golem.core.common import is_windows, DEVNULL, is_frozen
+from golem.core.common import is_windows, DEVNULL
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import encode_hex, decode_hex
@@ -24,6 +27,25 @@ from golem.utils import find_free_net_port
 from golem.utils import tee_target
 
 log = logging.getLogger('golem.ethereum')
+
+
+NODE_LIST_URL = 'https://rinkeby.golem.network'
+FALLBACK_NODE_LIST = [
+    'https://rinkeby.golem.network:8545',
+    'http://188.165.227.180:55555',
+]
+
+
+def random_public_nodes():
+    """Returns random geth RPC addresses"""
+    try:
+        return requests.get(NODE_LIST_URL).json()
+    except Exception as exc:
+        log.error("Error downloading node list: %s", exc)
+
+    nodes = FALLBACK_NODE_LIST[:]
+    random.shuffle(nodes)
+    return nodes
 
 
 def tETH_faucet_donate(addr):
@@ -64,9 +86,11 @@ class Faucet(object):
 
 
 class NodeProcess(object):
-    MIN_GETH_VERSION = '1.7.2'
-    MAX_GETH_VERSION = '1.7.999'
-    IPC_CONNECTION_TIMEOUT = 10
+
+    MIN_GETH_VERSION = StrictVersion('1.7.2')
+    MAX_GETH_VERSION = StrictVersion('1.7.999')
+    CONNECTION_TIMEOUT = 10
+    CHAIN = 'rinkeby'
 
     SUBPROCESS_PIPES = dict(
         stdout=subprocess.PIPE,
@@ -74,27 +98,17 @@ class NodeProcess(object):
         stdin=DEVNULL
     )
 
-    def __init__(self, datadir):
+    def __init__(self, datadir, start_node=False):
+        """
+        :param datadir: working directory
+        :param start_node: start a new geth node
+        """
         self.datadir = datadir
-        self.__prog = find_program('geth')
-        if not self.__prog:
-            raise OSError("Ethereum client 'geth' not found")
+        self.start_node = start_node
+        self.web3 = None  # web3 client interface
+        self.public_nodes = random_public_nodes()
 
-        output, _ = subprocess.Popen(
-            [self.__prog, 'version'],
-            **self.SUBPROCESS_PIPES
-        ).communicate()
-
-        match = re.search("Version: (\d+\.\d+\.\d+)",
-                          str(output, 'utf-8')).group(1)
-        ver = StrictVersion(match)
-        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            e_description =\
-                "Incompatible geth version: {}. Expected >= {} and <= {}".\
-                format(ver, self.MIN_GETH_VERSION, self.MAX_GETH_VERSION)
-            raise OSError(e_description)
-        log.info("geth {}: {}".format(ver, self.__prog))
-
+        self.__prog = None  # geth location
         self.__ps = None  # child process
 
     def is_running(self):
@@ -105,78 +119,30 @@ class NodeProcess(object):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
-        if is_frozen():
-            this_dir = os.path.join(os.path.dirname(sys.executable),
-                                    'golem', 'ethereum')
+        if self.start_node:
+            provider = self._create_local_ipc_provider(self.CHAIN, port)
         else:
-            this_dir = os.path.dirname(__file__)
+            provider = self._create_remote_rpc_provider()
 
-        # Init geth datadir
-        chain = 'rinkeby'
-        init_file = os.path.join(this_dir, chain + '.json')
-        log.info("init file: {}".format(init_file))
-        geth_log_dir = os.path.join(self.datadir, "logs")
-        if not os.path.exists(geth_log_dir):
-            os.makedirs(geth_log_dir)
-        geth_log_path = os.path.join(geth_log_dir, "geth.log")
-        geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
-        datadir_arg = '--datadir={}'.format(geth_datadir)
-
-        if port is None:
-            port = find_free_net_port()
-
-        # Build unique IPC/socket path. We have to use system temp dir to
-        # make sure the path has length shorter that ~100 chars.
-        tempdir = tempfile.gettempdir()
-        ipc_file = '{}-{}'.format(chain, port)
-        ipc_path = os.path.join(tempdir, ipc_file)
-
-        args = [
-            self.__prog,
-            datadir_arg,
-            '--cache=32',
-            '--syncmode=light',
-            '--rinkeby',
-            '--port={}'.format(port),
-            '--ipcpath={}'.format(ipc_path),
-            '--nousb',
-            '--verbosity', '3',
-        ]
-
-        log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
-        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     stdin=DEVNULL)
-
-        tee_kwargs = {
-            'prefix': 'geth: ',
-            'proc': self.__ps,
-            'path': geth_log_path,
-        }
-        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
-                                      kwargs=tee_kwargs)
-        tee_thread.start()
-
+        self.web3 = Web3(provider)
         atexit.register(lambda: self.stop())
 
-        if is_windows():
-            # On Windows expand to full named pipe path.
-            ipc_path = r'\\.\pipe\{}'.format(ipc_path)
+        started = time.time()
+        deadline = started + self.CONNECTION_TIMEOUT
 
-        self.web3 = Web3(IPCProvider(ipc_path))
-        CHECK_PERIOD = 0.1
-        wait_time = 0
         while not self.web3.isConnected():
-            if wait_time > self.IPC_CONNECTION_TIMEOUT:
-                raise OSError("Cannot connect to geth at {}".format(ipc_path))
-            time.sleep(CHECK_PERIOD)
-            wait_time += CHECK_PERIOD
+            if time.time() > deadline:
+                if not self.start_node and self.public_nodes:
+                    return self.start(port)
+                self.public_nodes = random_public_nodes()
+                raise OSError("Cannot connect to geth at {}".format(provider))
+            time.sleep(0.1)
 
         identified_chain = self.identify_chain()
-        if identified_chain != chain:
+        if identified_chain != self.CHAIN:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
-        log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
+        log.info("Connected to node in %ss", time.time() - started)
 
     @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
@@ -208,3 +174,90 @@ class NodeProcess(object):
         chain = GENESES.get(genesis, 'unknown')
         log.info("{} chain ({})".format(chain, genesis))
         return chain
+
+    def _create_local_ipc_provider(self, chain, port=None):
+        self._find_geth()
+
+        # Init geth datadir
+        geth_log_dir = os.path.join(self.datadir, "logs")
+        geth_log_path = os.path.join(geth_log_dir, "geth.log")
+        geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
+
+        os.makedirs(geth_log_dir, exist_ok=True)
+
+        if port is None:
+            port = find_free_net_port()
+
+        # Build unique IPC/socket path. We have to use system temp dir to
+        # make sure the path has length shorter that ~100 chars.
+        tempdir = tempfile.gettempdir()
+        ipc_file = '{}-{}'.format(chain, port)
+        ipc_path = os.path.join(tempdir, ipc_file)
+
+        if is_windows():
+            # On Windows expand to full named pipe path.
+            ipc_path = r'\\.\pipe\{}'.format(self.start_node)
+
+        args = [
+            self.__prog,
+            '--datadir={}'.format(geth_datadir),
+            '--cache=32',
+            '--syncmode=light',
+            '--rinkeby',
+            '--port={}'.format(port),
+            '--ipcpath={}'.format(ipc_path),
+            '--nousb',
+            '--verbosity', '3',
+        ]
+
+        log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
+        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=DEVNULL)
+
+        tee_kwargs = {
+            'proc': self.__ps,
+            'path': geth_log_path,
+        }
+        channels = (
+            ('GETH', self.__ps.stderr, sys.stderr),
+            ('GETHO', self.__ps.stdout, sys.stdout),
+        )
+        for prefix, in_, out in channels:
+            tee_kwargs['prefix'] = prefix + ': '
+            tee_kwargs['input_stream'] = in_
+            tee_kwargs['stream'] = out
+            thread_name = 'tee-' + prefix
+            tee_thread = threading.Thread(name=thread_name, target=tee_target,
+                                          kwargs=tee_kwargs)
+            tee_thread.start()
+
+        return IPCProvider(ipc_path)
+
+    def _create_remote_rpc_provider(self):
+        node = self.public_nodes.pop()
+        log.info('GETH: connecting to remote RPC interface at %s', node)
+        return HTTPProvider(node)
+
+    def _find_geth(self):
+        geth = find_program('geth')
+        if not geth:
+            raise OSError("Ethereum client 'geth' not found")
+
+        output, _ = subprocess.Popen(
+            [geth, 'version'],
+            **self.SUBPROCESS_PIPES
+        ).communicate()
+
+        match = re.search("Version: (\d+\.\d+\.\d+)",
+                          str(output, 'utf-8')).group(1)
+
+        ver = StrictVersion(match)
+        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
+            raise OSError("Incompatible geth version: {}. "
+                          "Expected >= {} and <= {}"
+                          .format(ver, self.MIN_GETH_VERSION,
+                                  self.MAX_GETH_VERSION))
+
+        log.info("geth {}: {}".format(ver, geth))
+        self.__prog = geth
