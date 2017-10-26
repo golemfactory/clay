@@ -276,7 +276,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         # Timeouts of this session/peer will be hanled in sync_network()
         try:
             self.pending_sessions.remove(peer)
-        except keyError:
+        except KeyError:
             pass
 
     def add_to_peer_keeper(self, peer_info):
