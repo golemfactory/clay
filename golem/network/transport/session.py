@@ -107,6 +107,10 @@ class BasicSession(FileSession):
     def close_now(self):
         """ Close connection quickly without flushing buffors or waiting for producents. """
         self.conn.close_now()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def disconnect(self, reason):
         """ Send "disconnect" message to the peer and drop the connection.
