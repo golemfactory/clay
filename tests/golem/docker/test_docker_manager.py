@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import unittest
 from contextlib import contextmanager
 from subprocess import CalledProcessError
@@ -136,14 +137,13 @@ class MockDockerManager(DockerManager):
         self._config_dir = config_dir
         self.docker_machine = MACHINE_NAME
 
-    def command(self, key, machine_name=None, args=None, check_output=True, shell=False):
-        self.command_calls.append([key, machine_name, args, check_output, shell])
+    def command(self, key, machine_name=None, args=None, shell=False):
+        self.command_calls.append([key, machine_name, args, shell])
 
         if self.use_parent_methods:
             return super(MockDockerManager, self).command(key,
                                                           machine_name=machine_name,
                                                           args=args,
-                                                          check_output=check_output,
                                                           shell=shell)
         elif key == 'env':
             return '\n'.join([
@@ -175,6 +175,8 @@ class MockDockerManager(DockerManager):
 def raise_exception(msg, *args, **kwargs):
     raise TypeError(msg)
 
+def raise_subprocess_exception(msg, *args, **kwargs):
+    raise subprocess.CalledProcessError(1, msg)
 
 class Erroneous(mock.Mock):
     @property
@@ -191,12 +193,12 @@ class TestDockerManager(unittest.TestCase):
     def test_start(self):
         dmm = MockDockerManager()
         dmm.start_docker_machine(MACHINE_NAME)
-        assert ['start', MACHINE_NAME, None, False, False] in dmm.command_calls
+        assert ['start', MACHINE_NAME, None, False] in dmm.command_calls
 
     def test_stop(self):
         dmm = MockDockerManager()
         dmm.stop_docker_machine(MACHINE_NAME)
-        assert ['stop', MACHINE_NAME, None, False, False] in dmm.command_calls
+        assert ['stop', MACHINE_NAME, None, False] in dmm.command_calls
 
     def test_running(self):
         dmm = MockDockerManager()
@@ -306,8 +308,7 @@ class TestDockerManager(unittest.TestCase):
         dmm = MockDockerManager(use_parent_methods=True)
         dmm.docker_machine_commands['test'] = [sys.executable, '--version']
 
-        assert dmm.command('test', check_output=True).startswith('Python')
-        assert dmm.command('test', check_output=False) == 0
+        assert dmm.command('test').startswith('Python')
         assert not dmm.command('deadbeef')
 
     @mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance')
@@ -560,12 +561,12 @@ class TestHypervisor(LogTestCase):
         hypervisor = Hypervisor(MockDockerManager())
         hypervisor.remove('test')
 
-        assert ['rm', 'test', None, False, False] \
+        assert ['rm', 'test', None, False] \
             in hypervisor._docker_manager.command_calls
 
         # errors
         with mock.patch.object(hypervisor._docker_manager, 'command',
-                               raise_exception):
+                               raise_subprocess_exception):
             with self.assertLogs(logger, 'WARN'):
                 assert not hypervisor.remove('test')
 
@@ -667,12 +668,12 @@ class TestVirtualBoxHypervisor(LogTestCase):
     def test_create(self):
         self.hypervisor._docker_manager = MockDockerManager()
         self.hypervisor.create('test')
-        assert ['create', 'test', ('--driver', 'virtualbox'), False, False] \
+        assert ['create', 'test', ('--driver', 'virtualbox'), False] \
             in self.hypervisor._docker_manager.command_calls
 
         # errors
         with mock.patch.object(self.hypervisor._docker_manager, 'command',
-                               raise_exception):
+                               raise_subprocess_exception):
             with self.assertLogs(logger, 'ERROR'):
                 assert not self.hypervisor.create('test')
 
@@ -772,11 +773,11 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
             self.hypervisor.options['storage'],
             self.hypervisor.options['cpu'], str(constraints['cpu_count']),
             self.hypervisor.options['mem'], str(constraints['memory_size'])
-        ], False, False] in self.hypervisor._docker_manager.command_calls
+        ], False] in self.hypervisor._docker_manager.command_calls
 
         # errors
         with mock.patch.object(self.hypervisor._docker_manager, 'command',
-                               raise_exception):
+                               raise_subprocess_exception):
             with self.assertLogs(logger, 'ERROR'):
                 assert not self.hypervisor.create('test')
 
