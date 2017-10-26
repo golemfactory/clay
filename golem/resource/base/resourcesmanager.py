@@ -419,7 +419,7 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
         resource = self._wrap_resource(entry, task_id)
 
-        if self.storage.has_resource(resource):
+        if resource.files and self.storage.has_resource(resource):
             success(entry, resource.files, task_id)
             return
 
