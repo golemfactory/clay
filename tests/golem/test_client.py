@@ -554,8 +554,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
-    @patch('golem.client.log')
-    def test_task_archiver_maintenance(self, log, *_):
+    def test_task_archiver_maintenance(self, *_):
         self.client = Client(
             datadir=self.path,
             transaction_system=False,
@@ -566,7 +565,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         c = self.client
         c.task_archiver.do_maintenance = Mock()
-        c._Client__task_archiver_maintenance()
+        c._Client__task_archiver_maintenance()   # pylint: disable=no-member
 
         assert c.task_archiver.do_maintenance.called
 
@@ -888,8 +887,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
 
-    @patch('golem.client.log')
-    def test_get_unsupport_reasons(self, log, *_):
+    def test_get_unsupport_reasons(self, *_):
         c = self.client
         c.task_server.task_keeper.get_unsupport_reasons = Mock()
         c.task_server.task_keeper.get_unsupport_reasons.return_value = [

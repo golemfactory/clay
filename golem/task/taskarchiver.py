@@ -2,16 +2,17 @@ import threading
 import logging
 import pickle
 import os
-import pytz
 from collections import Counter
 from golem.core.common import get_timestamp_utc, timestamp_to_datetime
-from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environment import UnsupportReason
 from golem.core.async import AsyncRequest, async_run
 from golem.appconfig import TASKARCHIVE_FILENAME, TASKARCHIVE_NUM_INTERVALS, \
     TASKARCHIVE_MAX_TASKS
 from datetime import datetime, timedelta
+import pytz
 
 log = logging.getLogger('golem.task.taskarchiver')
+
 
 class TaskArchiver(object):
     """Utility that archives information on unsupported task reasons and
@@ -21,7 +22,7 @@ class TaskArchiver(object):
                       archive at any moment
     """
 
-    def __init__(self, datadir = None, max_tasks = TASKARCHIVE_MAX_TASKS):
+    def __init__(self, datadir=None, max_tasks=TASKARCHIVE_MAX_TASKS):
         self._input_tasks = []
         self._input_statuses = []
         self._archive_lock = threading.Lock()
@@ -39,7 +40,7 @@ class TaskArchiver(object):
                 else:
                     log.info("Task archive not loaded: unsupported version: "
                              "%s", archive.class_version)
-            except Exception as e:
+            except (IOError, pickle.UnpicklingError) as e:
                 log.info("Task archive not loaded: %s", str(e))
 
     def add_task(self, task_header):
@@ -111,7 +112,7 @@ class TaskArchiver(object):
             if interval.start_date <= old:
                 del self._archive.intervals[interval.start_date]
 
-    def get_unsupport_reasons(self, last_n_days, today = None):
+    def get_unsupport_reasons(self, last_n_days, today=None):
         """
         :param last_n_days: For how many recent calendar days (UTC timezone)
          the statistics should be computed.
@@ -160,7 +161,6 @@ class TaskArchiver(object):
         return ret
 
 
-
 class Archive(object):
     CLASS_VERSION = 1
 
@@ -170,12 +170,12 @@ class Archive(object):
         self.intervals = {}
 
 
-
 class ArchTask(object):
     """All known tasks that have not been aggregated yet."""
     def __init__(self, task_header):
         self.uuid = task_header.task_id
-        self.interval_start_date = timestamp_to_datetime(task_header.last_checking)\
+        self.interval_start_date =\
+            timestamp_to_datetime(task_header.last_checking)\
             .replace(hour=0, minute=0, second=0, microsecond=0)
         self.deadline = task_header.deadline
         self.min_version = task_header.min_version

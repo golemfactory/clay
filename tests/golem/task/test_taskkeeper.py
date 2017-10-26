@@ -128,9 +128,9 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertNotIn("xyz", tk.supported_tasks)
         self.assertIn("abc", tk.supported_tasks)
         tar.add_support_status.assert_any_call(
-            "xyz", SupportStatus(False,{UnsupportReason.MAX_PRICE: 9.0}))
+            "xyz", SupportStatus(False, {UnsupportReason.MAX_PRICE: 9.0}))
         tar.add_support_status.assert_any_call(
-            "abc", SupportStatus(True,{}))
+            "abc", SupportStatus(True, {}))
 
     def test_get_task(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
@@ -226,15 +226,14 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert tk.add_task_header(task_header)
         tar.add_task.assert_called()
         tar.add_support_status.assert_any_call(
-            "good", SupportStatus(True,{}))
+            "good", SupportStatus(True, {}))
         tar.reset_mock()
         task_header['task_id'] = "bad"
         task_header["max_price"] = 1.0
         assert tk.add_task_header(task_header)
         tar.add_task.assert_called()
         tar.add_support_status.assert_any_call(
-            "bad", SupportStatus(False,{UnsupportReason.MAX_PRICE: 1.0}))
-
+            "bad", SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
 
     def test_is_correct(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)

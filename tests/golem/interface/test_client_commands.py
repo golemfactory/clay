@@ -511,7 +511,6 @@ class TestTasks(TempDirFixture):
             assert unsupport.data[1][1] == ['max_price', 2, 7]
             assert unsupport.data[1][2] == ['environment_missing', 1, None]
 
-
     @staticmethod
     @contextmanager
     def _run_context(method):
