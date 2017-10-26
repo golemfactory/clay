@@ -189,7 +189,7 @@ def config_logging(suffix='', datadir=None):
         sys.stderr.write(
             "Can't configure logging in: {} Got: {}\n".format(logdir_path, e)
         )
-        return # Avoid consequent errors
+        return  # Avoid consequent errors
     logging.captureWarnings(True)
 
     import txaio
