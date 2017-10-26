@@ -77,6 +77,7 @@ class BasicSession(FileSession):
         self._interpretation = {message.MessageDisconnect.TYPE: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
+        self.conn.server.pending_sessions.add(self)
 
     def interpret(self, msg):
         """
@@ -98,6 +99,10 @@ class BasicSession(FileSession):
     def dropped(self):
         """ Close connection """
         self.conn.close()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def close_now(self):
         """ Close connection quickly without flushing buffors or waiting for producents. """

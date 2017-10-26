@@ -215,6 +215,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """Get information about new tasks and new peers in the network.
            Remove excess information about peers
         """
+        super().sync_network(timeout=self.last_message_time_threshold)
         if self.task_server:
             self.__send_message_get_tasks()
 
