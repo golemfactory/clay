@@ -11,7 +11,6 @@ from golemapp import start
 
 @ci_skip
 class TestGolemApp(TempDirFixture):
-
     def setUp(self):
         super(TestGolemApp, self).setUp()
 
@@ -41,30 +40,19 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
-        assert PROTOCOL_ID.P2P_ID == 15 \
-               and PROTOCOL_ID.TASK_ID == 16
-
-        with patch('crossbar.worker.process.run') as _run:
-            with patch.object(sys, 'argv', list(args + ['--protocol_id', 123456])):
-                runner.invoke(start, sys.argv, catch_exceptions=False)
-                assert _run.called
-                assert '-m' not in sys.argv
-
-                assert PROTOCOL_ID.P2P_ID == 123456 \
-                                   and PROTOCOL_ID.TASK_ID == 123456
-
+    @patch('golem.core.common.config_logging')
     @patch('golemapp.OptNode')
-    def test_patch_protocol_id(self, node_class):
+    def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
 
         assert PROTOCOL_ID.P2P_ID == 15 \
                and PROTOCOL_ID.TASK_ID == 16
 
         runner.invoke(start,
-                      ['--datadir', self.path] + ['--protocol_id', 123456],
+                      ['--datadir', self.path]
+                      + ['--protocol_id', 123456],
                       catch_exceptions=False)
-        assert node_class.called
 
+        assert node_class.called
         assert PROTOCOL_ID.P2P_ID == 123456 \
                and PROTOCOL_ID.TASK_ID == 123456
-
