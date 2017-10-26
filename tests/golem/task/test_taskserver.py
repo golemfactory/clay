@@ -154,7 +154,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.remove_task_header("uvw5")
         ts.deny_set.remove("key")
 
-
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
         ccd = ClientConfigDescriptor()

@@ -6,8 +6,8 @@ import time
 
 from typing import Optional
 import typing
-from semantic_version import Version
 from collections import Counter
+from semantic_version import Version
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION

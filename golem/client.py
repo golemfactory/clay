@@ -265,7 +265,7 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth, self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
-                task_archiver = self.task_archiver)
+                task_archiver=self.task_archiver)
 
         dir_manager = self.task_server.task_computer.dir_manager
 

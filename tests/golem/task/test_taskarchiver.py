@@ -28,14 +28,14 @@ class TestTaskArchiver(TestCase):
             {UnsupportReason.REQUESTOR_TRUST: 0.5})
 
     def header(self, max_price, last_checking=None,
-               deadline = None, min_version = "4"):
+               deadline=None, min_version="4"):
         if not last_checking:
             last_checking = time.time()
         if not deadline:
             deadline = timeout_to_deadline(36000)
         ret = TaskHeader("ABC", str(uuid4()), "10.10.10.10", 10101, "key",
-                         "DEFAULT", max_price = max_price, deadline = deadline,
-                         min_version = min_version)
+                         "DEFAULT", max_price=max_price, deadline=deadline,
+                         min_version=min_version)
         if last_checking:
             ret.last_checking = last_checking
         return ret
@@ -58,7 +58,7 @@ class TestTaskArchiver(TestCase):
         ta = TaskArchiver()
         th1 = self.header(7)
         th2 = self.header(8)
-        th3 = self.header(9, min_version = "2")
+        th3 = self.header(9, min_version="2")
         th4 = self.header(10)
         s1 = self.ssok
         s2 = self.ssmp.join(self.ssav)
@@ -77,11 +77,12 @@ class TestTaskArchiver(TestCase):
 
         def check1(report):
             self.assertEqual(self.getRow(report, UnsupportReason.APP_VERSION),
-                             (2,"4"))
+                             (2, "4"))
             self.assertEqual(self.getRow(report, UnsupportReason.DENY_LIST),
                              (0, None))
-            self.assertEqual(self.getRow(report, UnsupportReason.REQUESTOR_TRUST),
-                             (1, 0.5))
+            self.assertEqual(self.getRow(report,
+                                         UnsupportReason.REQUESTOR_TRUST),
+                                         (1, 0.5))
             self.assertEqual(self.getRow(report, UnsupportReason.MAX_PRICE),
                              (1, (7+8+9+10)//4))
         check1(rep)
@@ -100,12 +101,12 @@ class TestTaskArchiver(TestCase):
         todayts = datetime_to_timestamp(today)
         back1ts = datetime_to_timestamp(back1)
         back2ts = datetime_to_timestamp(back2)
-        th1 = self.header(3, deadline = past_deadline, last_checking = back2ts)
-        th2 = self.header(5, last_checking = back2ts)
-        th3 = self.header(7, min_version="2", deadline = past_deadline,
-                          last_checking = back2ts)
-        th4 = self.header(9, last_checking = back1ts)
-        th5 = self.header(11, deadline = past_deadline, last_checking=todayts)
+        th1 = self.header(3, deadline=past_deadline, last_checking=back2ts)
+        th2 = self.header(5, last_checking=back2ts)
+        th3 = self.header(7, min_version="2", deadline=past_deadline,
+                          last_checking=back2ts)
+        th4 = self.header(9, last_checking=back1ts)
+        th5 = self.header(11, deadline=past_deadline, last_checking=todayts)
         s1 = self.ssrt
         s2 = self.ssmp.join(self.ssav)
         s3 = self.ssav.join(self.ssrt)
@@ -166,7 +167,7 @@ class TestTaskArchiver(TestCase):
                          (0, None))
 
     def test_max_tasks(self):
-        ta = TaskArchiver(max_tasks = 2)
+        ta = TaskArchiver(max_tasks=2)
         th1 = self.header(3)
         th2 = self.header(5)
         ta.add_task(th1)
@@ -182,5 +183,4 @@ class TestTaskArchiver(TestCase):
         ta.add_support_status(th3.task_id, self.ssmp)
         ta.do_maintenance()
         rep = ta.get_unsupport_reasons(5)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE),
-                         (2, 4))
+        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE), (2, 4))

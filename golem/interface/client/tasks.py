@@ -72,7 +72,7 @@ class Tasks:
         default=False,
         help="Skip task testing phase"
     )
-    last_days = Argument('last_days', optional=True, default = "0",
+    last_days = Argument('last_days', optional=True, default="0",
                          help="Number of last days to compute statistics on")
 
     application_logic = None
@@ -165,8 +165,8 @@ class Tasks:
     @command(argument=last_days, help="Show statistics for unsupported tasks")
     def unsupport(self, last_days):
         deferred = Tasks.client.get_unsupport_reasons(int(last_days))
-        result =  sync_wait(deferred)
-        values = [[r['reason'], r['ntasks'],r['avg']] for r in result]
+        result = sync_wait(deferred)
+        values = [[r['reason'], r['ntasks'], r['avg']] for r in result]
         return CommandResult.to_tabular(Tasks.unsupport_reasons_table_headers,
                                         values)
 
