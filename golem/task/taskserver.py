@@ -164,6 +164,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
+        super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
         self.send_waiting_payments()

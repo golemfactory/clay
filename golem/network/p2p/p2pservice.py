@@ -215,6 +215,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """Get information about new tasks and new peers in the network.
            Remove excess information about peers
         """
+        super().sync_network(timeout=self.last_message_time_threshold)
         if self.task_server:
             self.__send_message_get_tasks()
 
@@ -272,6 +273,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
+        # Timeouts of this session/peer will be hanled in sync_network()
+        try:
+            self.pending_sessions.remove(peer)
+        except KeyError:
+            pass
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
