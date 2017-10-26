@@ -97,6 +97,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
         self._cache_resource(res)
 
     def _parse_pull_response(self, response, task_id):
+        # response -> [(path, hash, [file_1, file_2, ...])]
         relative = self.storage.relative_path
         if response and len(response[0]) >= 3:
             return [relative(f, task_id) for f in response[0][2]]

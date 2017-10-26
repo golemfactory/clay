@@ -161,7 +161,7 @@ class ResourceHandshakeSessionMixin:
         handshake = self._get_handshake(key_id)
         blocked = self._is_peer_blocked(key_id)
 
-        return not blocked and not (handshake and handshake.finished())
+        return not (blocked or handshake)
 
     def _handshake_in_progress(self, key_id):
         if not key_id:
@@ -264,7 +264,7 @@ class ResourceHandshakeSessionMixin:
         try:
             path = files[0]
             nonce = handshake.read_nonce(path)
-        except (AssertionError, OSError) as err:
+        except Exception as err:
             self._handshake_error(key_id, 'reading nonce from file "{}": {}'
                                   .format(files, err))
         else:

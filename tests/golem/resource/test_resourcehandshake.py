@@ -280,24 +280,28 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._handshake_error.reset_mock()
 
         assert session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
         handshake = ResourceHandshake(self.key_id)
         session._set_handshake(session.key_id, handshake)
 
-        assert session._handshake_required(session.key_id)
+        assert not session._handshake_required(session.key_id)
+        assert session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
         handshake.local_result = True
         handshake.remote_result = True
 
         assert not session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
         session._remove_handshake(session.key_id)
         session._block_peer(session.key_id)
 
         assert not session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
     def test_handshake_in_progress(self, *_):
