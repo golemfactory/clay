@@ -14,8 +14,7 @@
     - name: visualstudio2017community
     - name: visualstudio2017-workload-nativedesktop 
       params: "--includeOptional"
-    - name: docker-toolbox
-      params: '/TASKS="modifypath"'
+
 
 - name: install pypiwin32
   win_shell: py -2 -m pip install pypiwin32
