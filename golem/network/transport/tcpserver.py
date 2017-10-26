@@ -260,10 +260,6 @@ class PendingConnectionsServer(TCPServer):
         pass
 
     def _mark_connected(self, conn_id, addr, port):
-        for session in frozenset(self.pending_sessions):
-            if session.conn.id != conn_id:
-                continue
-            self.pending_sessions.remove(session)
         ad = SocketAddress(addr, port)
         pc = self.pending_connections.get(conn_id)
         if pc:

@@ -273,6 +273,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
+        self.pending_sessions.remove(peer_info)
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
