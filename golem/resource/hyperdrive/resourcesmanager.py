@@ -35,7 +35,17 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def from_wire(self, resources):
         iterator = filter(lambda x: isinstance(x, Iterable) and len(x) > 1,
                           resources)
-        return list([r[0], [os.path.join(*x) for x in r[1]]] for r in iterator)
+        results = []
+
+        for entry in iterator:
+            files = [os.path.join(*split) for split in entry[1] if split]
+            if not files:
+                logger.debug("Received an empty file list for hash %r",
+                             entry[0])
+                continue
+            results.append([entry[0], files])
+
+        return results
 
     def add_files(self, files, task_id,
                   absolute_path=False, client=None, client_options=None):
