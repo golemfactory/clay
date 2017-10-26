@@ -758,13 +758,13 @@ class Client(HardwarePresetsMixin):
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        self.p2pservice.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
+
+        if self.p2pservice:
+            self.p2pservice.change_config(self.config_desc)
         if self.task_server:
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks
-            )
+            self.task_server.change_config(self.config_desc,
+                                           run_benchmarks=run_benchmarks)
         dispatcher.send(
             signal='golem.monitor',
             event='config_update',
