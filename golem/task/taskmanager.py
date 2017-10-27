@@ -92,7 +92,8 @@ class TaskManager(TaskEventListener):
         # Remember to also remove it from init params
         self.task_persistence = task_persistence
 
-        self.tasks_dir = Path(tasks_dir)
+        tasks_dir = Path(tasks_dir)
+        self.tasks_dir = tasks_dir / "tmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
         self.root_path = root_path
@@ -111,9 +112,11 @@ class TaskManager(TaskEventListener):
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
-            self.tasks_dir,
+            tasks_dir / "tkeeper",
+            persist=self.task_persistence
             persist=self.task_persistence
         )
+
         if self.task_persistence:
             self.restore_tasks()
 
