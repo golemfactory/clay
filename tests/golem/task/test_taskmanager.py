@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
+from golem import testutils
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
@@ -50,7 +51,11 @@ class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
-class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
+class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
+                      testutils.PEP8MixIn):
+    PEP8_FILES = [
+        'golem/task/taskmanager.py',
+    ]
     def setUp(self):
         super(TestTaskManager, self).setUp()
         random.seed()
