@@ -177,8 +177,8 @@ def raise_exception(msg, *args, **kwargs):
     raise TypeError(msg)
 
 
-def raise_subprocess_exception(msg, *args, **kwargs):
-    raise subprocess.CalledProcessError(1, msg)
+def raise_process_exception(msg, *args, **kwargs):
+    raise CalledProcessError(1, msg)
 
 
 class Erroneous(mock.Mock):
@@ -193,15 +193,32 @@ class Erroneous(mock.Mock):
 
 class TestDockerManager(unittest.TestCase):
 
+    def test_status(self):
+        dmm = MockDockerManager()
+        dmm.docker_machine_running(MACHINE_NAME)
+        assert ['status', MACHINE_NAME, None, False] in dmm.command_calls
+
+        with mock.patch.object(dmm, 'command', raise_process_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                dmm.docker_machine_running(MACHINE_NAME)
+
     def test_start(self):
         dmm = MockDockerManager()
         dmm.start_docker_machine(MACHINE_NAME)
         assert ['start', MACHINE_NAME, None, False] in dmm.command_calls
 
+        with mock.patch.object(dmm, 'command', raise_process_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                dmm.start_docker_machine(MACHINE_NAME)
+
     def test_stop(self):
         dmm = MockDockerManager()
         dmm.stop_docker_machine(MACHINE_NAME)
         assert ['stop', MACHINE_NAME, None, False] in dmm.command_calls
+
+        with mock.patch.object(dmm, 'command', raise_process_exception):
+            with self.assertLogs(logger, 'WARN'):
+                dmm.stop_docker_machine(MACHINE_NAME)
 
     def test_running(self):
         dmm = MockDockerManager()
@@ -545,12 +562,9 @@ class TestDockerManager(unittest.TestCase):
         dmm = MockDockerManager()
         environ = dict()
 
-        def raise_process_error(*args, **kwargs):
-            raise CalledProcessError(-1, "test_command")
-
         def raise_on_env(key, *args, **kwargs):
             if key == 'env':
-                raise_process_error()
+                raise_process_exception('error')
             return key
 
         with mock.patch.dict('os.environ', environ):
@@ -558,7 +572,7 @@ class TestDockerManager(unittest.TestCase):
             assert dmm._config_dir == 'tmp'
 
             with mock.patch.object(dmm, 'command',
-                                   side_effect=raise_process_error):
+                                   side_effect=raise_process_exception):
                 with self.assertRaises(CalledProcessError):
                     dmm._set_docker_machine_env()
 
@@ -578,7 +592,7 @@ class TestHypervisor(LogTestCase):
 
         # errors
         with mock.patch.object(hypervisor._docker_manager, 'command',
-                               raise_subprocess_exception):
+                               raise_process_exception):
             with self.assertLogs(logger, 'WARN'):
                 assert not hypervisor.remove('test')
 
@@ -686,7 +700,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
 
         # errors
         with mock.patch.object(self.hypervisor._docker_manager, 'command',
-                               raise_subprocess_exception):
+                               raise_process_exception):
             with self.assertLogs(logger, 'ERROR'):
                 assert not self.hypervisor.create('test')
 
@@ -792,7 +806,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
 
         # errors
         with mock.patch.object(self.hypervisor._docker_manager, 'command',
-                               raise_subprocess_exception):
+                               raise_process_exception):
             with self.assertLogs(logger, 'ERROR'):
                 assert not self.hypervisor.create('test')
 
