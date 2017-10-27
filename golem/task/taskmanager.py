@@ -4,7 +4,7 @@ import time
 
 # FIXME: use the PEP-3107 annotations when we reach 3.6 and remove the
 # suppresion then
-from typing import Any, Dict, List  # pylint: disable=unused-import
+from typing import Dict  # pylint: disable=unused-import
 
 from pathlib import Path
 from pydispatch import dispatcher
@@ -139,7 +139,7 @@ class TaskManager(TaskEventListener):
 
         return Task.build_task(builder)
 
-    def get_task_definition_dict(self, task: Task) -> Dict[str, Any]:
+    def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
             return task
         definition = task.task_definition
@@ -340,7 +340,7 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         return ctd, False, extra_data.should_wait
 
-    def get_tasks_headers(self) -> List[TaskHeader]:
+    def get_tasks_headers(self):
         ret = []
         for tid, task in self.tasks.items():
             if task.needs_computation() and \
