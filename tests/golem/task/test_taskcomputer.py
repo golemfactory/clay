@@ -1,10 +1,9 @@
-import uuid
-from threading import Lock
-
-import mock
 import os
 import random
+from threading import Lock
 import time
+import unittest.mock as mock
+import uuid
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
