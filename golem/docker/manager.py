@@ -411,6 +411,18 @@ class DockerManager(DockerConfigManager):
                     logger.warning("DockerMachine: failed to env the VM: %s", e)
                     logger.debug("DockerMachine_output: %s", e.output)
                 return self._set_docker_machine_env(retried=True)
+            typical_solution_s = """It seems there is a  problem with your Docker installation.
+Ensure that you try the following before reporting an issue:
+
+ 1. The virtualization of Intel VT-x/EPT or AMD-V/RVI is enabled in BIOS
+    or virtual machine settings.
+ 2. The proper environment is set. On windows powershell please run:
+    & "C:\Program Files\Docker Toolbox\docker-machine.exe" env golem | Invoke-Expression
+ 3. virtualbox driver is available:
+    docker-machine.exe create --driver virtualbox golem
+ 4. Restart Windows machine"""
+            logger.error(typical_solution_s)
+
             raise
 
         if output:
