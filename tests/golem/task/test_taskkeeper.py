@@ -12,7 +12,8 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import CompTaskInfo
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
+    CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -396,9 +397,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         test_headers = []
         for x in range(100):
             header = get_task_header()
-            header.task_id = "test%d-%d" % (x, random.random()*1000)
+            header.task_id = "test%d-%d" % (x, random.random() * 1000)
             test_headers.append(header)
-            ctk.add_request(header, int(random.random()*100))
+            ctk.add_request(header, int(random.random() * 100))
         del ctk
 
         ctk = CompTaskKeeper(tasks_dir)
