@@ -137,16 +137,12 @@ class Client(HardwarePresetsMixin):
         self.last_balance_time = time.time()
         self.last_tasks_time = time.time()
 
-        self.last_node_state_snapshot = None
-
         self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
         self.publish_task = task.LoopingCall(self.__publish_events)
 
         self.cfg = config
-        self.send_snapshot = False
-        self.snapshot_lock = Lock()
 
         self.ranking = Ranking(self)
 
@@ -1026,9 +1022,6 @@ class Client(HardwarePresetsMixin):
                 event='task_computer_snapshot',
                 task_computer=self.task_server.task_computer,
             )
-            # with self.snapshot_lock:
-            #     self.__make_node_state_snapshot()
-            #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
             self.last_nss_time = time.time()
 
         delta = now - self.last_net_check_time
@@ -1050,38 +1043,6 @@ class Client(HardwarePresetsMixin):
                     'GNT_available': str(av_gnt),
                     'ETH': str(eth)
                 })
-
-    def __make_node_state_snapshot(self, is_running=True):
-        peers_num = len(self.p2pservice.peers)
-        last_network_messages = self.p2pservice.get_last_messages()
-
-        if self.task_server:
-            tasks_num = len(self.task_server.task_keeper.task_headers)
-            r_tasks_progs = self.task_server.task_computer.get_progresses()
-            l_tasks_progs = self.task_server.task_manager.get_progresses()
-            last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(
-                is_running,
-                self.config_desc.node_name,
-                peers_num,
-                tasks_num,
-                self.p2pservice.node.pub_addr,
-                self.p2pservice.node.pub_port,
-                last_network_messages,
-                last_task_messages,
-                r_tasks_progs,
-                l_tasks_progs
-            )
-        else:
-            self.last_node_state_snapshot = NodeStateSnapshot(
-                self.config_desc.node_name,
-                peers_num
-            )
-
-        if self.nodes_manager_client:
-            self.nodes_manager_client.send_client_state_snapshot(
-                self.last_node_state_snapshot
-            )
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
