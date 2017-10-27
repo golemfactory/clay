@@ -48,7 +48,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskbase import ResourceType
