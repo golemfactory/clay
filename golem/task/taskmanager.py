@@ -113,8 +113,7 @@ class TaskManager(TaskEventListener):
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir / "tkeeper",
-            persist=self.task_persistence
-            persist=self.task_persistence
+            persist=self.task_persistence,
         )
 
         if self.task_persistence:
