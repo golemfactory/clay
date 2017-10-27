@@ -19,9 +19,11 @@ from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 from .test_docker_image import DockerTestCase
 
 
+@ci_skip
 class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
@@ -196,7 +198,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
         assert not task.use_frames
-        assert len(task.frames_given) == 10
+        assert len(task.frames_given) == 5
         assert isinstance(task.preview_file_path, str)
         assert not task.preview_updaters
         assert task.scale_factor == 0.8
