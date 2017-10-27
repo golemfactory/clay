@@ -72,6 +72,10 @@ class Resource(object):
     def contains_file(self, name):
         raise NotImplementedError()
 
+    @property
+    def files(self):
+        raise NotImplementedError()
+
 
 class FileResource(Resource):
 
@@ -89,6 +93,10 @@ class FileResource(Resource):
 
     def contains_file(self, name):
         return os.path.basename(self.file_name) == name
+
+    @property
+    def files(self):
+        return [self.file_name]
 
 
 class ResourceBundle(Resource):
@@ -411,8 +419,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
         resource = self._wrap_resource(entry, task_id)
 
-        if self.storage.has_resource(resource):
-            success(entry, task_id)
+        if resource.files and self.storage.has_resource(resource):
+            success(entry, resource.files, task_id)
             return
 
         def success_wrapper(response, **_):
@@ -426,7 +434,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             logger.debug("Resource manager: {} ({}) downloaded"
                          .format(resource.path, resource.hash))
 
-            success(entry, task_id)
+            files = self._parse_pull_response(response, task_id)
+            success(entry, files, task_id)
             self.__process_queue()
 
         def error_wrapper(exception, **_):
@@ -541,6 +550,16 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                 success(data)
             except Exception as e:
                 error(e)
+
+    def _parse_pull_response(self, response, task_id):
+        if not response:
+            return []
+
+        files = []
+        for entry in response:
+            if isinstance(entry, dict) and 'Name' in entry:
+                files.append(entry['Name'])
+        return files
 
     def __can_download(self):
         max_dl = self.config.max_concurrent_downloads

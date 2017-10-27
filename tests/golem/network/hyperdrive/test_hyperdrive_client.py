@@ -147,6 +147,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert filtered.options['peers'] == peers
         assert options.filtered('invalid client', version) is None
 
+    @unittest.skip('Private IP filtering is temporarily disabled')
     def test_filter_peers(self):
         peers_local = [
             dict(
@@ -205,7 +206,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('192.168.0.1', 12345),
             uTP=('::1', 12345)
-        )) is None
+        )) is not None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('::1.2.3.4', -1),
