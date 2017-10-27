@@ -445,7 +445,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctk.get_value('qwerty', 12)
         self.assertEqual(ctk.get_value(thread.task_id, 600), 2)
 
-        self.assertIsNone(ctk.get_subtask_ttl("abc"))
         ctd = ComputeTaskDef()
         with self.assertLogs(logger, level="WARNING"):
             self.assertFalse(ctk.receive_subtask(ctd))
