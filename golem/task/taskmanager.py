@@ -200,7 +200,7 @@ class TaskManager(TaskEventListener):
             logger.debug('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
-        except Exception:
+        except Exception as e:
             logger.exception(
                 'DUMP ERROR task_id: %r task: %r state: %r',
                 task_id, self.tasks.get(task_id, '<not found>'),
