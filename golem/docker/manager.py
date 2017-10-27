@@ -31,14 +31,14 @@ class DockerManager(DockerConfigManager):
     docker_machine_commands = dict(
         create=['docker-machine', 'create'],
         rm=['docker-machine', 'rm', '-y'],
-        start=['docker-machine', 'start'],
+        start=['docker-machine', 'restart'],
         stop=['docker-machine', 'stop'],
         active=['docker-machine', 'active'],
         list=['docker-machine', 'ls', '-q'],
         env=['docker-machine', 'env'],
         status=['docker-machine', 'status'],
         inspect=['docker-machine', 'inspect'],
-        regenerate_certs=['docker-machine', 'regenerate-certs']
+        regenerate_certs=['docker-machine', 'regenerate-certs', '--force']
     )
 
     docker_commands = dict(
@@ -250,9 +250,9 @@ class DockerManager(DockerConfigManager):
             status = self.command('status', name or self.docker_machine)
             status = status.strip().replace("\n", "")
             return status == 'Running'
-        except Exception as e:
-            logger.error("DockerMachine: failed to check docker-machine status: {}"
-                         .format(e))
+        except subprocess.CalledProcessError as e:
+            logger.error("DockerMachine: failed to check status: %s", e)
+            logger.debug("DockerMachine_output: %s", e.output)
         return False
 
     def start_docker_machine(self, name=None):
@@ -260,26 +260,25 @@ class DockerManager(DockerConfigManager):
         logger.info("DockerMachine: starting {}".format(name))
 
         try:
-            self.command('start', name, check_output=False)
-        except Exception as e:
-            logger.error("DockerMachine: failed to start the VM: {}"
-                         .format(e))
+            self.command('start', name)
+        except subprocess.CalledProcessError as e:
+            logger.error("DockerMachine: failed to start the VM: %s", e)
+            logger.debug("DockerMachine_output: %s", e.output)
 
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: stopping '{}'".format(name))
 
         try:
-            self.command('stop', name, check_output=False)
+            self.command('stop', name)
             return True
-        except Exception as e:
-            logger.warn("DockerMachine: failed to stop the VM: {}"
-                        .format(e))
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine: failed to stop the VM: %s", e)
+            logger.debug("DockerMachine_output: %s", e.output)
         return False
 
     @classmethod
-    def command(cls, key, machine_name=None, args=None,
-                check_output=True, shell=False):
+    def command(cls, key, machine_name=None, args=None, shell=False):
 
         command = cls.docker_machine_commands.get(key)
         if not command:
@@ -296,13 +295,10 @@ class DockerManager(DockerConfigManager):
         logger.debug('docker_machine_command: %s', command)
         params = dict(shell=shell, stdin=DEVNULL)
 
-        if check_output:
-            output = subprocess.check_output(command, stderr=subprocess.PIPE,
-                                             **params)
-            return to_unicode(output)
-
-        return subprocess.check_call(command, stdout=DEVNULL, stderr=DEVNULL,
-                                     **params)
+        output = subprocess.check_output(command, stderr=subprocess.STDOUT,
+                                         **params)
+        logger.debug('docker_machine_command_output: %s', output)
+        return to_unicode(output)
 
     @property
     def config_dir(self):
@@ -314,7 +310,7 @@ class DockerManager(DockerConfigManager):
 
         for entry in cls._collect_images():
             version = cls._image_version(entry)
-            if not cls.command('images', args=[version], check_output=True):
+            if not cls.command('images', args=[version]):
                 entries.append(entry)
 
         if entries:
@@ -346,7 +342,7 @@ class DockerManager(DockerConfigManager):
 
         for entry in cls._collect_images():
             version = cls._image_version(entry)
-            if not cls.command('images', args=[version], check_output=True):
+            if not cls.command('images', args=[version]):
                 entries.append(entry)
 
         if entries:
@@ -405,9 +401,15 @@ class DockerManager(DockerConfigManager):
         try:
             output = self.command('env', self.docker_machine,
                                   args=('--shell', 'cmd'))
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine: failed to env the VM: %s", e)
+            logger.debug("DockerMachine_output: %s", e.output)
             if not retried:
-                self.command('regenerate_certs', self.docker_machine)
+                try:
+                    self.command('regenerate_certs', self.docker_machine)
+                except subprocess.CalledProcessError as e:
+                    logger.warning("DockerMachine: failed to env the VM: %s", e)
+                    logger.debug("DockerMachine_output: %s", e.output)
                 return self._set_docker_machine_env(retried=True)
             raise
 
@@ -415,7 +417,7 @@ class DockerManager(DockerConfigManager):
             self._set_env_from_output(output)
             logger.info('DockerMachine: env updated')
         else:
-            logger.warn('DockerMachine: env update failed')
+            logger.warning('DockerMachine: env update failed')
 
     def _set_env_from_output(self, output):
         for line in output.split('\n'):
@@ -458,15 +460,14 @@ class Hypervisor(object):
         raise NotImplementedError
 
     def remove(self, name):
-        logger.info("Hypervisor: removing VM '{}'".format(name))
+        logger.info("Hypervisor: removing VM '%s'", name)
         try:
-            self._docker_manager.command('rm', name,
-                                         check_output=False)
+            self._docker_manager.command('rm', name)
             return True
-        except Exception as e:
-            logger.warn("Hypervisor: error removing VM '{}': {}"
-                        .format(name, e))
-            return False
+        except subprocess.CalledProcessError as e:
+            logger.warning("Hypervisor: error removing VM '%s': %s", name, e)
+            logger.debug("Hypervisor_output: %s", e.output)
+        return False
 
     def constrain(self, name, **params):
         raise NotImplementedError
@@ -574,13 +575,12 @@ class VirtualBoxHypervisor(Hypervisor):
 
         try:
             self._docker_manager.command('create', name,
-                                         args=('--driver', 'virtualbox'),
-                                         check_output=False)
+                                         args=('--driver', 'virtualbox'))
             return True
-        except Exception as e:
-            logger.error("VirtualBox: error creating VM '{}': {}"
-                         .format(name, e))
-            return False
+        except subprocess.CalledProcessError as e:
+            logger.error("VirtualBox: error creating VM '%s': %s", name, e)
+            logger.debug("Hypervisor_output: %s", e.output)
+        return False
 
     def constraints(self, name):
         result = {}
@@ -728,8 +728,7 @@ class XhyveHypervisor(Hypervisor):
 
         try:
             self._docker_manager.command('create', name,
-                                         args=args,
-                                         check_output=False)
+                                         args=args)
             return True
         except Exception as e:
             logger.error("Xhyve: error creating VM '{}': {}"
@@ -795,7 +794,8 @@ class XhyveHypervisor(Hypervisor):
         return config
 
     def _config(self, name):
-        config_path = os.path.join(self._docker_manager.config_dir, name, 'config.json')
+        config_path = os.path.join(self._docker_manager.config_dir, name,
+                                   'config.json')
         config = None
 
         try:
