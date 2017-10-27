@@ -13,26 +13,24 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-
 from golem.task.taskbase import ComputeTaskDef, \
     TaskEventListener, Task, \
     ResourceType, TaskHeader
 
-from golem.task.taskkeeper import \
-    CompTaskKeeper, compute_subtask_value
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 
-from golem.task.taskstate import TaskState, \
-    TaskStatus, SubtaskStatus, SubtaskState
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
+    SubtaskState
 
 logger = logging.getLogger(__name__)
 
 
-def log_subtask_key_error(*args, **kwargs):
+def log_subtask_key_error(*args):
     logger.warning("This is not my subtask {}".format(args[1]))
     return None
 
 
-def log_task_key_error(*args, **kwargs):
+def log_task_key_error(*args):
     logger.warning("This is not my task {}".format(args[1]))
     return None
 
@@ -58,7 +56,7 @@ class TaskManager(TaskEventListener):
     def __init__(self, node_name, node, keys_auth, listen_address="",
                  listen_port=0, root_path="res", use_distributed_resources=True,
                  tasks_dir="tasks", task_persistence=False):
-        super(TaskManager, self).__init__()
+        super().__init__()
 
         self.apps_manager = AppsManager()
         self.apps_manager.load_apps()
@@ -158,7 +156,6 @@ class TaskManager(TaskEventListener):
         self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
 
-
     @handle_task_key_error
     def start_task(self, task_id):
         task = self.tasks[task_id]
@@ -185,7 +182,7 @@ class TaskManager(TaskEventListener):
             logger.debug('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
-        except:
+        except Exception:
             logger.exception('DUMP ERROR task_id: %r task: %r state: %r', task_id, self.tasks.get(task_id, '<not found>'), self.tasks_states.get(task_id, '<not found>'))
             if filepath.exists():
                 filepath.unlink()
@@ -466,7 +463,7 @@ class TaskManager(TaskEventListener):
         for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
                 ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0)) # FIXME in short_extra_data_repr should there be extra data
+                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))  # FIXME in short_extra_data_repr should there be extra data
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses

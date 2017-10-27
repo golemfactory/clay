@@ -21,7 +21,7 @@ def compute_subtask_value(price, computation_time):
     return value
 
 
-class CompTaskInfo(object):
+class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
@@ -36,7 +36,7 @@ class CompTaskInfo(object):
         )
 
 
-class CompSubtaskInfo(object):
+class CompSubtaskInfo:
     def __init__(self, subtask_id):
         self.subtask_id = subtask_id
 
@@ -50,7 +50,7 @@ def log_key_error(*args, **_):
     return None
 
 
-class CompTaskKeeper(object):
+class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
@@ -161,7 +161,7 @@ class CompTaskKeeper(object):
         self.dump()
 
 
-class TaskHeaderKeeper(object):
+class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.
