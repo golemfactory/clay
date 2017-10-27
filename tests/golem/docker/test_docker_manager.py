@@ -1,15 +1,16 @@
 import json
 import os
-import subprocess
 import unittest
+import sys
 from contextlib import contextmanager
+import subprocess
 from subprocess import CalledProcessError
 
 import mock
-import sys
 
-from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
-    Hypervisor, logger
+from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, \
+                                 VirtualBoxHypervisor, XhyveHypervisor, \
+                                 Hypervisor, logger
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -113,6 +114,7 @@ class MockHypervisor(mock.Mock):
     def ctx(self, name, *_):
         yield name
 
+    @staticmethod
     def constraints(*_):
         return dict()
 
@@ -141,10 +143,9 @@ class MockDockerManager(DockerManager):
         self.command_calls.append([key, machine_name, args, shell])
 
         if self.use_parent_methods:
-            return super(MockDockerManager, self).command(key,
-                                                          machine_name=machine_name,
-                                                          args=args,
-                                                          shell=shell)
+            tmp_super = super(MockDockerManager, self)
+            return tmp_super.command(key, machine_name=machine_name, args=args,
+                                     shell=shell)
         elif key == 'env':
             return '\n'.join([
                 'SET GOLEM_TEST=1',
@@ -175,8 +176,10 @@ class MockDockerManager(DockerManager):
 def raise_exception(msg, *args, **kwargs):
     raise TypeError(msg)
 
+
 def raise_subprocess_exception(msg, *args, **kwargs):
     raise subprocess.CalledProcessError(1, msg)
+
 
 class Erroneous(mock.Mock):
     @property
@@ -215,15 +218,21 @@ class TestDockerManager(unittest.TestCase):
         assert dmm._config == dmm.defaults
 
         dmm.build_config(None)
-        assert all([val == dmm.defaults[key] for key, val in list(dmm._config.items())])
+
+        config_item_list = list(dmm._config.items())
+        assert all([val == dmm.defaults[key] for key, val in config_item_list])
 
         config = MockConfig(0, 768, 512)
 
         dmm.build_config(config)
         assert len(dmm._config) < len(config.to_dict())
         assert dmm._config != dmm.defaults
-        assert dmm._config.get('cpu_count') == dmm.min_constraints.get('cpu_count')
-        assert dmm._config.get('memory_size') == dmm.min_constraints.get('memory_size')
+
+        assert dmm._config.get('cpu_count') \
+            == dmm.min_constraints.get('cpu_count')
+
+        assert dmm._config.get('memory_size') \
+            == dmm.min_constraints.get('memory_size')
 
         config = MockConfig(10, 10000000, 20000)
 
@@ -366,7 +375,7 @@ class TestDockerManager(unittest.TestCase):
         pythoncom = mock.MagicMock()
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance'), \
-            mock.patch.dict('sys.modules', {'pythoncom': pythoncom}):
+                mock.patch.dict('sys.modules', {'pythoncom': pythoncom}):
 
             dmm.check_environment()
 
@@ -453,7 +462,8 @@ class TestDockerManager(unittest.TestCase):
                 pulls[0] += 1
                 return True
 
-        with mock.patch.object(MockDockerManager, 'command', side_effect=command):
+        with mock.patch.object(MockDockerManager, 'command',
+                               side_effect=command):
             dmm = MockDockerManager()
             dmm.pull_images()
 
@@ -475,7 +485,8 @@ class TestDockerManager(unittest.TestCase):
                 tags[0] += 1
                 return True
 
-        with mock.patch.object(MockDockerManager, 'command', side_effect=command):
+        with mock.patch.object(MockDockerManager, 'command',
+                               side_effect=command):
             dmm = MockDockerManager()
             dmm.build_images()
 
@@ -546,7 +557,8 @@ class TestDockerManager(unittest.TestCase):
             dmm._set_docker_machine_env()
             assert dmm._config_dir == 'tmp'
 
-            with mock.patch.object(dmm, 'command', side_effect=raise_process_error):
+            with mock.patch.object(dmm, 'command',
+                                   side_effect=raise_process_error):
                 with self.assertRaises(CalledProcessError):
                     dmm._set_docker_machine_env()
 
@@ -599,7 +611,8 @@ class TestVirtualBoxHypervisor(LogTestCase):
         self.ISession = mock.Mock
         self.LockType = mock.Mock()
 
-        self.hypervisor = VirtualBoxHypervisor(self.docker_manager, self.virtualbox,
+        self.hypervisor = VirtualBoxHypervisor(self.docker_manager,
+                                               self.virtualbox,
                                                self.ISession, self.LockType)
 
     def test_instance(self):
@@ -699,12 +712,14 @@ class TestVirtualBoxHypervisor(LogTestCase):
                 self.hypervisor.constrain(MACHINE_NAME, cpu_count=1)
 
     def test_session_from_arg(self):
-        assert self.hypervisor._session_from_arg(MACHINE_NAME).__class__ is not None
+        assert self.hypervisor._session_from_arg(MACHINE_NAME).__class__ \
+            is not None
         assert self.virtualbox.find_machine.called
 
         self.virtualbox.find_machine.called = False
 
-        assert self.hypervisor._session_from_arg(mock.Mock()).__class__ is not None
+        assert self.hypervisor._session_from_arg(mock.Mock()).__class__ \
+            is not None
         assert not self.virtualbox.find_machine.called
 
     def test_machine_from_arg(self):

@@ -794,7 +794,8 @@ class XhyveHypervisor(Hypervisor):
         return config
 
     def _config(self, name):
-        config_path = os.path.join(self._docker_manager.config_dir, name, 'config.json')
+        config_path = os.path.join(self._docker_manager.config_dir, name,
+                                   'config.json')
         config = None
 
         try:
