@@ -16,13 +16,6 @@ def ci_skip(obj):
     return obj
 
 
-def ci_skip_win(obj):
-    import unittest
-    if in_appveyor():
-        return unittest.skip('Unsupported CI environment')
-    return obj
-
-
 def ci_patch(*args, **kwargs):
     import mock
     if in_appveyor() or in_travis():

@@ -2,11 +2,11 @@ import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
-from golem.tools.ci import ci_skip_win
+from golem.tools.ci import ci_skip
 from tests.golem.task.dummy import runner, task
 
 
-@ci_skip_win
+@ci_skip
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 

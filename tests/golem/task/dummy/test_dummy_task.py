@@ -1,12 +1,12 @@
 import unittest
 import pytest
-from golem.tools.ci import ci_skip_win
+from golem.tools.ci import ci_skip
 
 from tests.golem.task.dummy import runner
 
 
 @pytest.mark.slow
-@ci_skip_win
+@ci_skip
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
