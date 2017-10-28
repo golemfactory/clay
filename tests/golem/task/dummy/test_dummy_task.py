@@ -1,25 +1,25 @@
 import unittest
 import pytest
+from golem.tools.ci import ci_skip_win
 
 from tests.golem.task.dummy import runner
 
 
+@pytest.mark.slow
+@ci_skip_win
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
-    @pytest.mark.slow
-    def test_dummy_task_computation(self, *mocks):
+    def test_dummy_task_computation(self):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=420)
         self.assertIn(error_msg, [None, "Node exited with return code 0"])
 
-    @pytest.mark.slow
-    def test_dummy_task_computation_timeout(self, *mocks):
+    def test_dummy_task_computation_timeout(self):
         error_msg = runner.run_simulation(timeout=5)
         self.assertEqual(error_msg, "Computation timed out")
 
-    @pytest.mark.slow
-    def test_dummy_task_computation_subprocess_error(self, *mocks):
+    def test_dummy_task_computation_subprocess_error(self):
         # Make the first computing node fail after approx. 5 secs
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=10, timeout=120,
