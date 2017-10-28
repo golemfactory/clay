@@ -273,7 +273,8 @@ def dispatch(args):
         # third arg is the address to connect to,
         # forth arg is the timeout (optional).
         fail_after = float(args[4]) if len(args) == 5 else None
-        run_computing_node(args[2], SocketAddress.parse(args[3]), fail_after=fail_after)
+        run_computing_node(args[2], SocketAddress.parse(args[3]),
+                           fail_after=fail_after)
     elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
