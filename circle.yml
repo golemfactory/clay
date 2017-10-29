@@ -47,9 +47,8 @@ dependencies:
 
 test:
   pre:
-    - pip3 install coverage codecov
   override:
-    - python3 -m coverage run --branch --source=. setup.py test -a "--durations=5 --maxfail=3 -rxs --junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}":
+    - pytest --cov=golem --durations=5 --maxfail=3 -rxs --junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}:
         timeout: 1200
     - if [[ -z "${ARG_RUNSLOW}" ]]; then echo "Not enough approvals."; exit 1; fi
   post:
