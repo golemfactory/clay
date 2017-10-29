@@ -192,7 +192,7 @@ class SimpleConfig(object):
     def __write_options(self, cfg):
         current_cfg = self.get_node_config()
         logger.info("writing config, old = %s, new = %s", current_cfg, cfg)
-        if not hasattr(current_cfg, 'properties'):
+        if not hasattr(current_cfg, '_properties'):
             return
         for prop in current_cfg.properties():
             self.__write_option(cfg, prop)
