@@ -15,6 +15,7 @@ checkout:
 dependencies:
   override:
     - pip3 install -r requirements.txt
+    - pip3 install -r requirements-test.txt
     - python3 setup.py develop
 
     # Slow tests only on branches and PRs with enough approvals
@@ -46,7 +47,7 @@ dependencies:
 
 test:
   pre:
-    - pip3 install coverage
+    - pip3 install coverage codecov
   override:
     - python3 -m coverage run --branch --source=. setup.py test -a "--durations=5 --maxfail=3 -rxs --junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}":
         timeout: 1200
