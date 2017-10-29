@@ -44,12 +44,9 @@ dependencies:
     - /usr/local/bin/ipfs daemon:
         background: true
 
-    # requirements
-    - pip3 install six
-
 test:
   pre:
-    - pip3 install coverage codecov
+    - pip3 install coverage
   override:
     - python3 -m coverage run --branch --source=. setup.py test -a "--durations=5 --maxfail=3 -rxs --junitxml=${CIRCLE_TEST_REPORTS}/test_result.xml${ARG_RUNSLOW}":
         timeout: 1200

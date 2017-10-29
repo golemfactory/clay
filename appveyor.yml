@@ -84,9 +84,9 @@ install:
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
   # requirements
-  - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
   - pip install -r requirements-win.txt
+  - pip install -r requirements-test.txt
   - python setup.py develop
 
   # Slow tests only on branches and PRs with enough approvals
