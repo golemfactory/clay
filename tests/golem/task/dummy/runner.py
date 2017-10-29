@@ -25,6 +25,8 @@ from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
+logger = logging.getLogger(__name__)
+
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
@@ -183,7 +185,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Scan the requesting node's stdout for the address
     address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
-    while True:
+    while requesting_proc.poll() is None:
         line = requesting_proc.stdout.readline().strip()
         if line:
             line = line.decode('utf-8')
@@ -192,6 +194,10 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             if m:
                 requestor_address = m.group(1)
                 break
+
+    if requesting_proc.poll() is not None:
+        logger.error("Requestor proc not started")
+        return "ERROR"
 
     # Start computing nodes in a separate processes
     computing_procs = []
