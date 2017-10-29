@@ -6,7 +6,6 @@ from golem.tools.ci import ci_skip
 from tests.golem.task.dummy import runner, task
 
 
-@ci_skip
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
@@ -77,7 +76,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
                                  mock_enqueue_new_task,
                                  mock_config_logging):
         client = runner.run_requesting_node(self.path, 3)
-        self.assertTrue(mock_reactor.called)
+        self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_enqueue_new_task.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()
@@ -90,7 +89,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         environments = list(client.environments_manager.environments)
         self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
                             for env in environments))
-        self.assertTrue(mock_reactor.called)
+        self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()
 
