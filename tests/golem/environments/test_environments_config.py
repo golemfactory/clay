@@ -1,4 +1,3 @@
-import unittest
 from golem.environments.environment import Environment
 from golem.environments.environmentsconfig import EnvironmentsConfig
 from golem.environments.environmentsmanager import EnvironmentsManager
