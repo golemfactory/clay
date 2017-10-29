@@ -12,9 +12,8 @@ class TestEnvironmentsConfig(TestDirFixture):
         config = EnvironmentsConfig.load_config(envs, self.path)
         assert config
 
-    @unittest.expectedFailure
     def test_load_config_empty(self):
-        envs = {}  # FIXME: Passing empty env list breaks config write.
+        envs = {}
         config = EnvironmentsConfig.load_config(envs, self.path)
         assert config
 
@@ -24,9 +23,7 @@ class TestEnvironmentsConfig(TestDirFixture):
         mgr.load_config(self.path)
         assert mgr.env_config
 
-    @unittest.expectedFailure
     def test_load_config_manager_empty(self):
-        # FIXME: Passing empty env list breaks config write.
         mgr = EnvironmentsManager()
         mgr.load_config(self.path)
         assert mgr.env_config
