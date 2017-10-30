@@ -202,9 +202,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             if self.config_desc.min_price > theader.max_price:
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
-            if not supported.is_ok() and self.task_archiver:
-                self.task_archiver.add_support_status(theader.task_id,
-                                                      supported)
+            if not supported.is_ok():
+                if self.task_archiver:
+                    self.task_archiver.add_support_status(theader.task_id,
+                                                          supported)
             else:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
