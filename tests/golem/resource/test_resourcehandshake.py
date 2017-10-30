@@ -55,25 +55,25 @@ class TestResourceHandshake(TempDirFixture):
         assert not handshake.success()
         assert not handshake.finished()
 
-        assert handshake.local_verified is None
+        assert handshake.local_result is None
         assert not handshake.verify_local('invalid nonce')
-        assert handshake.local_verified is False
+        assert handshake.local_result is False
 
         assert handshake.verify_local(handshake.nonce)
-        assert handshake.local_verified is True
-        assert handshake.remote_verified is None
+        assert handshake.local_result is True
+        assert handshake.remote_result is None
         assert not handshake.success()
         assert not handshake.finished()
 
         handshake.remote_verdict(False)
 
-        assert handshake.remote_verified is False
+        assert handshake.remote_result is False
         assert not handshake.success()
         assert handshake.finished()
 
         handshake.remote_verdict(True)
 
-        assert handshake.remote_verified is True
+        assert handshake.remote_result is True
         assert handshake.success()
         assert handshake.finished()
 
@@ -280,24 +280,28 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._handshake_error.reset_mock()
 
         assert session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
         handshake = ResourceHandshake(self.key_id)
         session._set_handshake(session.key_id, handshake)
 
-        assert session._handshake_required(session.key_id)
+        assert not session._handshake_required(session.key_id)
+        assert session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
-        handshake.local_verified = True
-        handshake.remote_verified = True
+        handshake.local_result = True
+        handshake.remote_result = True
 
         assert not session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
         session._remove_handshake(session.key_id)
         session._block_peer(session.key_id)
 
         assert not session._handshake_required(session.key_id)
+        assert not session._handshake_in_progress(session.key_id)
         assert not session._handshake_error.called
 
     def test_handshake_in_progress(self, *_):
@@ -318,8 +322,8 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         assert session._handshake_in_progress(session.key_id)
 
-        handshake.local_verified = True
-        handshake.remote_verified = False
+        handshake.local_result = True
+        handshake.remote_result = False
 
         assert not session._handshake_in_progress(session.key_id)
 
@@ -360,8 +364,8 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not session.send.called
 
         handshake = ResourceHandshake(self.key_id)
-        handshake.local_verified = False
-        handshake.remote_verified = True
+        handshake.local_result = False
+        handshake.remote_result = True
         session._set_handshake(session.key_id, handshake)
 
         session._finalize_handshake(session.key_id)
@@ -372,8 +376,8 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._finalize_handshake(session.key_id)
         assert not session.send.called
 
-        handshake.local_verified = True
-        handshake.remote_verified = True
+        handshake.local_result = True
+        handshake.remote_result = True
 
         session._finalize_handshake(session.key_id)
         assert session.send.called
@@ -401,8 +405,8 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not session.dropped.called
 
         handshake = ResourceHandshake(self.key_id)
-        handshake.local_verified = False
-        handshake.remote_verified = True
+        handshake.local_result = False
+        handshake.remote_result = True
         session._set_handshake(session.key_id, handshake)
 
         session._handshake_timeout(session.key_id)
@@ -543,7 +547,7 @@ class TestResourceHandshakeShare(TempDirFixture):
         client = Mock(datadir=session.data_dir)
 
         resource_manager = HyperdriveResourceManager(
-            dir_manager=DirManager(self.tempdir)
+            dir_manager=DirManager(session.data_dir)
         )
 
         task_server = TaskServer(
@@ -591,6 +595,9 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
 
         ResourceHandshakeSessionMixin.__init__(self)
 
+        dir_manager = DirManager(data_dir)
+        get_dir = dir_manager.get_task_resource_dir
+
         self.send = Mock()
         self.disconnect = Mock()
         self.dropped = Mock()
@@ -598,9 +605,6 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.content_to_pull = str(uuid.uuid4())
         self.successful_downloads = successful_downloads
         self.successful_uploads = successful_uploads
-
-        dir_manager = DirManager(data_dir)
-        get_dir = dir_manager.get_task_resource_dir
 
         self.key_id = str(uuid.uuid4())
         self.data_dir = data_dir
