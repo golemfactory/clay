@@ -40,7 +40,7 @@ class TestTaskArchiver(TestCase):
             ret.last_checking = last_checking
         return ret
 
-    def getRow(self, reasonsReport, unsupportReason):
+    def get_row(self, reasonsReport, unsupportReason):
         """From unsupport reasons report gets a row corresponding to given
         unsuportReason as tuple
         (ntasks, avg)"""
@@ -52,7 +52,7 @@ class TestTaskArchiver(TestCase):
         ta = TaskArchiver()
         rep = ta.get_unsupport_reasons(5)
         for r in UnsupportReason:
-            self.assertEqual(self.getRow(rep, r), (0, None))
+            self.assertEqual(self.get_row(rep, r), (0, None))
 
     def test_with_remembering_tasks(self):
         ta = TaskArchiver()
@@ -76,14 +76,14 @@ class TestTaskArchiver(TestCase):
         rep = ta.get_unsupport_reasons(5)
 
         def check1(report):
-            self.assertEqual(self.getRow(report, UnsupportReason.APP_VERSION),
+            self.assertEqual(self.get_row(report, UnsupportReason.APP_VERSION),
                              (2, "4"))
-            self.assertEqual(self.getRow(report, UnsupportReason.DENY_LIST),
+            self.assertEqual(self.get_row(report, UnsupportReason.DENY_LIST),
                              (0, None))
-            self.assertEqual(self.getRow(report,
-                                         UnsupportReason.REQUESTOR_TRUST),
+            self.assertEqual(self.get_row(report,
+                                          UnsupportReason.REQUESTOR_TRUST),
                                          (1, 0.5))
-            self.assertEqual(self.getRow(report, UnsupportReason.MAX_PRICE),
+            self.assertEqual(self.get_row(report, UnsupportReason.MAX_PRICE),
                              (1, (7+8+9+10)//4))
         check1(rep)
         ta.add_task(th2)
@@ -125,24 +125,24 @@ class TestTaskArchiver(TestCase):
         ta.add_support_status(th5.task_id, s5)
         ta.do_maintenance()
         rep = ta.get_unsupport_reasons(1, today)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE), (1, 11))
-        self.assertEqual(self.getRow(rep, UnsupportReason.APP_VERSION),
+        self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (1, 11))
+        self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
                          (1, "4"))
-        self.assertEqual(self.getRow(rep, UnsupportReason.REQUESTOR_TRUST),
+        self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (0, None))
         rep = ta.get_unsupport_reasons(2, today)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE), (1, 10))
-        self.assertEqual(self.getRow(rep, UnsupportReason.APP_VERSION),
+        self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (1, 10))
+        self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
                          (1, "4"))
-        self.assertEqual(self.getRow(rep, UnsupportReason.REQUESTOR_TRUST),
+        self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (0, None))
         rep = ta.get_unsupport_reasons(3, today)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE), (2, 7))
-        self.assertEqual(self.getRow(rep, UnsupportReason.APP_VERSION),
+        self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (2, 7))
+        self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
                          (3, "4"))
-        self.assertEqual(self.getRow(rep, UnsupportReason.REQUESTOR_TRUST),
+        self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (2, 0.5))
-        self.assertEqual(self.getRow(rep, UnsupportReason.DENY_LIST),
+        self.assertEqual(self.get_row(rep, UnsupportReason.DENY_LIST),
                          (0, None))
         # Re-add task that has deadline in the future - should not change the
         # report
@@ -158,12 +158,12 @@ class TestTaskArchiver(TestCase):
         ta.do_maintenance()
         rep3 = ta.get_unsupport_reasons(3, today)
         self.assertNotEqual(rep, rep3)
-        self.assertEqual(self.getRow(rep3, UnsupportReason.MAX_PRICE), (2, 6))
-        self.assertEqual(self.getRow(rep3, UnsupportReason.APP_VERSION),
+        self.assertEqual(self.get_row(rep3, UnsupportReason.MAX_PRICE), (2, 6))
+        self.assertEqual(self.get_row(rep3, UnsupportReason.APP_VERSION),
                          (3, "4"))
-        self.assertEqual(self.getRow(rep3, UnsupportReason.REQUESTOR_TRUST),
+        self.assertEqual(self.get_row(rep3, UnsupportReason.REQUESTOR_TRUST),
                          (3, 0.5))
-        self.assertEqual(self.getRow(rep3, UnsupportReason.DENY_LIST),
+        self.assertEqual(self.get_row(rep3, UnsupportReason.DENY_LIST),
                          (0, None))
 
     def test_max_tasks(self):
@@ -176,11 +176,11 @@ class TestTaskArchiver(TestCase):
         ta.add_support_status(th2.task_id, self.ssmp)
         ta.do_maintenance()
         rep = ta.get_unsupport_reasons(5)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE),
+        self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE),
                          (2, 4))
         th3 = self.header(7)
         ta.add_task(th3)
         ta.add_support_status(th3.task_id, self.ssmp)
         ta.do_maintenance()
         rep = ta.get_unsupport_reasons(5)
-        self.assertEqual(self.getRow(rep, UnsupportReason.MAX_PRICE), (2, 4))
+        self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (2, 4))
