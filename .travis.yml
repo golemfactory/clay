@@ -42,7 +42,7 @@ before_install:
   - export ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
 script:
-  - python3 -m pytest --cov=golem${ARG_RUNSLOW}
+  - python3 -m pytest --cov=golem --durations=5 --maxfail=3 -rxs${ARG_RUNSLOW}
   - if [ -z "${ARG_RUNSLOW}" ]; then echo "Not enough approvals."; exit 1; fi
 
 after_success:
