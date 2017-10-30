@@ -183,13 +183,14 @@ class TaskManager(TaskEventListener):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
 
     def dump_task(self, task_id: str) -> None:
-        logger.debug('DUMP TASK')
+        logger.debug('DUMP TASK CALLED')
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
             filepath = self._dump_filepath(task_id)
-            logger.debug('DUMP TASK %r', filepath)
+            logger.debug('DUMPING TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
+            logger.debug('TASK %s DUMPED in %r', task_id, filepath)
         except Exception as e:
             logger.exception(
                 'DUMP ERROR task_id: %r task: %r state: %r',
@@ -208,27 +209,28 @@ class TaskManager(TaskEventListener):
             logger.warning("Couldn't remove dump file: %s - %s", e)
 
     def restore_tasks(self) -> None:
-        logger.debug('RESTORE TASKS')
+        logger.debug('SEARCHING FOR TASKS TO RESTORE')
         for path in self.tasks_dir.iterdir():
-            logger.debug('RESTORE TASKS %r', path)
             if not path.suffix == '.pickle':
                 continue
-            logger.debug('RESTORE TASKS really %r', path)
+            logger.debug('RESTORE TASKS %r', path)
             with path.open('rb') as f:
                 try:
                     task, state = pickle.load(f)
                     self.tasks[task.header.task_id] = task
                     self.tasks_states[task.header.task_id] = state
+
+                    dispatcher.send(
+                        signal='golem.taskmanager',
+                        event='task_status_updated',
+                        task_id=task.header.task_id
+                    )
+                    logger.debug('TASK %s RESTORED from %r',
+                                 task.header.task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
                     path.unlink()
                     continue
-            dispatcher.send(
-                signal='golem.taskmanager',
-                event='task_restored',
-                task=task,
-                state=state
-            )
 
     @handle_task_key_error
     def resources_send(self, task_id):

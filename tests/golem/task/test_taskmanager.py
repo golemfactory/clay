@@ -36,47 +36,6 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
 from apps.dummy.task.verificator import DummyTaskVerificator
 from golem.resource.dirmanager import DirManager
 
-#
-# class TestTask(Task):
-#     def __init__(self, header, src_code, subtasks_id, verify_subtasks):
-#         super(TestTask, self).__init__(header, src_code, Mock())
-#         self.finished = {k: False for k in subtasks_id}
-#         self.restarted = {k: False for k in subtasks_id}
-#         self.verify_subtasks = verify_subtasks
-#         self.subtasks_id = subtasks_id
-#
-#     def query_extra_data(self, perf_index, num_cores=1, node_id=None,
-#                          node_name=None):
-#         ctd = ComputeTaskDef()
-#         ctd.task_id = self.header.task_id
-#         ctd.subtask_id = self.subtasks_id[0]
-#         ctd.environment = "DEFAULT"
-#         ctd.should_wait = False
-#         self.subtasks_id = self.subtasks_id[1:]
-#         e = self.ExtraData(False, ctd)
-#         return e
-#
-#     def needs_computation(self):
-#         return sum(self.finished.values()) != len(self.finished)
-#
-#     def computation_finished(self, subtask_id, task_result,
-#                              result_type=ResultType.DATA):
-#         if not self.restarted[subtask_id]:
-#             self.finished[subtask_id] = True
-#
-#     def verify_subtask(self, subtask_id):
-#         return self.verify_subtasks[subtask_id]
-#
-#     def finished_computation(self):
-#         return not self.needs_computation()
-#
-#     def verify_task(self):
-#         return self.finished_computation()
-#
-#     def restart_subtask(self, subtask_id):
-#         self.restarted[subtask_id] = True
-
-
 class PickableMock(Mock):
     def __reduce__(self):
         return (Mock, ())
@@ -99,15 +58,6 @@ class TaskMock(Task):
     # to make the mock pickable
     def __reduce__(self):
         return (Mock, ())
-
-# GG todo remove
-# class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
-#     def test_restore(self):
-#         keys_auth = Mock()
-#         with self.assertLogs(logger, level="DEBUG") as l:
-#             TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistence=True)
-#         assert any("RESTORE TASKS" in log for log in l.output)
-
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
@@ -182,113 +132,53 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.start_task(str(uuid.uuid4()))
         assert any("This is not my task" in log for log in l.output)
 
-    def test_restore(self):
-        keys_auth = Mock()
-        with self.assertLogs(logger, level="DEBUG") as l:
-            TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistence=True)
-        assert any("RESTORE TASKS" in log for log in l.output)
-
-    def get_test_dummy_task(self):
+    def get_test_dummy_task(self, task_id):
         defaults = DummyTaskDefaults()
-        td = DummyTaskDefinition(defaults)
+        tdd = DummyTaskDefinition(defaults)
         dm = DirManager(self.path)
-        dtb = DummyTaskBuilder("MyNodeName", td, self.path, dm)
-        return dtb.build()
+        dtb = DummyTaskBuilder("MyNodeName", tdd, self.path, dm)
+
+        dummy_task = dtb.build()
+        header = self._get_task_header(task_id=task_id, timeout=120.0,
+                              subtask_timeout=120.0)
+        dummy_task.header=header
+
+        return dummy_task
 
     def test_dump_and_restore(self):
-        # task_mock = self._get_task_mock()
-        # self.tm.task_persistence = True
-        # self.tm.add_new_task(task_mock)
-        # self.tm.start_task(task_mock.header.task_id)
 
+        task_ids = ["xyz0", "xyz1"]
+        tasks =  [ self.get_test_dummy_task(task_id) for task_id in task_ids]
 
-        class TestTask(Task):
-            def __init__(self, header, src_code, subtasks_id, verify_subtasks):
-                super(TestTask, self).__init__(header, src_code, PickableMock())
-                self.finished = {k: False for k in subtasks_id}
-                self.restarted = {k: False for k in subtasks_id}
-                self.verify_subtasks = verify_subtasks
-                self.subtasks_id = subtasks_id
+        with self.assertLogs(logger, level="DEBUG") as l:
+            keys_auth = Mock()
+            keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
+            temp_tm = TaskManager("ABC",Node(),
+                keys_auth=keys_auth,
+                root_path=self.path,
+                task_persistence=True)
 
-            def query_extra_data(self, perf_index, num_cores=1, node_id=None,
-                                 node_name=None):
-                ctd = ComputeTaskDef()
-                ctd.task_id = self.header.task_id
-                ctd.subtask_id = self.subtasks_id[0]
-                ctd.environment = "DEFAULT"
-                ctd.should_wait = False
-                self.subtasks_id = self.subtasks_id[1:]
-                e = self.ExtraData(False, ctd)
-                return e
+            temp_tm.key_id = "KEYID"
+            temp_tm.listen_address = "10.10.10.10"
+            temp_tm.listen_port = 2222
 
-            def needs_computation(self):
-                return sum(self.finished.values()) != len(self.finished)
-
-            def computation_finished(self, subtask_id, task_result,
-                                     result_type=ResultType.DATA):
-                if not self.restarted[subtask_id]:
-                    self.finished[subtask_id] = True
-
-            def verify_subtask(self, subtask_id):
-                return self.verify_subtasks[subtask_id]
-
-            def finished_computation(self):
-                return not self.needs_computation()
-
-            def verify_task(self):
-                return self.finished_computation()
-
-            def restart_subtask(self, subtask_id):
-                self.restarted[subtask_id] = True
-
-        header = self._get_task_header(task_id="xyz", timeout=120.0,
-                                       subtask_timeout=120.0)
-
-        # t = TestTask(header, "print 'Hello world'", ["xxyyzz"], verify_subtasks={"xxyyzz": True})
-        # self.tm.task_persistence = True
-        # self.tm.add_new_task(t)
-        # self.tm.start_task(t.header.task_id)
-
-
-
-
-        # temp_tm = self.tm
-        # temp_tm.task_persistence = True
-        # temp_tm.add_new_task(task_mock)
-        # temp_tm.start_task(task_mock.header.task_id)
-
-        # with self.tm as temp_tm:
-        #     temp_tm.task_persistence = True
-        #     temp_tm.add_new_task(task_mock)
-        #     temp_tm.start_task(task_mock.header.task_id)
-
-
-
-
-
-        dt = self.get_test_dummy_task()
-        dt.header=header
-        self.tm.task_persistence = True
-        self.tm.add_new_task(dt)
-        self.tm.start_task(dt.header.task_id)
-
-
+            for task,task_id in zip(tasks,task_ids ):
+                temp_tm.add_new_task(task)
+                temp_tm.start_task(task.header.task_id)
+                assert any("TASK %s DUMPED" % task_id in log for log in l.output)
 
         with self.assertLogs(logger, level="DEBUG") as l:
             fresh_tm = TaskManager("ABC", Node(), keys_auth=Mock(),
                                  root_path=self.path, task_persistence=True)
-            # self.tasks[task.header.task_id] = task
-            x = fresh_tm.tasks[dt.header.task_id]
-            is_true = x == dt
 
-            x = 123
+            assert any("SEARCHING FOR TASKS TO RESTORE" in log for log in l.output)
+            assert any("RESTORE TASKS" in log for log in l.output)
 
-
-
-        # self.tm.notice_task_updated = Mock()
-        # assert isinstance(self.tm, TaskEventListener)
-        # self.tm.notify_update_task("xyz")
-        # self.tm.notice_task_updated.assert_called_with("xyz")
+            for task,task_id in zip(tasks,task_ids ):
+                restored_task = fresh_tm.tasks[task.header.task_id]
+                assert any("TASK %s RESTORED" % task_id in log for log in l.output)
+                # check some task's properties...
+                assert restored_task.header.task_id == task.header.task_id
 
 
 
@@ -425,8 +315,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'", Mock())
         self.tm.tasks["xyz"] = task
         self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
-
-
 
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
