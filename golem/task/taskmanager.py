@@ -2,21 +2,13 @@ import logging
 import pickle
 import time
 
-# FIXME: use the PEP-3107 annotations when we reach 3.6 and remove the
-# suppresion then
-from typing import Dict  # pylint: disable=unused-import
-
 from pathlib import Path
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
-from golem.core.common import (
-    HandleKeyError, get_timestamp_utc, timeout_to_deadline, to_unicode,
-    update_dict
-)
-from golem.core.keysauth import KeysAuth
+from golem.core.common import HandleKeyError, get_timestamp_utc, \
+    timeout_to_deadline, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
@@ -64,8 +56,7 @@ class TaskManager(TaskEventListener):
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
-            tasks_dir="tasks", task_persistence=True
-            ):
+            tasks_dir="tasks", task_persistence=True):
         super().__init__()
 
         self.apps_manager = AppsManager()
@@ -87,9 +78,6 @@ class TaskManager(TaskEventListener):
         self.listen_address = listen_address
         self.listen_port = listen_port
 
-        # FIXME Remove this variable and make task persistance obligatory
-        # after it is more tested
-        # Remember to also remove it from init params
         self.task_persistence = task_persistence
 
         tasks_dir = Path(tasks_dir)
@@ -145,7 +133,7 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[definition.task_type.lower()]
         return task_type.task_builder_type.build_dictionary(definition)
 
-    def add_new_task(self, task: Task) -> None:
+    def add_new_task(self, task):
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
@@ -176,7 +164,7 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task.header.task_id] = ts
 
     @handle_task_key_error
-    def start_task(self, task_id: str) -> None:
+    def start_task(self, task_id):
         task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
 
@@ -241,8 +229,7 @@ class TaskManager(TaskEventListener):
 
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size, num_cores=0, address=""
-            ):
+            max_resource_size, max_memory_size, num_cores=0, address=""):
         """ Assign next subtask from task <task_id> to node with given
         id <node_id> and name. If subtask is assigned the function
         is returning a tuple (
@@ -510,7 +497,7 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(th.task_id)
         return nodes_with_timeouts
 
-    def get_progresses(self) -> Dict[str, LocalTaskStateSnapshot]:
+    def get_progresses(self):
         tasks_progresses = {}
 
         for t in list(self.tasks.values()):
@@ -528,13 +515,12 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def get_resources(
-            self, task_id, resource_header, resource_type=ResourceType.ZIP
-            ):
+            self, task_id, resource_header, resource_type=ResourceType.ZIP):
         task = self.tasks[task_id]
         return task.get_resources(resource_header, resource_type)
 
     @handle_task_key_error
-    def restart_task(self, task_id: str) -> None:
+    def restart_task(self, task_id):
         logger.info("restarting task")
         self.dir_manager.clear_temporary(task_id)
         task = self.tasks[task_id]
@@ -584,7 +570,7 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def abort_task(self, task_id: str) -> None:
+    def abort_task(self, task_id):
         self.tasks[task_id].abort()
         self.tasks_states[task_id].status = TaskStatus.aborted
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
