@@ -13,9 +13,8 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, \
-    TaskEventListener, Task, \
-    ResourceType, TaskHeader
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, \
+    ResourceType
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 
@@ -222,7 +221,7 @@ class TaskManager(TaskEventListener):
             )
 
     @handle_task_key_error
-    def resources_send(self, task_id: str) -> None:
+    def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
@@ -335,7 +334,7 @@ class TaskManager(TaskEventListener):
 
         return ret
 
-    def get_trust_mod(self, subtask_id: str):
+    def get_trust_mod(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
@@ -347,7 +346,7 @@ class TaskManager(TaskEventListener):
         for task in list(self.tasks.values()):
             task.header.signature = self.sign_task_header(task.header)
 
-    def sign_task_header(self, task_header: TaskHeader):
+    def sign_task_header(self, task_header):
         return self.keys_auth.sign(task_header.to_binary())
 
     def verify_subtask(self, subtask_id):
@@ -379,7 +378,7 @@ class TaskManager(TaskEventListener):
         subtask_state.value = value
 
     @handle_subtask_key_error
-    def get_value(self, subtask_id: str) -> int:
+    def get_value(self, subtask_id):
         """ Return value of a given subtask
         :param subtask_id:  id of a computed subtask
         :return long: price that should be paid for given subtask
