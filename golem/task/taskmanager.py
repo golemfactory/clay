@@ -64,7 +64,7 @@ class TaskManager(TaskEventListener):
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
-            tasks_dir="tasks", task_persistence=False
+            tasks_dir="tasks", task_persistence=True
             ):
         super().__init__()
 
@@ -112,7 +112,7 @@ class TaskManager(TaskEventListener):
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
-            tasks_dir / "tkeeper",
+            tasks_dir,
             persist=self.task_persistence,
         )
 
