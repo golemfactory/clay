@@ -6,10 +6,9 @@ import random
 import time
 
 from typing import Optional
-import typing
 from semantic_version import Version
 
-from golem.core.common import HandleKeyError, get_timestamp_utc
+from golem.core import common
 from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -55,7 +54,7 @@ class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
-    handle_key_error = HandleKeyError(log_key_error)
+    handle_key_error = common.HandleKeyError(log_key_error)
 
     def __init__(self, tasks_path: pathlib.Path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
@@ -63,7 +62,7 @@ class CompTaskKeeper:
         tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}  # type: typing.Dict[str, CompTaskInfo]
+        self.active_tasks = {}
         self.subtask_to_task = {}  # maps subtasks id to tasks id
         if not tasks_path.is_dir():
             tasks_path.mkdir()
@@ -71,18 +70,15 @@ class CompTaskKeeper:
         self.persist = persist
         self.restore()
 
-    def dump(self) -> None:
+    def dump(self):
         if not self.persist:
             return
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
-            from pprint import pformat
-            for task in list(self.active_tasks.values()):
-                logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
-    def restore(self) -> None:
+    def restore(self):
         if not self.persist:
             return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
@@ -116,10 +112,6 @@ class CompTaskKeeper:
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, price)
         self.dump()
-
-    @handle_key_error
-    def get_subtask_ttl(self, task_id):
-        return self.active_tasks[task_id].header.subtask_timeout
 
     @handle_key_error
     def get_task_env(self, task_id):
@@ -162,6 +154,16 @@ class CompTaskKeeper:
         logger.debug('CT.request_failure(%r)', task_id)
         self.active_tasks[task_id].requests -= 1
         self.dump()
+
+    def remove_old_tasks(self):
+        for task_id in frozenset(self.active_tasks):
+            deadline = self.active_tasks[task_id].header.deadline
+            delta = deadline - common.get_timestamp_utc()
+            if delta > 0:
+                continue
+            logger.debug("Removing comp_task after deadline: %s", task_id)
+            del self.active_tasks[task_id]
+            self.dump()
 
 
 class TaskHeaderKeeper:
@@ -227,7 +229,7 @@ class TaskHeaderKeeper:
         """
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
-        if th_dict_repr['deadline'] < get_timestamp_utc():
+        if th_dict_repr['deadline'] < common.get_timestamp_utc():
             msg = "Deadline already passed \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
@@ -451,7 +453,7 @@ class TaskHeaderKeeper:
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):
-            cur_time = get_timestamp_utc()
+            cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)

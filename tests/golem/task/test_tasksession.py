@@ -94,7 +94,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(res, data)
 
         ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level='WARNING') as l:
+        with self.assertLogs(logger, level='DEBUG') as l:
             res = ts.decrypt(data)
         self.assertTrue(any("Different error" in log for log in l.output))
         self.assertIsNone(res)
@@ -309,7 +309,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_manager = Mock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
-        ts.task_server.get_subtask_ttl.return_value = 31313
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]

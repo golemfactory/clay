@@ -164,6 +164,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
+        super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
         self.send_waiting_payments()
@@ -365,9 +366,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def get_resource_port(self):
         return self.client.resource_port
-
-    def get_subtask_ttl(self, task_id):
-        return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
 
     def task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
@@ -979,6 +977,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
+        self.task_manager.comp_task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)

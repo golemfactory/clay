@@ -113,7 +113,7 @@ class BaseResourceServer(object):
                                                         error=self._download_error,
                                                         async=async)
 
-    def _download_success(self, resource, task_id):
+    def _download_success(self, resource, _, task_id):
         if resource:
 
             collected = self._remove_pending_resource(resource, task_id)
