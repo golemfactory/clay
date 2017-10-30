@@ -179,11 +179,14 @@ class TaskManager(TaskEventListener):
             logger.info("Task {} added".format(task.header.task_id))
             self.notice_task_updated(task.header.task_id)
 
+    def _dump_filepath(self, task_id):
+        return self.tasks_dir / ('%s.pickle' % (task_id,))
+
     def dump_task(self, task_id: str) -> None:
         logger.debug('DUMP TASK')
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
-            filepath = self.tasks_dir / ('%s.pickle' % (task_id,))
+            filepath = self._dump_filepath(task_id)
             logger.debug('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
@@ -196,6 +199,13 @@ class TaskManager(TaskEventListener):
             if filepath.exists():
                 filepath.unlink()
             raise
+
+    def remove_dump(self, task_id: str):
+        filepath = self._dump_filepath(task_id)
+        try:
+            filepath.unlink()
+        except OSError as e:
+            logger.warning("Couldn't remove dump file: %s - %s", e)
 
     def restore_tasks(self) -> None:
         logger.debug('RESTORE TASKS')
@@ -593,6 +603,7 @@ class TaskManager(TaskEventListener):
         del self.tasks_states[task_id]
 
         self.dir_manager.clear_temporary(task_id)
+        self.remove_dump(task_id)
 
     @handle_task_key_error
     def query_task_state(self, task_id):
