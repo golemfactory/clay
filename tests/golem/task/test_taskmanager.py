@@ -77,7 +77,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             Node(),
             keys_auth,
             root_path=self.path,
-            task_persistence=False
+            task_persistence=True
         )
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
@@ -257,6 +257,22 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert self.tm.tasks.get("xyz") is None
         assert self.tm.tasks_states.get("xyz") is None
 
+    def test_delete_task_with_dump(self):
+        task_id = "xyz"
+        task = self.get_test_dummy_task(task_id)
+        with self.assertLogs(logger, level="DEBUG") as l:
+            self.tm.add_new_task(task)
+            self.tm.start_task(task.header.task_id)
+            assert any("TASK %s DUMPED" % task_id in log for log in l.output)
+            assert any("Task %s added" % task_id in log for log in l.output)
+
+            paf = self.tm._dump_filepath(task_id)
+            assert paf.is_file()
+            self.tm.delete_task(task_id)
+            assert self.tm.tasks.get(task_id) is None
+            assert self.tm.tasks_states.get(task_id) is None
+            assert not paf.is_file()
+
     def test_get_and_set_value(self):
         with self.assertLogs(logger, level="WARNING") as l:
             self.tm.set_value("xyz", "xxyyzz", 13)
@@ -427,7 +443,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ctd.subtask_id == "sss4"
         assert self.tm.computed_task_received("sss4", [], 0)
 
-    def test_task_result_incoming(self):
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_result_incoming(self, dump_mock):
         subtask_id = "xxyyzz"
         node_id = 'node'
 
@@ -458,6 +476,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
             self.tm.task_result_incoming(subtask_id)
             assert result_incoming_mock.called
+            assert dump_mock.called
 
         self.tm.tasks = []
         with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
