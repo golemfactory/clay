@@ -503,70 +503,6 @@ class MessageSetTaskSession(Message):
         super(MessageSetTaskSession, self).__init__(**kwargs)
 
 
-class MessageNatHole(Message):
-    TYPE = P2P_MESSAGE_BASE + 17
-
-    __slots__ = [
-        'key_id',
-        'address',
-        'port',
-        'conn_id'
-    ] + Message.__slots__
-
-    def __init__(
-            self,
-            key_id=None,
-            address=None,
-            port=None,
-            conn_id=None,
-            **kwargs):
-        """
-        Create message with information about nat hole
-        :param key_id: key of the node behind nat hole
-        :param str address: address of the nat hole
-        :param int port: port of the nat hole
-        :param uuid conn_id: connection id for reference
-        """
-        self.key_id = key_id
-        self.address = address
-        self.port = port
-        self.conn_id = conn_id
-        super(MessageNatHole, self).__init__(**kwargs)
-
-
-class MessageNatTraverseFailure(Message):
-    TYPE = P2P_MESSAGE_BASE + 18
-
-    __slots__ = ['conn_id'] + Message.__slots__
-
-    def __init__(self, conn_id=None, **kwargs):
-        """
-        Create message with information about unsuccessful nat traverse
-        :param uuid conn_id: connection id for reference
-        """
-        self.conn_id = conn_id
-        super(MessageNatTraverseFailure, self).__init__(**kwargs)
-
-
-class MessageInformAboutNatTraverseFailure(Message):
-    TYPE = P2P_MESSAGE_BASE + 19
-
-    __slots__ = [
-        'key_id',
-        'conn_id',
-    ] + Message.__slots__
-
-    def __init__(self, key_id=None, conn_id=None, **kwargs):
-        """Create request to inform node with key_id about unsuccessful
-           nat traverse.
-        :param key_id: key of the node that should be inform about failure
-        :param uuid conn_id: connection id for reference
-        """
-        self.key_id = key_id
-        self.conn_id = conn_id
-        super(MessageInformAboutNatTraverseFailure, self).__init__(**kwargs)
-
-
 TASK_MSG_BASE = 2000
 
 
@@ -987,11 +923,6 @@ class MessageWaitForNatTraverse(Message):
         super(MessageWaitForNatTraverse, self).__init__(**kwargs)
 
 
-class MessageNatPunchFailure(Message):
-    """Create message that informs node about unsuccessful nat punch"""
-    TYPE = TASK_MSG_BASE + 24
-
-
 class MessageWaitingForResults(Message):
     TYPE = TASK_MSG_BASE + 25
 
@@ -1221,9 +1152,6 @@ def init_messages():
             MessageResourcePeers,
             MessageWantToStartTaskSession,
             MessageSetTaskSession,
-            MessageNatHole,
-            MessageNatTraverseFailure,
-            MessageInformAboutNatTraverseFailure,
             # Ranking messages
             MessageDegree,
             MessageGossip,
@@ -1247,7 +1175,6 @@ def init_messages():
             MessageMiddlemanReady,
             MessageNatPunch,
             MessageWaitForNatTraverse,
-            MessageNatPunchFailure,
             MessageWaitingForResults,
             MessageSubtaskResultAccepted,
             MessageSubtaskResultRejected,
