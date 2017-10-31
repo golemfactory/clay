@@ -176,7 +176,7 @@ class TaskManager(TaskEventListener):
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
-            logger.info("Task {} added".format(task.header.task_id))
+            logger.info("Task %s added" % task.header.task_id)
             self.notice_task_updated(task.header.task_id)
 
     def _dump_filepath(self, task_id):
@@ -205,6 +205,8 @@ class TaskManager(TaskEventListener):
         filepath = self._dump_filepath(task_id)
         try:
             filepath.unlink()
+            logger.debug('TASK DUMP with id %s REMOVED from %r',
+                         task_id, filepath)
         except OSError as e:
             logger.warning("Couldn't remove dump file: %s - %s", e)
 
