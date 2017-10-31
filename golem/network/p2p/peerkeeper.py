@@ -4,6 +4,7 @@ import random
 import operator
 from collections import deque
 import math
+import itertools
 
 logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
@@ -171,16 +172,12 @@ class PeerKeeper(object):
         if not alpha:
             alpha = self.concurrency
 
-        neigh = []
-        for bucket in self.buckets_by_id_distance(key_num):
-            if len(neigh) == alpha:
-                break
-            for peer in bucket.peers_by_id_distance(key_num):
-                if int(peer.key, 16) != key_num:
-                    neigh.append(peer)
-                    if len(neigh) == alpha:
-                        break
-        return neigh
+        def gen_neigh():
+            for bucket in self.buckets_by_id_distance(key_num):
+                for peer in bucket.peers_by_id_distance(key_num):
+                    if int(peer.key, 16) != key_num:
+                        yield peer
+        return list(itertools.islice(gen_neigh(), alpha))
 
     def buckets_by_id_distance(self, key_num):
         """
