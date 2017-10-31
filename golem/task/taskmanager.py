@@ -216,23 +216,27 @@ class TaskManager(TaskEventListener):
             if not path.suffix == '.pickle':
                 continue
             logger.debug('RESTORE TASKS %r', path)
+
+            task_id = None
             with path.open('rb') as f:
                 try:
                     task, state = pickle.load(f)
                     self.tasks[task.header.task_id] = task
                     self.tasks_states[task.header.task_id] = state
 
-                    dispatcher.send(
-                        signal='golem.taskmanager',
-                        event='task_status_updated',
-                        task_id=task.header.task_id
-                    )
+                    task_id = task.header.task_id
                     logger.debug('TASK %s RESTORED from %r',
                                  task.header.task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
                     path.unlink()
-                    continue
+
+            if task_id is not None:
+                dispatcher.send(
+                    signal='golem.taskmanager',
+                    event='task_status_updated',
+                    task_id=task_id
+                )
 
     @handle_task_key_error
     def resources_send(self, task_id):
