@@ -94,7 +94,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(res, data)
 
         ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level='WARNING') as l:
+        with self.assertLogs(logger, level='DEBUG') as l:
             res = ts.decrypt(data)
         self.assertTrue(any("Different error" in log for log in l.output))
         self.assertIsNone(res)
