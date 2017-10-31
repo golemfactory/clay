@@ -4,13 +4,16 @@ from click.testing import CliRunner
 from mock import patch
 
 from golem.core.variables import PROTOCOL_ID
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
 from golemapp import start
 
 
 @ci_skip
-class TestGolemApp(TempDirFixture):
+class TestGolemApp(TempDirFixture, PEP8MixIn):
+    PEP8_FILES = [
+        "golemapp.py",
+    ]
     def setUp(self):
         super(TestGolemApp, self).setUp()
 

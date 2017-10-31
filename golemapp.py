@@ -5,6 +5,10 @@ from multiprocessing import freeze_support
 import logging
 from ethereum import slogging
 
+from golem.core.variables import PROTOCOL_ID
+from golem.node import OptNode
+
+
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.
 # This patch is to settle down this.
@@ -20,9 +24,6 @@ def monkey_patched_getLogger(*args, **kwargs):
 
 
 slogging.SManager.getLogger = monkey_patched_getLogger
-
-from golem.core.variables import PROTOCOL_ID
-from golem.node import OptNode
 
 
 @click.command()
@@ -64,7 +65,7 @@ from golem.node import OptNode
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth,version, m, geth_port):
+          start_geth, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
