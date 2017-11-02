@@ -14,7 +14,7 @@ from golem.model import Payment
 from golem.model import db
 from golem.network.transport import message
 from golem.network.transport import tcpnetwork
-from golem.network.transport.session import MiddlemanSafeSession
+from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
@@ -46,7 +46,7 @@ def dropped_after():
     return inner
 
 
-class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.MidAndFilesProtocol
@@ -62,7 +62,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                               session should enhance
         :return:
         """
-        MiddlemanSafeSession.__init__(self, conn)
+        BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
@@ -100,11 +100,11 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
-        MiddlemanSafeSession.interpret(self, msg)
+        BasicSafeSession.interpret(self, msg)
 
     def dropped(self):
         """ Close connection """
-        MiddlemanSafeSession.dropped(self)
+        BasicSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
             if self.key_id:
@@ -186,7 +186,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.task_result_sent(extra_data["subtask_id"])
-        MiddlemanSafeSession.data_sent(self, extra_data)
+        BasicSafeSession.data_sent(self, extra_data)
         self.dropped()
 
     def full_data_received(self, extra_data):
@@ -726,10 +726,10 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         self.inform_worker_about_payment(payment)
 
     def send(self, msg, send_unverified=False):
-        if not self.is_middleman and not self.verified and not send_unverified:
+        if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
             return
-        MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
+        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(
             "->",
             time.localtime(),

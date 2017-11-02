@@ -649,10 +649,7 @@ class MidAndFilesProtocol(FilesProtocol):
 
     ############################
     def _prepare_msg_to_send(self, msg):
-        if self.session.is_middleman:
-            return msg
-        else:
-            return FilesProtocol._prepare_msg_to_send(self, msg)
+        return FilesProtocol._prepare_msg_to_send(self, msg)
 
 #############
 # Producers #
