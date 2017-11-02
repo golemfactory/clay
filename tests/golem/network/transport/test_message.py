@@ -230,7 +230,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         for message_class, key in (
                     (message.MessageDisconnect, 'reason'),
                     (message.MessageDegree, 'degree'),
-                    (message.MessageWaitForNatTraverse, 'port'),
                 ):
             value = random.randint(-10**10, 10**10)
             msg = message_class(**{key: value})
@@ -361,18 +360,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             ['conn_id', conn_id],
             ['key_id', key_id],
             ['dest_node_key_id', dest_node],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_nat_punch(self):
-        asking_node = 'test-an-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = [
-            ['asking_node', asking_node],
-            ['dest_node', dest_node],
-            ['ask_conn_id', ask_conn_id],
         ]
         self.assertEqual(expected, msg.slots())
 

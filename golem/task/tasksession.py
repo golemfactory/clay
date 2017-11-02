@@ -428,25 +428,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             )
         )
 
-    def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
-        """Ask node to inform other node about nat hole that this node will
-           prepare with this connection
-        :param Node asking_node: node that should be informed about potential
-                                 hole based on this connection
-        :param Node dest_node: node that will try to end this connection
-                               and open hole in it's NAT
-        :param uuid ask_conn_id: connection id that asking node gave
-                                 for reference
-        :return:
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageNatPunch(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
 
     #########################
     # Reactions to messages #
@@ -736,24 +717,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         self.is_middleman = True
         self.open_session.is_middleman = True
 
-    def _react_to_nat_punch(self, msg):
-        self.task_server.organize_nat_punch(
-            self.address,
-            self.port,
-            self.key_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-        self.send(message.MessageWaitForNatTraverse(port=self.port))
-        self.dropped()
-
-    def _react_to_wait_for_nat_traverse(self, msg):
-        self.task_server.wait_for_nat_traverse(msg.port, self)
-
-    def _react_to_nat_punch_failure(self, msg):
-        pass
-
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -992,8 +955,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             message.MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
             message.MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
             message.MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
-            message.MessageNatPunch.TYPE: self._react_to_nat_punch,
-            message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa

@@ -878,51 +878,6 @@ class MessageMiddlemanReady(Message):
     TYPE = TASK_MSG_BASE + 21
 
 
-class MessageNatPunch(Message):
-    TYPE = TASK_MSG_BASE + 22
-
-    __slots__ = [
-        'asking_node',
-        'dest_node',
-        'ask_conn_id'
-    ] + Message.__slots__
-
-    def __init__(
-            self,
-            asking_node=None,
-            dest_node=None,
-            ask_conn_id=None,
-            **kwargs):
-        """Create message that is used to ask node to inform other node about
-           nat hole that this node will prepare with this connection
-        :param Node asking_node: node that should be informed about potential
-                                 hole based on this connection
-        :param Node dest_node: node that will try to end this connection and
-                               open hole in it's NAT
-        :param uuid ask_conn_id: connection id that asking node gave for
-                                 reference
-        """
-        self.asking_node = asking_node
-        self.dest_node = dest_node
-        self.ask_conn_id = ask_conn_id
-        super(MessageNatPunch, self).__init__(**kwargs)
-
-
-class MessageWaitForNatTraverse(Message):
-    TYPE = TASK_MSG_BASE + 23
-
-    __slots__ = ['port'] + Message.__slots__
-
-    def __init__(self, port=None, **kwargs):
-        """Create message that inform node that it should start listening on
-           given port (to open nat hole)
-        :param int port: this connection goes out from this port, other node
-                         should listen on this port
-        """
-        self.port = port
-        super(MessageWaitForNatTraverse, self).__init__(**kwargs)
-
-
 class MessageWaitingForResults(Message):
     TYPE = TASK_MSG_BASE + 25
 
@@ -1173,8 +1128,6 @@ def init_messages():
             MessageBeingMiddlemanAccepted,
             MessageMiddlemanAccepted,
             MessageMiddlemanReady,
-            MessageNatPunch,
-            MessageWaitForNatTraverse,
             MessageWaitingForResults,
             MessageSubtaskResultAccepted,
             MessageSubtaskResultRejected,
