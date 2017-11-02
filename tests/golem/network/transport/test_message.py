@@ -204,9 +204,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 message.MessageGetTasks,
                 message.MessageGetResourcePeers,
                 message.MessageStopGossip,
-                message.MessageBeingMiddlemanAccepted,
-                message.MessageMiddlemanAccepted,
-                message.MessageMiddlemanReady,
                 message.MessageNatPunchFailure,
                 message.MessageWaitingForResults,
                 ):
@@ -363,30 +360,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         expected = [
             ['subtask_id', subtask_id],
             ['err', err],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_middleman(self):
-        asking_node = 'test-an-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = [
-            ['asking_node', asking_node],
-            ['dest_node', dest_node],
-            ['ask_conn_id', ask_conn_id],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_join_middleman_conn(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node)
-        expected = [
-            ['conn_id', conn_id],
-            ['key_id', key_id],
-            ['dest_node_key_id', dest_node],
         ]
         self.assertEqual(expected, msg.slots())
 

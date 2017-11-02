@@ -517,26 +517,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         else:
             session.dropped()
 
-    def respond_to_middleman(self, key_id, session, conn_id, dest_key_id):
-        if conn_id in self.response_list:
-            self.respond_to(dest_key_id, session, conn_id)
-        else:
-            logger.warning("No response for {}".format(dest_key_id))
-            session.dropped()
-
-    def be_a_middleman(self, key_id, open_session, conn_id, asking_node, dest_node, ask_conn_id):
-        key_id = asking_node.key
-        response = lambda session: self.__asking_node_for_middleman_connection_established(session, conn_id, key_id,
-                                                                                           open_session, asking_node,
-                                                                                           dest_node, ask_conn_id)
-        if key_id in self.response_list:
-            self.response_list[conn_id].append(response)
-        else:
-            self.response_list[conn_id] = deque([response])
-
-        self.client.want_to_start_task_session(key_id, self.node, conn_id)
-        open_session.is_middleman = True
-
     def wait_for_nat_traverse(self, port, session):
         session.close_now()
         args = {'super_node': session.extra_data['super_node'],
@@ -820,15 +800,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             }
             self._add_pending_request(TASK_CONN_TYPES['nat_punch'], super_node_info, super_node_info.prv_port,
                                       super_node_info.key, args)
-        else:
-            args = {
-                'key_id': super_node_info.key,
-                'asking_node_info': node_info,
-                'self_node_info': self.node,
-                'ans_conn_id': ans_conn_id
-            }
-            self._add_pending_request(TASK_CONN_TYPES['middleman'], super_node_info, super_node_info.prv_port,
-                                      super_node_info.key, args)
 
     def __connection_for_nat_punch_established(self, session, conn_id, super_node, asking_node, dest_node, ans_conn_id):
         session.key_id = super_node.key
@@ -840,14 +811,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def __connection_for_nat_punch_failure(self, conn_id, super_node, asking_node, dest_node, ans_conn_id):
         self.final_conn_failure(conn_id)
-        args = {
-            'key_id': super_node.key,
-            'asking_node_info': asking_node,
-            'self_node_info': dest_node,
-            'ans_conn_id': ans_conn_id
-        }
-        self._add_pending_request(TASK_CONN_TYPES['middleman'], super_node, super_node.prv_port,
-                                  super_node.key, args)
 
     def __connection_for_traverse_nat_established(self, session, client_key_id, conn_id, super_key_id):
         self.respond_to(client_key_id, session, conn_id)  # FIXME
@@ -855,27 +818,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def __connection_for_traverse_nat_failure(self, client_key_id, conn_id, super_key_id):
         logger.error("Connection for traverse nat failure")
         self.client.inform_about_nat_traverse_failure(super_key_id, client_key_id, conn_id)
-
-    def __connection_for_middleman_established(self, session, conn_id, key_id, asking_node_info, self_node_info,
-                                               ans_conn_id):
-        session.key_id = key_id
-        session.conn_id = conn_id
-        session.send_hello()
-        session.send_middleman(asking_node_info, self_node_info, ans_conn_id)
-
-    def __connection_for_middleman_failure(self, conn_id, key_id, asking_node_info, self_node_info, ans_conn_id):
-        self.final_conn_failure(conn_id)
-        logger.info("Permanently can't connect to node {}".format(key_id))
-        return
-
-    def __asking_node_for_middleman_connection_established(self, session, conn_id, key_id, open_session, asking_node,
-                                                           dest_node, ans_conn_id):
-        session.key_id = key_id
-        session.conn_id = conn_id
-        session.send_hello()
-        session.send_join_middleman_conn(key_id, ans_conn_id, dest_node.key)
-        session.open_session = open_session
-        open_session.open_session = session
 
     def __connection_for_task_request_final_failure(self, conn_id, node_name,
                                                     key_id, task_id,
@@ -1122,7 +1064,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_established,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_established,
-            TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_established,
             TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_established,
             TASK_CONN_TYPES['payment']: self.connection_for_payment_established,
             TASK_CONN_TYPES['payment_request']: self.connection_for_payment_request_established,
@@ -1134,7 +1075,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
-            TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_failure,
             TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
             TASK_CONN_TYPES['payment']:
                 self.__connection_for_payment_failure,
@@ -1148,7 +1088,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_final_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['middleman']: self.noop,
             TASK_CONN_TYPES['nat_punch']: self.noop,
             TASK_CONN_TYPES['payment']:self.noop,
             TASK_CONN_TYPES['payment_request']: self.noop,

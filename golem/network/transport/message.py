@@ -866,82 +866,6 @@ class MessageStartSessionResponse(Message):
         super(MessageStartSessionResponse, self).__init__(**kwargs)
 
 
-class MessageMiddleman(Message):
-    TYPE = TASK_MSG_BASE + 17
-
-    __slots__ = [
-        'asking_node',
-        'dest_node',
-        'ask_conn_id'
-    ] + Message.__slots__
-
-    def __init__(
-            self,
-            asking_node=None,
-            dest_node=None,
-            ask_conn_id=None,
-            **kwargs):
-        """Create message that is used to ask node to become middleman in the
-           communication with other node
-        :param Node asking_node: other node information. Middleman should
-                                 connect with that node.
-        :param Node dest_node: information about this node
-        :param ask_conn_id: connection id that asking node gave for reference
-        """
-        self.asking_node = asking_node
-        self.dest_node = dest_node
-        self.ask_conn_id = ask_conn_id
-        super(MessageMiddleman, self).__init__(**kwargs)
-
-
-class MessageJoinMiddlemanConn(Message):
-    TYPE = TASK_MSG_BASE + 18
-
-    __slots__ = [
-        'conn_id',
-        'key_id',
-        'dest_node_key_id'
-    ] + Message.__slots__
-
-    def __init__(
-            self,
-            key_id=None,
-            conn_id=None,
-            dest_node_key_id=None,
-            **kwargs):
-        """Create message that is used to ask node communicate with other
-           through middleman connection (this node is the middleman and
-           connection with other node is already opened
-        :param key_id:  this node public key
-        :param conn_id: connection id for reference
-        :param dest_node_key_id: public key of the other node of the
-                                 middleman connection
-        """
-        self.conn_id = conn_id
-        self.key_id = key_id
-        self.dest_node_key_id = dest_node_key_id
-        super(MessageJoinMiddlemanConn, self).__init__(**kwargs)
-
-
-class MessageBeingMiddlemanAccepted(Message):
-    """Create message with information that node accepted being a middleman"""
-    TYPE = TASK_MSG_BASE + 19
-
-
-class MessageMiddlemanAccepted(Message):
-    """Create message with information that this node accepted connection
-       with middleman
-    """
-    TYPE = TASK_MSG_BASE + 20
-
-
-class MessageMiddlemanReady(Message):
-    """Create message with information that other node connected and
-       middleman session may be started
-    """
-    TYPE = TASK_MSG_BASE + 21
-
-
 class MessageNatPunch(Message):
     TYPE = TASK_MSG_BASE + 22
 
@@ -1240,11 +1164,6 @@ def init_messages():
             MessageTaskFailure,
             MessageGetTaskResult,
             MessageStartSessionResponse,
-            MessageMiddleman,
-            MessageJoinMiddlemanConn,
-            MessageBeingMiddlemanAccepted,
-            MessageMiddlemanAccepted,
-            MessageMiddlemanReady,
             MessageNatPunch,
             MessageWaitForNatTraverse,
             MessageNatPunchFailure,

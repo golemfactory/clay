@@ -394,40 +394,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         """
         self.send(message.MessageStartSessionResponse(conn_id=conn_id))
 
-    # TODO Maybe dest_node is not necessary?
-    def send_middleman(self, asking_node, dest_node, ask_conn_id):
-        """ Ask node to become middleman in the communication with other node
-        :param Node asking_node: other node information. Middleman should
-                                 connect with that node.
-        :param Node dest_node: information about this node
-        :param ask_conn_id: connection id that asking node gave for reference
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageMiddleman(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
-
-    def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
-        """Ask node communicate with other through middleman connection
-           (this node is the middleman and connection with other node
-           is already opened
-        :param key_id:  this node public key
-        :param conn_id: connection id for reference
-        :param dest_node_key_id: public key of the other node of
-                                 the middleman connection
-        """
-        self.send(
-            message.MessageJoinMiddlemanConn(
-                key_id=key_id,
-                conn_id=conn_id,
-                dest_node_key_id=dest_node_key_id
-            )
-        )
-
     def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
         """Ask node to inform other node about nat hole that this node will
            prepare with this connection
@@ -698,44 +664,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
-    def _react_to_middleman(self, msg):
-        self.send(message.MessageBeingMiddlemanAccepted())
-        self.task_server.be_a_middleman(
-            self.key_id,
-            self,
-            self.conn_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-
-    def _react_to_join_middleman_conn(self, msg):
-        self.middleman_conn_data = {
-            'key_id': msg.key_id,
-            'conn_id': msg.conn_id,
-            'dest_node_key_id': msg.dest_node_key_id,
-        }
-        self.send(message.MessageMiddlemanAccepted())
-
-    def _react_to_middleman_ready(self, msg):
-        key_id = self.middleman_conn_data.get('key_id')
-        conn_id = self.middleman_conn_data.get('conn_id')
-        dest_node_key_id = self.middleman_conn_data.get('dest_node_key_id')
-        self.task_server.respond_to_middleman(
-            key_id,
-            self,
-            conn_id,
-            dest_node_key_id
-        )
-
-    def _react_to_being_middleman_accepted(self, msg):
-        self.key_id = self.asking_node_key_id
-
-    def _react_to_middleman_accepted(self, msg):
-        self.send(message.MessageMiddlemanReady())
-        self.is_middleman = True
-        self.open_session.is_middleman = True
-
     def _react_to_nat_punch(self, msg):
         self.task_server.organize_nat_punch(
             self.address,
@@ -987,11 +915,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             message.MessageHello.TYPE: self._react_to_hello,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            message.MessageMiddleman.TYPE: self._react_to_middleman,
-            message.MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
-            message.MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
-            message.MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
-            message.MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
             message.MessageNatPunch.TYPE: self._react_to_nat_punch,
             message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
