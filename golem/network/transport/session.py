@@ -176,7 +176,7 @@ class BasicSafeSession(BasicSession, SafeSession):
     DCROldMessage = "Message expired"
     DCRWrongTimestamp = "Wrong timestamp"
     DCRUnverified = "Unverified connection"
-    #DCRWrongEncryption = "Wrong encryption"
+    DCRWrongEncryption = "Wrong encryption"
 
     def __init__(self, conn):
         BasicSession.__init__(self, conn)

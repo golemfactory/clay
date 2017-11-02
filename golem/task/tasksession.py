@@ -428,7 +428,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             )
         )
 
-
     #########################
     # Reactions to messages #
     #########################
