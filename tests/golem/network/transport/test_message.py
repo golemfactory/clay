@@ -11,6 +11,7 @@ import mock
 
 from golem.core.common import to_unicode
 from golem.network.transport import message
+from golem.network.transport.message import Message
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ResultType
 from golem.testutils import PEP8MixIn
@@ -451,3 +452,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         with self.assertRaises(RuntimeError):
             message.init_messages()
         message.registered_message_types = copy_registered
+
+    def test_slots(self):
+        message.init_messages()
+
+        for _, cls in message.registered_message_types.items():
+            # only __slots__ can be present in objects
+            assert not hasattr(cls.__new__(cls), '__dict__')
+            # slots are properly set in class definition
+            assert len(cls.__slots__) >= len(Message.__slots__)
