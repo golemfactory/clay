@@ -308,13 +308,19 @@ P2P_MESSAGE_BASE = 1000
 class MessagePing(Message):
     TYPE = P2P_MESSAGE_BASE + 1
 
+    __slots__ = Message.__slots__
+
 
 class MessagePong(Message):
     TYPE = P2P_MESSAGE_BASE + 2
 
+    __slots__ = Message.__slots__
+
 
 class MessageGetPeers(Message):
     TYPE = P2P_MESSAGE_BASE + 3
+
+    __slots__ = Message.__slots__
 
 
 class MessagePeers(Message):
@@ -333,6 +339,8 @@ class MessagePeers(Message):
 
 class MessageGetTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 5
+
+    __slots__ = Message.__slots__
 
 
 class MessageTasks(Message):
@@ -366,6 +374,8 @@ class MessageRemoveTask(Message):
 class MessageGetResourcePeers(Message):
     """Request for resource peers"""
     TYPE = P2P_MESSAGE_BASE + 8
+
+    __slots__ = Message.__slots__
 
 
 class MessageResourcePeers(Message):
@@ -413,6 +423,8 @@ class MessageGossip(Message):
 class MessageStopGossip(Message):
     """Create stop gossip message"""
     TYPE = P2P_MESSAGE_BASE + 12
+
+    __slots__ = Message.__slots__
 
 
 class MessageLocRank(Message):
@@ -765,7 +777,7 @@ class MessageGetResource(Message):
 class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
-    __slots = [
+    __slots__ = [
         'subtask_id',
         'reward'
     ] + Message.__slots__
@@ -927,6 +939,8 @@ class MessageBeingMiddlemanAccepted(Message):
     """Create message with information that node accepted being a middleman"""
     TYPE = TASK_MSG_BASE + 19
 
+    __slots__ = Message.__slots__
+
 
 class MessageMiddlemanAccepted(Message):
     """Create message with information that this node accepted connection
@@ -934,12 +948,16 @@ class MessageMiddlemanAccepted(Message):
     """
     TYPE = TASK_MSG_BASE + 20
 
+    __slots__ = Message.__slots__
+
 
 class MessageMiddlemanReady(Message):
     """Create message with information that other node connected and
        middleman session may be started
     """
     TYPE = TASK_MSG_BASE + 21
+
+    __slots__ = Message.__slots__
 
 
 class MessageNatPunch(Message):
@@ -991,9 +1009,13 @@ class MessageNatPunchFailure(Message):
     """Create message that informs node about unsuccessful nat punch"""
     TYPE = TASK_MSG_BASE + 24
 
+    __slots__ = Message.__slots__
+
 
 class MessageWaitingForResults(Message):
     TYPE = TASK_MSG_BASE + 25
+
+    __slots__ = Message.__slots__
 
 
 class MessageCannotComputeTask(Message):
@@ -1100,15 +1122,21 @@ class MessageHasResource(AbstractResource):
     """Create message with information about having given resource"""
     TYPE = RESOURCE_MSG_BASE + 2
 
+    __slots__ = AbstractResource.__slots__
+
 
 class MessageWantsResource(AbstractResource):
     """Send information that node wants to receive given resource"""
     TYPE = RESOURCE_MSG_BASE + 3
 
+    __slots__ = AbstractResource.__slots__
+
 
 class MessagePullResource(AbstractResource):
     """Create message with information that given resource is needed"""
     TYPE = RESOURCE_MSG_BASE + 4
+
+    __slots__ = AbstractResource.__slots__
 
 
 class MessagePullAnswer(Message):
