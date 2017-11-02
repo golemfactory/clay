@@ -403,50 +403,47 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def reward_for_subtask_paid(self, subtask_id, reward, transaction_id,
                                 block_number):
-        logger.info(
-            "Received payment for subtask %r (val:%r, tid:%r, bn:%r)",
-            subtask_id,
-            reward,
-            transaction_id,
-            block_number
-        )
         try:
             expected_income = model.ExpectedIncome.get(subtask=subtask_id)
         except model.ExpectedIncome.DoesNotExist:
             logger.warning(
-                'Received unexpected payment for subtask %r'
-                '(val:%rGNT, tid: %r, bn:%r)',
+                'Received unexpected payment confirmation message for subtask '
+                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
                 subtask_id,
                 reward,
                 transaction_id,
                 block_number
             )
             return
-        if expected_income.value != reward:
-            logger.error(
-                "Reward mismatch for subtask: %r. expected: %r got: %r",
-                subtask_id,
-                expected_income.value,
-                reward
-            )
-            return
-        task_id = expected_income.task
-        node_id = expected_income.sender_node
 
-        # check that the reward has been successfully written in db
+        logger.info(
+                'Received payment confirmation message for subtask '
+                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
+                subtask_id,
+                reward,
+                transaction_id,
+                block_number
+            )
+
+        # Checks whether the claimed reward value matches
+        # expectations (db vs blockchain).
+        # We don't care what is the value of reward in the message
+        # since byzantine node can send whatever it likes.
         result = self.client.transaction_system.incomes_keeper.received(
-            sender_node_id=node_id,
-            task_id=task_id,
+            sender_node_id=expected_income.sender_node,
+            task_id=expected_income.task,
             subtask_id=subtask_id,
             transaction_id=transaction_id,
             block_number=block_number,
-            value=reward,
+            value=expected_income.value,
         )
 
         # Trust is increased only after confirmation from incomes keeper
         from golem.model import Income
         if type(result) is Income:
-            Trust.PAYMENT.increase(node_id, self.max_trust)
+            Trust.PAYMENT.increase(
+                expected_income.sender_node,
+                self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
