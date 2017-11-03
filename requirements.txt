@@ -3,7 +3,6 @@ setuptools==34.3.3
 appdirs>=1.4
 click>=4.0
 docker-py==1.7.2
-pathlib>=1.0.1
 ipaddress>=1.0.18
 ipfsapi==0.4.0
 netifaces==0.10.4

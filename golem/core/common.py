@@ -1,13 +1,14 @@
-import collections
-import logging.config
-import os
-import sys
 from calendar import timegm
+import collections
 from datetime import datetime
+import logging.config
 from multiprocessing import cpu_count
-
-import pytz
+import os
 from pathlib import Path
+import pytz
+import sys
+
+from golem.core import simpleenv
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -169,8 +170,7 @@ def config_logging(suffix='', datadir=None):
         from loggingconfig import LOGGING
 
     if datadir is None:
-        from golem.core.simpleenv import get_local_datadir
-        datadir = get_local_datadir("default")
+        datadir = simpleenv.get_local_datadir("default")
     logdir_path = Path(datadir) / 'logs'
 
     for handler in list(LOGGING.get('handlers', {}).values()):
