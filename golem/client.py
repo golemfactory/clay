@@ -138,11 +138,6 @@ class Client(HardwarePresetsMixin):
         self.nodes_manager_client = None
 
         self._services = [
-            MonitoringPublisherService(
-                self,
-                interval_seconds=max(
-                    int(self.config_desc.node_snapshot_interval),
-                    1)),
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
@@ -272,6 +267,14 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth, self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager)
+
+            monitoring_publisher_service = MonitoringPublisherService(
+                    self.task_server,
+                    interval_seconds=max(
+                        int(self.config_desc.node_snapshot_interval),
+                        1))
+            monitoring_publisher_service.start()
+            self._services.append(monitoring_publisher_service)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -1113,26 +1116,26 @@ class DoWorkService(Service):
 
 
 class MonitoringPublisherService(Service):
-    _client: Client
+    _task_server = None  # type: TaskServer
 
     def __init__(self,
-                 client: Client,
+                 task_server: TaskServer,
                  interval_seconds: int):
         super().__init__(interval_seconds)
-        self._client = client
+        self._task_server = task_server
 
     def _run(self):
         dispatcher.send(
             signal='golem.monitor',
             event='stats_snapshot',
-            known_tasks=self._client.get_task_count(),
-            supported_tasks=self._client.get_supported_task_count(),
-            stats=self._client.task_server.task_computer.stats,
+            known_tasks=len(self._task_server.task_keeper.get_all_tasks()),
+            supported_tasks=len(self._task_server.task_keeper.supported_tasks),
+            stats=self._task_server.task_computer.stats,
         )
         dispatcher.send(
             signal='golem.monitor',
             event='task_computer_snapshot',
-            task_computer=self._client.task_server.task_computer,
+            task_computer=self._task_server.task_computer,
         )
 
 
