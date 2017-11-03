@@ -2,6 +2,8 @@ import logging
 import os
 import uuid
 
+from collections import Iterable
+
 from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions
 from golem.resource.base.resourcesmanager import AbstractResourceManager, \
@@ -31,8 +33,19 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
         return list([r.hash, r.files_split] for r in iterator)
 
     def from_wire(self, resources):
-        iterator = filter(lambda x: x and len(x) > 1, resources)
-        return list([r[0], [os.path.join(*x) for x in r[1]]] for r in iterator)
+        iterator = filter(lambda x: isinstance(x, Iterable) and len(x) > 1,
+                          resources)
+        results = []
+
+        for entry in iterator:
+            files = [os.path.join(*split) for split in entry[1] if split]
+            if not files:
+                logger.debug("Received an empty file list for hash %r",
+                             entry[0])
+                continue
+            results.append([entry[0], files])
+
+        return results
 
     def add_files(self, files, task_id,
                   absolute_path=False, client=None, client_options=None):
@@ -75,7 +88,9 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                         client_options=client_options,
                                         obj_id=str(uuid.uuid4()))
 
-        self._cache_response(list(files.values()), response, task_id)
+        file_list = list(files.values())
+        self._cache_response(file_list, response, task_id)
+        return file_list, response
 
     def wrap_file(self, resource):
         resource_path, resource_hash = resource
@@ -90,6 +105,13 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def _cache_response(self, resources, resource_hash, task_id):
         res = self._wrap_resource((resource_hash, resources), task_id)
         self._cache_resource(res)
+
+    def _parse_pull_response(self, response, task_id):
+        # response -> [(path, hash, [file_1, file_2, ...])]
+        relative = self.storage.relative_path
+        if response and len(response[0]) >= 3:
+            return [relative(f, task_id) for f in response[0][2]]
+        return []
 
 
 class HyperDriveMetadataManager(object):

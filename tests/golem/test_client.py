@@ -31,6 +31,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 from golem.core.variables import APP_VERSION
+from apps.appsmanager import AppsManager
 
 
 def mock_async_run(req, success, error):
@@ -525,7 +526,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
-    def test_start_stop(self, connect_to_network, *_):
+    @patch('golem.environments.environmentsmanager.EnvironmentsManager.load_config')
+    def test_start_stop(self, load_config, connect_to_network, *_):
         self.client = Client(
             datadir=self.path,
             transaction_system=False,

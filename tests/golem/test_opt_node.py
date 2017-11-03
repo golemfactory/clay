@@ -13,7 +13,7 @@ from golemapp import start, OptNode
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
-        self.args = ['--nogui', '--datadir', self.path]
+        self.args = ['--datadir', self.path]
 
     def tearDown(self):
         super(TestNode, self).tearDown()
@@ -72,6 +72,7 @@ class TestNode(TestWithDatabase):
                                        datadir=self.path,
                                        transaction_system=True,
                                        use_docker_machine_manager=True,
+                                       start_geth=False,
                                        geth_port=None,
                                        use_monitor=True)
 

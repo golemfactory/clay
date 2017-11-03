@@ -50,12 +50,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
                  definition: 'Type[TaskDefinition]',
                  defaults: 'TaskDefaults',
                  options: Type[Options],
-                 builder_type: Type[TaskBuilder],
-                 dialog=None,
-                 dialog_controller=None):
+                 builder_type: Type[TaskBuilder]):
         super().__init__(name, definition, defaults, options, builder_type)
-        self.dialog = dialog
-        self.dialog_controller = dialog_controller
         self.output_formats = []
         self.output_file_ext = []
 
@@ -502,11 +498,11 @@ def accepting(query_extra_data_func):
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
             if should_wait:
-                logger.warning("Waiting for results from {}"
-                               .format(node_name))
+                logger.warning("Waiting for results from {} on {}"
+                               .format(node_name, self.task_definition.task_id))
             else:
-                logger.warning("Client {} banned from this task"
-                               .format(node_name))
+                logger.warning("Client {} banned from {} task"
+                               .format(node_name, self.task_definition.task_id))
 
             return self.ExtraData(should_wait=should_wait)
 

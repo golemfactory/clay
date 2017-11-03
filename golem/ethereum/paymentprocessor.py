@@ -68,6 +68,9 @@ class PaymentProcessor(Service):
 
     SYNC_CHECK_INTERVAL = 10
 
+    # Minimal number of confirmations before we treat transactions as done
+    REQUIRED_CONFIRMATIONS = 12
+
     def __init__(self, client: Client, privkey, faucet=False) -> None:
         self.__client = client
         self.__privkey = privkey
@@ -343,6 +346,8 @@ class PaymentProcessor(Service):
                         "block hash length should be 64, but is: {}".format(
                             len(block_hash)))
                 block_number = receipt['blockNumber']
+                if block_number < self.REQUIRED_CONFIRMATIONS:
+                    continue
                 gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE
                 fee = total_fee // len(payments)

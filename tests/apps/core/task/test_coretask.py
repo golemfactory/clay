@@ -509,20 +509,16 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert tti.options == "Options"
         assert tti.task_builder_type == "builder"
         assert tti.definition == "Definition1"
-        assert tti.dialog is None
-        assert tti.dialog_controller is None
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 
-        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2", "builder2", "dialog",
-                           "controller")
+        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2",
+                               "builder2")
         assert tti.name == "Name2"
         assert tti.defaults == "Defaults2"
         assert tti.options == "Options2"
         assert tti.task_builder_type == "builder2"
         assert tti.definition == "Definition2"
-        assert tti.dialog == "dialog"
-        assert tti.dialog_controller == "controller"
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 

@@ -38,7 +38,7 @@ cache:
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
 
 install:
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%DIR_HYPERG%;%SystemRoot%\system32;%PATH%
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%DIR_HYPERG%;%SystemRoot%\system32;%PATH%
 
   # geth
   - if not exist %DIR_GETH% (
@@ -100,8 +100,8 @@ build_script:
 
 test_script:
   - venv\Scripts\activate.bat
-  - if NOT defined ARG_RUNSLOW pytest --cov=golem && echo "Not enough approvals." && exit 1
-  - if defined ARG_RUNSLOW pytest --cov=golem --runslow
+  - if NOT defined ARG_RUNSLOW pytest --cov=golem --durations=5 --maxfail=3 -rxs && echo "Not enough approvals." && exit 1
+  - if defined ARG_RUNSLOW pytest --cov=golem --durations=5 --maxfail=3 -rxs --runslow
 
 after_test:
   - venv\Scripts\activate.bat
