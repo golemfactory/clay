@@ -456,7 +456,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_slots(self):
         message.init_messages()
 
-        for _, cls in message.registered_message_types.items():
+        for cls in message.registered_message_types.values():
             # only __slots__ can be present in objects
             assert not hasattr(cls.__new__(cls), '__dict__')
             # slots are properly set in class definition
