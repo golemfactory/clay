@@ -129,7 +129,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         msg_get_resource = message.MessageGetResource(task_id=self.task_id)
         msg = message.MessageGetResource.deserialize(
-            msg_get_resource.serialize(lambda x: '\000' * message.SIG_LEN),
+            msg_get_resource.serialize(
+                lambda x: '\000' * message.Message.SIG_LEN
+            ),
             lambda x: x
         )
         assert msg
@@ -138,7 +140,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         msg_resource_list = send_buf_1.pop()
         msg = message.MessageResourceList.deserialize(
-            msg_resource_list.serialize(lambda x: '\000' * message.SIG_LEN),
+            msg_resource_list.serialize(
+                lambda x: '\000' * message.Message.SIG_LEN
+            ),
             lambda x: x
         )
         assert msg
