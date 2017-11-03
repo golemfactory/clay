@@ -1,11 +1,10 @@
 import abc
+from golem_messages import message
 import logging
-import random
 import time
 
 from golem.core.keysauth import get_random_float
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
-from golem.network.transport import message
 from .network import Session
 
 logger = logging.getLogger(__name__)
