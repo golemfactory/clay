@@ -88,7 +88,8 @@ class AddGetResources(TempDirFixture, LogTestCase):
                                    use_docker_machine_manager=False)
 
         task_server_1.sync_network = task_server_2.sync_network = mock.Mock()
-        task_server_1.start_accepting = task_server_2.start_accepting = mock.Mock()
+        task_server_1.start_accepting = task_server_2.start_accepting\
+            = mock.Mock()
         task_server_1.task_computer = task_server_2.task_computer = mock.Mock()
 
         self.client_1.task_server = task_server_1
@@ -128,14 +129,18 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         msg_get_resource = message.MessageGetResource(task_id=self.task_id)
         msg = message.MessageGetResource.deserialize(
-            msg_get_resource.serialize())
+            msg_get_resource.serialize(lambda x: '\000' * message.SIG_LEN),
+            lambda x: x
+        )
         assert msg
 
         self.task_session_1._react_to_get_resource(msg)
 
         msg_resource_list = send_buf_1.pop()
         msg = message.MessageResourceList.deserialize(
-            msg_resource_list.serialize())
+            msg_resource_list.serialize(lambda x: '\000' * message.SIG_LEN),
+            lambda x: x
+        )
         assert msg
 
         self.task_session_2._react_to_resource_list(msg)
