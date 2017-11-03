@@ -622,7 +622,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.cur_port
 
     def get_task_count(self):
-        if self.task_server and self.task_server.task_keeper:
+        if self.task_server:
             return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_task(self, task_id):
@@ -660,7 +660,7 @@ class Client(HardwarePresetsMixin):
         }
 
     def get_supported_task_count(self) -> int:
-        if self.task_server and self.task_server.task_keeper:
+        if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
