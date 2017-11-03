@@ -1,13 +1,14 @@
-import collections
-import logging.config
-import os
-import sys
 from calendar import timegm
+import collections
 from datetime import datetime
+import logging.config
 from multiprocessing import cpu_count
-
-import pytz
+import os
 from pathlib import Path
+import pytz
+import sys
+
+from golem.core import simpleenv
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -168,23 +169,27 @@ def config_logging(suffix='', datadir=None):
     except ImportError:
         from loggingconfig import LOGGING
 
-    logdir_path = Path('logs')
-    if datadir is not None:
-        logdir_path = Path(datadir) / logdir_path
-        datadir += '/'
-    else:
-        datadir = ''
-    if not logdir_path.exists():
-        logdir_path.mkdir(parents=True)
+    if datadir is None:
+        datadir = simpleenv.get_local_datadir("default")
+    logdir_path = Path(datadir) / 'logs'
 
     for handler in list(LOGGING.get('handlers', {}).values()):
         if 'filename' in handler:
             handler['filename'] %= {
-                'datadir': datadir,
+                'logdir': str(logdir_path),
                 'suffix': suffix,
             }
 
-    logging.config.dictConfig(LOGGING)
+    try:
+        if not logdir_path.exists():
+            logdir_path.mkdir(parents=True)
+
+        logging.config.dictConfig(LOGGING)
+    except (ValueError, PermissionError) as e:
+        sys.stderr.write(
+            "Can't configure logging in: {} Got: {}\n".format(logdir_path, e)
+        )
+        return  # Avoid consequent errors
     logging.captureWarnings(True)
 
     import txaio
