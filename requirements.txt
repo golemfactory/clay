@@ -51,4 +51,4 @@ numpy==1.13.1
 scipy
 pyssim
 enforce==0.3.4
--e git://github.com/golemfactory/golem-messages.git
+-e git://github.com/golemfactory/golem-messages.git#egg=golem_messages
