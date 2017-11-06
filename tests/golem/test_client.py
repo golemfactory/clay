@@ -4,9 +4,10 @@ import time
 import unittest
 import uuid
 
-from mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
+from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
@@ -1000,3 +1001,9 @@ class TestEventListener(unittest.TestCase):
 
         listener.lock_config(False)
         client.lock_config.assert_called_with(False)
+
+
+class TestClientPEP8(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = [
+        "golem/client.py",
+    ]

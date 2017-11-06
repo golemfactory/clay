@@ -47,7 +47,8 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI,\
+    Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskbase import ResourceType
@@ -199,7 +200,7 @@ class Client(HardwarePresetsMixin):
                 'New version of golem available: %s',
                 kwargs['version']
             )
-            self._publish(#XXX)
+            self._publish(Network.new_version, str(kwargs['version']))
             return
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
@@ -735,8 +736,7 @@ class Client(HardwarePresetsMixin):
             rv_key_id,
             addr,
             port,
-            ans_conn_id
-            ):
+            ans_conn_id):
         self.p2pservice.inform_about_task_nat_hole(
             key_id,
             rv_key_id,

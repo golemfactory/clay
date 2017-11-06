@@ -16,6 +16,8 @@ class Network:
     evt_peer_disconnected   = 'evt.net.peer.disconnected'
     evt_connection          = 'evt.net.connection'
 
+    new_version             = 'net.new_version'
+
 
 class Reputation:
 
