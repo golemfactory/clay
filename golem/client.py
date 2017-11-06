@@ -141,8 +141,7 @@ class Client(HardwarePresetsMixin):
         self._services = [
             NetworkConnectionPublisherService(
                 self,
-                int(self.config_desc.network_check_interval)),
-            BalancePublisherService(self)
+                int(self.config_desc.network_check_interval))
         ]
 
         self.cfg = config
@@ -193,6 +192,11 @@ class Client(HardwarePresetsMixin):
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
         StatusPublisher.set_publisher(self.rpc_publisher)
+
+        if self.transaction_system:
+            self._services.append(BalancePublisherService(
+                self.rpc_publisher,
+                self.transaction_system))
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event == 'unreachable':
@@ -1177,20 +1181,23 @@ class TasksPublisherService(Service):
 
 
 class BalancePublisherService(Service):
-    _client: Client
+    _rpc_publisher = None  # type: Publisher
+    _transaction_system = None  # type: EthereumTransactionSystem
 
-    def __init__(self, client: Client):
+    def __init__(self,
+                 rpc_publisher: Publisher,
+                 transaction_system: EthereumTransactionSystem):
         super().__init__(interval_seconds=int(PUBLISH_BALANCE_INTERVAL))
-        self._client = client
+        self._rpc_publisher = rpc_publisher
+        self._transaction_system = transaction_system
 
-    @inlineCallbacks
     def _run(self):
         try:
-            gnt, av_gnt, eth = yield self._client.get_balance()
+            gnt, av_gnt, eth = self._transaction_system.get_balance()
         except Exception as exc:
             log.debug('Error retrieving balance: %s', exc)
         else:
-            self._client._publish(Payments.evt_balance, {
+            self._rpc_publisher.publish(Payments.evt_balance, {
                 'GNT': str(gnt),
                 'GNT_available': str(av_gnt),
                 'ETH': str(eth)
