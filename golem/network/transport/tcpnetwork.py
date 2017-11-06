@@ -1,3 +1,4 @@
+from golem_messages import message
 import logging
 import os
 import re
@@ -18,7 +19,7 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem.network.transport.message import Message
+from golem_messages.message import Message
 from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
@@ -488,7 +489,7 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize()
+        ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
 
         db = DataBuffer()
         db.append_len_prefixed_string(ser_msg)
@@ -515,7 +516,7 @@ class BasicProtocol(SessionProtocol):
         data = self.db.read_len_prefixed_string()
 
         while data:
-            message = Message.deserialize(data)
+            message = Message.deserialize(data, lambda x: x)
 
             if message:
                 messages.append(message)

@@ -1,3 +1,4 @@
+from golem_messages import message
 import logging
 from pydispatch import dispatcher
 import semantic_version
@@ -6,7 +7,6 @@ import time
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.core.crypto import ECIESDecryptionError
-from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 

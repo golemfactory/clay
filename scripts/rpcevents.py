@@ -4,7 +4,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from golem.core.common import config_logging
 from golem.node import OptNode
-from golem.rpc.mapping.core import NAMESPACES
+from golem.rpc.mapping.rpcmethodnames import NAMESPACES
 from golem.rpc.session import Session, WebSocketAddress
 
 

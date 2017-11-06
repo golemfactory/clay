@@ -22,8 +22,7 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.rpc.mapping import aliases
-from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
@@ -655,13 +654,13 @@ class TestDebug(unittest.TestCase):
             debug = Debug()
             task_id = str(uuid.uuid4())
 
-            debug.rpc((aliases.Network.ident, ))
+            debug.rpc(('net.ident',))
             assert client.get_node.called
 
-            debug.rpc((aliases.Task.task, task_id))
+            debug.rpc(('comp.task', task_id))
             client.get_task.assert_called_with(task_id)
 
-            debug.rpc((aliases.Task.subtasks_borders, task_id, 2))
+            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
             client.get_subtasks_borders.assert_called_with(task_id, 2)
 
             with self.assertRaises(CommandException):

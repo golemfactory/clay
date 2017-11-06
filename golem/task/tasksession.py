@@ -12,7 +12,7 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
-from golem.network.transport import message
+from golem_messages import message
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
@@ -145,7 +145,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 self.port
             )
         except Exception as err:
-            logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
             self.dropped()
             return None

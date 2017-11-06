@@ -31,7 +31,6 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -48,7 +47,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskbase import ResourceType
@@ -137,16 +136,12 @@ class Client(HardwarePresetsMixin):
         self.last_balance_time = time.time()
         self.last_tasks_time = time.time()
 
-        self.last_node_state_snapshot = None
-
         self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
         self.publish_task = task.LoopingCall(self.__publish_events)
 
         self.cfg = config
-        self.send_snapshot = False
-        self.snapshot_lock = Lock()
 
         self.ranking = Ranking(self)
 
@@ -626,7 +621,8 @@ class Client(HardwarePresetsMixin):
         return self.task_server.cur_port
 
     def get_task_count(self):
-        return len(self.task_server.task_keeper.get_all_tasks())
+        if self.task_server and self.task_server.task_keeper:
+            return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_task(self, task_id):
         return self.task_server.task_manager.get_task_dict(task_id)
@@ -663,22 +659,26 @@ class Client(HardwarePresetsMixin):
         }
 
     def get_supported_task_count(self) -> int:
-        return len(self.task_server.task_keeper.supported_tasks)
+        if self.task_server and self.task_server.task_keeper:
+            return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
-        return self.task_server.task_computer.stats.get_stats('computed_tasks')
+        return self.get_task_computer_stat('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server\
-            .task_computer.stats.get_stats('tasks_with_timeout')
+        return self.get_task_computer_stat('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server\
-            .task_computer.stats.get_stats('tasks_with_errors')
+        return self.get_task_computer_stat('tasks_with_errors')
 
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
+
+    def get_task_computer_stat(self, name):
+        if self.task_server and self.task_server.task_computer:
+            return self.task_server.task_computer.stats.get_stats(name)
+        return 0
 
     @inlineCallbacks
     def get_balance(self):
@@ -760,13 +760,13 @@ class Client(HardwarePresetsMixin):
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        self.p2pservice.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
+
+        if self.p2pservice:
+            self.p2pservice.change_config(self.config_desc)
         if self.task_server:
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks
-            )
+            self.task_server.change_config(self.config_desc,
+                                           run_benchmarks=run_benchmarks)
         dispatcher.send(
             signal='golem.monitor',
             event='config_update',
@@ -1033,9 +1033,6 @@ class Client(HardwarePresetsMixin):
                 event='task_computer_snapshot',
                 task_computer=self.task_server.task_computer,
             )
-            # with self.snapshot_lock:
-            #     self.__make_node_state_snapshot()
-            #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
             self.last_nss_time = time.time()
 
         delta = now - self.last_net_check_time
@@ -1057,38 +1054,6 @@ class Client(HardwarePresetsMixin):
                     'GNT_available': str(av_gnt),
                     'ETH': str(eth)
                 })
-
-    def __make_node_state_snapshot(self, is_running=True):
-        peers_num = len(self.p2pservice.peers)
-        last_network_messages = self.p2pservice.get_last_messages()
-
-        if self.task_server:
-            tasks_num = len(self.task_server.task_keeper.task_headers)
-            r_tasks_progs = self.task_server.task_computer.get_progresses()
-            l_tasks_progs = self.task_server.task_manager.get_progresses()
-            last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(
-                is_running,
-                self.config_desc.node_name,
-                peers_num,
-                tasks_num,
-                self.p2pservice.node.pub_addr,
-                self.p2pservice.node.pub_port,
-                last_network_messages,
-                last_task_messages,
-                r_tasks_progs,
-                l_tasks_progs
-            )
-        else:
-            self.last_node_state_snapshot = NodeStateSnapshot(
-                self.config_desc.node_name,
-                peers_num
-            )
-
-        if self.nodes_manager_client:
-            self.nodes_manager_client.send_client_state_snapshot(
-                self.last_node_state_snapshot
-            )
 
     def connection_status(self):
         listen_port = self.get_p2p_port()

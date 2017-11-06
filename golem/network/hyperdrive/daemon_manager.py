@@ -29,26 +29,18 @@ class HyperdriveDaemonManager(object):
         self._monitor.add_callbacks(self._start)
 
         self._dir = os.path.join(datadir, self._executable)
-        self._log_file = os.path.join(datadir, 'hyperg.log')
-
-        self._command = [
-            self._executable,
-            '--db', self._dir,
-            '--logfile', self._log_file,
-            '--loglevel', 'debug'
-        ]
 
         atexit.register(self.stop)
+
         logsdir = os.path.join(datadir, "logs")
         if not os.path.exists(logsdir):
-            logger.warning("create HyperG logsdir: %s", logsdir)
+            logger.warning("Creating HyperG logsdir: %s", logsdir)
             os.makedirs(logsdir)
 
-        logpath = os.path.join(logsdir, "hyperg.log")
         self._command = [
             self._executable,
             '--db', self._dir,
-            '--logfile', logpath,
+            '--logfile', os.path.join(logsdir, "hyperg.log"),
         ]
 
     def addresses(self):

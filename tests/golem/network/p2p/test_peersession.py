@@ -1,11 +1,11 @@
+from golem_messages import message
 import ipaddress
-import unittest.mock as mock
-from mock import MagicMock, Mock
 from pydispatch import dispatcher
 import random
 import semantic_version
 import sys
 import unittest
+import unittest.mock as mock
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
@@ -13,7 +13,6 @@ from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
-from golem.network.transport.message import MessageHello, MessageStopGossip
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
@@ -24,7 +23,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
     def setUp(self):
         super().setUp()
         random.seed()
-        self.peer_session = PeerSession(MagicMock())
+        self.peer_session = PeerSession(mock.MagicMock())
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_hello(self, send_mock):
@@ -56,8 +55,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.assertEqual(send_mock.call_args[0][1].slots(), expected)
 
     def test_encrypt_decrypt(self):
-        ps = PeerSession(MagicMock())
-        ps2 = PeerSession(MagicMock())
+        ps = PeerSession(mock.MagicMock())
+        ps2 = PeerSession(mock.MagicMock())
 
         ek = EllipticalKeysAuth(self.path, "RANDOMPRIV", "RANDOMPUB")
         ek2 = EllipticalKeysAuth(self.path, "RANDOMPRIV2", "RANDOMPUB2")
@@ -77,8 +76,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
     def test_react_to_hello(self):
 
-        conn = MagicMock()
-        conf = MagicMock()
+        conn = mock.MagicMock()
+        conf = mock.MagicMock()
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
@@ -88,10 +87,10 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
-        peer_session.p2p_service.metadata_manager = MagicMock()
-        peer_session.send = MagicMock()
-        peer_session.disconnect = MagicMock()
-        peer_session._solve_challenge = MagicMock()
+        peer_session.p2p_service.metadata_manager = mock.MagicMock()
+        peer_session.send = mock.MagicMock()
+        peer_session.disconnect = mock.MagicMock()
+        peer_session._solve_challenge = mock.MagicMock()
 
         def create_verify(value):
             def verify(*args):
@@ -99,9 +98,9 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             return verify
 
         key_id = 'deadbeef'
-        peer_info = MagicMock()
+        peer_info = mock.MagicMock()
         peer_info.key = key_id
-        msg = MessageHello(port=1, node_name='node2', client_key_id=key_id,
+        msg = message.MessageHello(port=1, node_name='node2', client_key_id=key_id,
                            node_info=peer_info, proto_id=-1)
 
         peer_session.verify = create_verify(False)
@@ -119,7 +118,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert key_id in peer_session.p2p_service.peers
         assert peer_session.p2p_service.peers[key_id]
 
-        peer_session.p2p_service.peers[key_id] = MagicMock()
+        peer_session.p2p_service.peers[key_id] = mock.MagicMock()
         conn.opened = True
         peer_session.key_id = None
 
@@ -191,12 +190,12 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         listener.reset_mock()
 
     def test_disconnect(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         peer_session = PeerSession(conn)
-        peer_session.p2p_service = MagicMock()
-        peer_session.dropped = MagicMock()
-        peer_session.send = MagicMock()
-        peer_session.conn = Mock()
+        peer_session.p2p_service = mock.MagicMock()
+        peer_session.dropped = mock.MagicMock()
+        peer_session.send = mock.MagicMock()
+        peer_session.conn = mock.Mock()
 
         peer_session.conn.opened = False
         peer_session.disconnect(PeerSession.DCRProtocolVersion)
@@ -213,17 +212,17 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert not peer_session.send.called
 
     def test_dropped(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         peer_session = PeerSession(conn)
-        peer_session.p2p_service = MagicMock()
+        peer_session.p2p_service = mock.MagicMock()
 
         peer_session.dropped()
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called
 
     def test_react_to_stop_gossip(self):
-        conn = MagicMock()
-        conf = MagicMock()
+        conn = mock.MagicMock()
+        conf = mock.MagicMock()
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
@@ -234,24 +233,24 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
         peer_session.key_id = "NEW KEY_ID"
-        peer_session._react_to_stop_gossip(MessageStopGossip())
+        peer_session._react_to_stop_gossip(message.MessageStopGossip())
 
     def test_verify(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         peer_session = PeerSession(conn)
         keys_auth = EllipticalKeysAuth(self.path)
         peer_session.key_id = keys_auth.get_key_id()
         peer_session.p2p_service.verify_sig = keys_auth.verify
-        msg = MessageStopGossip()
+        msg = message.MessageStopGossip()
         assert not peer_session.verify(msg)
         msg.sig = keys_auth.sign(msg.get_short_hash())
         assert peer_session.verify(msg)
 
     def test_interpret(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         peer_session = PeerSession(conn)
         peer_session.key_id = "KEY_ID"
-        msg = MessageStopGossip()
+        msg = message.MessageStopGossip()
         peer_session.interpret(msg)
         assert peer_session.p2p_service.set_last_message.called
 
@@ -260,7 +259,7 @@ class TestPeerSessionInfo(unittest.TestCase):
 
     def test(self):
 
-        session = PeerSession(MagicMock())
+        session = PeerSession(mock.MagicMock())
 
         session.unknown_property = False
         session_info = PeerSessionInfo(session)
