@@ -1045,8 +1045,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 # Throws ipaddress.AddressValueError.
                 ipaddress.ip_address(ip_address)
             except ValueError:
-                logger.info("Invalid seed from config: %r. Ignoring.",
-                    config_seed)
+                logger.info(
+                    "Invalid seed from config: %r. Ignoring.",
+                    config_seed
+                )
                 continue
             self.seeds.add((ip_address, port))
 
