@@ -41,7 +41,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
             logger.warning("payment processor must be synchronized with "
                            "blockchain, otherwise income may not be found."
                            "Please wait until synchronized")
-        self.processor.wait_until_synchronized()
+            self.processor.wait_until_synchronized()
 
         incomes = self.processor.get_logs(
             from_block=block_number,

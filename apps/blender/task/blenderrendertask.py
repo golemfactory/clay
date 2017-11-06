@@ -123,14 +123,12 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
     """ Blender App descryption that can be used by interface to define
     parameters and task build
     """
-    def __init__(self, dialog, customizer):
+    def __init__(self):
         super(BlenderTaskTypeInfo, self).__init__("Blender",
                                                   RenderingTaskDefinition,
                                                   BlenderDefaults(),
                                                   BlenderRendererOptions,
-                                                  BlenderRenderTaskBuilder,
-                                                  dialog,
-                                                  customizer)
+                                                  BlenderRenderTaskBuilder)
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
@@ -670,4 +668,3 @@ def get_min_max_y(task_num, parts, res_y):
 
 
     
-

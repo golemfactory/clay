@@ -1,6 +1,6 @@
 import sys
 
-from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
 
 

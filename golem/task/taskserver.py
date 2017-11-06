@@ -138,6 +138,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.forwarded_session_requests = {}
         self.response_list = {}
         self.deny_set = get_deny_set(datadir=client.datadir)
+        self.resource_handshakes = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
@@ -163,6 +164,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
+        super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
         self.send_waiting_payments()
@@ -193,7 +195,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 performance = 0.0
             is_requestor_accepted = self.should_accept_requestor(
                 theader.task_owner_key_id)
-            is_price_accepted = self.config_desc.min_price < theader.max_price
+            is_price_accepted = self.config_desc.min_price <= theader.max_price
             if is_requestor_accepted and is_price_accepted:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
@@ -280,9 +282,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + \
-              self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths]
+        ths_tk = self.task_keeper.get_all_tasks()
+        ths_tm = self.task_manager.get_tasks_headers()
+        ret  = [th.to_dict() for th in ths_tk + ths_tm]
+        return  ret
 
     def add_task_header(self, th_dict_repr):
         try:
@@ -303,7 +306,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
             return True
         except Exception as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
 
     def verify_header_sig(self, th_dict_repr):
@@ -363,9 +366,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def get_resource_port(self):
         return self.client.resource_port
-
-    def get_subtask_ttl(self, task_id):
-        return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
 
     def task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
@@ -977,6 +977,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
+        self.task_manager.comp_task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)

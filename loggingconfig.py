@@ -41,7 +41,7 @@ LOGGING = {
             'level': 'INFO',
             'formatter': 'date',
             # suffix is substituted in golem.core.common.config_logging()
-            'filename': '%(datadir)slogs/golem%(suffix)s.log',
+            'filename': '%(logdir)s/golem%(suffix)s.log',
             'when': 'D',
             'interval': 1,
             'backupCount': 5,
@@ -71,6 +71,10 @@ LOGGING = {
             'propagate': True,
         },
         'golem.rpc.crossbar': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.resources': {
             'level': 'INFO',
             'propagate': True,
         },

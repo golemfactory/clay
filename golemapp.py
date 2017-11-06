@@ -19,10 +19,12 @@ from golem.node import OptNode
 
 
 @click.command()
-@click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--datadir', '-d', type=click.Path())
+@click.option('--datadir', '-d', type=click.Path(
+    file_okay=False,
+    writable=True
+))
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
               help="Network address to use for this node")
@@ -33,8 +35,8 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--qt', is_flag=True, default=False,
-              help="Spawn Qt GUI only")
+@click.option('--start-geth', is_flag=True, default=False,
+              help="Start geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
@@ -50,8 +52,8 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+def start(payments, monitor, datadir, node_address, rpc_address, peer,
+          start_geth,version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -73,17 +75,6 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
-    # Qt GUI
-    elif qt:
-        from gui.startgui import start_gui, check_rpc_address
-        address = '{}:{}'.format(rpc_address.address, rpc_address.port)
-        start_gui(check_rpc_address(ctx=None, param=None,
-                                    address=address))
-    # Golem
-    elif gui:
-        from gui.startapp import start_app
-        start_app(rendering=True, use_monitor=monitor, geth_port=geth_port,
-                  **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
@@ -92,7 +83,8 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         log_golem_version()
 
         node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, geth_port=geth_port, **config)
+                       use_monitor=monitor, start_geth=start_geth,
+                       geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
@@ -123,9 +115,10 @@ def start_crossbar_worker(module):
     module = importlib.import_module(module)
     module.run()
 
+
 def log_golem_version():
     log = logging.getLogger('golem.version')
-    #initial version info
+    # initial version info
     from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID, TASK_PROTOCOL_ID
 
     log.info("GOLEM Version: " + APP_VERSION)

@@ -13,8 +13,6 @@ class App(object):
     def __init__(self):
         self.env = None  # inherit from Environment
         self.builder = None  # inherit from TaskBuilder
-        self.widget = None  # inherit from TaskWidget
-        self.controller = None  # inherit from Customizer
         self.task_type_info = None  # inherit from TaskTypeInfo
         self.benchmark = None  # inherit from Benchmark
         self.benchmark_builder = None #inherit from TaskBuilder

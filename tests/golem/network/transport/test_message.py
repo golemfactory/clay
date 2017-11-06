@@ -1,18 +1,17 @@
 # -*- encoding: utf-8 -*-
 
 from copy import copy
+from golem_messages import message
 import os
 import random
 import time
 import unittest
+import unittest.mock as mock
 import uuid
 
 from golem.core.common import to_unicode
-from golem.core.databuffer import DataBuffer
-from golem.network.transport import message
+from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ResultType
-from golem.testutils import PEP8MixIn
-import mock
 
 
 class FailingMessage(message.Message):
@@ -21,16 +20,19 @@ class FailingMessage(message.Message):
     def __init__(self, *args, **kwargs):
         message.Message.__init__(self, *args, **kwargs)
 
-    def dict_repr(self):
+    def slots(self):
         raise Exception()
 
 
-class TestMessages(unittest.TestCase, PEP8MixIn):
-    PEP8_FILES = ['golem/network/transport/message.py', ]
+fake_sign = lambda x: b'\000'*65
+fake_decrypt = lambda x: x
 
+
+class TestMessages(unittest.TestCase):
     def setUp(self):
         random.seed()
         super(TestMessages, self).setUp()
+        self.protocol = BasicProtocol()
 
     def test_message_want_to_compute_task(self):
         node_id = 'test-ni-{}'.format(uuid.uuid4())
@@ -48,16 +50,16 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             max_resource_size=max_resource_size,
             max_memory_size=max_memory_size,
             num_cores=num_cores)
-        expected = {
-            'NODE_NAME': node_id,
-            'TASK_ID': task_id,
-            'PERF_INDEX': perf_index,
-            'MAX_RES': max_resource_size,
-            'MAX_MEM': max_memory_size,
-            'NUM_CORES': num_cores,
-            'PRICE': price,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['node_name', node_id],
+            ['task_id', task_id],
+            ['perf_index', perf_index],
+            ['max_resource_size', max_resource_size],
+            ['max_memory_size', max_memory_size],
+            ['num_cores', num_cores],
+            ['price', price],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_report_computed_task(self):
         m = message.MessageReportComputedTask()
@@ -74,8 +76,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.eth_account, "ETH")
         self.assertEqual(m.node_info, "NODE")
         self.assertEqual(m.TYPE, message.MessageReportComputedTask.TYPE)
-        dict_repr = m.dict_repr()
-        m2 = message.MessageReportComputedTask(dict_repr=dict_repr)
+        slots = m.slots()
+        m2 = message.MessageReportComputedTask(slots=slots)
         self.assertEqual(m.subtask_id, m2.subtask_id)
         self.assertEqual(m.result_type, m2.result_type)
         self.assertEqual(m.extra_data, m2.extra_data)
@@ -95,17 +97,17 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_serialization(self):
         m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
-        assert m.serialize()
+        assert m.serialize(fake_sign)
 
         m = FailingMessage()
         serialized = None
 
         try:
-            serialized = m.serialize()
+            serialized = m.serialize(fake_sign)
         except:
             pass
         assert not serialized
-        assert not message.Message.deserialize_message(None)
+        assert not message.Message.deserialize(None, fake_decrypt)
 
     def test_unicode(self):
         source = str("test string")
@@ -138,34 +140,30 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = message.MessageHello(timestamp=epoch_t)
-        db = DataBuffer()
-        m.serialize_to_buffer(db)
+        self.protocol.db.append_len_prefixed_string(m.serialize(fake_sign))
         set_tz('US/Eastern')
-        server = mock.Mock()
-        server.decrypt = lambda x: x
-        msgs = message.Message.decrypt_and_deserialize(db, server)
+        msgs = self.protocol._data_to_messages()
         assert len(msgs) == 1
         newyork_time = time.localtime(msgs[0].timestamp)
         assert warsaw_time != newyork_time
         assert time.gmtime(epoch_t) == time.gmtime(msgs[0].timestamp)
 
     def test_decrypt_and_deserialize(self):
-        db = DataBuffer()
-        server = mock.Mock()
+        db = self.protocol.db
         n_messages = 10
 
         def serialize_messages(_b):
-            for m in [message.MessageHello() for _ in range(0, n_messages)]:
-                m.serialize_to_buffer(_b)
+            for m in [message.MessageRandVal() for _ in range(0, n_messages)]:
+                db.append_len_prefixed_string(m.serialize(fake_sign))
 
         serialize_messages(db)
-        server.decrypt = lambda x: x
-        assert len(message.Message.decrypt_and_deserialize(db, server)) == n_messages
+        self.assertEqual(len(self.protocol._data_to_messages()), n_messages)
 
-        patch_method = 'golem.network.transport.message.Message.deserialize_message'
-        with mock.patch(patch_method, side_effect=lambda x: None):
+        patch_method = 'golem_messages.message.Message' \
+                       '.deserialize'
+        with mock.patch(patch_method, side_effect=lambda *_: None):
             serialize_messages(db)
-            assert len(message.Message.decrypt_and_deserialize(db, server)) == 0
+            assert len(self.protocol._data_to_messages()) == 0
 
         def raise_assertion(*_):
             raise AssertionError()
@@ -173,45 +171,30 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         def raise_error(*_):
             raise Exception()
 
-        server.decrypt = raise_assertion
         serialize_messages(db)
 
-        result = message.Message.decrypt_and_deserialize(db, server)
-
+        result = self.protocol._data_to_messages()
         assert len(result) == n_messages
         assert all(not m.encrypted for m in result)
 
-        server.decrypt = raise_error
-        serialize_messages(db)
-
-        result = message.Message.decrypt_and_deserialize(db, server)
-
+        result = self.protocol._data_to_messages()
         assert len(result) == 0
-
-    def test_message_errors(self):
-        m = message.MessageReportComputedTask()
-        with self.assertRaises(TypeError):
-            m.serialize_to_buffer("not a db")
-        with self.assertRaises(TypeError):
-            m.decrypt_and_deserialize("not a db")
-        with self.assertRaises(TypeError):
-            m.deserialize("not a db")
 
     def test_message_randval(self):
         rand_val = random.random()
         msg = message.MessageRandVal(rand_val=rand_val)
-        expected = {
-            'RAND_VAL': rand_val,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['rand_val', rand_val],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_challenge_solution(self):
         solution = 'O gajach świętych, z których i drew zwalonych wichrem uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), że świętymi były i zwierzęta chroniące się w nich, tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro zważymy, że dla Litwina gaje takie były rzeczywiście nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż samo donosi w starożytności Strabon o Henetach: były u nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły się zwierzęta i jelenie z wilkami się kupiły; gdy się ludzie zbliżali i dotykali ich, nie uciekały; skoro gonione od psów tu się schroniły, ustawała pogoń”. I bardzo trzeźwi mitografowie uznawali w tych gajach heneckich tylko symbole, „pojęcia o kraju bogów i o czasach rajskich”; przykład litewski poucza zaś dostatecznie, że podanie to, jak tyle innych, które najmylniej symbolicznie tłumaczą, należy rozumieć dosłownie, o prawdziwych gajach i zwierzętach, nie o jakimś raju i towarzyszach Adama; przesada w podaniu naturalnie razić nie może. Badania mitologiczne byłyby już od dawna o wiele głębiej dotarły, gdyby mania symbolizowania wszelkich szczegółów, i dziś jeszcze nie wykorzeniona, nie odwracała ich na manowce.\n-- Aleksander Brückner "Starożytna Litwa"'
         msg = message.MessageChallengeSolution(solution=solution)
-        expected = {
-            'SOLUTION': solution,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['solution', solution],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_no_payload_messages(self):
         for message_class in (
@@ -228,74 +211,74 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 message.MessageWaitingForResults,
                 ):
             msg = message_class()
-            expected = {}
-            self.assertEqual(expected, msg.dict_repr())
+            expected = []
+            self.assertEqual(expected, msg.slots())
 
     def test_list_messages(self):
         for message_class, key in (
-                (message.MessagePeers, 'PEERS'),
-                (message.MessageTasks, 'TASKS'),
-                (message.MessageResourcePeers, 'RESOURCE_PEERS'),
-                (message.MessageGossip, 'GOSSIP'),
+                (message.MessagePeers, 'peers'),
+                (message.MessageTasks, 'tasks'),
+                (message.MessageResourcePeers, 'resource_peers'),
+                (message.MessageGossip, 'gossip'),
                 ):
             msg = message_class()
-            expected = {
-                key: [],
-            }
-            self.assertEqual(expected, msg.dict_repr())
+            expected = [
+                [key, []]
+            ]
+            self.assertEqual(expected, msg.slots())
 
     def test_int_messages(self):
-        for message_class, param_name, key in (
-                    (message.MessageDisconnect, 'reason', 'DISCONNECT_REASON'),
-                    (message.MessageDegree, 'degree', 'DEGREE'),
-                    (message.MessageWaitForNatTraverse, 'port', 'PORT'),
+        for message_class, key in (
+                    (message.MessageDisconnect, 'reason'),
+                    (message.MessageDegree, 'degree'),
+                    (message.MessageWaitForNatTraverse, 'port'),
                 ):
             value = random.randint(-10**10, 10**10)
-            msg = message_class(**{param_name: value})
-            expected = {
-                key: value,
-            }
-            self.assertEqual(expected, msg.dict_repr())
+            msg = message_class(**{key: value})
+            expected = [
+                [key, value]
+            ]
+            self.assertEqual(expected, msg.slots())
 
     def test_uuid_messages(self):
-        for message_class, param_name, key in (
-                (message.MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
-                (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
-                (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
-                (message.MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
-                (message.MessageStartSessionResponse, 'conn_id', 'CONN_ID'),
-                (message.MessageHasResource, 'resource', 'resource'),
-                (message.MessageWantsResource, 'resource', 'resource'),
-                (message.MessagePullResource, 'resource', 'resource'),
+        for message_class, key in (
+                (message.MessageRemoveTask, 'task_id',),
+                (message.MessageFindNode, 'node_key_id'),
+                (message.MessageNatTraverseFailure, 'conn_id'),
+                (message.MessageGetTaskResult, 'subtask_id'),
+                (message.MessageStartSessionResponse, 'conn_id'),
+                (message.MessageHasResource, 'resource'),
+                (message.MessageWantsResource, 'resource'),
+                (message.MessagePullResource, 'resource'),
                 ):
             value = 'test-{}'.format(uuid.uuid4())
-            msg = message_class(**{param_name: value})
-            expected = {
-                key: value,
-            }
-            self.assertEqual(expected, msg.dict_repr())
+            msg = message_class(**{key: value})
+            expected = [
+                [key, value]
+            ]
+            self.assertEqual(expected, msg.slots())
 
     def test_message_loc_rank(self):
         node_id = 'test-{}'.format(uuid.uuid4())
         loc_rank = random.randint(-10**10, 10**10)
         msg = message.MessageLocRank(node_id=node_id, loc_rank=loc_rank)
-        expected = {
-            'LOC_RANK': loc_rank,
-            'NODE_ID': node_id,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['node_id', node_id],
+            ['loc_rank', loc_rank]
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_want_to_start_task_session(self):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
         msg = message.MessageWantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
-        expected = {
-            'NODE_INFO': node_info,
-            'CONN_ID': conn_id,
-            'SUPER_NODE_INFO': super_node_info,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['node_info', node_info],
+            ['conn_id', conn_id],
+            ['super_node_info', super_node_info],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_set_task_session(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -303,13 +286,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
         msg = message.MessageSetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
-        expected = {
-            'KEY_ID': key_id,
-            'NODE_INFO': node_info,
-            'CONN_ID': conn_id,
-            'SUPER_NODE_INFO': super_node_info,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['key_id', key_id],
+            ['node_info', node_info],
+            ['conn_id', conn_id],
+            ['super_node_info', super_node_info],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_nat_hole(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -317,33 +300,33 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         address = '8.8.8.8'
         port = random.randint(0, 2**16) + 1
         msg = message.MessageNatHole(key_id=key_id, conn_id=conn_id, address=address, port=port)
-        expected = {
-            'KEY_ID': key_id,
-            'ADDR': address,
-            'CONN_ID': conn_id,
-            'PORT': port,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['key_id', key_id],
+            ['address', address],
+            ['port', port],
+            ['conn_id', conn_id],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_inform_about_nat_traverse_failure(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         msg = message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id)
-        expected = {
-            'KEY_ID': key_id,
-            'CONN_ID': conn_id,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['key_id', key_id],
+            ['conn_id', conn_id],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_get_resource(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
         resource_header = 'test-rh-{}'.format(uuid.uuid4())
         msg = message.MessageGetResource(task_id=task_id, resource_header=resource_header)
-        expected = {
-            'SUB_TASK_ID': task_id,
-            'RESOURCE_HEADER': resource_header,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['task_id', task_id],
+            ['resource_header', resource_header],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_delta_parts(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
@@ -361,110 +344,120 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             node_info=node_info,
             address=address,
             port=port)
-        expected = {
-            'TASK_ID': task_id,
-            'DELTA_HEADER': delta_header,
-            'PARTS': parts,
-            'NODE_NAME': node_name,
-            'ADDR': address,
-            'PORT': port,
-            'node info': node_info,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['task_id', task_id],
+            ['delta_header', delta_header],
+            ['parts', parts],
+            ['node_name', node_name],
+            ['address', address],
+            ['port', port],
+            ['node_info', node_info],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_task_failure(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
         err = 'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
 
         msg = message.MessageTaskFailure(subtask_id=subtask_id, err=err)
-        expected = {
-            'SUBTASK_ID': subtask_id,
-            'ERR': err,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['subtask_id', subtask_id],
+            ['err', err],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_middleman(self):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
         msg = message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = {
-            'ASKING_NODE': asking_node,
-            'DEST_NODE': dest_node,
-            'ASK_CONN_ID': ask_conn_id,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['asking_node', asking_node],
+            ['dest_node', dest_node],
+            ['ask_conn_id', ask_conn_id],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_join_middleman_conn(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         msg = message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node)
-        expected = {
-            'CONN_ID': conn_id,
-            'KEY_ID': key_id,
-            'DEST_NODE_KEY_ID': dest_node,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['conn_id', conn_id],
+            ['key_id', key_id],
+            ['dest_node_key_id', dest_node],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_nat_punch(self):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
         dest_node = 'test-dn-{}'.format(uuid.uuid4())
         ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
         msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = {
-            'ASKING_NODE': asking_node,
-            'DEST_NODE': dest_node,
-            'ASK_CONN_ID': ask_conn_id,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['asking_node', asking_node],
+            ['dest_node', dest_node],
+            ['ask_conn_id', ask_conn_id],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_cannot_compute_task(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
         reason = "Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
         msg = message.MessageCannotComputeTask(subtask_id=subtask_id, reason=reason)
-        expected = {
-            'REASON': reason,
-            'SUBTASK_ID': subtask_id,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['reason', reason],
+            ['subtask_id', subtask_id],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_push(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
         copies = random.randint(-10**10, 10**10)
         msg = message.MessagePushResource(resource=resource, copies=copies)
-        expected = {
-            'resource': resource,
-            'copies': copies,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['resource', resource],
+            ['copies', copies],
+        ]
+        self.assertEqual(expected, msg.slots())
 
     def test_message_pull_answer(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
         for has_resource in (True, False):
             msg = message.MessagePullAnswer(resource=resource, has_resource=has_resource)
-            expected = {
-                'resource': resource,
-                'has resource': has_resource,
-            }
-            self.assertEqual(expected, msg.dict_repr())
+            expected = [
+                ['resource', resource],
+                ['has_resource', has_resource],
+            ]
+            self.assertEqual(expected, msg.slots())
 
     def test_message_resource_list(self):
         resources = 'test-rs-{}'.format(uuid.uuid4())
         options = 'test-clientoptions-{}'.format(uuid.uuid4())
         msg = message.MessageResourceList(resources=resources, options=options)
-        expected = {
-            'resources': resources,
-            'options': options,
-        }
-        self.assertEqual(expected, msg.dict_repr())
+        expected = [
+            ['resources', resources],
+            ['options', options],
+        ]
+        self.assertEqual(expected, msg.slots())
 
-    @mock.patch("golem.network.transport.message.MessageRandVal")
+    @mock.patch("golem_messages.message.MessageRandVal")
     def test_init_messages_error(self, mock_message_rand_val):
-        copy_registered = copy(message.Message.registered_message_types)
-        message.Message.registered_message_types = dict()
+        copy_registered = copy(message.registered_message_types)
+        message.registered_message_types = {}
         mock_message_rand_val.__name__ = "randvalmessage"
         mock_message_rand_val.TYPE = message.MessageHello.TYPE
         with self.assertRaises(RuntimeError):
             message.init_messages()
-        message.Message.registered_message_types = copy_registered
+        message.registered_message_types = copy_registered
+
+    def test_slots(self):
+        message.init_messages()
+
+        for cls in message.registered_message_types.values():
+            # only __slots__ can be present in objects
+            self.assertFalse(hasattr(cls(), '__dict__'), "{} instance has __dict__".format(cls))
+            assert not hasattr(cls.__new__(cls), '__dict__')
+            # slots are properly set in class definition
+            assert len(cls.__slots__) >= len(message.Message.__slots__)

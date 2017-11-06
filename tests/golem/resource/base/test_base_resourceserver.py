@@ -242,7 +242,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         rs, file_names = self.testAddFilesToGet()
         resources = list(rs.pending_resources[self.task_id])
         for entry in resources:
-            rs._download_success(entry.resource, self.task_id)
+            rs._download_success(entry.resource, None, self.task_id)
         assert not rs.pending_resources
 
     def testDownloadError(self):

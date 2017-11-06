@@ -100,6 +100,7 @@ class PendingConnectionsServer(TCPServer):
         """
         # Pending connections
         self.pending_connections = {}  # Connections that should be accomplished
+        self.pending_sessions = set()  # Sessions a.k.a Peers before handshake
         self.conn_established_for_type = {}  # Reactions for established connections of certain types
         self.conn_failure_for_type = {}  # Reactions for failed connection attempts of certain types
         self.conn_final_failure_for_type = {}  # Reactions for final connection attempts failure
@@ -236,6 +237,13 @@ class PendingConnectionsServer(TCPServer):
             port = node_info.pub_port
         socket_addresses.append(SocketAddress(node_info.pub_addr, port))
         return socket_addresses
+
+    def sync_network(self, timeout=1.0):
+        for session in frozenset(self.pending_sessions):
+            if (time.time() - session.last_message_time) < timeout:
+                continue
+            # Timeouting connection
+            session.dropped()
 
     def _set_conn_established(self):
         pass

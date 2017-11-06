@@ -63,21 +63,23 @@ def encode_hex(b):
     raise TypeError('Value must be an instance of str or bytes')
 
 
-def tee_target(prefix, proc, path):
-    """tee emulation for use with threading"""
+def tee_target(prefix, proc, input_stream, path, stream):
+    """tee emulation for use with threading
+
+    First stream is open to a file pointed by `path`
+    Second stream is `stream` arg.
+    """
 
     # Using unix `tee` or powershell.exe `Tee-Object` causes problems with
     # error codes etc. Probably could be solved by bash's `set -o pipefail`
     # but emulating tee functionality in a thread seems to raise less porta-
     # bility issues.
-    channels = (
-        ('out: ', proc.stderr, sys.stderr),
-        ('err: ', proc.stdout, sys.stdout),
-    )
     with open(path, 'a') as log_f:
         while proc.poll() is None:
-            for stream_prefix, in_, out in channels:
-                line = in_.readline()
-                if line:
-                    out.write(prefix + str(line))
-                    log_f.write(stream_prefix + str(line))
+            line = input_stream.readline(256)
+            if line:
+                line = line.decode('utf-8', 'replace')
+                if not line.endswith('\n'):
+                    line += '\n'
+                stream.write(prefix + line)
+                log_f.write(prefix + line)

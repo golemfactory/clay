@@ -22,8 +22,7 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.rpc.mapping import aliases
-from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
@@ -399,8 +398,6 @@ class TestTasks(TempDirFixture):
             client.abort_task.assert_called_with('valid')
             assert tasks.delete('valid')
             client.delete_task.assert_called_with('valid')
-            assert tasks.resume('valid')
-            client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
@@ -586,7 +583,7 @@ class TestSettings(TempDirFixture):
 
         _setting_values = {
             'node_name': Values(['node'], ['', None, 12, lambda x: x]),
-            'accept_task': _bool,
+            'accept_tasks': _bool,
             'max_resource_size': _int_gt0,
             'use_waiting_for_task_timeout': _bool,
             'waiting_for_task_timeout': _int_gt0,
@@ -657,13 +654,13 @@ class TestDebug(unittest.TestCase):
             debug = Debug()
             task_id = str(uuid.uuid4())
 
-            debug.rpc((aliases.Network.ident, ))
+            debug.rpc(('net.ident',))
             assert client.get_node.called
 
-            debug.rpc((aliases.Task.task, task_id))
+            debug.rpc(('comp.task', task_id))
             client.get_task.assert_called_with(task_id)
 
-            debug.rpc((aliases.Task.subtasks_borders, task_id, 2))
+            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
             client.get_subtasks_borders.assert_called_with(task_id, 2)
 
             with self.assertRaises(CommandException):

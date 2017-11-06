@@ -77,7 +77,7 @@ function ask_user()
 function release_url()
 {
     json=$(wget -qO- --header='Accept: application/json' $1)
-    echo ${json} | python -c '\
+    echo ${json} | python3 -c '\
         import sys, json;                          \
         j = json.load(sys.stdin);                  \
         k = "browser_download_url";                \
@@ -117,7 +117,7 @@ function install_dependencies()
     fi
 
     declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
-               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
+               libssl-dev autoconf libgmp-dev libtool libffi-dev \
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
                ethereum )
 
@@ -212,7 +212,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
 
@@ -230,7 +230,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
     return 0

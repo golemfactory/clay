@@ -1,7 +1,9 @@
-import mock
 import os
 import random
+from threading import Lock
 import time
+import unittest.mock as mock
+import uuid
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -112,11 +114,16 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd.deadline = timeout_to_deadline(10)
 
         task_server = self.task_server
-        task_server.task_keeper.task_headers[
-            ctd.subtask_id].subtask_timeout = 5
-
-        task_server.task_keeper.task_headers["xyz"].deadline = \
-            timeout_to_deadline(20)
+        task_server.task_keeper.task_headers = {
+            ctd.subtask_id: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(5)
+            ),
+            ctd.task_id: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(20)
+            )
+        }
 
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
@@ -138,7 +145,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported",
             "10.10.10.10", 10203, "key", "owner", "ABC")
-
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -188,7 +194,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "aabbcc", "xyz", 'some exception', "10.10.10.10",
             10203, "key", "owner", "ABC")
 
-
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print('Hello world')"
         ctd.timeout = timeout_to_deadline(5)
@@ -230,7 +235,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def test_change_config(self):
         task_server = self.task_server
 
-
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = mock.Mock()
 
@@ -266,6 +270,49 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         tc.lock_config(False)
         client.lock_config.assert_called_with(False)
+
+    @mock.patch('golem.task.taskthread.TaskThread.start')
+    def test_compute_task(self, start):
+
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        task_computer = mock.Mock()
+        compute_task = TaskComputer._TaskComputer__compute_task
+
+        resource_manager = task_computer.resource_manager
+        resource_manager.get_resource_dir.return_value = self.tempdir + '_res'
+        resource_manager.get_temporary_dir.return_value = self.tempdir + '_tmp'
+
+        task_computer.lock = Lock()
+        task_computer.dir_lock = Lock()
+
+        task_computer.assigned_subtasks = {
+            subtask_id: mock.Mock(task_id=task_id)
+        }
+        task_computer.task_server.task_keeper.task_headers = {
+            task_id: None
+        }
+
+        args = (task_computer, subtask_id)
+        kwargs = dict(
+            docker_images=[],
+            src_code='print("test")',
+            extra_data=mock.Mock(),
+            short_desc='test',
+            subtask_deadline=time.time() + 3600
+        )
+
+        compute_task(*args, **kwargs)
+        assert task_computer.session_closed.called
+        assert not start.called
+
+        header = mock.Mock(deadline=time.time() + 3600)
+        task_computer.task_server.task_keeper.task_headers[task_id] = header
+        task_computer.session_closed.reset_mock()
+
+        compute_task(*args, **kwargs)
+        assert not task_computer.session_closed.called
+        assert start.called
 
     @staticmethod
     def __wait_for_tasks(tc):
