@@ -144,6 +144,15 @@ class Client(HardwarePresetsMixin):
                 int(self.config_desc.network_check_interval))
         ]
 
+        clean_resources_older_than = \
+            self.config_desc.clean_resources_older_than_seconds
+        if clean_resources_older_than > 0:
+            self._services.append(
+                ResourceCleanerService(
+                    self,
+                    interval_seconds=max(1, int(clean_resources_older_than/10)),
+                    older_than_seconds=clean_resources_older_than))
+
         self.cfg = config
 
         self.ranking = Ranking(self)
@@ -855,26 +864,27 @@ class Client(HardwarePresetsMixin):
     def get_distributed_files_dir(self):
         return str(self.resource_server.get_distributed_resource_root())
 
-    def clear_dir(self, dir_type):
+    def clear_dir(self, dir_type, older_than_seconds: int = 0):
         if dir_type == DirectoryType.COMPUTED:
-            return self.remove_computed_files()
+            return self.remove_computed_files(older_than_seconds)
         elif dir_type == DirectoryType.DISTRIBUTED:
-            return self.remove_distributed_files()
+            return self.remove_distributed_files(older_than_seconds)
         elif dir_type == DirectoryType.RECEIVED:
-            return self.remove_received_files()
+            return self.remove_received_files(older_than_seconds)
         raise Exception("Unknown dir type: {}".format(dir_type))
 
-    def remove_computed_files(self):
+    def remove_computed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(self.get_computed_files_dir())
+        dir_manager.clear_dir(self.get_computed_files_dir(), older_than_seconds)
 
-    def remove_distributed_files(self):
+    def remove_distributed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(self.get_distributed_files_dir())
+        dir_manager.clear_dir(self.get_distributed_files_dir(),
+                              older_than_seconds)
 
-    def remove_received_files(self):
+    def remove_received_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(self.get_received_files_dir())
+        dir_manager.clear_dir(self.get_received_files_dir(), older_than_seconds)
 
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
@@ -1202,3 +1212,22 @@ class BalancePublisherService(Service):
                 'GNT_available': str(av_gnt),
                 'ETH': str(eth)
             })
+
+
+class ResourceCleanerService(Service):
+    _client = None  # type: Client
+    older_than_seconds = 0  # type: int
+
+    def __init__(self,
+                 client: Client,
+                 interval_seconds: int,
+                 older_than_seconds: int):
+        super().__init__(interval_seconds)
+        self._client = client
+        self.older_than_seconds = older_than_seconds
+
+    def _run(self):
+        # TODO: is any synchronization needed here? golemcli has none.
+        self._client.remove_computed_files(self.older_than_seconds)
+        self._client.remove_distributed_files(self.older_than_seconds)
+        self._client.remove_received_files(self.older_than_seconds)
