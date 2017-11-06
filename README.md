@@ -49,7 +49,6 @@ Golem communicates with external technologies some of them may be downloaded and
 * [Docker](https://www.docker.com/)
 * [FreeImage](http://freeimage.sourceforge.net/)
 * [Geth](https://github.com/ethereum/go-ethereum/wiki/geth)
-* [IPFS](https://ipfs.io/)
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)

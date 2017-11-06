@@ -178,7 +178,6 @@ class Client(HardwarePresetsMixin):
 
         self.rpc_publisher = None
 
-        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
