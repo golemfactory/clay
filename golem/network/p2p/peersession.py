@@ -3,6 +3,7 @@ import logging
 from pydispatch import dispatcher
 import semantic_version
 import time
+import random
 
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
@@ -71,7 +72,6 @@ class PeerSession(BasicSafeSession):
         self.node_info = None
         self.client_ver = None
         self.listen_port = None
-
         self.conn_id = None
 
         # Verification by challenge not a random value
@@ -461,7 +461,13 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.send(message.MessageTasks(tasks))
+        if not tasks:
+            return
+        if len(tasks) > variables.TASK_HEADERS_LIMIT:
+            tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
+            self.send(message.MessageTasks(tasks_to_send))
+        else:
+            self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
