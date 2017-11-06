@@ -29,7 +29,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.command()
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--datadir', '-d', type=click.Path())
+@click.option('--datadir', '-d', type=click.Path(
+    file_okay=False,
+    writable=True
+))
 @click.option('--protocol_id', type=click.INT,
               callback=PROTOCOL_ID.patch_protocol_id,
               is_eager=True,
@@ -65,7 +68,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, version, m, geth_port):
+          start_geth,version, m, geth_port):
     freeze_support()
     delete_reactor()
 

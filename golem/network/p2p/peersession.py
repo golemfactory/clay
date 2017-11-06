@@ -1,9 +1,9 @@
+from golem_messages import message
 import logging
 import time
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.appconfig import SEND_PEERS_NUM
-from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import PROTOCOL_ID
