@@ -16,17 +16,26 @@ class GNTW(object):
                 "type": "function"
             },
             {
-                "constant": true,
-                "inputs": [],
-                "name": "golemFactory",
+                "constant": false,
+                "inputs": [
+                    {
+                        "name": "_spender",
+                        "type": "address"
+                    },
+                    {
+                        "name": "_amount",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "approve",
                 "outputs": [
                     {
-                        "name": "",
-                        "type": "address"
+                        "name": "success",
+                        "type": "bool"
                     }
                 ],
                 "payable": false,
-                "stateMutability": "view",
+                "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
@@ -47,12 +56,25 @@ class GNTW(object):
                 "constant": false,
                 "inputs": [
                     {
-                        "name": "_master",
+                        "name": "_from",
                         "type": "address"
+                    },
+                    {
+                        "name": "_to",
+                        "type": "address"
+                    },
+                    {
+                        "name": "_amount",
+                        "type": "uint256"
                     }
                 ],
-                "name": "setMigrationMaster",
-                "outputs": [],
+                "name": "transferFrom",
+                "outputs": [
+                    {
+                        "name": "success",
+                        "type": "bool"
+                    }
+                ],
                 "payable": false,
                 "stateMutability": "nonpayable",
                 "type": "function"
@@ -72,44 +94,17 @@ class GNTW(object):
                 "type": "function"
             },
             {
-                "constant": false,
+                "constant": true,
                 "inputs": [
                     {
-                        "name": "_value",
-                        "type": "uint256"
+                        "name": "depositer",
+                        "type": "address"
                     }
                 ],
-                "name": "migrate",
-                "outputs": [],
-                "payable": false,
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "constant": false,
-                "inputs": [],
-                "name": "finalize",
-                "outputs": [],
-                "payable": false,
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "constant": false,
-                "inputs": [],
-                "name": "refund",
-                "outputs": [],
-                "payable": false,
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "migrationMaster",
+                "name": "getPersonalDepositAddress",
                 "outputs": [
                     {
-                        "name": "",
+                        "name": "depositAddress",
                         "type": "address"
                     }
                 ],
@@ -120,11 +115,11 @@ class GNTW(object):
             {
                 "constant": true,
                 "inputs": [],
-                "name": "tokenCreationCap",
+                "name": "standard",
                 "outputs": [
                     {
                         "name": "",
-                        "type": "uint256"
+                        "type": "string"
                     }
                 ],
                 "payable": false,
@@ -142,7 +137,7 @@ class GNTW(object):
                 "name": "balanceOf",
                 "outputs": [
                     {
-                        "name": "",
+                        "name": "balance",
                         "type": "uint256"
                     }
                 ],
@@ -152,14 +147,14 @@ class GNTW(object):
             },
             {
                 "constant": false,
-                "inputs": [
+                "inputs": [],
+                "name": "createPersonalDepositAddress",
+                "outputs": [
                     {
-                        "name": "_agent",
+                        "name": "depositAddress",
                         "type": "address"
                     }
                 ],
-                "name": "setMigrationAgent",
-                "outputs": [],
                 "payable": false,
                 "stateMutability": "nonpayable",
                 "type": "function"
@@ -167,21 +162,7 @@ class GNTW(object):
             {
                 "constant": true,
                 "inputs": [],
-                "name": "totalTokens",
-                "outputs": [
-                    {
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "payable": false,
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "migrationAgent",
+                "name": "GNT",
                 "outputs": [
                     {
                         "name": "",
@@ -193,31 +174,12 @@ class GNTW(object):
                 "type": "function"
             },
             {
-                "constant": true,
+                "constant": false,
                 "inputs": [],
-                "name": "fundingEndBlock",
-                "outputs": [
-                    {
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
+                "name": "processDeposit",
+                "outputs": [],
                 "payable": false,
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "totalMigrated",
-                "outputs": [
-                    {
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "payable": false,
-                "stateMutability": "view",
+                "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
@@ -242,14 +204,41 @@ class GNTW(object):
                         "type": "address"
                     },
                     {
-                        "name": "_value",
+                        "name": "_amount",
                         "type": "uint256"
                     }
                 ],
                 "name": "transfer",
                 "outputs": [
                     {
-                        "name": "",
+                        "name": "success",
+                        "type": "bool"
+                    }
+                ],
+                "payable": false,
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "constant": false,
+                "inputs": [
+                    {
+                        "name": "_to",
+                        "type": "address"
+                    },
+                    {
+                        "name": "_amount",
+                        "type": "uint256"
+                    },
+                    {
+                        "name": "_data",
+                        "type": "bytes"
+                    }
+                ],
+                "name": "transfer",
+                "outputs": [
+                    {
+                        "name": "success",
                         "type": "bool"
                     }
                 ],
@@ -259,53 +248,20 @@ class GNTW(object):
             },
             {
                 "constant": true,
-                "inputs": [],
-                "name": "tokenCreationMin",
-                "outputs": [
+                "inputs": [
                     {
-                        "name": "",
-                        "type": "uint256"
+                        "name": "_owner",
+                        "type": "address"
+                    },
+                    {
+                        "name": "_spender",
+                        "type": "address"
                     }
                 ],
-                "payable": false,
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "funding",
+                "name": "allowance",
                 "outputs": [
                     {
-                        "name": "",
-                        "type": "bool"
-                    }
-                ],
-                "payable": false,
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "tokenCreationRate",
-                "outputs": [
-                    {
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "payable": false,
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "constant": true,
-                "inputs": [],
-                "name": "fundingStartBlock",
-                "outputs": [
-                    {
-                        "name": "",
+                        "name": "remaining",
                         "type": "uint256"
                     }
                 ],
@@ -315,30 +271,23 @@ class GNTW(object):
             },
             {
                 "constant": false,
-                "inputs": [],
-                "name": "create",
+                "inputs": [
+                    {
+                        "name": "payments",
+                        "type": "bytes32[]"
+                    }
+                ],
+                "name": "batchTransfer",
                 "outputs": [],
-                "payable": true,
-                "stateMutability": "payable",
+                "payable": false,
+                "stateMutability": "nonpayable",
                 "type": "function"
             },
             {
                 "inputs": [
                     {
-                        "name": "_golemFactory",
+                        "name": "_token",
                         "type": "address"
-                    },
-                    {
-                        "name": "_migrationMaster",
-                        "type": "address"
-                    },
-                    {
-                        "name": "_fundingStartBlock",
-                        "type": "uint256"
-                    },
-                    {
-                        "name": "_fundingEndBlock",
-                        "type": "uint256"
                     }
                 ],
                 "payable": false,
@@ -350,17 +299,17 @@ class GNTW(object):
                 "inputs": [
                     {
                         "indexed": true,
-                        "name": "_from",
+                        "name": "from",
                         "type": "address"
                     },
                     {
                         "indexed": true,
-                        "name": "_to",
+                        "name": "to",
                         "type": "address"
                     },
                     {
                         "indexed": false,
-                        "name": "_value",
+                        "name": "value",
                         "type": "uint256"
                     }
                 ],
@@ -372,21 +321,21 @@ class GNTW(object):
                 "inputs": [
                     {
                         "indexed": true,
-                        "name": "_from",
+                        "name": "owner",
                         "type": "address"
                     },
                     {
                         "indexed": true,
-                        "name": "_to",
+                        "name": "spender",
                         "type": "address"
                     },
                     {
                         "indexed": false,
-                        "name": "_value",
+                        "name": "value",
                         "type": "uint256"
                     }
                 ],
-                "name": "Migrate",
+                "name": "Approval",
                 "type": "event"
             },
             {
@@ -394,15 +343,26 @@ class GNTW(object):
                 "inputs": [
                     {
                         "indexed": true,
-                        "name": "_from",
+                        "name": "from",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": true,
+                        "name": "to",
                         "type": "address"
                     },
                     {
                         "indexed": false,
-                        "name": "_value",
+                        "name": "value",
                         "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "name": "data",
+                        "type": "bytes"
                     }
                 ],
-                "name": "Refund",
+                "name": "Transfer",
                 "type": "event"
-            }]"""  # noqa
+            }
+        ]"""  # noqa
