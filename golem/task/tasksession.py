@@ -12,7 +12,7 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
-from golem.network.transport import message
+from golem_messages import message
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir

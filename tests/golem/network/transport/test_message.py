@@ -1,19 +1,17 @@
 # -*- encoding: utf-8 -*-
 
+from copy import copy
+from golem_messages import message
 import os
 import random
 import time
 import unittest
+import unittest.mock as mock
 import uuid
-from copy import copy
-
-import mock
 
 from golem.core.common import to_unicode
-from golem.network.transport import message
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ResultType
-from golem.testutils import PEP8MixIn
 
 
 class FailingMessage(message.Message):
@@ -26,9 +24,11 @@ class FailingMessage(message.Message):
         raise Exception()
 
 
-class TestMessages(unittest.TestCase, PEP8MixIn):
-    PEP8_FILES = ['golem/network/transport/message.py', ]
+fake_sign = lambda x: b'\000'*65
+fake_decrypt = lambda x: x
 
+
+class TestMessages(unittest.TestCase):
     def setUp(self):
         random.seed()
         super(TestMessages, self).setUp()
@@ -97,17 +97,17 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_serialization(self):
         m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
-        assert m.serialize()
+        assert m.serialize(fake_sign)
 
         m = FailingMessage()
         serialized = None
 
         try:
-            serialized = m.serialize()
+            serialized = m.serialize(fake_sign)
         except:
             pass
         assert not serialized
-        assert not message.Message.deserialize(None)
+        assert not message.Message.deserialize(None, fake_decrypt)
 
     def test_unicode(self):
         source = str("test string")
@@ -140,7 +140,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = message.MessageHello(timestamp=epoch_t)
-        self.protocol.db.append_len_prefixed_string(m.serialize())
+        self.protocol.db.append_len_prefixed_string(m.serialize(fake_sign))
         set_tz('US/Eastern')
         msgs = self.protocol._data_to_messages()
         assert len(msgs) == 1
@@ -154,12 +154,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
         def serialize_messages(_b):
             for m in [message.MessageRandVal() for _ in range(0, n_messages)]:
-                db.append_len_prefixed_string(m.serialize())
+                db.append_len_prefixed_string(m.serialize(fake_sign))
 
         serialize_messages(db)
-        assert len(self.protocol._data_to_messages()) == n_messages
+        self.assertEqual(len(self.protocol._data_to_messages()), n_messages)
 
-        patch_method = 'golem.network.transport.message.Message' \
+        patch_method = 'golem_messages.message.Message' \
                        '.deserialize'
         with mock.patch(patch_method, side_effect=lambda *_: None):
             serialize_messages(db)
@@ -415,12 +415,22 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         ]
         self.assertEqual(expected, msg.slots())
 
-    @mock.patch("golem.network.transport.message.MessageRandVal")
+    @mock.patch("golem_messages.message.MessageRandVal")
     def test_init_messages_error(self, mock_message_rand_val):
         copy_registered = copy(message.registered_message_types)
-        message.registered_message_types = dict()
+        message.registered_message_types = {}
         mock_message_rand_val.__name__ = "randvalmessage"
         mock_message_rand_val.TYPE = message.MessageHello.TYPE
         with self.assertRaises(RuntimeError):
             message.init_messages()
         message.registered_message_types = copy_registered
+
+    def test_slots(self):
+        message.init_messages()
+
+        for cls in message.registered_message_types.values():
+            # only __slots__ can be present in objects
+            self.assertFalse(hasattr(cls(), '__dict__'), "{} instance has __dict__".format(cls))
+            assert not hasattr(cls.__new__(cls), '__dict__')
+            # slots are properly set in class definition
+            assert len(cls.__slots__) >= len(message.Message.__slots__)
