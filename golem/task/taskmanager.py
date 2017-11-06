@@ -142,6 +142,7 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
+        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
@@ -171,6 +172,7 @@ class TaskManager(TaskEventListener):
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
+        task.task_status = TaskStatus.waiting
         task_state.status = TaskStatus.waiting
         task.register_listener(self)
 
@@ -233,6 +235,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
+        self.tasks[task_id].task_status = TaskStatus.waiting
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
@@ -339,7 +342,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             if task.needs_computation() and \
-                    self.tasks_states[tid].status in self.activeStatus:
+                    task.task_status in self.activeStatus:
                 ret.append(task.header)
 
         return ret
@@ -535,6 +538,7 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
 
         task.restart()
+        task.task_status = TaskStatus.restarted
         self.tasks_states[task_id].status = TaskStatus.restarted
         task.header.deadline = timeout_to_deadline(
             task.task_definition.full_task_timeout)
@@ -581,6 +585,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def abort_task(self, task_id):
         self.tasks[task_id].abort()
+        self.tasks[task_id].task_status = TaskStatus.aborted
         self.tasks_states[task_id].status = TaskStatus.aborted
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]

@@ -460,6 +460,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2, "10.10.10.10")
             time.sleep(0.1)
             self.tm.check_timeouts()
+            assert t2.task_status == TaskStatus.waiting
             assert self.tm.tasks_states["abc"].status == TaskStatus.waiting
             assert self.tm.tasks_states["abc"].subtask_states["aabbcc"].subtask_status == SubtaskStatus.failure
         # Task with task and subtask timeout
@@ -470,6 +471,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
             time.sleep(0.1)
             self.tm.check_timeouts()
+            assert t3.task_status == TaskStatus.timeout
             assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
             assert self.tm.tasks_states["qwe"].subtask_states["qwerty"].subtask_status == SubtaskStatus.failure
 
@@ -498,10 +500,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.restart_task("xyz")
 
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].status,
-            TaskStatus.restarted
-        )
+        assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
+        assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
 
         with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
             self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
@@ -511,10 +511,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             with self.assertNoLogs(logger, level="WARNING"):
                 self.tm.restart_task("xyz")
 
-            self.assertEqual(
-                self.tm.tasks_states["xyz"].status,
-                TaskStatus.restarted
-            )
+            assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
+            assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
             self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
             for ss in list(self.tm.tasks_states["xyz"].subtask_states.values()):
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
@@ -528,10 +526,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.abort_task("xyz")
 
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].status,
-            TaskStatus.aborted
-        )
+        assert self.tm.tasks["xyz"].task_status == TaskStatus.aborted
+        assert self.tm.tasks_states["xyz"].status == TaskStatus.aborted
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
