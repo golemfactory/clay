@@ -68,7 +68,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth,version, m, geth_port):
+          start_geth, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
