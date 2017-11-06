@@ -120,7 +120,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
-        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
