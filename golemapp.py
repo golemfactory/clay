@@ -5,7 +5,7 @@ from multiprocessing import freeze_support
 import logging
 from ethereum import slogging
 
-from golem.core.variables import PROTOCOL_ID
+from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
 
@@ -34,7 +34,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
     writable=True
 ))
 @click.option('--protocol_id', type=click.INT,
-              callback=PROTOCOL_ID.patch_protocol_id,
+              callback=PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
               expose_value=False,
               help="Golem nodes will connect "
@@ -134,11 +134,11 @@ def start_crossbar_worker(module):
 def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
-    from golem.core.variables import APP_VERSION, PROTOCOL_ID
+    from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 
     log.info("GOLEM Version: " + APP_VERSION)
-    log.info("P2P Protocol Version: " + str(PROTOCOL_ID.P2P_ID))
-    log.info("Task Protocol Version: " + str(PROTOCOL_ID.TASK_ID))
+    log.info("P2P Protocol Version: " + str(PROTOCOL_CONST.P2P_ID))
+    log.info("Task Protocol Version: " + str(PROTOCOL_CONST.TASK_ID))
 
 
 if __name__ == '__main__':

@@ -37,7 +37,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
 
     def test_protocol_versions(self):
         """Test wether correct protocol versions were sent."""
-        from golem.core.variables import PROTOCOL_ID
+        from golem.core.variables import PROTOCOL_CONST
         monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", ClientConfigDescriptor()), MONITOR_CONFIG)
 
         def check(f, msg_type):
@@ -51,8 +51,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                     'type': msg_type,
                     'protocol_versions': {
                         'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-                        'p2p': PROTOCOL_ID.P2P_ID,
-                        'task': PROTOCOL_ID.TASK_ID,
+                        'p2p': PROTOCOL_CONST.P2P_ID,
+                        'task': PROTOCOL_CONST.TASK_ID,
                     },
                 }
 

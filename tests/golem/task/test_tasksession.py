@@ -20,7 +20,7 @@ from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
-from golem.core.variables import PROTOCOL_ID
+from golem.core.variables import PROTOCOL_CONST
 
 
 class DockerEnvironmentMock(DockerEnvironment):
@@ -47,7 +47,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
-            ['proto_id', PROTOCOL_ID.TASK_ID],
+            ['proto_id', PROTOCOL_CONST.TASK_ID],
             ['node_name', None],
             ['node_info', None],
             ['port', 0],
@@ -210,7 +210,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(TaskSession.DCRProtocolVersion)
 
-        msg.proto_id = PROTOCOL_ID.TASK_ID
+        msg.proto_id = PROTOCOL_CONST.TASK_ID
 
         ts._react_to_hello(msg)
         assert ts.send.called

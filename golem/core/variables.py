@@ -29,7 +29,7 @@ LISTEN_PORT_TTL = 3600
 ###############
 # PROTOCOL ID #
 ###############
-class PROTOCOL_ID(object):
+class PROTOCOL_CONST(object):
     """
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules #noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules #noqa
@@ -44,8 +44,8 @@ class PROTOCOL_ID(object):
         """
         del ctx, param
         if value:
-            PROTOCOL_ID.P2P_ID = value
-            PROTOCOL_ID.TASK_ID = value
+            PROTOCOL_CONST.P2P_ID = value
+            PROTOCOL_CONST.TASK_ID = value
 
 
 #################

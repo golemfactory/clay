@@ -3,7 +3,7 @@ import sys
 from click.testing import CliRunner
 from mock import patch
 
-from golem.core.variables import PROTOCOL_ID
+from golem.core.variables import PROTOCOL_CONST
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
 from golemapp import start
@@ -48,8 +48,8 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
 
-        assert PROTOCOL_ID.P2P_ID == 15 \
-               and PROTOCOL_ID.TASK_ID == 16
+        assert PROTOCOL_CONST.P2P_ID == 15 \
+               and PROTOCOL_CONST.TASK_ID == 16
 
         runner.invoke(start,
                       ['--datadir', self.path]
@@ -57,5 +57,5 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                       catch_exceptions=False)
 
         assert node_class.called
-        assert PROTOCOL_ID.P2P_ID == 123456 \
-               and PROTOCOL_ID.TASK_ID == 123456
+        assert PROTOCOL_CONST.P2P_ID == 123456 \
+               and PROTOCOL_CONST.TASK_ID == 123456
