@@ -1,11 +1,11 @@
+from golem_messages.message import MessageWantToComputeTask, \
+    MessageResourceHandshakeVerdict, MessageResourceHandshakeNonce, \
+    MessageResourceHandshakeStart
 import logging
 import os
 import uuid
 
 from golem.core.async import AsyncRequest, async_run
-from golem.network.transport.message import MessageWantToComputeTask, \
-    MessageResourceHandshakeVerdict, MessageResourceHandshakeNonce, \
-    MessageResourceHandshakeStart
 
 logger = logging.getLogger('golem.resources')
 

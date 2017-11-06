@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from functools import wraps
 
 from golem.core.common import to_unicode
-from golem.rpc.mapping.aliases import Golem
+from golem.rpc.mapping.rpceventnames import Golem
 
 
 class Stage(object):
