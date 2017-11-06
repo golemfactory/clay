@@ -391,11 +391,11 @@ class Client(HardwarePresetsMixin):
             VMDiagnosticsProvider(),
             self.monitor.on_vm_snapshot
         )
-        self.diag_service.start_looping_call()
+        self.diag_service.start()
 
     def stop_monitor(self):
         self.monitor.shut_down()
-        self.diag_service.stop_looping_call()
+        self.diag_service.stop()
 
     def connect(self, socket_address):
         if isinstance(socket_address, Iterable):
