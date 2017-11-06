@@ -183,7 +183,7 @@ class TaskManager(TaskEventListener):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
 
     def dump_task(self, task_id: str) -> None:
-        logger.debug('DUMP TASK')
+        logger.debug('DUMP TASK %r', task_id)
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
             filepath = self._dump_filepath(task_id)
