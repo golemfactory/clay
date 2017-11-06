@@ -190,7 +190,11 @@ class SimpleConfig(object):
                 )
 
     def __write_options(self, cfg):
-        for prop in self.get_node_config().properties():
+        current_cfg = self.get_node_config()
+        logger.debug("writing config, old = %s, new = %s", current_cfg, cfg)
+        if not hasattr(current_cfg, '_properties'):
+            return
+        for prop in current_cfg.properties():
             self.__write_option(cfg, prop)
 
     def __remove_old_options(self, cfg):
