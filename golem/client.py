@@ -52,6 +52,7 @@ from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI,\
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskbase import ResourceType
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -141,7 +142,6 @@ class Client(HardwarePresetsMixin):
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
-            TasksPublisherService(self),
             BalancePublisherService(self)
         ]
 
@@ -275,6 +275,13 @@ class Client(HardwarePresetsMixin):
                         1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
+
+            if self.rpc_publisher:
+                tasks_publisher_service = TasksPublisherService(
+                    self.rpc_publisher,
+                    self.task_server.task_manager)
+                tasks_publisher_service.start()
+                self._services.append(tasks_publisher_service)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -1154,14 +1161,19 @@ class NetworkConnectionPublisherService(Service):
 
 
 class TasksPublisherService(Service):
-    _client: Client
+    _rpc_publisher = None  # type: Publisher
+    _task_manager = None  # type: TaskManager
 
-    def __init__(self, client: Client):
+    def __init__(self,
+                 rpc_publisher: Publisher,
+                 task_manager: TaskManager):
         super().__init__(interval_seconds=int(PUBLISH_TASKS_INTERVAL))
-        self._client = client
+        self._rpc_publisher = rpc_publisher
+        self._task_manager = task_manager
 
     def _run(self):
-        self._client._publish(Task.evt_task_list, self._client.get_tasks())
+        self._rpc_publisher.publish(Task.evt_task_list,
+                                    self._task_manager.get_tasks_dict())
 
 
 class BalancePublisherService(Service):
