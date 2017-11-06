@@ -1,5 +1,5 @@
+from golem_messages import message
 from golem import testutils
-from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
