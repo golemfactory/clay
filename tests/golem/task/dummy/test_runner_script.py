@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture

@@ -67,7 +67,7 @@ class DummyTask(Task):
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=MIN_PRICE, docker_images=[])
+            max_price=MIN_PRICE, docker_images=None)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -189,10 +189,9 @@ class DummyTask(Task):
         return all(self.subtask_results.values())
 
     def verify_subtask(self, subtask_id):
-        from golem.core.simpleserializer import CBORSerializer
-        result = CBORSerializer.loads(self.subtask_results[subtask_id])
+        result = self.subtask_results[subtask_id]
 
-        if not result or len(result) != self.task_params.result_size:
+        if len(result) != self.task_params.result_size:
             return False
 
         if self.task_params.difficulty == 0:
