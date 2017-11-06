@@ -3,6 +3,7 @@ import unittest.mock as mock
 from mock import MagicMock, Mock
 from pydispatch import dispatcher
 import random
+import semantic_version
 import sys
 import unittest
 
@@ -21,7 +22,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py',]
 
     def setUp(self):
-        super(TestPeerSession, self).setUp()
+        super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
 
@@ -144,7 +145,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         )
         msg_kwargs = {
             'port': random.randint(0, 65535),
-            'node_name': 'How could youths better learn to live than by at once trying the experiment of living? --HDT',
+            'node_name': 'How could youths better learn to live than by at' \
+                         'once trying the experiment of living? --HDT',
             'client_key_id': peer_info.key,
             'node_info': peer_info,
             'proto_id': random.randint(0, sys.maxsize),
@@ -176,16 +178,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         listener.reset_mock()
 
         # Test verified, with seed, newer version
-        list_version = [int(s) for s in APP_VERSION.split('.')]
-        list_version[-1] += 1
-        str_version = '.'.join(str(i) for i in list_version)
-        msg_kwargs['client_ver'] = str_version
+        version = semantic_version.Version(APP_VERSION).next_patch()
+        msg_kwargs['client_ver'] = str(version)
         msg = MessageHello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         listener.assert_called_once_with(
             signal='golem.p2p',
             event='new_version',
-            version=str_version,
+            version=version,
             sender=mock.ANY,
         )
         listener.reset_mock()

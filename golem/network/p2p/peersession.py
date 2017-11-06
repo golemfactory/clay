@@ -1,5 +1,6 @@
 import logging
 from pydispatch import dispatcher
+import semantic_version
 import time
 
 from golem.appconfig import SEND_PEERS_NUM
@@ -13,19 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 def compare_version(client_ver):
-    def _machine_version(v):
-        try:
-            return [int(s) for s in v.split('.')]
-        except (ValueError, AttributeError):
-            logger.debug("Couldn't parse version: %r", v)
-            return []
-
-    mv_client = _machine_version(client_ver)
-    if _machine_version(variables.APP_VERSION) < mv_client:
+    try:
+        v_client = semantic_version.Version(client_ver)
+    except ValueError:
+        logger.debug('Received invalid version tag: %r', client_ver)
+        return
+    if semantic_version.Version(variables.APP_VERSION) < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
-            version='.'.join(str(i) for i in mv_client)
+            version=v_client,
         )
 
 

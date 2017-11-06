@@ -200,8 +200,11 @@ class Client(HardwarePresetsMixin):
             self.node.port_status = kwargs.get('description', '')
             return
         if event == 'new_version':
-            log.warning('New version of golem available: %r',
-                kwargs['version'])
+            log.warning(
+                'New version of golem available: %s',
+                kwargs['version']
+            )
+            self._publish(#XXX)
             return
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
