@@ -304,7 +304,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_manager = Mock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
-        ts.task_server.get_subtask_ttl.return_value = 31313
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
