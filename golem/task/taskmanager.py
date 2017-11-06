@@ -178,7 +178,7 @@ class TaskManager(TaskEventListener):
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
-            logger.info("Task {} added".format(task.header.task_id))
+            logger.info("Task %s added" % task.header.task_id)
             self.notice_task_updated(task.header.task_id)
 
     def _dump_filepath(self, task_id):
@@ -189,10 +189,11 @@ class TaskManager(TaskEventListener):
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
             filepath = self._dump_filepath(task_id)
-            logger.debug('DUMP TASK %r', filepath)
+            logger.debug('DUMPING TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
-        except Exception:
+            logger.debug('TASK %s DUMPED in %r', task_id, filepath)
+        except Exception as e:
             logger.exception(
                 'DUMP ERROR task_id: %r task: %r state: %r',
                 task_id, self.tasks.get(task_id, '<not found>'),
@@ -206,31 +207,38 @@ class TaskManager(TaskEventListener):
         filepath = self._dump_filepath(task_id)
         try:
             filepath.unlink()
+            logger.debug('TASK DUMP with id %s REMOVED from %r',
+                         task_id, filepath)
         except OSError as e:
             logger.warning("Couldn't remove dump file: %s - %s", e)
 
     def restore_tasks(self) -> None:
-        logger.debug('RESTORE TASKS')
+        logger.debug('SEARCHING FOR TASKS TO RESTORE')
         for path in self.tasks_dir.iterdir():
-            logger.debug('RESTORE TASKS %r', path)
             if not path.suffix == '.pickle':
                 continue
-            logger.debug('RESTORE TASKS really %r', path)
+            logger.debug('RESTORE TASKS %r', path)
+
+            task_id = None
             with path.open('rb') as f:
                 try:
                     task, state = pickle.load(f)
                     self.tasks[task.header.task_id] = task
                     self.tasks_states[task.header.task_id] = state
+
+                    task_id = task.header.task_id
+                    logger.debug('TASK %s RESTORED from %r',
+                                 task.header.task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
                     path.unlink()
-                    continue
-            dispatcher.send(
-                signal='golem.taskmanager',
-                event='task_restored',
-                task=task,
-                state=state
-            )
+
+            if task_id is not None:
+                dispatcher.send(
+                    signal='golem.taskmanager',
+                    event='task_status_updated',
+                    task_id=task_id
+                )
 
     @handle_task_key_error
     def resources_send(self, task_id):

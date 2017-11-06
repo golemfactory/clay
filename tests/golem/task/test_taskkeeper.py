@@ -389,22 +389,49 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         super(TestCompTaskKeeper, self).setUp()
         random.seed()
 
-    def test_persistance(self):
-        """Tests whether tasks are persistent between restarts."""
-        tasks_dir = Path(self.path)
+    def _dump_some_tasks(self, tasks_dir):
         ctk = CompTaskKeeper(tasks_dir)
 
         test_headers = []
-        for x in range(100):
+        test_subtasks_ids = []
+        for x in range(10):
             header = get_task_header()
+            header.deadline = timeout_to_deadline(1)
             header.task_id = "test%d-%d" % (x, random.random() * 1000)
             test_headers.append(header)
             ctk.add_request(header, int(random.random() * 100))
+
+            ctd = ComputeTaskDef()
+            ctd.task_id = header.task_id
+            ctd.subtask_id = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctk.receive_subtask(ctd)
+            test_subtasks_ids.append(ctd.subtask_id)
         del ctk
 
+        another_ctk = CompTaskKeeper(tasks_dir)
+        for (subtask_id, header) in zip(test_subtasks_ids, test_headers):
+            self.assertIn(subtask_id, another_ctk.subtask_to_task)
+            self.assertIn(header.task_id, another_ctk.active_tasks)
+
+    def test_persistance(self):
+        """Tests whether tasks are persistent between restarts."""
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
+    def test_remove_old_tasks(self):
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
         ctk = CompTaskKeeper(tasks_dir)
-        for header in test_headers:
-            self.assertIn(header.task_id, ctk.active_tasks)
+        ctk.remove_old_tasks()
+
+        self.assertTrue(any(ctk.active_tasks))
+        self.assertTrue(any(ctk.subtask_to_task))
+        time.sleep(1)
+        ctk.remove_old_tasks()
+        self.assertTrue(not any(ctk.active_tasks))
+        self.assertTrue(not any(ctk.subtask_to_task))
+
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):

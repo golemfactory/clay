@@ -161,9 +161,12 @@ class CompTaskKeeper:
             delta = deadline - common.get_timestamp_utc()
             if delta > 0:
                 continue
-            logger.debug("Removing comp_task after deadline: %s", task_id)
+            logger.info("Removing comp_task after deadline: %s", task_id)
+            for subtask_id in self.active_tasks[task_id].subtasks:
+                del self.subtask_to_task[subtask_id]
             del self.active_tasks[task_id]
-            self.dump()
+
+        self.dump()
 
 
 class TaskHeaderKeeper:
