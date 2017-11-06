@@ -4,6 +4,9 @@
 ####################
 LONG_STANDARD_SIZE = 4
 
+############################
+#       VARIABLES          #
+############################
 APP_NAME = "Brass Golem"
 APP_VERSION = "0.9.0"
 PRIVATE_KEY = "golem_private_key.peb"
@@ -25,6 +28,8 @@ LISTEN_WAIT_TIME = 1
 LISTENING_REFRESH_TIME = 120
 LISTEN_PORT_TTL = 3600
 
+#Number of task headers transmitted per message
+TASK_HEADERS_LIMIT = 20
 
 ###############
 # PROTOCOL ID #

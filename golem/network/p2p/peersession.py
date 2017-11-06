@@ -1,12 +1,14 @@
 from golem_messages import message
 import logging
 import time
+import random
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import PROTOCOL_CONST
+from golem.core.variables import TASK_HEADERS_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,6 @@ class PeerSession(BasicSafeSession):
         self.node_info = None
         self.client_ver = None
         self.listen_port = None
-
         self.conn_id = None
 
         # Verification by challenge not a random value
@@ -354,12 +355,12 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
-        if msg.proto_id != PROTOCOL_CONST.P2P_ID:
+        if msg.proto_id != P2P_PROTOCOL_ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
-                PROTOCOL_CONST.P2P_ID,
+                P2P_PROTOCOL_ID,
                 self.address,
                 self.port
             )
@@ -441,7 +442,13 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.send(message.MessageTasks(tasks))
+        if not tasks:
+            return
+        if len(tasks) > TASK_HEADERS_LIMIT:
+            tasks_to_send = random.sample(tasks, TASK_HEADERS_LIMIT)
+            self.send(message.MessageTasks(tasks_to_send))
+        else:
+            self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -547,7 +554,7 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.MessageHello(
-            proto_id=PROTOCOL_CONST.P2P_ID,
+            proto_id=P2P_PROTOCOL_ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
