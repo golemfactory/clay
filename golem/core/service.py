@@ -17,11 +17,11 @@ class Service:
 
     This implementation uses LoopingCall from Twisted framework.
     """
-    __interval: int
-    _loopingCall: LoopingCall
+    __interval_seconds = 0  # type: int
+    _loopingCall = None  # type: LoopingCall
 
-    def __init__(self, interval: int = 1):
-        self.__interval = interval
+    def __init__(self, interval_seconds: int = 1):
+        self.__interval_seconds = interval_seconds
         self._loopingCall = LoopingCall(self._run_async)
 
     @property
@@ -32,10 +32,10 @@ class Service:
         """
         return self._loopingCall.running
 
-    def start(self):
+    def start(self, now: bool = True):
         if self.running:
             raise RuntimeError("service already started")
-        deferred = self._loopingCall.start(self.__interval)
+        deferred = self._loopingCall.start(self.__interval_seconds, now)
         deferred.addErrback(self._exceptionHandler)
 
     def stop(self):
