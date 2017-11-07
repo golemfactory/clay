@@ -408,8 +408,29 @@ class DockerManager(DockerConfigManager):
                 try:
                     self.command('regenerate_certs', self.docker_machine)
                 except subprocess.CalledProcessError as e:
-                    logger.warning("DockerMachine: failed to env the VM: %s", e)
-                    logger.debug("DockerMachine_output: %s", e.output)
+                    logger.warning("DockerMachine:"
+                                   " failed to env the VM: %s -- %s",
+                                   e, e.output)
+                else:
+                    return self._set_docker_machine_env(retried=True)
+
+                try:
+                    self.command('start', self.docker_machine)
+                except subprocess.CalledProcessError as e:
+                    logger.warning("DockerMachine:"
+                                   " failed to restart the VM: %s -- %s",
+                                   e, e.output)
+                else:
+                    return self._set_docker_machine_env(retried=True)
+
+                try:
+                    self.command('rm', self.docker_machine)
+                    self.command('create', self.docker_machine)
+                except subprocess.CalledProcessError as e:
+                    logger.warning("DockerMachine:"
+                                   " failed to re-create the VM: %s -- %s",
+                                   e, e.output)
+
                 return self._set_docker_machine_env(retried=True)
             typical_solution_s = """It seems there is a  problem with your Docker installation.
 Ensure that you try the following before reporting an issue:
