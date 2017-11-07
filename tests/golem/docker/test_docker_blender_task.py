@@ -75,7 +75,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=60*5):
+    def _run_docker_task(self, render_task, timeout=60):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
