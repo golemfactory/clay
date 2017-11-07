@@ -8,7 +8,7 @@ from unittest.mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from golem import testutils
-from golem.client import Client, ClientTaskComputerEventListener
+from golem.client import Client, ClientTaskComputerEventListener, DoWorkService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
@@ -320,71 +320,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
-    @patch('golem.client.log')
-    def test_do_work(self, log, *_):
-        # FIXME: Pylint has real problems here
-        # https://github.com/PyCQA/pylint/issues/1643
-        # https://github.com/PyCQA/pylint/issues/1645
-        # pylint: disable=no-member
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-
-        c = self.client
-        c.sync = Mock()
-        c.p2pservice = Mock()
-        c.task_server = Mock()
-        c.resource_server = Mock()
-        c.ranking = Mock()
-        c.check_payments = Mock()
-
-        # Test if method exits if p2pservice is not present
-        c.p2pservice = None
-        c.config_desc.send_pings = False
-        c._Client__do_work()
-
-        assert not log.exception.called
-        assert not c.check_payments.called
-
-        # Test calls with p2pservice
-        c.p2pservice = Mock()
-        c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
-
-        c._Client__do_work()
-
-        assert not c.p2pservice.ping_peers.called
-        assert not log.exception.called
-        assert c.p2pservice.sync_network.called
-        assert c.task_server.sync_network.called
-        assert c.resource_server.sync_network.called
-        assert c.ranking.sync_network.called
-        assert c.check_payments.called
-
-        # Enable pings
-        c.config_desc.send_pings = True
-
-        # Make methods throw exceptions
-        def raise_exc():
-            raise Exception('Test exception')
-
-        c.p2pservice.sync_network = raise_exc
-        c.task_server.sync_network = raise_exc
-        c.resource_server.sync_network = raise_exc
-        c.ranking.sync_network = raise_exc
-        c.check_payments = raise_exc
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__do_work()  # pylint: disable=no-member
-
-        assert c.p2pservice.ping_peers.called
-        assert log.exception.call_count == 5
-
-    @patch('golem.client.log')
     @patch('golem.client.dispatcher.send')
     def test_publish_events(self, send, log, *_):
         self.client = Client(
@@ -554,6 +489,56 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
+
+
+class TestDoWorkService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        c = Mock()
+        c.p2pservice = Mock()
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+        c.config_desc.send_pings = False
+
+        do_work_service = DoWorkService(c)
+        do_work_service._run()
+
+        assert not c.p2pservice.ping_peers.called
+        assert not log.exception.called
+        assert c.p2pservice.sync_network.called
+        assert c.task_server.sync_network.called
+        assert c.resource_server.sync_network.called
+        assert c.ranking.sync_network.called
+        assert c.check_payments.called
+
+    @patch('golem.client.log')
+    def test_pings(self, log):
+        c = Mock()
+        c.p2pservice = Mock()
+        c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+        c.config_desc.send_pings = True
+
+        # Make methods throw exceptions
+        def raise_exc():
+            raise Exception('Test exception')
+
+        c.p2pservice.sync_network = raise_exc
+        c.task_server.sync_network = raise_exc
+        c.resource_server.sync_network = raise_exc
+        c.ranking.sync_network = raise_exc
+        c.check_payments = raise_exc
+
+        do_work_service = DoWorkService(c)
+        do_work_service._run()
+
+        assert c.p2pservice.ping_peers.called
+        assert log.exception.call_count == 5
 
 
 @patch('signal.signal')

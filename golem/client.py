@@ -138,7 +138,6 @@ class Client(HardwarePresetsMixin):
         self.nodes_manager_client = None
 
         self._services = [
-            DoWorkService(self),
             MonitoringPublisherService(
                 self,
                 interval_seconds=max(
@@ -261,6 +260,10 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth,
                 connect_to_known_hosts=self.connect_to_known_hosts
             )
+
+            do_work_service = DoWorkService(self)
+            do_work_service.start()
+            self._services.append(do_work_service)
 
         if not self.task_server:
             self.task_server = TaskServer(
@@ -1082,9 +1085,6 @@ class DoWorkService(Service):
 
     def _run(self):
         # TODO: split it into separate services
-
-        if not self._client.p2pservice:
-            return
 
         if self._client.config_desc.send_pings:
             self._client.p2pservice.ping_peers(
