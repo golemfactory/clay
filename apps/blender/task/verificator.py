@@ -56,7 +56,7 @@ class BlenderVerificator(FrameRenderingVerificator):
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
     def validation(self):
-        parser = checking_parser()
+        parser = checking_parser() # GG todo
         args = parser.parse_args()
         blend_file = ".blend"
         # checking if what ugenerate_random_cropser gave .blend file as a parameter
