@@ -424,8 +424,9 @@ class DockerManager(DockerConfigManager):
                     return self._set_docker_machine_env(retried=True)
 
                 try:
-                    if self.hypervisor.remove(self.docker_machine):
-                        self.hypervisor.create(self.docker_machine)
+                    if self.hypervisor:
+                        if self.hypervisor.remove(self.docker_machine):
+                            self.hypervisor.create(self.docker_machine)
                 except subprocess.CalledProcessError as e:
                     logger.warning("DockerMachine:"
                                    " failed to re-create the VM: %s -- %s",
