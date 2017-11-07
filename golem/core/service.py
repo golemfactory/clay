@@ -6,25 +6,29 @@ from twisted.internet.task import LoopingCall
 log = logging.getLogger("golem")
 
 
-class Service(object):
-    """ A prototype of Golem service -- an long running "thread" that performs
-        some tasks in background and responds to request from users and other
-        serices.
-
-        The public interface is just start() and stop(). Internally it controls
-        its state and decides when it must be waken up to perform pending tasks.
-
-        This implementation uses LoopingCall from Twisted framework.
+class Service:
     """
+    A prototype of Golem service -- an long running "thread" that performs
+    some tasks in background and responds to request from users and other
+    serices.
 
-    def __init__(self, interval=1):
+    The public interface is just start() and stop(). Internally it controls
+    its state and decides when it must be waken up to perform pending tasks.
+
+    This implementation uses LoopingCall from Twisted framework.
+    """
+    __interval: int
+    _loopingCall: LoopingCall
+
+    def __init__(self, interval: int = 1):
         self.__interval = interval
         self._loopingCall = LoopingCall(self._run_async)
 
     @property
-    def running(self):
-        """ Informs if the service has been started. It is controlled by start()
-            and stop() methods, do not change it directly.
+    def running(self) -> bool:
+        """
+        Informs if the service has been started. It is controlled by start()
+        and stop() methods, do not change it directly.
         """
         return self._loopingCall.running
 
