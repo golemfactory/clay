@@ -11,7 +11,7 @@ from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService
+    BalancePublisherService, ResourceCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
@@ -536,6 +536,23 @@ class TestBalancePublisherService(TestWithReactor):
 
         assert log.debug.called
         assert rpc_publisher.publish.call_count == 0
+
+
+class TestResourceCleanerService(TestWithReactor):
+    def test_run(self):
+        older_than_seconds = 5
+
+        c = Mock()
+
+        service = ResourceCleanerService(
+            c,
+            interval_seconds=1,
+            older_than_seconds=older_than_seconds)
+        service._run()
+
+        c.remove_computed_files.assert_called_with(older_than_seconds)
+        c.remove_distributed_files.assert_called_with(older_than_seconds)
+        c.remove_received_files.assert_called_with(older_than_seconds)
 
 
 @patch('signal.signal')
