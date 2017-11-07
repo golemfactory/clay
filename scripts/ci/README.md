@@ -29,6 +29,14 @@ To apply the configuration:
 
     ansible-playbook --key-file=~/.ssh/your_ssh_key -i inventory/ site.yml
 
+This will always fail the first time settings up the service since the user has no acces to run as service. To enable this go to:
+
+* Administrative Tools
+* Local Security Policy
+* Local Policies > User Rights Management > Login as Service
+* Add 'buildbot-worker' to the list and save
+* Run the command above again to setup the service.
+
 
 # Note about HTTPS
 

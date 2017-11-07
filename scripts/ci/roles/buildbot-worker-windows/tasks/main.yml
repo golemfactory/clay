@@ -6,13 +6,14 @@
 - win_chocolatey:
     name: "{{ item.name }}"
     params: "{{ item.params|default('') }}"
+    timeout: 5400
   with_items:
     - name: python2
     - name: python3
     - name: git
       params: '"/GitAndUnixToolsOnPath"'
     - name: visualstudio2017community
-    - name: visualstudio2017-workload-nativedesktop 
+    - name: visualstudio2017-workload-nativedesktop
       params: "--includeOptional"
 
 
@@ -21,7 +22,14 @@
   args:
     creates: C:\Python27\Scripts\pywin32_postinstall.py
   notify: pywin32 installed
-  
+
+- name: setup buildbot-worker user
+  win_user:
+    name: buildbot-worker
+    password: "{{site_settings.worker_pass}}"
+    password_never_expires: yes
+    user_cannot_change_password: yes
+
 
 - name: install buildbot-worker
   win_shell: py -2 -m pip install buildbot-worker
@@ -52,3 +60,14 @@
     url: 'https://s3.amazonaws.com/golem-buildbot-build-resources/pywin32-221-cp36-cp36m-win_amd64.whl' 
     dest: 'C:\BuildResources\pywin32-221-cp36-cp36m-win_amd64.whl'
     force: no
+
+
+- name: setup service
+  win_service:
+    name: buildbot-worker
+    path: 'C:\Windows\py.exe -2 C:\Python27\Scripts\buildbot-worker.exe start C:\BuildbotWorker'
+    start_mode: delayed
+    state: started
+    username: "{{ansible_hostname}}\buildbot-worker"
+    password: "{{site_settings.worker_pass}}"
+
