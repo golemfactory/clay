@@ -14,11 +14,6 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
         "golemapp.py",
     ]
-    def setUp(self):
-        super(TestGolemApp, self).setUp()
-
-    def tearDown(self):
-        super(TestGolemApp, self).tearDown()
 
     @patch('golemapp.OptNode')
     def test_start_node(self, node_class):
@@ -49,7 +44,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         runner = CliRunner()
 
         assert PROTOCOL_CONST.P2P_ID == 15 \
-               and PROTOCOL_CONST.TASK_ID == 16
+            and PROTOCOL_CONST.TASK_ID == 16
 
         runner.invoke(start,
                       ['--datadir', self.path]
@@ -58,4 +53,4 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
 
         assert node_class.called
         assert PROTOCOL_CONST.P2P_ID == 123456 \
-               and PROTOCOL_CONST.TASK_ID == 123456
+            and PROTOCOL_CONST.TASK_ID == 123456
