@@ -53,6 +53,7 @@ class RenderingVerificator(CoreVerificator):
                     subtask_id, task):
                 return False
             else:
+                # todo GG shall we add verified_clients in luxverificator?
                 self.verified_clients.append(
                     subtask_info['node_id'])
 

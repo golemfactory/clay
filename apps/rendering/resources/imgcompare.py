@@ -8,7 +8,7 @@ logger = logging.getLogger("apps.rendering")
 
 PSNR_ACCEPTABLE_MIN = 30
 
-
+# todo GG get rid of this file - replace it with the one from CP
 def check_size(file_, res_x, res_y):
     img = load_img(file_)
     if img is None:

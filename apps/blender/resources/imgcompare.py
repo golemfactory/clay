@@ -1,6 +1,6 @@
 from apps.rendering.resources.imgrepr import load_img
 
-
+# todo GG get rid of this file
 def check_size(file_, res_x, res_y):
     # allow +/-1 difference in y size - workaround for blender inproperly rounding floats
     img = load_img(file_)
