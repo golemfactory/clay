@@ -213,6 +213,9 @@ class MacOsStepsFactory(PosixStepsFactory):
 
 
 builders = [
+    util.BuilderConfig(name="unittest_macOS",
+        workernames=["macOS"],
+        factory=LinuxStepsFactory().test_factory()),
     util.BuilderConfig(name="buildpackage_macOS",
         workernames=["macOS"],
         factory=MacOsStepsFactory().build_factory()),

@@ -12,6 +12,7 @@
     - buildbot-master
     - webserver
 
+
 - hosts: linux_worker
   remote_user: ubuntu
   become: yes
@@ -41,3 +42,9 @@
     - setup:
   roles:
     - buildbot-worker-windows
+
+
+- hosts: mac_worker
+  connection: local
+  roles:
+    - buildbot-worker-mac
