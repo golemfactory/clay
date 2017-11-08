@@ -1,5 +1,5 @@
-from golem.monitorconfig import MONITOR_CONFIG
 from golem.core.variables import PROTOCOL_CONST
+from golem.monitorconfig import MONITOR_CONFIG
 
 from .modelbase import BasicModel
 

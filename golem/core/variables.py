@@ -34,6 +34,8 @@ TASK_HEADERS_LIMIT = 20
 ###############
 # PROTOCOL ID #
 ###############
+#FIXME: If import by reference is required, simple dict should be preferred
+#       over class container.
 class PROTOCOL_CONST(object):
     """
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules #noqa
