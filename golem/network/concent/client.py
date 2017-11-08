@@ -23,15 +23,21 @@ class ConcentClient:
 
         try:
             response = requests.post(CONCENT_URL, data=message)
-        except requests.RequestException as e:
+        except requests.exceptions.RequestException as e:
+            statuscode = -1
+            body = "<EMPTY>"
+            if e.response:
+                if e.response.status_code:
+                    statuscode = e.response.status_code
+                if e.response.text:
+                    body = e.response.text
             logger.warning('request failed with status %d and body: %r',
-                           e.response.statuscode,
-                           e.response.body)
+                           statuscode, body)
         else:
-            if response.statuscode == 200:
+            if response.status_code == 200:
                 self._is_available = True
-                if response.body and response.body != "":
-                    return response.body
+                if response.text and response.text != "":
+                    return response.text
                 return None
 
         self._last_available_check = time.time()

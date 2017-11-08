@@ -2,6 +2,8 @@ import logging
 import time
 from unittest import mock, TestCase
 
+from requests.exceptions import RequestException
+
 from golem.core.variables import CONCENT_URL
 from golem.network.concent.client import ConcentClient
 
@@ -9,19 +11,31 @@ logger = logging.getLogger(__name__)
 
 mock_message = "Hello World"
 
+# Succesfull mock
 mock_success = mock.MagicMock()
-mock_success.statuscode = 200
-mock_success.body = mock_message
+mock_success.status_code = 200
+mock_success.text = mock_message
 
-
+# Succesfull empty mock
 mock_empty = mock.MagicMock()
-mock_empty.statuscode = 200
-mock_empty.body = ""
+mock_empty.status_code = 200
+mock_empty.text = ""
 
-
+# Error mock
 mock_error = mock.MagicMock()
-mock_error.statuscode = 500
-mock_error.body = mock_message
+mock_error.status_code = 500
+mock_error.text = mock_message
+
+
+# Exception mock
+def connection_error():
+    raise RequestException
+
+
+mock_request_error = mock.MagicMock(side_effect=connection_error)
+mock_request_error.response = mock.MagicMock()
+mock_request_error.response.status_code = 500
+mock_request_error.response.text = "ERROR"
 
 
 class TestConcentClient(TestCase):
@@ -60,8 +74,20 @@ class TestConcentClient(TestCase):
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
-    @mock.patch('requests.post', side_effect=Exception('error'))
+    @mock.patch('requests.post', side_effect=RequestException())
     def test_message_exception(self, mock_requests_post):
+
+        client = ConcentClient()
+
+        with self.assertRaises(Exception):
+            client.message(mock_message)
+
+        self.assertFalse(client.is_available())
+
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
+
+    @mock.patch('requests.post', return_value=mock_request_error)
+    def test_message_exception_data(self, mock_requests_post):
 
         client = ConcentClient()
 
