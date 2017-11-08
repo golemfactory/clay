@@ -34,7 +34,6 @@ class ConcentClient:
                     return response.body
                 return None
 
-        # TODO: only unavailable on certain errors
         self._last_available_check = time.time()
         self._is_available = False
 
