@@ -207,7 +207,6 @@ class TestMessages(unittest.TestCase):
                 message.MessageBeingMiddlemanAccepted,
                 message.MessageMiddlemanAccepted,
                 message.MessageMiddlemanReady,
-                message.MessageNatPunchFailure,
                 message.MessageWaitingForResults,
                 ):
             msg = message_class()
@@ -231,7 +230,6 @@ class TestMessages(unittest.TestCase):
         for message_class, key in (
                     (message.MessageDisconnect, 'reason'),
                     (message.MessageDegree, 'degree'),
-                    (message.MessageWaitForNatTraverse, 'port'),
                 ):
             value = random.randint(-10**10, 10**10)
             msg = message_class(**{key: value})
@@ -244,7 +242,6 @@ class TestMessages(unittest.TestCase):
         for message_class, key in (
                 (message.MessageRemoveTask, 'task_id',),
                 (message.MessageFindNode, 'node_key_id'),
-                (message.MessageNatTraverseFailure, 'conn_id'),
                 (message.MessageGetTaskResult, 'subtask_id'),
                 (message.MessageStartSessionResponse, 'conn_id'),
                 (message.MessageHasResource, 'resource'),
@@ -291,30 +288,6 @@ class TestMessages(unittest.TestCase):
             ['node_info', node_info],
             ['conn_id', conn_id],
             ['super_node_info', super_node_info],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_nat_hole(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        address = '8.8.8.8'
-        port = random.randint(0, 2**16) + 1
-        msg = message.MessageNatHole(key_id=key_id, conn_id=conn_id, address=address, port=port)
-        expected = [
-            ['key_id', key_id],
-            ['address', address],
-            ['port', port],
-            ['conn_id', conn_id],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_inform_about_nat_traverse_failure(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id)
-        expected = [
-            ['key_id', key_id],
-            ['conn_id', conn_id],
         ]
         self.assertEqual(expected, msg.slots())
 
@@ -387,18 +360,6 @@ class TestMessages(unittest.TestCase):
             ['conn_id', conn_id],
             ['key_id', key_id],
             ['dest_node_key_id', dest_node],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_nat_punch(self):
-        asking_node = 'test-an-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = [
-            ['asking_node', asking_node],
-            ['dest_node', dest_node],
-            ['ask_conn_id', ask_conn_id],
         ]
         self.assertEqual(expected, msg.slots())
 

@@ -279,16 +279,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.ts = ts
         ts.sync_network()
 
-    def test_traverse_nat(self):
-        ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address, "10.10.10.10")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port, 1312)
-
     def test_forwarded_session_requests(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
@@ -408,36 +398,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         subtask_id = 'xxyyzz'
         ts.add_task_session(subtask_id, session)
         self.assertIsNotNone(ts.task_sessions[subtask_id])
-
-    def test_initiate_nat_traversal(self):
-        ccd = ClientConfigDescriptor()
-        node = Node()
-        node.nat_type = FullCone
-
-        ts = TaskServer(node, ccd, Mock(), self.client,
-                        use_docker_machine_manager=False)
-        self.ts = ts
-        ts.network = Mock()
-        ts._add_pending_request = Mock()
-
-        initiate = ts._TaskServer__initiate_nat_traversal
-
-        key_id = 'key_id'
-        node_info = {}
-        super_node_info = Mock()
-        ans_conn_id = 'conn_id'
-
-        initiate(key_id, node_info, None, ans_conn_id)
-        self.assertFalse(ts._add_pending_request.called)
-
-        initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
-                                                   ANY, ANY, ANY, ANY)
-
-        node.nat_type = None
-        initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
-                                                   ANY, ANY, ANY, ANY)
 
     def test_remove_task_session(self):
         ccd = ClientConfigDescriptor()
