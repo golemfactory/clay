@@ -18,7 +18,6 @@ class ConcentClient:
 
     def message(self, message):
 
-        print('message')
         if not self.__can_call_concent():
             raise Exception("5 minute failure grace time")
 
@@ -36,11 +35,7 @@ class ConcentClient:
                 return None
 
         # TODO: only unavailable on certain errors
-        print('call_time')
-        cur_time = time.time()
-        print(cur_time)
-
-        self._last_available_check = cur_time
+        self._last_available_check = time.time()
         self._is_available = False
 
         raise Exception("Failed to call concent")
@@ -50,14 +45,9 @@ class ConcentClient:
 
     def __can_call_concent(self):
         if self._last_available_check is None:
-            print('is none')
             return True
 
-        print('call_time')
-        cur_time = time.time()
-        print(cur_time)
-
-        if self._last_available_check < cur_time - retry_time:
+        if self._last_available_check < time.time() - retry_time:
             return True
 
         return self._is_available
