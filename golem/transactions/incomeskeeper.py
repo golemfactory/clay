@@ -24,29 +24,30 @@ class IncomesKeeper(object):
     def run_once(self):
         delta = datetime.datetime.now() - datetime.timedelta(minutes=10)
         with db.atomic():
-            for expected_income in ExpectedIncome\
+            expected_incomes = ExpectedIncome\
                     .select()\
                     .where(ExpectedIncome.modified_date < delta)\
-                    .order_by(-ExpectedIncome.id).limit(50):
-                try:
-                    with db.atomic():
-                        Income.get(
-                            sender_node=expected_income.sender_node,
-                            task=expected_income.task,
-                            subtask=expected_income.subtask,
-                        )
-                except Income.DoesNotExist:
-                    # Income is still expected.
-                    with db.atomic():
-                        expected_income.modified_date = datetime.datetime.now()
-                        expected_income.save()
+                    .order_by(-ExpectedIncome.id)\
+                    .limit(50)\
+                    .execute()
+
+            for expected_income in expected_incomes:
+                is_subtask_paid = Income.select().where(
+                    Income.sender_node == expected_income.sender_node,
+                    Income.task == expected_income.task,
+                    Income.subtask == expected_income.subtask)\
+                    .exists()
+
+                if is_subtask_paid:
+                    expected_income.delete_instance()
+
+                else:  # ask for payment
+                    expected_income.modified_date = datetime.datetime.now()
+                    expected_income.save()
                     dispatcher.send(
                         signal="golem.transactions",
                         event="expected_income",
-                        expected_income=expected_income
-                    )
-                    continue
-                expected_income.delete_instance()
+                        expected_income=expected_income)
 
     def received(self, sender_node_id,
                  task_id,

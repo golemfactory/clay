@@ -1,4 +1,4 @@
-from golem.core import variables
+from golem.core.variables import PROTOCOL_CONST
 from golem.monitorconfig import MONITOR_CONFIG
 
 from .modelbase import BasicModel
@@ -9,8 +9,8 @@ class LoginLogoutBaseModel(BasicModel):
         self.metadata = metadata.dict_repr()
         self.protocol_versions = {
             'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-            'p2p': variables.P2P_PROTOCOL_ID,
-            'task': variables.TASK_PROTOCOL_ID,
+            'p2p': PROTOCOL_CONST.P2P_ID,
+            'task': PROTOCOL_CONST.TASK_ID,
         }
 
 class LoginModel(LoginLogoutBaseModel):

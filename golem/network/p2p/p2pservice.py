@@ -1,8 +1,8 @@
+from collections import deque
+import ipaddress
 import logging
 import random
 import time
-from collections import deque
-from ipaddress import AddressValueError
 from threading import Lock
 
 from golem.core import simplechallenge
@@ -428,7 +428,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.config_desc.seed_port
             )
             self.connect(socket_address)
-        except AddressValueError as err:
+        except ipaddress.AddressValueError as err:
             logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
@@ -501,7 +501,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.config_desc.seed_port
             )
             self.connect(socket_address)
-        except AddressValueError as err:
+        except ipaddress.AddressValueError as err:
             logger.error("Invalid seed address: %s", err)
 
     def encrypt(self, data, public_key):
@@ -1041,6 +1041,21 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port
         if ip_address and port:
+            self.seeds.add((ip_address, port))
+
+        for config_seed in self.config_desc.seeds.split(None):
+            try:
+                ip_address, port = config_seed.split(':', 1)
+                port = int(port)
+                # Verify that ip_address is valid.
+                # Throws ipaddress.AddressValueError.
+                ipaddress.ip_address(ip_address)
+            except ValueError:
+                logger.info(
+                    "Invalid seed from config: %r. Ignoring.",
+                    config_seed
+                )
+                continue
             self.seeds.add((ip_address, port))
 
     def __remove_sessions_to_end_from_peer_keeper(self):
