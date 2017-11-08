@@ -31,7 +31,8 @@ class BlenderVerificator(FrameRenderingVerificator):
             if not self._check_size(img, res_x, res_y):
                 return False
 
-        file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
+        #file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
+        file_for_adv_ver = random.choice(tr_files)
         if file_for_adv_ver:
             if not self.make_advance_verification(
                     file_for_adv_ver,

@@ -154,6 +154,7 @@ class RenderingVerificator(CoreVerificator):
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))
 
+    # GG todo: is 'forAll', 'forFirst', 'random' used anywhere?
     def __use_adv_verification(self, subtask_info):
         if self.verification_options.type == 'forAll':
             return True
