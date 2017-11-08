@@ -38,7 +38,7 @@ class ImgStatistics(object):
     def _calculate_greyscale_normalized_mse(self, img1: ImgRepr, img2: ImgRepr):
         (res_x, res_y) = img1.get_size()
 
-        img1_bw = img1.to_pil().convert('L*')  # makes it greyscale
+        img1_bw = img1.to_pil().convert('L')  # makes it greyscale
         img2_bw = img2.to_pil().convert('L')  # makes it greyscale
 
         import numpy

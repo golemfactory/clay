@@ -51,3 +51,4 @@ scipy
 pyssim
 enforce==0.3.4
 -e git://github.com/golemfactory/golem-messages.git@v1.0.0#egg=golem_messages
+-e git://github.com/golemfactory/golem-verificator.git#egg=golem_verificator
