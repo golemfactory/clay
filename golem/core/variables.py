@@ -27,14 +27,16 @@ DEFAULT_CONNECT_TO_PORT = 80
 LISTEN_WAIT_TIME = 1
 LISTENING_REFRESH_TIME = 120
 LISTEN_PORT_TTL = 3600
+CONCENT_URL = "concent.golem.network"
 
-#Number of task headers transmitted per message
+# Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
+
 
 ###############
 # PROTOCOL ID #
 ###############
-#FIXME: If import by reference is required, simple dict should be preferred
+# FIXME: If import by reference is required, simple dict should be preferred
 #       over class container.
 class PROTOCOL_CONST(object):
     """
