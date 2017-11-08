@@ -5,7 +5,7 @@ import unittest.mock as mock
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
-from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID
+from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
@@ -37,7 +37,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         expected = [
             ['rand_val', self.peer_session.rand_val],
-            ['proto_id', P2P_PROTOCOL_ID],
+            ['proto_id', PROTOCOL_CONST.P2P_ID],
             ['node_name', node_name],
             ['node_info', node],
             ['port', port],
@@ -109,7 +109,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.disconnect.assert_called_with(
             PeerSession.DCRProtocolVersion)
 
-        msg.proto_id = P2P_PROTOCOL_ID
+        msg.proto_id = PROTOCOL_CONST.P2P_ID
 
         peer_session._react_to_hello(msg)
         assert key_id in peer_session.p2p_service.peers

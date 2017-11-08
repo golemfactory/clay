@@ -7,7 +7,7 @@ from golem.core.crypto import ECIESDecryptionError
 from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
-from golem.core.variables import P2P_PROTOCOL_ID
+from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
 
 logger = logging.getLogger(__name__)
@@ -355,12 +355,12 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
-        if msg.proto_id != P2P_PROTOCOL_ID:
+        if msg.proto_id != PROTOCOL_CONST.P2P_ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
-                P2P_PROTOCOL_ID,
+                PROTOCOL_CONST.P2P_ID,
                 self.address,
                 self.port
             )
@@ -554,7 +554,7 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.MessageHello(
-            proto_id=P2P_PROTOCOL_ID,
+            proto_id=PROTOCOL_CONST.P2P_ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
