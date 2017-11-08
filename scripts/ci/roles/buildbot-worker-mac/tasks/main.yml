@@ -1,0 +1,123 @@
+- include_vars:
+    file: site_settings.yml
+    name: site_settings
+
+
+# - local_action:
+#     module: ec2_instance_facts
+#     filters:
+#       "tag:role": buildbot-master
+#   register: master_instances
+#   become: no
+
+- name: add user buildbot worker
+  user:
+    name: buildbot-worker
+    home: /Users/buildbot-worker
+
+- name: add geth repo
+  become_user: buildbot-worker
+  homebrew_tap:
+    name: ethereum/ethereum
+
+- name: install geth and dependencies
+  become_user: buildbot-worker
+  homebrew:
+    name: "{{ item }}"
+  with_items:
+    - ethereum
+    - automake
+    - pkg-config
+    - libtool
+    - libffi
+    - gmp
+
+
+# TODO: install taskcollector
+
+# install hyperg
+- name: install tar
+  become_user: buildbot-worker
+  homebrew:
+    name: gnu-tar
+
+# TODO: Link gtar to replace tar
+# - name: link tar
+#   command: "brew link --overwrite gnu-tar"
+
+- name: Prepare hyperg directory
+  become: yes
+  file:
+    dest: /usr/local/share
+    state: directory
+
+
+- name: download hyperg
+  become: yes
+  unarchive:
+    remote_src: yes
+    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_darwin-x64.tar.gz
+    dest: /usr/local/share/
+  creates: /usr/local/share/hyperg
+
+
+- name: Link hyperg
+  file:
+    src: /usr/local/share/hyperg/hyperg
+    dest: /usr/local/bin/hyperg
+    state: link
+
+
+# install pythons
+- name: install python and deps
+  become_user: buildbot-worker
+  become: yes
+  homebrew:
+    name: "{{ item }}"
+  with_items:
+    - python3
+    - openexr
+    - freeimage
+    - ipfs
+
+
+- name: install buildbot and its requirements
+  become: yes
+  pip:
+    name: virtualenv
+
+
+- name: install buildbot and its requirements
+  become_user: buildbot-worker
+  become: yes
+  pip:
+    name: buildbot-worker
+    virtualenv: /Users/buildbot-worker/.venv
+
+
+# # NOTE: master address will not be updated once configuration is generated
+- name: initialized workspace for the worker
+  become_user: buildbot-worker
+  become: yes
+  command:
+    /Users/buildbot-worker/.venv/bin/buildbot-worker create-worker
+      /Users/buildbot-worker/worker
+      ec2-54-89-173-235.compute-1.amazonaws.com
+      macOS
+      {{site_settings.worker_pass}}
+    creates=/Users/buildbot-worker/worker/
+
+
+- name: copy the launchdaemon file
+  become: yes
+  copy:
+    src: network.golem.buildbot-worker.plist
+    dest: /Library/LaunchDaemons/network.golem.buildbot-worker.plist
+
+
+- name: remove wrong python3, should use /usr/local/bin/
+  become_user: buildbot-worker
+  become: yes
+  file:
+    dest: /Users/buildbot-worker/.venv/bin/python3
+    state: absent
