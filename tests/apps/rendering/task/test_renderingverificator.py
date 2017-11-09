@@ -36,6 +36,8 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.res_y = 600
         assert rv._get_part_size(dict()) == (800, 600)
 
+    # GG todo - obsolete, since RenderingVerificator().verify is overridden
+    # either in LuxVerificator or in BlenderVerificator...
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()

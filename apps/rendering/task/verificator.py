@@ -80,10 +80,14 @@ class RenderingVerificator(CoreVerificator):
         return self.res_x, self.res_y
 
     def _get_box_start(self, x0, y0, x1, y1):
-        ver_x = min(self.verification_options.box_size[0], x1 - x0)
-        ver_y = min(self.verification_options.box_size[1], y1 - y0)
-        start_x = get_random(x0, x1 - ver_x)
-        start_y = get_random(y0, y1 - ver_y)
+        start_x = x0
+        start_y = y0
+
+        # to do GG what happened to self.verification options?
+        # ver_x = min(self.verification_options.box_size[0], x1 - x0)
+        # ver_y = min(self.verification_options.box_size[1], y1 - y0)
+        # start_x = get_random(x0, x1 - ver_x)
+        # start_y = get_random(y0, y1 - ver_y)
         return start_x, start_y
 
     def _choose_adv_ver_file(self, tr_files, subtask_info):
