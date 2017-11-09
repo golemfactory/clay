@@ -17,18 +17,18 @@ class GolemContracts(object):
     from golem.utils import decode_hex
     from golem.ethereum.contracts import \
         GNTW as __GNTW, \
-        Test_GNT_Faucet as __Test_GNT_Faucet, \
+        GNT_Faucet as __GNT_Faucet, \
         GNT_Deposit as __GNT_Deposit,\
         GNT as __GNT
 
-    tGNT_addr = decode_hex("34cB7577690e01A1C53597730e2e1112f72DBeB5")
+    tGNT_addr = decode_hex("2928aa793b79fcdb7b5b94f5d8419e0ee20abdaf")
     tGNT_Contract =  translate_contract(__GNT.ABI)
 
-    GNT_Deposit_addr = decode_hex("7047c04EB5337bf4fD7033B24d411D50b57feb5C")
+    GNT_Deposit_addr = decode_hex("ceeb2a92ab5cc9c48acd0d656f7d0c6f0670a0d1")
     GNT_Deposit_Contract = translate_contract(__GNT_Deposit.ABI)
 
-    tGNT_Faucet_addr = decode_hex("37Ce6582eB657D46a4EB802538C02FE69b48a348")
-    tGNT_Faucet_Contract = translate_contract(__Test_GNT_Faucet.ABI)
+    tGNT_Faucet_addr = decode_hex("36fee1616a131e7382922475a1ba67f88f891f0d")
+    tGNT_Faucet_Contract = translate_contract(__GNT_Faucet.ABI)
 
-    GNTW_addr = decode_hex("584d53B8C2D0d0d7e27815D8482df8c96a8CD32D")
+    GNTW_addr = decode_hex("a8cd649db30b963592d88fde95fe6284d6224329")
     GNTW_Contract = translate_contract(__GNTW.ABI)

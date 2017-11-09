@@ -186,7 +186,6 @@ class PaymentProcessor(Service):
             r_tGNT = self.__client.call(_from='0x' + encode_hex(addr),
                                         to='0x' + encode_hex(
                                             GolemContracts.tGNT_addr),
-                                        # GG a moze faucet addr?
                                         data='0x' + encode_hex(data_tGNT),
                                         block='pending')
 
@@ -195,13 +194,6 @@ class PaymentProcessor(Service):
                                             GolemContracts.GNTW_addr),
                                         data='0x' + encode_hex(data_GNTW),
                                         block='pending')
-
-            #obsolete:
-            data_obsolete = self.__testGNT.encode('balanceOf', (addr,))
-            r_obsolete = self.__client.call(_from='0x' + encode_hex(addr),
-                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
-                                   data='0x' + encode_hex(data_obsolete),
-                                   block='pending')
 
             if r_tGNT is None or r_tGNT == '0x':
                 self.__gnt_balance = 0
@@ -390,18 +382,6 @@ class PaymentProcessor(Service):
         return True
 
     def get_gnt_from_faucet(self):
-        ## todo GG obsolete
-        if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
-            log.info("Requesting tGNT")
-            addr = self.eth_address(zpad=False)
-            nonce = self.__client.get_transaction_count(addr)
-            data = self.__testGNT.encode_function_call('create', ())
-            tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
-                             value=0, data=data)
-            tx.sign(self.__privkey)
-            self.__client.send(tx)
-            return False
-
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
             addr = self.eth_address(zpad=False)
@@ -411,9 +391,9 @@ class PaymentProcessor(Service):
                 tGNT_Faucet_Contract.encode_function_call('create',())
 
             tx = Transaction(nonce,
-                             gasprice=self.GAS_PRICE,
+                             gasprice=1*10**9,
                              startgas=90000,
-                             to=GolemContracts.tGNT_addr, #GG or faucet?!
+                             to=GolemContracts.tGNT_Faucet_addr,
                              value=0, data=data)
             tx.sign(self.__privkey)
             self.__client.send(tx)
