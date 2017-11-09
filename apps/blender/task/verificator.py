@@ -8,6 +8,14 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.resources.imgcompare import check_size
 
 import golem_verificator
+import shlex
+import subprocess
+from subprocess import PIPE
+from apps.core.task.verificator import SubtaskVerificationState
+
+import logging
+logger = logging.getLogger("apps.blender")
+
 
 class BlenderVerificator(FrameRenderingVerificator):
     def __init__(self, *args, **kwargs):
@@ -21,31 +29,56 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.advanced_verification = True
 
     # todo GG integrate CP metrics into _check_files
-    def _verify_imgs(self, subtask_id, subtask_info, tr_files, task):
-        if len(tr_files) == 0:
-            return False
+
+    def _check_files(self, subtask_id, subtask_info, tr_files, task):
+        # First, assume it is wrong ;p
+        self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+
+
+        if self.use_frames and self.total_tasks <= len(self.frames):
+            frames_list = subtask_info['frames']
+            if len(tr_files) < len(frames_list) or len(tr_files) == 0:
+                return
 
         res_x, res_y = self._get_part_size(subtask_info)
-
-        for img in tr_files:
+        for img in tr_files: # GG todo do we still need it
             if not self._check_size(img, res_x, res_y):
                 return False
 
         #file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
         file_for_adv_ver = random.choice(tr_files)
-        if file_for_adv_ver:
-            if not self.make_advance_verification(
-                    file_for_adv_ver,
-                    subtask_info,
-                    subtask_id, task):
-                return False
-            else:
-                # todo GG shall we add verified_clients in luxverificator?
-                self.verified_clients.append(
-                    subtask_info['node_id'])
 
-        return True
+        try:
+            cmd = "./scripts/validation.py " \
+                "../benchmark_blender/bmw27_cpu.blend " \
+                "--crop_window_size 0,1,0,1 " \
+                "--resolution 150,150 " \
+                "--rendered_scene " \
+                "../benchmark_blender/bad_image0001.png " \
+                "--name_of_excel_file wynik_liczby"
 
+            c = subprocess.run(
+                shlex.split(cmd),
+                stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
+
+            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+            self.verified_clients.append(subtask_info['node_id'])
+            # GG what's this?
+            stdout = c.stdout.decode()
+            # print(stdout)
+        except subprocess.CalledProcessError as e:
+            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+            logger.info("Exception during verification of subtask %s %s: ",
+                        str(subtask_id), str(e))
+
+            logger.info("e.stdout: subtask_id %s \n %s \n",
+                        str(subtask_id), str(e.stdout.decode()))
+
+            logger.info("e.stderr: subtask_id %s \n %s \n",
+                        str(subtask_id), str(e.stderr.decode()))
+
+        logger.info("Subtask %s verification result: %s",
+                    str(subtask_id), self.ver_states[subtask_id].name)
 
     def set_verification_options(self, verification_options):
         super(BlenderVerificator, self).set_verification_options(
@@ -57,10 +90,8 @@ class BlenderVerificator(FrameRenderingVerificator):
             self.box_size = (box_x, box_y)
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
-        extra_data, _ = super(BlenderVerificator, self).change_scope(subtask_id,
-                                                                     start_box,
-                                                                     tr_file,
-                                                                     subtask_info)
+        extra_data, _ = super(BlenderVerificator, self).\
+            change_scope(subtask_id, start_box,tr_file,subtask_info)
         min_x = start_box[0] / self.res_x
         max_x = (start_box[0] + self.verification_options.box_size[
             0] + 1) / self.res_x
