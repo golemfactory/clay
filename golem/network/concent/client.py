@@ -43,30 +43,34 @@ class ConcentClient:
 
         :param message: The raw message to send
         :type message: String
-        :return: Reply or exception
-        :rtype: String
+        :return: Raw reply message, None or exception
+        :rtype: String|None
         """
         if not self.__can_call_concent():
             raise ConcentGraceException("5 minute failure grace time")
 
+        response = None
         try:
             response = requests.post(CONCENT_URL, data=message)
         except requests.exceptions.RequestException as e:
-            statuscode = -1
-            body = "<EMPTY>"
             if e.response:
-                if e.response.status_code:
-                    statuscode = e.response.status_code
-                if e.response.text:
-                    body = e.response.text
-            logger.warning('request failed with status %d and body: %r',
-                           statuscode, body)
+                response = e.response
         else:
             if response.status_code == 200:
                 self._is_available = True
                 if response.text and response.text != "":
                     return response.text
                 return None
+
+        statuscode = -1
+        body = "<EMPTY>"
+        if response:
+            if response.status_code:
+                statuscode = response.status_code
+            if response.text:
+                body = response.text
+        logger.warning('request failed with status %d and body: %r',
+                       statuscode, body)
 
         self._last_available_check = time.time()
         self._is_available = False

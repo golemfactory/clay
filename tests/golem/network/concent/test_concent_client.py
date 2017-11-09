@@ -110,15 +110,18 @@ class TestConcentClient(TestCase):
 
         self.assertTrue(mock_requests_post.called_once)
 
+    @mock.patch('golem.network.concent.client.logger')
     @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60)),
                                           time.time()])
     @mock.patch('requests.post', return_value=mock_error)
-    def test_message_error_repeat_retry(self, mock_requests_post, mock_time):
+    def test_message_error_repeat_retry(self, mock_requests_post,
+                                        mock_time, mock_logger):
 
         client = ConcentClient()
 
         self.assertRaises(ConcentUnavailableException, client.message,
                           mock_message)
+        self.assertEqual(mock_time.call_count, 1)
         self.assertRaises(ConcentUnavailableException, client.message,
                           mock_message)
 
