@@ -5,7 +5,8 @@ from unittest import mock, TestCase
 from requests.exceptions import RequestException
 
 from golem.core.variables import CONCENT_URL
-from golem.network.concent.client import ConcentClient
+from golem.network.concent.client import ConcentClient, \
+    ConcentUnavailableException, ConcentGraceException
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ConcentUnavailableException):
             client.message(mock_message)
 
         self.assertFalse(client.is_available())
@@ -79,7 +80,7 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ConcentUnavailableException):
             client.message(mock_message)
 
         self.assertFalse(client.is_available())
@@ -91,7 +92,7 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(ConcentUnavailableException):
             client.message(mock_message)
 
         self.assertFalse(client.is_available())
@@ -103,19 +104,23 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        self.assertRaises(Exception, client.message, mock_message)
-        self.assertRaises(Exception, client.message, mock_message)
+        self.assertRaises(ConcentUnavailableException, client.message,
+                          mock_message)
+        self.assertRaises(ConcentGraceException, client.message, mock_message)
 
         self.assertTrue(mock_requests_post.called_once)
 
-    @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60))])
+    @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60)),
+                                          time.time()])
     @mock.patch('requests.post', return_value=mock_error)
     def test_message_error_repeat_retry(self, mock_requests_post, mock_time):
 
         client = ConcentClient()
 
-        self.assertRaises(Exception, client.message, mock_message)
-        self.assertRaises(Exception, client.message, mock_message)
+        self.assertRaises(ConcentUnavailableException, client.message,
+                          mock_message)
+        self.assertRaises(ConcentUnavailableException, client.message,
+                          mock_message)
 
         self.assertEqual(mock_time.call_count, 3)
         self.assertEqual(mock_requests_post.call_count, 2)

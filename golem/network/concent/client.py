@@ -10,16 +10,44 @@ logger = logging.getLogger(__name__)
 retry_time = 5 * 60
 
 
+class ConcentException(Exception):
+    """
+    General exception for all Concent related errors
+    """
+    pass
+
+
+class ConcentUnavailableException(ConcentException):
+    """
+    Called Concent but it is unavailble
+    """
+    pass
+
+
+class ConcentGraceException(ConcentException):
+    """
+    Did not call concent due to grace period of previously failed call
+    """
+    pass
+
+
 class ConcentClient:
 
     def __init__(self):
-        self._is_available = False
+        self._is_available = None
         self._last_available_check = None
 
     def message(self, message):
+        """
+        Sends a message to the concent server
 
+        :param message: The raw message to send
+        :type message: String
+        :return: Reply or exception
+        :rtype: String
+        """
         if not self.__can_call_concent():
-            raise Exception("5 minute failure grace time")
+            raise ConcentGraceException("5 minute failure grace time")
 
         try:
             response = requests.post(CONCENT_URL, data=message)
@@ -43,9 +71,15 @@ class ConcentClient:
         self._last_available_check = time.time()
         self._is_available = False
 
-        raise Exception("Failed to call concent")
+        raise ConcentUnavailableException("Failed to call concent")
 
     def is_available(self):
+        """
+        Gives the status of the last Concent request
+
+        :return: Was the last call successful, None when not called yet
+        :rtype: Boolean|None
+        """
         return self._is_available
 
     def __can_call_concent(self):
