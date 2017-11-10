@@ -132,7 +132,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         result = to_unicode(source)
         assert result is None
 
-    def test_timestamp_and_timezones(self):
+    @mock.patch('golem_messages.message.verify_time')
+    def test_timestamp_and_timezones(self, vft_mock):
         epoch_t = 1475238345.0
 
         def set_tz(tz):
