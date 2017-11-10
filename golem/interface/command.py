@@ -154,6 +154,9 @@ class Argument(object):
         self.args = args or list()
         self.kwargs = kwargs or dict()
 
+    def __repr__(self):
+        return "<Argument %r %r>" % (self.args, self.kwargs)
+
     def simplify(self):
 
         args = list(self.args)
