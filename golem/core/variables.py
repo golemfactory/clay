@@ -58,8 +58,6 @@ class PROTOCOL_CONST(object):
 #################
 # SESSION CONST #
 #################
-MSG_TTL = 600
-FUTURE_TIME_TOLERANCE = 300
 UNVERIFIED_CNT = 15
 
 #################

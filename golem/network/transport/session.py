@@ -4,7 +4,7 @@ import logging
 import time
 
 from golem.core.keysauth import get_random_float
-from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
+from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
 logger = logging.getLogger(__name__)
@@ -172,16 +172,12 @@ class BasicSafeSession(BasicSession, SafeSession):
     """
 
     # Disconnect reasons
-    DCROldMessage = "Message expired"
-    DCRWrongTimestamp = "Wrong timestamp"
     DCRUnverified = "Unverified connection"
     DCRWrongEncryption = "Wrong encryption"
 
     def __init__(self, conn):
         BasicSession.__init__(self, conn)
         self.key_id = 0
-        self.message_ttl = MSG_TTL  # how old messages should be accepted
-        self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
@@ -224,9 +220,6 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        if not self._verify_time(msg):
-            return False
-
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
@@ -241,21 +234,6 @@ class BasicSafeSession(BasicSession, SafeSession):
             logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)
-            return False
-
-        return True
-
-    def _verify_time(self, msg):
-        """ Verify message timestamp. If message is to old or have timestamp from distant future return False.
-        """
-        try:
-            if self.last_message_time - msg.timestamp > self.message_ttl:
-                self.disconnect(BasicSafeSession.DCROldMessage)
-                return False
-            elif msg.timestamp - self.last_message_time > self.future_time_tolerance:
-                self.disconnect(BasicSafeSession.DCRWrongTimestamp)
-                return False
-        except TypeError:
             return False
 
         return True
