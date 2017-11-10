@@ -50,5 +50,4 @@ numpy==1.13.1
 scipy
 pyssim
 enforce==0.3.4
-# Temporarily set commit b4 merging corresponding pr https://github.com/golemfactory/golem-messages/pull/7 and making lib release.
--e git://github.com/golemfactory/golem-messages.git@657a8c6a2be7aae3baf2ddc03279ed9cd9056859#egg=golem_messages
+-e git://github.com/golemfactory/golem-messages.git@v1.0.0#egg=golem_messages
