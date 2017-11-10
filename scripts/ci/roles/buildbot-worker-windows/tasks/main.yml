@@ -26,9 +26,17 @@
 - name: setup buildbot-worker user
   win_user:
     name: buildbot-worker
-    password: "{{site_settings.worker_pass}}"
+    password: "{{ vault_windows_worker_password }}"
     password_never_expires: yes
     user_cannot_change_password: yes
+
+
+- name: add account to Log on as a service
+  win_user_right:
+    name: SeServiceLogonRight
+    users:
+    - '.\buildbot-worker'
+    action: add
 
 
 - name: install buildbot-worker
@@ -61,10 +69,27 @@
     dest: 'C:\BuildResources\pywin32-221-cp36-cp36m-win_amd64.whl'
     force: no
 
+
 - name: check if service is created
   win_shell: Get-Service -Name BuildBot -ErrorAction SilentlyContinue
   register: service_exists
   ignore_errors: yes
+
+
+- name: start buildbot worker
+  win_shell:
+    py -2 C:\Python27\Scripts\buildbot-worker.exe start
+      C:\BuildbotWorker
+  args:
+    creates: C:\BuildbotWorker\twistd.log
+  register: service_started
+
+
+- name: stop buildbot worker
+  win_shell:
+    py -2 C:\Python27\Scripts\buildbot-worker.exe stop
+      C:\BuildbotWorker
+  when: not service_started.skipped and not service_started.changed
 
 
 - name: create service for the buildbot worker
@@ -72,10 +97,18 @@
     py -2 C:\Python27\Scripts\buildbot_worker_windows_service.exe
       --user .\buildbot-worker
       --password
-      "{{site_settings.worker_pass}}"
+      "{{ vault_windows_worker_password }}"
       --startup delayed
       install
-  when: service_exists is not defined
+  when: service_exists is not defined or service_exists.rc == 1
+
+
+- name: start service to init registry, will fail
+  win_service:
+    name: BuildBot
+    start_mode: delayed
+    state: started
+  ignore_errors: yes
 
 
 - name: Create registry path BuildBot
@@ -99,6 +132,5 @@
 - name: start service
   win_service:
     name: BuildBot
-    path: 'C:\Python27\lib\site-packages\win32\PythonService.exe'
     start_mode: delayed
     state: started
