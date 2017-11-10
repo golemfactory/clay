@@ -173,8 +173,6 @@ class BasicSafeSession(BasicSession, SafeSession):
     """
 
     # Disconnect reasons
-    DCROldMessage = "Message expired"
-    DCRWrongTimestamp = "Wrong timestamp"
     DCRUnverified = "Unverified connection"
     DCRWrongEncryption = "Wrong encryption"
 
@@ -225,9 +223,6 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        if not self._verify_time(msg):
-            return False
-
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
@@ -242,21 +237,6 @@ class BasicSafeSession(BasicSession, SafeSession):
             logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)
-            return False
-
-        return True
-
-    def _verify_time(self, msg):
-        """ Verify message timestamp. If message is to old or have timestamp from distant future return False.
-        """
-        try:
-            if self.last_message_time - msg.timestamp > self.message_ttl:
-                self.disconnect(BasicSafeSession.DCROldMessage)
-                return False
-            elif msg.timestamp - self.last_message_time > self.future_time_tolerance:
-                self.disconnect(BasicSafeSession.DCRWrongTimestamp)
-                return False
-        except TypeError:
             return False
 
         return True
