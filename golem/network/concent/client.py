@@ -53,6 +53,7 @@ class ConcentClient:
         try:
             response = requests.post(CONCENT_URL, data=message)
         except requests.exceptions.RequestException as e:
+            logger.warning('Concent RequestException %r', e)
             if e.response:
                 response = e.response
         else:
@@ -62,15 +63,9 @@ class ConcentClient:
                     return response.text
                 return None
 
-        statuscode = -1
-        body = "<EMPTY>"
         if response:
-            if response.status_code:
-                statuscode = response.status_code
-            if response.text:
-                body = response.text
-        logger.warning('request failed with status %d and body: %r',
-                       statuscode, body)
+            logger.warning('request failed with status %d and body: %r',
+                           response.status_code, response.text)
 
         self._last_available_check = time.time()
         self._is_available = False
