@@ -39,6 +39,10 @@ class StepsFactory(object):
             name='pip',
             commands=[
                 util.ShellArg(
+                    logfile='upgrade pip',
+                    haltOnFailure=True,
+                    command=self.pip_command + ['install', '--upgrade', 'pip']),
+                util.ShellArg(
                     logfile='install requirements',
                     haltOnFailure=True,
                     command=install_req_cmd),
