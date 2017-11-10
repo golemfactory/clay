@@ -434,11 +434,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
                                                    ANY, ANY, ANY, ANY)
 
-        node.nat_type = None
-        initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
-                                                   ANY, ANY, ANY, ANY)
-
     def test_remove_task_session(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
