@@ -5,7 +5,9 @@ import random
 import unittest
 from unittest.mock import Mock, MagicMock, patch
 import uuid
+import datetime
 
+from freezegun import freeze_time
 
 from apps.core.task.coretask import TaskResourceHeader
 from golem import model
@@ -143,6 +145,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask(message.MessageCannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
+    @freeze_time(datetime.datetime.now())
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
         ts.verified = True
@@ -169,13 +172,56 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
         ts2.can_be_unsigned.append(ms.TYPE)
+
+        subtask_state = Mock()
+        subtask_state.deadline = \
+            (datetime.datetime.now()
+             + datetime.timedelta(seconds=5)).timestamp()
+        task_state = Mock()
+        task_state.subtask_states = {"xxyyzz": subtask_state}
+
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
+        ts2.task_manager.tasks_states = {"xyz": task_state}
         ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             "xxyyzz", 13190)
+
         wtr.result_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+
+    @freeze_time(datetime.datetime.now())
+    def test_send_report_computed_task_timeout(self):
+        ts = TaskSession(Mock())
+        ts.verified = True
+        ts.task_server.get_node_name.return_value = "ABC"
+        n = Node()
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ms = ts.conn.send_message.call_args[0][0]
+
+        ts2 = TaskSession(Mock())
+        ts2.verified = True
+        ts2.key_id = "DEF"
+        ts2.can_be_not_encrypted.append(ms.TYPE)
+        ts2.can_be_unsigned.append(ms.TYPE)
+
+        subtask_state = Mock()
+        subtask_state.deadline = \
+            (datetime.datetime.now()
+             - datetime.timedelta(seconds=5)).timestamp()
+        task_state = Mock()
+        task_state.subtask_states = {"xxyyzz": subtask_state}
+
+        ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
+        ts2.task_manager.tasks_states = {"xyz": task_state}
+        ts2.interpret(ms)
+
+        # TODO: other checks needed?
+        ts2.task_server.remove_task_session.assert_called()
 
     def test_react_to_hello(self):
         conn = MagicMock()

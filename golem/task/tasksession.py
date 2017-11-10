@@ -7,7 +7,7 @@ import threading
 import time
 
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import HandleAttributeError
+from golem.core.common import HandleAttributeError, get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
@@ -483,23 +483,51 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_computer.session_closed()
         self.dropped()
 
-    def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id in self.task_manager.subtask2task_mapping:
-            self.task_server.receive_subtask_computation_time(
-                msg.subtask_id,
-                msg.computation_time
-            )
-            self.result_owner = EthAccountInfo(
-                msg.key_id,
-                msg.port,
-                msg.address,
-                msg.node_name,
-                msg.node_info,
-                msg.eth_account
-            )
-            self.send(message.MessageGetTaskResult(subtask_id=msg.subtask_id))
-        else:
+    def _react_to_report_computed_task(
+            self,
+            msg: message.MessageReportComputedTask):
+
+        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
             self.dropped()
+            return
+
+        self.task_server.receive_subtask_computation_time(
+            msg.subtask_id,
+            msg.computation_time
+        )
+        self.result_owner = EthAccountInfo(
+            msg.key_id,
+            msg.port,
+            msg.address,
+            msg.node_name,
+            msg.node_info,
+            msg.eth_account
+        )
+
+        task_id = self.task_manager.subtask2task_mapping[msg.subtask_id]
+        task_state = self.task_manager.tasks_states[task_id]  # type: TaskState
+        subtask_state = \
+            task_state.subtask_states[msg.subtask_id]  # type: SubtaskState
+
+        """
+        TODO?
+        computation_time = get_timestamp_utc() - subtask_state.time_started
+        if abs(msg.computation_time - computation_time) > some_arbitrary_value:
+            lower peer's reputation, or something
+        """
+
+        if subtask_state.deadline < get_timestamp_utc():
+            Reason = message.MessageRejectReportComputedTask.Reason
+            self.send(message.MessageRejectReportComputedTask(
+                subtask_id=msg.subtask_id,
+                reason=Reason.SUBTASK_TIME_LIMIT_EXCEEDED))
+            # TODO: is anything more needed befre dropping task?
+            self.dropped()
+            return
+
+        self.send(message.MessageAckReportComputedTask(
+            subtask_id=msg.subtask_id))
+        self.send(message.MessageGetTaskResult(subtask_id=msg.subtask_id))
 
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
@@ -598,6 +626,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id,
             msg.node_info
         )
+
+    def _react_to_act_report_computed_task(
+            self, msg: message.MessageAckReportComputedTask):
+        pass
+
+    def _react_to_reject_report_computed_task(
+            self, msg: message.MessageRejectReportComputedTask):
+        pass
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
@@ -882,6 +918,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
             message.MessageTaskFailure.TYPE: self._react_to_task_failure,
             message.MessageDeltaParts.TYPE: self._react_to_delta_parts,
+            message.MessageAckReportComputedTask.TYPE:
+                self._react_to_act_report_computed_task,
+            message.MessageRejectReportComputedTask.TYPE:
+                self._react_to_reject_report_computed_task,
             message.MessageHello.TYPE: self._react_to_hello,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
