@@ -16,14 +16,18 @@ from twisted.internet.task import Clock
 
 from golem.ethereum import Client
 from golem.ethereum.contracts import TestGNT
+from golem.ethereum.contracts import TestFaucet
+from golem.ethereum.contracts import translate_contract
 from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.contracts.golemcontracts import GolemContracts
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex, decode_hex
 
 SYNC_TEST_INTERVAL = 0.01
 TEST_GNT_ABI = json.loads(TestGNT.ABI)
+TEST_FACUET_ABI = json.loads(TestFaucet.ABI)
 
 # FIXME: upgrade to pyethereum 2.x
 setattr(processblock, 'unicode', str)
@@ -419,11 +423,23 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         DatabaseFixture.setUp(self)
         self.state = tester.state()
         gnt_evm_addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
+        faucet_evm_addr = self.state.evm(decode_hex(TestFaucet.INIT_HEX))
         gnt_addr = encode_hex(gnt_evm_addr)
-        print('gnt_addr %s', gnt_addr)
+        faucet_addr = encode_hex(faucet_evm_addr)
+        print('gnt_addr ', gnt_addr)
+        print('faucet_addr ', faucet_addr)
         self.state.mine()
         self.gnt = tester.ABIContract(self.state, TEST_GNT_ABI, gnt_addr)
-        PaymentProcessor.TESTGNT_ADDR = decode_hex(gnt_addr)
+        self.faucet = tester.ABIContract(self.state, TEST_FACUET_ABI, faucet_addr)
+
+
+        GolemContracts.tGNT_addr = gnt_evm_addr
+        GolemContracts.tGNT_Contract = translate_contract(TestGNT.ABI)
+
+        GolemContracts.tGNT_Faucet_addr = faucet_evm_addr
+        print("Faucet address ", GolemContracts.tGNT_Faucet_addr)
+
+        GolemContracts.tGNT_Faucet_Contract = translate_contract(TestFaucet.ABI)
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
         self.client.get_peer_count.return_value = 0

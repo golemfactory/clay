@@ -64,8 +64,6 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323") # GG todo obsolete
-
     SYNC_CHECK_INTERVAL = 10
 
     # Minimal number of confirmations before we treat transactions as done
@@ -76,22 +74,113 @@ class PaymentProcessor(Service):
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
-        self.__gnt_reserved = 0
+        self.__gntw_balance = None
+        self.__gntw_reserved = 0
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-
-        self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))  # todo GG obsolete
-
         self.__golem_contracts = GolemContracts
+
+        #TODO Better store pda address in local sorage instead getting it from
+        #blockchain everytime
+        # if self.__config_desc.personal_deposit_address is not None:
+        #     self.personal_deposit_slot = self.__config_desc.personal_deposit_address
+        # else:
+        #self.personal_deposit_slot = self.get_personal_deposit_slot_from_contract()
+        self.personal_deposit_slot = None
+
+        # if self.personal_deposit_slot is None:
+        #     self.personal_deposit_slot = self.create_personal_deposit_address()
+        #     self.update_personal_deposit_address(self.personal_deposit_slot)
 
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
+
+    def update_personal_deposit_address(self, value):
+        if not hasattr(self.__config_desc, "personal_deposit_address"):
+            raise KeyError("Unknown setting: {}".format("personal_deposit_address"))
+        setattr(self.__config_desc, "personal_deposit_address", value)
+        self.__config_desc(self.config_desc)
+
+    def create_personal_deposit_address(self):
+        log.info("Creating personal deposit slot")
+        addr = self.eth_address(zpad=False)
+        nonce = self.__client.get_transaction_count(addr)
+
+        data = self.__golem_contracts. \
+            GNTW_Contract.encode_function_call(
+            'createPersonalDepositAddress',())
+
+        tx = Transaction(nonce,
+                         #gasprice=1*10**9,
+                         gasprice=self.GAS_PRICE,
+                         startgas=90000,
+                         to=GolemContracts.GNTW_addr,
+                         value=0, data=data)
+
+        tx.sign(self.__privkey)
+        return self.__client.send(tx)
+
+    def get_personal_deposit_slot_from_contract(self):
+        log.info("Get personal deposit slot from contract")
+        addr = self.eth_address(zpad=False)
+        nonce = self.__client.get_transaction_count(addr)
+
+        data = self.__golem_contracts. \
+            GNTW_Contract.encode_function_call(
+            'getPersonalDepositAddress',(addr))
+
+        tx = Transaction(nonce,
+                         #gasprice=1*10**9,
+                         gasprice=self.GAS_PRICE,
+                         startgas=90000,
+                         to=GolemContracts.GNTW_addr,
+                         value=0, data=data)
+
+        tx.sign(self.__privkey)
+        return self.__client.send(tx)
+
+    def fund_personal_deposit_slot(self, value):
+        log.info("Fund deposit slot")
+        addr = self.eth_address(zpad=False)
+        nonce = self.__client.get_transaction_count(addr)
+
+        data = self.__golem_contracts. \
+            tGNT_Contract.encode_function_call('transfer',(
+            self.personal_deposit_slot, value))
+
+        tx = Transaction(nonce,
+                         #gasprice=1*10**9,
+                         gasprice=self.GAS_PRICE,
+                         startgas=90000,
+                         to=GolemContracts.tGNT_addr,
+                         value=0, data=data)
+
+        tx.sign(self.__privkey)
+        return self.__client.send(tx)
+
+    def convert_to_GNTW(self):
+        log.info("Process deposit slot")
+        addr = self.eth_address(zpad=False)
+        nonce = self.__client.get_transaction_count(addr)
+
+        data = self.__golem_contracts. \
+            GNTW_Contract.encode_function_call('processDeposit',())
+
+        tx = Transaction(nonce,
+                         #gasprice=1*10**9,
+                         gasprice=self.GAS_PRICE,
+                         startgas=90000,
+                         to=GolemContracts.GNTW_addr,
+                         value=0, data=data)
+
+        tx.sign(self.__privkey)
+        self.__client.send(tx)
 
     def wait_until_synchronized(self):
         is_synchronized = False
@@ -162,7 +251,9 @@ class PaymentProcessor(Service):
         return '0x' + encode_hex(raw)
 
     def balance_known(self):
-        return self.__gnt_balance is not None and self.__eth_balance is not None
+        return self.__gntw_balance is not None \
+               and self.__eth_balance is not None \
+               and self.__gnt_balance is not None
 
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
@@ -179,20 +270,10 @@ class PaymentProcessor(Service):
             data_tGNT = self.__golem_contracts.tGNT_Contract.encode_function_call(
                 'balanceOf', (addr,))
 
-            data_GNTW =  self.__golem_contracts.GNTW_Contract.encode_function_call(
-                'balanceOf', (addr,))
-
-
             r_tGNT = self.__client.call(_from='0x' + encode_hex(addr),
                                         to='0x' + encode_hex(
                                             GolemContracts.tGNT_addr),
                                         data='0x' + encode_hex(data_tGNT),
-                                        block='pending')
-
-            r_GNTW = self.__client.call(_from='0x' + encode_hex(addr),
-                                        to='0x' + encode_hex(
-                                            GolemContracts.GNTW_addr),
-                                        data='0x' + encode_hex(data_GNTW),
                                         block='pending')
 
             if r_tGNT is None or r_tGNT == '0x':
@@ -201,6 +282,26 @@ class PaymentProcessor(Service):
                 self.__gnt_balance = int(r_tGNT, 16)
             log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
         return self.__gnt_balance
+
+    def gntw_balance(self, refresh=False):
+        if self.__gntw_balance is None or refresh:
+            addr = keys.privtoaddr(self.__privkey)
+
+            data_GNTW =  self.__golem_contracts.GNTW_Contract.encode_function_call(
+                'balanceOf', (addr,))
+
+            r_GNTW = self.__client.call(_from='0x' + encode_hex(addr),
+                                        to='0x' + encode_hex(
+                                            GolemContracts.GNTW_addr),
+                                        data='0x' + encode_hex(data_GNTW),
+                                        block='pending')
+
+            if r_GNTW is None or r_GNTW == '0x':
+                self.__gntw_balance = 0
+            else:
+                self.__gntw_balance = int(r_GNTW, 16)
+            log.info("GNT: {}".format(self.__gntw_balance / denoms.ether))
+        return self.__gntw_balance
 
     def _eth_reserved(self):
         # Here we keep the same simple estimation by number of atomic payments.
@@ -214,11 +315,11 @@ class PaymentProcessor(Service):
         """ Returns available ETH balance for new payments fees."""
         return self.eth_balance() - self._eth_reserved()
 
-    def _gnt_reserved(self):
-        return self.__gnt_reserved
+    def _gntw_reserved(self):
+        return self.__gntw_reserved
 
-    def _gnt_available(self):
-        return self.gnt_balance() - self.__gnt_reserved
+    def _gntw_available(self):
+        return self.gntw_balance() - self.__gntw_reserved
 
     def load_from_db(self):
         with db.atomic():
@@ -249,13 +350,13 @@ class PaymentProcessor(Service):
             log.warning("Low ETH: {} available".format(self._eth_available()))
             return False
 
-        av_gnt = self._gnt_available()
-        if av_gnt < payment.value:
-            log.warning("Low GNT: {:.6f}".format(av_gnt / denoms.ether))
+        av_gntw = self._gntw_available()
+        if av_gntw < payment.value:
+            log.warning("Low GNT: {:.6f}".format(av_gntw / denoms.ether))
             return False
 
         self._awaiting.append(payment)
-        self.__gnt_reserved += payment.value
+        self.__gntw_reserved += payment.value
 
         # Set new deadline if not set already or shorter than the current one.
         # TODO: Optimize by checking the time once per service update.
@@ -264,7 +365,7 @@ class PaymentProcessor(Service):
             self.deadline = new_deadline
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
-            av_gnt / denoms.ether, self.__gnt_reserved / denoms.ether))
+            av_gntw / denoms.ether, self.__gntw_reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -322,7 +423,7 @@ class PaymentProcessor(Service):
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
-        self.__gnt_reserved -= value
+        self.__gntw_reserved -= value
         return True
 
     def monitor_progress(self):
@@ -391,13 +492,28 @@ class PaymentProcessor(Service):
                 tGNT_Faucet_Contract.encode_function_call('create',())
 
             tx = Transaction(nonce,
-                             gasprice=1*10**9,
+                             #gasprice=1*10**9,
+                             gasprice=self.GAS_PRICE,
                              startgas=90000,
                              to=GolemContracts.tGNT_Faucet_addr,
                              value=0, data=data)
+
             tx.sign(self.__privkey)
             self.__client.send(tx)
             return False
+        return True
+
+    def get_gntw_from_deposit_slot(self):
+        if self.gntw_balance(True) < 100 * denoms.ether:
+            log.info("Processing deposit slot")
+            self.convert_to_GNTW()
+            if self.gntw_balance(True) < 100 * denoms.ether:
+                if self.fund_personal_deposit_slot(100):
+                    log.warning("Funding desposit slot unsuccessful \
+                        maybe not enough GNT?")
+                    return False
+                else:
+                    self.convert_to_GNTW()
         return True
 
     def get_logs(self,
@@ -420,7 +536,8 @@ class PaymentProcessor(Service):
         try:
             if self.is_synchronized() and \
                     self.get_ether_from_faucet() and \
-                    self.get_gnt_from_faucet():
+                    self.get_gnt_from_faucet() and \
+                    self.get_gntw_from_deposit_slot():
                 self.monitor_progress()
                 self.sendout()
         finally:
