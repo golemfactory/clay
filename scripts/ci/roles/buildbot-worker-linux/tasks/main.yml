@@ -3,14 +3,6 @@
     name: site_settings
 
 
-- local_action:
-    module: ec2_instance_facts
-    filters:
-      "tag:role": buildbot-master
-  register: master_instances
-  become: no
-
-
 - group:
     name: buildbot-worker
 
@@ -56,7 +48,7 @@
   command:
     /home/buildbot-worker/.local/bin/buildbot-worker create-worker
       /home/buildbot-worker/worker
-      {{master_instances.instances.0.private_dns_name}}
+      {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}
       linux
       {{site_settings.worker_pass}}
     creates=/home/buildbot-worker/worker/
