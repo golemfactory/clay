@@ -30,13 +30,13 @@ mock_error.text = mock_message
 
 # Exception mock
 def connection_error():
-    raise RequestException
+    response = mock.MagicMock()
+    response.status_code = 500
+    response.text = "ERROR"
+    raise RequestException(response=response)
 
 
 mock_request_error = mock.MagicMock(side_effect=connection_error)
-mock_request_error.response = mock.MagicMock()
-mock_request_error.response.status_code = 500
-mock_request_error.response.text = "ERROR"
 
 
 class TestConcentClient(TestCase):
