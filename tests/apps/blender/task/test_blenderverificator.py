@@ -3,7 +3,6 @@ from unittest import TestCase
 from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.verificator import SubtaskVerificationState
 
-
 import os
 
 from apps.rendering.resources.ImgVerificator import ImgStatistics, \
@@ -48,26 +47,22 @@ class TestBlenderVerificator(LogTestCase, testutils.PEP8MixIn):
         assert bv._get_part_size({"start_task": 3}) == (800, 300)
 
     def test_check_files(self):
-
-
         # arrange
         folder_path = os.path.join(get_golem_path(),
-                                   "tests", "apps", "blender",
-                                   "resources", "blender_imgs_for_verification_tests")
+                                   "tests", "apps", "blender", "task",
+                                   "blender_imgs_for_verification_tests")
 
-        tr_files = []
-        tr_files.append(
-            os.path.join(folder_path,'good_image0001.png'))
-
+        tr_files = [os.path.join(folder_path, 'good_image0001.png')]
         subtask_id = "id1"
+        subtask_info = {'frames': [1], 'start_task': [1]}
 
-        subtask_info = {'frames' : [1], 'start_task' : [1]}
+        task = MagicMock()
 
-        # task = MagicMock
-        task = {'main_scene_file':
-                    '/home/ggruszczynski/Desktop/testy_renderingowe/benchmark_blender/bmw27_cpu.blend',
-                'main_scene_dir' :
-                    '/home/ggruszczynski/Desktop/testy_renderingowe/benchmark_blender/', }
+
+        task = {'main_scene_file': os.path.join(folder_path,
+                                                "bmw27_cpu.blend"),
+                'main_scene_dir': os.path.join(folder_path,
+                                               "blender_imgs_for_verification_tests")}
         # act
         blenderVerificator = BlenderVerificator()
         blenderVerificator.total_tasks = 2
@@ -75,14 +70,14 @@ class TestBlenderVerificator(LogTestCase, testutils.PEP8MixIn):
         blenderVerificator.res_3 = 300
         blenderVerificator.frames = [1]
 
-
-        blenderVerificator._check_files(subtask_id, subtask_info, tr_files, task)
-
+        blenderVerificator._check_files(subtask_id, subtask_info, tr_files,
+                                        task)
 
         # assert
-        assert blenderVerificator.ver_states[subtask_id] == SubtaskVerificationState.VERIFIED
+        assert blenderVerificator.ver_states[
+                   subtask_id] == SubtaskVerificationState.VERIFIED
 
-
+    # GG todo
     def test_is_valid_against_reference(self):
         # arrange
         folder_path = os.path.join(get_golem_path(),

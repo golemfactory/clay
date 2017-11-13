@@ -374,12 +374,20 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   preview_y, 
                                                   expected_offsets)
 
-    @coretask.accepting
-    def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
+    def get_crop_window(self, task_number, parts):
 
-        start_task, end_task = self._get_next_task()
-        scene_file = self._get_scene_file_rel_path()
+        if not self.use_frames:
+            min_y, max_y = self._get_min_max_y(task_number)
+        elif parts > 1:
+            min_y = (parts - self._count_part(task_number, parts)) * (1.0 / parts)
+            max_y = (parts - self._count_part(task_number, parts) + 1) * (1.0 / parts)
+        else:
+            min_y = 0.0
+            max_y = 1.0
 
+        return (0.0, 1.0, min_y, max_y)
+
+    def get_frames_and_parts(self, start_task):
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task,
                                                 self.total_tasks)
@@ -387,18 +395,19 @@ class BlenderRenderTask(FrameRenderingTask):
             frames = self.frames or [1]
             parts = 1
 
-        if not self.use_frames:
-            min_y, max_y = self._get_min_max_y(start_task)
-        elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (1.0 / parts)
-        else:
-            min_y = 0.0
-            max_y = 1.0
+        return frames, parts
+
+    @coretask.accepting
+    def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
+
+        start_task, end_task = self._get_next_task()
+        scene_file = self._get_scene_file_rel_path()
+        frames, parts = self.get_frames_and_parts(start_task)
+        min_x, max_x, min_y, max_y = self.get_crop_window(start_task, parts)
 
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
+            borders_x=(min_x, max_x),
             borders_y=(min_y, max_y),
             use_compositing=self.compositing
         )
@@ -437,7 +446,8 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, perf_index=perf_index)
+        ctd = self._new_compute_task_def(
+            hash, extra_data, perf_index=perf_index)
         return self.ExtraData(ctd=ctd)
 
     def restart(self):

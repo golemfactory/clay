@@ -33,6 +33,17 @@ logging.getLogger("peewee").setLevel("INFO")
 # TODO: extract code common to this class and TestDockerBlenderTask
 # to a superclass
 
+def change_file_location(filepath, newfilepath):
+    if os.path.exists(newfilepath):
+        os.remove(newfilepath)
+
+    new_file_dir = os.path.dirname(newfilepath)
+    if not os.path.exists(new_file_dir):
+        os.makedirs(new_file_dir)
+
+    shutil.copy(filepath, newfilepath)
+    return newfilepath
+
 @ci_skip
 class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
@@ -144,18 +155,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _change_file_location(self, filepath, newfilepath):
-        if os.path.exists(newfilepath):
-            os.remove(newfilepath)
-
-        new_file_dir = os.path.dirname(newfilepath)
-        if not os.path.exists(new_file_dir):
-            os.makedirs(new_file_dir)
-
-        shutil.copy(filepath, newfilepath)
-        return newfilepath
-
-    def _extract_results(self, computer, task, subtask_id):
+    def _extract_results(self, computer, task: LuxTask, subtask_id):
         """
         Since the local computer use temp dir, you should copy files
         out of there before you use local computer again.
@@ -182,8 +182,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         else:
             assert path.isfile(png)
 
-        ##
-        # self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
 
         test_file = task._LuxTask__get_test_flm()
         shutil.copy(flm, test_file)
@@ -194,14 +192,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # copy to new location
         new_file_dir = path.join(path.dirname(test_file), subtask_id)
 
-        new_flm_file = self._change_file_location(
+        new_flm_file = change_file_location(
             test_file, path.join(new_file_dir, "newflmfile.flm"))
 
         if task.output_format == "exr":
-            new_file = self._change_file_location(
+            new_file = change_file_location(
                 exr, path.join(new_file_dir, "newexrfile.exr"))
         else:
-            new_file = self._change_file_location(
+            new_file = change_file_location(
                 png, path.join(new_file_dir, "newpngfile.png"))
 
         return new_flm_file, new_file
@@ -234,7 +232,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
         self._test_luxrender_real_task(task)
 
-    def _test_luxrender_real_task(self, task):
+    def _test_luxrender_real_task(self, task: LuxTask):
         ctd = task.query_extra_data(10000).ctd
         # act
         computer = LocalComputer(
@@ -259,7 +257,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
                                   [new_flm_file, new_preview_file],
                                   result_type=ResultType.FILES)
 
-
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 1)
@@ -278,6 +275,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         results = []
         return
 
+        # todo GG
         # FIXME Unreachable code
         for i in range(0, 10):
             task = self._test_task()
@@ -325,7 +323,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         stats = Counter(results)
         print(results)
         print(stats)
-
 
     def test_luxrender_TaskTester_should_pass(self):
         task = self._test_task()

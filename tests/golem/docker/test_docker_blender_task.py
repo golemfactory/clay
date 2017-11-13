@@ -14,7 +14,7 @@ from golem.docker.image import DockerImage
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ResultType, TaskHeader
+from golem.task.taskbase import ResultType, TaskHeader, ComputeTaskDef
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -22,12 +22,25 @@ from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from .test_docker_image import DockerTestCase
 
+from golem.core.fileshelper import find_file_with_ext
+import os
+from os import makedirs, path, remove
+from golem.resource.dirmanager import DirManager
+from tests.golem.docker.test_docker_luxrender_task import change_file_location
+
 
 @ci_skip
 class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
+    BLENDER_TASK_FILE_RUN_PAYLOAD = "docker-blender-render-task-payload.json"
+    # GG todo: BLENDER_TASK_FILE_RUN_PAYLOAD shall run with uneven img splitting like:
+    # "resolution": [
+    #   400,
+    #   350
+    # ],
+    # "total_subtasks": 3
 
     def setUp(self):
         TempDirFixture.setUp(self)
@@ -58,12 +71,23 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
 
+
         def set_root_dir(p):
             return p.replace("$GOLEM_DIR", golem_dir)
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
+
+        # GG todo
+        # def set_root_dir(p, new_root_dir=golem_dir):
+        #     return p.replace("$GOLEM_DIR", new_root_dir)
+        #
+        # task_def.resources = set(set_root_dir(p) for p in task_def.resources)
+        # task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
+        # task_def.main_program_file = set_root_dir(task_def.main_program_file)
+        # task_def.output_file = set_root_dir(task_def.output_file, self.tempdir)
+
         return task_def
 
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
@@ -74,6 +98,125 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
+
+    def _extract_results(self, computer, task: BlenderRenderTask, subtask_id):
+        """
+        Since the local computer use temp dir, you should copy files
+        out of there before you use local computer again.
+        Otherwise the files would get overwritten
+        (during the verification process).
+        This is a problem only in test suite.
+        In real life provider and requestor are separate machines
+        :param computer:
+        :param task:
+        :return:
+        """
+        dir_name = os.path.dirname(computer.tt.result['data'][0])
+        dane = computer.tt.result['data']
+
+        png = find_file_with_ext(dir_name, [".png"])
+        exr = find_file_with_ext(dir_name, [".exr"])
+
+        if task.output_format == "exr":
+            path.isfile(exr)
+        else:
+            assert path.isfile(png)
+
+        # copy to new location
+        new_file_dir = path.join(path.dirname(path.dirname(dir_name)),
+                                 'extracted_results', subtask_id)
+        self.dirs_to_remove.append(new_file_dir) # cleanup after tests
+
+        if task.output_format == "exr":
+            new_file = change_file_location(
+                exr, path.join(new_file_dir, "newexrfile.exr"))
+        else:
+            new_file = change_file_location(
+                png, path.join(new_file_dir, "newpngfile.png"))
+
+        return new_file
+
+    # @pytest.mark.slow
+    def test_blender_real_task_png_should_pass(self):
+        #arrange
+        task = self._create_test_task(self.BLENDER_TASK_FILE_RUN_PAYLOAD)
+        ctd = task.query_extra_data(10000).ctd
+
+        #act
+        self._test_blender_real_task(task , ctd)
+
+        # assert good results - should pass
+        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        self.assertTrue(is_subtask_verified)
+        self.assertEqual(task.num_tasks_received, 1)
+
+    # @pytest.mark.slow
+    def test_blender_real_task_png_should_fail(self):
+        #arrange
+        task = self._create_test_task(self.BLENDER_TASK_FILE_RUN_PAYLOAD)
+        ctd = task.query_extra_data(10000).ctd
+
+        # act
+        computer = LocalComputer(
+            task,
+            self.tempdir,
+            Mock(),
+            Mock(),
+            lambda: ctd,
+        )
+
+        computer.run()
+        computer.tt.join()
+
+        file_for_validation = self._extract_results(
+            computer, task, ctd.subtask_id)
+
+        task.create_reference_data_for_task_validation()
+        self.assertEqual(task.num_tasks_received, 0)
+
+        # assert bad results - should fail
+        bad_file = path.join(path.dirname(file_for_validation),
+                             "badfile." + task.output_format)
+
+        def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
+            from PIL import Image
+            img = Image.new('RGB', size, color)
+            img.save(img_path)
+            img.close()
+
+        make_test_img(bad_file, size=(300,200))
+
+        task.computation_finished(ctd.subtask_id,
+                                  [bad_file],
+                                  result_type=ResultType.FILES)
+
+        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        self.assertFalse(is_subtask_verified)
+        self.assertEqual(task.num_tasks_received, 0)
+
+    def _test_blender_real_task(self, task: BlenderRenderTask,
+                                ctd: ComputeTaskDef):
+        # act
+        computer = LocalComputer(
+            task,
+            self.tempdir,
+            Mock(),
+            Mock(),
+            lambda: ctd,
+        )
+
+        computer.run()
+        computer.tt.join()
+
+        file_for_validation = self._extract_results(
+            computer, task, ctd.subtask_id)
+
+        task.create_reference_data_for_task_validation()
+        self.assertEqual(task.num_tasks_received, 0)
+        task.computation_finished(ctd.subtask_id,
+                                  [file_for_validation],
+                                  result_type=ResultType.FILES)
+
 
     def _run_docker_task(self, render_task, timeout=60):
         task_id = render_task.header.task_id
@@ -130,7 +273,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         if task_thread:
             started = time.time()
             while task_thread.is_alive():
-                if time.time() - started >= timeout:
+                if time.time() - started >= 60:
                     task_thread.end_comp()
                     break
                 time.sleep(1)

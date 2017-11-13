@@ -6,6 +6,7 @@ from golem.core.common import timeout_to_deadline
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.resources.imgcompare import check_size
+from apps.blender.task import blenderrendertask
 
 import golem_verificator
 import shlex
@@ -26,95 +27,76 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.src_code = ""
         self.docker_images = []
         self.verification_timeout = 0
-        self.advanced_verification = True
+        # self.advanced_verification = True # todo GG true by default - dont
+        # need this field
 
-    # todo GG integrate CP metrics into _check_files
-
-    def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+    def _check_files(self, subtask_id, subtask_info, tr_files,
+                     task: 'blenderrendertask.BlenderRenderTask'):
         # First, assume it is wrong ;p
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-
-
+        if len(tr_files) == 0:
+            logger.warning("Subtask %s verification failed. \n"
+                           "Not enough files received", str(subtask_id))
+            return
 
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list) or len(tr_files) == 0:
-                pass
-                # return
+                logger.warning("Subtask %s verification failed. \n"
+                               "Not enough files received", str(subtask_id))
+                return
 
         res_x, res_y = self._get_part_size(subtask_info)
         for img in tr_files: # GG todo do we still need it - yes?
             if not self._check_size(img, res_x, res_y):
-                pass
-                # return
+                logger.warning("Subtask %s verification failed. \n"
+                               "Img size mismatch", str(subtask_id))
+                return
 
-        # file_for_verification = self._choose_adv_ver_file(tr_files, subtask_info)
-        file_for_verification = random.choice(tr_files)
+        if len(tr_files) > 1:
+            raise ValueError("Received more than 1 file: len(tr_files) > 1")
 
-        x = self._get_part_img_size(subtask_info)
-        start_box = self._get_box_start(*x)
+        file_for_verification = tr_files[0]
 
+        try:
+            start_task = subtask_info['start_task']
+            frames, parts = task.get_frames_and_parts(start_task)
+            min_x, max_x, min_y, max_y = task.get_crop_window(start_task, parts)
 
-        logger.debug('testBox: {}'.format(start_box))
-        cmp_file, cmp_start_box = self._get_cmp_file(file_for_verification, start_box,
-                                                     subtask_id,
-                                                     subtask_info, task)
+            scene_file = task.main_scene_file
 
-        extra_data, new_start_box = \
-            self.change_scope(subtask_id, start_box, file_for_verification, subtask_info)
+            cmd = "validation.py " + scene_file + " " \
+                "--crop_window_size " \
+                + str(min_x) + "," + str(max_x) + "," \
+                + str(min_y) + "," + str(max_x) + " " \
+                "--resolution " + str(res_x) + "," + str(res_y) + " "\
+                "--rendered_scene " + file_for_verification + " " \
+                "--name_of_excel_file wynik_liczby"
 
-        min_x = start_box[0] / self.res_x
-        max_x = (start_box[0] + self.verification_options.box_size[
-            0] + 1) / self.res_x
-        shift_y = (extra_data['start_task'] - 1) * (
-        self.res_y / extra_data['total_tasks'])
-        start_y = start_box[1] + shift_y
-        max_y = (self.res_y - start_y) / self.res_y
-        shift_y = start_y + self.verification_options.box_size[1] + 1
-        min_y = max((self.res_y - shift_y) / self.res_y, 0.0)
-        min_y = max(min_y, 0)
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(min_x, max_x),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing
-        )
+            c = subprocess.run(
+                shlex.split(cmd),
+                stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
 
+            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+            self.verified_clients.append(subtask_info['node_id'])# GG do we need this?
+            stdout = c.stdout.decode()
+            print(stdout)
+        except subprocess.CalledProcessError as e:
+            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+            logger.warning("Subtask %s verification failed %s: ",
+                           str(subtask_id), str(e))
 
-        logger.debug('cmp_start_box {}'.format(cmp_start_box))
-        res_x, res_y = self._get_part_size(subtask_info)
+            logger.info("e.stderr: subtask_id %s \n %s \n",
+                        str(subtask_id), str(e.stderr.decode()))
 
-        # try:
-        #     scene_file =  task['main_scene_file']
-        #
-        #     cmd = "validation.py " + scene_file + " " \
-        #                                           "--crop_window_size 0,1,0,1 " \
-        #                                           "--resolution " + str(res_x) + "," + str(res_y) + \
-        #           "--rendered_scene " + file_for_verification + " " \
-        #                                                         "--name_of_excel_file wynik_liczby"
-        #
-        #     c = subprocess.run(
-        #         shlex.split(cmd),
-        #         stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
-        #
-        #     self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-        #     self.verified_clients.append(subtask_info['node_id'])
-        #     # GG do we need this?
-        #     stdout = c.stdout.decode()
-        #     # print(stdout)
-        # except subprocess.CalledProcessError as e:
-        #     self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
-        #     logger.warning("Subtask %s verification failed %s: ",
-        #                    str(subtask_id), str(e))
-        #
-        #     logger.info("e.stderr: subtask_id %s \n %s \n",
-        #                 str(subtask_id), str(e.stderr.decode()))
-        #
-        #     logger.info("e.stdout: subtask_id %s \n %s \n",
-        #                 str(subtask_id), str(e.stdout.decode()))
+            logger.info("e.stdout: subtask_id %s \n %s \n",
+                        str(subtask_id), str(e.stdout.decode()))
 
+            # GG todo remove prints
+            print(str(e))
+            print(str(e.stdout.decode()))
+            print(str(e.stderr.decode()))
 
         logger.info("Subtask %s verification result: %s",
                     str(subtask_id), self.ver_states[subtask_id].name)
