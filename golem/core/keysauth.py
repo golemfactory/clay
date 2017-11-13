@@ -621,7 +621,7 @@ class EllipticalKeysAuth(KeysAuth):
     @classmethod
     def _generate_keys(cls, private_key_loc, public_key_loc,
                        difficulty: IntFloatT):
-        key, pub_key = cls._generate_new_keys(difficulty)
+        priv_key, pub_key = cls._generate_new_keys(difficulty)
 
         # Create dir for the keys.
         # FIXME: It assumes private and public keys are stored in the same dir.
@@ -631,6 +631,6 @@ class EllipticalKeysAuth(KeysAuth):
             os.makedirs(keys_dir, 0o700)
 
         with open(private_key_loc, 'wb') as f:
-            f.write(key)
+            f.write(priv_key)
         with open(public_key_loc, 'wb') as f:
             f.write(pub_key)
