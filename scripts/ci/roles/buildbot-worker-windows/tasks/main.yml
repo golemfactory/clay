@@ -48,9 +48,9 @@
 - name: create workspace for the buildbot worker
   win_shell:
     py -2 C:\Python27\Scripts\buildbot-worker.exe create-worker
-      C:\BuildbotWorker 
+      C:\BuildbotWorker
       "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
-      windows_server_2016 
+      windows_server_2016
       "{{site_settings.worker_pass}}"
   args:
     creates: C:\BuildbotWorker
@@ -76,23 +76,8 @@
   ignore_errors: yes
 
 
-- name: start buildbot worker
-  win_shell:
-    py -2 C:\Python27\Scripts\buildbot-worker.exe start
-      C:\BuildbotWorker
-  args:
-    creates: C:\BuildbotWorker\twistd.log
-  register: service_started
-
-
-- name: stop buildbot worker
-  win_shell:
-    py -2 C:\Python27\Scripts\buildbot-worker.exe stop
-      C:\BuildbotWorker
-  when: not service_started.skipped and not service_started.changed
-
-
 - name: create service for the buildbot worker
+  remote_user: buildbot-worker
   win_shell:
     py -2 C:\Python27\Scripts\buildbot_worker_windows_service.exe
       --user .\buildbot-worker
@@ -100,15 +85,7 @@
       "{{ vault_windows_worker_password }}"
       --startup delayed
       install
-  when: service_exists is not defined or service_exists.rc == 1
-
-
-- name: start service to init registry, will fail
-  win_service:
-    name: BuildBot
-    start_mode: delayed
-    state: started
-  ignore_errors: yes
+  when: service_exists.rc == 1
 
 
 - name: Create registry path BuildBot
