@@ -141,7 +141,7 @@ class TestMessages(unittest.TestCase):
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = message.MessageHello(timestamp=epoch_t)
-        self.protocol.db.append_len_prefixed_string(m.serialize(fake_sign))
+        self.protocol.db.append_len_prefixed_bytes(m.serialize(fake_sign))
         set_tz('US/Eastern')
         msgs = self.protocol._data_to_messages()
         assert len(msgs) == 1
@@ -155,7 +155,7 @@ class TestMessages(unittest.TestCase):
 
         def serialize_messages(_b):
             for m in [message.MessageRandVal() for _ in range(0, n_messages)]:
-                db.append_len_prefixed_string(m.serialize(fake_sign))
+                db.append_len_prefixed_bytes(m.serialize(fake_sign))
 
         serialize_messages(db)
         self.assertEqual(len(self.protocol._data_to_messages()), n_messages)
