@@ -8,16 +8,11 @@ from hashlib import sha256
 from typing import Optional, Union
 
 import bitcoin
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
 from golem.core.crypto import ECCx, mk_privkey
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
-from .simplehash import SimpleHash
 
 IntFloatT = Union[int, float]
 
@@ -232,181 +227,6 @@ class KeysAuth(object):
     @staticmethod
     def _count_min_hash(difficulty):
         return pow(2, 256 - difficulty)
-
-
-class RSAKeysAuth(KeysAuth):
-    """RSA Cryptographic authorization manager. Create and keeps private and public keys based on RSA."""
-
-    def cnt_key_id(self, public_key):
-        """ Return id generated from given public key (sha1 hexdigest of openssh format).
-        :param public_key: public key that will be used to generate id
-        :return str: new id
-        """
-        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:]).encode()
-
-    def encrypt(self, data, public_key=None):
-        """ Encrypt given data with RSA
-        :param str data: data that should be encrypted
-        :param None|_RSAobj public_key: *Default: None* public key that should be used to encrypt data.
-            If public key is None than default public key will be used
-        :return str: encrypted data
-        """
-        if public_key is None:
-            public_key = self.public_key
-        return PKCS1_OAEP.new(public_key).encrypt(data)
-
-    def decrypt(self, data):
-        """ Decrypt given data with RSA
-        :param str data: encrypted data
-        :return str: decrypted data
-        """
-        return PKCS1_OAEP.new(self._private_key).decrypt(data)
-
-    def sign(self, data):
-        """ Sign given data with RSA
-        :param str data: data to be signed
-        :return: signed data
-        """
-        scheme = PKCS115_SigScheme(self._private_key)
-        if scheme.can_sign():
-            return scheme.sign(SHA256.new(data))
-        raise RuntimeError("Cannot sign data")
-
-    def verify(self, sig, data, public_key=None):
-        """
-        Verify the validity of an RSA signature
-        :param str sig: RSA signature
-        :param str data: expected data
-        :param None|_RSAobj public_key: *Default: None* public key that should be used to verify signed data.
-            If public key is None then default public key will be used
-        :return bool: verification result
-        """
-        if public_key is None:
-            public_key = self.public_key
-        try:
-            PKCS115_SigScheme(public_key).verify(SHA256.new(data), sig)
-            return True
-        except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc))
-        return False
-
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        """
-        min_hash = self._count_min_hash(difficulty)
-        priv_key = RSA.generate(2048)
-        pub_key = str(priv_key.publickey().n)
-        while sha2(pub_key) > min_hash:
-            priv_key = RSA.generate(2048)
-            pub_key = str(priv_key.publickey().n)
-        pub_key = priv_key.publickey()
-        priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(priv_key_loc, 'wb') as f:
-            f.write(priv_key.exportKey('PEM'))
-        with open(pub_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
-        self.public_key = pub_key.exportKey()
-        self._private_key = priv_key.exportKey('PEM')
-
-    def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
-        :param str file_name: file containing private key
-        :return bool: information if keys have been changed
-        """
-        priv_key = RSAKeysAuth._load_private_key_from_file(file_name)
-        if priv_key is None:
-            return False
-        try:
-            pub_key = priv_key.publickey()
-        except (AssertionError, AttributeError):
-            return False
-        self._set_and_save(priv_key, pub_key)
-        return True
-
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
-        """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
-        """
-        from os.path import isdir, dirname
-        from os import mkdir
-
-        def make_dir(file_path):
-            dir_name = dirname(file_path)
-            if not isdir(dir_name):
-                try:
-                    mkdir(dir_name)
-                except OSError:
-                    return False
-            return True
-
-        if not (make_dir(private_key_loc) and make_dir(public_key_loc)):
-            return False
-
-        try:
-            with open(private_key_loc, 'wb') as f:
-                f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key.exportKey())
-                return True
-        except IOError:
-            return False
-
-    @staticmethod
-    def _load_private_key_from_file(file_name):
-        if not os.path.isfile(file_name):
-            return None
-        try:
-            with open(file_name) as f:
-                key = f.read()
-            key = RSA.importKey(key)
-        except (ValueError, IndexError, TypeError, IOError):
-            return None
-        return key
-
-    def _load_private_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(private_key_loc) as f:
-            key = f.read()
-        key = RSA.importKey(key)
-        return key
-
-    def _load_public_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(public_key_loc) as f:
-            key = f.read()
-        key = RSA.importKey(key)
-        return key
-
-    @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
-        key = RSA.generate(2048)
-        pub_key = key.publickey()
-        with open(private_key_loc, 'wb') as f:
-            f.write(key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
-
-    def _set_and_save(self, private_key, public_key):
-        self._private_key = private_key
-        self.public_key = public_key
-        self.key_id = self.cnt_key_id(self.public_key)
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(private_key_loc, 'wb') as f:
-            f.write(private_key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(public_key.exportKey())
 
 
 class EllipticalKeysAuth(KeysAuth):
@@ -625,7 +445,6 @@ class EllipticalKeysAuth(KeysAuth):
 
         # Create dir for the keys.
         # FIXME: It assumes private and public keys are stored in the same dir.
-        # FIXME: The same fix is needed for RSAKeysAuth.
         keys_dir = os.path.dirname(private_key_loc)
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir, 0o700)

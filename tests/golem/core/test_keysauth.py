@@ -4,7 +4,7 @@ from random import random, randint
 import time
 
 from golem.core.crypto import ECCx
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -71,75 +71,6 @@ class KeysAuthTest(TestWithKeysAuth):
             r = get_random_float()
             self.assertGreater(r, 0)
             self.assertGreater(1, r)
-
-
-class TestRSAKeysAuth(TestWithKeysAuth):
-    """ Tests for RSAKeysAuth """
-
-    def test_sign_verify(self):
-        """ Test signing messages """
-        km = RSAKeysAuth(self.path)
-        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
-        signature = km.sign(data)
-        self.assertTrue(km.verify(signature, data))
-        self.assertTrue(km.verify(signature, data, km.public_key))
-        km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
-        self.assertTrue(km2.verify(signature, data, km.public_key))
-        data2 = b"ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
-        signature2 = km2.sign(data2)
-        self.assertTrue(km.verify(signature2, data2, km2.public_key))
-        self.assertFalse(km.verify(signature, data2))
-        self.assertFalse(km.verify(signature, [data]))
-        self.assertFalse(km.verify(None, data))
-        self.assertFalse(km.verify(signature, None))
-
-    def test_encrypt_decrypt_rsa(self):
-        """ Test encryption and decryption with RSAKeysAuth """
-        from os import urandom
-        km = RSAKeysAuth(self.path)
-        data = b"\x00" + urandom(128)
-        self.assertEqual(km.decrypt(km.encrypt(data)), data)
-        self.assertEqual(km.decrypt(km.encrypt(data, km.public_key)), data)
-        km2 = RSAKeysAuth(self.path)
-        data = b"\x00" + urandom(128)
-        self.assertEqual(km.decrypt(km2.encrypt(data, km.public_key)), data)
-
-    def test_save_load_keys_rsa(self):
-        """ Tests for saving and loading keys """
-        from os.path import join
-        from os import chmod, mkdir
-        from golem.core.common import is_windows
-        if not path.isdir(self.path):
-            mkdir(self.path)
-        ek = RSAKeysAuth(self.path)
-        pub_key_file = join(self.path, "pub_rsa.key")
-        priv_key_file = join(self.path, "priv_rsa.key")
-        pub_key = ek.get_public_key().exportKey()
-        priv_key = ek._private_key.exportKey()
-        self.assertTrue(ek.save_to_files(priv_key_file, pub_key_file))
-        with self.assertRaises(TypeError):
-            ek.generate_new(None)
-        ek.generate_new(5)
-        self.assertNotEqual(ek.get_public_key(), pub_key)
-        self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'rb') as f:
-            self.assertEqual(f.read(), pub_key)
-        with open(priv_key_file, 'rb') as f:
-            self.assertEqual(f.read(), priv_key)
-        self.assertTrue(ek.load_from_file(priv_key_file))
-        self.assertEqual(ek.get_public_key().exportKey(), pub_key)
-        self.assertEqual(ek._private_key.exportKey(), priv_key)
-
-        if not is_windows():
-            from os import getuid
-            if getuid() != 0:
-                priv_key_file = join(self.path, "priv_rsa_incorrect.key")
-                open(priv_key_file, 'w').close()
-                chmod(priv_key_file, 0x700)
-                pub_key_file = join(self.path, "pub_rsa_incorrect.key")
-                open(pub_key_file, 'w').close()
-                chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):
