@@ -2,16 +2,17 @@ from golem_messages import message
 from os import path
 from random import random, randint
 import time
+import unittest
 
 from golem.core.crypto import ECCx
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, \
+from golem.core.keysauth import EllipticalKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 
 
-class KeysAuthTest(TestWithKeysAuth):
+class TestKeysAuth(unittest.TestCase):
 
     def test_sha(self):
         """ Test sha2 and sha3 methods """
@@ -22,39 +23,6 @@ class KeysAuthTest(TestWithKeysAuth):
                          "36c5252f5a85203")
         self.assertEqual(sha2(test_str), expected_sha2)
         self.assertEqual(encode_hex(sha3(test_str)), expected_sha3)
-
-    def test_keys_dir_default(self):
-        km = KeysAuth(self.path)
-        d1 = km.get_keys_dir()
-        d2 = km.get_keys_dir()
-        self.assertEqual(d1, d2)
-
-    def test_get_difficulty(self):
-        """ Test get_difficulty method """
-        ka = KeysAuth(self.path)
-        difficulty = ka.get_difficulty()
-        self.assertGreaterEqual(difficulty, 0)
-        difficulty = ka.get_difficulty("j_AUzb*?V0?g^f9,uI:hewjOTLdu8jn5$%s'a#\iJ8q's~Pa")
-        self.assertGreaterEqual(difficulty, 0)
-
-    def test_keys_dir_default2(self):
-        self.assertEqual(KeysAuth(self.path).get_keys_dir(), KeysAuth(self.path).get_keys_dir())
-
-    def test_keys_dir_default3(self):
-        KeysAuth.get_keys_dir()
-        self.assertTrue(path.isdir(KeysAuth._keys_dir))
-
-    def test_keys_dir_setter(self):
-        km = KeysAuth(self.path)
-        d = path.join(self.path, "blablabla")
-        km.set_keys_dir(d)
-        self.assertEqual(d, km.get_keys_dir())
-
-    def test_keys_dir_file(self):
-        file_ = self.additional_dir_content([1])[0]
-        with self.assertRaises(IOError):
-            km = KeysAuth(self.path)
-            km.set_keys_dir(file_)
 
     def test_random_number_generator(self):
         with self.assertRaises(ArithmeticError):
@@ -74,6 +42,32 @@ class KeysAuthTest(TestWithKeysAuth):
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):
+
+    def test_keys_dir_default(self):
+        km = EllipticalKeysAuth(self.path)
+        d1 = km.get_keys_dir()
+        d2 = km.get_keys_dir()
+        self.assertEqual(d1, d2)
+
+    def test_keys_dir_default2(self):
+        self.assertEqual(EllipticalKeysAuth(self.path).get_keys_dir(),
+                         EllipticalKeysAuth(self.path).get_keys_dir())
+
+    def test_keys_dir_default3(self):
+        EllipticalKeysAuth.get_keys_dir()
+        self.assertTrue(path.isdir(EllipticalKeysAuth._keys_dir))
+
+    def test_keys_dir_setter(self):
+        km = EllipticalKeysAuth(self.path)
+        d = path.join(self.path, "blablabla")
+        km.set_keys_dir(d)
+        self.assertEqual(d, km.get_keys_dir())
+
+    def test_keys_dir_file(self):
+        file_ = self.additional_dir_content([1])[0]
+        with self.assertRaises(IOError):
+            km = EllipticalKeysAuth(self.path)
+            km.set_keys_dir(file_)
 
     def test_elliptical_init(self):
         for i in range(100):
@@ -151,9 +145,6 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                      b"263cc00ed03f9a781444"
         private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
                       b"3b4ac6ef078"
-        expected_result = b"c76bd0e19f1b3e2587b9ff9c6230fe0eed7d25de95fdfd471" \
-                          b"9e13c1be4fadcbe405f700743f9d2ff32843bd249891e929e" \
-                          b"478e716afd4b5aa081c68e732d369901"
 
         EllipticalKeysAuth.set_keys_dir(self.path)
         ek = EllipticalKeysAuth(self.path)
@@ -163,14 +154,15 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.key_id = ek.cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
-        msg = message.MessageWantToComputeTask(node_name='node_name',
-                                       task_id='task_id',
-                                       perf_index=2200,
-                                       price=5 * 10 ** 18,
-                                       max_resource_size=250000000,
-                                       max_memory_size=300000000,
-                                       num_cores=4,
-                                       timestamp=time.time())
+        msg = message.MessageWantToComputeTask(
+            node_name='node_name',
+            task_id='task_id',
+            perf_index=2200,
+            price=5 * 10 ** 18,
+            max_resource_size=250000000,
+            max_memory_size=300000000,
+            num_cores=4,
+            timestamp=time.time())
 
         data = msg.get_short_hash()
         signature = ek.sign(data)

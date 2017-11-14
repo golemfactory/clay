@@ -9,7 +9,7 @@ import unittest
 import unittest.mock as mock
 
 from golem import testutils
-from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
+from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
@@ -83,9 +83,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
+        keys_auth = EllipticalKeysAuth(self.path)
 
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
@@ -244,9 +242,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
+        keys_auth = EllipticalKeysAuth(self.path)
 
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)

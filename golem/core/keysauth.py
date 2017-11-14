@@ -1,9 +1,7 @@
-import abc
 import logging
 import math
 import os
 from _pysha3 import sha3_256 as _sha3_256
-from abc import abstractmethod
 from hashlib import sha256
 from typing import Optional, Union
 
@@ -71,15 +69,29 @@ def get_random_float():
     return float(result - 1) / float(10 ** len(str(result)))
 
 
-class KeysAuth(object):
-    """ Cryptographic authorization manager. Create and keeps private and public keys."""
+class EllipticalKeysAuth:
+    """
+    Elliptical curves cryptographic authorization manager. Create and keeps
+    private and public keys based on ECC (curve secp256k1).
+    """
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY,
-                 difficulty: IntFloatT = 0):
+    def __init__(
+            self,
+            datadir,
+            private_key_name: str = PRIVATE_KEY,
+            public_key_name: str = PUBLIC_KEY,
+            difficulty: IntFloatT = 0):
         """
-        Create new keys authorization manager, load or create keys
-        :param prviate_key_name str: name of the file containing private key
-        :param public_key_name str: name of the file containing public key
+        Create new ECC keys authorization manager, load or create keys.
+
+        :param prviate_key_name: name of the file containing private key
+        :param public_key_name: name of the file containing public key
+        :param difficulty:
+            desired key difficulty level.
+            It's a number of leading zeros in binary representation of
+            public key. Works with floats too.
+            Value in range <0, 256>. 0 is not difficult.
+            Maximum is impossible.
         """
         self.difficulty = difficulty
         self.get_keys_dir(datadir)
@@ -89,29 +101,16 @@ class KeysAuth(object):
         self.public_key = self._load_public_key()
         self.key_id = self.cnt_key_id(self.public_key)
 
-    @staticmethod
-    def is_pubkey_difficult(pub_key: Union[bytes, str],
-                            difficulty: IntFloatT) -> bool:
-        if isinstance(pub_key, bytes):
-            return pub_key.count(0) >= difficulty
-        else:
-            return pub_key.count('0') >= difficulty
+        if not self.is_difficult(difficulty):
+            logger.warning("Current key is not difficult enough. Creating new one.")
+            self.generate_new(difficulty)
 
-    def get_difficulty(self, key_id=None):
-        """ Count key_id difficulty in hashcash-like puzzle
-        :param str|None key_id: *Default: None* count difficulty of given key. If key_id is None then
-        use default key_id
-        :return int: key_id difficulty
-        """
-        difficulty = 0
-        if key_id is None:
-            key_id = self.key_id
-        min_hash = KeysAuth._count_min_hash(difficulty)
-        while sha2(key_id) <= min_hash:
-            difficulty += 1
-            min_hash = KeysAuth._count_min_hash(difficulty)
-
-        return difficulty - 1
+        try:
+            self.ecc = ECCx(None, self._private_key)
+        except AssertionError:
+            private_key_loc = self._get_private_key_loc(private_key_name)
+            public_key_loc = self._get_public_key_loc(public_key_name)
+            self._generate_keys(private_key_loc, public_key_loc, difficulty)
 
     def get_public_key(self):
         """ Return public key """
@@ -122,69 +121,11 @@ class KeysAuth(object):
         return self.key_id
 
     def cnt_key_id(self, public_key):
-        """ Return id generated from given public key
+        """ Return id generated from given public key (in hex format).
         :param public_key: public key that will be used to generate id
         :return str: new id
         """
-        return str(public_key)
-
-    @abstractmethod
-    def encrypt(self, data, public_key=None):
-        """ Encrypt given data
-        :param str data: data that should be encrypted
-        :param public_key: *Default: None* public key that should be used to encrypt data. If public key is None than
-         default public key will be used
-        :return str: encrypted data
-        """
-
-    @abstractmethod
-    def decrypt(self, data):
-        """ Decrypt given data with default private key
-        :param str data: encrypted data
-        :return str: decrypted data
-        """
-
-    @abstractmethod
-    def sign(self, data):
-        """ Sign given data with default private key
-        :param str data: data to be signed
-        :return: signed data
-        """
-
-    def verify(self, sig, data, public_key=None):
-        """
-        Verify signature
-        :param str sig: signed data
-        :param str data: data before signing
-        :param public_key: *Default: None* public key that should be used to verify signed data. If public key is None
-        then default public key will be used
-        :return bool: verification result
-        """
-        return sig == data
-
-    @abstractmethod
-    def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
-        :param str file_name: file containing private key
-        :return bool: information if keys have been changed
-        """
-
-    @abstractmethod
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
-        """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        """
-        pass
+        return encode_hex(public_key)
 
     @classmethod
     def get_keys_dir(cls, datadir=None):
@@ -215,56 +156,6 @@ class KeysAuth(object):
     @classmethod
     def _get_public_key_loc(cls, key_name):
         return cls.__get_key_loc(key_name)
-
-    @abc.abstractmethod
-    def _load_private_key(self):  # implement in derived classes
-        return
-
-    @abc.abstractmethod
-    def _load_public_key(self):  # implement in derived classes
-        return
-
-    @staticmethod
-    def _count_min_hash(difficulty):
-        return pow(2, 256 - difficulty)
-
-
-class EllipticalKeysAuth(KeysAuth):
-    """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
-    (curve secp256k1)."""
-
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY,
-                 difficulty: IntFloatT = 0):
-        """
-        Create new ECC keys authorization manager, load or create keys.
-
-        :param difficulty:
-            desired key difficulty level.
-            It's a number of leading zeros in binary representation of
-            public key. Works with floats too.
-            Value in range <0, 256>. 0 is not difficult.
-            Maximum is impossible.
-        """
-        KeysAuth.__init__(self, datadir, private_key_name, public_key_name,
-                          difficulty)
-
-        if not self.is_difficult(difficulty):
-            logger.warning("Current key is not difficult enough. Creating new one.")
-            self.generate_new(difficulty)
-
-        try:
-            self.ecc = ECCx(None, self._private_key)
-        except AssertionError:
-            private_key_loc = self._get_private_key_loc(private_key_name)
-            public_key_loc = self._get_public_key_loc(public_key_name)
-            self._generate_keys(private_key_loc, public_key_loc, difficulty)
-
-    def cnt_key_id(self, public_key):
-        """ Return id generated from given public key (in hex format).
-        :param public_key: public key that will be used to generate id
-        :return str: new id
-        """
-        return encode_hex(public_key)
 
     def encrypt(self, data, public_key=None):
         """ Encrypt given data with ECIES
@@ -363,6 +254,10 @@ class EllipticalKeysAuth(KeysAuth):
 
     def get_difficulty(self, key_id: Optional[str] = None) -> float:
         """
+        Calculate key's difficulty.
+        This is more expensive to calculate than is_difficult, so use
+        the latter if you can.
+
         :param key_id: *Default: None* count difficulty of given key.
                        If key_id is None then use default key_id
         :return: key_id difficulty
@@ -371,8 +266,8 @@ class EllipticalKeysAuth(KeysAuth):
         return 256 - math.log2(sha2(pub_key))
 
     def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
+        """ Load private key from given file. If it's proper key, then generate
+        public key and save both in default files
         :param str file_name: file containing private key
         :return bool: information if keys have been changed
         """

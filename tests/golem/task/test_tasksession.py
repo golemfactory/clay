@@ -11,7 +11,7 @@ from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.core.keysauth import EllipticalKeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
@@ -182,9 +182,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         conn = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
 
         ts = TaskSession(conn)
         ts.task_server = Mock()
