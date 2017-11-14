@@ -5,10 +5,12 @@ import logging.config
 from multiprocessing import cpu_count
 import os
 from pathlib import Path
-import pytz
 import sys
+import pytz
 
 from golem.core import simpleenv
+
+logger = logging.getLogger(__name__)
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -54,8 +56,7 @@ def to_unicode(value):
     try:
         if isinstance(value, bytes):
             return value.decode('utf-8')
-        else:
-            return str(value)
+        return str(value)
     except UnicodeDecodeError:
         return value
 
@@ -162,7 +163,7 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None):
+def config_logging(suffix='', datadir=None, loglevel=None):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -173,12 +174,24 @@ def config_logging(suffix='', datadir=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = Path(datadir) / 'logs'
 
+    if loglevel and loglevel not in ['WARNING', 'INFO', 'DEBUG']:
+        logger.warning('Invalid log level "%r", reset to default.', loglevel)
+        loglevel = None
+
     for handler in list(LOGGING.get('handlers', {}).values()):
+        if loglevel:
+            handler['level'] = loglevel
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
                 'suffix': suffix,
             }
+
+    if loglevel:
+        for _logger in list(LOGGING.get('loggers',  {}).values()):
+            if 'level' in _logger:
+                _logger['level'] = loglevel
+        LOGGING['root']['level'] = loglevel
 
     try:
         if not logdir_path.exists():
