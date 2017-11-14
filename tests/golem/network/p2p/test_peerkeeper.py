@@ -89,7 +89,7 @@ class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
         neighs = self.peer_keeper.neighbours(not_added_peer.key_num ^ 1)
         assert not_added_peer != neighs[0]
 
-        self.peer_keeper.pong_timeout = 0
+        self.peer_keeper.pong_timeout = -1
         self.peer_keeper.sync()
 
         neighs = self.peer_keeper.neighbours(peer_to_remove.key_num ^ 1)
