@@ -15,6 +15,7 @@ from subprocess import PIPE
 from apps.core.task.verificator import SubtaskVerificationState
 
 import logging
+
 logger = logging.getLogger("apps.blender")
 
 
@@ -27,8 +28,6 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.src_code = ""
         self.docker_images = []
         self.verification_timeout = 0
-        # self.advanced_verification = True # todo GG true by default - dont
-        # need this field
 
     def _check_files(self, subtask_id, subtask_info, tr_files,
                      task: 'blenderrendertask.BlenderRenderTask'):
@@ -48,7 +47,7 @@ class BlenderVerificator(FrameRenderingVerificator):
                 return
 
         res_x, res_y = self._get_part_size(subtask_info)
-        for img in tr_files: # GG todo do we still need it - yes?
+        for img in tr_files:  # GG todo do we still need it - yes?
             if not self._check_size(img, res_x, res_y):
                 logger.warning("Subtask %s verification failed. \n"
                                "Img size mismatch", str(subtask_id))
@@ -72,14 +71,15 @@ class BlenderVerificator(FrameRenderingVerificator):
                 + str(min_y) + "," + str(max_x) + " " \
                 "--resolution " + str(res_x) + "," + str(res_y) + " "\
                 "--rendered_scene " + file_for_verification + " " \
-                "--name_of_excel_file wynik_liczby"
+                "--name_of_excel_file wynik_liczby"  # noqa
 
             c = subprocess.run(
                 shlex.split(cmd),
                 stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
 
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-            self.verified_clients.append(subtask_info['node_id'])# GG do we need this?
+            self.verified_clients.append(
+                subtask_info['node_id'])  # GG do we need this?
             stdout = c.stdout.decode()
             print(stdout)
         except subprocess.CalledProcessError as e:
@@ -111,13 +111,13 @@ class BlenderVerificator(FrameRenderingVerificator):
             self.box_size = (box_x, box_y)
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
-        extra_data, _ = super(BlenderVerificator, self).\
-            change_scope(subtask_id, start_box,tr_file,subtask_info)
+        extra_data, _ = super(BlenderVerificator, self). \
+            change_scope(subtask_id, start_box, tr_file, subtask_info)
         min_x = start_box[0] / self.res_x
         max_x = (start_box[0] + self.verification_options.box_size[
             0] + 1) / self.res_x
         shift_y = (extra_data['start_task'] - 1) * (
-        self.res_y / extra_data['total_tasks'])
+            self.res_y / extra_data['total_tasks'])
         start_y = start_box[1] + shift_y
         max_y = (self.res_y - start_y) / self.res_y
         shift_y = start_y + self.verification_options.box_size[1] + 1
@@ -162,11 +162,12 @@ class BlenderVerificator(FrameRenderingVerificator):
         if self.res_y % self.total_tasks == 0:
             res_y = int(self.res_y / self.total_tasks)
         else:
-            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
+            # in this case task will be divided into not equal parts:
+            # floor or ceil of (res_y/total_tasks)
             # ceiling will be height of subtasks with smaller num
             ceiling_height = int(math.ceil(self.res_y / self.total_tasks))
             ceiling_subtasks = self.total_tasks - (
-            ceiling_height * self.total_tasks - self.res_y)
+                ceiling_height * self.total_tasks - self.res_y)
             if subtask_number > ceiling_subtasks:
                 res_y = ceiling_height - 1
             else:
