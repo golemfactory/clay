@@ -112,9 +112,10 @@ def get_external_address(source_port=0):
     :return (str, int, str): tuple with host public address, public port that is
     mapped to local <source_port> and this host nat type
     """
-    nat_type, external_ip, external_port = stun.get_ip_info(source_port=source_port)
-    logger.debug("NAT {}, external [{}] {}".format(nat_type, external_ip, external_port))
-    return external_ip, external_port, nat_type
+    _, external_ip, external_port = stun.get_ip_info(source_port=source_port)
+    logger.debug("External_ip [{}] External_port {}".
+        format(external_ip, external_port))
+    return external_ip, external_port
 
 
 def get_host_address(seed_addr=None, use_ipv6=False):

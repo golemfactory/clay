@@ -39,7 +39,7 @@ class Node(DictSerializable):
                 self.pub_addr, self.pub_port, _ = \
                     get_external_address(self.prv_port)
             else:
-                self.pub_addr, _, __, = get_external_address()
+                self.pub_addr, _, = get_external_address()
 
         self.prv_addresses = get_host_addresses(use_ipv6)
 
