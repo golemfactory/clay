@@ -22,8 +22,14 @@
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
       changed_when: False
     - setup:
+   roles:
+     - buildbot-worker-linux
+
+
+- hosts: mac_worker
+  remote_user: admin
   roles:
-    - buildbot-worker-linux
+    - buildbot-worker-mac
 
 - hosts: windows_worker
   gather_facts: False

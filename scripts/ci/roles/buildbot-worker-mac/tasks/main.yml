@@ -11,6 +11,7 @@
 #   become: no
 
 - name: add user buildbot worker
+  become: yes
   user:
     name: buildbot-worker
     home: /Users/buildbot-worker
@@ -31,19 +32,26 @@
     - libtool
     - libffi
     - gmp
-
-
-# TODO: install taskcollector
-
+#
+#
+# install taskcollector
+#
 # install hyperg
 - name: install tar
   become_user: buildbot-worker
   homebrew:
     name: gnu-tar
+    options:
+      - with-default-names
 
 # TODO: Link gtar to replace tar
 # - name: link tar
 #   command: "brew link --overwrite gnu-tar"
+
+- lineinfile:
+    create: yes
+    path: ~/.bashrc
+    line: export PATH=/usr/local/bin:$PATH
 
 - name: Prepare hyperg directory
   become: yes
@@ -75,6 +83,7 @@
   homebrew:
     name: "{{ item }}"
   with_items:
+    - python
     - python3
     - openexr
     - freeimage
@@ -82,7 +91,7 @@
 
 
 - name: install buildbot and its requirements
-  become: yes
+  become_user: buildbot-worker
   pip:
     name: virtualenv
 
@@ -94,8 +103,8 @@
     name: buildbot-worker
     virtualenv: /Users/buildbot-worker/.venv
 
-
-# # NOTE: master address will not be updated once configuration is generated
+# # TODO: master address will not be updated once configuration is generated
+# # TODO: Set master hostname to be dynamic
 - name: initialized workspace for the worker
   become_user: buildbot-worker
   become: yes
@@ -113,7 +122,7 @@
   copy:
     src: network.golem.buildbot-worker.plist
     dest: /Library/LaunchDaemons/network.golem.buildbot-worker.plist
-
+  notify: load buildbot worker service
 
 - name: remove wrong python3, should use /usr/local/bin/
   become_user: buildbot-worker
