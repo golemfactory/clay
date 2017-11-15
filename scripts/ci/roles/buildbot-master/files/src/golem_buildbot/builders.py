@@ -33,7 +33,7 @@ class StepsFactory(object):
     def git_step():
         return steps.Git(
             repourl='https://github.com/golemfactory/golem.git',
-            mode='full', method='fresh')
+            mode='full', method='fresh', branch='mwu/linux_unit_test')
 
     def venv_step(self):
         return steps.ShellCommand(
@@ -141,13 +141,14 @@ class StepsFactory(object):
                 # TODO: move to requirements itself?
                 util.ShellArg(
                     logfile='install missing requirement',
-                    warnOnFailure=True,
-                    command=self.pip_command + ['install', 'pyasn1==0.2.3']),
+                    haltOnFailure=True,
+                    command=self.pip_command + ['install', 'pyasn1==0.2.3',
+                                                'codecov', 'pytest-cov']),
                 util.ShellArg(
                     logfile='prepare for test',
-                    warnOnFailure=True,
+                    haltOnFailure=True,
                     command=self.python_command + ['setup.py', 'develop']),
-                # TODO: add xml results ?
+                # TODO: add xml results
                 # TODO 2: add run slow
                 util.ShellArg(
                     logfile='run tests',
