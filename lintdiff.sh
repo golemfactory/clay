@@ -115,7 +115,7 @@ if [ -n "$diff" ]; then
     DIFF_LINES=$(git diff "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
     CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
 
-    echo -e "Changed lines findings:\n"
+    echo -e "\n\nChanged lines findings:\n"
     echo "$CHANGED_DIFF"
 
     # Remove warning lines starting with W
