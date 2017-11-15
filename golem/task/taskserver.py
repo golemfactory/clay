@@ -514,27 +514,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         else:
             session.dropped()
 
-    def wait_for_nat_traverse(self, port, session):
-        session.close_now()
-        args = {'super_node': session.extra_data['super_node'],
-                'asking_node': session.extra_data['asking_node'],
-                'dest_node': session.extra_data['dest_node'],
-                'ask_conn_id': session.extra_data['ans_conn_id']}
-        self._add_pending_listening(TaskListenTypes.StartSession, port, args)
-
-    def organize_nat_punch(self, addr, port, client_key_id, asking_node, dest_node, ans_conn_id):
-        self.client.inform_about_task_nat_hole(asking_node.key, client_key_id, addr, port, ans_conn_id)
-
-    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        connect_info = TCPConnectInfo([SocketAddress(addr, port)], self.__connection_for_traverse_nat_established,
-                                      self.__connection_for_traverse_nat_failure)
-        self.network.connect(connect_info, client_key_id=key_id, conn_id=conn_id, super_key_id=super_key_id)
-
-    def traverse_nat_failure(self, conn_id):
-        pc = self.pending_connections.get(conn_id)
-        if pc:
-            pc.failure(conn_id, *pc.args)
-
     def get_socket_addresses(self, node_info, port, key_id):
         if self.client.get_suggested_conn_reverse(key_id):
             return []
@@ -627,7 +606,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if listen_id in self.open_listenings:
             del self.open_listenings['listen_id']
 
-        self.__connection_for_nat_punch_failure(listen_id, super_node, asking_node, dest_node, ask_conn_id)
 
     #############################
     #   CONNECTION REACTIONS    #
@@ -782,39 +760,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         logger.info("Failed to start requested task session for node {}".format(key_id))
         self.final_conn_failure(conn_id)
         # self.__initiate_nat_traversal(key_id, node_info, super_node_info, ans_conn_id)
-
-    def __initiate_nat_traversal(self, key_id, node_info, super_node_info, ans_conn_id):
-        if super_node_info is None:
-            logger.info("Permanently can't connect to node {}".format(key_id))
-            return
-
-        if self.node.nat_type in TaskServer.supported_nat_types:
-            args = {
-                'super_node': super_node_info,
-                'asking_node': node_info,
-                'dest_node': self.node,
-                'ans_conn_id': ans_conn_id
-            }
-            self._add_pending_request(TASK_CONN_TYPES['nat_punch'], super_node_info, super_node_info.prv_port,
-                                      super_node_info.key, args)
-
-    def __connection_for_nat_punch_established(self, session, conn_id, super_node, asking_node, dest_node, ans_conn_id):
-        session.key_id = super_node.key
-        session.conn_id = conn_id
-        session.extra_data = {'super_node': super_node, 'asking_node': asking_node, 'dest_node': dest_node,
-                              'ans_conn_id': ans_conn_id}
-        session.send_hello()
-        session.send_nat_punch(asking_node, dest_node, ans_conn_id)
-
-    def __connection_for_nat_punch_failure(self, conn_id, super_node, asking_node, dest_node, ans_conn_id):
-        self.final_conn_failure(conn_id)
-
-    def __connection_for_traverse_nat_established(self, session, client_key_id, conn_id, super_key_id):
-        self.respond_to(client_key_id, session, conn_id)  # FIXME
-
-    def __connection_for_traverse_nat_failure(self, client_key_id, conn_id, super_key_id):
-        logger.error("Connection for traverse nat failure")
-        self.client.inform_about_nat_traverse_failure(super_key_id, client_key_id, conn_id)
 
     def __connection_for_task_request_final_failure(self, conn_id, node_name,
                                                     key_id, task_id,
@@ -1062,7 +1007,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_established,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_established,
-            TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_established,
             TASK_CONN_TYPES['payment']: self.connection_for_payment_established,
             TASK_CONN_TYPES['payment_request']: self.connection_for_payment_request_established,
         })
@@ -1073,7 +1017,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
-            TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
             TASK_CONN_TYPES['payment']:
                 self.__connection_for_payment_failure,
             TASK_CONN_TYPES['payment_request']:
@@ -1086,7 +1029,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_final_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['nat_punch']: self.noop,
             TASK_CONN_TYPES['payment']:self.noop,
             TASK_CONN_TYPES['payment_request']: self.noop,
         })
@@ -1137,8 +1079,6 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
-    'middleman': 8,
-    'nat_punch': 9,
     'payment': 10,
     'payment_request': 11,
 }

@@ -1,12 +1,14 @@
 from golem_messages import message
 import logging
 import time
+import random
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.appconfig import SEND_PEERS_NUM
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.core.variables import P2P_PROTOCOL_ID
+from golem.core.variables import TASK_HEADERS_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,6 @@ class PeerSession(BasicSafeSession):
         self.node_info = None
         self.client_ver = None
         self.listen_port = None
-
         self.conn_id = None
 
         # Verification by challenge not a random value
@@ -287,44 +288,6 @@ class PeerSession(BasicSafeSession):
             )
         )
 
-    def send_task_nat_hole(self, key_id, address, port, conn_id):
-        """
-        Send information about nat hole
-        :param key_id: key of the node behind nat hole
-        :param str address: address of the nat hole
-        :param int port: port of the nat hole
-        :param uuid conn_id: connection id for reference
-        """
-        self.send(
-            message.MessageNatHole(
-                key_id=key_id,
-                address=address,
-                port=port,
-                conn_id=conn_id
-            )
-        )
-
-    def send_inform_about_nat_traverse_failure(self, key_id, conn_id):
-        """
-        Send request to inform node with key_id about unsuccessful nat traverse.
-        :param key_id: key of the node that should be inform about failure
-        :param uuid conn_id: connection id for reference
-        """
-        self.send(
-            message.MessageInformAboutNatTraverseFailure(
-                key_id=key_id,
-                conn_id=conn_id
-            )
-        )
-
-    def send_nat_traverse_failure(self, conn_id):
-        """
-        Send information about unsuccessful nat traverse
-        :param uuid conn_id: connection id for reference
-        :return:
-        """
-        self.send(message.MessageNatTraverseFailure(conn_id=conn_id))
-
     def _react_to_ping(self, msg):
         self._send_pong()
 
@@ -441,7 +404,13 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.send(message.MessageTasks(tasks))
+        if not tasks:
+            return
+        if len(tasks) > TASK_HEADERS_LIMIT:
+            tasks_to_send = random.sample(tasks, TASK_HEADERS_LIMIT)
+            self.send(message.MessageTasks(tasks_to_send))
+        else:
+            self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -515,21 +484,6 @@ class PeerSession(BasicSafeSession):
             msg.super_node_info
         )
 
-    def _react_to_nat_hole(self, msg):
-        self.p2p_service.traverse_nat(
-            msg.key_id,
-            msg.addr,
-            msg.port,
-            msg.conn_id,
-            self.key_id
-        )
-
-    def _react_to_nat_traverse_failure(self, msg):
-        self.p2p_service.traverse_nat_failure(msg.conn_id)
-
-    def _react_to_inform_about_nat_traverse_failure(self, msg):
-        self.p2p_service.send_nat_traverse_failure(msg.key_id, msg.conn_id)
-
     def _react_to_disconnect(self, msg):
         super(PeerSession, self)._react_to_disconnect(msg)
 
@@ -602,9 +556,6 @@ class PeerSession(BasicSafeSession):
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,  # noqa
             message.MessageSetTaskSession.TYPE: self._react_to_set_task_session,  # noqa
-            message.MessageNatHole.TYPE: self._react_to_nat_hole,
-            message.MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,  # noqa
-            message.MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure  # noqa
         })
 
     def __set_resource_msg_interpretations(self):

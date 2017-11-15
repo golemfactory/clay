@@ -90,8 +90,6 @@ class PendingConnectionsServer(TCPServer):
     """ TCP Server that keeps a list of pending connections and tries different methods
     if connection attempt is unsuccessful."""
 
-    supported_nat_types = [FullCone, OpenInternet]  # NAT Types that supports Nat Punching
-
     def __init__(self, config_desc, network):
         """ Create new server
         :param ClientConfigDescriptor config_desc: config descriptor for listening port

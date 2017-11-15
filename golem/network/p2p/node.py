@@ -16,7 +16,6 @@ class Node(DictSerializable):
                  prv_port: Optional[int] = None,
                  pub_addr: Optional[str] = None,
                  pub_port: Optional[int] = None,
-                 nat_type: Optional[List[str]] = None,
                  p2p_prv_port: Optional[int] = None,
                  p2p_pub_port: Optional[int] = None) -> None:
         self.node_name = node_name
@@ -32,16 +31,15 @@ class Node(DictSerializable):
         self.pub_addr = pub_addr
         self.prv_addresses = []  # type: List[str]
 
-        self.nat_type = nat_type
         self.port_status = None
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:
             if self.prv_port:
-                self.pub_addr, self.pub_port, self.nat_type = \
+                self.pub_addr, self.pub_port, _ = \
                     get_external_address(self.prv_port)
             else:
-                self.pub_addr, _, self.nat_type = get_external_address()
+                self.pub_addr, _, __, = get_external_address()
 
         self.prv_addresses = get_host_addresses(use_ipv6)
 

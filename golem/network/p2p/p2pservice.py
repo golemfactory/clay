@@ -789,43 +789,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
 
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-            ):
-        """
-        :param key_id:
-        :param rv_key_id:
-        :param addr:
-        :param port:
-        :param ans_conn_id:
-        :return:
-        """
-        logger.debug("Nat hole ready {}:{}".format(addr, port))
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
-
-    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
-
-    def send_nat_traverse_failure(self, key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_nat_traverse_failure(conn_id)
-
-    def traverse_nat_failure(self, conn_id):
-        self.task_server.traverse_nat_failure(conn_id)
-
     def peer_want_task_session(self, node_info, super_node_info, conn_id):
         """Process request to start task session from this node to a node
            from node_info.
