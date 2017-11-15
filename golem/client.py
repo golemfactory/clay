@@ -15,7 +15,8 @@ from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
                                     Deferred)
 
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL)
+                             PUBLISH_TASKS_INTERVAL,
+                             TASKARCHIVE_MAINTENANCE_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -55,6 +56,7 @@ from golem.task.taskbase import ResourceType
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
+from golem.task.taskarchiver import TaskArchiver
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
@@ -92,6 +94,8 @@ class Client(HardwarePresetsMixin):
         self.__lock_datadir()
         self.lock = Lock()
         self.task_tester = None
+
+        self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
         config = AppConfig.load_config(datadir)
@@ -141,6 +145,7 @@ class Client(HardwarePresetsMixin):
 
         self.do_work_task = task.LoopingCall(self.__do_work)
         self.publish_task = task.LoopingCall(self.__publish_events)
+        self.archive_task = task.LoopingCall(self.__task_archiver_maintenance)
 
         self.cfg = config
 
@@ -225,6 +230,7 @@ class Client(HardwarePresetsMixin):
 
         self.do_work_task.start(1, False)
         self.publish_task.start(1, True)
+        self.archive_task.start(TASKARCHIVE_MAINTENANCE_INTERVAL, False)
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
@@ -233,6 +239,8 @@ class Client(HardwarePresetsMixin):
             self.do_work_task.stop()
         if self.publish_task.running:
             self.publish_task.stop()
+        if self.archive_task.running:
+            self.archive_task.stop()
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
@@ -259,7 +267,8 @@ class Client(HardwarePresetsMixin):
                 self.config_desc,
                 self.keys_auth, self,
                 use_ipv6=self.config_desc.use_ipv6,
-                use_docker_machine_manager=self.use_docker_machine_manager)
+                use_docker_machine_manager=self.use_docker_machine_manager,
+                task_archiver=self.task_archiver)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -337,6 +346,8 @@ class Client(HardwarePresetsMixin):
             self.do_work_task.stop()
         if self.publish_task.running:
             self.publish_task.stop()
+        if self.archive_task.running:
+            self.archive_task.stop()
 
         if self.p2pservice:
             self.p2pservice.pause()
@@ -351,6 +362,8 @@ class Client(HardwarePresetsMixin):
             self.do_work_task.start(1, False)
         if not self.publish_task.running:
             self.publish_task.start(1, True)
+        if not self.archive_task.running:
+            self.archive_task.start(TASKARCHIVE_MAINTENANCE_INTERVAL, False)
 
         if self.p2pservice:
             self.p2pservice.resume()
@@ -671,6 +684,14 @@ class Client(HardwarePresetsMixin):
 
     def get_error_task_count(self):
         return self.get_task_computer_stat('tasks_with_errors')
+
+    def get_unsupport_reasons(self, last_days):
+        if last_days < 0:
+            raise ValueError("Incorrect number of days: {}".format(last_days))
+        if last_days > 0:
+            return self.task_archiver.get_unsupport_reasons(last_days)
+        else:
+            return self.task_server.task_keeper.get_unsupport_reasons()
 
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
@@ -1054,6 +1075,42 @@ class Client(HardwarePresetsMixin):
                     'GNT_available': str(av_gnt),
                     'ETH': str(eth)
                 })
+
+    def __task_archiver_maintenance(self):
+        if self.task_archiver:
+            self.task_archiver.do_maintenance()
+
+    def __make_node_state_snapshot(self, is_running=True):
+        peers_num = len(self.p2pservice.peers)
+        last_network_messages = self.p2pservice.get_last_messages()
+
+        if self.task_server:
+            tasks_num = len(self.task_server.task_keeper.task_headers)
+            r_tasks_progs = self.task_server.task_computer.get_progresses()
+            l_tasks_progs = self.task_server.task_manager.get_progresses()
+            last_task_messages = self.task_server.get_last_messages()
+            self.last_node_state_snapshot = NodeStateSnapshot(
+                is_running,
+                self.config_desc.node_name,
+                peers_num,
+                tasks_num,
+                self.p2pservice.node.pub_addr,
+                self.p2pservice.node.pub_port,
+                last_network_messages,
+                last_task_messages,
+                r_tasks_progs,
+                l_tasks_progs
+            )
+        else:
+            self.last_node_state_snapshot = NodeStateSnapshot(
+                self.config_desc.node_name,
+                peers_num
+            )
+
+        if self.nodes_manager_client:
+            self.nodes_manager_client.send_client_state_snapshot(
+                self.last_node_state_snapshot
+            )
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
