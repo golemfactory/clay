@@ -17,30 +17,30 @@ IntFloatT = Union[int, float]
 logger = logging.getLogger(__name__)
 
 
-def sha3(seed):
+def sha3(seed: Union[str, bytes]) -> bytes:
     """ Return sha3-256 (NOT keccak) of seed in digest
-    :param str seed: data that should be hashed
-    :return str: binary hashed data
+    :param seed: data that should be hashed
+    :return: binary hashed data
     """
     if isinstance(seed, str):
         seed = seed.encode()
     return _sha3_256(seed).digest()
 
 
-def sha2(seed):
+def sha2(seed: Union[str, bytes]) -> int:
     if isinstance(seed, str):
         seed = seed.encode()
     return int.from_bytes(sha256(seed).digest(), 'big')
 
 
-def privtopub(raw_privkey):
+def privtopub(raw_privkey: bytes) -> bytes:
     raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey),
                                        'bin_electrum')
     assert len(raw_pubkey) == 64
     return raw_pubkey
 
 
-def get_random(min_value=0, max_value=None):
+def get_random(min_value: int = 0, max_value: int = None) -> int:
     """
     Get cryptographically secure random integer in range
     :param min_value: Minimal value
@@ -60,7 +60,7 @@ def get_random(min_value=0, max_value=None):
     return randrange(min_value, max_value)
 
 
-def get_random_float():
+def get_random_float() -> float:
     """
     Get random number in range (0, 1)
     :return: Random number in range (0, 1)
@@ -180,7 +180,7 @@ class EllipticalKeysAuth:
         """ Return public key """
         return self.public_key
 
-    def get_key_id(self):
+    def get_key_id(self) -> str:
         """ Return id generated with public key """
         return self.key_id
 
@@ -211,28 +211,30 @@ class EllipticalKeysAuth:
             public_key = decode_hex(public_key)
         return ECCx.ecies_encrypt(data, public_key)
 
-    def decrypt(self, data):
+    def decrypt(self, data: bytes) -> bytes:
         """ Decrypt given data with ECIES
-        :param str data: encrypted data
-        :return str: decrypted data
+        :param data: encrypted data
+        :return: decrypted data
         """
         return self.ecc.ecies_decrypt(data)
 
-    def sign(self, data):
+    def sign(self, data: bytes) -> bytes:
         """ Sign given data with ECDSA
         sha3 is used to shorten the data and speedup calculations
-        :param str data: data to be signed
+        :param data: data to be signed
         :return: signed data
         """
         return self.ecc.sign(sha3(data))
 
-    def verify(self, sig, data, public_key=None):
+    def verify(self, sig: bytes, data: bytes,
+               public_key: Optional[bytes] = None) -> bool:
         """
         Verify the validity of an ECDSA signature
         sha3 is used to shorten the data and speedup calculations
-        :param str sig: ECDSA signature
-        :param str data: expected data
-        :param None|str public_key: *Default: None* public key that should be used to verify signed data.
+        :param sig: ECDSA signature
+        :param data: expected data
+        :param public_key: *Default: None* public key that should be used to
+                           verify signed data.
         Public key may be in digest (len == 64) or hexdigest (len == 128).
         If public key is None then default public key will be used.
         :return bool: verification result
@@ -327,9 +329,9 @@ class EllipticalKeysAuth:
 
     def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
+        :param private_key_loc: where should private key be saved
+        :param public_key_loc: where should public key be saved
+        :return: return True if keys have been saved, False otherwise
         """
         try:
             with open(private_key_loc, 'wb') as f:

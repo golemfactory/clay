@@ -13,7 +13,8 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.utils import encode_hex, decode_hex
 
 
-class TestKeysAuth(unittest.TestCase):
+class TestKeysAuth(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/core/keysauth.py']
 
     def test_sha(self):
         """ Test sha2 and sha3 methods """
