@@ -29,11 +29,12 @@ mock_error.text = mock_message
 
 
 # Exception mock
-def connection_error():
+def connection_error(*args, **kwargs):
     response = mock.MagicMock()
     response.status_code = 500
     response.text = "ERROR"
-    raise RequestException(response=response)
+    kwargs['response'] = response
+    raise RequestException(args, kwargs)
 
 
 mock_request_error = mock.MagicMock(side_effect=connection_error)
@@ -45,7 +46,7 @@ class TestConcentClient(TestCase):
     def test_message(self, mock_requests_post):
 
         client = ConcentClient()
-        response = client.message(mock_message)
+        response = client.send(mock_message)
 
         self.assertEqual(response, mock_message)
         self.assertTrue(client.is_available())
@@ -56,7 +57,7 @@ class TestConcentClient(TestCase):
     def test_message_empty(self, mock_requests_post):
 
         client = ConcentClient()
-        response = client.message(mock_message)
+        response = client.send(mock_message)
 
         self.assertEqual(response, None)
         self.assertTrue(client.is_available())
@@ -69,31 +70,31 @@ class TestConcentClient(TestCase):
         client = ConcentClient()
 
         with self.assertRaises(ConcentUnavailableException):
-            client.message(mock_message)
+            client.send(mock_message)
 
         self.assertFalse(client.is_available())
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
-    @mock.patch('requests.post', side_effect=RequestException())
+    @mock.patch('requests.post', side_effect=RequestException)
     def test_message_exception(self, mock_requests_post):
 
         client = ConcentClient()
 
         with self.assertRaises(ConcentUnavailableException):
-            client.message(mock_message)
+            client.send(mock_message)
 
         self.assertFalse(client.is_available())
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
-    @mock.patch('requests.post', return_value=mock_request_error)
+    @mock.patch('requests.post', side_effect=mock_request_error)
     def test_message_exception_data(self, mock_requests_post):
 
         client = ConcentClient()
 
         with self.assertRaises(ConcentUnavailableException):
-            client.message(mock_message)
+            client.send(mock_message)
 
         self.assertFalse(client.is_available())
 
@@ -104,9 +105,9 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        self.assertRaises(ConcentUnavailableException, client.message,
+        self.assertRaises(ConcentUnavailableException, client.send,
                           mock_message)
-        self.assertRaises(ConcentGraceException, client.message, mock_message)
+        self.assertRaises(ConcentGraceException, client.send, mock_message)
 
         self.assertTrue(mock_requests_post.called_once)
 
@@ -115,14 +116,14 @@ class TestConcentClient(TestCase):
                                           time.time()])
     @mock.patch('requests.post', return_value=mock_error)
     def test_message_error_repeat_retry(self, mock_requests_post,
-                                        mock_time, mock_logger):
+                                        mock_time, *_):
 
         client = ConcentClient()
 
-        self.assertRaises(ConcentUnavailableException, client.message,
+        self.assertRaises(ConcentUnavailableException, client.send,
                           mock_message)
         self.assertEqual(mock_time.call_count, 1)
-        self.assertRaises(ConcentUnavailableException, client.message,
+        self.assertRaises(ConcentUnavailableException, client.send,
                           mock_message)
 
         self.assertEqual(mock_time.call_count, 3)

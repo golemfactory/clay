@@ -37,7 +37,7 @@ class ConcentClient:
         self._is_available = None
         self._last_available_check = None
 
-    def message(self, message):
+    def send(self, message):
         """
         Sends a message to the concent server
 
@@ -56,21 +56,21 @@ class ConcentClient:
             logger.warning('Concent RequestException %r', e)
             if e.response:
                 response = e.response
-        else:
-            if response.status_code == 200:
-                self._is_available = True
-                if response.text and response.text != "":
-                    return response.text
-                return None
 
-        if response:
-            logger.warning('request failed with status %d and body: %r',
-                           response.status_code, response.text)
+        if response is None or response.status_code != 200:
+            if response:
+                logger.warning('request failed with status %d and body: %r',
+                               response.status_code, response.text)
 
-        self._last_available_check = time.time()
-        self._is_available = False
+            self._last_available_check = time.time()
+            self._is_available = False
 
-        raise ConcentUnavailableException("Failed to call concent")
+            raise ConcentUnavailableException("Failed to call concent")
+
+        self._is_available = True
+        if not response.text or response.text == "":
+            return None
+        return response.text
 
     def is_available(self):
         """
