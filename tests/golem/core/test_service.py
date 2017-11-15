@@ -3,8 +3,8 @@ from io import StringIO
 from unittest import TestCase
 
 import pytest
+from golem.core.service import Service, log
 from golem.tools.testwithreactor import TestWithReactor
-from golem.transactions.service import Service, log
 from twisted.internet.task import Clock
 
 
