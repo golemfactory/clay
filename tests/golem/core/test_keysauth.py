@@ -1,8 +1,9 @@
 from golem_messages import message
-from os import path
+from os import makedirs, path
 from random import random, randint
 import time
 import unittest
+from unittest.mock import patch
 
 from golem import testutils
 from golem.core.crypto import ECCx
@@ -43,39 +44,104 @@ class TestKeysAuth(unittest.TestCase):
 
 class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
-    def test_keys_dir_default(self):
-        km = EllipticalKeysAuth(self.path)
-        d1 = km.get_keys_dir()
-        d2 = km.get_keys_dir()
-        self.assertEqual(d1, d2)
-
-    def test_keys_dir_default2(self):
-        self.assertEqual(EllipticalKeysAuth(self.path).get_keys_dir(),
-                         EllipticalKeysAuth(self.path).get_keys_dir())
-
-    def test_keys_dir_default3(self):
-        EllipticalKeysAuth.get_keys_dir()
-        self.assertTrue(path.isdir(EllipticalKeysAuth._keys_dir))
-
-    def test_keys_dir_setter(self):
-        km = EllipticalKeysAuth(self.path)
-        d = path.join(self.path, "blablabla")
-        km.set_keys_dir(d)
-        self.assertEqual(d, km.get_keys_dir())
-
-    def test_keys_dir_file(self):
-        file_ = self.additional_dir_content([1])[0]
-        with self.assertRaises(IOError):
-            km = EllipticalKeysAuth(self.path)
-            km.set_keys_dir(file_)
-
-    def test_elliptical_init(self):
+    def test_init(self):
         for i in range(100):
             ek = EllipticalKeysAuth(path.join(self.path),
                                     private_key_name=str(random()))
-            self.assertEqual(len(ek._private_key), 32)
-            self.assertEqual(len(ek.public_key), 64)
-            self.assertEqual(len(ek.key_id), 128)
+            self.assertEqual(len(ek._private_key),
+                             EllipticalKeysAuth.PRIV_KEY_LEN)
+            self.assertEqual(len(ek.public_key), EllipticalKeysAuth.PUB_KEY_LEN)
+            self.assertEqual(len(ek.key_id), EllipticalKeysAuth.KEY_ID_LEN)
+
+    @patch('golem.core.keysauth.logger')
+    def test_init_priv_key_wrong_length(self, logger):
+        keys_dir = path.join(self.path, 'keys')
+        private_key_name = "priv_key"
+        private_key_path = path.join(keys_dir, private_key_name)
+        public_key_name = "pub_key"
+        public_key_path = path.join(keys_dir, public_key_name)
+
+        # given
+        makedirs(keys_dir)
+        with open(private_key_path, 'wb') as f:
+            f.write(b'123')
+        with open(public_key_path, 'wb') as f:
+            f.write(b'123')
+
+        # when
+        EllipticalKeysAuth(self.path,
+                           private_key_name=private_key_name,
+                           public_key_name=public_key_name)
+
+        # then
+        assert logger.warning.called
+        with open(private_key_path, 'rb') as f:
+            new_priv_key = f.read()
+        assert len(new_priv_key) == EllipticalKeysAuth.PRIV_KEY_LEN
+
+    @patch('golem.core.keysauth.logger')
+    def test_init_pub_key_wrong_length(self, logger):
+        keys_dir = path.join(self.path, 'keys')
+        private_key_name = "priv_key"
+        private_key_path = path.join(keys_dir, private_key_name)
+        public_key_name = "pub_key"
+        public_key_path = path.join(keys_dir, public_key_name)
+
+        # given
+        makedirs(keys_dir)
+        with open(private_key_path, 'wb') as f:
+            f.write(b'#'*EllipticalKeysAuth.PRIV_KEY_LEN)
+        with open(public_key_path, 'wb') as f:
+            f.write(b'123')
+
+        # when
+        EllipticalKeysAuth(self.path,
+                           private_key_name=private_key_name,
+                           public_key_name=public_key_name)
+
+        # then
+        assert logger.warning.called
+        with open(public_key_path, 'rb') as f:
+            new_pub_key = f.read()
+        assert len(new_pub_key) == EllipticalKeysAuth.PUB_KEY_LEN
+
+    @patch('golem.core.keysauth.logger')
+    def test_key_recreate_on_increased_difficulty(self, logger):
+        old_difficulty = 0
+        new_difficulty = 8
+
+        assert old_difficulty < new_difficulty  # just in case
+
+        # create key that has difficulty lower than new_difficulty
+        ek = EllipticalKeysAuth(self.path, difficulty=old_difficulty)
+        while ek.is_difficult(new_difficulty):
+            ek.generate_new(old_difficulty)
+
+        assert ek.get_difficulty() >= old_difficulty
+        assert ek.get_difficulty() < new_difficulty
+        logger.reset_mock()  # just in case
+
+        ek = EllipticalKeysAuth(self.path, difficulty=new_difficulty)
+
+        assert ek.get_difficulty() >= new_difficulty
+        assert logger.warning.called
+
+    @patch('golem.core.keysauth.logger')
+    def test_key_successful_load(self, logger):
+        # given
+        ek = EllipticalKeysAuth(self.path)
+        priv_key = ek._private_key
+        pub_key = ek.public_key
+        del ek
+        logger.reset_mock()  # just in case
+
+        # when
+        ek2 = EllipticalKeysAuth(self.path)
+
+        # then
+        assert priv_key == ek2._private_key
+        assert pub_key == ek2.public_key
+        assert not logger.warning.called
 
     def test_sign_verify_elliptical(self):
         ek = EllipticalKeysAuth(self.path)
@@ -146,12 +212,11 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
                       b"3b4ac6ef078"
 
-        EllipticalKeysAuth.set_keys_dir(self.path)
         ek = EllipticalKeysAuth(self.path)
 
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
-        ek.key_id = ek.cnt_key_id(ek.public_key)
+        ek.key_id = ek._cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
         msg = message.MessageWantToComputeTask(
@@ -214,21 +279,3 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         assert ek.get_difficulty() >= difficulty
         assert EllipticalKeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
         assert EllipticalKeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
-
-    def test_key_recreate_on_increased_difficulty(self):
-        old_difficulty = 0
-        new_difficulty = 8
-
-        assert old_difficulty < new_difficulty  # just in case
-
-        # create key that has difficulty lower than new_difficulty
-        ek = EllipticalKeysAuth(self.path, difficulty=old_difficulty)
-        while ek.is_difficult(new_difficulty):
-            ek.generate_new(old_difficulty)
-
-        assert ek.get_difficulty() >= old_difficulty
-        assert ek.get_difficulty() < new_difficulty
-
-        ek = EllipticalKeysAuth(self.path, difficulty=new_difficulty)
-
-        assert ek.get_difficulty() >= new_difficulty
