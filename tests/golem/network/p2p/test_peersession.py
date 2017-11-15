@@ -1,11 +1,15 @@
 from golem_messages import message
+import ipaddress
+from pydispatch import dispatcher
 import random
+import semantic_version
+import sys
 import unittest
 import unittest.mock as mock
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
-from golem.core.variables import APP_VERSION, P2P_PROTOCOL_ID
+from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
@@ -15,10 +19,10 @@ from golem.core.variables import TASK_HEADERS_LIMIT
 
 
 class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/network/p2p/peersession.py',]
+    PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     def setUp(self):
-        super(TestPeerSession, self).setUp()
+        super().setUp()
         random.seed()
         self.peer_session = PeerSession(mock.MagicMock())
 
@@ -37,7 +41,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         expected = [
             ['rand_val', self.peer_session.rand_val],
-            ['proto_id', P2P_PROTOCOL_ID],
+            ['proto_id', PROTOCOL_CONST.P2P_ID],
             ['node_name', node_name],
             ['node_info', node],
             ['port', port],
@@ -67,9 +71,9 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         data = b"abcdefghijklm" * 1000
         self.assertEqual(ps2.decrypt(ps.encrypt(data)), data)
         self.assertEqual(ps.decrypt(ps2.encrypt(data)), data)
-        with self.assertLogs(logger, level='INFO') as l:
+        with self.assertLogs(logger, level='INFO') as lctx:
             self.assertEqual(ps2.decrypt(data), data)
-        self.assertTrue(any("not encrypted" in log for log in l.output))
+            self.assertTrue(any("not encrypted" in log for log in lctx.output))
 
     def test_react_to_hello(self):
 
@@ -97,8 +101,10 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         key_id = 'deadbeef'
         peer_info = mock.MagicMock()
         peer_info.key = key_id
-        msg = message.MessageHello(port=1, node_name='node2', client_key_id=key_id,
-                           node_info=peer_info, proto_id=-1)
+        msg = message.MessageHello(
+            port=1, node_name='node2', client_key_id=key_id,
+            node_info=peer_info, proto_id=-1
+        )
 
         peer_session.verify = create_verify(False)
         peer_session._react_to_hello(msg)
@@ -109,7 +115,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.disconnect.assert_called_with(
             PeerSession.DCRProtocolVersion)
 
-        msg.proto_id = P2P_PROTOCOL_ID
+        msg.proto_id = PROTOCOL_CONST.P2P_ID
 
         peer_session._react_to_hello(msg)
         assert key_id in peer_session.p2p_service.peers
@@ -122,6 +128,69 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
             PeerSession.DCRDuplicatePeers)
+
+    @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
+    def test_react_to_hello_new_version(self, m_verify):
+        listener = mock.MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+        self.peer_session.p2p_service.seeds = {
+            (host, random.randint(0, 65535))
+            for host in
+            ipaddress.ip_network('192.0.2.0/29').hosts()
+        }
+
+        peer_info = mock.MagicMock()
+        peer_info.key = (
+            'What is human warfare but just this;'
+            'an effort to make the laws of God and nature'
+            'take sides with one party.'
+        )
+        msg_kwargs = {
+            'port': random.randint(0, 65535),
+            'node_name': 'How could youths better learn to live than by at'
+                         'once trying the experiment of living? --HDT',
+            'client_key_id': peer_info.key,
+            'node_info': peer_info,
+            'proto_id': random.randint(0, sys.maxsize),
+        }
+
+        # Test unverified
+        msg = message.MessageHello(**msg_kwargs)
+        m_verify.return_value = False
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Test verified, not seed
+        msg = message.MessageHello(**msg_kwargs)
+        m_verify.return_value = True
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Choose one seed
+        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        msg_kwargs['port'] = chosen_seed[1]
+        self.peer_session.address = chosen_seed[0]
+
+        # Test verified, with seed, default version (0)
+        msg = message.MessageHello(**msg_kwargs)
+        self.peer_session._react_to_hello(msg)
+        self.assertEqual(listener.call_count, 0)
+        listener.reset_mock()
+
+        # Test verified, with seed, newer version
+        version = semantic_version.Version(APP_VERSION).next_patch()
+        msg_kwargs['client_ver'] = str(version)
+        msg = message.MessageHello(**msg_kwargs)
+        self.peer_session._react_to_hello(msg)
+        listener.assert_called_once_with(
+            signal='golem.p2p',
+            event='new_version',
+            version=version,
+            sender=mock.ANY,
+        )
+        listener.reset_mock()
 
     def test_disconnect(self):
         conn = mock.MagicMock()
@@ -189,29 +258,30 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert peer_session.p2p_service.set_last_message.called
 
     def test_react_to_get_tasks(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         peer_session = PeerSession(conn)
-        peer_session.p2p_service.get_tasks_headers = Mock()
-        peer_session.send = MagicMock()
+        peer_session.p2p_service.get_tasks_headers = mock.Mock()
+        peer_session.send = mock.MagicMock()
 
         peer_session.p2p_service.get_tasks_headers.return_value = []
-        peer_session._react_to_get_tasks(Mock())
+        peer_session._react_to_get_tasks(mock.Mock())
         assert not peer_session.send.called
 
         peer_session.p2p_service.get_tasks_headers.return_value = list(
             range(0, 100))
-        peer_session._react_to_get_tasks(Mock())
+        peer_session._react_to_get_tasks(mock.Mock())
 
         sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
 
         peer_session.p2p_service.get_tasks_headers.return_value = list(
-            range(0, TASK_HEADERS_LIMIT-1))
-        peer_session._react_to_get_tasks(Mock())
+            range(0, TASK_HEADERS_LIMIT - 1))
+        peer_session._react_to_get_tasks(mock.Mock())
         sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
+
 
 class TestPeerSessionInfo(unittest.TestCase):
 

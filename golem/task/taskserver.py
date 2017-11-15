@@ -915,6 +915,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                     logger.debug('Empty node info in %r', elem)
                     elems_set.remove(elem)
                     continue
+                if not isinstance(p2p_node.prv_port, int):
+                    logger.debug('Invalid port in %r', elem)
+                    elems_set.remove(elem)
+                    continue
                 self._add_pending_request(
                     req_type=req_type,
                     task_owner=p2p_node,

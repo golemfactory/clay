@@ -24,6 +24,8 @@ from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
 
+MAX_MESSAGE_SIZE = 2 * 1024 * 1024
+
 ##########################
 # Network helper classes #
 ##########################
@@ -492,7 +494,7 @@ class BasicProtocol(SessionProtocol):
         ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
 
         db = DataBuffer()
-        db.append_len_prefixed_string(ser_msg)
+        db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
     def _can_receive(self):
@@ -500,20 +502,25 @@ class BasicProtocol(SessionProtocol):
 
     def _interpret(self, data):
         with self.lock:
-            self.db.append_string(data)
+            self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        # Interpret messages
-        if mess:
-            for m in mess:
-                self.session.interpret(m)
-        elif data:
-            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+        if mess is None:
+            logger.warning("Too long pending message, closing connection")
+            self.close()
+            return
+
+        for m in mess:
+            self.session.interpret(m)
 
     def _data_to_messages(self):
         messages = []
-        data = self.db.read_len_prefixed_string()
+        def valid_len():
+            msg_len = self.db.peek_ulong()
+            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
+        if not valid_len():
+            return None
+        data = self.db.read_len_prefixed_bytes()
 
         while data:
             message = Message.deserialize(data, lambda x: x)
@@ -523,7 +530,9 @@ class BasicProtocol(SessionProtocol):
             else:
                 logger.error("Failed to deserialize message {}".format(data))
 
-            data = self.db.read_len_prefixed_string()
+            if not valid_len():
+                return None
+            data = self.db.read_len_prefixed_bytes()
 
         return messages
 
@@ -573,7 +582,7 @@ class SafeProtocol(ServerProtocol):
 
     def _data_to_messages(self):
         messages = []
-        for buf in self.db.get_len_prefixed_string():
+        for buf in self.db.get_len_prefixed_bytes():
             msg = Message.deserialize(buf, self.session.decrypt)
             if msg:
                 messages.append(msg)
@@ -642,7 +651,7 @@ class MidAndFilesProtocol(FilesProtocol):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
             with self.lock:
-                self.db.append_string(data, check_size=False)
+                self.db.append_bytes(data)
                 messages = self.db.read_all()
             self.session.interpret(messages)
         else:
