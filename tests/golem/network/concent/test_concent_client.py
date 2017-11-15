@@ -46,7 +46,7 @@ class TestConcentClient(TestCase):
         response = client.send(mock_message)
 
         self.assertEqual(response, mock_message)
-        self.assertTrue(client.is_available())
+        self.assertTrue(client.is_available)
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
@@ -57,7 +57,7 @@ class TestConcentClient(TestCase):
         response = client.send(mock_message)
 
         self.assertEqual(response, None)
-        self.assertTrue(client.is_available())
+        self.assertTrue(client.is_available)
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
@@ -69,7 +69,7 @@ class TestConcentClient(TestCase):
         with self.assertRaises(ConcentUnavailableException):
             client.send(mock_message)
 
-        self.assertFalse(client.is_available())
+        self.assertFalse(client.is_available)
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
@@ -81,7 +81,7 @@ class TestConcentClient(TestCase):
         with self.assertRaises(ConcentUnavailableException):
             client.send(mock_message)
 
-        self.assertFalse(client.is_available())
+        self.assertFalse(client.is_available)
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
@@ -93,7 +93,7 @@ class TestConcentClient(TestCase):
         with self.assertRaises(ConcentUnavailableException):
             client.send(mock_message)
 
-        self.assertFalse(client.is_available())
+        self.assertFalse(client.is_available)
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
