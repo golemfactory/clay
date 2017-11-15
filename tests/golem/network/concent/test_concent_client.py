@@ -37,9 +37,6 @@ def connection_error(*args, **kwargs):
     raise RequestException(args, kwargs)
 
 
-mock_request_error = mock.MagicMock(side_effect=connection_error)
-
-
 class TestConcentClient(TestCase):
 
     @mock.patch('requests.post', return_value=mock_success)
@@ -88,7 +85,7 @@ class TestConcentClient(TestCase):
 
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_message)
 
-    @mock.patch('requests.post', side_effect=mock_request_error)
+    @mock.patch('requests.post', side_effect=connection_error)
     def test_message_exception_data(self, mock_requests_post):
 
         client = ConcentClient()

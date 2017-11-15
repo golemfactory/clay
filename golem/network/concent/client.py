@@ -34,7 +34,8 @@ class ConcentGraceException(ConcentException):
 class ConcentClient:
 
     def __init__(self):
-        self._is_available = None
+        self.is_available = None
+
         self._last_available_check = None
 
     def send(self, message):
@@ -46,7 +47,7 @@ class ConcentClient:
         :return: Raw reply message, None or exception
         :rtype: String|None
         """
-        if not self.__can_call_concent():
+        if not self.can_call_concent():
             raise ConcentGraceException("5 minute failure grace time")
 
         response = None
@@ -63,29 +64,20 @@ class ConcentClient:
                                response.status_code, response.text)
 
             self._last_available_check = time.time()
-            self._is_available = False
+            self.is_available = False
 
             raise ConcentUnavailableException("Failed to call concent")
 
-        self._is_available = True
+        self.is_available = True
         if not response.text or response.text == "":
             return None
         return response.text
 
-    def is_available(self):
-        """
-        Gives the status of the last Concent request
-
-        :return: Was the last call successful, None when not called yet
-        :rtype: Boolean|None
-        """
-        return self._is_available
-
-    def __can_call_concent(self):
+    def can_call_concent(self):
         if self._last_available_check is None:
             return True
 
         if self._last_available_check < time.time() - retry_time:
             return True
 
-        return self._is_available
+        return self.is_available
