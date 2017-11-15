@@ -4,11 +4,11 @@ from random import random, randint
 import time
 import unittest
 
+from golem import testutils
 from golem.core.crypto import ECCx
 from golem.core.keysauth import EllipticalKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
-from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 
 
@@ -41,7 +41,7 @@ class TestKeysAuth(unittest.TestCase):
             self.assertGreater(1, r)
 
 
-class TestEllipticalKeysAuth(TestWithKeysAuth):
+class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     def test_keys_dir_default(self):
         km = EllipticalKeysAuth(self.path)

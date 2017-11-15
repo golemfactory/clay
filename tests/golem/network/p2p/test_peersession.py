@@ -15,11 +15,11 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, logger, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.core.variables import TASK_HEADERS_LIMIT
 
 
-class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
+class TestPeerSession(testutils.TempDirFixture, LogTestCase,
+                      testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     def setUp(self):

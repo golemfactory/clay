@@ -21,7 +21,6 @@ from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 
@@ -54,19 +53,21 @@ def get_mock_task(task_id, subtask_id):
     return task_mock
 
 
-class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
+class TestTaskServer(LogTestCase, testutils.DatabaseFixture):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.client = Mock()
+        self.client.datadir = os.path.join(self.path, "datadir")
         self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
                              self.client, use_docker_machine_manager=False)
 
     def tearDown(self):
         LogTestCase.tearDown(self)
-        TestWithKeysAuth.tearDown(self)
+        testutils.DatabaseFixture.tearDown(self)
 
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
@@ -677,13 +678,15 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         assert ts.task_sessions_incoming.pop() == tss
 
 
-class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
+class TestTaskServer2(TestDatabaseWithReactor):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
+        self.client = Mock()
+        self.client.datadir = os.path.join(self.path, "datadir")
         self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
                              self.client, use_docker_machine_manager=False)
         self.ts.task_computer = MagicMock()

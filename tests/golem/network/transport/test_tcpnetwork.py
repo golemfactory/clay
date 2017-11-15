@@ -5,6 +5,7 @@ from unittest import TestCase
 
 from mock import MagicMock
 
+from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
@@ -20,10 +21,9 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
-from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
-class TestDataProducerAndConsumer(TestWithKeysAuth):
+class TestDataProducerAndConsumer(testutils.TempDirFixture):
 
     def test_progress(self):
 
@@ -88,7 +88,7 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         self.assertEqual(err.getvalue().strip(), "")
 
 
-class TestFileProducerAndConsumer(TestWithKeysAuth):
+class TestFileProducerAndConsumer(testutils.TempDirFixture):
 
     @classmethod
     def setUpClass(cls):
@@ -99,7 +99,7 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         logging.shutdown()
 
     def setUp(self):
-        TestWithKeysAuth.setUp(self)
+        testutils.TempDirFixture.setUp(self)
         self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
