@@ -78,7 +78,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_add_to_peer_keeper(self):
         node = Node()
-        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").key_id
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
@@ -109,7 +109,7 @@ class TestP2PService(testutils.DatabaseFixture):
     def test_remove_old_peers(self):
         node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                      "TESTPUB").get_key_id()
+                                      "TESTPUB").key_id
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -131,13 +131,13 @@ class TestP2PService(testutils.DatabaseFixture):
 
         node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                      "TESTPUB").get_key_id()
+                                      "TESTPUB").key_id
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
         node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2",
-                                       "TESTPUB2").get_key_id()
+                                       "TESTPUB2").key_id
         node2.key_id = node2.key
         node2.address = sa
 
@@ -162,7 +162,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_add_known_peer(self):
         key_id = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                    "TESTPUB").get_key_id()
+                                    "TESTPUB").key_id
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -221,7 +221,7 @@ class TestP2PService(testutils.DatabaseFixture):
     def test_sync_free_peers(self):
         node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "PRIVTEST",
-                                      "PUBTEST").get_key_id()
+                                      "PUBTEST").key_id
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -382,15 +382,15 @@ class TestP2PService(testutils.DatabaseFixture):
         difficulty = self.service._get_difficulty("KEY_ID")
         for i in range(3):
             challenge = self.service._get_challenge(
-                self.keys_auth.get_key_id())
-            self.service.solve_challenge(self.keys_auth.get_key_id(),
+                self.keys_auth.key_id)
+            self.service.solve_challenge(self.keys_auth.key_id,
                                          challenge, difficulty)
         assert len(self.service.challenge_history) == 3
         assert self.service.last_challenge is not None
         for i in range(100):
             challenge = self.service._get_challenge(
-                self.keys_auth.get_key_id())
-            self.service.solve_challenge(self.keys_auth.get_key_id(),
+                self.keys_auth.key_id)
+            self.service.solve_challenge(self.keys_auth.key_id,
                                          challenge, difficulty)
 
         assert len(self.service.challenge_history) == HISTORY_LEN

@@ -90,8 +90,8 @@ class ResourceServer(PendingConnectionsServer):
                                        'pos_resource': 0, 'node': node_info, 'key_id': key_id}
 
     def set_resource_peers(self, resource_peers):
-        if self.keys_auth.get_key_id() in resource_peers:
-            del resource_peers[self.keys_auth.get_key_id()]
+        if self.keys_auth.key_id in resource_peers:
+            del resource_peers[self.keys_auth.key_id]
 
         for key_id, [addr, port, name, info] in resource_peers.items():
             self.add_resource_peer(name, addr, port, key_id, info)
@@ -229,7 +229,7 @@ class ResourceServer(PendingConnectionsServer):
             self.sessions.remove(session)
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def get_socket_addresses(self, node_info, port, key_id):
         if self.client.get_suggested_conn_reverse(key_id):

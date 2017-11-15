@@ -68,7 +68,7 @@ class TaskManager(TaskEventListener):
         self.node_name = node_name
         self.node = node
         self.keys_auth = keys_auth
-        self.key_id = keys_auth.get_key_id()
+        self.key_id = keys_auth.key_id
 
         self.tasks = {}  # type: Dict[str, Task]
         self.tasks_states = {}  # type: Dict[str, TaskState]

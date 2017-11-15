@@ -475,7 +475,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         msg = message.MessageRemoveTask()
         assert not ts.verify(msg)
         msg.sig = keys_auth.sign(msg.get_short_hash())
-        ts.key_id = keys_auth.get_key_id()
+        ts.key_id = keys_auth.key_id
         assert ts.verify(msg)
 
     @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)

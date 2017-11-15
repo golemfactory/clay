@@ -162,7 +162,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def key_changed(self):
         """React to the fact that key id has been changed. Inform task manager about new key """
-        self.task_manager.key_id = self.keys_auth.get_key_id()
+        self.task_manager.key_id = self.keys_auth.key_id
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
@@ -346,7 +346,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         return self.config_desc.node_name
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def encrypt(self, message, public_key):
         if public_key == 0:

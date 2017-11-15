@@ -131,7 +131,7 @@ class Client(HardwarePresetsMixin):
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.get_key_id())
+                         key=self.keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
@@ -439,7 +439,7 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def key_changed(self):
-        self.node.key = self.keys_auth.get_key_id()
+        self.node.key = self.keys_auth.key_id
         self.task_server.key_changed()
         self.p2pservice.key_changed()
 
@@ -608,14 +608,10 @@ class Client(HardwarePresetsMixin):
         return self.keys_auth.save_to_files(private_key_path, public_key_path)
 
     def get_key_id(self):
-        return self.get_client_id()
+        return self.keys_auth.key_id
 
     def get_difficulty(self):
         return self.keys_auth.get_difficulty()
-
-    def get_client_id(self):
-        key_id = self.keys_auth.get_key_id()
-        return str(key_id) if key_id else None
 
     def get_node_key(self):
         key = self.node.key
@@ -977,7 +973,7 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_client_id(),
+            self.get_key_id(),
             self.session_id,
             sys.platform,
             APP_VERSION,

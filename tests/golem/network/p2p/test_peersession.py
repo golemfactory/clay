@@ -32,7 +32,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         self.maxDiff = None
         self.peer_session.conn.server.node = node = 'node info'
         self.peer_session.conn.server.node_name = node_name = 'node name'
-        self.peer_session.conn.server.keys_auth.get_key_id.return_value = \
+        self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'client_key_id'
         self.peer_session.conn.server.metadata_manager.\
             get_metadata.return_value = metadata = 'metadata'
@@ -253,7 +253,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         conn = mock.MagicMock()
         peer_session = PeerSession(conn)
         keys_auth = EllipticalKeysAuth(self.path)
-        peer_session.key_id = keys_auth.get_key_id()
+        peer_session.key_id = keys_auth.key_id
         peer_session.p2p_service.verify_sig = keys_auth.verify
         msg = message.MessageStopGossip()
         assert not peer_session.verify(msg)

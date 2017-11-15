@@ -67,7 +67,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.node = node
         self.keys_auth = keys_auth
-        self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
+        self.peer_keeper = PeerKeeper(keys_auth.key_id)
         self.task_server = None
         self.resource_server = None
         self.metadata_manager = None
@@ -495,7 +495,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
            connections with peer,
         restart peer keeper and connect to the network with new key id.
         """
-        self.peer_keeper.restart(self.keys_auth.get_key_id())
+        self.peer_keeper.restart(self.keys_auth.key_id)
         for p in list(self.peers.values()):
             p.dropped()
 
@@ -646,7 +646,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param int port: resource server listen port
         """
         self.resource_port = port
-        self.resource_peers[self.keys_auth.get_key_id()] = [
+        self.resource_peers[self.keys_auth.key_id] = [
             addr,
             port,
             self.node_name,

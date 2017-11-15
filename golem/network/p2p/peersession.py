@@ -544,7 +544,7 @@ class PeerSession(BasicSafeSession):
             proto_id=variables.PROTOCOL_CONST.P2P_ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.get_key_id(),
+            client_key_id=self.p2p_service.keys_auth.key_id,
             node_info=self.p2p_service.node,
             client_ver=variables.APP_VERSION,
             rand_val=self.rand_val,

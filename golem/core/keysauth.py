@@ -176,10 +176,6 @@ class EllipticalKeysAuth:
         self.key_id = self._cnt_key_id(pub_key)
         self.ecc = ECCx(raw_privkey=priv_key)
 
-    def get_key_id(self) -> str:
-        """ Return id generated with public key """
-        return self.key_id
-
     @staticmethod
     def _cnt_key_id(public_key: bytes) -> str:
         """ Return id generated from given public key (in hex format).
