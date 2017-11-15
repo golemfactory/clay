@@ -179,20 +179,20 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         ek = EllipticalKeysAuth(self.path)
         pub_key_file = join(self.path, "pub.key")
         priv_key_file = join(self.path, "priv.key")
-        pub_key = ek.get_public_key()
+        pub_key = ek.public_key
         priv_key = ek._private_key
         ek.save_to_files(priv_key_file, pub_key_file)
         with self.assertRaises(TypeError):
             ek.generate_new(None)
         ek.generate_new(5)
-        self.assertNotEqual(ek.get_public_key(), pub_key)
+        self.assertNotEqual(ek.public_key, pub_key)
         self.assertNotEqual(ek._private_key, priv_key)
         with open(pub_key_file, 'rb') as f:
             self.assertEqual(f.read(), pub_key)
         with open(priv_key_file, 'rb') as f:
             self.assertEqual(f.read(), priv_key)
         self.assertTrue(ek.load_from_file(priv_key_file))
-        self.assertEqual(ek.get_public_key(), pub_key)
+        self.assertEqual(ek.public_key, pub_key)
         self.assertEqual(ek._private_key, priv_key)
 
         if not is_windows():

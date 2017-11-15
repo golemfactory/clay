@@ -96,7 +96,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         to_encrypt = "test string to enc"
         encrypted = self.resource_server.encrypt(
             to_encrypt,
-            self.keys_auth.get_public_key()
+            self.keys_auth.public_key
         )
         decrypted = self.resource_server.decrypt(encrypted)
 
@@ -224,7 +224,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
     def testVerifySig(self):
         test_str = "A test string to sign"
         sig = self.resource_server.sign(test_str)
-        self.assertTrue(self.resource_server.verify_sig(sig, test_str, self.keys_auth.get_public_key()))
+        self.assertTrue(self.resource_server.verify_sig(sig, test_str, self.keys_auth.public_key))
 
     def testAddFilesToGet(self):
         test_files = [
