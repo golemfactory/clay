@@ -17,6 +17,7 @@ schedulers = [
             'buildpackage_macOS',
             'unittest_macOS',
             'unittest_linux',
+            'unittest_windows',
             'buildpackage_linux',
             'buildpackage_windows',
         ]),

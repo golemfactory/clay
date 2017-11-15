@@ -245,6 +245,12 @@ builders = [
                        factory=LinuxStepsFactory().test_factory()),
     util.BuilderConfig(name="buildpackage_linux", workernames=["linux"],
                        factory=LinuxStepsFactory().build_factory()),
+    util.BuilderConfig(name="unittest_windows",
+                       workernames=["windows_server_2016"],
+                       factory=WindowsStepsFactory().test_factory(),
+                       env={
+                           'APPVEYOR': 'TRUE',
+                       }),
     util.BuilderConfig(name="buildpackage_windows",
                        workernames=["windows_server_2016"],
                        factory=WindowsStepsFactory().build_factory()),
