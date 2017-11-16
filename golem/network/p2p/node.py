@@ -36,10 +36,10 @@ class Node(DictSerializable):
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:
             if self.prv_port:
-                self.pub_addr, self.pub_port, _ = \
+                self.pub_addr, self.pub_port = \
                     get_external_address(self.prv_port)
             else:
-                self.pub_addr, _, = get_external_address()
+                self.pub_addr, _ = get_external_address()
 
         self.prv_addresses = get_host_addresses(use_ipv6)
 
