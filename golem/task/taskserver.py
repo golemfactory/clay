@@ -412,14 +412,15 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 subtask_id,
                 reward,
                 transaction_id,
-                block_number
-            )
+                block_number)
             return
 
         logger.info(
-                'Received payment confirmation message for subtask '
-                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
+                'Received payment confirmation message for subtask_id %r \n '
+                '(expected reward: %r GNT, reward claimed in message %r GNT \n '
+                'transaction_id: %r, block number:%r)',
                 subtask_id,
+                expected_income.value,
                 reward,
                 transaction_id,
                 block_number
@@ -427,7 +428,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
         # Checks whether the claimed reward value matches
         # expectations (db vs blockchain).
-        # We don't care what is the value of reward in the message
+        # We don't care what is the value of reward claimed in message
         # since byzantine node can send whatever it likes.
         result = self.client.transaction_system.incomes_keeper.received(
             sender_node_id=expected_income.sender_node,
