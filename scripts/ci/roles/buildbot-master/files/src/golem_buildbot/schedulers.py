@@ -7,6 +7,7 @@ schedulers = [
         treeStableTimer=20,
         builderNames=[
             'buildpackage_macOS',
+            'unittest_linux',
             'buildpackage_linux',
             'buildpackage_windows',
         ]),
@@ -14,6 +15,7 @@ schedulers = [
         name='force',
         builderNames=[
             'buildpackage_macOS',
+            'unittest_linux',
             'buildpackage_linux',
             'buildpackage_windows',
         ]),
