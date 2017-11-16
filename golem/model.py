@@ -14,11 +14,10 @@ from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
+from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
-
-NEUTRAL_TRUST = 0.0
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
@@ -57,9 +56,9 @@ class Database:
             LocalRank,
             NeighbourLocRank,
             Payment,
-            ReceivedPayment,
             Stats,
             TaskPreset,
+            Performance,
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -208,8 +207,9 @@ class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(
-        enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    status = EnumField(enum_type=PaymentStatus,
+                       index=True,
+                       default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
@@ -272,21 +272,6 @@ class Income(BaseModel):
                 self.transaction,
                 self.block_number
             )
-
-
-class ReceivedPayment(BaseModel):
-    """ Represent payments that nodes on this machine receive from other nodes
-    """
-    from_node_id = CharField()
-    task = CharField()
-    val = BigIntegerField()
-    expected_val = BigIntegerField()
-    state = CharField()
-    details = CharField(default="")
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('from_node_id', 'task')
 
 
 ##################
@@ -358,7 +343,6 @@ class KnownHosts(BaseModel):
 
 class Account(BaseModel):
     node_id = CharField(unique=True)
-    description = TextField(default="")
 
     class Meta:
         database = db
@@ -396,6 +380,11 @@ class HardwarePreset(BaseModel):
         database = db
 
 
+##############
+# APP MODELS #
+##############
+
+
 class TaskPreset(BaseModel):
     name = CharField(null=False)
     task_type = CharField(null=False, index=True)
@@ -404,3 +393,22 @@ class TaskPreset(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_type', 'name')
+
+
+class Performance(BaseModel):
+    """ Keeps information about benchmark performance """
+    environment_id = CharField(null=False, index=True, unique=True)
+    value = FloatField(default=0.0)
+
+    class Meta:
+        database = db
+
+    @classmethod
+    def update_or_create(cl, env_id, performance):
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+            perf.value = performance
+            perf.save()
+        except Performance.DoesNotExist:
+            perf = Performance(environment_id=env_id, value=performance)
+            perf.save()

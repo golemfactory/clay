@@ -25,6 +25,8 @@ from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
+logger = logging.getLogger(__name__)
+
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
@@ -52,9 +54,7 @@ def create_client(datadir):
                   use_monitor=False,
                   transaction_system=False,
                   connect_to_known_hosts=False,
-                  use_docker_machine_manager=False,
-                  estimated_lux_performance=1000.0,
-                  estimated_blender_performance=1000.0)
+                  use_docker_machine_manager=False)
 
 
 def run_requesting_node(datadir, num_subtasks=3):
@@ -74,6 +74,8 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir)
     client = create_client(datadir)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
@@ -117,6 +119,8 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir)
     client = create_client(datadir)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
@@ -181,7 +185,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Scan the requesting node's stdout for the address
     address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
-    while True:
+    while requesting_proc.poll() is None:
         line = requesting_proc.stdout.readline().strip()
         if line:
             line = line.decode('utf-8')
@@ -190,6 +194,10 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             if m:
                 requestor_address = m.group(1)
                 break
+
+    if requesting_proc.poll() is not None:
+        logger.error("Requestor proc not started")
+        return "ERROR"
 
     # Start computing nodes in a separate processes
     computing_procs = []
@@ -271,7 +279,8 @@ def dispatch(args):
         # third arg is the address to connect to,
         # forth arg is the timeout (optional).
         fail_after = float(args[4]) if len(args) == 5 else None
-        run_computing_node(args[2], SocketAddress.parse(args[3]), fail_after=fail_after)
+        run_computing_node(args[2], SocketAddress.parse(args[3]),
+                           fail_after=fail_after)
     elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,

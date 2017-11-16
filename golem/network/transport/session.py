@@ -1,11 +1,10 @@
 import abc
+from golem_messages import message
 import logging
-import random
 import time
 
 from golem.core.keysauth import get_random_float
-from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
-from golem.network.transport import message
+from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
 logger = logging.getLogger(__name__)
@@ -77,6 +76,7 @@ class BasicSession(FileSession):
         self._interpretation = {message.MessageDisconnect.TYPE: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
+        self.conn.server.pending_sessions.add(self)
 
     def interpret(self, msg):
         """
@@ -98,10 +98,18 @@ class BasicSession(FileSession):
     def dropped(self):
         """ Close connection """
         self.conn.close()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def close_now(self):
         """ Close connection quickly without flushing buffors or waiting for producents. """
         self.conn.close_now()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def disconnect(self, reason):
         """ Send "disconnect" message to the peer and drop the connection.
@@ -164,16 +172,12 @@ class BasicSafeSession(BasicSession, SafeSession):
     """
 
     # Disconnect reasons
-    DCROldMessage = "Message expired"
-    DCRWrongTimestamp = "Wrong timestamp"
     DCRUnverified = "Unverified connection"
     DCRWrongEncryption = "Wrong encryption"
 
     def __init__(self, conn):
         BasicSession.__init__(self, conn)
         self.key_id = 0
-        self.message_ttl = MSG_TTL  # how old messages should be accepted
-        self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
@@ -216,9 +220,6 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        if not self._verify_time(msg):
-            return False
-
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
@@ -230,24 +231,9 @@ class BasicSafeSession(BasicSession, SafeSession):
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.error("Failed to verify message signature ({} from {}:{})"
+            logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)
-            return False
-
-        return True
-
-    def _verify_time(self, msg):
-        """ Verify message timestamp. If message is to old or have timestamp from distant future return False.
-        """
-        try:
-            if self.last_message_time - msg.timestamp > self.message_ttl:
-                self.disconnect(BasicSafeSession.DCROldMessage)
-                return False
-            elif msg.timestamp - self.last_message_time > self.future_time_tolerance:
-                self.disconnect(BasicSafeSession.DCRWrongTimestamp)
-                return False
-        except TypeError:
             return False
 
         return True

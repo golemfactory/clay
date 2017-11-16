@@ -43,7 +43,6 @@ sdist/
 *.db
 .version.ini
 
-gui/view/gen/icons_rc.py
 golem/monitorconfig_local.py
 
 # Logs
@@ -52,8 +51,8 @@ tests/logs/*
 loggingconfig_local.py
 golem.log*
 golem_cli.log*
-golem_gui.log*
 golem_client.log*
+golemdocker_test.log*
 *.log
 
 # Project structure parse results
@@ -71,3 +70,6 @@ Installer/Installer_Win/golem-*
 # virtualenv
 venv/*
 .mypy_cache/
+
+# dummy test temp files
+apps/dummy/test_tmp

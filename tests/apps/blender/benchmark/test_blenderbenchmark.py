@@ -1,14 +1,15 @@
-import mock
 import os
 import unittest
 
+import mock
+import pytest
+
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.benchmark import Benchmark
 from apps.core.task.coretaskstate import TaskDesc
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-
 from golem import testutils
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -26,7 +27,7 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
 
     def test_is_instance(self):
         self.assertIsInstance(self.bb, BlenderBenchmark)
-        self.assertIsInstance(self.bb, Benchmark)
+        self.assertIsInstance(self.bb, RenderingBenchmark)
         self.assertIsInstance(self.bb.task_definition, RenderingTaskDefinition)
         self.assertIsInstance(self.bb.task_definition.options,
                               blenderrendertask.BlenderRendererOptions)
@@ -44,6 +45,7 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
 @ci_skip
 class TestBenchmarkRunner(testutils.TempDirFixture):
 
+    @pytest.mark.slow
     def test_run(self):
         benchmark = BlenderBenchmark()
         task_definition = benchmark.task_definition

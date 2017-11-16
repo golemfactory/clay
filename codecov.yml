@@ -15,13 +15,13 @@ coverage:
     changes: false
   ignore:
     - "apps/core/benchmark/minilight/*"
-    - "apps/core/gui/*"
     - "apps/rendering/resources/taskcollector/*"
     - "golem/testutils.py"
     - "golem/tools/pyuic.py"
     - "save/*"
     - "scripts/*"
     - "tests/*"
+    - "conftest.py"
     - "setup.py"
     - "Installer/*"
     - "setup_util/*"

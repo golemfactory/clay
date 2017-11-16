@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 
 from golem.core.common import is_windows
 from golem.resource.dirmanager import DirManager, find_task_script, logger
@@ -51,6 +52,47 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isfile(file2))
         self.assertFalse(os.path.isfile(file4))
         self.assertFalse(os.path.isdir(dir2))
+
+    def testClearDirOlderThan(self):
+        # given
+        file1 = os.path.join(self.path, 'file1')
+        file2 = os.path.join(self.path, 'file2')
+        dir1 = os.path.join(self.path, 'dir1')
+        dir2 = os.path.join(self.path, 'dir2')
+        file3 = os.path.join(dir1, 'file3')
+        file4 = os.path.join(dir2, 'file4')
+        open(file1, 'w').close()
+        open(file2, 'w').close()
+        if not os.path.isdir(dir1):
+            os.mkdir(dir1)
+        if not os.path.isdir(dir2):
+            os.mkdir(dir2)
+        open(file3, 'w').close()
+        open(file4, 'w').close()
+
+        two_hours_ago = time.time() - 2*60*60
+
+        os.utime(file1, times=(two_hours_ago, two_hours_ago))
+        os.utime(dir1, times=(two_hours_ago, two_hours_ago))
+
+        assert os.path.isfile(file1)
+        assert os.path.isfile(file2)
+        assert os.path.isfile(file3)
+        assert os.path.isfile(file4)
+        assert os.path.isdir(dir1)
+        assert os.path.isdir(dir2)
+
+        # when
+        dm = DirManager(self.path)
+        dm.clear_dir(dm.root_path, older_than_seconds=60*60)
+
+        # then
+        assert not os.path.isfile(file1)
+        assert os.path.isfile(file2)
+        assert not os.path.isdir(dir1)
+        assert not os.path.isfile(file3)
+        assert os.path.isdir(dir2)
+        assert os.path.isfile(file4)
 
     def testGetTaskTemporaryDir(self):
         dm = DirManager(self.path)

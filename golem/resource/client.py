@@ -13,6 +13,7 @@ import base58
 import multihash
 import requests
 import twisted
+from copy import deepcopy
 from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
     ReadTimeoutError, ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
@@ -47,13 +48,13 @@ def file_multihash(file_path):
 class IClient(object):
 
     @classmethod
-    def build_options(cls, node_id, **kwargs):
+    def build_options(cls, **kwargs):
         raise NotImplementedError
 
     def add(self, files, recursive=False, client_options=None, **kwargs):
         raise NotImplementedError
 
-    def get_file(self, multihash, client_options=None, **kwargs):
+    def get_file(self, content_hash, client_options=None, **kwargs):
         raise NotImplementedError
 
     def id(self, client_options=None, *args, **kwargs):
@@ -106,7 +107,7 @@ class ClientConfig(object):
     """
     Initial configuration for classes implementing the IClient interface
     """
-    def __init__(self, max_concurrent_downloads=3, max_retries=8, timeout=None):
+    def __init__(self, max_concurrent_downloads=3, max_retries=3, timeout=None):
 
         self.max_concurrent_downloads = max_concurrent_downloads
         self.max_retries = max_retries
@@ -120,6 +121,9 @@ class ClientOptions(object):
     Runtime parameters for classes implementing the IClient interface
     """
     def __init__(self, client_id, version, options=None):
+        assert isinstance(client_id, str), 'Client id must be a string'
+        assert isinstance(version, float), 'Version must be a fp number'
+
         self.client_id = client_id
         self.version = version
         self.options = options
@@ -132,6 +136,23 @@ class ClientOptions(object):
             raise ClientError("Invalid client version '{}' (expected: '{}')"
                               .format(version, self.version))
         return self.options.get(option, None)
+
+    def filtered(self, client_id, version):
+        if self.client_id != client_id:
+            log.warning('Resource client: invalid client id: %s',
+                        self.client_id)
+        elif not isinstance(self.version, float):
+            log.warning('Resource client: invalid version format: %s',
+                        self.version)
+        else:
+            return self.clone()
+
+    def clone(self):
+        return self.__class__(
+            self.client_id,
+            self.version,
+            options=deepcopy(self.options)
+        )
 
     @staticmethod
     def from_kwargs(kwargs):
@@ -249,5 +270,5 @@ class TestClient(IClient):
         return self._id
 
     @classmethod
-    def build_options(cls, node_id, **kwargs):
+    def build_options(cls, **kwargs):
         return ClientOptions(cls._id, 1)

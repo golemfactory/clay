@@ -17,8 +17,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         random.seed()
 
     def test_monitor_messages(self):
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
-                                ClientConfigDescriptor())
+        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ClientConfigDescriptor())
         m = MONITOR_CONFIG.copy()
         m['HOST'] = "http://localhost/88881"
         monitor = SystemMonitor(nmm, m)
@@ -31,17 +30,15 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                                   {"node_id": "second node", "port": 3193}])
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
-                                ccd)
+        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ccd)
         monitor.on_config_update(nmm)
         monitor.on_logout()
         monitor.shut_down()
 
     def test_protocol_versions(self):
         """Test wether correct protocol versions were sent."""
-        from golem.network.p2p.peersession import P2P_PROTOCOL_ID
-        from golem.task.tasksession import TASK_PROTOCOL_ID
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+        from golem.core.variables import PROTOCOL_CONST
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", ClientConfigDescriptor()), MONITOR_CONFIG)
 
         def check(f, msg_type):
             with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
@@ -54,8 +51,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                     'type': msg_type,
                     'protocol_versions': {
                         'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-                        'p2p': P2P_PROTOCOL_ID,
-                        'task': TASK_PROTOCOL_ID,
+                        'p2p': PROTOCOL_CONST.P2P_ID,
+                        'task': PROTOCOL_CONST.TASK_ID,
                     },
                 }
 
@@ -64,7 +61,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
 
     def test_ping_request(self):
         from pydispatch import dispatcher
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", ClientConfigDescriptor()), MONITOR_CONFIG)
         port = random.randint(20, 50000)
         with mock.patch('requests.post') as post_mock:
             post_mock.return_value = response_mock = mock.MagicMock()

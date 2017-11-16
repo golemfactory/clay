@@ -1,7 +1,7 @@
+from golem_messages import message
 import logging
 
 
-from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport import tcpnetwork
 

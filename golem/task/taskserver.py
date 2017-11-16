@@ -8,10 +8,12 @@ from pydispatch import dispatcher
 import time
 
 from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
+from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -27,9 +29,76 @@ logger = logging.getLogger('golem.task.taskserver')
 tmp_cycler = itertools.cycle(list(range(550)))
 
 
-class TaskServer(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth, client,
-                 use_ipv6=False, use_docker_machine_manager=True):
+class TaskResourcesMixin(object):
+
+    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
+        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
+
+    def get_resource_peer(self, key_id):
+        peer_manager = self._get_peer_manager()
+        if peer_manager:
+            return peer_manager.get(key_id)
+        return None
+
+    def get_resource_peers(self, task_id):
+        peer_manager = self._get_peer_manager()
+        if peer_manager:
+            return peer_manager.get_for_task(task_id)
+        return []
+
+    def remove_resource_peer(self, task_id, key_id):
+        peer_manager = self._get_peer_manager()
+        if peer_manager:
+            return peer_manager.remove(task_id, key_id)
+        return None
+
+    def get_resources(self, task_id):
+        resource_manager = self._get_resource_manager()
+        resources = resource_manager.get_resources(task_id)
+        return resource_manager.to_wire(resources)
+
+    def get_download_options(self, key_id):
+        resource_manager = self._get_resource_manager()
+        peer = self.get_resource_peer(key_id)
+        peers = [peer] if peer else []
+        return resource_manager.build_client_options(peers=peers)
+
+    def get_share_options(self, task_id, key_id):
+        resource_manager = self._get_resource_manager()
+        peers = self.get_resource_peers(task_id)
+        return resource_manager.build_client_options(peers=peers)
+
+    def request_resource(self, subtask_id, resource_header,
+                         address, port, key_id, task_owner):
+
+        if subtask_id in self.task_sessions:
+            session = self.task_sessions[subtask_id]
+            session.request_resource(subtask_id, resource_header)
+        else:
+            logger.error("Cannot map subtask_id {} to session"
+                         .format(subtask_id))
+        return subtask_id
+
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.client.pull_resources(task_id, resources,
+                                   client_options=client_options)
+
+    def _get_resource_manager(self):
+        resource_server = self.client.resource_server
+        return resource_server.resource_manager
+
+    def _get_peer_manager(self):
+        resource_manager = self._get_resource_manager()
+        return getattr(resource_manager, 'peer_manager', None)
+
+
+class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
+    def __init__(self, node,
+                 config_desc: ClientConfigDescriptor(),
+                 keys_auth,
+                 client,
+                 use_ipv6=False,
+                 use_docker_machine_manager=True):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -40,8 +109,13 @@ class TaskServer(PendingConnectionsServer):
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management,
                                         tasks_dir=os.path.join(client.datadir, 'tasks'))
-        self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
-                                          use_docker_machine_manager=use_docker_machine_manager)
+        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
+                                                  client.datadir, benchmarks)
+        udmm = use_docker_machine_manager
+        self.task_computer = TaskComputer(config_desc.node_name,
+                                          task_server=self,
+                                          use_docker_machine_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -64,6 +138,7 @@ class TaskServer(PendingConnectionsServer):
         self.forwarded_session_requests = {}
         self.response_list = {}
         self.deny_set = get_deny_set(datadir=client.datadir)
+        self.resource_handshakes = {}
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
@@ -89,6 +164,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
+        super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
         self.send_waiting_payments()
@@ -114,11 +190,16 @@ class TaskServer(PendingConnectionsServer):
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
-                performance = env.get_performance(self.config_desc)
+                performance = env.get_performance()
             else:
                 performance = 0.0
-            if self.should_accept_requestor(theader.task_owner_key_id):
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+            is_requestor_accepted = self.should_accept_requestor(
+                theader.task_owner_key_id)
+            is_price_accepted = self.config_desc.min_price <= theader.max_price
+            if is_requestor_accepted and is_price_accepted:
+                price = int(theader.max_price)
+                self.task_manager.add_comp_task_request(theader=theader,
+                                                        price=price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -129,23 +210,16 @@ class TaskServer(PendingConnectionsServer):
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
                 }
-                self._add_pending_request(TASK_CONN_TYPES['task_request'], theader.task_owner, theader.task_owner_port, theader.task_owner_key_id, args)
+                self._add_pending_request(TASK_CONN_TYPES['task_request'],
+                                          theader.task_owner,
+                                          theader.task_owner_port,
+                                          theader.task_owner_key_id,
+                                          args)
 
                 return theader.task_id
         except Exception as err:
             logger.warning("Cannot send request for task: {}".format(err))
             self.task_keeper.remove_task_header(theader.task_id)
-
-    def request_resource(self, subtask_id, resource_header, address, port, key_id, task_owner):
-        if subtask_id in self.task_sessions:
-            session = self.task_sessions[subtask_id]
-            session.request_resource(subtask_id, resource_header)
-        else:
-            logger.error("Cannot map subtask_id {} to session".format(subtask_id))
-        return subtask_id
-
-    def pull_resources(self, task_id, resources, client_options=None):
-        self.client.pull_resources(task_id, resources, client_options=client_options)
 
     def send_results(self, subtask_id, task_id, result, computing_time,
                      owner_address, owner_port, owner_key_id, owner,
@@ -208,9 +282,10 @@ class TaskServer(PendingConnectionsServer):
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + \
-              self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths]
+        ths_tk = self.task_keeper.get_all_tasks()
+        ths_tm = self.task_manager.get_tasks_headers()
+        ret  = [th.to_dict() for th in ths_tk + ths_tm]
+        return  ret
 
     def add_task_header(self, th_dict_repr):
         try:
@@ -231,7 +306,7 @@ class TaskServer(PendingConnectionsServer):
 
             return True
         except Exception as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
 
     def verify_header_sig(self, th_dict_repr):
@@ -292,12 +367,6 @@ class TaskServer(PendingConnectionsServer):
     def get_resource_port(self):
         return self.client.resource_port
 
-    def get_subtask_ttl(self, task_id):
-        return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
-
     def task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
 
@@ -334,44 +403,48 @@ class TaskServer(PendingConnectionsServer):
 
     def reward_for_subtask_paid(self, subtask_id, reward, transaction_id,
                                 block_number):
-        logger.info(
-            "Received payment for subtask %r (val:%r, tid:%r, bn:%r)",
-            subtask_id,
-            reward,
-            transaction_id,
-            block_number
-        )
         try:
             expected_income = model.ExpectedIncome.get(subtask=subtask_id)
         except model.ExpectedIncome.DoesNotExist:
             logger.warning(
-                'Received unexpected payment for subtask %r'
-                '(val:%rGNT, tid: %r, bn:%r)',
+                'Received unexpected payment confirmation message for subtask '
+                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
                 subtask_id,
+                reward,
+                transaction_id,
+                block_number)
+            return
+
+        logger.info(
+                'Received payment confirmation message for subtask_id %r \n '
+                '(expected reward: %r GNT, reward claimed in message %r GNT \n '
+                'transaction_id: %r, block number:%r)',
+                subtask_id,
+                expected_income.value,
                 reward,
                 transaction_id,
                 block_number
             )
-            return
-        if expected_income.value != reward:
-            logger.error(
-                "Reward mismatch for subtask: %r. expected: %r got: %r",
-                subtask_id,
-                expected_income.value,
-                reward
-            )
-            return
-        task_id = expected_income.task
-        node_id = expected_income.sender_node
-        self.client.transaction_system.incomes_keeper.received(
-            sender_node_id=node_id,
-            task_id=task_id,
+
+        # Checks whether the claimed reward value matches
+        # expectations (db vs blockchain).
+        # We don't care what is the value of reward claimed in message
+        # since byzantine node can send whatever it likes.
+        result = self.client.transaction_system.incomes_keeper.received(
+            sender_node_id=expected_income.sender_node,
+            task_id=expected_income.task,
             subtask_id=subtask_id,
             transaction_id=transaction_id,
             block_number=block_number,
-            value=reward,
+            value=expected_income.value,
         )
-        Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        # Trust is increased only after confirmation from incomes keeper
+        from golem.model import Income
+        if type(result) is Income:
+            Trust.PAYMENT.increase(
+                expected_income.sender_node,
+                self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -389,6 +462,7 @@ class TaskServer(PendingConnectionsServer):
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
+
         if not value:
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
@@ -901,6 +975,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
+        self.task_manager.comp_task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)
@@ -908,13 +983,16 @@ class TaskServer(PendingConnectionsServer):
     def __remove_old_sessions(self):
         cur_time = time.time()
         sessions_to_remove = []
-        for subtask_id, session in self.task_sessions.items():
-            if cur_time - session.last_message_time > self.last_message_time_threshold:
+        sessions = dict(self.task_sessions)
+
+        for subtask_id, session in sessions.items():
+            dt = cur_time - session.last_message_time
+            if dt > self.last_message_time_threshold:
                 sessions_to_remove.append(subtask_id)
         for subtask_id in sessions_to_remove:
-            if self.task_sessions[subtask_id].task_computer is not None:
-                self.task_sessions[subtask_id].task_computer.session_timeout()
-            self.task_sessions[subtask_id].dropped()
+            if sessions[subtask_id].task_computer is not None:
+                sessions[subtask_id].task_computer.session_timeout()
+            sessions[subtask_id].dropped()
 
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:
@@ -946,6 +1024,10 @@ class TaskServer(PendingConnectionsServer):
                 p2p_node = p2p_node_getter(elem)
                 if p2p_node is None:
                     logger.debug('Empty node info in %r', elem)
+                    elems_set.remove(elem)
+                    continue
+                if not isinstance(p2p_node.prv_port, int):
+                    logger.debug('Invalid port in %r', elem)
                     elems_set.remove(elem)
                     continue
                 self._add_pending_request(

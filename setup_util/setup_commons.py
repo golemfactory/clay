@@ -8,7 +8,6 @@ from setuptools import find_packages, Command
 from setuptools.command.test import test
 
 from golem.core.common import get_golem_path, is_windows, is_osx, is_linux
-from gui.view.generateui import generate_ui_files
 
 
 class PyTest(test):
@@ -62,7 +61,10 @@ class PyInstaller(Command):
 
         for spec in ['golemapp.spec', 'golemcli.spec']:
             self.banner("Building {}".format(spec))
-            subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', spec])
+            subprocess.check_call([
+                sys.executable, '-m', 'PyInstaller', '--clean',
+                '--win-private-assemblies', spec
+            ])
 
         print("> Copying taskcollector")
         self.copy_taskcollector(dist_dir)
@@ -70,14 +72,10 @@ class PyInstaller(Command):
         print("> Copying examples")
         self.copy_examples(dist_dir)
 
-        print("> Copying chain")
-        self.copy_chain(dist_dir)
-
-        if not is_windows():
-            print("> Compressing distribution")
-            tar_dir = self.move(dist_dir)
-            tar_file = self.compress(tar_dir, dist_dir)
-            print("> Archive saved: '{}'".format(tar_file))
+        print("> Compressing distribution")
+        archive_dir = self.move(dist_dir)
+        archive_file = self.compress(archive_dir, dist_dir)
+        print("> Archive saved: '{}'".format(archive_file))
 
     def banner(self, msg):
         print("\n> --------------------------------")
@@ -87,19 +85,16 @@ class PyInstaller(Command):
     def copy_taskcollector(self, dist_dir):
         import shutil
 
-        taskcollector_dir = path.join('apps', 'rendering', 'resources',
-                                      'taskcollector', 'x64' if is_windows() else '', 'Release')
+        taskcollector_dir = path.join(
+            'apps',
+            'rendering',
+            'resources',
+            'taskcollector',
+            'x64' if is_windows() else '',
+            'Release'
+        )
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
-
-    def copy_chain(self, dist_dir):
-        from shutil import copy
-        from os import makedirs
-
-        chain_files = path.join('golem', 'ethereum', 'rinkeby.json')
-        dist_dir = path.join(dist_dir, 'golem', 'ethereum')
-        makedirs(dist_dir)
-        copy(chain_files, dist_dir)
 
     def copy_examples(self, dist_dir):
         import shutil
@@ -129,34 +124,51 @@ class PyInstaller(Command):
 
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golem'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
+
+        if is_windows():
+            shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
+        else:
+            shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
         return ver_dir
 
     def compress(self, src_dir, dist_dir):
-        import tarfile
+        archive_file = self.get_archive_path(dist_dir)
+        if not is_windows():
+            import tarfile
 
-        tar_file = self.get_tarball_path(dist_dir)
-        with tarfile.open(tar_file, "w:gz") as tar:
-            tar.add(src_dir, arcname=path.basename(src_dir))
-        return tar_file
+            with tarfile.open(archive_file, "w:gz") as tar:
+                tar.add(src_dir, arcname=path.basename(src_dir))
+        else:
+            import zipfile
+            zf = zipfile.ZipFile(archive_file, "w")
+            for dirname, _, files in walk(src_dir):
+                zf.write(dirname)
+                for filename in files:
+                    zf.write(path.join(dirname, filename))
+            zf.close()
+        return archive_file
 
-    def get_tarball_path(self, dist_dir):
+    def get_archive_path(self, dist_dir):
         if self.package_path:
             return self.package_path
 
+        extension = 'tar.gz'
         if is_osx():
             sys_name = 'macos'
         elif is_linux():
             sys_name = 'linux_x64'
+        elif is_windows():
+            sys_name = 'win32'
+            extension = 'zip'
         else:
             raise EnvironmentError("Unsupported OS: {}".format(sys.platform))
 
         version = get_version()
         return path.join(dist_dir,
-                         'golem-{}-{}.tar.gz'.format(sys_name, version))
+                         'golem-{}-{}.{}'.format(sys_name, version, extension))
 
 
 def get_long_description(my_path):
@@ -172,7 +184,7 @@ def get_long_description(my_path):
 def find_required_packages():
     if platform.startswith('darwin'):
         return find_packages(exclude=['examples', 'tests'])
-    return find_packages(include=['golem*', 'apps*', 'gui*'])
+    return find_packages(include=['golem*', 'apps*'])
 
 
 def parse_requirements(my_path):
@@ -201,21 +213,6 @@ def print_errors(*errors):
     for error in errors:
         if error:
             print(error)
-
-
-def generate_ui():
-    try:
-        generate_ui_files()
-    except EnvironmentError as err:
-        return \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
 
 def update_variables():
     import re
@@ -293,7 +290,6 @@ def file_name():
 
 
 def get_files():
-    from golem.core.common import get_golem_path
     golem_path = get_golem_path()
     extensions = ['py', 'pyc', 'pyd', 'ini', 'template', 'dll', 'png', 'txt']
     excluded = ['golem.egg-info', 'build', 'tests', 'Installer', '.git']

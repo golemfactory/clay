@@ -1,13 +1,15 @@
 import logging
 from golem.environments.environmentsconfig import EnvironmentsConfig
+from .environment import Environment, SupportStatus, UnsupportReason
 
 logger = logging.getLogger(__name__)
 
 
 class EnvironmentsManager(object):
     """ Manage known environments. Allow user to choose accepted environment, keep track of supported environments """
+
     def __init__(self):
-        self.supported_environments = set()
+        self.support_statuses = {}
         self.environments = set()
         self.env_config = None
 
@@ -15,7 +17,8 @@ class EnvironmentsManager(object):
         """ Load acceptance of environments from the config file
         :param datadir:
         """
-        self.env_config = EnvironmentsConfig.load_config(self.get_environments_to_config(), datadir)
+        self.env_config = EnvironmentsConfig.load_config(
+            self.get_environments_to_config(), datadir)
         config_entries = self.env_config.get_config_entries()
         for env in self.environments:
             getter_for_env = getattr(config_entries, "get_" + env.get_id())
@@ -26,22 +29,23 @@ class EnvironmentsManager(object):
         :param Environment environment:
         """
         self.environments.add(environment)
-        supported = environment.supported()
+        supported = environment.check_support()
         logger.info("Adding environment {} supported={}"
                     .format(environment.get_id(), supported))
-        if supported:
-            self.supported_environments.add(environment.get_id())
+        self.support_statuses[environment.get_id()] = supported
 
-    def supported(self, env_id):
-        """ Return information if given environment are supported. Uses information from supported environments, doesn't
-         check the environment again.
+    def get_support_status(self, env_id) -> SupportStatus:
+        """ Return information if given environment are supported.
+            Uses information from supported environments,
+            doesn't check the environment again.
         :param str env_id:
-        :return bool:
+        :return SupportStatus:
         """
-        return env_id in self.supported_environments
+        return self.support_statuses.get(env_id, SupportStatus.err(
+            {UnsupportReason.ENVIRONMENT_MISSING: env_id}))
 
     def accept_tasks(self, env_id):
-        """ Return information whether tasks from given environment are accepted.
+        """Return information whether tasks from given environment are accepted.
         :param str env_id:
         :return bool:
         """
@@ -54,7 +58,7 @@ class EnvironmentsManager(object):
         :return set:
         """
         return self.environments
-    
+
     def get_environment_by_id(self, env_id):
         for env in self.environments:
             if env.get_id() == env_id:
@@ -68,7 +72,8 @@ class EnvironmentsManager(object):
         return envs
 
     def change_accept_tasks(self, env_id, state):
-        """ Change information whether tasks from this environment are accepted or not. Write changes in config file
+        """ Change information whether tasks from this environment are accepted
+            or not. Write changes in config file
         :param str env_id:
         :param bool state:
         """
@@ -80,3 +85,10 @@ class EnvironmentsManager(object):
                 setter_for_env(int(state))
                 self.env_config = self.env_config.change_config()
                 return
+
+    def get_performance_values(self):
+        perf_values  = {env.get_id(): env.get_performance()
+                        for env in self.environments}
+        if Environment.get_id() not in perf_values:
+            perf_values[Environment.get_id()] = Environment.get_performance()
+        return perf_values

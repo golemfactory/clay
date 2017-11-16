@@ -2,16 +2,19 @@ import ntpath
 import os
 from os import makedirs, path, remove
 
-from mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY
 
-from apps.core.task.coretaskstate import Options, TaskDefinition, TaskState
+from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
-from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
-                                               RenderingTaskBuilder, logger,
+                                               RenderingTaskBuilder,
                                                PREVIEW_EXT, PREVIEW_Y,
                                                PREVIEW_X)
+from apps.core.task.coretask import logger as logger_core
+from apps.rendering.task.renderingtask import logger as logger_render
+
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager
@@ -43,10 +46,15 @@ class RenderingTaskMock(RenderingTask):
         self.ENVIRONMENT_CLASS.main_program_file = main_program_file
         super(RenderingTaskMock, self).__init__(*args, **kwargs)
 
+    def query_extra_data(*args, **kwargs):
+        pass
+
+    def query_extra_data_for_test_task(self):
+        pass
 
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_core, level="WARNING"):
             rt = RenderingTaskMock(main_program_file="notexisting",
                                    task_definition=RenderingTaskDefinition(),
                                    node_name="Some name",
@@ -137,9 +145,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert img.getpixel((max_x, max_y)) == (1, 255, 255)
 
         img.close()
-
-        rt.preview_file_path = []
-        rt._remove_from_preview("abc")
 
     def test_update_task_state(self):
         task = self.task
@@ -349,26 +354,26 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 18
 
         definition.total_subtasks = 2
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 3
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
         definition.total_subtasks = 34
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 33
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
     def test_build_definition(self):
         defaults_mock = Mock()
         defaults_mock.main_program_file = "src_code.py"
-        tti = TaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
-                           Options, RenderingTaskBuilder)
+        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
+                               Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
         definition = RenderingTaskBuilder.build_definition(
             tti,

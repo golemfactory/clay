@@ -10,13 +10,15 @@
 ; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://download.docker.com/win/stable/DockerToolbox.exe
-; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.6.7-ab5646c5.exe
+; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.2-1db4ecdc.exe
 #define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
+#define MyAppNumber ReadIni(Repository+"\\.version.ini", "version", "number", "0.1.0")
 #expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
+#define Geth "geth-windows-amd64-1.7.2-1db4ecdc.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -63,10 +65,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
                                                
 [Files]
-Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.7-ab5646c5.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\{#Geth}"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 ; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
 Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
@@ -89,7 +91,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/VERYSILENT"; StatusMsg: "Inst
 Filename: "{tmp}\VirtualBox-5.1.26-117224-Win.exe"; Parameters: "--silent"; StatusMsg: "Installing VirtualBox"; Description: "Install VirtualBox";
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.6.7-ab5646c5.exe"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
+Filename: "{tmp}\{#Geth}"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
 
 [Code]
 ////////////////////////////////////////////////////////////////////////////////////////////////////                                                                              

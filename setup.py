@@ -5,9 +5,9 @@ from sys import argv
 from setuptools import setup
 
 from setup_util.setup_commons import (
-    path, parse_requirements, generate_ui, platform, update_variables,
-    get_version, get_long_description, find_required_packages, PyTest,
-    PyInstaller, move_wheel, print_errors)
+    path, parse_requirements, platform, update_variables, get_version,
+    get_long_description, find_required_packages, PyTest, PyInstaller,
+    move_wheel, print_errors)
 from setup_util.taskcollector_builder import TaskCollectorBuilder
 
 from golem.docker.manager import DockerManager
@@ -20,9 +20,6 @@ directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
 task_collector_err = TaskCollectorBuilder().build()
 
-if building_wheel or building_binary:
-    ui_err = generate_ui()
-
 update_variables()
 
 setup(
@@ -33,7 +30,7 @@ setup(
     long_description=get_long_description(directory),
     url='https://golem.network',
     author='Golem Team',
-    author_email='contact@golemproject.net',
+    author_email='contact@golem.network',
     license="GPL-3.0",
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -75,8 +72,8 @@ setup(
             path.normpath('apps/registered.ini'),
             path.normpath('apps/images.ini')
         ]),
-        (path.normpath('../../golem/apps/core/benchmark/minilight'), [
-            path.normpath('apps/core/benchmark/minilight/cornellbox.ml.txt'),
+        (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
+            path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
@@ -86,14 +83,14 @@ setup(
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
             path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
         ]),
-        (path.normpath('../../golem/gui/view/'), [
-            path.normpath('gui/view/nopreview.png')
+        (path.normpath('../../golem/apps/dummy/resources/scripts'), [
+            path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
         ]),
-        (path.normpath('../../golem/gui/view/img'), [
-            path.normpath('gui/view/img/' + f) for f in [
-                'favicon-256x256.png', 'favicon-48x48.png', 'favicon-32x32.png',
-                'settings.png', 'task.png', 'user.png', 'new.png', 'eye.png'
-            ]
+        (path.normpath('../../golem/apps/dummy/resources/code_dir'), [
+            path.normpath('apps/dummy/resources/code_dir/computing.py')
+        ]),
+        (path.normpath('../../golem/apps/dummy/test_data'), [
+            path.normpath('apps/dummy/test_data/in.data')
         ]),
     ]
 )
@@ -102,10 +99,8 @@ if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
     DockerManager.pull_images()
 
-if not (building_wheel or building_binary):
-    ui_err = generate_ui()
-elif building_wheel:
+if building_wheel:
     move_wheel()
 
 
-print_errors(ui_err, task_collector_err)
+print_errors(task_collector_err)

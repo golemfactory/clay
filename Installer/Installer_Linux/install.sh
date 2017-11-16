@@ -2,36 +2,18 @@
 #title          :install.sh
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
-#email          :contact@golemnetwork.com
-#date           :20170711
-#version        :0.3
+#email          :contact@golem.network
+#date           :20170920
+#version        :0.4
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
-function release_url()
-{
-    json=$(wget -qO- --header='Accept: application/json' $1)
-    echo ${json} | python -c '\
-        import sys, json;                          \
-        j = json.load(sys.stdin);                  \
-        k = "browser_download_url";                \
-        print([asset[k] for entry in j             \
-                   if "assets" in entry            \
-               for asset in entry["assets"]        \
-                   if asset[k].find("linux") != -1 \
-              ][0])'
-}
-
 # CONSTANTS
 declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
-declare -r docker_checksum='d41d8cd98f00b204e9800998ecf8427e'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
-declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
-declare -r ui_package_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
 declare -r hyperg_pack=/tmp/hyperg.tar.gz
 declare -r PACKAGE="golem-linux.tar.gz"
 declare -r ELECTRON_PACKAGE="electron.tar.gz"
@@ -49,7 +31,8 @@ PACKAGE_VERSION="0.1.0"
 # PARAMS
 LOCAL_PACKAGE=""
 UI_PACKAGE=""
-DEPS_ONLY=0
+declare -i DEPS_ONLY=0
+declare -i DEVELOP=0
 
 # @brief print error message
 # @param error message
@@ -91,7 +74,22 @@ function ask_user()
     done
 }
 
-# @brief check if dependencies (pip, Docker, and Ethereum) are installed and set proper 'global' variables
+function release_url()
+{
+    json=$(wget -qO- --header='Accept: application/json' $1)
+    echo ${json} | python3 -c '\
+        import sys, json;                          \
+        j = json.load(sys.stdin);                  \
+        k = "browser_download_url";                \
+        print([asset[k] for entry in j             \
+                   if "assets" in entry            \
+               for asset in entry["assets"]        \
+                   if asset[k].find("linux") != -1 \
+              ][0])'
+}
+
+# @brief check if dependencies (pip, Docker, and Ethereum)
+# are installed and set proper 'global' variables
 function check_dependencies()
 {
     # Check if docker daemon exists
@@ -107,6 +105,7 @@ function check_dependencies()
     fi
 }
 
+
 # @brief Install/Upgrade required dependencies
 function install_dependencies()
 {
@@ -117,6 +116,11 @@ function install_dependencies()
         exit 1
     fi
 
+    declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
+               libssl-dev autoconf libgmp-dev libtool libffi-dev \
+               libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
+               ethereum libfreeimage3 )
+
     if [[ ${INSTALL_GETH} -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         sudo apt-get install -y -q software-properties-common >/dev/null
@@ -125,23 +129,30 @@ function install_dependencies()
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
-        wget -qO- https://get.docker.com > /tmp/${docker_script}
-        if [[ "$( md5sum /tmp/${docker_script} | awk '{print $1}' )" == "$docker_checksum" ]]; then
-            bash /tmp/${docker_script} >/dev/null
-            if [[ $? -ne 0 ]]; then
-                warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
-                sleep 5s
-            fi
-            if [[ $UID -ne 0 ]]; then
-                sudo usermod -aG docker ${USER}
-            fi
-        else
-            warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
-            sleep 5s
+
+        # Ubuntu 14.04 needs some additional dependencies
+        if [[ $( lsb_release -r | awk '{print $2}' ) == '14.04' ]]; then
+            packages+=("linux-image-extra-$(uname -r)" linux-image-extra-virtual)
         fi
-        rm -f /tmp/${docker_script}
+
+        packages+=( apt-transport-https \
+                    ca-certificates \
+                    software-properties-common)
+        wget -qO- https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository \
+            "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) \
+            stable"
     fi
 
+    docker_version="$(apt-cache madison docker-ce 2>/dev/null | head -1 | awk '{print $3}')"
+    if [[ -z "${docker_version}" ]]; then
+        packages+=(docker-ce)
+    else
+        packages+=(docker-ce=${docker_version})
+    fi
+
+    declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
     ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
@@ -157,20 +168,30 @@ function install_dependencies()
         wget -qO- ${hyperg} > ${hyperg_pack}
         [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
         tar -xvf ${hyperg_pack} >/dev/null
-        mv hyperg $HOME/
+        [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f ${hyperg_pack} &>/dev/null
     fi
     sudo apt-get update >/dev/null
-    declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
-               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
-               libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
-               ethereum docker-engine )
     echo -e "\e[91m"
     for package in ${packages[*]}; do
         sudo apt-get install -q -y ${package} >/dev/null
     done
     echo -e "\e[39m"
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+        if [[ -z "${SUDO_USER}" ]]; then
+            sudo usermod -aG docker ${USER}
+        else
+            sudo usermod -aG docker ${SUDO_USER}
+        fi
+        sudo docker run hello-world &>/dev/null
+        if [[ ${?} -eq 0 ]]; then
+            info_msg "Docker installed successfully"
+        else
+            warning_msg "Error occurred during installation"
+            sleep 5s
+        fi
+    fi
     info_msg "Done installing Golem dependencies"
 }
 
@@ -182,11 +203,16 @@ function download_package() {
         cp "$LOCAL_PACKAGE" "/tmp/$PACKAGE"
     else
         info_msg "Downloading Golem package"
-        wget -qO- "$golem_package" > /tmp/${PACKAGE}
+        if [[ ${DEVELOP} -eq 0 ]]; then
+            golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
+        else
+            golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
+        fi
+        wget -qO- ${golem_url} > /tmp/${PACKAGE}
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
 
@@ -195,11 +221,16 @@ function download_package() {
         cp ${UI_PACKAGE} /tmp/${ELECTRON_PACKAGE}
     else
         info_msg "Downloading ui package (it may take awhile)"
-        wget -qO- ${ui_package_url} > /tmp/${ELECTRON_PACKAGE}
+        if [[ ${DEVELOP} -eq 0 ]]; then
+            electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron/releases")
+        else
+            electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron-dev/releases")
+        fi
+        wget -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
     return 0
@@ -217,7 +248,12 @@ function check_symlink()
     [[ ${point_to} == ${source} ]] && return 0
     sudo rm -f ${destination} 2>/dev/null
     sudo ln -s ${source} ${destination}
-    return $?
+    res=${?}
+    if [[ -n "${SUDO_USER}" ]]; then
+        sudo chown ${SUDO_USER}:${SUDO_USER} ${destination}
+        sudo -H -u ${SUDO_USER} chmod 755 ${destination}
+    fi
+    return ${res}
 }
 
 # @brief Download and install golem
@@ -232,6 +268,10 @@ function install_golem()
     fi
 
     tar -zxvf /tmp/${PACKAGE} >/dev/null
+    if [[ ${?} -ne 0 ]]; then
+        error_msg "ERROR) Cannot extract ${PACKAGE}. Exiting..."
+        return 1
+    fi
     PACKAGE_DIR=$( find . -maxdepth 1 -name "golem-*" -type d -print | head -n1 )
     if [[ ! -d ${PACKAGE_DIR} ]]; then
         error_msg "Error extracting package"
@@ -257,6 +297,10 @@ function install_golem()
     rm -rf ${PACKAGE_DIR} &>/dev/null
 
     tar -zxvf /tmp/${ELECTRON_PACKAGE} >/dev/null
+    if [[ ${?} -ne 0 ]]; then
+        error_msg "ERROR) Cannot extract ${ELECTRON_PACKAGE}. Exiting..."
+        return 1
+    fi
     ELECTRON_DIR=$(find . -maxdepth 1 -name "linux-unpacked" -type d -print | head -n1)
     if [[ ! -d ${ELECTRON_DIR} ]]; then
         error_msg "Error extracting package"
@@ -268,6 +312,11 @@ function install_golem()
     rm -rf ${ELECTRON_DIR} &>/dev/null
     rm -rf /tmp/${ELECTRON_PACKAGE} &>/dev/null
     rm -rf ${ELECTRON_DIR} &>/dev/null
+
+    if [[ -n "${SUDO_USER}" ]]; then
+        sudo chown -R ${SUDO_USER}:${SUDO_USER} ${GOLEM_DIR}
+        sudo -H -u ${SUDO_USER} chmod -R 755 ${GOLEM_DIR}
+    fi
 
     result=0
     check_symlink ${GOLEM_DIR}/electron/golem /usr/local/bin/golem
@@ -304,7 +353,8 @@ function help_message() {
     echo -e "\e[4mOptions:\e[0m"
     echo -e "   -g, --golem           package with Golem"
     echo -e "   -u, --ui              package with UI"
-    echo -e "   -d, --deps-only       Install only dependencies without Golem"
+    echo -e "   -d, --deps-only       install only dependencies without Golem"
+    echo -e "   -dev, --develop       install develop version"
     echo -e "   -h, --help            print this message"
     echo
 }
@@ -328,6 +378,9 @@ while [[ $# -ge 1 ]]; do
         fi
         UI_PACKAGE="$2"
         shift # past argument
+        ;;
+        -dev|--develop)
+        DEVELOP=1
         ;;
         -h|--help)
         help_message

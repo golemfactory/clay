@@ -3,6 +3,7 @@ import os
 
 import requests
 from golem.docker.job import DockerJob
+from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread
 from golem.vm.memorychecker import MemoryChecker
 
@@ -87,7 +88,7 @@ class DockerTaskThread(TaskThread):
                     for root, _, files in os.walk(output_dir):
                         for name in files:
                             out_files.append(os.path.join(root, name))
-                    self.result = {"data": out_files, "result_type": 1}
+                    self.result = {"data": out_files, "result_type": ResultType.FILES}
                     if self.check_mem:
                         self.result = (self.result, estm_mem)
                     self.task_computer.task_computed(self)

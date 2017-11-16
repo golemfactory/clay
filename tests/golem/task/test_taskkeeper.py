@@ -3,18 +3,17 @@ from pathlib import Path
 import random
 import time
 from unittest import TestCase
-
-from mock import Mock
-from mock import patch
+import unittest.mock as mock
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.variables import APP_VERSION
-from golem.environments.environment import Environment
+from golem.environments.environment import Environment, UnsupportReason
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import CompTaskInfo
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
+    CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -27,33 +26,39 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_is_supported(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
-        self.assertFalse(tk.is_supported({}))
+        self.assertFalse(tk.check_support({}))
         task = {"environment": Environment.get_id(), 'max_price': 0}
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
         task["max_price"] = 10.0
-        self.assertFalse(tk.is_supported(task))
+        supported = tk.check_support(task)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
         task["min_version"] = APP_VERSION
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
-        self.assertTrue(tk.is_supported(task))
-        config_desc = Mock()
+        self.assertTrue(tk.check_support(task))
+        config_desc = mock.Mock()
         config_desc.min_price = 13.0
         tk.change_config(config_desc)
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "120"
-        self.assertFalse(tk.is_supported(task))
+        self.assertFalse(tk.check_support(task))
         task["min_version"] = tk.app_version
-        self.assertTrue(tk.is_supported(task))
+        self.assertTrue(tk.check_support(task))
         task["min_version"] = "abc"
         with self.assertLogs(logger=logger, level='WARNING'):
-            self.assertFalse(tk.is_supported(task))
+            self.assertFalse(tk.check_support(task))
 
     def test_check_version_compatibility(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
@@ -100,7 +105,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.add_task_header(task_header)
         self.assertIn("abc", tk.supported_tasks)
         self.assertIsNotNone(tk.task_headers["abc"])
-        config_desc = Mock()
+        config_desc = mock.Mock()
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertNotIn("xyz", tk.supported_tasks)
@@ -205,38 +210,147 @@ class TestTaskHeaderKeeper(LogTestCase):
         correct, err = tk.is_correct(th)
         assert correct
         assert err is None
+        tk.check_correct(th)  # shouldn't raise
 
         th['deadline'] = datetime.now()
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Deadline is not a timestamp"
+        with self.assertRaisesRegex(TypeError, "Deadline is not a timestamp"):
+            tk.check_correct(th)
 
         th['deadline'] = get_timestamp_utc() - 10
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Deadline already passed"
+        assert "Deadline already passed" in err
+        with self.assertRaisesRegex(TypeError, "Deadline already passed"):
+            tk.check_correct(th)
 
         th['deadline'] = get_timestamp_utc() + 20
         correct, err = tk.is_correct(th)
         assert correct
         assert err is None
+        tk.check_correct(th)  # shouldn't raise
 
         th['subtask_timeout'] = "abc"
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is not a number"
+        assert "Subtask timeout is not a number" in err
+        with self.assertRaisesRegex(TypeError,
+                                    "Subtask timeout is not a number"):
+            tk.check_correct(th)
 
         th['subtask_timeout'] = -131
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is less than 0"
+        assert "Subtask timeout is less than 0" in err
+        with self.assertRaisesRegex(TypeError,
+                                    "Subtask timeout is less than 0"):
+            tk.check_correct(th)
+
+    def test_task_limit(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        limit = tk.max_tasks_per_requestor
+
+        thd = get_dict_task_header("ta0")
+        thd["deadline"] = timeout_to_deadline(0.1)
+        tk.add_task_header(thd)
+
+        for i in range(1, limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+        last_add_time = time.time()
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        thd = get_dict_task_header("tb0")
+        thd["task_owner_key_id"] = "zzzz"
+        tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+
+        self.assertIn("tb0", tk.task_headers)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
+
+        thd = get_dict_task_header("ta%d" % limit)
+        tk.add_task_header(thd)
+        self.assertNotIn("ta%d" % limit, tk.task_headers)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+        time.sleep(0.1)
+        tk.remove_old_tasks()
+
+        thd = get_dict_task_header("ta%d" % (limit + 1))
+        tk.add_task_header(thd)
+        self.assertIn("ta%d" % (limit + 1), tk.task_headers)
+
+        self.assertNotIn("ta0", tk.task_headers)
+        for i in range(1, limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+    def test_check_max_tasks_per_owner(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10,
+                              max_tasks_per_requestor=10)
+        limit = tk.max_tasks_per_requestor
+        new_limit = 3
+
+        for i in range(new_limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+        last_add_time = time.time()
+
+        thd = get_dict_task_header("tb0")
+        thd["task_owner_key_id"] = "zzzz"
+        tk.add_task_header(thd)
+
+        for i in range(new_limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
+
+        for i in range(new_limit, limit):
+            thd = get_dict_task_header("ta%d" % i)
+            tk.add_task_header(thd)
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(limit + 1, len(tk.task_headers))
+
+        # shouldn't remove any tasks
+        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+
+        for i in range(limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(limit + 1, len(tk.task_headers))
+
+        tk.max_tasks_per_requestor = new_limit
+
+        # should remove ta{3..9}
+        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+
+        for i in range(new_limit):
+            self.assertIn("ta%d" % i, tk.task_headers)
+        self.assertIn("tb0", tk.task_headers)
+        self.assertEqual(new_limit + 1, len(tk.task_headers))
 
 
-def get_dict_task_header():
+def get_dict_task_header(task_id="xyz"):
     return {
-        "task_id": "xyz",
+        "task_id": task_id,
         "node_name": "ABC",
-        "task_owner": dict(),
+        "task_owner": {"node_name": "Bob's node"},
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
@@ -251,10 +365,13 @@ def get_dict_task_header():
 
 def get_task_header():
     header = get_dict_task_header()
-    return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
+    return TaskHeader(header["node_name"], header["task_id"],
+                      header["task_owner_address"],
                       header["task_owner_port"], header["task_owner_key_id"],
-                      header["environment"], header["task_owner"], header["deadline"],
-                      header["subtask_timeout"], 1024, 1.0, 1000)
+                      header["environment"], header["task_owner"],
+                      header["deadline"],
+                      header["subtask_timeout"], 1024, 1.0, 1000,
+                      header['max_price'])
 
 
 class TestCompSubtaskInfo(TestCase):
@@ -272,24 +389,51 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         super(TestCompTaskKeeper, self).setUp()
         random.seed()
 
-    def test_persistance(self):
-        """Tests whether tasks are persistent between restarts."""
-        tasks_dir = Path(self.path)
+    def _dump_some_tasks(self, tasks_dir):
         ctk = CompTaskKeeper(tasks_dir)
 
         test_headers = []
-        for x in range(100):
+        test_subtasks_ids = []
+        for x in range(10):
             header = get_task_header()
-            header.task_id = "test%d-%d" % (x, random.random()*1000)
+            header.deadline = timeout_to_deadline(1)
+            header.task_id = "test%d-%d" % (x, random.random() * 1000)
             test_headers.append(header)
-            ctk.add_request(header, int(random.random()*100))
+            ctk.add_request(header, int(random.random() * 100))
+
+            ctd = ComputeTaskDef()
+            ctd.task_id = header.task_id
+            ctd.subtask_id = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctk.receive_subtask(ctd)
+            test_subtasks_ids.append(ctd.subtask_id)
         del ctk
 
-        ctk = CompTaskKeeper(tasks_dir)
-        for header in test_headers:
-            self.assertIn(header.task_id, ctk.active_tasks)
+        another_ctk = CompTaskKeeper(tasks_dir)
+        for (subtask_id, header) in zip(test_subtasks_ids, test_headers):
+            self.assertIn(subtask_id, another_ctk.subtask_to_task)
+            self.assertIn(header.task_id, another_ctk.active_tasks)
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    def test_persistance(self):
+        """Tests whether tasks are persistent between restarts."""
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
+    def test_remove_old_tasks(self):
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
+        ctk = CompTaskKeeper(tasks_dir)
+        ctk.remove_old_tasks()
+
+        self.assertTrue(any(ctk.active_tasks))
+        self.assertTrue(any(ctk.subtask_to_task))
+        time.sleep(1)
+        ctk.remove_old_tasks()
+        self.assertTrue(not any(ctk.active_tasks))
+        self.assertTrue(not any(ctk.subtask_to_task))
+
+
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
@@ -327,7 +471,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctk.get_value('qwerty', 12)
         self.assertEqual(ctk.get_value(thread.task_id, 600), 2)
 
-        self.assertIsNone(ctk.get_subtask_ttl("abc"))
         ctd = ComputeTaskDef()
         with self.assertLogs(logger, level="WARNING"):
             self.assertFalse(ctk.receive_subtask(ctd))
@@ -362,7 +505,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 1
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_get_task_env(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):

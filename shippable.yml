@@ -1,0 +1,14 @@
+language: python
+
+python:
+  - 3.5
+
+install:
+  - pip3 install -r requirements.txt
+  - pip3 install -r requirements-lint.txt
+
+script:
+  - git checkout -b shippable-lint  # Shippable doesn't make a branch for us, unlike CircleCI
+  - git merge origin/develop        # Update the changes from develop to avoid false positives
+  - ./lint.sh origin/develop        # Run all the checks. We can't just enumerate them here,
+                                    # because the CI aborts the job after first failure

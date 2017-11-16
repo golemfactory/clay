@@ -5,11 +5,12 @@ from threading import Lock
 import time
 from typing import Callable
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
-from golem.task.taskbase import Task, resource_types
+from golem.task.taskbase import Task, ResourceType, ComputeTaskDef
 
 logger = logging.getLogger("golem.task")
 
@@ -18,19 +19,18 @@ class LocalComputer:
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
 
-    def __init__(
-        self,
-        task: Task,
-        root_path: str,
-        success_callback: Callable,
-        error_callback: Callable,
-        get_compute_task_def: Callable,
-        check_mem: bool = False,
-        comp_failed_warning: str = DEFAULT_WARNING,
-        comp_success_message: str = DEFAULT_SUCCESS,
-        use_task_resources: bool = True,
-        additional_resources=None
-    ) -> None:
+    def __init__(self,
+                 task: Task,
+                 root_path: str,
+                 success_callback: Callable,
+                 error_callback: Callable,
+                 get_compute_task_def: Callable[[], ComputeTaskDef],
+                 check_mem: bool=False,
+                 comp_failed_warning: str=DEFAULT_WARNING,
+                 comp_success_message: str=DEFAULT_SUCCESS,
+                 use_task_resources: bool=True,
+                 additional_resources=None) -> None:
+        # TODO remove this isinstance
         if not isinstance(task, Task):
             raise TypeError(
                 "Incorrect task type: {}. Should be: Task".format(type(task))
@@ -128,9 +128,8 @@ class LocalComputer:
 
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_path)
-            res_file = self.task.get_resources(
-                rh, resource_types["zip"], self.tmp_dir
-            )
+            res_file = self.task.get_resources(rh, ResourceType.ZIP,
+                                               self.tmp_dir)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
@@ -145,17 +144,15 @@ class LocalComputer:
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
 
-    def _get_task_thread(self, ctd):
-        return DockerTaskThread(
-            self,
-            ctd.subtask_id,
-            ctd.docker_images,
-            ctd.working_directory,
-            ctd.src_code,
-            ctd.extra_data,
-            ctd.short_description,
-            self.test_task_res_path,
-            self.tmp_dir,
-            0,
-            check_mem=self.check_mem
-        )
+    def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
+        return DockerTaskThread(self,
+                                ctd.subtask_id,
+                                ctd.docker_images,
+                                ctd.working_directory,
+                                ctd.src_code,
+                                ctd.extra_data,
+                                ctd.short_description,
+                                self.test_task_res_path,
+                                self.tmp_dir,
+                                0,
+                                check_mem=self.check_mem)

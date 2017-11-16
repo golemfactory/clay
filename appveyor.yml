@@ -15,7 +15,7 @@ environment:
       PYTHON_VERSION: "3.5.0"
       PYTHON_ARCH: "64"
 
-      VER_GETH: geth-windows-amd64-1.6.7-ab5646c5
+      VER_GETH: geth-windows-amd64-1.7.2-1db4ecdc
       VER_IPFS: go-ipfs_v0.4.4_windows-386
       VER_HYPERG: 0.2.1
 
@@ -28,7 +28,6 @@ environment:
       PYWIN32: pywin32-221.win-amd64-py3.5.exe
 
       WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
-      BINARIES_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'
@@ -39,7 +38,7 @@ cache:
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
 
 install:
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%DIR_HYPERG%;%SystemRoot%\system32;%PATH%
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%DIR_HYPERG%;%SystemRoot%\system32;%PATH%
 
   # geth
   - if not exist %DIR_GETH% (
@@ -85,17 +84,24 @@ install:
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
 
   # requirements
-  - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
   - pip install -r requirements-win.txt
+  - pip install -r requirements-test.txt
   - python setup.py develop
+
+  # Slow tests only on branches and PRs with enough approvals
+  - set TMP_FILE="approvals.txt"
+  - python scripts\get-slow-argument.py "%APPVEYOR_PULL_REQUEST_NUMBER%" > %TMP_FILE%
+  - set /P ARG_RUNSLOW=< %TMP_FILE% || echo "No contents, empty args" && exit 0
+  - del %TMP_FILE%
 
 build_script:
   - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /p:Platform=x64 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
   - venv\Scripts\activate.bat
-  - pytest --cov=golem
+  - if NOT defined ARG_RUNSLOW pytest --cov=golem --durations=5 --maxfail=3 -rxs && echo "Not enough approvals." && exit 1
+  - if defined ARG_RUNSLOW pytest --cov=golem --durations=5 --maxfail=3 -rxs --runslow
 
 after_test:
   - venv\Scripts\activate.bat

@@ -1,15 +1,19 @@
-import collections
-import logging.config
-import os
-import sys
 from calendar import timegm
+import collections
 from datetime import datetime
-
-import pytz
+import logging.config
+from multiprocessing import cpu_count
+import os
 from pathlib import Path
+import pytz
+import sys
+
+from golem.core import simpleenv
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
+MAX_CPU_WINDOWS = 32
+MAX_CPU_MACOS = 16
 
 
 def is_frozen():
@@ -138,6 +142,7 @@ class HandleError(object):
                 return func(*args, **kwargs)
             except self.error:
                 return self.handle_error(*args, **kwargs)
+
         return func_wrapper
 
 
@@ -164,23 +169,27 @@ def config_logging(suffix='', datadir=None):
     except ImportError:
         from loggingconfig import LOGGING
 
-    logdir_path = Path('logs')
-    if datadir is not None:
-        logdir_path = Path(datadir) / logdir_path
-        datadir += '/'
-    else:
-        datadir = ''
-    if not logdir_path.exists():
-        logdir_path.mkdir(parents=True)
+    if datadir is None:
+        datadir = simpleenv.get_local_datadir("default")
+    logdir_path = Path(datadir) / 'logs'
 
     for handler in list(LOGGING.get('handlers', {}).values()):
         if 'filename' in handler:
             handler['filename'] %= {
-                'datadir': datadir,
+                'logdir': str(logdir_path),
                 'suffix': suffix,
             }
 
-    logging.config.dictConfig(LOGGING)
+    try:
+        if not logdir_path.exists():
+            logdir_path.mkdir(parents=True)
+
+        logging.config.dictConfig(LOGGING)
+    except (ValueError, PermissionError) as e:
+        sys.stderr.write(
+            "Can't configure logging in: {} Got: {}\n".format(logdir_path, e)
+        )
+        return  # Avoid consequent errors
     logging.captureWarnings(True)
 
     import txaio
@@ -191,7 +200,20 @@ def config_logging(suffix='', datadir=None):
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
 
-    from txaio import set_global_log_level
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
-    set_global_log_level(crossbar_log_lvl)
+    txaio.set_global_log_level(crossbar_log_lvl)
+
+
+def get_cpu_count():
+    """
+    Get number of cores with system limitations:
+    - max 32 on Windows due to VBox limitation
+    - max 16 on MacOS dut to xhyve limitation
+    :return: number of cores
+    """
+    if is_windows():
+        return min(cpu_count(), MAX_CPU_WINDOWS)  # VBox limitation
+    if is_osx():
+        return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
+    return cpu_count()  # No limitatons on Linux

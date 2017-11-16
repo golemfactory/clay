@@ -1,4 +1,5 @@
 import atexit
+import copy
 import logging
 import os
 import subprocess
@@ -30,16 +31,16 @@ class HyperdriveDaemonManager(object):
         self._dir = os.path.join(datadir, self._executable)
 
         atexit.register(self.stop)
+
         logsdir = os.path.join(datadir, "logs")
         if not os.path.exists(logsdir):
-            logger.warning("create HyperG logsdir: %s", logsdir)
+            logger.warning("Creating HyperG logsdir: %s", logsdir)
             os.makedirs(logsdir)
 
-        logpath = os.path.join(logsdir, "hyperg.log")
         self._command = [
             self._executable,
             '--db', self._dir,
-            '--logfile', logpath,
+            '--logfile', os.path.join(logsdir, "hyperg.log"),
         ]
 
     def addresses(self):
@@ -50,13 +51,20 @@ class HyperdriveDaemonManager(object):
         except ConnectionError:
             return dict()
 
+    def public_addresses(self, ip, addresses=None):
+        if addresses is None:
+            addresses = copy.deepcopy(self.addresses())
+
+        for protocol, entry in addresses.items():
+            addresses[protocol] = (ip, entry[1])
+
+        return addresses
+
     def ports(self, addresses=None):
         if addresses is None:
-            addresses = self.addresses() or dict()
+            addresses = self.addresses()
 
-        return set(value['port'] for key, value
-                   in addresses.items()
-                   if value and value.get('port'))
+        return set(value[1] for key, value in addresses.items())
 
     def start(self):
         self._addresses = None
@@ -73,13 +81,11 @@ class HyperdriveDaemonManager(object):
             return
 
         try:
-            if not os.path.exists(self._dir):
-                os.makedirs(self._dir)
+            os.makedirs(self._dir, exist_ok=True)
 
             pipe = subprocess.PIPE if is_frozen() else None
             process = subprocess.Popen(self._command, stdin=DEVNULL,
                                        stdout=pipe, stderr=pipe)
-
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
                             "Make sure path is correct and check "

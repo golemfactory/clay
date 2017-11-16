@@ -8,7 +8,7 @@ from mock import MagicMock
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem.network.transport import message
+from golem_messages import message
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
                                                 EncryptFileProducer,
@@ -16,7 +16,8 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 EncryptDataProducer,
                                                 DecryptDataConsumer,
                                                 BasicProtocol,
-                                                logger, SocketAddress)
+                                                logger, SocketAddress,
+                                                MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -204,16 +205,23 @@ class TestBasicProtocol(LogTestCase):
         protocol.opened = True
         self.assertIsNone(protocol.dataReceived(data))
         protocol.session = MagicMock()
-        with self.assertLogs(logger):
-            self.assertIsNone(protocol.dataReceived(data))
+        self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
 
         m = message.MessageDisconnect()
-        data = m.serialize()
+        data = m.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)
         self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
 
+    def test_dataReceived_long(self):
+        data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
+        protocol = BasicProtocol()
+        protocol.transport = MagicMock()
+        protocol.opened = True
+        protocol.session = MagicMock()
+        self.assertIsNone(protocol.dataReceived(data))
+        protocol.transport.loseConnection.assert_called_once()
 
 class TestSocketAddress(TestCase):
     def test_zone_index(self):

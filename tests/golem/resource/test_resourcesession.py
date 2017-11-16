@@ -1,5 +1,5 @@
+from golem_messages import message
 from golem import testutils
-from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
@@ -170,18 +170,18 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
 
-        expected = {
-            'CHALLENGE': None,
-            'CLIENT_KEY_ID': client_key_id,
-            'CLI_VER': 0,
-            'DIFFICULTY': 0,
-            'METADATA': None,
-            'NODE_INFO': None,
-            'NODE_NAME': None,
-            'PORT': 0,
-            'PROTO_ID': 0,
-            'RAND_VAL': self.instance.rand_val,
-            'SOLVE_CHALLENGE': False,
-        }
+        expected = [
+            ['rand_val', self.instance.rand_val],
+            ['proto_id', 0],
+            ['node_name', None],
+            ['node_info', None],
+            ['port', 0],
+            ['client_ver', 0],
+            ['client_key_id', client_key_id],
+            ['solve_challenge', False],
+            ['challenge', None],
+            ['difficulty', 0],
+            ['metadata', None],
+        ]
 
-        self.assertEqual(msg.dict_repr(), expected)
+        self.assertEqual(msg.slots(), expected)

@@ -1,3 +1,4 @@
+from golem_messages import message
 import logging
 import os
 import re
@@ -18,10 +19,12 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem.network.transport.message import Message
+from golem_messages.message import Message
 from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
+
+MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 ##########################
 # Network helper classes #
@@ -488,10 +491,10 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize()
+        ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
 
         db = DataBuffer()
-        db.append_len_prefixed_string(ser_msg)
+        db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
     def _can_receive(self):
@@ -499,19 +502,39 @@ class BasicProtocol(SessionProtocol):
 
     def _interpret(self, data):
         with self.lock:
-            self.db.append_string(data)
+            self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        # Interpret messages
-        if mess:
-            for m in mess:
-                self.session.interpret(m)
-        elif data:
-            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+        if mess is None:
+            logger.warning("Too long pending message, closing connection")
+            self.close()
+            return
+
+        for m in mess:
+            self.session.interpret(m)
 
     def _data_to_messages(self):
-        return Message.deserialize(self.db)
+        messages = []
+        def valid_len():
+            msg_len = self.db.peek_ulong()
+            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
+        if not valid_len():
+            return None
+        data = self.db.read_len_prefixed_bytes()
+
+        while data:
+            message = Message.deserialize(data, lambda x: x)
+
+            if message:
+                messages.append(message)
+            else:
+                logger.error("Failed to deserialize message {}".format(data))
+
+            if not valid_len():
+                return None
+            data = self.db.read_len_prefixed_bytes()
+
+        return messages
 
 
 class ServerProtocol(BasicProtocol):
@@ -553,36 +576,16 @@ class SafeProtocol(ServerProtocol):
             logger.error("Wrong session, not sending message")
             return None
 
-        msg = self.session.sign(msg)
-        if not msg:
-            logger.error("Wrong session, not sending message")
-            return None
-        ser_msg = msg.serialize()
-        enc_msg = self.session.encrypt(ser_msg)
-
-        db = DataBuffer()
-        db.append_len_prefixed_string(enc_msg)
-        return db.read_all()
+        serialized = msg.serialize(self.session.sign, self.session.encrypt)
+        length = struct.pack("!L", len(serialized))
+        return length + serialized
 
     def _data_to_messages(self):
-        if not isinstance(self.db, DataBuffer):
-            raise TypeError("incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
         messages = []
-
-        for msg in self.db.get_len_prefixed_string():
-            dec_msg = self.session.decrypt(msg)
-            if not dec_msg:
-                logger.warning("Decryption of message failed")
-                break
-
-            m = Message.deserialize_message(dec_msg)
-            if not m:
-                logger.warning("Deserialization of message failed")
-                break
-
-            m.encrypted = dec_msg != msg
-            messages.append(m)
-
+        for buf in self.db.get_len_prefixed_bytes():
+            msg = Message.deserialize(buf, self.session.decrypt)
+            if msg:
+                messages.append(msg)
         return messages
 
 
@@ -648,7 +651,7 @@ class MidAndFilesProtocol(FilesProtocol):
         if self.session.is_middleman:
             self.session.last_message_time = time.time()
             with self.lock:
-                self.db.append_string(data, check_size=False)
+                self.db.append_bytes(data)
                 messages = self.db.read_all()
             self.session.interpret(messages)
         else:

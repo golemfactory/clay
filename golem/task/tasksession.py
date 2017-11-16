@@ -1,29 +1,26 @@
-
-
-from ethereum.utils import denoms
-import logging
 import functools
+import logging
 import os
 import struct
+import threading
 import time
 
+from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.network.transport import message
-from golem.network.transport.session import MiddlemanSafeSession
-from golem.model import db
 from golem.model import Payment
+from golem.model import db
+from golem_messages import message
 from golem.network.transport import tcpnetwork
-from golem.core.async import AsyncRequest, async_run
+from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
-from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
+from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
+from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-
+from golem.core.variables import PROTOCOL_CONST
 logger = logging.getLogger(__name__)
-
-TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -48,7 +45,7 @@ def dropped_after():
     return inner
 
 
-class TaskSession(MiddlemanSafeSession):
+class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.MidAndFilesProtocol
@@ -65,6 +62,7 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         MiddlemanSafeSession.__init__(self, conn)
+        ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
@@ -82,6 +80,7 @@ class TaskSession(MiddlemanSafeSession):
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
+        # self.threads = []
     ########################
     # BasicSession methods #
     ########################
@@ -107,6 +106,8 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
+            if self.key_id:
+                self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -143,24 +144,23 @@ class TaskSession(MiddlemanSafeSession):
                 self.port
             )
         except Exception as err:
-            logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
             self.dropped()
             return None
 
         return data
 
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
+    def sign(self, data):
+        """ Sign given bytes
+        :param Message data: bytes to be signed
+        :return Message: signed bytes
         """
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
 
-        msg.sig = self.task_server.sign(msg.get_short_hash())
-        return msg
+        return self.task_server.sign(data)
 
     def verify(self, msg):
         """Verify signature on given message. Check if message was signed
@@ -249,7 +249,7 @@ class TaskSession(MiddlemanSafeSession):
             self._reject_subtask_result(subtask_id)
             return
 
-        if result_type == result_types['data']:
+        if result_type == ResultType.DATA:
             try:
                 if decrypt:
                     result = self.decrypt(result)
@@ -298,38 +298,6 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.reject_result(subtask_id, self.result_owner)
         self.send_result_rejected(subtask_id)
 
-    def request_task(
-            self,
-            node_name,
-            task_id,
-            performance_index,
-            price,
-            max_resource_size,
-            max_memory_size,
-            num_cores
-            ):
-        """ Inform that node wants to compute given task
-        :param str node_name: name of that node
-        :param uuid task_id: if of a task that node wants to compute
-        :param float performance_index: benchmark result for this task type
-        :param float price: price for an hour
-        :param int max_resource_size: how much disk space can this node offer
-        :param int max_memory_size: how much ram can this node offer
-        :param int num_cores: how many cpu cores this node can offer
-        :return:
-        """
-        self.send(
-            message.MessageWantToComputeTask(
-                node_name=node_name,
-                task_id=task_id,
-                perf_index=performance_index,
-                price=price,
-                max_resource_size=max_resource_size,
-                max_memory_size=max_memory_size,
-                num_cores=num_cores
-            )
-        )
-
     def request_resource(self, task_id, resource_header):
         """Ask for a resources for a given task. Task owner should compare
            given resource header with resources for that task and send only
@@ -365,9 +333,9 @@ class TaskSession(MiddlemanSafeSession):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == result_types['data']:
+        if task_result.result_type == ResultType.DATA:
             extra_data = []
-        elif task_result.result_type == result_types['files']:
+        elif task_result.result_type == ResultType.FILES:
             extra_data = [os.path.basename(x) for x in task_result.result]
         else:
             logger.error(
@@ -413,7 +381,7 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageHello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=TASK_PROTOCOL_ID
+                proto_id=PROTOCOL_CONST.TASK_ID
             ),
             send_unverified=True
         )
@@ -485,6 +453,18 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_want_to_compute_task(self, msg):
         if self.task_server.should_accept_provider(self.key_id):
+
+            if self._handshake_required(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is required', self.key_id)
+                self._start_handshake(self.key_id)
+                return
+
+            elif self._handshake_in_progress(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is in progress', self.key_id)
+                return
+
             ctd, wrong_task, wait = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
@@ -581,7 +561,7 @@ class TaskSession(MiddlemanSafeSession):
         secret = msg.secret
         multihash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -633,18 +613,16 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
-        res = resource_manager.get_resources(msg.task_id)
-        res = resource_manager.to_wire(res)
-        self.send(
-            message.MessageResourceList(
-                resources=res,
-                options=client_options
-            )
-        )
+        key_id = self.task_server.get_key_id()
+        task_id = msg.task_id
+
+        resources = self.task_server.get_resources(task_id)
+        options = self.task_server.get_share_options(task_id, key_id)
+
+        self.send(message.MessageResourceList(
+            resources=resources,
+            options=options
+        ))
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -690,11 +668,11 @@ class TaskSession(MiddlemanSafeSession):
             self.disconnect(TaskSession.DCRUnverified)
             return
 
-        if msg.proto_id != TASK_PROTOCOL_ID:
+        if msg.proto_id != PROTOCOL_CONST.TASK_ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                TASK_PROTOCOL_ID
+                PROTOCOL_CONST.TASK_ID
             )
             self.disconnect(TaskSession.DCRProtocolVersion)
             return
@@ -791,12 +769,22 @@ class TaskSession(MiddlemanSafeSession):
                 msg.transaction_id
             )
             return
-        self.task_server.reward_for_subtask_paid(
-            subtask_id=msg.subtask_id,
-            reward=msg.reward,
-            transaction_id=msg.transaction_id,
-            block_number=msg.block_number
+
+        # reward_for_subtask_paid -> ethereum incomes keeper requires
+        # being sync with blockchain
+        # run it in separate thread to prevent hanging the main thread
+        thread = threading.Thread(
+            target=self.task_server.reward_for_subtask_paid,
+            args=(),
+            kwargs={
+                'subtask_id': msg.subtask_id,
+                'reward': msg.reward,
+                'transaction_id': msg.transaction_id,
+                'block_number': msg.block_number
+            }
         )
+        thread.daemon = True                            # Daemonize thread
+        thread.start()                                  # Start the execution
 
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
@@ -872,7 +860,7 @@ class TaskSession(MiddlemanSafeSession):
         res_file_path = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["zip"]
+            ResourceType.ZIP
         )
 
         if not res_file_path:
@@ -890,7 +878,7 @@ class TaskSession(MiddlemanSafeSession):
         res = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            resource_types["parts"]
+            ResourceType.PARTS
         )
         if res is None:
             return
@@ -908,9 +896,7 @@ class TaskSession(MiddlemanSafeSession):
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options(
-            self.task_server.get_key_id()
-        )
+        client_options = resource_manager.build_client_options()
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -1014,4 +1000,11 @@ class TaskSession(MiddlemanSafeSession):
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
         self.can_be_unsigned.append(message.MessageHello.TYPE)
-        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE])  # noqa
+        self.can_be_unverified.extend(
+            [
+                message.MessageHello.TYPE,
+                message.MessageRandVal.TYPE,
+                message.MessageChallengeSolution.TYPE
+            ]
+        )
+        self.can_be_not_encrypted.extend([message.MessageHello.TYPE])

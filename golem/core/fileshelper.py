@@ -6,7 +6,7 @@ import subprocess
 
 from golem.core.common import is_windows
 
-from gui.controller import memoryhelper
+from golem.tools import memoryhelper
 
 
 def copy_file_tree(src, dst, exclude=None):
