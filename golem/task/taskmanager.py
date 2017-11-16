@@ -328,8 +328,8 @@ class TaskManager(TaskEventListener):
                     task_id, ctd['task_id'], ctd['subtask_id'],
                 )
                 return False
-            if ctd['subtask_id'] in self.tasks_states[ctd['task_id']].
-                    subtask_states:
+            if (ctd['subtask_id'] in self.tasks_states[ctd['task_id']].
+                    subtask_states):
                 logger.debug('check ctd: subtask_states')
                 return False
             return True
@@ -777,8 +777,8 @@ class TaskManager(TaskEventListener):
         ss.subtask_status = TaskStatus.starting
         ss.value = 0
 
-        self.tasks_states[ctd['task_id']].
-            subtask_states[ctd['subtask_id']] = ss
+        (self.tasks_states[ctd['task_id']].
+            subtask_states[ctd['subtask_id']]) = ss
 
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)

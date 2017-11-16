@@ -1,4 +1,4 @@
-from golem_messages.message ComputeTaskDef
+from golem_messages.message import ComputeTaskDef
 import logging
 import os
 import random

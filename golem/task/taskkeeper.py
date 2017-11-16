@@ -43,7 +43,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], golem_message.message.ComputeTaskDef):
+    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
@@ -89,7 +89,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError):
+            except (pickle.UnpicklingError, EOFError, AttributeError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
