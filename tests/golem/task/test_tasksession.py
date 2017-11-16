@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 import pickle
 import random
@@ -16,7 +17,7 @@ from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem_messages import message
 from golem.network.transport.tcpnetwork import BasicProtocol
-from golem.task.taskbase import ComputeTaskDef, ResultType
+from golem.task.taskbase import ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
@@ -327,13 +328,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # No source code in the local environment -> failure
         __reset_mocks()
         ctd = ComputeTaskDef()
-        ctd.key_id = "KEY_ID"
-        ctd.subtask_id = "SUBTASKID"
-        ctd.task_owner = Node()
-        ctd.task_owner.key = "KEY_ID"
-        ctd.return_address = "10.10.10.10"
-        ctd.return_port = 1112
-        ctd.docker_images = [DockerImage("dockerix/xiii", tag="323")]
+        ctd['key_id'] = "KEY_ID"
+        ctd['subtask_id'] = "SUBTASKID"
+        ctd['task_owner'] = Node()
+        ctd['task_owner'].key = "KEY_ID"
+        ctd['return_address'] = "10.10.10.10"
+        ctd['return_port'] = 1112
+        ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
         msg = message.MessageTaskToCompute(ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -352,7 +353,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Wrong key id -> failure
         __reset_mocks()
-        ctd.key_id = "KEY_ID2"
+        ctd['key_id'] = "KEY_ID2"
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -360,8 +361,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Wrong task owner key id -> failure
         __reset_mocks()
-        ctd.key_id = "KEY_ID"
-        ctd.task_owner.key = "KEY_ID2"
+        ctd['key_id'] = "KEY_ID"
+        ctd['task_owner'].key = "KEY_ID2"
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -369,8 +370,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Wrong return port -> failure
         __reset_mocks()
-        ctd.task_owner.key = "KEY_ID"
-        ctd.return_port = 0
+        ctd['task_owner'].key = "KEY_ID"
+        ctd['return_port'] = 0
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -378,15 +379,15 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Proper port and key -> proper execution
         __reset_mocks()
-        ctd.task_owner.key = "KEY_ID"
-        ctd.return_port = 1319
+        ctd['task_owner'].key = "KEY_ID"
+        ctd['return_port'] = 1319
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         conn.close.assert_not_called()
 
         # Allow custom code / no code in ComputeTaskDef -> failure
         __reset_mocks()
         env.allow_custom_main_program_file = True
-        ctd.src_code = ""
+        ctd['src_code'] = ""
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -394,7 +395,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
-        ctd.src_code = "print 'Hello world!'"
+        ctd['src_code'] = "print 'Hello world!'"
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)

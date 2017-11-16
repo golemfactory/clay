@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 import pickle
 import unittest
@@ -18,7 +19,6 @@ from apps.lux.task.luxrendertask import (
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_linux, get_golem_path
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -115,9 +115,9 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask.collected_file_names["abcd"] = "abcdfile"
         ctd = luxtask.query_extra_data_for_final_flm()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        assert ctd.src_code is not None
-        assert ctd.extra_data['output_flm'] == luxtask.output_file
-        assert set(ctd.extra_data['flm_files']) == {"xxyyzzfile", "abcdfile"}
+        assert ctd['src_code'] is not None
+        assert ctd['extra_data']['output_flm'] == luxtask.output_file
+        assert set(ctd['extra_data']['flm_files']) == {"xxyyzzfile", "abcdfile"}
 
     def test_remove_from_preview(self):
         luxtask = self.get_test_lux_task()

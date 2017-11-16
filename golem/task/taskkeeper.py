@@ -1,3 +1,4 @@
+import golem_messages.message
 import logging
 import math
 import pathlib
@@ -11,7 +12,7 @@ from semantic_version import Version
 from golem.core import common
 from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
-from .taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -42,8 +43,8 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], ComputeTaskDef):
-        task_id = args[1].task_id
+    if isinstance(args[1], golem_message.message.ComputeTaskDef):
+        task_id = args[1]['task_id']
     else:
         task_id = args[1]
     logger.warning("This is not my task {}".format(task_id))

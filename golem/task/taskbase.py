@@ -149,24 +149,6 @@ class TaskBuilder(object):
         pass
 
 
-class ComputeTaskDef(object):
-    def __init__(self):
-        self.task_id = ""
-        self.subtask_id = ""
-        self.deadline = ""
-        self.src_code = ""
-        self.extra_data = {}
-        self.short_description = ""
-        self.return_address = ""
-        self.return_port = 0
-        self.task_owner = None
-        self.key_id = 0
-        self.working_directory = ""
-        self.performance = 0.0
-        self.environment = ""
-        self.docker_images = None
-
-
 class TaskEventListener(object):
     def __init__(self):
         pass

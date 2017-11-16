@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 from os import path
 
@@ -24,7 +25,7 @@ from apps.rendering.task.renderingtaskstate import (
     AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ComputeTaskDef, ResultType
+from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -232,18 +233,18 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.frames = [1, 2, 3, 5, 7, 11, 13]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd.extra_data['frames'] == [1])
+        self.assertTrue(ctd['extra_data']['frames'] == [1])
 
         self.bt.frames = [2]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd.extra_data['frames'] == [1])
+        self.assertTrue(ctd['extra_data']['frames'] == [1])
 
         self.bt.use_frames = False
         self.bt.frames = [1]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd.extra_data['frames'] == [1])
+        self.assertTrue(ctd['extra_data']['frames'] == [1])
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)

@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 import random
 import shutil
@@ -14,7 +15,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
 from golem.resource.resource import TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
+from golem.task.taskbase import Task, TaskHeader, \
     TaskEventListener, ResultType
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger, subtask_priority
@@ -107,10 +108,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock = TaskMock(header, src_code='', task_definition=Mock())
 
         ctd = ComputeTaskDef()
-        ctd.task_id = task_id
-        ctd.subtask_id = subtask_id
-        ctd.environment = "DEFAULT"
-        ctd.deadline = timeout_to_deadline(subtask_timeout)
+        ctd['task_id'] = task_id
+        ctd['subtask_id'] = subtask_id
+        ctd['environment'] = "DEFAULT"
+        ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
         task_mock.query_extra_data_return_value = Task.ExtraData(should_wait=False, ctd=ctd)
         Task.get_progress = Mock()
@@ -226,7 +227,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert not wrong_task
         assert subtask_state.computer.price == 1010
 
-        task_mock.query_extra_data_return_value.ctd.subtask_id = "xyzxyz2"
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
         subtask, wrong_task, wait = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
         assert subtask is None
@@ -348,10 +349,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             def query_extra_data(self, perf_index, num_cores=1, node_id=None,
                                  node_name=None):
                 ctd = ComputeTaskDef()
-                ctd.task_id = self.header.task_id
-                ctd.subtask_id = self.subtasks_id[0]
-                ctd.environment = "DEFAULT"
-                ctd.should_wait = False
+                ctd['task_id'] = self.header.task_id
+                ctd['subtask_id'] = self.subtasks_id[0]
+                ctd['environment'] = "DEFAULT"
+                ctd['should_wait'] = False
                 self.subtasks_id = self.subtasks_id[1:]
                 e = self.ExtraData(False, ctd)
                 return e

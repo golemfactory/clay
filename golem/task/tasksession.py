@@ -1,4 +1,5 @@
 import functools
+from golem_messages.message import ComputeTaskDef
 import logging
 import os
 import struct
@@ -17,7 +18,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
+from golem.task.taskbase import ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.core.variables import PROTOCOL_CONST
 logger = logging.getLogger(__name__)
@@ -813,20 +814,21 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         if not isinstance(ctd, ComputeTaskDef):
             self.err_msg = "Received task is not a ComputeTaskDef instance"
             return False
-        if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
+        if ctd['key_id'] != self.key_id\
+                or ctd['task_owner'].key != self.key_id:
             self.err_msg = "Wrong key_id"
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
-                ctd.return_address,
-                ctd.return_port
+                ctd['return_address'],
+                ctd['return_port']
                 ):
             self.err_msg = "Wrong return address {}:{}"\
-                .format(ctd.return_address, ctd.return_port)
+                .format(ctd['return_address'], ctd['return_port'])
             return False
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
         env = self.task_server.get_environment_by_id(environment)
         if not env:
             self.err_msg = "Wrong environment {}".format(environment)
@@ -837,9 +839,9 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 return False
 
         if not env.allow_custom_main_program_file:
-            ctd.src_code = env.get_source_code()
+            ctd['src_code'] = env.get_source_code()
 
-        if not ctd.src_code:
+        if not ctd['src_code']:
             self.err_msg = "No source code for environment {}"\
                 .format(environment)
             return False
@@ -847,13 +849,13 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def __check_docker_images(self, ctd, env):
-        for image in ctd.docker_images:
+        for image in ctd['docker_images']:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
-                    ctd.docker_images = [image]
+                    ctd['docker_images'] = [image]
                     return True
 
-        self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
+        self.err_msg = "Wrong docker images {}".format(ctd['docker_images'])
         return False
 
     def __send_delta_resource(self, msg):

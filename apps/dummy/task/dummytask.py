@@ -1,3 +1,4 @@
+from golem_messages.message ComputeTaskDef
 import logging
 import os
 import random
@@ -12,7 +13,7 @@ from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verificator import DummyTaskVerificator
-from golem.task.taskbase import ComputeTaskDef, Task
+from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.dummy")
