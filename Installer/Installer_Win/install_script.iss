@@ -10,7 +10,6 @@
 ; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://download.docker.com/win/stable/DockerToolbox.exe
-; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.2-1db4ecdc.exe
 #define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
@@ -18,7 +17,6 @@
 #define MyAppNumber ReadIni(Repository+"\\.version.ini", "version", "number", "0.1.0")
 #expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
-#define Geth "geth-windows-amd64-1.7.2-1db4ecdc.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -49,7 +47,7 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 
 ; Add OpenSSL to the PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('OpenSSL');
-    
+
 ; Add HyperG to the PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
 
@@ -63,12 +61,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
-                                               
+
 [Files]
 Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\{#Geth}"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 ; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
 Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
@@ -84,24 +81,21 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 [Run]
 ; Install runtime
 Filename: "{tmp}\vc_redist.x64.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime";
-                                     
+
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/VERYSILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
 
 Filename: "{tmp}\VirtualBox-5.1.26-117224-Win.exe"; Parameters: "--silent"; StatusMsg: "Installing VirtualBox"; Description: "Install VirtualBox";
 
-; Install geth
-Filename: "{tmp}\{#Geth}"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
-
 [Code]
-////////////////////////////////////////////////////////////////////////////////////////////////////                                                                              
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // This function checks the registry for an existing Docker installation
 function IsDockerInstalled: boolean;
 begin
-   Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );                                                                                                                         
+   Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );
 end;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // This function will return True if the Param already exists in the system PATH
 function NeedsAddPath(Param: String): Boolean;
 var
@@ -114,9 +108,9 @@ begin
   // look for the path with leading and trailing semicolon; Pos() returns 0 if not found
   Result := Pos(Param, OrigPath) = 0;
 end;
- 
- 
-//////////////////////////////////////////////////////////////////////////////////////////////////// 
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // This method checks for presence of uninstaller entries in the registry and returns the path to the uninstaller executable.
 function GetUninstallString: String;
 var
@@ -130,7 +124,7 @@ begin
   // Check if uninstaller entries in registry have values in them
   if not RegQueryStringValue(HKLM64, uninstallerPath, 'UninstallString', uninstallerString) then
     RegQueryStringValue(HKCU, uninstallerPath, 'UninstallString', uninstallerString);
-    // Return path of uninstaller to run  
+    // Return path of uninstaller to run
     Result := uninstallerString;
 end;
 
