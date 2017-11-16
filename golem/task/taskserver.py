@@ -10,7 +10,7 @@ import time
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
 from golem.task.benchmarkmanager import BenchmarkManager
@@ -140,7 +140,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.deny_set = get_deny_set(datadir=client.datadir)
         self.resource_handshakes = {}
 
-        network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         dispatcher.connect(self.paymentprocessor_listener, signal="golem.paymentprocessor")
         dispatcher.connect(self.transactions_listener, signal="golem.transactions")

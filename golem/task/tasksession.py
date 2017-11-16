@@ -48,7 +48,7 @@ def dropped_after():
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.MidAndFilesProtocol
+    ConnectionStateType = tcpnetwork.FilesProtocol
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
