@@ -8,7 +8,10 @@ from unittest.mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from golem import testutils
-from golem.client import Client, ClientTaskComputerEventListener
+from golem.client import Client, ClientTaskComputerEventListener, \
+    DoWorkService, MonitoringPublisherService, \
+    NetworkConnectionPublisherService, TasksPublisherService, \
+    BalancePublisherService, ResourceCleanerService, TaskArchiverService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
 from golem.core.deferred import sync_wait
@@ -320,153 +323,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
-    @patch('golem.client.log')
-    def test_do_work(self, log, *_):
-        # FIXME: Pylint has real problems here
-        # https://github.com/PyCQA/pylint/issues/1643
-        # https://github.com/PyCQA/pylint/issues/1645
-        # pylint: disable=no-member
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-
-        c = self.client
-        c.sync = Mock()
-        c.p2pservice = Mock()
-        c.task_server = Mock()
-        c.resource_server = Mock()
-        c.ranking = Mock()
-        c.check_payments = Mock()
-
-        # Test if method exits if p2pservice is not present
-        c.p2pservice = None
-        c.config_desc.send_pings = False
-        c._Client__do_work()
-
-        assert not log.exception.called
-        assert not c.check_payments.called
-
-        # Test calls with p2pservice
-        c.p2pservice = Mock()
-        c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
-
-        c._Client__do_work()
-
-        assert not c.p2pservice.ping_peers.called
-        assert not log.exception.called
-        assert c.p2pservice.sync_network.called
-        assert c.task_server.sync_network.called
-        assert c.resource_server.sync_network.called
-        assert c.ranking.sync_network.called
-        assert c.check_payments.called
-
-        # Enable pings
-        c.config_desc.send_pings = True
-
-        # Make methods throw exceptions
-        def raise_exc():
-            raise Exception('Test exception')
-
-        c.p2pservice.sync_network = raise_exc
-        c.task_server.sync_network = raise_exc
-        c.resource_server.sync_network = raise_exc
-        c.ranking.sync_network = raise_exc
-        c.check_payments = raise_exc
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__do_work()  # pylint: disable=no-member
-
-        assert c.p2pservice.ping_peers.called
-        assert log.exception.call_count == 5
-
-    @patch('golem.client.log')
-    @patch('golem.client.dispatcher.send')
-    def test_publish_events(self, send, log, *_):
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-        c = self.client
-
-        def get_balance(*_):
-            d = Deferred()
-            d.callback((1, 2, 3))
-            return d
-
-        c.task_server = Mock()
-        c.task_server.task_sessions = {str(uuid.uuid4()): Mock()}
-
-        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.counting_thread = None
-        c.task_server.task_computer.stats = dict()
-
-        c.get_balance = get_balance
-        c.get_task_count = lambda *_: 0
-        c.get_supported_task_count = lambda *_: 0
-        c.connection_status = lambda *_: 'test'
-
-        c.config_desc.node_snapshot_interval = 1
-        c.config_desc.network_check_interval = 1
-
-        c._publish = Mock()
-
-        past_time = time.time() - 10**10
-        future_time = time.time() + 10**10
-
-        c.last_nss_time = future_time
-        c.last_net_check_time = future_time
-        c.last_balance_time = future_time
-        c.last_tasks_time = future_time
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__publish_events()  # pylint: disable=no-member
-
-        assert not send.called
-        assert not log.debug.called
-        assert not c._publish.called
-
-        c.last_nss_time = past_time
-        c.last_net_check_time = past_time
-        c.last_balance_time = past_time
-        c.last_tasks_time = past_time
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__publish_events()  # pylint: disable=no-member
-
-        assert not log.debug.called
-        assert send.call_count == 2
-        assert c._publish.call_count == 3
-
-        def raise_exc(*_):
-            raise Exception('Test exception')
-
-        c.get_balance = raise_exc
-        c._publish = Mock()
-        send.call_count = 0
-
-        c.last_nss_time = past_time
-        c.last_net_check_time = past_time
-        c.last_balance_time = past_time
-        c.last_tasks_time = past_time
-
-        # FIXME: Pylint doesn't handle mangled members well:
-        # https://github.com/PyCQA/pylint/issues/1643
-        c._Client__publish_events()  # pylint: disable=no-member
-
-        assert log.debug.called
-        assert send.call_count == 2
-        assert c._publish.call_count == 2
-
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -555,20 +411,159 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
-    def test_task_archiver_maintenance(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
 
-        c = self.client
-        c.task_archiver.do_maintenance = Mock()
-        c._Client__task_archiver_maintenance()   # pylint: disable=no-member
+class TestDoWorkService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        c = Mock()
+        c.p2pservice = Mock()
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+        c.config_desc.send_pings = False
 
-        assert c.task_archiver.do_maintenance.called
+        do_work_service = DoWorkService(c)
+        do_work_service._run()
+
+        assert not c.p2pservice.ping_peers.called
+        assert not log.exception.called
+        assert c.p2pservice.sync_network.called
+        assert c.resource_server.sync_network.called
+        assert c.ranking.sync_network.called
+        assert c.check_payments.called
+
+    @patch('golem.client.log')
+    def test_pings(self, log):
+        c = Mock()
+        c.p2pservice = Mock()
+        c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+        c.config_desc.send_pings = True
+
+        # Make methods throw exceptions
+        def raise_exc():
+            raise Exception('Test exception')
+
+        c.p2pservice.sync_network = raise_exc
+        c.task_server.sync_network = raise_exc
+        c.resource_server.sync_network = raise_exc
+        c.ranking.sync_network = raise_exc
+        c.check_payments = raise_exc
+
+        do_work_service = DoWorkService(c)
+        do_work_service._run()
+
+        assert c.p2pservice.ping_peers.called
+        assert log.exception.call_count == 5
+
+
+class TestMonitoringPublisherService(TestWithReactor):
+    @patch('golem.client.log')
+    @patch('golem.client.dispatcher.send')
+    def test_run(self, send, log):
+        task_server = Mock()
+        task_server.task_keeper = Mock()
+        task_server.task_keeper.get_all_tasks = lambda: list()
+        task_server.task_keeper.supported_tasks = list()
+        task_server.task_computer.stats = dict()
+
+        service = MonitoringPublisherService(
+            task_server,
+            interval_seconds=1)
+        service._run()
+
+        assert not log.debug.called
+        assert send.call_count == 2
+
+
+class TestNetworkConnectionPublisherService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        c = Mock()
+
+        service = NetworkConnectionPublisherService(
+            c,
+            interval_seconds=1)
+        service._run()
+
+        assert not log.debug.called
+        assert c._publish.call_count == 1
+
+
+class TestTasksPublisherService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        rpc_publisher = Mock()
+        task_manager = Mock()
+
+        service = TasksPublisherService(rpc_publisher, task_manager)
+        service._run()
+
+        assert not log.debug.called
+        assert rpc_publisher.publish.call_count == 1
+
+
+class TestTaskArchiverService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        task_archiver = Mock()
+
+        service = TaskArchiverService(task_archiver)
+        service._run()
+
+        assert not log.debug.called
+        assert task_archiver.do_maintenance.call_count == 1
+
+
+class TestBalancePublisherService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        rpc_publisher = Mock()
+        transaction_system = Mock()
+        transaction_system.get_balance = lambda: (1, 2, 3)
+
+        service = BalancePublisherService(rpc_publisher, transaction_system)
+        service._run()
+
+        assert not log.debug.called
+        assert rpc_publisher.publish.call_count == 1
+
+    @patch('golem.client.log')
+    def test_balance_exception(self, log):
+        rpc_publisher = Mock()
+        transaction_system = Mock()
+
+        def raise_exc(*_):
+            raise Exception('Test exception')
+
+        transaction_system.get_balance = raise_exc
+
+        service = BalancePublisherService(rpc_publisher, transaction_system)
+        service._run()
+
+        assert log.debug.called
+        assert rpc_publisher.publish.call_count == 0
+
+
+class TestResourceCleanerService(TestWithReactor):
+    def test_run(self):
+        older_than_seconds = 5
+
+        c = Mock()
+
+        service = ResourceCleanerService(
+            c,
+            interval_seconds=1,
+            older_than_seconds=older_than_seconds)
+        service._run()
+
+        c.remove_computed_files.assert_called_with(older_than_seconds)
+        c.remove_distributed_files.assert_called_with(older_than_seconds)
+        c.remove_received_files.assert_called_with(older_than_seconds)
 
 
 @patch('signal.signal')
