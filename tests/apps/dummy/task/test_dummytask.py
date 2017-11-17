@@ -24,13 +24,6 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt = DummyTask(5, "node", td, "root/path", "", "", "")
         return dt, td
 
-    def get_test_dummy_task(self):
-        defaults = DummyTaskDefaults()
-        td = DummyTaskDefinition(defaults)
-        dm = DirManager(self.path)
-        db = DummyTaskBuilder("MyNodeName", td, self.path, dm)
-        return db.build()
-
     def test_constants(self):
         assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment

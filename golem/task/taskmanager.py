@@ -318,7 +318,7 @@ class TaskManager(TaskEventListener):
         ctd = extra_data.ctd
 
         def check_compute_task_def():
-            if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+            if not isinstance(ctd, ComputeTaskDef) or not ctd['subtask_id']:
                 logger.debug('check ctd: ctd not instance or not subtask_id')
                 return False
             if task_id != ctd['task_id']\
