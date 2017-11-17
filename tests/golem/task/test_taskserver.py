@@ -50,8 +50,8 @@ def get_mock_task(task_id, subtask_id):
     task_mock.header = TaskHeader.from_dict(get_example_task_header())
     task_mock.header.task_id = task_id
     task_mock.header.max_price = 1010
-    task_mock.query_extra_data.return_value.ctd.task_id = task_id
-    task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+    task_mock.query_extra_data.return_value.ctd['task_id'] = task_id
+    task_mock.query_extra_data.return_value.ctd['subtask_id'] = subtask_id
     return task_mock
 
 
@@ -160,7 +160,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         model.ExpectedIncome.create(
             sender_node="key",
             sender_node_details=None,
-            task=ctd.task_id,
+            task=ctd['task_id'],
             subtask=ctd['subtask_id'],
             value=1
         )
