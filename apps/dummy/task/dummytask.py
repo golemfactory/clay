@@ -99,9 +99,9 @@ class DummyTask(CoreTask):
         logger.debug("Query extra data on dummytask")
 
         ctd = self._extra_data(perf_index)
-        sid = ctd.subtask_id
+        sid = ctd['subtask_id']
 
-        self.subtasks_given[sid] = ctd.extra_data
+        self.subtasks_given[sid] = ctd['extra_data']
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
