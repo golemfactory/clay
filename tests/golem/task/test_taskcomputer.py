@@ -90,7 +90,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert not task_server.send_task_failed.called
 
         tc.task_to_subtask_mapping[task_id] = subtask_id
-        tc.assigned_subtasks[subtask_id] = mock.Mock()
+        tc.assigned_subtasks[subtask_id] = ComputeTaskDef()
 
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
@@ -131,7 +131,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline,
+        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"]['deadline'],
                              timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with(
@@ -179,7 +179,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline,
+        self.assertLessEqual(tc.assigned_subtasks["aabbcc"]['deadline'],
                              timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with(
@@ -197,7 +197,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         ctd['subtask_id'] = "aabbcc2"
         ctd['src_code'] = "print('Hello world')"
-        ctd['timeout'] = timeout_to_deadline(5)
+        ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
@@ -219,7 +219,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.__wait_for_tasks(tc)
 
         ctd['subtask_id'] = "xxyyzz2"
-        ctd['timeout'] = timeout_to_deadline(1)
+        ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         tt = tc.counting_thread
@@ -288,7 +288,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.dir_lock = Lock()
 
         task_computer.assigned_subtasks = {
-            subtask_id: mock.Mock(task_id=task_id)
+            subtask_id: ComputeTaskDef(task_id=task_id)
         }
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None

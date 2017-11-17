@@ -135,7 +135,7 @@ class TaskComputer(object):
                 self.task_server.send_task_failed(subtask_id, subtask['task_id'],
                                                   'Error downloading resources: {}'.format(reason),
                                                   subtask['return_address'], subtask['return_port'], subtask['key_id'],
-                                                  subtask['task_owner'], self['node_name'])
+                                                  subtask['task_owner'], self.node_name)
             self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
