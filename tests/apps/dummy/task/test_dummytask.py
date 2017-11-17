@@ -64,11 +64,11 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()
-        data1.deadline = data2.deadline = 0
-        self.assertEqual(data1.extra_data["subtask_data"],
+        data1['deadline'] = data2['deadline'] = 0
+        self.assertEqual(data1['extra_data']["subtask_data"],
                          DummyTask.TESTING_CHAR * td.options.subtask_data_size)
-        data1.extra_data["subtask_data"] = data2.extra_data["subtask_data"] = ""
-        assert data1.__dict__ == data2.__dict__
+        data1['extra_data']["subtask_data"] = data2['extra_data']["subtask_data"] = ""
+        assert data1 == data2
 
     def test_extra_data(self):
         dt, td = self._get_new_dummy()
@@ -85,7 +85,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         node_id = "Node"
         data = dt.query_extra_data(0.0, node_id=node_id)
 
-        subtask_id = data.ctd.subtask_id
+        subtask_id = data.ctd['subtask_id']
         dt.accept_results(subtask_id, [])
 
         assert dt.num_tasks_received == 1
