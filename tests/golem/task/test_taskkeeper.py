@@ -406,7 +406,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
             ctk.receive_subtask(ctd)
-            test_subtasks_ids.append(ctd.subtask_id)
+            test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
         another_ctk = CompTaskKeeper(tasks_dir)

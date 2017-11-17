@@ -121,14 +121,15 @@ class CompTaskKeeper:
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
-        task = self.active_tasks[comp_task_def.task_id]
+        task = self.active_tasks[comp_task_def['task_id']]
         if not task.requests > 0:
             return
-        if comp_task_def.subtask_id in task.subtasks:
+        if comp_task_def['subtask_id'] in task.subtasks:
             return
         task.requests -= 1
-        task.subtasks[comp_task_def.subtask_id] = comp_task_def
-        self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
+        self.subtask_to_task[comp_task_def['subtask_id']] =\
+            comp_task_def['task_id']
         self.dump()
         return True
 
