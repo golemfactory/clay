@@ -77,16 +77,16 @@ class TestBlenderFrameTask(TempDirFixture):
         extra_data2 = self.bt.query_extra_data(1000, 2, "DEF", "def")
         assert extra_data2.ctd is not None
 
-        self.bt.computation_failed(extra_data.ctd.subtask_id)
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [], ResultType.DATA)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+        self.bt.computation_failed(extra_data.ctd['subtask_id'])
+        self.bt.computation_finished(extra_data.ctd['subtask_id'], [], ResultType.DATA)
+        assert self.bt.subtasks_given[extra_data.ctd['subtask_id']]['status'] == \
                SubtaskStatus.failure
 
         # Successful computation
 
         extra_data = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
         assert extra_data.ctd is not None
-        file_dir = path.join(self.bt.tmp_dir, extra_data.ctd.subtask_id)
+        file_dir = path.join(self.bt.tmp_dir, extra_data.ctd['subtask_id'])
         if not path.exists(file_dir):
             os.makedirs(file_dir)
 
@@ -94,8 +94,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], ResultType.FILES)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+        self.bt.computation_finished(extra_data.ctd['subtask_id'], [file1], ResultType.FILES)
+        assert self.bt.subtasks_given[extra_data.ctd['subtask_id']]['status'] == \
                SubtaskStatus.finished
 
         extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
@@ -105,8 +105,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], ResultType.FILES)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+        self.bt.computation_finished(extra_data.ctd['subtask_id'], [file2], ResultType.FILES)
+        assert self.bt.subtasks_given[extra_data.ctd['subtask_id']]['status'] == \
                SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
@@ -124,8 +124,8 @@ class TestBlenderFrameTask(TempDirFixture):
                                               num_cores=0)
         assert not extra_data.should_wait
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd.extra_data['script_src']
-        assert "border_min_y = 0" in extra_data.ctd.extra_data['script_src']
+        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
+        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"
@@ -252,8 +252,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                          path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
         ctd = extra_data.ctd
-        assert ctd.extra_data['start_task'] == 1
-        assert ctd.extra_data['end_task'] == 1
+        assert ctd['extra_data']['start_task'] == 1
+        assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
         assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
@@ -457,7 +457,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                                               node_id='node',
                                               node_name='node')
         assert extra_data.ctd
-        subtask_id = extra_data.ctd.subtask_id
+        subtask_id = extra_data.ctd['subtask_id']
         assert not extra_data.should_wait
 
         extra_data = self.bt.query_extra_data(100000, num_cores=0,
@@ -493,8 +493,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         file_ = path.join(tmpdir, 'preview.bmp')
         img = Image.new("RGB", (task.res_x, task.res_y))
         img.save(file_, "BMP")
-        task.computation_finished(ed.ctd.subtask_id, [file_], ResultType.FILES)
-        assert task.subtasks_given[ed.ctd.subtask_id]['status'] == \
+        task.computation_finished(ed.ctd['subtask_id'], [file_], ResultType.FILES)
+        assert task.subtasks_given[ed.ctd['subtask_id']]['status'] == \
                SubtaskStatus.failure
 
     def test_update_preview(self):
