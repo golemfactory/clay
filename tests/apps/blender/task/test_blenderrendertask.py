@@ -478,9 +478,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
     @pytest.mark.slow
     def test_advanced_verification(self):
         bb = BlenderBenchmark()
-        td = bb.task_definition
-        td.verification_options = AdvanceRenderingVerificationOptions()
-        td.verification_options.type = 'forAll'
         dm = DirManager(self.tempdir)
         builder = BlenderRenderTaskBuilder(node_name="ABC",
                                            task_definition=bb.task_definition,

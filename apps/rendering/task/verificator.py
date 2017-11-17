@@ -27,15 +27,10 @@ class RenderingVerificator(CoreVerificator):
         self.res_y = 0
         self.total_tasks = 0
         self.root_path = ""
-        self.verified_clients = list()
 
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        if self._verify_imgs(subtask_id, subtask_info, tr_files, task):
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-        else:
-            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+        self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-    def _verify_imgs(self, subtask_id, subtask_info, tr_files, task):
         if len(tr_files) == 0:
             return False
 
@@ -45,23 +40,21 @@ class RenderingVerificator(CoreVerificator):
             if not self._check_size(img, res_x, res_y):
                 return False
 
-        file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
-        if file_for_adv_ver:
+        if self.advanced_verification:
+            file_for_adv_ver = random.choice(tr_files)
             if not self.make_advance_verification(
                     file_for_adv_ver,
                     subtask_info,
                     subtask_id, task):
                 return False
-            else:
-                # todo GG shall we add verified_clients in luxverificator?
-                self.verified_clients.append(
-                    subtask_info['node_id'])
 
-        return True
+        self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
     def make_advance_verification(self,
                                   img_file, subtask_info, subtask_id, task):
-        start_box = self._get_box_start(*self._get_part_img_size(subtask_info))
+
+        x0, y0, x1, y1 = self._get_part_img_size(subtask_info)
+        start_box = (x0, y0)
         logger.debug('testBox: {}'.format(start_box))
         cmp_file, cmp_start_box = self._get_cmp_file(img_file, start_box,
                                                      subtask_id,
@@ -78,25 +71,6 @@ class RenderingVerificator(CoreVerificator):
 
     def _get_part_size(self, subtask_info):
         return self.res_x, self.res_y
-
-    def _get_box_start(self, x0, y0, x1, y1):
-        start_x = x0
-        start_y = y0
-
-        # to do GG what happened to self.verification options?
-        # ver_x = min(self.verification_options.box_size[0], x1 - x0)
-        # ver_y = min(self.verification_options.box_size[1], y1 - y0)
-        # start_x = get_random(x0, x1 - ver_x)
-        # start_y = get_random(y0, y1 - ver_y)
-        return start_x, start_y
-
-    def _choose_adv_ver_file(self, tr_files, subtask_info):
-        adv_test_file = None
-        if self.advanced_verification:
-            if self.__use_adv_verification(
-                    subtask_info):
-                adv_test_file = random.choice(tr_files)
-        return adv_test_file
 
     def _get_part_img_size(self, subtask_info):
         # verification method reacts to key error
@@ -158,18 +132,6 @@ class RenderingVerificator(CoreVerificator):
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))
 
-    # GG todo: is 'forAll', 'forFirst', 'random' used anywhere?
-    def __use_adv_verification(self, subtask_info):
-        if self.verification_options.type == 'forAll':
-            return True
-        if self.verification_options.type == 'forFirst':
-            if subtask_info['node_id'] not in self.verified_clients:
-                return True
-        if self.verification_options.type == 'random':
-            if get_random_float() < self.verification_options.probability:
-                return True
-        return False
-
 
 class FrameRenderingVerificator(RenderingVerificator):
 
@@ -183,17 +145,10 @@ class FrameRenderingVerificator(RenderingVerificator):
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list):
-                self.ver_states[subtask_id] = \
-                    SubtaskVerificationState.WRONG_ANSWER
                 return
-        if not self._verify_imgs(
-                subtask_id,
-                subtask_info,
-                tr_files,
-                task):
-            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
-        else:
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+
+        super(FrameRenderingVerificator, self) \
+            ._check_files(subtask_id, subtask_info, tr_files, task)
 
     def _get_part_img_size(self, subtask_info):
         if not self.use_frames or self.__full_frames():

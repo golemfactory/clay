@@ -130,13 +130,10 @@ class TaskDefinition(object):
 
         return self.output_file.rsplit(path.sep, 1)[0]
 
-
-advanceVerificationTypes = ['forAll', 'forFirst', 'random']
-
-
+  # todo GG get rid of it?
 class AdvanceVerificationOptions(object):
     def __init__(self):
-        self.type = 'forFirst'
+        self.box_size = [5, 5]
 
 
 class TaskDesc(object):

@@ -58,9 +58,3 @@ class RenderingTaskDefinition(TaskDefinition):
         self.resolution = preset["resolution"]
         self.output_format = preset["output_format"]
 
-# GG todo: dead code?
-class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
-    def __init__(self):
-        AdvanceVerificationOptions.__init__(self)
-        self.box_size = (5, 5)
-        self.probability = 0.01

@@ -22,7 +22,6 @@ logger = logging.getLogger("apps.blender")
 class BlenderVerificator(FrameRenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(BlenderVerificator, self).__init__(*args, **kwargs)
-        self.box_size = [1, 1]
         self.compositing = False
         self.output_format = ""
         self.src_code = ""
@@ -78,8 +77,6 @@ class BlenderVerificator(FrameRenderingVerificator):
                 stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
 
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-            self.verified_clients.append(
-                subtask_info['node_id'])  # GG do we need this?
             stdout = c.stdout.decode()
             print(stdout)
         except subprocess.CalledProcessError as e:
@@ -101,14 +98,6 @@ class BlenderVerificator(FrameRenderingVerificator):
         logger.info("Subtask %s verification result: %s",
                     str(subtask_id), self.ver_states[subtask_id].name)
 
-    def set_verification_options(self, verification_options):
-        super(BlenderVerificator, self).set_verification_options(
-            verification_options)
-        if self.advanced_verification:
-            box_x = min(verification_options.box_size[0], self.res_x)
-            box_y = min(verification_options.box_size[1],
-                        int(self.res_y / self.total_tasks))
-            self.box_size = (box_x, box_y)
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data, _ = super(BlenderVerificator, self). \
