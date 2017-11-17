@@ -14,7 +14,7 @@ from golem.model import Payment
 from golem.model import db
 from golem_messages import message
 from golem.network.transport import tcpnetwork
-from golem.network.transport.session import MiddlemanSafeSession
+from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
@@ -45,10 +45,10 @@ def dropped_after():
     return inner
 
 
-class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.MidAndFilesProtocol
+    ConnectionStateType = tcpnetwork.FilesProtocol
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
@@ -61,7 +61,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                               session should enhance
         :return:
         """
-        MiddlemanSafeSession.__init__(self, conn)
+        BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
@@ -99,11 +99,11 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
-        MiddlemanSafeSession.interpret(self, msg)
+        BasicSafeSession.interpret(self, msg)
 
     def dropped(self):
         """ Close connection """
-        MiddlemanSafeSession.dropped(self)
+        BasicSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
             if self.key_id:
@@ -185,7 +185,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.task_result_sent(extra_data["subtask_id"])
-        MiddlemanSafeSession.data_sent(self, extra_data)
+        BasicSafeSession.data_sent(self, extra_data)
         self.dropped()
 
     def full_data_received(self, extra_data):
@@ -392,60 +392,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         :param uuid conn_id: connection id for reference
         """
         self.send(message.MessageStartSessionResponse(conn_id=conn_id))
-
-    # TODO Maybe dest_node is not necessary?
-    def send_middleman(self, asking_node, dest_node, ask_conn_id):
-        """ Ask node to become middleman in the communication with other node
-        :param Node asking_node: other node information. Middleman should
-                                 connect with that node.
-        :param Node dest_node: information about this node
-        :param ask_conn_id: connection id that asking node gave for reference
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageMiddleman(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
-
-    def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
-        """Ask node communicate with other through middleman connection
-           (this node is the middleman and connection with other node
-           is already opened
-        :param key_id:  this node public key
-        :param conn_id: connection id for reference
-        :param dest_node_key_id: public key of the other node of
-                                 the middleman connection
-        """
-        self.send(
-            message.MessageJoinMiddlemanConn(
-                key_id=key_id,
-                conn_id=conn_id,
-                dest_node_key_id=dest_node_key_id
-            )
-        )
-
-    def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
-        """Ask node to inform other node about nat hole that this node will
-           prepare with this connection
-        :param Node asking_node: node that should be informed about potential
-                                 hole based on this connection
-        :param Node dest_node: node that will try to end this connection
-                               and open hole in it's NAT
-        :param uuid ask_conn_id: connection id that asking node gave
-                                 for reference
-        :return:
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageNatPunch(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
 
     #########################
     # Reactions to messages #
@@ -697,62 +643,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
-    def _react_to_middleman(self, msg):
-        self.send(message.MessageBeingMiddlemanAccepted())
-        self.task_server.be_a_middleman(
-            self.key_id,
-            self,
-            self.conn_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-
-    def _react_to_join_middleman_conn(self, msg):
-        self.middleman_conn_data = {
-            'key_id': msg.key_id,
-            'conn_id': msg.conn_id,
-            'dest_node_key_id': msg.dest_node_key_id,
-        }
-        self.send(message.MessageMiddlemanAccepted())
-
-    def _react_to_middleman_ready(self, msg):
-        key_id = self.middleman_conn_data.get('key_id')
-        conn_id = self.middleman_conn_data.get('conn_id')
-        dest_node_key_id = self.middleman_conn_data.get('dest_node_key_id')
-        self.task_server.respond_to_middleman(
-            key_id,
-            self,
-            conn_id,
-            dest_node_key_id
-        )
-
-    def _react_to_being_middleman_accepted(self, msg):
-        self.key_id = self.asking_node_key_id
-
-    def _react_to_middleman_accepted(self, msg):
-        self.send(message.MessageMiddlemanReady())
-        self.is_middleman = True
-        self.open_session.is_middleman = True
-
-    def _react_to_nat_punch(self, msg):
-        self.task_server.organize_nat_punch(
-            self.address,
-            self.port,
-            self.key_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-        self.send(message.MessageWaitForNatTraverse(port=self.port))
-        self.dropped()
-
-    def _react_to_wait_for_nat_traverse(self, msg):
-        self.task_server.wait_for_nat_traverse(msg.port, self)
-
-    def _react_to_nat_punch_failure(self, msg):
-        pass
-
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -797,10 +687,10 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         self.inform_worker_about_payment(payment)
 
     def send(self, msg, send_unverified=False):
-        if not self.is_middleman and not self.verified and not send_unverified:
+        if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
             return
-        MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
+        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(
             "->",
             time.localtime(),
@@ -986,13 +876,6 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             message.MessageHello.TYPE: self._react_to_hello,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            message.MessageMiddleman.TYPE: self._react_to_middleman,
-            message.MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
-            message.MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
-            message.MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
-            message.MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
-            message.MessageNatPunch.TYPE: self._react_to_nat_punch,
-            message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa

@@ -763,28 +763,6 @@ class Client(HardwarePresetsMixin):
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id):
-        self.p2pservice.inform_about_task_nat_hole(
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-        )
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(
-            key_id,
-            res_key_id,
-            conn_id
-        )
-
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):
         self.rpc_server = rpc_server
