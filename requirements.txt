@@ -47,7 +47,7 @@ incremental==16.10.1
 OpenEXR
 pycparser==2.17
 numpy==1.13.1
-scipy
+scipy==0.19.1
 pyssim
 enforce==0.3.4
 -e git://github.com/golemfactory/golem-messages.git@v1.0.1#egg=golem_messages
