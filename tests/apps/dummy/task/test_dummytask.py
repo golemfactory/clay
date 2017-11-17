@@ -74,7 +74,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt, td = self._get_new_dummy()
         data = dt.query_extra_data(0.0)
         subtask_data_size = td.options.subtask_data_size
-        exd = data.ctd.extra_data
+        exd = data.ctd['extra_data']
         assert exd["subtask_data_size"] == subtask_data_size
         assert len(exd["subtask_data"]) == subtask_data_size
         assert all(os.path.basename(f) for f in exd["data_files"])

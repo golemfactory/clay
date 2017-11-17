@@ -132,7 +132,7 @@ class DummyTask(CoreTask):
         exd = self._extra_data()
         size = self.task_definition.options.subtask_data_size
         char = self.TESTING_CHAR
-        exd.extra_data["subtask_data"] = char * size
+        exd['extra_data']["subtask_data"] = char * size
         return exd
 
 
