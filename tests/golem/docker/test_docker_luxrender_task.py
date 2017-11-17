@@ -229,7 +229,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.haltspp = 20
         # 1) to make it deterministic,
         # 2) depending on the kernel, small cropwindow can generate darker img,
-        # this is a know issue in lux:
+        # this is a known issue in lux:
         # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
         self._test_luxrender_real_task(task)

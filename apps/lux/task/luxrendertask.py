@@ -415,8 +415,8 @@ class LuxTask(renderingtask.RenderingTask):
                                          perf_index=0)
 
         # different than ordinary subtask code and timeout
-        ctd.src_code = src_code
-        ctd.deadline = timeout_to_deadline(self.merge_timeout)
+        ctd['src_code'] = src_code
+        ctd['deadline'] = timeout_to_deadline(self.merge_timeout)
         return ctd
 
     def short_extra_data_repr(self, extra_data):
