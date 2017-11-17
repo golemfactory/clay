@@ -217,7 +217,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
-        ek.key_id = ek._cnt_key_id(ek.public_key)
+        ek.key_id = encode_hex(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
         msg = message.MessageWantToComputeTask(

@@ -173,16 +173,8 @@ class EllipticalKeysAuth:
     def _set_keys(self, priv_key: bytes, pub_key: bytes) -> None:
         self._private_key = priv_key
         self.public_key = pub_key
-        self.key_id = self._cnt_key_id(pub_key)
+        self.key_id = encode_hex(pub_key)
         self.ecc = ECCx(raw_privkey=priv_key)
-
-    @staticmethod
-    def _cnt_key_id(public_key: bytes) -> str:
-        """ Return id generated from given public key (in hex format).
-        :param public_key: public key that will be used to generate id
-        :return: new id
-        """
-        return encode_hex(public_key)
 
     @staticmethod
     def _get_key_loc(keys_dir: str, file_name: str) -> str:
