@@ -248,7 +248,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert isinstance(subtask, ComputeTaskDef)
 
-        task_mock.query_extra_data_return_value.ctd.subtask_id = None
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = None
         subtask, wrong_task, wait = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is None

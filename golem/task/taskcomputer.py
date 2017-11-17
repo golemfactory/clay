@@ -83,15 +83,14 @@ class TaskComputer(object):
         self.compute_tasks = task_server.config_desc.accept_tasks
 
     def task_given(self, ctd):
-        if ctd['subtask_id'] not in self.assigned_subtasks:
-            self.wait(ttl=self.waiting_for_task_timeout)
-            self.assigned_subtasks[ctd['subtask_id']] = ctd
-            self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
-            self.__request_resource(ctd['task_id'], self.resource_manager.get_resource_header(ctd['task_id']),
-                                    ctd['return_address'], ctd['return_port'], ctd['key_id'], ctd['task_owner'])
-            return True
-        else:
+        if ctd['subtask_id'] in self.assigned_subtasks:
             return False
+        self.wait(ttl=self.waiting_for_task_timeout)
+        self.assigned_subtasks[ctd['subtask_id']] = ctd
+        self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
+        self.__request_resource(ctd['task_id'], self.resource_manager.get_resource_header(ctd['task_id']),
+                                ctd['return_address'], ctd['return_port'], ctd['key_id'], ctd['task_owner'])
+        return True
 
     def resource_given(self, task_id):
         if task_id in self.task_to_subtask_mapping:

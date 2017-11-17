@@ -3,9 +3,9 @@ import os
 import pickle
 import random
 import unittest
+from unittest.mock import Mock, MagicMock, patch
 import uuid
 
-from mock import Mock, MagicMock, patch
 
 from apps.core.task.coretask import TaskResourceHeader
 from golem import model
@@ -305,6 +305,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_manager = Mock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
+        ts.send = Mock()
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
@@ -319,9 +320,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # msg.ctd is None -> failure
         msg = message.MessageTaskToCompute()
-        with self.assertLogs(logger, level="WARNING"):
-            ts._react_to_task_to_compute(msg)
+        ts._react_to_task_to_compute(msg)
+        ts.task_server.add_task_session.assert_not_called()
+        ts.task_computer.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.send.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 

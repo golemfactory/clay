@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -442,17 +442,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
+        if msg.compute_task_def is None:
+            logger.debug('TaskToCompute without ctd: %r', msg)
+            self.task_computer.session_closed()
+            self.dropped()
+            return
         if self._check_ctd_params(msg.compute_task_def)\
                 and self._set_env_params(msg.compute_task_def)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
-                msg.compute_task_def.subtask_id, self
+                msg.compute_task_def['subtask_id'], self
             )
             self.task_computer.task_given(msg.compute_task_def)
         else:
             self.send(
                 message.MessageCannotComputeTask(
-                    subtask_id=msg.compute_task_def.subtask_id,
+                    subtask_id=msg.compute_task_def['subtask_id'],
                     reason=self.err_msg
                 )
             )
