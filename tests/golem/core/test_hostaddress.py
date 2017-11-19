@@ -38,9 +38,16 @@ def is_ip_address(address):
     from ipaddress import ip_address, AddressValueError
     try:
         # will raise error in case of incorrect address
-        ip_address(str(address))
+        s = str(address)
+        ip_address(s)
         return True
     except (ValueError, AddressValueError):
+        try:
+            # Check for local scope prefix and designator
+            ip_address(s.split('%')[0])
+            return (s[0][:4].lower().startswith('fe80'))
+        except (ValueError, AddressValueError):
+            pass
         return False
 
 
