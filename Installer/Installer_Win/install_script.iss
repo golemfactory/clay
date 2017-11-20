@@ -9,7 +9,7 @@
 ; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
 ; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
-; https://download.docker.com/win/stable/DockerToolbox.exe
+; https://github.com/docker/toolbox/releases/download/v17.06.2-ce/DockerToolbox-17.06.2-ce.exe DockerToolbox.exe
 ; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.2-1db4ecdc.exe
 #define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
@@ -73,7 +73,6 @@ Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir:
 Source: "{#Repository}\Installer\Installer_Win\deps\{#Geth}"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 ; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
-Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
@@ -89,8 +88,6 @@ Filename: "{tmp}\vc_redist.x64.exe"; StatusMsg: "Installing runtime"; Descriptio
                                      
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/VERYSILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
-
-Filename: "{tmp}\VirtualBox-5.1.26-117224-Win.exe"; Parameters: "--silent"; StatusMsg: "Installing VirtualBox"; Description: "Install VirtualBox";
 
 ; Install geth
 Filename: "{tmp}\{#Geth}"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
