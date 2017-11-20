@@ -1,4 +1,5 @@
 import functools
+from golem_messages import message
 import logging
 import os
 import struct
@@ -461,7 +462,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
         if not self.msgs_to_send:
-            self.disconnect(self.DCRNoMoreMessages)
+            self.disconnect(message.MessageDisconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
@@ -611,7 +612,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.verify(msg):
             logger.info("Wrong signature for Hello msg")
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return
 
         if msg.proto_id != PROTOCOL_CONST.TASK_ID:
@@ -620,7 +621,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.proto_id,
                 PROTOCOL_CONST.TASK_ID
             )
-            self.disconnect(TaskSession.DCRProtocolVersion)
+            self.disconnect(message.MessageDisconnect.REASON.ProtocolVersion)
             return
 
         if send_hello:
@@ -638,7 +639,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.send(msg)
             self.msgs_to_send = []
         else:
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)

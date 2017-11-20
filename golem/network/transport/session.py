@@ -53,12 +53,6 @@ class BasicSession(FileSession):
     of messages.
     """
 
-    # Disconnect reasons
-    DCRProtocolVersion = "Protocol version"
-    DCRBadProtocol = "Bad protocol"
-    DCRTimeout = "Timeout"
-    DCRNoMoreMessages = "No more messages"
-
     def __init__(self, conn):
         """
         Create new Session
@@ -93,7 +87,7 @@ class BasicSession(FileSession):
         if action:
             action(msg)
         else:
-            self.disconnect(BasicSession.DCRBadProtocol)
+            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
 
     def dropped(self):
         """ Close connection """
@@ -155,7 +149,7 @@ class BasicSession(FileSession):
 
     def _check_msg(self, msg):
         if msg is None or not isinstance(msg, message.Message):
-            self.disconnect(BasicSession.DCRBadProtocol)
+            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
             return False
         return True
 
@@ -170,10 +164,6 @@ class BasicSafeSession(BasicSession, SafeSession):
     and connection verifications logic.
     Cryptographic operation should be implemented in descendant class.
     """
-
-    # Disconnect reasons
-    DCRUnverified = "Unverified connection"
-    DCRWrongEncryption = "Wrong encryption"
 
     def __init__(self, conn):
         BasicSession.__init__(self, conn)
@@ -208,7 +198,7 @@ class BasicSafeSession(BasicSession, SafeSession):
                         .format(message, self.address, self.port))
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
-                self.disconnect(BasicSafeSession.DCRUnverified)
+                self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return
 
         BasicSession.send(self, message)
@@ -223,17 +213,17 @@ class BasicSafeSession(BasicSession, SafeSession):
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
-            self.disconnect(BasicSafeSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return False
 
         if not msg.encrypted and type_ not in self.can_be_not_encrypted:
-            self.disconnect(BasicSafeSession.DCRBadProtocol)
+            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
             logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
-            self.disconnect(BasicSafeSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return False
 
         return True

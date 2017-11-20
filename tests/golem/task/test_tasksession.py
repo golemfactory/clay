@@ -1,3 +1,4 @@
+from golem_messages import message
 import os
 import pickle
 import random
@@ -204,11 +205,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         ts.verify = create_verify(False)
         ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(TaskSession.DCRUnverified)
+        ts.disconnect.assert_called_with(
+            message.MessageDisconnect.REASON.Unverified)
 
         ts.verify = create_verify(True)
         ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(TaskSession.DCRProtocolVersion)
+        ts.disconnect.assert_called_with(
+            message.MessageDisconnect.REASON.ProtocolVersion)
 
         msg.proto_id = PROTOCOL_CONST.TASK_ID
 
