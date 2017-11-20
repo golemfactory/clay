@@ -4,7 +4,6 @@ from datetime import datetime
 import logging.config
 from multiprocessing import cpu_count
 import os
-from pathlib import Path
 import sys
 import pytz
 
@@ -172,7 +171,7 @@ def config_logging(suffix='', datadir=None, loglevel=None):
 
     if datadir is None:
         datadir = simpleenv.get_local_datadir("default")
-    logdir_path = Path(datadir) / 'logs'
+    logdir_path = os.path.join(datadir, 'logs')
 
     if loglevel and loglevel not in ['WARNING', 'INFO', 'DEBUG']:
         logger.warning('Invalid log level "%r", reset to default.', loglevel)
