@@ -14,8 +14,8 @@ setProtocolOptions = WampWebSocketClientFactory.setProtocolOptions
 
 
 def set_protocol_options(instance, **options):
-    options['autoPingInterval'] = 5.
-    options['autoPingTimeout'] = 15.
+    options['autoPingInterval'] = 0.
+    options['autoPingTimeout'] = 0.
     options['openHandshakeTimeout'] = 30.
     setProtocolOptions(instance, **options)
 
