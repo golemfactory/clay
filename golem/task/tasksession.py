@@ -419,11 +419,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
+        reasons = message.MessageCannotAssignTask.REASON
         if wrong_task:
             self.send(
                 message.MessageCannotAssignTask(
                     task_id=msg.task_id,
-                    reason="Not my task  {}".format(msg.task_id)
+                    reason=reasons.NotMyTask,
                 )
             )
             self.dropped()
@@ -435,7 +436,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.send(
                 message.MessageCannotAssignTask(
                     task_id=msg.task_id,
-                    reason="No more subtasks in {}".format(msg.task_id)
+                    reason=reasons.NoMoreSubtasks,
                 )
             )
             self.dropped()
