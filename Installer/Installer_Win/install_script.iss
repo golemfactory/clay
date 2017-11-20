@@ -37,6 +37,8 @@ OutputBaseFilename={#MyAppName}_win_{#MyAppVersion}
 SetupIconFile={#Repository}\Installer\{#AppIcon}
 Compression=lzma
 SolidCompression=yes
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 
 [Registry]
 ; Set environment variable to point to company installation
@@ -67,10 +69,9 @@ Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: igno
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
-Source: "{#Repository}\Installer\Installer_Win\deps\VirtualBox-5.1.26-117224-Win.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#Repository}\Installer\Installer_Win\vmupdate.bat"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
@@ -85,7 +86,8 @@ Filename: "{tmp}\vc_redist.x64.exe"; StatusMsg: "Installing runtime"; Descriptio
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/VERYSILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
 
-Filename: "{tmp}\VirtualBox-5.1.26-117224-Win.exe"; Parameters: "--silent"; StatusMsg: "Installing VirtualBox"; Description: "Install VirtualBox";
+; Cleanup after old VM version @todo remove after this golem version
+Filename: "{tmp}\vmupdate.bat"; StatusMsg: "Updating VM settings"; Description: "Update VM settings";
 
 [Code]
 ////////////////////////////////////////////////////////////////////////////////////////////////////
