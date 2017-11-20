@@ -702,26 +702,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _check_ctd_params(self, ctd):
+        reasons = message.MessageCannotComputeTask.REASON
         if not isinstance(ctd, ComputeTaskDef):
-            self.err_msg = "Received task is not a ComputeTaskDef instance"
+            self.err_msg = reasons.WrongCTD
+            # FIXME: Should be neforced in deserialization of taskmsg
             return False
         if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
-            self.err_msg = "Wrong key_id"
+            self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
                 ctd.return_address,
                 ctd.return_port
                 ):
-            self.err_msg = "Wrong return address {}:{}"\
-                .format(ctd.return_address, ctd.return_port)
+            self.err_msg = reasons.WrongAddress
             return False
         return True
 
     def _set_env_params(self, ctd):
         environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
         env = self.task_server.get_environment_by_id(environment)
+        reasons = message.MessageCannotComputeTask.REASON
         if not env:
-            self.err_msg = "Wrong environment {}".format(environment)
+            self.err_msg = reasons.WrongEnvironment
             return False
 
         if isinstance(env, DockerEnvironment):
@@ -732,8 +734,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd.src_code = env.get_source_code()
 
         if not ctd.src_code:
-            self.err_msg = "No source code for environment {}"\
-                .format(environment)
+            self.err_msg = reasons.NoSourceCode
             return False
 
         return True
@@ -745,7 +746,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     ctd.docker_images = [image]
                     return True
 
-        self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
+        reasons = message.MessageCannotComputeTask.REASON
+        self.err_msg = reasons.WrongDockerImages
         return False
 
     def __send_delta_resource(self, msg):

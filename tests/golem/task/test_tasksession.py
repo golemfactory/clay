@@ -137,11 +137,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertIsInstance(ms, message.MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
-        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask("CTD"))
+        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask(message.MessageCannotComputeTask.REASON.WrongCTD))
         assert ts2.task_manager.task_computation_failure.called
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
-        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask("CTD"))
+        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask(message.MessageCannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
     def test_send_report_computed_task(self):
