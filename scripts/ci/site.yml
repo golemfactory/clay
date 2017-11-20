@@ -22,8 +22,8 @@
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
       changed_when: False
     - setup:
-   roles:
-     - buildbot-worker-linux
+  roles:
+    - buildbot-worker-linux
 
 
 - hosts: windows_worker
