@@ -39,6 +39,8 @@ OutputBaseFilename={#MyAppName}_win_{#MyAppVersion}
 SetupIconFile={#Repository}\Installer\{#AppIcon}
 Compression=lzma
 SolidCompression=yes
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 
 [Registry]
 ; Set environment variable to point to company installation
