@@ -33,7 +33,7 @@ class StepsFactory(object):
     def git_step():
         return steps.Git(
             repourl='https://github.com/golemfactory/golem.git',
-            mode='full', method='fresh', branch='mwu/linux_unit_test')
+            mode='full', method='fresh')
 
     def venv_step(self):
         return steps.ShellCommand(
@@ -130,28 +130,24 @@ class StepsFactory(object):
         install_req_cmd = self.pip_command + ['install', '-r',
                                               'requirements-test.txt']
 
+        # Since test-daemons are running commands should not halt on failure.
         return steps.ShellSequence(
             name='run tests',
             commands=[
                 util.ShellArg(
                     logfile='install requirements',
-                    haltOnFailure=True,
+                    warnOnFailure=True,
                     command=install_req_cmd),
                 # TODO: move to requirements itself?
                 util.ShellArg(
                     logfile='install missing requirement',
-                    haltOnFailure=True,
-                    command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                'codecov', 'pytest-cov']),
+                    warnOnFailure=True,
+                    command=self.pip_command + ['install', 'pyasn1==0.2.3']),
                 util.ShellArg(
                     logfile='prepare for test',
-                    haltOnFailure=True,
+                    warnOnFailure=True,
                     command=self.python_command + ['setup.py', 'develop']),
-                util.ShellArg(
-                    logfile='start hyperg',
-                    haltOnFailure=True,
-                    command=['scripts/test-daemon-start.sh']),
-                # TODO: add xml results
+                # TODO: add xml results ?
                 # TODO 2: add run slow
                 util.ShellArg(
                     logfile='run tests',

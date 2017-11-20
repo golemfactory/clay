@@ -3,19 +3,14 @@
     name: site_settings
 
 
-# - local_action:
-#     module: ec2_instance_facts
-#     filters:
-#       "tag:role": buildbot-master
-#   register: master_instances
-#   become: no
-
 - name: add user buildbot worker
   become: yes
   user:
     name: buildbot-worker
     home: /Users/buildbot-worker
 
+
+#install geth
 - name: add geth repo
   become_user: buildbot-worker
   homebrew_tap:
@@ -32,10 +27,8 @@
     - libtool
     - libffi
     - gmp
-#
-#
-# install taskcollector
-#
+
+
 # install hyperg
 - name: install tar
   become_user: buildbot-worker
@@ -44,10 +37,7 @@
     options:
       - with-default-names
 
-# TODO: Link gtar to replace tar
-# - name: link tar
-#   command: "brew link --overwrite gnu-tar"
-
+# Link gtar to replace tar
 - lineinfile:
     create: yes
     path: ~/.bashrc
@@ -59,12 +49,11 @@
     dest: /usr/local/share
     state: directory
 
-
 - name: download hyperg
   become: yes
   unarchive:
     remote_src: yes
-    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_darwin-x64.tar.gz
+    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_darwin-x64.tar.gz
     dest: /usr/local/share/
   creates: /usr/local/share/hyperg
 
@@ -90,7 +79,7 @@
     - ipfs
 
 
-- name: install buildbot and its requirements
+- name: install buildbot venv
   become_user: buildbot-worker
   pip:
     name: virtualenv
@@ -104,14 +93,13 @@
     virtualenv: /Users/buildbot-worker/.venv
 
 # # TODO: master address will not be updated once configuration is generated
-# # TODO: Set master hostname to be dynamic
 - name: initialized workspace for the worker
   become_user: buildbot-worker
   become: yes
   command:
     /Users/buildbot-worker/.venv/bin/buildbot-worker create-worker
       /Users/buildbot-worker/worker
-      ec2-54-89-173-235.compute-1.amazonaws.com
+      {{hostvars[groups['master'][0]]['ec2_public_ip_address']}}
       macOS
       {{site_settings.worker_pass}}
     creates=/Users/buildbot-worker/worker/
