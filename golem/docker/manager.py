@@ -405,34 +405,7 @@ class DockerManager(DockerConfigManager):
             logger.warning("DockerMachine: failed to env the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
             if not retried:
-                try:
-                    self.command('regenerate_certs', self.docker_machine)
-                except subprocess.CalledProcessError as e:
-                    logger.warning("DockerMachine:"
-                                   " failed to env the VM: %s -- %s",
-                                   e, e.output)
-                else:
-                    return self._set_docker_machine_env(retried=True)
-
-                try:
-                    self.command('start', self.docker_machine)
-                except subprocess.CalledProcessError as e:
-                    logger.warning("DockerMachine:"
-                                   " failed to restart the VM: %s -- %s",
-                                   e, e.output)
-                else:
-                    return self._set_docker_machine_env(retried=True)
-
-                try:
-                    if self.hypervisor:
-                        if self.hypervisor.remove(self.docker_machine):
-                            self.hypervisor.create(self.docker_machine)
-                except subprocess.CalledProcessError as e:
-                    logger.warning("DockerMachine:"
-                                   " failed to re-create the VM: %s -- %s",
-                                   e, e.output)
-
-                return self._set_docker_machine_env(retried=True)
+                return self._recover_docker_machine_env()
             typical_solution_s = """It seems there is a  problem with your Docker installation.
 Ensure that you try the following before reporting an issue:
 
@@ -452,6 +425,36 @@ Ensure that you try the following before reporting an issue:
             logger.info('DockerMachine: env updated')
         else:
             logger.warning('DockerMachine: env update failed')
+
+    def _recover_docker_machine_env(self):
+        try:
+            self.command('regenerate_certs', self.docker_machine)
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine:"
+                           " failed to env the VM: %s -- %s",
+                           e, e.output)
+        else:
+            return self._set_docker_machine_env(retried=True)
+
+        try:
+            self.command('start', self.docker_machine)
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine:"
+                           " failed to restart the VM: %s -- %s",
+                           e, e.output)
+        else:
+            return self._set_docker_machine_env(retried=True)
+
+        try:
+            if self.hypervisor:
+                if self.hypervisor.remove(self.docker_machine):
+                    self.hypervisor.create(self.docker_machine)
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine:"
+                           " failed to re-create the VM: %s -- %s",
+                           e, e.output)
+
+        return self._set_docker_machine_env(retried=True)
 
     def _set_env_from_output(self, output):
         for line in output.split('\n'):

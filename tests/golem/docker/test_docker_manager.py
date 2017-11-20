@@ -6,7 +6,6 @@ import sys
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 
-
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, \
                                  VirtualBoxHypervisor, XhyveHypervisor, \
                                  Hypervisor, logger
@@ -571,7 +570,6 @@ class TestDockerManager(unittest.TestCase):
             if key != 'start':
                 raise_process_exception('error')
             return key
-
 
         with mock.patch.dict('os.environ', environ):
             dmm._set_docker_machine_env()
