@@ -188,14 +188,14 @@ def config_logging(suffix='', datadir=None, loglevel=None):
             }
 
     if loglevel:
-        for _logger in list(LOGGING.get('loggers',  {}).values()):
+        for _logger in list(LOGGING.get('loggers', {}).values()):
             if 'level' in _logger:
                 _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
 
     try:
-        if not logdir_path.exists():
-            logdir_path.mkdir(parents=True)
+        if not os.path.exists(logdir_path):
+            os.makedirs(logdir_path)
 
         logging.config.dictConfig(LOGGING)
     except (ValueError, PermissionError) as e:
