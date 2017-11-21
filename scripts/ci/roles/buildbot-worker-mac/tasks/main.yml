@@ -76,7 +76,6 @@
     - python3
     - openexr
     - freeimage
-    - ipfs
 
 
 - name: install buildbot venv

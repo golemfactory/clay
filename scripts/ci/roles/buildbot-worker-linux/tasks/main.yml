@@ -49,9 +49,9 @@
   apt:
     name: "{{item}}"
   with_items:
-    - gcc-5 
-    - g++-5 
-    - libfreeimage3 
+    - gcc-5
+    - g++-5
+    - libfreeimage3
     - libfreeimage-dev
 
 
@@ -76,21 +76,6 @@
     state: link
 
 
-- name: Install ipfs
-  unarchive:
-    src: https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz
-    dest: /opt
-    remote_src: yes
-  creates: /opt/go-ipfs
-
-
-- name: Link ipfs
-  file:
-    src: /opt/go-ipfs/ipfs
-    dest: /usr/local/bin/ipfs
-    state: link
-
-
 - name: setup buildbot-worker group
   group:
     name: buildbot-worker
@@ -100,16 +85,9 @@
   user:
     name: buildbot-worker
     group: buildbot-worker
-    groups: 
+    groups:
       - docker
     home: /home/buildbot-worker
-
-
-- name: Init ipfs
-  command: ipfs init
-  become_user: buildbot-worker
-  args:
-    creates: /home/buildbot-worker/.ipfs
 
 
 - name: install golemapp dependencies
