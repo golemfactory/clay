@@ -15,6 +15,7 @@ schedulers = [
         name='force',
         builderNames=[
             'buildpackage_macOS',
+            'unittest_macOS',
             'unittest_linux',
             'buildpackage_linux',
             'buildpackage_windows',
