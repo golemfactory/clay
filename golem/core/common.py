@@ -218,7 +218,7 @@ def config_logging(suffix='', datadir=None, loglevel=None):
     if crossbar_log_lvl == 'warning':
         crossbar_log_lvl = 'warn'
 
-    txaio.set_global_log_level(crossbar_log_lvl)
+    txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
 
 
 def get_cpu_count():
