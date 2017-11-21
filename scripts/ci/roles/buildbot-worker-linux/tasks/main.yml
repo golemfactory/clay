@@ -63,7 +63,7 @@
 
 - name: Install hyperg
   unarchive:
-    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_linux-x64.tar.gz
+    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_linux-x64.tar.gz
     dest: /opt
     remote_src: yes
   creates: /opt/hyperg
