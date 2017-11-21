@@ -4,7 +4,7 @@ import logging
 import time
 
 from golem.core.keysauth import get_random_float
-from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
+from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
 logger = logging.getLogger(__name__)
@@ -172,16 +172,12 @@ class BasicSafeSession(BasicSession, SafeSession):
     """
 
     # Disconnect reasons
-    DCROldMessage = "Message expired"
-    DCRWrongTimestamp = "Wrong timestamp"
     DCRUnverified = "Unverified connection"
     DCRWrongEncryption = "Wrong encryption"
 
     def __init__(self, conn):
         BasicSession.__init__(self, conn)
         self.key_id = 0
-        self.message_ttl = MSG_TTL  # how old messages should be accepted
-        self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
@@ -224,9 +220,6 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        if not self._verify_time(msg):
-            return False
-
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
@@ -245,73 +238,3 @@ class BasicSafeSession(BasicSession, SafeSession):
 
         return True
 
-    def _verify_time(self, msg):
-        """ Verify message timestamp. If message is to old or have timestamp from distant future return False.
-        """
-        try:
-            if self.last_message_time - msg.timestamp > self.message_ttl:
-                self.disconnect(BasicSafeSession.DCROldMessage)
-                return False
-            elif msg.timestamp - self.last_message_time > self.future_time_tolerance:
-                self.disconnect(BasicSafeSession.DCRWrongTimestamp)
-                return False
-        except TypeError:
-            return False
-
-        return True
-
-
-class MiddlemanSafeSession(BasicSafeSession):
-    """ Enhance BasicSafeSession with logic that supports middleman connection. If is_middleman variable is set True,
-        that cryptographic logic should not apply and data should be transfer to open_session without addtional
-        interpretations.
-    """
-    def __init__(self, conn):
-        BasicSafeSession.__init__(self, conn)
-
-        self.is_middleman = False
-        self.open_session = None  # transfer data to that session in middleman mode
-        self.middleman_conn_data = None
-
-    def send(self, message, send_unverified=False):
-        """ Send given message if connection was verified or send_unverified option is set to True.
-        :param Message message: message to be sent.
-        :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
-        """
-        if not self.is_middleman:
-            BasicSafeSession.send(self, message, send_unverified)
-        else:
-            BasicSession.send(self, message)
-
-    def interpret(self, msg):
-        """ React to specific message. Disconnect, if message type is unknown for that session.
-        In middleman mode doesn't react to message, just sends it to other open session.
-        :param Message msg: Message to interpret and react to.
-        :return None:
-        """
-        if not self.is_middleman:
-            BasicSafeSession.interpret(self, msg)
-        else:
-            self.last_message_time = time.time()
-
-            if self.open_session is None:
-                logger.error("Destination session for middleman don't exist")
-                self.dropped()
-            self.open_session.send(msg)
-
-    def dropped(self):
-        """ If it's called for the first time, send "disconnect" message to the peer. Otherwise, drops
-        connection.
-        In middleman mode additionally drops the other open session.
-        """
-        if self.is_middleman and self.open_session:
-            open_session = self.open_session
-            self.open_session = None
-            open_session.dropped()
-        BasicSafeSession.dropped(self)
-
-    def _check_msg(self, msg):
-        if not self.is_middleman:
-            return BasicSafeSession._check_msg(self, msg)
-        else:
-            return BasicSession._check_msg(self, msg)

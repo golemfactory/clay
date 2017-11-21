@@ -127,7 +127,8 @@ class TestMessages(unittest.TestCase):
         result = to_unicode(source)
         assert result is None
 
-    def test_timestamp_and_timezones(self):
+    @mock.patch('golem_messages.message.verify_time')
+    def test_timestamp_and_timezones(self, vft_mock):
         epoch_t = 1475238345.0
 
         def set_tz(tz):
@@ -140,7 +141,7 @@ class TestMessages(unittest.TestCase):
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = message.MessageHello(timestamp=epoch_t)
-        self.protocol.db.append_len_prefixed_string(m.serialize(fake_sign))
+        self.protocol.db.append_len_prefixed_bytes(m.serialize(fake_sign))
         set_tz('US/Eastern')
         msgs = self.protocol._data_to_messages()
         assert len(msgs) == 1
@@ -154,7 +155,7 @@ class TestMessages(unittest.TestCase):
 
         def serialize_messages(_b):
             for m in [message.MessageRandVal() for _ in range(0, n_messages)]:
-                db.append_len_prefixed_string(m.serialize(fake_sign))
+                db.append_len_prefixed_bytes(m.serialize(fake_sign))
 
         serialize_messages(db)
         self.assertEqual(len(self.protocol._data_to_messages()), n_messages)
@@ -204,10 +205,6 @@ class TestMessages(unittest.TestCase):
                 message.MessageGetTasks,
                 message.MessageGetResourcePeers,
                 message.MessageStopGossip,
-                message.MessageBeingMiddlemanAccepted,
-                message.MessageMiddlemanAccepted,
-                message.MessageMiddlemanReady,
-                message.MessageNatPunchFailure,
                 message.MessageWaitingForResults,
                 ):
             msg = message_class()
@@ -231,7 +228,6 @@ class TestMessages(unittest.TestCase):
         for message_class, key in (
                     (message.MessageDisconnect, 'reason'),
                     (message.MessageDegree, 'degree'),
-                    (message.MessageWaitForNatTraverse, 'port'),
                 ):
             value = random.randint(-10**10, 10**10)
             msg = message_class(**{key: value})
@@ -244,7 +240,6 @@ class TestMessages(unittest.TestCase):
         for message_class, key in (
                 (message.MessageRemoveTask, 'task_id',),
                 (message.MessageFindNode, 'node_key_id'),
-                (message.MessageNatTraverseFailure, 'conn_id'),
                 (message.MessageGetTaskResult, 'subtask_id'),
                 (message.MessageStartSessionResponse, 'conn_id'),
                 (message.MessageHasResource, 'resource'),
@@ -294,30 +289,6 @@ class TestMessages(unittest.TestCase):
         ]
         self.assertEqual(expected, msg.slots())
 
-    def test_message_nat_hole(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        address = '8.8.8.8'
-        port = random.randint(0, 2**16) + 1
-        msg = message.MessageNatHole(key_id=key_id, conn_id=conn_id, address=address, port=port)
-        expected = [
-            ['key_id', key_id],
-            ['address', address],
-            ['port', port],
-            ['conn_id', conn_id],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_inform_about_nat_traverse_failure(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id)
-        expected = [
-            ['key_id', key_id],
-            ['conn_id', conn_id],
-        ]
-        self.assertEqual(expected, msg.slots())
-
     def test_message_get_resource(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
         resource_header = 'test-rh-{}'.format(uuid.uuid4())
@@ -363,42 +334,6 @@ class TestMessages(unittest.TestCase):
         expected = [
             ['subtask_id', subtask_id],
             ['err', err],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_middleman(self):
-        asking_node = 'test-an-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = [
-            ['asking_node', asking_node],
-            ['dest_node', dest_node],
-            ['ask_conn_id', ask_conn_id],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_join_middleman_conn(self):
-        key_id = 'test-ki-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        conn_id = 'test-ci-{}'.format(uuid.uuid4())
-        msg = message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node)
-        expected = [
-            ['conn_id', conn_id],
-            ['key_id', key_id],
-            ['dest_node_key_id', dest_node],
-        ]
-        self.assertEqual(expected, msg.slots())
-
-    def test_message_nat_punch(self):
-        asking_node = 'test-an-{}'.format(uuid.uuid4())
-        dest_node = 'test-dn-{}'.format(uuid.uuid4())
-        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
-        msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
-        expected = [
-            ['asking_node', asking_node],
-            ['dest_node', dest_node],
-            ['ask_conn_id', ask_conn_id],
         ]
         self.assertEqual(expected, msg.slots())
 

@@ -11,7 +11,7 @@ class Network(object):
     node_table_headers = ['ip', 'port', 'id', 'name', 'version']
 
     ip_arg = Argument('ip', help='Remote IP address')
-    port_arg = Argument('port', help='Remote TCP port')
+    port_arg = Argument('port_', help='Remote TCP port')
 
     full_table = Argument(
         '--full',
@@ -32,13 +32,13 @@ class Network(object):
         return status
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
-    def connect(self, ip, port):
+    def connect(self, ip, port_):
         try:
-            sa = SocketAddress(ip, int(port))
+            sa = SocketAddress(ip, int(port_))
             Network.client.connect((sa.address, sa.port))
         except Exception as exc:
             return CommandResult(error="Cannot connect to {}:{}: {}"
-                                       .format(ip, port, exc))
+                                       .format(ip, port_, exc))
 
     @command(arguments=(sort_nodes, full_table), help="Show connected nodes")
     def show(self, sort, full):

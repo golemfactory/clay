@@ -28,7 +28,7 @@
 
 - name: install buildbot and its requirements
   pip:
-    name: buildbot[bundle],requests,txrequests
+    name: buildbot[bundle],requests,txrequests,lazy-reload
     virtualenv: /var/lib/virtualenv/buildbot-master
 
 

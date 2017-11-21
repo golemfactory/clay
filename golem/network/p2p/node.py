@@ -32,8 +32,11 @@ class Node(DictSerializable):
         self.pub_addr = pub_addr
         self.prv_addresses = []  # type: List[str]
 
-        self.nat_type = nat_type
         self.port_status = None
+
+        self.nat_type = nat_type  # Please do not remove nat_type property,
+        # it's still useful for stats / debugging connectivity.
+
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:

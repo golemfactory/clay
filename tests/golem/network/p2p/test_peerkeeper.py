@@ -8,6 +8,7 @@ import sys
 from golem.network.p2p.peerkeeper import PeerKeeper, K_SIZE, CONCURRENCY, \
     node_id_distance
 from golem.utils import encode_hex
+from golem import testutils
 
 
 def random_key(n_bytes, prefix=None):
@@ -21,7 +22,17 @@ def key_to_number(key_bytes):
     return int.from_bytes(key_bytes, sys.byteorder)
 
 
-class TestPeerKeeper(unittest.TestCase):
+def is_sorted_by_distance(peers, key_num):
+    def dist(peer):
+        return node_id_distance(peer, key_num)
+    for i in range(len(peers)-1):
+        if dist(peers[i]) > dist(peers[i+1]):
+            return False
+    return True
+
+
+class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/network/p2p/peerkeeper.py']
 
     def setUp(self):
         self.n_bytes = K_SIZE // 8
@@ -35,8 +46,8 @@ class TestPeerKeeper(unittest.TestCase):
 
         for k in keys:
             peer = MockPeer(k)
-            peers.add(peer)
-            self.peer_keeper.add_peer(peer)
+            if self.peer_keeper.add_peer(peer) is None:
+                peers.add(peer)
 
         # Sort keys by distance to self.key
         distances = {p.key: node_id_distance(p, self.key_num) for p in peers}
@@ -47,21 +58,50 @@ class TestPeerKeeper(unittest.TestCase):
         expected_n = CONCURRENCY
         nodes = self.peer_keeper.neighbours(self.key_num)
         assert len(nodes) == expected_n
-        assert all(node.key in ordered[:16] for node in nodes)
+        assert is_sorted_by_distance(nodes, self.key_num)
+        assert all(node.key in ordered[:expected_n] for node in nodes)
 
         # Desired count
         expected_n = 10
         nodes = self.peer_keeper.neighbours(self.key_num, expected_n)
         assert len(nodes) == expected_n
-        assert all(node.key in ordered[:32] for node in nodes)
+        assert is_sorted_by_distance(nodes, self.key_num)
+        assert all(node.key in ordered[:expected_n] for node in nodes)
 
         nodes = self.peer_keeper.neighbours(self.key_num, 256)
         assert len(nodes) <= len(keys)
+
+    def test_remove_old(self):
+        not_added_peer = None
+        peer_to_remove = None
+
+        while not_added_peer is None:
+            k = random_key(self.n_bytes)
+            if k == self.key:
+                continue
+            peer = MockPeer(k)
+            peer_to_remove = self.peer_keeper.add_peer(peer)
+            if peer_to_remove is not None:
+                not_added_peer = peer
+
+        neighs = self.peer_keeper.neighbours(peer_to_remove.key_num ^ 1)
+        assert peer_to_remove == neighs[0]
+        neighs = self.peer_keeper.neighbours(not_added_peer.key_num ^ 1)
+        assert not_added_peer != neighs[0]
+
+        self.peer_keeper.pong_timeout = -1
+        self.peer_keeper.sync()
+
+        neighs = self.peer_keeper.neighbours(peer_to_remove.key_num ^ 1)
+        assert peer_to_remove != neighs[0]
+        neighs = self.peer_keeper.neighbours(not_added_peer.key_num ^ 1)
+        assert not_added_peer == neighs[0]
 
 
 class MockPeer:
     def __init__(self, key):
         self.key = encode_hex(key)
+        self.key_num = int(self.key, 16)
         self.address = random.randrange(1, 2 ** 32 - 1)
         self.port = random.randrange(1000, 65535)
         self.node = None

@@ -6,9 +6,10 @@ from golem.network.stun.pystun import FullCone, OpenInternet
 from collections import deque
 
 from golem.core.hostaddress import ip_address_private, ip_network_contains, ipv4_networks
+from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
+
 from .server import Server
 from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
-from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
 logger = logging.getLogger('golem.network.transport.tcpserver')
 
@@ -89,8 +90,6 @@ class TCPServer(Server):
 class PendingConnectionsServer(TCPServer):
     """ TCP Server that keeps a list of pending connections and tries different methods
     if connection attempt is unsuccessful."""
-
-    supported_nat_types = [FullCone, OpenInternet]  # NAT Types that supports Nat Punching
 
     def __init__(self, config_desc, network):
         """ Create new server

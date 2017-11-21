@@ -366,25 +366,6 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.remove_task('task_id')
         assert p.send_remove_task.called
 
-        self.service.inform_about_nat_traverse_failure(
-            str(uuid.uuid4()), 'res_key_id', 'conn_id')
-        assert not p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id',
-                                                       'conn_id')
-        assert p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_task_nat_hole(
-            str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert not p.send_task_nat_hole.called
-
-        self.service.inform_about_task_nat_hole(
-            p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert p.send_task_nat_hole.called
-
-        self.service.send_nat_traverse_failure(p.key_id, 'conn_id')
-        assert p.send_nat_traverse_failure.called
-
         self.service.send_stop_gossip()
         assert p.send_stop_gossip.called
 

@@ -1,4 +1,4 @@
-from mock import Mock
+from unittest.mock import Mock
 from os import path
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.tools.testdirfixture import TestDirFixture
