@@ -23,11 +23,12 @@
 
 
 - apt:
-    name: python-pip,python-virtualenv
+    name: python3-pip,python3-venv
 
 
 - name: install buildbot and its requirements
   pip:
+    executable: pip3
     name: buildbot[bundle],requests,txrequests,lazy-reload
     virtualenv: /var/lib/virtualenv/buildbot-master
 

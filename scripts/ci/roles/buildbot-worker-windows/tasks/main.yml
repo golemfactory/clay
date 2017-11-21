@@ -8,7 +8,6 @@
     params: "{{ item.params|default('') }}"
     timeout: 5400
   with_items:
-    - name: python2
     - name: python3
     - name: git
       params: '"/GitAndUnixToolsOnPath"'
@@ -18,9 +17,9 @@
 
 
 - name: install pypiwin32
-  win_shell: py -2 -m pip install pypiwin32
+  win_shell: py -3 -m pip install pypiwin32
   args:
-    creates: C:\Python27\Scripts\pywin32_postinstall.py
+    creates: C:\Python36\Scripts\pywin32_postinstall.py
   notify: pywin32 installed
 
 - name: setup buildbot-worker user
@@ -40,14 +39,14 @@
 
 
 - name: install buildbot-worker
-  win_shell: py -2 -m pip install buildbot-worker
+  win_shell: py -3 -m pip install buildbot-worker
   args:
-    creates: C:\Python27\Scripts\buildbot-worker.exe
+    creates: C:\Python36\Scripts\buildbot-worker.exe
 
 
 - name: create workspace for the buildbot worker
   win_shell:
-    py -2 C:\Python27\Scripts\buildbot-worker.exe create-worker
+    py -3 C:\Python36\Scripts\buildbot-worker.exe create-worker
       C:\BuildbotWorker
       "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
       windows_server_2016

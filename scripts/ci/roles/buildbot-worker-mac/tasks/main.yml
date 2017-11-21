@@ -72,7 +72,6 @@
   homebrew:
     name: "{{ item }}"
   with_items:
-    - python
     - python3
     - openexr
     - freeimage
@@ -81,6 +80,7 @@
 - name: install buildbot venv
   become_user: buildbot-worker
   pip:
+    executable: pip3
     name: virtualenv
 
 
@@ -88,6 +88,7 @@
   become_user: buildbot-worker
   become: yes
   pip:
+    executable: pip3
     name: buildbot-worker
     virtualenv: /Users/buildbot-worker/.venv
 

@@ -94,8 +94,6 @@
   apt:
     name: "{{ item }}"
   with_items:
-    - python-pip
-    - python-virtualenv
     - python3
     - python3-venv
     - python3-dev
@@ -117,6 +115,7 @@
 
 - name: install buildbot and its requirements
   pip:
+    executable: pip3
     name: buildbot-worker
   become_user: buildbot-worker
 
