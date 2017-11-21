@@ -214,6 +214,10 @@ def config_logging(suffix='', datadir=None, loglevel=None):
 
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
+    # Fix inconsistency in log levels, only warn affected
+    if crossbar_log_lvl == 'warning':
+        crossbar_log_lvl = 'warn'
+
     txaio.set_global_log_level(crossbar_log_lvl)
 
 
