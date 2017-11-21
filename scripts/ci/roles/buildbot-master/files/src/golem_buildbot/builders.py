@@ -130,6 +130,8 @@ class StepsFactory(object):
         install_req_cmd = self.pip_command + ['install', '-r',
                                               'requirements-test.txt']
 
+        gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
+
         # Since test-daemons are running commands should not halt on failure.
         return steps.ShellSequence(
             name='run tests',
@@ -143,7 +145,8 @@ class StepsFactory(object):
                     logfile='install missing requirement',
                     haltOnFailure=True,
                     command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                'codecov', 'pytest-cov']),
+                                                'codecov', 'pytest-cov',
+                                                gitpy_repo]),
                 util.ShellArg(
                     logfile='prepare for test',
                     haltOnFailure=True,
