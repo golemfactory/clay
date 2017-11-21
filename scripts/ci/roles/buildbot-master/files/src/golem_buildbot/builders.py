@@ -223,6 +223,20 @@ class WindowsStepsFactory(StepsFactory):
                 'VIRTUAL_ENV': self.venv_path,
             })
 
+    @staticmethod
+    def daemon_start_step():
+        return steps.ShellCommand(
+            name='start hyperg',
+            haltOnFailure=True,
+            command=['powershell.exe', r'scripts\test-daemon-start.ps1'])
+
+    @staticmethod
+    def daemon_stop_step():
+        return steps.ShellCommand(
+            name='stop hyperg',
+            haltOnFailure=True,
+            command=['powershell.exe', r'scripts\test-daemon-stop.ps1'])
+
 
 class LinuxStepsFactory(StepsFactory):
     pass
@@ -251,6 +265,8 @@ builders = [
                        factory=WindowsStepsFactory().test_factory(),
                        env={
                            'APPVEYOR': 'TRUE',
+                           'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
+                                    'C:\\BuildResources\\geth-windows-amd64-1.7.2-1db4ecdc']
                        }),
     util.BuilderConfig(name="buildpackage_windows",
                        workernames=["windows_server_2016"],
