@@ -602,7 +602,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
-        client_options = msg.options
+
+        # Prefer known client options to ones provided in the message
+        client_options = self.task_server.get_download_options(self.key_id)
+        if not (client_options.options and client_options.options.get('peers')):
+            client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
