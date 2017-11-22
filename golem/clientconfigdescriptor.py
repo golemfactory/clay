@@ -33,6 +33,7 @@ class ClientConfigDescriptor(object):
         self.p2p_session_timeout = 0
         self.task_session_timeout = 0
         self.resource_session_timeout = 0
+        self.clean_resources_older_than_seconds = 0
 
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
