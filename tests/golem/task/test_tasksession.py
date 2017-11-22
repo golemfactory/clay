@@ -524,8 +524,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         client = 'test_client'
         version = 1.0
         peers = [{'TCP': ('127.0.0.1', 3282)}]
+        client_options = ClientOptions(client, version,
+                                       options={'peers': peers})
         msg = message.MessageResourceList(resources=[['1'], ['2']],
-                                          options={'peers': peers})
+                                          options=client_options)
 
         # Use locally saved hyperdrive client options
         self.task_session._react_to_resource_list(msg)
@@ -543,7 +545,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         call_options = task_server.pull_resources.call_args[1]
 
         assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options']['peers'] == peers
+        assert call_options['client_options'].options['peers'] == peers
 
 
 class TestSessionWithDB(testutils.DatabaseFixture):
