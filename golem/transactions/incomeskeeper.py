@@ -113,10 +113,19 @@ class IncomesKeeper(object):
     def get_list_of_all_incomes(self):
         # TODO: pagination
         return (
-            ExpectedIncome.select(ExpectedIncome, Income)
-            .join(Income, peewee.JOIN_LEFT_OUTER, on=(
-                (ExpectedIncome.subtask == Income.subtask) &
-                (ExpectedIncome.sender_node == Income.sender_node)
-            ))
-            .order_by(ExpectedIncome.created_date.desc())
-        )
+            ExpectedIncome.select(
+                ExpectedIncome.sender_node,
+                ExpectedIncome.task,
+                ExpectedIncome.subtask,
+                peewee.SQL("NULL as 'transaction'"),
+                peewee.SQL("NULL as 'block_number'"),
+                ExpectedIncome.value
+            ) | Income.select(
+                Income.sender_node,
+                Income.task,
+                Income.subtask,
+                Income.transaction,
+                Income.block_number,
+                Income.value
+            )
+        ).select().execute()
