@@ -7,6 +7,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
+    EMPTY_FINISHED_SUMMARY
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
@@ -28,6 +30,11 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         monitor.on_income("different address", 319031904194810)
         monitor.on_peer_snapshot([{"node_id": "firt node", "port": 19301},
                                   {"node_id": "second node", "port": 3193}])
+        monitor.on_requestor_stats_snapshot(CurrentStats(1,0,1,0,0,0,0,0,1),
+                                            FinishedTasksStats(
+                                                EMPTY_FINISHED_SUMMARY,
+                                                EMPTY_FINISHED_SUMMARY,
+                                                EMPTY_FINISHED_SUMMARY))
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ccd)
