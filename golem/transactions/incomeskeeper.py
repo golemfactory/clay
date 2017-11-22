@@ -65,12 +65,10 @@ class IncomesKeeper(object):
                 expected_income.delete_instance()
 
         except ExpectedIncome.DoesNotExist:
-            logger.info("Unexpected income received :) "
-                        "(%r, %r, %r, %r) ",
-                        sender_node_id,
-                        task_id,
-                        subtask_id,
-                        value)
+            logger.info("ExpectedIncome.DoesNotExist "
+                        "(sender_node_id %r task_id %r, "
+                        "subtask_id %r, value %r) ",
+                        sender_node_id, task_id, subtask_id, value)
 
         try:
             with db.transaction():

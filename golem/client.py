@@ -178,7 +178,6 @@ class Client(HardwarePresetsMixin):
 
         self.rpc_publisher = None
 
-        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
@@ -657,6 +656,7 @@ class Client(HardwarePresetsMixin):
     def get_task_count(self):
         if self.task_server:
             return len(self.task_server.task_keeper.get_all_tasks())
+        return 0
 
     def get_task(self, task_id):
         return self.task_server.task_manager.get_task_dict(task_id)
@@ -695,6 +695,7 @@ class Client(HardwarePresetsMixin):
     def get_supported_task_count(self) -> int:
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
+        return 0
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -712,7 +713,7 @@ class Client(HardwarePresetsMixin):
     def get_task_computer_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
-        return 0
+        return None, None
 
     @inlineCallbacks
     def get_balance(self):
@@ -762,28 +763,6 @@ class Client(HardwarePresetsMixin):
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
-
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id):
-        self.p2pservice.inform_about_task_nat_hole(
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-        )
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(
-            key_id,
-            res_key_id,
-            conn_id
-        )
 
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):

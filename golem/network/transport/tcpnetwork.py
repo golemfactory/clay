@@ -643,27 +643,6 @@ class FilesProtocol(SafeProtocol):
         return len(data) >= LONG_STANDARD_SIZE
 
 
-class MidAndFilesProtocol(FilesProtocol):
-    """ Connection-oriented protocol for twisted. In the Middleman mode pass message to session without
-    decrypting or deserializing it. In normal mode allows to send messages (support for message serialization)
-    encryption, decryption and signing), files or stream data."""
-    def _interpret(self, data):
-        if self.session.is_middleman:
-            self.session.last_message_time = time.time()
-            with self.lock:
-                self.db.append_bytes(data)
-                messages = self.db.read_all()
-            self.session.interpret(messages)
-        else:
-            FilesProtocol._interpret(self, data)
-
-    ############################
-    def _prepare_msg_to_send(self, msg):
-        if self.session.is_middleman:
-            return msg
-        else:
-            return FilesProtocol._prepare_msg_to_send(self, msg)
-
 #############
 # Producers #
 #############
