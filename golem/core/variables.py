@@ -38,13 +38,14 @@ TASK_HEADERS_LIMIT = 20
 ###############
 # FIXME: If import by reference is required, simple dict should be preferred
 #       over class container.
+# FIXME: Unify P2P_ID and TASK_ID #1692
 class PROTOCOL_CONST(object):
     """
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules #noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules #noqa
     """
-    P2P_ID = 15
-    TASK_ID = 16
+    P2P_ID = 16
+    TASK_ID = 17
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):

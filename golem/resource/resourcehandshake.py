@@ -1,6 +1,6 @@
 from golem_messages.message import MessageWantToComputeTask, \
     MessageResourceHandshakeVerdict, MessageResourceHandshakeNonce, \
-    MessageResourceHandshakeStart
+    MessageResourceHandshakeStart, MessageDisconnect
 import logging
 import os
 import uuid
@@ -58,8 +58,6 @@ class ResourceHandshakeSessionMixin:
 
     HANDSHAKE_TIMEOUT = 20  # s
     NONCE_TASK = 'nonce'
-
-    DCRResourceHandshakeFailure = 'Resource handshake failure'
 
     def __init__(self):
         self.key_id = 0
@@ -147,7 +145,7 @@ class ResourceHandshakeSessionMixin:
             self._finalize_handshake(key_id)
         else:
             self._handshake_error(key_id, 'handshake not started')
-            self.disconnect(self.DCRResourceHandshakeTimeout)
+            self.disconnect(MessageDisconnect.REASON.ResourceHandshakeTimeout)
 
     # ########################
     #     START HANDSHAKE

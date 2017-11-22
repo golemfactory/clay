@@ -1,4 +1,5 @@
 import functools
+from golem_messages import message
 import logging
 import os
 import struct
@@ -418,11 +419,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
+        reasons = message.MessageCannotAssignTask.REASON
         if wrong_task:
             self.send(
                 message.MessageCannotAssignTask(
                     task_id=msg.task_id,
-                    reason="Not my task  {}".format(msg.task_id)
+                    reason=reasons.NotMyTask,
                 )
             )
             self.dropped()
@@ -434,7 +436,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.send(
                 message.MessageCannotAssignTask(
                     task_id=msg.task_id,
-                    reason="No more subtasks in {}".format(msg.task_id)
+                    reason=reasons.NoMoreSubtasks,
                 )
             )
             self.dropped()
@@ -461,7 +463,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
         if not self.msgs_to_send:
-            self.disconnect(self.DCRNoMoreMessages)
+            self.disconnect(message.MessageDisconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
@@ -611,7 +613,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.verify(msg):
             logger.info("Wrong signature for Hello msg")
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return
 
         if msg.proto_id != PROTOCOL_CONST.TASK_ID:
@@ -620,7 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.proto_id,
                 PROTOCOL_CONST.TASK_ID
             )
-            self.disconnect(TaskSession.DCRProtocolVersion)
+            self.disconnect(message.MessageDisconnect.REASON.ProtocolVersion)
             return
 
         if send_hello:
@@ -638,7 +640,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.send(msg)
             self.msgs_to_send = []
         else:
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
@@ -700,26 +702,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _check_ctd_params(self, ctd):
+        reasons = message.MessageCannotComputeTask.REASON
         if not isinstance(ctd, ComputeTaskDef):
-            self.err_msg = "Received task is not a ComputeTaskDef instance"
+            self.err_msg = reasons.WrongCTD
+            # FIXME: Should be neforced in deserialization of taskmsg
             return False
         if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
-            self.err_msg = "Wrong key_id"
+            self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
                 ctd.return_address,
                 ctd.return_port
                 ):
-            self.err_msg = "Wrong return address {}:{}"\
-                .format(ctd.return_address, ctd.return_port)
+            self.err_msg = reasons.WrongAddress
             return False
         return True
 
     def _set_env_params(self, ctd):
         environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
         env = self.task_server.get_environment_by_id(environment)
+        reasons = message.MessageCannotComputeTask.REASON
         if not env:
-            self.err_msg = "Wrong environment {}".format(environment)
+            self.err_msg = reasons.WrongEnvironment
             return False
 
         if isinstance(env, DockerEnvironment):
@@ -730,8 +734,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd.src_code = env.get_source_code()
 
         if not ctd.src_code:
-            self.err_msg = "No source code for environment {}"\
-                .format(environment)
+            self.err_msg = reasons.NoSourceCode
             return False
 
         return True
@@ -743,7 +746,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     ctd.docker_images = [image]
                     return True
 
-        self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
+        reasons = message.MessageCannotComputeTask.REASON
+        self.err_msg = reasons.WrongDockerImages
         return False
 
     def __send_delta_resource(self, msg):

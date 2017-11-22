@@ -1,3 +1,4 @@
+from golem_messages import message
 import os
 import pickle
 import random
@@ -136,11 +137,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertIsInstance(ms, message.MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
-        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask("CTD"))
+        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask(message.MessageCannotComputeTask.REASON.WrongCTD))
         assert ts2.task_manager.task_computation_failure.called
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
-        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask("CTD"))
+        ts2._react_to_cannot_compute_task(message.MessageCannotComputeTask(message.MessageCannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
     def test_send_report_computed_task(self):
@@ -204,11 +205,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         ts.verify = create_verify(False)
         ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(TaskSession.DCRUnverified)
+        ts.disconnect.assert_called_with(
+            message.MessageDisconnect.REASON.Unverified)
 
         ts.verify = create_verify(True)
         ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(TaskSession.DCRProtocolVersion)
+        ts.disconnect.assert_called_with(
+            message.MessageDisconnect.REASON.ProtocolVersion)
 
         msg.proto_id = PROTOCOL_CONST.TASK_ID
 
@@ -311,6 +314,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
+        reasons = message.MessageCannotComputeTask.REASON
+
         def __reset_mocks():
             ts.task_manager.reset_mock()
             ts.task_computer.reset_mock()
@@ -405,7 +410,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("Wrong environment")
+        assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -419,7 +424,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                 DockerImage("dockerix/xiii")
             ])
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("Wrong docker images")
+        assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -433,7 +438,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ])
         ts.task_server.get_environment_by_id.return_value = de
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("No source code")
+        assert ts.err_msg == reasons.NoSourceCode
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
