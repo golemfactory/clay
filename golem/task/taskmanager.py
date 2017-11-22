@@ -19,6 +19,7 @@ from golem.task.taskbase import TaskEventListener, Task, \
     ResourceType
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.taskrequestorstats import RequestorTaskStatsManager
 
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, TaskOp
@@ -104,6 +105,8 @@ class TaskManager(TaskEventListener):
             tasks_dir,
             persist=self.task_persistence,
         )
+
+        self.requestor_stats_manager = RequestorTaskStatsManager()
 
         if self.task_persistence:
             self.restore_tasks()
