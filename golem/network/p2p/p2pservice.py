@@ -1,4 +1,5 @@
 from collections import deque
+from golem_messages import message
 import ipaddress
 import logging
 import random
@@ -175,7 +176,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if self.active:
             session.start()
         else:
-            session.disconnect(PeerSession.DCRNoMoreMessages)
+            session.disconnect(
+                message.MessageDisconnect.REASON.NoMoreMessages
+            )
 
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False
@@ -945,7 +948,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             delta = time.time() - peer.last_message_time
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
-                peer.disconnect(PeerSession.DCRTimeout)
+                peer.disconnect(
+                    message.MessageDisconnect.REASON.Timeout
+                )
 
     def __refresh_old_peers(self):
         cur_time = time.time()
@@ -955,7 +960,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer_id = random.choice(list(self.peers.keys()))
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
-                peer.disconnect(PeerSession.DCRRefresh)
+                peer.disconnect(
+                    message.MessageDisconnect.REASON.Refresh
+                )
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():

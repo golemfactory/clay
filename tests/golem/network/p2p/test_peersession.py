@@ -108,12 +108,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         peer_session.verify = create_verify(False)
         peer_session._react_to_hello(msg)
-        peer_session.disconnect.assert_called_with(PeerSession.DCRUnverified)
+        peer_session.disconnect.assert_called_with(
+            message.MessageDisconnect.REASON.Unverified)
 
         peer_session.verify = create_verify(True)
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
-            PeerSession.DCRProtocolVersion)
+            message.MessageDisconnect.REASON.ProtocolVersion)
 
         msg.proto_id = PROTOCOL_CONST.P2P_ID
 
@@ -127,7 +128,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
-            PeerSession.DCRDuplicatePeers)
+            message.MessageDisconnect.REASON.DuplicatePeers)
 
     @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
     def test_react_to_hello_new_version(self, m_verify):
@@ -201,17 +202,20 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.conn = mock.Mock()
 
         peer_session.conn.opened = False
-        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        peer_session.disconnect(
+            message.MessageDisconnect.REASON.ProtocolVersion)
         assert not peer_session.dropped.called
         assert not peer_session.send.called
 
         peer_session.conn.opened = True
-        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        peer_session.disconnect(
+            message.MessageDisconnect.REASON.ProtocolVersion)
         assert peer_session.dropped.called
         assert peer_session.send.called
 
         peer_session.send.called = False
-        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        peer_session.disconnect(
+            message.MessageDisconnect.REASON.ProtocolVersion)
         assert not peer_session.send.called
 
     def test_dropped(self):

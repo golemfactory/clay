@@ -51,11 +51,6 @@ class PeerSession(BasicSafeSession):
 
     ConnectionStateType = SafeProtocol
 
-    # Disconnect reason
-    DCRDuplicatePeers = "Duplicate peers"
-    DCRTooManyPeers = "Too many peers"
-    DCRRefresh = "Refresh"
-
     def __init__(self, conn):
         """
         Create new session
@@ -329,7 +324,9 @@ class PeerSession(BasicSafeSession):
                 self.address,
                 self.port
             )
-            self.disconnect(PeerSession.DCRUnverified)
+            self.disconnect(
+                message.MessageDisconnect.REASON.Unverified
+            )
             return
 
         # Check if sender is a seed/bootstrap node
@@ -345,7 +342,9 @@ class PeerSession(BasicSafeSession):
                 self.address,
                 self.port
             )
-            self.disconnect(PeerSession.DCRProtocolVersion)
+            self.disconnect(
+                message.MessageDisconnect.REASON.ProtocolVersion
+            )
             return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
@@ -359,7 +358,9 @@ class PeerSession(BasicSafeSession):
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
-            self.disconnect(PeerSession.DCRTooManyPeers)
+            self.disconnect(
+                message.MessageDisconnect.REASON.TooManyPeers
+            )
 
             self.p2p_service.try_to_add_peer({"address": self.address,
                                               "port": msg.port,
@@ -382,7 +383,9 @@ class PeerSession(BasicSafeSession):
                     msg.node_name,
                     msg.port
                 )
-                self.disconnect(PeerSession.DCRDuplicatePeers)
+                self.disconnect(
+                    message.MessageDisconnect.REASON.DuplicatePeers
+                )
                 return
 
             if solve_challenge and not self.verified:
@@ -434,7 +437,9 @@ class PeerSession(BasicSafeSession):
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
-                self.disconnect(PeerSession.DCRBadProtocol)
+                self.disconnect(
+                    message.MessageDisconnect.REASON.BadProtocol
+                )
 
     def _react_to_remove_task(self, msg):
         self.p2p_service.remove_task_header(msg.task_id)
@@ -471,11 +476,15 @@ class PeerSession(BasicSafeSession):
         if self.rand_val == msg.rand_val:
             self.__set_verified_conn()
         else:
-            self.disconnect(PeerSession.DCRUnverified)
+            self.disconnect(
+                message.MessageDisconnect.REASON.Unverified
+            )
 
     def _react_to_challenge_solution(self, msg):
         if not self.solve_challenge:
-            self.disconnect(PeerSession.DCRBadProtocol)
+            self.disconnect(
+                message.MessageDisconnect.REASON.BadProtocol
+            )
             return
         good_solution = self.p2p_service.check_solution(
             msg.solution,
@@ -486,7 +495,9 @@ class PeerSession(BasicSafeSession):
             self.__set_verified_conn()
             self.solve_challenge = False
         else:
-            self.disconnect(PeerSession.DCRUnverified)
+            self.disconnect(
+                message.MessageDisconnect.REASON.Unverified
+            )
 
     def _react_to_want_to_start_task_session(self, msg):
         self.p2p_service.peer_want_task_session(
