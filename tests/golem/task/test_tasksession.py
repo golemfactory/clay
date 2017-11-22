@@ -314,6 +314,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
+        reasons = message.MessageCannotComputeTask.REASON
+
         def __reset_mocks():
             ts.task_manager.reset_mock()
             ts.task_computer.reset_mock()
@@ -408,7 +410,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("Wrong environment")
+        assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -422,7 +424,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                 DockerImage("dockerix/xiii")
             ])
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("Wrong docker images")
+        assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -436,7 +438,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ])
         ts.task_server.get_environment_by_id.return_value = de
         ts._react_to_task_to_compute(message.MessageTaskToCompute(ctd))
-        assert ts.err_msg.startswith("No source code")
+        assert ts.err_msg == reasons.NoSourceCode
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
