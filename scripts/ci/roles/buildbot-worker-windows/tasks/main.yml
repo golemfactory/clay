@@ -115,13 +115,50 @@
     force: no
   when: not geth_exists.stat.exists
 
-
 - name: unzip geth for the build tasks
   win_unzip:
     src: C:\BuildResources\geth-windows-amd64-1.7.2-1db4ecdc.zip
     dest: C:\BuildResources
     delete_archive: yes
   when: not geth_exists.stat.exists
+
+
+- name: check if electron installed
+  win_stat:
+    path: C:\BuildResources\win-unpacked
+  register: electron_exists
+
+- name: download electron for the build tasks
+  win_get_url:
+    url: https://github.com/golemfactory/golem-electron/releases/download/0.1.4/win-unpacked.zip
+    dest: C:\BuildResources\win-unpacked.zip
+    force: no
+  when: not electron_exists.stat.exists
+
+- name: unzip electron for the build tasks
+  win_unzip:
+    src: C:\BuildResources\win-unpacked.zip
+    dest: C:\BuildResources
+    delete_archive: yes
+  when: not electron_exists.stat.exists
+
+
+- name: download docker_toolbox for the build tasks
+  win_get_url:
+    url: https://download.docker.com/win/stable/DockerToolbox.exe
+    dest: C:\BuildResources\DockerToolbox.exe
+    force: no
+  args:
+    creates: C:\BuildResources\DockerToolbox.exe
+
+
+- name: download vc_redist for the build tasks
+  win_get_url:
+    url: https://download.microsoft.com/download/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe
+    dest: C:\BuildResources\vc_redist.x64.exe
+    force: no
+  args:
+    creates: C:\BuildResources\vc_redist.x64.exe
 
 
 - name: check if service is created
