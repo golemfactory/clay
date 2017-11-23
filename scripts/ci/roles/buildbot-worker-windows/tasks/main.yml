@@ -15,6 +15,7 @@
     - name: visualstudio2017-workload-nativedesktop
       params: "--includeOptional"
     - name: microsoft-visual-cpp-build-tools
+    - name: innosetup
 
 
 - name: install pypiwin32

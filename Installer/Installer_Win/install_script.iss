@@ -11,7 +11,6 @@
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://github.com/docker/toolbox/releases/download/v17.06.2-ce/DockerToolbox-17.06.2-ce.exe DockerToolbox.exe
 #define Repository "C:\BuildbotWorker\buildpackage_windows\build"
-#define BuildResources "C:\BuildResources"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")

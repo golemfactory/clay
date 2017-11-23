@@ -44,7 +44,7 @@ class StepsFactory(object):
 
     def requirements_step(self):
         gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
-        install_req_cmd = self.pip_command + ['install', gitpy_repo]
+        install_req_cmd = self.pip_command + ['install']
         for rf in self.requirements_files:
             install_req_cmd.append('-r')
             install_req_cmd.append(rf)
@@ -69,6 +69,10 @@ class StepsFactory(object):
                     logfile='uninstall enum34',
                     haltOnFailure=True,
                     command=self.pip_command + ['uninstall', '-y', 'enum34']),
+                util.ShellArg(
+                    logfile='install missing requirements',
+                    haltOnFailure=True,
+                    command=self.pip_command + ['install', gitpy_repo]),
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for readline
@@ -131,8 +135,6 @@ class StepsFactory(object):
     def test_step(self):
         install_req_cmd = self.pip_command + ['install', '-r',
                                               'requirements-test.txt']
-
-        gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
 
         # Since test-daemons are running commands should not halt on failure.
         return steps.ShellSequence(
@@ -202,6 +204,7 @@ class WindowsStepsFactory(StepsFactory):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
+        factory.addStep(self.create_installer_step())
         factory.addStep(self.file_upload_step())
         return factory
 
@@ -240,6 +243,13 @@ class WindowsStepsFactory(StepsFactory):
             name='stop hyperg',
             haltOnFailure=True,
             command=['powershell.exe', r'scripts\test-daemon-stop.ps1'])
+
+    @staticmethod
+    def create_installer_step():
+        return steps.ShellCommand(
+            name='install pywin32',
+            haltOnFailure=True,
+            command=['iscc', r'Installer\Installer_Win\install_script.iss'])
 
 
 class LinuxStepsFactory(StepsFactory):
