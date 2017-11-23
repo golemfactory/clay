@@ -1,3 +1,4 @@
+import golem_messages.message
 import logging
 import math
 import pathlib
@@ -11,7 +12,7 @@ from semantic_version import Version
 from golem.core import common
 from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
-from .taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -42,8 +43,8 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], ComputeTaskDef):
-        task_id = args[1].task_id
+    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+        task_id = args[1]['task_id']
     else:
         task_id = args[1]
     logger.warning("This is not my task {}".format(task_id))
@@ -88,7 +89,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError):
+            except (pickle.UnpicklingError, EOFError, AttributeError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -120,14 +121,15 @@ class CompTaskKeeper:
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
-        task = self.active_tasks[comp_task_def.task_id]
+        task = self.active_tasks[comp_task_def['task_id']]
         if not task.requests > 0:
             return
-        if comp_task_def.subtask_id in task.subtasks:
+        if comp_task_def['subtask_id'] in task.subtasks:
             return
         task.requests -= 1
-        task.subtasks[comp_task_def.subtask_id] = comp_task_def
-        self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
+        self.subtask_to_task[comp_task_def['subtask_id']] =\
+            comp_task_def['task_id']
         self.dump()
         return True
 

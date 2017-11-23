@@ -1,4 +1,5 @@
 import datetime
+from golem_messages.message import ComputeTaskDef
 import os
 import random
 import uuid
@@ -16,7 +17,7 @@ from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
-from golem.task.taskbase import ComputeTaskDef, TaskHeader, ResultType
+from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -49,8 +50,10 @@ def get_mock_task(task_id, subtask_id):
     task_mock.header = TaskHeader.from_dict(get_example_task_header())
     task_mock.header.task_id = task_id
     task_mock.header.max_price = 1010
-    task_mock.query_extra_data.return_value.ctd.task_id = task_id
-    task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+    task_mock.query_extra_data.return_value.ctd= ComputeTaskDef(
+        task_id=task_id,
+        subtask_id=subtask_id,
+    )
     return task_mock
 
 
@@ -153,14 +156,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
-        ctd.task_id = "xyz"
-        ctd.subtask_id = "xxyyzz"
+        ctd['task_id'] = "xyz"
+        ctd['subtask_id'] = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
         model.ExpectedIncome.create(
             sender_node="key",
             sender_node_details=None,
-            task=ctd.task_id,
-            subtask=ctd.subtask_id,
+            task=ctd['task_id'],
+            subtask=ctd['subtask_id'],
             value=1
         )
 
@@ -795,9 +798,9 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-        extra_data.ctd.environment = "DEFAULT"
+        extra_data.ctd['task_id'] = "xyz"
+        extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['environment'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
@@ -835,9 +838,9 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-        extra_data.ctd.environment = "DEFAULT"
+        extra_data.ctd['task_id'] = "xyz"
+        extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['environment'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")

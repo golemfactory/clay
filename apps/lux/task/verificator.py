@@ -143,7 +143,7 @@ class LuxRenderVerificator(RenderingVerificator):
     def query_extra_data_for_advanced_verification(self, new_flm):
         files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
         merge_ctd = deepcopy(self.merge_ctd)
-        merge_ctd.extra_data['flm_files'] = files
+        merge_ctd['extra_data']['flm_files'] = files
         return merge_ctd
 
     def merge_flm_files(self, new_flm, task, output):

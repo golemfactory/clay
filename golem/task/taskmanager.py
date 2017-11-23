@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import logging
 import pickle
 import time
@@ -13,7 +14,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, \
+from golem.task.taskbase import TaskEventListener, Task, \
     ResourceType
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
@@ -317,29 +318,30 @@ class TaskManager(TaskEventListener):
         ctd = extra_data.ctd
 
         def check_compute_task_def():
-            if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+            if not isinstance(ctd, ComputeTaskDef) or not ctd['subtask_id']:
                 logger.debug('check ctd: ctd not instance or not subtask_id')
                 return False
-            if task_id != ctd.task_id\
-                    or ctd.subtask_id in self.subtask2task_mapping:
+            if task_id != ctd['task_id']\
+                    or ctd['subtask_id'] in self.subtask2task_mapping:
                 logger.debug(
                     'check ctd: %r != %r or %r in self.subtask2task_maping',
-                    task_id, ctd.task_id, ctd.subtask_id,
+                    task_id, ctd['task_id'], ctd['subtask_id'],
                 )
                 return False
-            if ctd.subtask_id in self.tasks_states[ctd.task_id].subtask_states:
+            if (ctd['subtask_id'] in self.tasks_states[ctd['task_id']].
+                    subtask_states):
                 logger.debug('check ctd: subtask_states')
                 return False
             return True
         if not check_compute_task_def():
             return None, False, False
 
-        ctd.key_id = task.header.task_owner_key_id
-        ctd.return_address = task.header.task_owner_address
-        ctd.return_port = task.header.task_owner_port
-        ctd.task_owner = task.header.task_owner
+        ctd['key_id'] = task.header.task_owner_key_id
+        ctd['return_address'] = task.header.task_owner_address
+        ctd['return_port'] = task.header.task_owner_port
+        ctd['task_owner'] = task.header.task_owner
 
-        self.subtask2task_mapping[ctd.subtask_id] = task_id
+        self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, price, ctd, address,
         )
@@ -758,24 +760,25 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
                      node_name, node_id, comp_price, ctd, address)
 
-        price = self.tasks[ctd.task_id].header.max_price
+        price = self.tasks[ctd['task_id']].header.max_price
 
         ss = SubtaskState()
         ss.computer.node_id = node_id
         ss.computer.node_name = node_name
-        ss.computer.performance = ctd.performance
+        ss.computer.performance = ctd['performance']
         ss.computer.ip_address = address
         ss.computer.price = price
         ss.time_started = time.time()
-        ss.deadline = ctd.deadline
+        ss.deadline = ctd['deadline']
         # TODO: read node ip address
-        ss.subtask_definition = ctd.short_description
-        ss.subtask_id = ctd.subtask_id
-        ss.extra_data = ctd.extra_data
+        ss.subtask_definition = ctd['short_description']
+        ss.subtask_id = ctd['subtask_id']
+        ss.extra_data = ctd['extra_data']
         ss.subtask_status = TaskStatus.starting
         ss.value = 0
 
-        self.tasks_states[ctd.task_id].subtask_states[ctd.subtask_id] = ss
+        (self.tasks_states[ctd['task_id']].
+            subtask_states[ctd['subtask_id']]) = ss
 
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)
