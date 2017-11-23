@@ -115,13 +115,17 @@ class BlenderVerificator(FrameRenderingVerificator):
                 "--rendered_scene " + file_for_verification + " " \
                 "--name_of_excel_file wynik_liczby"  # noqa
 
-            c = subprocess.run(
+            process = subprocess.run(
                 shlex.split(cmd),
                 stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
 
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-            stdout = c.stdout.decode()
+            stdout = process.stdout.decode()
             print(stdout)
+
+            if process.returncode == 0:
+                self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+
+
         except subprocess.CalledProcessError as e:
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
             logger.warning("Subtask %s verification failed %s: ",
