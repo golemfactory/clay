@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 import math
 import os
@@ -124,7 +125,8 @@ class EllipticalKeysAuth:
         if loaded_keys:
             priv_key, pub_key = loaded_keys
         else:
-            logger.info("Creating new key pair.")
+            logger.info("Backing up existing keys and creating new key pair.")
+            EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
             priv_key, pub_key = \
                 EllipticalKeysAuth._generate_new_keys(difficulty)
 
@@ -137,6 +139,23 @@ class EllipticalKeysAuth:
 
         if not loaded_keys:
             self._save_keys()
+
+    @staticmethod
+    def _backup_keys(
+            private_key_loc: str,
+            public_key_loc: str):
+
+        def backup_file(path, date):
+            if os.path.exists(path):
+                dirname, basename = os.path.split(path)
+                dest_path = os.path.join(
+                    dirname, basename.replace('.', '_') + '_' + date + '.bak')
+                os.rename(path, dest_path)
+
+        # Windows doesn't like ':' in filenames
+        date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
+        backup_file(private_key_loc, date)
+        backup_file(public_key_loc, date)
 
     @staticmethod
     def _load_and_check_keys(
@@ -288,6 +307,8 @@ class EllipticalKeysAuth:
         """
         priv_key, pub_key = self._generate_new_keys(difficulty)
         self._set_keys(priv_key, pub_key)
+        EllipticalKeysAuth._backup_keys(
+            self._private_key_loc, self._public_key_loc)
         self._save_keys()
 
     def get_difficulty(self, key_id: Optional[str] = None) -> float:
@@ -316,6 +337,8 @@ class EllipticalKeysAuth:
             return False
 
         self._set_keys(*keys)
+        EllipticalKeysAuth._backup_keys(
+            self._private_key_loc, self._public_key_loc)
         self._save_keys()
         return True
 

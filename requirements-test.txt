@@ -1,3 +1,4 @@
+freezegun
 mock
 pytest
 pytest-cov

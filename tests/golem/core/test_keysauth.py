@@ -1,9 +1,12 @@
 from golem_messages import message
+import os
 from os import makedirs, path
 from random import random, randint
 import time
 import unittest
 from unittest.mock import patch
+
+from freezegun import freeze_time
 
 from golem import testutils
 from golem.core.crypto import ECCx
@@ -143,6 +146,40 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         assert priv_key == ek2._private_key
         assert pub_key == ek2.public_key
         assert not logger.warning.called
+
+    @freeze_time("2017-11-23 11:40:27.767804")
+    def test_backup_keys_with_no_keys(self):
+        private_key_loc = path.join(self.path, "priv")
+        public_key_loc = path.join(self.path, "pub")
+
+        # given
+        assert os.listdir(self.path) == []  # empty dir
+
+        # when
+        EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
+
+        # then
+        assert os.listdir(self.path) == []  # it stays empty
+
+    @freeze_time("2017-11-23 11:40:27.767804")
+    def test_backup_keys(self):
+        private_key_loc = path.join(self.path, "priv")
+        public_key_loc = path.join(self.path, "pub")
+
+        # given
+        with open(private_key_loc, 'w') as f:
+            f.write("foo")
+        with open(public_key_loc, 'w') as f:
+            f.write("bar")
+
+        # when
+        EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
+
+        # then
+        assert os.listdir(self.path) == [
+            "priv_2017-11-23_11-40-27_767804.bak",
+            "pub_2017-11-23_11-40-27_767804.bak",
+        ]
 
     def test_sign_verify_elliptical(self):
         ek = EllipticalKeysAuth(self.path)
