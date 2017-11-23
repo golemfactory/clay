@@ -34,7 +34,6 @@ pydispatcher
 Crypto
 scrypt
 packaging
-pyreadline
 pytest>=3.0.5
 GitPython>=2.1.0
 semantic_version
