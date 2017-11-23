@@ -66,7 +66,8 @@
     src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_linux-x64.tar.gz
     dest: /opt
     remote_src: yes
-  creates: /opt/hyperg
+  args:
+    creates: /opt/hyperg
 
 
 - name: Link hyperg
@@ -105,7 +106,6 @@
     - autoconf
     - libgmp-dev
     - libtool
-    - qt5-default
     - libffi-dev
     - libgtk2.0-0
     - libxss1

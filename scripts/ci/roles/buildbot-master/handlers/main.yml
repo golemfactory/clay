@@ -1,6 +1,6 @@
 - name: reconfigure buildbot
   become_user: buildbot
-  command: /var/lib/virtualenv/buildbot-master/bin/buildbot reconfig /home/buildbot/master
+  command: /var/lib/virtualenv/buildbot-master/bin/buildbot restart --clean /home/buildbot/master
 
 
 - name: restart buildbot master service

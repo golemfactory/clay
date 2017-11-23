@@ -55,7 +55,8 @@
     remote_src: yes
     src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_darwin-x64.tar.gz
     dest: /usr/local/share/
-  creates: /usr/local/share/hyperg
+  args:
+    creates: /usr/local/share/hyperg
 
 
 - name: Link hyperg
@@ -88,9 +89,9 @@
   become_user: buildbot-worker
   become: yes
   pip:
-    executable: pip3
     name: buildbot-worker
     virtualenv: /Users/buildbot-worker/.venv
+    virtualenv_command: /usr/bin/python3 -m venv
 
 # # TODO: master address will not be updated once configuration is generated
 - name: initialized workspace for the worker

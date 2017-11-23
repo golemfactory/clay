@@ -25,6 +25,7 @@ class StepsFactory(object):
         factory.addStep(self.git_step())
         factory.addStep(self.venv_step())
         factory.addStep(self.requirements_step())
+        factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
         factory.addStep(self.file_upload_step())
         return factory
@@ -32,8 +33,8 @@ class StepsFactory(object):
     @staticmethod
     def git_step():
         return steps.Git(
-            repourl='https://github.com/golemfactory/golem.git',
-            mode='full', method='fresh', branch='mwu/linux_unit_test')
+            repourl='https://github.com/maaktweluit/golem.git',
+            mode='full', method='fresh', branch='mwu/bb-unit-test')
 
     def venv_step(self):
         return steps.ShellCommand(
@@ -42,7 +43,8 @@ class StepsFactory(object):
             command=self.venv_command + ['.venv'])
 
     def requirements_step(self):
-        install_req_cmd = self.pip_command + ['install']
+        gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
+        install_req_cmd = self.pip_command + ['install', gitpy_repo]
         for rf in self.requirements_files:
             install_req_cmd.append('-r')
             install_req_cmd.append(rf)
@@ -145,8 +147,7 @@ class StepsFactory(object):
                     logfile='install missing requirement',
                     haltOnFailure=True,
                     command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                'codecov', 'pytest-cov',
-                                                gitpy_repo]),
+                                                'codecov', 'pytest-cov']),
                 util.ShellArg(
                     logfile='prepare for test',
                     haltOnFailure=True,

@@ -28,9 +28,9 @@
 
 - name: install buildbot and its requirements
   pip:
-    executable: pip3
-    name: buildbot[bundle],requests,txrequests,lazy-reload
+    name: buildbot[bundle],requests,txrequests
     virtualenv: /var/lib/virtualenv/buildbot-master
+    virtualenv_command: /usr/bin/python3 -m venv
 
 
 - name: initialized workspace for the master

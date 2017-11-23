@@ -14,6 +14,7 @@
     - name: visualstudio2017community
     - name: visualstudio2017-workload-nativedesktop
       params: "--includeOptional"
+    - name: microsoft-visual-cpp-build-tools
 
 
 - name: install pypiwin32
@@ -21,6 +22,13 @@
   args:
     creates: C:\Python36\Scripts\pywin32_postinstall.py
   notify: pywin32 installed
+
+- name: Ensure that winpy wintypes36.dll is in PATH
+  win_path:
+    elements:
+      - 'C:\Python36\Lib\site-packages\pypiwin32_system32'
+      - 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin'
+
 
 - name: setup buildbot-worker user
   win_user:
@@ -45,6 +53,8 @@
 
 
 - name: create workspace for the buildbot worker
+  become: yes
+  become_user: buildbot-worker
   win_shell:
     py -3 C:\Python36\Scripts\buildbot-worker.exe create-worker
       C:\BuildbotWorker
@@ -120,7 +130,6 @@
 
 
 - name: create service for the buildbot worker
-  remote_user: buildbot-worker
   win_shell:
     py -2 C:\Python27\Scripts\buildbot_worker_windows_service.exe
       --user .\buildbot-worker
@@ -129,6 +138,46 @@
       --startup delayed
       install
   when: service_exists.rc == 1
+
+
+- name: check if worker started once
+  become: yes
+  become_user: buildbot-worker
+  ignore_errors: yes
+  win_stat:
+    path: C:\BuildbotWorker\twistd.log
+  register: log_exists
+
+
+- name: Start worker for first time
+  become: yes
+  become_user: buildbot-worker
+  win_shell:
+    Start-Process C:\Python36\Scripts\buildbot-worker.exe -ArgumentList "start","C:\BuildbotWorker"
+  when: not log_exists.exception and not log_exists.stat.exists
+
+- pause:
+    seconds: 10
+  when: not log_exists.exception and not log_exists.stat.exists
+
+
+- name: Stop worker for first time
+  become: yes
+  become_user: buildbot-worker
+  win_shell:
+    Stop-Process -name buildbot-worker
+  when: not log_exists.exception and not log_exists.stat.exists
+
+
+- name: set registry key right
+  win_acl:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\BuildBot
+    user: .\buildbot-worker
+    rights: FullControl
+    type: allow
+    state: present
+    inherit: ContainerInherit, ObjectInherit
+    propagation: 'None'
 
 
 - name: Create registry path BuildBot

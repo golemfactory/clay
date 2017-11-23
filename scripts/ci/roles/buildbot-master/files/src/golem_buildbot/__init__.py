@@ -18,6 +18,6 @@ BuildmasterConfig = {
     'buildbotURL': buildbot_host + '/buildbot/',
     'www': www,
     'db': {
-        'db_url' : 'sqlite:///state.sqlite',
+        'db_url': 'sqlite:///state.sqlite',
     },
 }
