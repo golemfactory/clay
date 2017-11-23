@@ -28,6 +28,49 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.docker_images = []
         self.verification_timeout = 0
 
+    def _blender_check(self, subtask_id: str, frames:list, parts: int,
+                       num_of_parts: int,
+                       resolution_x :int ,resolution_y: int,
+                       output_fomat: str, compositing: bool, timeout: int,
+                       reference_data, resources, results
+                       ):
+        """
+        :param subtask_id:
+        :param frames: list of ints
+        which frames should be rendered
+
+        :param parts: int
+        if there is only one frame than to how many parts it’s splitted
+        :param num_of_parts: int int
+        if there is only one frame, which part we should render
+
+        :param resolution_x:
+        :param resolution_y:
+        :param output_fomat:
+        Possible values: "PNG", "TGA", "EXR", "JPEG", "BMP"
+        :param compositing:
+        Is compositing turn on?
+        :param timeout:
+        How many seconds are to compute this task.
+	    If verification timeouts then it returns enum: NOT_SURE.
+
+        :param reference_data:
+        Path to files that were already present on the machine.
+        These files has been already produced by requestor for verification purpose.
+        If start_verification is used by Consent,
+        then it shall generate the reference_data by itself based on ‘resources’
+        :param resources:
+        Path to files that are present on the machine.
+        Should contain all the input resources used to produce a result.
+        :param results:
+        Path to files that have been already downloaded to this machine.
+        Should contain final images produced for this subtask info.
+        :return: None.
+        However an exception shall be thrown if there were problems during start
+        (ex. missing files, missing access, unknown subtask_type, too much overload)
+        """
+        pass
+
     def _check_files(self, subtask_id, subtask_info, tr_files,
                      task: 'blenderrendertask.BlenderRenderTask'):
         # First, assume it is wrong ;p
