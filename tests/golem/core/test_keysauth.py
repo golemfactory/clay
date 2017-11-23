@@ -75,7 +75,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
                            public_key_name=public_key_name)
 
         # then
-        assert logger.warning.called
+        assert logger.error.called
         with open(private_key_path, 'rb') as f:
             new_priv_key = f.read()
         assert len(new_priv_key) == EllipticalKeysAuth.PRIV_KEY_LEN
@@ -101,7 +101,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
                            public_key_name=public_key_name)
 
         # then
-        assert logger.warning.called
+        assert logger.error.called
         with open(public_key_path, 'rb') as f:
             new_pub_key = f.read()
         assert len(new_pub_key) == EllipticalKeysAuth.PUB_KEY_LEN

@@ -141,27 +141,37 @@ class EllipticalKeysAuth:
     @staticmethod
     def _load_and_check_keys(
             private_key_loc: str,
-            public_key_loc: str,
+            public_key_loc: Optional[str],
             difficulty: IntFloatT) \
             -> Optional[Tuple[bytes, bytes]]:
 
         try:
             with open(private_key_loc, 'rb') as f:
                 priv_key = f.read()
-            with open(public_key_loc, 'rb') as f:
-                pub_key = f.read()
+            pub_key = None
+            if public_key_loc:
+                with open(public_key_loc, 'rb') as f:
+                    pub_key = f.read()
         except FileNotFoundError:
             return None
 
         if not len(priv_key) == EllipticalKeysAuth.PRIV_KEY_LEN:
-            logger.warning("Unexpected private key size: %d. "
-                           "Will create new keys.", len(priv_key))
+            logger.error("Unexpected private key size: %d. "
+                         "Will create new keys.", len(priv_key))
             return None
 
-        if not len(pub_key) == EllipticalKeysAuth.PUB_KEY_LEN:
-            logger.warning("Unexpected public key size: %d. "
-                           "Will create new keys.", len(pub_key))
-            return None
+        if public_key_loc:
+            if not len(pub_key) == EllipticalKeysAuth.PUB_KEY_LEN:
+                logger.error("Unexpected public key size: %d. "
+                             "Will create new keys.", len(pub_key))
+                return None
+
+            if not privtopub(priv_key) == pub_key:
+                logger.error("Public key does not match private key."
+                             "Will create new keys.")
+                return None
+        else:
+            pub_key = privtopub(priv_key)
 
         if not EllipticalKeysAuth.is_pubkey_difficult(pub_key, difficulty):
             logger.warning("Current key is not difficult enough. "
@@ -299,15 +309,13 @@ class EllipticalKeysAuth:
         :param file_name: file containing private key
         :return: information if keys have been changed
         """
-        if not os.path.isfile(file_name):
+        keys = EllipticalKeysAuth._load_and_check_keys(
+            file_name, None, self.difficulty)
+
+        if not keys:
             return False
-        with open(file_name, 'rb') as f:
-            priv_key = f.read()
-        try:
-            pub_key = privtopub(priv_key)
-        except AssertionError:
-            return False
-        self._set_keys(priv_key, pub_key)
+
+        self._set_keys(*keys)
         self._save_keys()
         return True
 
