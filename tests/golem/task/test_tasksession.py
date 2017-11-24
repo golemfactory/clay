@@ -1,3 +1,5 @@
+import pathlib
+
 from golem_messages import message
 import os
 import pickle
@@ -18,6 +20,7 @@ from golem.network.p2p.node import Node
 from golem_messages import message
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ComputeTaskDef, ResultType
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
@@ -480,6 +483,36 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         msg.sig = keys_auth.sign(msg.get_short_hash())
         ts.key_id = keys_auth.get_key_id()
         assert ts.verify(msg)
+
+    def test_react_to_ack_reject_report_computed_task(self):
+        task_keeper = CompTaskKeeper(pathlib.Path(self.path))
+
+        session = self.task_session
+        session.concent_service = MagicMock()
+        session.task_manager.comp_task_keeper = task_keeper
+        session.key_id = 'owner_id'
+
+        msg_ack = message.MessageAckReportComputedTask('subtask_id')
+        msg_rej = message.MessageRejectReportComputedTask('subtask_id')
+
+        # Subtask is not known
+        session._react_to_ack_report_computed_task(msg_ack)
+        assert not session.concent_service.cancel.called
+        session._react_to_reject_report_computed_task(msg_rej)
+        assert not session.concent_service.cancel.called
+
+        # Save subtask information
+        task = Mock(header=Mock(task_owner_key_id='owner_id'))
+        task_keeper.subtask_to_task['subtask_id'] = 'task_id'
+        task_keeper.active_tasks['task_id'] = task
+
+        # Subtask is known
+        session._react_to_ack_report_computed_task(msg_ack)
+        assert session.concent_service.cancel.called
+
+        session.concent_service.cancel.reset_mock()
+        session._react_to_reject_report_computed_task(msg_ack)
+        assert session.concent_service.cancel.called
 
     @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
     def test_react_to_subtask_payment(self, check_msg_mock):
