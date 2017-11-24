@@ -227,7 +227,7 @@ class TestConcentClientService(TestCase):
         assert not concent_service._queued
 
     @mock.patch.dict('golem.network.concent.constants.MSG_LIFETIMES', {
-        message.MessageForceReportComputedTask: 0
+        message.MessageForceReportComputedTask: -10
     })
     def test_loop_request_timeout(self, *_):
         concent_service = ConcentClientService(enabled=True)
