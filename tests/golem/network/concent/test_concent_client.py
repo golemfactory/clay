@@ -135,7 +135,7 @@ class TestConcentClient(TestCase):
 class TestConcentClientService(TestCase):
 
     def test_start_stop(self, *_):
-        concent_service = ConcentClientService()
+        concent_service = ConcentClientService(enabled=False)
         concent_service._loop = mock.MagicMock()
 
         concent_service.start()
@@ -146,7 +146,7 @@ class TestConcentClientService(TestCase):
         assert concent_service._loop.called
 
     def test_submit(self, *_):
-        concent_service = ConcentClientService()
+        concent_service = ConcentClientService(enabled=False)
         concent_service.submit(
             'key',
             message.MessageForceReportComputedTask('id'),
@@ -154,16 +154,16 @@ class TestConcentClientService(TestCase):
         )
 
         assert 'key' not in concent_service._delayed
-        assert 'key' in concent_service._queued
+        assert 'key' in concent_service._history
 
         assert not concent_service.cancel('key')
         assert concent_service.result('key')
 
         assert 'key' not in concent_service._delayed
-        assert 'key' not in concent_service._queued
+        assert 'key' not in concent_service._history
 
     def test_delayed_submit(self, *_):
-        concent_service = ConcentClientService()
+        concent_service = ConcentClientService(enabled=False)
         concent_service.submit(
             'key',
             message.MessageForceReportComputedTask('id'),
@@ -171,17 +171,17 @@ class TestConcentClientService(TestCase):
         )
 
         assert 'key' in concent_service._delayed
-        assert 'key' not in concent_service._queued
+        assert 'key' not in concent_service._history
 
         assert concent_service.cancel('key')
         assert not concent_service.result('key')
 
         assert 'key' not in concent_service._delayed
-        assert 'key' not in concent_service._queued
+        assert 'key' not in concent_service._history
 
     # FIXME: remove when 'enabled' property is dropped
     def test_disabled(self, *_):
-        concent_service = ConcentClientService()
+        concent_service = ConcentClientService(enabled=False)
         concent_service.submit(
             'key',
             message.MessageForceReportComputedTask('id'),
@@ -217,6 +217,7 @@ class TestConcentClientService(TestCase):
 
         concent_service._client.send.side_effect = raise_exc
         concent_service._loop()
+        assert concent_service._client.send.called
         assert sleep.called
 
         req = concent_service.result('key')
@@ -224,7 +225,7 @@ class TestConcentClientService(TestCase):
         assert isinstance(req.content, ConcentRequestException)
 
         assert not concent_service._delayed
-        assert not concent_service._queued
+        assert not concent_service._history
 
     @mock.patch.dict('golem.network.concent.constants.MSG_LIFETIMES', {
         message.MessageForceReportComputedTask: -10
@@ -239,6 +240,7 @@ class TestConcentClientService(TestCase):
 
         concent_service._loop()
         req = concent_service.result('key')
+        assert not concent_service._client.send.called
         assert req.status == ConcentRequestStatus.TimedOut
 
     def test_loop(self, *_):
@@ -251,6 +253,7 @@ class TestConcentClientService(TestCase):
 
         concent_service._loop()
         req = concent_service.result('key')
+        assert concent_service._client.send.called
         assert req.status == ConcentRequestStatus.Success
 
 

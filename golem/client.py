@@ -134,7 +134,7 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
-        self.concent_service = ConcentClientService()
+        self.concent_service = ConcentClientService(enabled=False)
 
         self.task_server = None
 

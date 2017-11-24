@@ -129,7 +129,7 @@ class ConcentClientService(threading.Thread):
 
     QUEUE_TIMEOUT = 5  # s
 
-    def __init__(self, enabled=False):
+    def __init__(self, enabled=True):
         super(ConcentClientService, self).__init__(daemon=True)
 
         self._enabled = enabled  # FIXME: remove
@@ -140,7 +140,7 @@ class ConcentClientService(threading.Thread):
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
-        self._queued = dict()
+        self._history = dict()
 
     def run(self) -> None:
         while not self._stop_event.isSet():
@@ -152,8 +152,8 @@ class ConcentClientService(threading.Thread):
     def submit(self,
                key: Hashable,
                msg: message.Message,
-               url: Optional[str] = None,
-               delay: Optional[float] = None) -> None:
+               delay: Optional[float] = None,
+               url: Optional[str] = None) -> None:
         """
         Submit a message to Concent.
 
@@ -201,7 +201,7 @@ class ConcentClientService(threading.Thread):
         :param default: Default value if key was not found
         :return: ConcentRequest|None
         """
-        return self._queued.pop(key, default)
+        return self._history.pop(key, default)
 
     def _loop(self) -> None:
         """
@@ -215,16 +215,18 @@ class ConcentClientService(threading.Thread):
 
         # FIXME: remove
         if not self._enabled:
-            self._queued.pop(req.key, None)
+            self._history.pop(req.key, None)
             return
 
-        if req.deadline_ts < time.time():
+        now = time.time()
+
+        if req.deadline_ts < now:
             logger.debug('Concent request lifetime has ended: %r', req)
             req.status = ConcentRequestStatus.TimedOut
             return
 
         try:
-            req.sent_ts = time.time()
+            req.sent_ts = now
             res = self._client.send(req.msg, req.url)
         except Exception as exc:
             req.content = exc
@@ -245,5 +247,5 @@ class ConcentClientService(threading.Thread):
     def _enqueue(self, req):
         req.status = ConcentRequestStatus.Queued
         self._delayed.pop(req.key, None)
-        self._queued[req.key] = req
+        self._history[req.key] = req
         self._queue.put(req)
