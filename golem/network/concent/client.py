@@ -169,7 +169,7 @@ class ConcentClientService(threading.Thread):
         if delay is None:
             delay = MSG_DELAYS.get(msg.__class__, 0)
 
-        req = ConcentRequest(key, msg, lifetime, url)
+        req = ConcentRequest(key, msg, lifetime=lifetime, url=url)
         req.status = ConcentRequestStatus.Waiting
 
         if delay:
