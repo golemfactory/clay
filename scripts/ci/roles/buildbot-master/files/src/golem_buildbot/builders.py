@@ -27,6 +27,7 @@ class StepsFactory(object):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
+        factory.addStep(self.load_version_step())
         factory.addStep(self.file_upload_step())
         return factory
 
@@ -100,19 +101,35 @@ class StepsFactory(object):
 
     def file_upload_step(self):
         return steps.FileUpload(
-            workersrc=self.golem_package,
+            workersrc=util.Interpolate(self.golem_package),
             masterdest=util.Interpolate(
-                '/var/build-artifacts/golem-%(prop:got_revision)s-%(kw:platform)s.%(kw:ext)s',
+                '/var/build-artifacts/golem-%(prop:version)s-%(kw:platform)s.%(kw:ext)s',
                 platform=self.platform,
                 ext=self.golem_package_extension),
             url=util.Interpolate(
-                '%(kw:buildbot_host)s/artifacts/golem-%(prop:got_revision)s-%(kw:platform)s.%(kw:ext)s',
+                '%(kw:buildbot_host)s/artifacts/golem-%(prop:version)s-%(kw:platform)s.%(kw:ext)s',
                 buildbot_host=buildbot_host,
                 platform=self.platform,
                 ext=self.golem_package_extension),
             blocksize=640 * 1024,
             mode=0o644,
         )
+
+    def load_version_step(self):
+
+        def read_version(rc, stdout, stderr):
+            version = stdout.split('=')[1].strip()
+            return {'version': version}
+
+        return steps.ShellSequence(
+            util.ShellArg(
+                logfile='generate version',
+                haltOnFailure=True,
+                command=self.python_command + [r'Installer\Installer_Win\version.py']),
+            steps.shell.SetProperty(
+                command='cat .version.ini | grep "version ="',
+                extract_fn=read_version)
+            )
 
     def test_factory(self):
         factory = util.BuildFactory()
@@ -193,8 +210,8 @@ class WindowsStepsFactory(StepsFactory):
     ]
     extra_requirements = StepsFactory.extra_requirements + ['pyethash==0.1.23']
     pathsep = '\\'
-    golem_package = 'dist\\golem.zip'
-    golem_package_extension = 'zip'
+    golem_package = r'Installer\Installer_Win\Golem_win_%(prop:version).exe'
+    golem_package_extension = 'exe'
 
     def build_factory(self):
         factory = util.BuildFactory()
@@ -204,9 +221,9 @@ class WindowsStepsFactory(StepsFactory):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
+        factory.addStep(self.load_version_step())
         factory.addStep(self.create_installer_step())
         factory.addStep(self.file_upload_step())
-        factory.addStep(self.installer_upload_step())
         return factory
 
     def taskcollector_step(self):
@@ -224,7 +241,8 @@ class WindowsStepsFactory(StepsFactory):
             name='install pywin32',
             haltOnFailure=True,
             command=self.pip_command + [
-                'install', ' C:\\BuildResources\\pywin32-221-cp36-cp36m-win_amd64.whl'
+                'install',
+                r'C:\BuildResources\pywin32-221-cp36-cp36m-win_amd64.whl'
             ],
             env={
                 'PATH': [self.venv_bin_path, '${PATH}'],
@@ -245,35 +263,12 @@ class WindowsStepsFactory(StepsFactory):
             haltOnFailure=True,
             command=['powershell.exe', r'scripts\test-daemon-stop.ps1'])
 
-    def create_installer_step(self):
-        return steps.ShellSequence(
+    @staticmethod
+    def create_installer_step():
+        return steps.ShellCommand(
             name='run inno',
-            commands=[
-                util.ShellArg(
-                    logfile='generate version',
-                    haltOnFailure=True,
-                    command=self.python_command + [r'Installer\Installer_Win\version.py']),
-                util.ShellArg(
-                    logfile='compile inno',
-                    haltOnFailure=True,
-                    command=['iscc', r'Installer\Installer_Win\install_script.iss']),
-            ])
-
-    def installer_upload_step(self):
-        return steps.FileUpload(
-            workersrc=r'Installer\Installer_Win\Golem_win.exe',
-            masterdest=util.Interpolate(
-                '/var/build-artifacts/golem-%(prop:got_revision)s-%(kw:platform)s.%(kw:ext)s',
-                platform=self.platform,
-                ext='exe'),
-            url=util.Interpolate(
-                '%(kw:buildbot_host)s/artifacts/golem-%(prop:got_revision)s-%(kw:platform)s.%(kw:ext)s',
-                buildbot_host=buildbot_host,
-                platform=self.platform,
-                ext='exe'),
-            blocksize=640 * 1024,
-            mode=0o644,
-        )
+            haltOnFailure=True,
+            command=['iscc', r'Installer\Installer_Win\install_script.iss'])
 
 
 class LinuxStepsFactory(StepsFactory):
