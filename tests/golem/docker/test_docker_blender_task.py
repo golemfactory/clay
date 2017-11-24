@@ -79,7 +79,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd.deadline = timeout_to_deadline(timeout)
+        ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -120,7 +120,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
+        result = task_computer.resource_given(ctd['task_id'])
         assert result
 
         # Thread for task computation should be created by now

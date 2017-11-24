@@ -19,7 +19,6 @@ from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
-from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0

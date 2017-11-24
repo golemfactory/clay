@@ -21,19 +21,19 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
+from golem.task.taskbase import ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -453,17 +453,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
+        if msg.compute_task_def is None:
+            logger.debug('TaskToCompute without ctd: %r', msg)
+            self.task_computer.session_closed()
+            self.dropped()
+            return
         if self._check_ctd_params(msg.compute_task_def)\
                 and self._set_env_params(msg.compute_task_def)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
-                msg.compute_task_def.subtask_id, self
+                msg.compute_task_def['subtask_id'], self
             )
             self.task_computer.task_given(msg.compute_task_def)
         else:
             self.send(
                 message.MessageCannotComputeTask(
-                    subtask_id=msg.compute_task_def.subtask_id,
+                    subtask_id=msg.compute_task_def['subtask_id'],
                     reason=self.err_msg
                 )
             )
@@ -756,23 +761,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _check_ctd_params(self, ctd):
         reasons = message.MessageCannotComputeTask.REASON
-        if not isinstance(ctd, ComputeTaskDef):
+        if not isinstance(ctd, message.ComputeTaskDef):
             self.err_msg = reasons.WrongCTD
-            # FIXME: Should be neforced in deserialization of taskmsg
+            # FIXME: Should be enforced in deserialization of taskmsg
             return False
-        if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
+        if ctd['key_id'] != self.key_id\
+                or ctd['task_owner'].key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
-                ctd.return_address,
-                ctd.return_port
+                ctd['return_address'],
+                ctd['return_port']
                 ):
             self.err_msg = reasons.WrongAddress
             return False
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
         env = self.task_server.get_environment_by_id(environment)
         reasons = message.MessageCannotComputeTask.REASON
         if not env:
@@ -784,19 +790,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return False
 
         if not env.allow_custom_main_program_file:
-            ctd.src_code = env.get_source_code()
+            ctd['src_code'] = env.get_source_code()
 
-        if not ctd.src_code:
+        if not ctd['src_code']:
             self.err_msg = reasons.NoSourceCode
             return False
 
         return True
 
     def __check_docker_images(self, ctd, env):
-        for image in ctd.docker_images:
+        for image in ctd['docker_images']:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
-                    ctd.docker_images = [image]
+                    ctd['docker_images'] = [image]
                     return True
 
         reasons = message.MessageCannotComputeTask.REASON

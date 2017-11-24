@@ -13,7 +13,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader
 from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType, ComputeTaskDef
+from golem.task.taskbase import ResultType, TaskEventListener, ResourceType
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -481,17 +481,16 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         perf_index = 0
 
         ctd = c._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-        assert isinstance(ctd, ComputeTaskDef)
-        assert ctd.task_id == c.header.task_id
-        assert ctd.subtask_id == hash
-        assert ctd.extra_data == extra_data
-        assert ctd.short_description == c.short_extra_data_repr(extra_data)
-        assert ctd.src_code == c.src_code
-        assert ctd.performance == perf_index
-        assert ctd.working_directory == working_directory
-        assert ctd.docker_images == c.header.docker_images
-        assert ctd.task_owner == c.header.task_owner
-        assert ctd.environment == c.header.environment
+        assert ctd['task_id'] == c.header.task_id
+        assert ctd['subtask_id'] == hash
+        assert ctd['extra_data'] == extra_data
+        assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
+        assert ctd['src_code'] == c.src_code
+        assert ctd['performance'] == perf_index
+        assert ctd['working_directory'] == working_directory
+        assert ctd['docker_images'] == c.header.docker_images
+        assert ctd['task_owner'] == c.header.task_owner
+        assert ctd['environment'] == c.header.environment
 
 
 class TestLogKeyError(LogTestCase):

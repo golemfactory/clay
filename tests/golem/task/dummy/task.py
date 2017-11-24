@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import random
 import uuid
 from os import path
@@ -7,7 +8,7 @@ from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
+from golem.task.taskbase import Task, TaskHeader, \
                                 ResourceType, ResultType
 
 
@@ -163,15 +164,15 @@ class DummyTask(Task):
         self.subtask_data[subtask_id] = '%x' % data
 
         subtask_def = ComputeTaskDef()
-        subtask_def.task_id = self.task_id
-        subtask_def.subtask_id = subtask_id
-        subtask_def.src_code = self.src_code
-        subtask_def.task_owner = self.header.task_owner
-        subtask_def.environment = self.header.environment
-        subtask_def.return_address = self.header.task_owner_address
-        subtask_def.return_port = self.header.task_owner_port
-        subtask_def.deadline = timeout_to_deadline(5 * 60)
-        subtask_def.extra_data = {
+        subtask_def['task_id'] = self.task_id
+        subtask_def['subtask_id'] = subtask_id
+        subtask_def['src_code'] = self.src_code
+        subtask_def['task_owner'] = self.header.task_owner
+        subtask_def['environment'] = self.header.environment
+        subtask_def['return_address'] = self.header.task_owner_address
+        subtask_def['return_port'] = self.header.task_owner_port
+        subtask_def['deadline'] = timeout_to_deadline(5 * 60)
+        subtask_def['extra_data'] = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
             'difficulty': self.task_params.difficulty,
