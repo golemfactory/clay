@@ -1,26 +1,29 @@
 import functools
-from golem_messages import message
 import logging
 import os
 import struct
 import threading
 import time
 
+from golem_messages import message
+
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
+from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
-from golem_messages import message
+from golem.network.concent.client import ConcentRequest
+from golem.network.concent.exceptions import ConcentException
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.core.variables import PROTOCOL_CONST
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,6 +70,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
+        self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
@@ -357,6 +361,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             node_info=node_info,
             eth_account=eth_account,
             extra_data=extra_data))
+
+        self.concent_service.submit(
+            ConcentRequest.build_key(task_result.subtask_id,
+                                     message.MessageForceReportComputedTask),
+            message.MessageForceReportComputedTask(task_result.subtask_id)
+        )
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -688,6 +698,36 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         self.inform_worker_about_payment(payment)
 
+    def _react_to_ack_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.debug("Requestor '%r' accepted the computed subtask '%r' "
+                         "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.MessageForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' acknowledged a computed task report "
+                           "of an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
+
+    def _react_to_reject_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.info("Requestor '%r' rejected the computed subtask '%r' "
+                        "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.MessageForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' rejected a computed task report of"
+                           "an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
+
     def send(self, msg, send_unverified=False):
         if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
@@ -700,6 +740,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
+
+    # FIXME: Create a common facility for Concent requests and error handling
+    def concent_send(self, message):
+        if not self.concent_client:
+            return logger.debug("Concent client is not available")
+
+        try:
+            self.concent_client.send(message)
+        except ConcentException as exc:
+            logger.error("Concent exception: %r", exc)
+        except Exception as exc:
+            logger.error("Unexpected error while trying to send a Concent "
+                         "request: %r", exc)
 
     def _check_ctd_params(self, ctd):
         reasons = message.MessageCannotComputeTask.REASON
@@ -883,6 +936,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+
+            # Concent messages
+            message.MessageAckReportComputedTask.TYPE:
+                self._react_to_ack_report_computed_task,
+            message.MessageRejectReportComputedTask.TYPE:
+                self._react_to_reject_report_computed_task,
         })
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
