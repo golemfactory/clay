@@ -44,7 +44,8 @@ def is_ip_address(address):
     except (ValueError, AddressValueError):
         try:
             # Check for local scope prefix and designator
-            ip_address(s.split('%')[0])
+            s = s.split('%')
+            ip_address(s[0])
             return (s[0][:4].lower().startswith('fe80'))
         except (ValueError, AddressValueError):
             pass
@@ -67,6 +68,11 @@ class TestIPAddresses(unittest.TestCase):
         if addresses:
             for address in addresses:
                 self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+                self.assertTrue(ip_address_private('fe80::71a3:2b00:ddd3:753f%16'))
+        self.assertTrue(is_ip_address('fe80::71a3:2b00:ddd3:753f'))
+        self.assertTrue(is_ip_address('2001:db8::1000'))
+        self.assertTrue(is_ip_address('FE80::71a3:2b00:ddd3:753f%166')
+        self.assertFalse(is_ip_address('de80::71a3:2b00:ddd3:753f%143'))
 
 
 class TestHostAddress(unittest.TestCase):
