@@ -74,7 +74,7 @@ diff-lines() {
         elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
             line=${BASH_REMATCH[2]}
         elif [[ $REPLY =~ ^($esc\[[0-9;]+m)*([\ +-]) ]]; then
-            echo "$path:$line"
+            echo "$path:$line:"
             if [[ ${BASH_REMATCH[2]} != - ]]; then
                 ((line++))
             fi
