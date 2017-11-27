@@ -69,10 +69,10 @@ class TestIPAddresses(unittest.TestCase):
             for address in addresses:
                 self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
                 self.assertTrue(ip_address_private('fe80::71a3:2b00:ddd3:753f%16'))
-        self.assertTrue(is_ip_address('fe80::71a3:2b00:ddd3:753f'))
-        self.assertTrue(is_ip_address('2001:db8::1000'))
-        self.assertTrue(is_ip_address('FE80::71a3:2b00:ddd3:753f%166')
-        self.assertFalse(is_ip_address('de80::71a3:2b00:ddd3:753f%143'))
+        self.assertTrue(is_ip_address('fe80::71a3:2b00:ddd3:753f'), "Failed basic IPV6 test")
+        self.assertTrue(is_ip_address('2001:db8::1000'), "Failed abbreviated IPV6 address")
+        self.assertTrue(is_ip_address('FE80::71a3:2b00:ddd3:753f%166'), "Failed IPV6 with local scope test")
+        self.assertFalse(is_ip_address('de80::71a3:2b00:ddd3:753f%143'), "Failed to reject IPV6 address with local scope, wrong prefix")
 
 
 class TestHostAddress(unittest.TestCase):
