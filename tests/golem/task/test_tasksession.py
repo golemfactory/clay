@@ -147,6 +147,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
