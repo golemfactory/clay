@@ -210,7 +210,7 @@ class TaskManager(TaskEventListener):
             filepath.unlink()
             logger.debug('TASK DUMP with id %s REMOVED from %r',
                          task_id, filepath)
-        except OSError as e:
+        except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", e)
 
     def restore_tasks(self) -> None:
@@ -224,6 +224,8 @@ class TaskManager(TaskEventListener):
             with path.open('rb') as f:
                 try:
                     task, state = pickle.load(f)
+                    task.register_listener(self)
+
                     self.tasks[task.header.task_id] = task
                     self.tasks_states[task.header.task_id] = state
 
