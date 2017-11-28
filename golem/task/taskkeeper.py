@@ -1,17 +1,18 @@
+import golem_messages.message
 import logging
 import math
+import pathlib
 import pickle
 import random
 import time
 
 from typing import Optional
-import typing
 from semantic_version import Version
 
-from golem.core.common import HandleKeyError, get_timestamp_utc
+from golem.core import common
 from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
-from .taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -21,7 +22,7 @@ def compute_subtask_value(price, computation_time):
     return value
 
 
-class CompTaskInfo(object):
+class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
@@ -36,34 +37,36 @@ class CompTaskInfo(object):
         )
 
 
-class CompSubtaskInfo(object):
+class CompSubtaskInfo:
     def __init__(self, subtask_id):
         self.subtask_id = subtask_id
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], ComputeTaskDef):
-        task_id = args[1].task_id
+    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+        task_id = args[1]['task_id']
     else:
         task_id = args[1]
     logger.warning("This is not my task {}".format(task_id))
     return None
 
 
-class CompTaskKeeper(object):
+class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
-    handle_key_error = HandleKeyError(log_key_error)
+    handle_key_error = common.HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path, persist=True):
+    def __init__(self, tasks_path: pathlib.Path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
 
-        tasks_path: pathlib.Path to tasks directory
+        tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}  # type: typing.Dict[str, CompTaskInfo]
+        self.active_tasks = {}
         self.subtask_to_task = {}  # maps subtasks id to tasks id
+        if not tasks_path.is_dir():
+            tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
         self.persist = persist
         self.restore()
@@ -74,9 +77,6 @@ class CompTaskKeeper(object):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
-            from pprint import pformat
-            for task in list(self.active_tasks.values()):
-                logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
     def restore(self):
@@ -89,7 +89,7 @@ class CompTaskKeeper(object):
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError):
+            except (pickle.UnpicklingError, EOFError, AttributeError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -115,24 +115,21 @@ class CompTaskKeeper(object):
         self.dump()
 
     @handle_key_error
-    def get_subtask_ttl(self, task_id):
-        return self.active_tasks[task_id].header.subtask_timeout
-
-    @handle_key_error
     def get_task_env(self, task_id):
         return self.active_tasks[task_id].header.environment
 
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
-        task = self.active_tasks[comp_task_def.task_id]
+        task = self.active_tasks[comp_task_def['task_id']]
         if not task.requests > 0:
             return
-        if comp_task_def.subtask_id in task.subtasks:
+        if comp_task_def['subtask_id'] in task.subtasks:
             return
         task.requests -= 1
-        task.subtasks[comp_task_def.subtask_id] = comp_task_def
-        self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
+        self.subtask_to_task[comp_task_def['subtask_id']] =\
+            comp_task_def['task_id']
         self.dump()
         return True
 
@@ -160,8 +157,21 @@ class CompTaskKeeper(object):
         self.active_tasks[task_id].requests -= 1
         self.dump()
 
+    def remove_old_tasks(self):
+        for task_id in frozenset(self.active_tasks):
+            deadline = self.active_tasks[task_id].header.deadline
+            delta = deadline - common.get_timestamp_utc()
+            if delta > 0:
+                continue
+            logger.info("Removing comp_task after deadline: %s", task_id)
+            for subtask_id in self.active_tasks[task_id].subtasks:
+                del self.subtask_to_task[subtask_id]
+            del self.active_tasks[task_id]
 
-class TaskHeaderKeeper(object):
+        self.dump()
+
+
+class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.
@@ -224,7 +234,7 @@ class TaskHeaderKeeper(object):
         """
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
-        if th_dict_repr['deadline'] < get_timestamp_utc():
+        if th_dict_repr['deadline'] < common.get_timestamp_utc():
             msg = "Deadline already passed \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
@@ -448,9 +458,10 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):
-            cur_time = get_timestamp_utc()
+            cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.warning("Task {} dies".format(t.task_id))
+                logger.warning("Task owned by %s dies, task_id: %s",
+                               t.task_owner_key_id, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):

@@ -1,7 +1,7 @@
+from golem_messages import message
 import logging
 
 
-from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport import tcpnetwork
 
@@ -245,7 +245,7 @@ class ResourceSession(BasicSafeSession):
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
-            self.disconnect(ResourceSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return
 
         self.send(
@@ -255,7 +255,7 @@ class ResourceSession(BasicSafeSession):
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:
-            self.disconnect(ResourceSession.DCRUnverified)
+            self.disconnect(message.MessageDisconnect.REASON.Unverified)
             return
         self.verified = True
         self.resource_server.verified_conn(self.conn_id)

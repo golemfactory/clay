@@ -1,8 +1,9 @@
+from collections import deque
+from golem_messages import message
+import ipaddress
 import logging
 import random
 import time
-from collections import deque
-from ipaddress import AddressValueError
 from threading import Lock
 
 from golem.core import simplechallenge
@@ -175,7 +176,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if self.active:
             session.start()
         else:
-            session.disconnect(PeerSession.DCRNoMoreMessages)
+            session.disconnect(
+                message.MessageDisconnect.REASON.NoMoreMessages
+            )
 
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False
@@ -215,6 +218,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """Get information about new tasks and new peers in the network.
            Remove excess information about peers
         """
+        super().sync_network(timeout=self.last_message_time_threshold)
         if self.task_server:
             self.__send_message_get_tasks()
 
@@ -272,6 +276,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
+        # Timeouts of this session/peer will be hanled in sync_network()
+        try:
+            self.pending_sessions.remove(peer)
+        except KeyError:
+            pass
 
     def add_to_peer_keeper(self, peer_info):
         """ Add information about peer to the peer keeper
@@ -418,7 +427,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.config_desc.seed_port
             )
             self.connect(socket_address)
-        except AddressValueError as err:
+        except ipaddress.AddressValueError as err:
             logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
@@ -491,7 +500,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.config_desc.seed_port
             )
             self.connect(socket_address)
-        except AddressValueError as err:
+        except ipaddress.AddressValueError as err:
             logger.error("Invalid seed address: %s", err)
 
     def encrypt(self, data, public_key):
@@ -779,43 +788,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
 
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-            ):
-        """
-        :param key_id:
-        :param rv_key_id:
-        :param addr:
-        :param port:
-        :param ans_conn_id:
-        :return:
-        """
-        logger.debug("Nat hole ready {}:{}".format(addr, port))
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
-
-    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
-
-    def send_nat_traverse_failure(self, key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_nat_traverse_failure(conn_id)
-
-    def traverse_nat_failure(self, conn_id):
-        self.task_server.traverse_nat_failure(conn_id)
-
     def peer_want_task_session(self, node_info, super_node_info, conn_id):
         """Process request to start task session from this node to a node
            from node_info.
@@ -972,7 +944,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             delta = time.time() - peer.last_message_time
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
-                peer.disconnect(PeerSession.DCRTimeout)
+                peer.disconnect(
+                    message.MessageDisconnect.REASON.Timeout
+                )
 
     def __refresh_old_peers(self):
         cur_time = time.time()
@@ -982,7 +956,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer_id = random.choice(list(self.peers.keys()))
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
-                peer.disconnect(PeerSession.DCRRefresh)
+                peer.disconnect(
+                    message.MessageDisconnect.REASON.Refresh
+                )
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():
@@ -1031,6 +1007,21 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port
         if ip_address and port:
+            self.seeds.add((ip_address, port))
+
+        for config_seed in self.config_desc.seeds.split(None):
+            try:
+                ip_address, port = config_seed.split(':', 1)
+                port = int(port)
+                # Verify that ip_address is valid.
+                # Throws ipaddress.AddressValueError.
+                ipaddress.ip_address(ip_address)
+            except ValueError:
+                logger.info(
+                    "Invalid seed from config: %r. Ignoring.",
+                    config_seed
+                )
+                continue
             self.seeds.add((ip_address, port))
 
     def __remove_sessions_to_end_from_peer_keeper(self):

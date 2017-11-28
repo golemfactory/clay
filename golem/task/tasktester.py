@@ -19,15 +19,16 @@ class TaskTester(LocalComputer):
                                          TaskTester.TESTER_WARNING, TaskTester.TESTER_SUCCESS)
 
     def _get_task_thread(self, ctd):
-        if ctd.docker_images:
+        # ctd: ComputeTaskDef
+        if ctd['docker_images']:
             return LocalComputer._get_task_thread(self, ctd)
         else:
             return PyTestTaskThread(self,
-                                    ctd.subtask_id,
-                                    ctd.working_directory,
-                                    ctd.src_code,
-                                    ctd.extra_data,
-                                    ctd.short_description,
+                                    ctd['subtask_id'],
+                                    ctd['working_directory'],
+                                    ctd['src_code'],
+                                    ctd['extra_data'],
+                                    ctd['short_description'],
                                     self.test_task_res_path,
                                     self.tmp_dir,
                                     0)

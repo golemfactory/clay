@@ -1,3 +1,4 @@
+from golem_messages import message
 import logging
 import os
 import re
@@ -18,10 +19,12 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem.network.transport.message import Message
+from golem_messages.message import Message
 from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
+
+MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 ##########################
 # Network helper classes #
@@ -488,10 +491,10 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize()
+        ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
 
         db = DataBuffer()
-        db.append_len_prefixed_string(ser_msg)
+        db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
     def _can_receive(self):
@@ -499,30 +502,37 @@ class BasicProtocol(SessionProtocol):
 
     def _interpret(self, data):
         with self.lock:
-            self.db.append_string(data)
+            self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        # Interpret messages
-        if mess:
-            for m in mess:
-                self.session.interpret(m)
-        elif data:
-            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+        if mess is None:
+            logger.warning("Too long pending message, closing connection")
+            self.close()
+            return
+
+        for m in mess:
+            self.session.interpret(m)
 
     def _data_to_messages(self):
         messages = []
-        data = self.db.read_len_prefixed_string()
+        def valid_len():
+            msg_len = self.db.peek_ulong()
+            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
+        if not valid_len():
+            return None
+        data = self.db.read_len_prefixed_bytes()
 
         while data:
-            message = Message.deserialize(data)
+            message = Message.deserialize(data, lambda x: x)
 
             if message:
                 messages.append(message)
             else:
                 logger.error("Failed to deserialize message {}".format(data))
 
-            data = self.db.read_len_prefixed_string()
+            if not valid_len():
+                return None
+            data = self.db.read_len_prefixed_bytes()
 
         return messages
 
@@ -572,7 +582,7 @@ class SafeProtocol(ServerProtocol):
 
     def _data_to_messages(self):
         messages = []
-        for buf in self.db.get_len_prefixed_string():
+        for buf in self.db.get_len_prefixed_bytes():
             msg = Message.deserialize(buf, self.session.decrypt)
             if msg:
                 messages.append(msg)
@@ -632,27 +642,6 @@ class FilesProtocol(SafeProtocol):
     def _check_stream(self, data):
         return len(data) >= LONG_STANDARD_SIZE
 
-
-class MidAndFilesProtocol(FilesProtocol):
-    """ Connection-oriented protocol for twisted. In the Middleman mode pass message to session without
-    decrypting or deserializing it. In normal mode allows to send messages (support for message serialization)
-    encryption, decryption and signing), files or stream data."""
-    def _interpret(self, data):
-        if self.session.is_middleman:
-            self.session.last_message_time = time.time()
-            with self.lock:
-                self.db.append_string(data, check_size=False)
-                messages = self.db.read_all()
-            self.session.interpret(messages)
-        else:
-            FilesProtocol._interpret(self, data)
-
-    ############################
-    def _prepare_msg_to_send(self, msg):
-        if self.session.is_middleman:
-            return msg
-        else:
-            return FilesProtocol._prepare_msg_to_send(self, msg)
 
 #############
 # Producers #

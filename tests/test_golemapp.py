@@ -3,20 +3,24 @@ import sys
 from click.testing import CliRunner
 from mock import patch
 
-from golem.testutils import TempDirFixture
+from golem.core.variables import PROTOCOL_CONST
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
 from golemapp import start
 
 
-class TestGolemApp(TempDirFixture):
-    @ci_skip
+@ci_skip
+class TestGolemApp(TempDirFixture, PEP8MixIn):
+    PEP8_FILES = [
+        "golemapp.py",
+    ]
+
     @patch('golemapp.OptNode')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         assert node_class.called
 
-    @ci_skip
     def test_start_crossbar_worker(self):
         runner = CliRunner()
         args = ['--datadir', self.path, '-m', 'crossbar.worker.process']
@@ -34,8 +38,17 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
-    def setUp(self):
-        super(TestGolemApp, self).setUp()
+    @patch('golem.core.common.config_logging')
+    @patch('golemapp.OptNode')
+    def test_patch_protocol_id(self, node_class, *_):
+        runner = CliRunner()
 
-    def tearDown(self):
-        super(TestGolemApp, self).tearDown()
+        custom_id = 123456
+
+        runner.invoke(start,
+                      ['--datadir', self.path, '--protocol_id', custom_id],
+                      catch_exceptions=False)
+
+        assert node_class.called
+        assert PROTOCOL_CONST.P2P_ID == custom_id \
+            and PROTOCOL_CONST.TASK_ID == custom_id

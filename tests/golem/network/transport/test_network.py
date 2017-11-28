@@ -1,10 +1,10 @@
+from contextlib import contextmanager
+from golem_messages import message
 import logging
 import os
 import time
 import unittest
-from contextlib import contextmanager
 
-from golem.network.transport.message import MessageHello, Message
 from golem.network.transport.network import ProtocolFactory, SessionFactory, \
     SessionProtocol
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
@@ -28,7 +28,7 @@ class ASession(object):
         self.msgs.append(msg)
 
     def sign(self, msg):
-        return b'1' * Message.SIG_LEN
+        return b'1' * message.Message.SIG_LEN
 
     def encrypt(self, msg):
         return b"ASessionEncrypt" + bytes(msg)
@@ -353,21 +353,21 @@ class TestBasicProtocol(unittest.TestCase):
         session_factory = SessionFactory(ASession)
         p.set_session_factory(session_factory)
         self.assertFalse(p.send_message("123"))
-        msg = MessageHello()
+        msg = message.MessageHello()
         self.assertFalse(p.send_message(msg))
         p.connectionMade()
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 1)
         p.dataReceived(p.transport.buff[0])
-        self.assertIsInstance(p.session.msgs[0], MessageHello)
+        self.assertIsInstance(p.session.msgs[0], message.MessageHello)
         self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
         time.sleep(1)
-        msg = MessageHello()
+        msg = message.MessageHello()
         self.assertNotEqual(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
         db = p.db
-        db.append_string(p.transport.buff[1])
+        db.append_bytes(p.transport.buff[1])
         m = p._data_to_messages()[0]
         self.assertEqual(m.timestamp, msg.timestamp)
         p.connectionLost()
@@ -392,15 +392,15 @@ class TestSaferProtocol(unittest.TestCase):
         session_factory = SessionFactory(ASession)
         p.set_session_factory(session_factory)
         self.assertFalse(p.send_message("123"))
-        msg = MessageHello()
+        msg = message.MessageHello()
         self.assertIsNone(msg.sig)
         self.assertFalse(p.send_message(msg))
         p.connectionMade()
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 1)
         p.dataReceived(p.transport.buff[0])
-        self.assertIsInstance(p.session.msgs[0], MessageHello)
+        self.assertIsInstance(p.session.msgs[0], message.MessageHello)
         self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
-        self.assertEqual(msg.sig, b'1' * Message.SIG_LEN)
+        self.assertEqual(msg.sig, b'1' * message.Message.SIG_LEN)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

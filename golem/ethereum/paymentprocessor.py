@@ -14,10 +14,10 @@ from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 
+from golem.core.service import Service
 from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
-from golem.transactions.service import Service
 from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger("golem.pay")
