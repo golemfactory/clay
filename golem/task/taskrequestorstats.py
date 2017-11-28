@@ -14,6 +14,10 @@ __all__ = ['RequestorTaskStatsManager']
 logger = logging.getLogger(__name__)
 
 
+TASK_COMPLETED_STATUSES = [TaskStatus.finished, TaskStatus.aborted,
+                           TaskStatus.timeout]
+
+
 TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", TaskOp)])
 
 
@@ -127,11 +131,12 @@ class TaskInfo:
     def total_time(self) -> float:
         """Returns total time in seconds spent on the task
 
-        It is calculated as a wall time between ``TASK_CREATED`` and one of
-        ``TASK_FINISHED``, ``TASK_NOT_ACCEPTED`` and ``TASK_TIMEOUT`` messages.
-        If the task is in progress then current time is taken instead of the
-        latter. Note that the time spent paused is also included in the total
-        time.
+        It is calculated as a wall time between ``TASK_CREATED`` or
+        ``TASK_RESTORED`` and one of ``TASK_FINISHED``,
+        ``TASK_NOT_ACCEPTED`` and ``TASK_TIMEOUT`` messages. If the
+        task is in progress then current time is taken instead of the
+        latter. Note that the time spent paused is also included in
+        the total time.
         """
         start_time = 0.0
         finish_time = 0.0
@@ -174,9 +179,7 @@ class TaskInfo:
 
         In other words, is its latest status in the list of finished.
         """
-        return self.latest_status in [TaskStatus.finished,
-                                      TaskStatus.aborted,
-                                      TaskStatus.timeout]
+        return self.latest_status in TASK_COMPLETED_STATUSES
 
     def has_task_failed(self) -> bool:
         """Had the task failed
@@ -311,6 +314,14 @@ FinishedTasksStats = NamedTuple("FinishedTasksStats", [
     ("finished_ok", FinishedTasksSummary),
     ("finished_with_failures", FinishedTasksSummary),
     ("failed", FinishedTasksSummary)])
+FinishedTasksSummary.__doc__ = """Statisitics about tasks that are done
+
+Divided into groups depending on the level of success: `finished_ok`
+are tasks that were verified ok and had no problems along the way,
+`finished_with_failures` are tasks that are verified ok in the end but
+there were problems like timeouts or subtasks with errors, and `failed`
+are tasks that did not succeed.
+"""
 
 EMPTY_FINISHED_STATS = FinishedTasksStats(
     EMPTY_FINISHED_SUMMARY,
@@ -412,25 +423,28 @@ class RequestorTaskStats:
             self.tasks[task_id].got_want_to_compute()
 
         elif task_op == TaskOp.TASK_RESTORED:
-            the_time = time.time()
-            msg1 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_RESTARTED)
-            msg2 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_ASSIGNED)
-            for s_id in task_state.subtask_states.keys():
-                subtask_status = (task_state.subtask_states[s_id]
-                                  .subtask_status)
-                self.tasks[task_id].got_subtask_message(
-                    s_id,
-                    msg1,
-                    subtask_status)
-                if subtask_status in [SubtaskStatus.starting,
-                                      SubtaskStatus.downloading]:
+            if task_state.status in TASK_COMPLETED_STATUSES:
+                logger.info("Skipping completed task {}".format(task_id))
+            else:
+                the_time = time.time()
+                msg1 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_RESTARTED)
+                msg2 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_ASSIGNED)
+                for s_id in task_state.subtask_states.keys():
+                    subtask_status = (task_state.subtask_states[s_id]
+                                      .subtask_status)
                     self.tasks[task_id].got_subtask_message(
                         s_id,
-                        msg2,
+                        msg1,
                         subtask_status)
+                    if subtask_status in [SubtaskStatus.starting,
+                                          SubtaskStatus.downloading]:
+                        self.tasks[task_id].got_subtask_message(
+                            s_id,
+                            msg2,
+                            subtask_status)
 
-            msg = TaskMsg(ts=the_time, op=TaskOp.TASK_RESTORED)
-            self.tasks[task_id].got_task_message(msg, task_state.status)
+                msg = TaskMsg(ts=the_time, op=TaskOp.TASK_RESTORED)
+                self.tasks[task_id].got_task_message(msg, task_state.status)
 
         elif task_op in self.TASK_LEVEL_OPS:
             self.tasks[task_id].got_task_message(
