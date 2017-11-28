@@ -47,7 +47,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
 
         return results
 
-    def add_files(self, files, task_id,
+    def add_files(self, files, task_id, resource_hash=None,
                   absolute_path=False, client=None, client_options=None):
 
         if not files:
@@ -59,6 +59,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                  for path in files}
 
         return self._add_files(files, task_id,
+                               resource_hash=resource_hash,
                                client=client,
                                client_options=client_options)
 
@@ -71,22 +72,25 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                client=client,
                                client_options=client_options)
 
-    def _add_files(self, files, task_id,
+    def _add_files(self, files, task_id, resource_hash=None,
                    client=None, client_options=None):
 
-        for f in files.keys():
-            if not os.path.exists(f):
-                logger.error("Resource manager: file '{}' does not exist"
-                             .format(f))
-                return
+        if not all(os.path.exists(f) for f in files.keys()):
+            logger.error("Resource manager: missing files (task: %r)", task_id)
+            return
 
         client = client or self.new_client()
-        response = self._handle_retries(client.add,
-                                        self.commands.add,
-                                        files,
+
+        if resource_hash:
+            args = (client.restore, self.commands.restore, resource_hash)
+        else:
+            args = (client.add, self.commands.add, files)
+
+        response = self._handle_retries(*args,
                                         id=task_id,
                                         client_options=client_options,
-                                        obj_id=str(uuid.uuid4()))
+                                        obj_id=str(uuid.uuid4()),
+                                        raise_exc=bool(resource_hash))
 
         file_list = list(files.values())
         self._cache_response(file_list, response, task_id)

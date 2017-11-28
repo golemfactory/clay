@@ -363,10 +363,10 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             prefix = common_dir(files)
 
         self.storage.cache.set_prefix(task_id, prefix)
-        self.add_files(files, task_id,
-                       absolute_path=True,
-                       client=client,
-                       client_options=client_options)
+        return self.add_files(files, task_id,
+                              absolute_path=True,
+                              client=client,
+                              client_options=client_options)
 
     def add_files(self, files, task_id,
                   absolute_path=False, client=None,

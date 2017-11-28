@@ -1,4 +1,3 @@
-from copy import copy
 import datetime
 import os
 import time
@@ -29,7 +28,6 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, ResourceType
-from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
@@ -38,7 +36,6 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
 from golem.core.variables import APP_VERSION
-from apps.appsmanager import AppsManager
 
 
 def mock_async_run(req, success, error):
@@ -708,6 +705,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.resource_server = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.dump_task = Mock()
         c.task_server.task_manager.listen_address = '127.0.0.1'
         c.task_server.task_manager.listen_port = 40103
         c.keys_auth = Mock()
@@ -725,7 +723,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert not c.task_server.task_manager.start_task.called
 
         deferred = Deferred()
-        deferred.callback(True)
+        deferred.callback((['file_1', 'file_2'], 'hash'))
         c.task_server.task_manager.tasks.pop(task.header.task_id, None)
 
         c.resource_server.add_task.called = False

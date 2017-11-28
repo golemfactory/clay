@@ -58,6 +58,14 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
+    def restore(self, multihash, **kwargs):
+        response = self._request(
+            command='upload',
+            id=kwargs.get('id'),
+            hash=multihash
+        )
+        return response['hash']
+
     def get_file(self, multihash, client_options=None, **kwargs):
         filepath = kwargs.pop('filepath')
         peers = None
