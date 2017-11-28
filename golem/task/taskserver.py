@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
-from collections import deque
 import datetime
-from typing import Dict, Iterable, Optional
-
-from golem_messages import message
 import itertools
 import logging
 import os
-from pydispatch import dispatcher
 import time
+import weakref
+from collections import deque
+from typing import Iterable, Optional
 
+from golem_messages import message
+from pydispatch import dispatcher
 from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
-from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
+from golem.network.transport.tcpnetwork import TCPNetwork, SocketAddress, \
+    FilesProtocol
+from golem.network.transport.tcpserver import PendingConnectionsServer, \
+    PenConnStatus
 from golem.ranking.helper.trust import Trust
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader, ResourceType, Task
+from golem.task.taskbase import TaskHeader, ResourceType
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.task.taskstate import TaskState
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-import weakref
 
 logger = logging.getLogger('golem.task.taskserver')
 

@@ -5,9 +5,8 @@ import uuid
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
-from twisted.internet.defer import Deferred
-
 from freezegun import freeze_time
+from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
