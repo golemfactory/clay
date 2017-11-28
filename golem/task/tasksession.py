@@ -16,7 +16,6 @@ from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
 from golem.network.concent.client import ConcentRequest
-from golem.network.concent.exceptions import ConcentException
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -751,19 +750,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
-
-    # FIXME: Create a common facility for Concent requests and error handling
-    def concent_send(self, message):
-        if not self.concent_client:
-            return logger.debug("Concent client is not available")
-
-        try:
-            self.concent_client.send(message)
-        except ConcentException as exc:
-            logger.error("Concent exception: %r", exc)
-        except Exception as exc:
-            logger.error("Unexpected error while trying to send a Concent "
-                         "request: %r", exc)
 
     def _check_ctd_params(self, ctd):
         reasons = message.MessageCannotComputeTask.REASON
