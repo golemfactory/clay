@@ -78,7 +78,7 @@ class TestTaskInfo(TestCase, testutils.PEP8MixIn):
         self.assertEqual(ti.not_downloaded_count(), 0,
                          "No results should have had problems w/download yet")
 
-        self.assertGreater(ti.total_time(), 1.0,
+        self.assertGreaterEqual(ti.total_time(), 1.0,
                            "Total time should be larger than 1.0 at this point "
                            "since the task is not finished yet")
         self.assertFalse(ti.had_failures_or_timeouts(),
@@ -258,7 +258,7 @@ class TestTaskInfo(TestCase, testutils.PEP8MixIn):
 
 class TestRequestorTaskStats(LogTestCase):
     def compare_task_stats(self, ts1, ts2):
-        self.assertGreater(ts1.total_time, ts2.total_time)
+        self.assertGreaterEqual(ts1.total_time, ts2.total_time)
         self.assertEqual(ts1.finished, ts2.finished)
         self.assertEqual(ts1.task_failed, ts2.task_failed)
         self.assertEqual(ts1.had_failures, ts2.had_failures)
@@ -568,7 +568,7 @@ class TestRequestorTaskStats(LogTestCase):
                              FinishedTasksSummary(0, 0.0),
                              FinishedTasksSummary(0, 0.0),
                              FinishedTasksSummary(1, ftime2)))
-        self.assertGreater(ftime2, ftime1, "Time should not go back")
+        self.assertGreaterEqual(ftime2, ftime1, "Time should not go back")
 
         # and get it back to a good shape, create a subtask, fail it
         # and test then
@@ -589,7 +589,7 @@ class TestRequestorTaskStats(LogTestCase):
                              FinishedTasksSummary(0, 0.0),
                              FinishedTasksSummary(1, ftime3),
                              FinishedTasksSummary(0, 0.0)))
-        self.assertGreater(ftime3, ftime2, "Time should not go back")
+        self.assertGreaterEqual(ftime3, ftime2, "Time should not go back")
 
         # fail it again, just for fun (and coverage)
         ts1.status = TaskStatus.aborted
@@ -602,7 +602,7 @@ class TestRequestorTaskStats(LogTestCase):
                              FinishedTasksSummary(0, 0.0),
                              FinishedTasksSummary(0, 0.0),
                              FinishedTasksSummary(1, ftime4)))
-        self.assertGreater(ftime4, ftime3, "Time should not go back")
+        self.assertGreaterEqual(ftime4, ftime3, "Time should not go back")
 
     def test_unknown_task_op(self):
         # for that we need to remove one of the known ops from the list
@@ -720,7 +720,7 @@ class TestRequestorTaskStatsManager(TestCase):
                          CurrentStats(1, 1, 1, 1, 1, 0, 0, 0, 1))
         # duration of the task is unknown hence the complex compare
         self.assertEqual(rtsm.get_finished_stats()[0][0], 1)
-        self.assertGreater(rtsm.get_finished_stats()[0][1], 0)
+        self.assertGreaterEqual(rtsm.get_finished_stats()[0][1], 0.0)
         self.assertEqual(
             rtsm.get_finished_stats()[1], FinishedTasksSummary(0, 0.0))
         self.assertEqual(
