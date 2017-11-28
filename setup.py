@@ -6,7 +6,7 @@ from setuptools import setup
 
 from setup_util.setup_commons import (
     path, parse_requirements, platform, update_variables, get_version,
-    get_long_description, find_required_packages, PyTest, PyInstaller,
+    get_long_description, find_required_packages, PyInstaller,
     move_wheel, print_errors)
 from setup_util.taskcollector_builder import TaskCollectorBuilder
 
@@ -44,18 +44,10 @@ setup(
     packages=find_required_packages(),
     install_requires=requirements,
     dependency_links=dependencies,
-    # @todo remove test dependencies from requirements.txt and add here
-    # extras_require={
-    #     'dev': ['check-manifest'],
-    #     'test': ['coverage'],
-    # },
     include_package_data=True,
     cmdclass={
-        'test': PyTest,
         'pyinstaller': PyInstaller
     },
-    test_suite='tests',
-    tests_require=['mock', 'pytest'],
     entry_points={
         'gui_scripts': [
             'golemapp = golemapp:start',
