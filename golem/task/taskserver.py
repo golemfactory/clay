@@ -71,7 +71,7 @@ class TaskResourcesMixin(object):
             task = tasks[task_id]
             files = task.get_resources(None, ResourceType.HASHES)
 
-            logger.warning("Restoring task resources: %r", task_id)
+            logger.info("Restoring task resources: %r", task_id)
             self._restore_resources(files, task_id,
                                     resource_hash=task_state.resource_hash)
 
@@ -90,6 +90,7 @@ class TaskResourcesMixin(object):
             if resource_hash:
                 return self._restore_resources(files, task_id)
             logger.error("Cannot restore resources for task: %r", task_id)
+            self.task_manager.delete_task(task_id)
         else:
             task_state = self.task_manager.tasks_states[task_id]
             task_state.resource_hash = resource_hash
