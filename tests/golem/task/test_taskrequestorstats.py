@@ -79,8 +79,8 @@ class TestTaskInfo(TestCase, testutils.PEP8MixIn):
                          "No results should have had problems w/download yet")
 
         self.assertGreaterEqual(ti.total_time(), 1.0,
-                           "Total time should be larger than 1.0 at this point "
-                           "since the task is not finished yet")
+                                "Total time should be larger than 1.0 at this "
+                                "point since the task is not finished yet")
         self.assertFalse(ti.had_failures_or_timeouts(),
                          "No timeouts nor failures expected so far")
         self.assertFalse(ti.is_completed(),
@@ -617,6 +617,18 @@ class TestRequestorTaskStats(LogTestCase):
             rs.on_message("task1", tstate, TaskOp.UNEXPECTED_SUBTASK_RECEIVED)
 
             assert any("Unknown TaskOp" in l for l in log.output)
+
+    def test_restore_finished_task(self):
+        # finished task should be skipped during restore so it does not
+        # clutter statistics
+        rs = RequestorTaskStats()
+        tstate = TaskState()
+        tstate.status = TaskStatus.timeout
+        tstate.time_started = 0.0
+
+        with self.assertLogs(logger, level="INFO") as log:
+            rs.on_message("task1", tstate, TaskOp.TASK_RESTORED)
+            assert any("Skipping completed task" in l for l in log.output)
 
 
 class TestRequestorTaskStatsManager(TestCase):
