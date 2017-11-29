@@ -74,7 +74,7 @@ diff-lines() {
         elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
             line=${BASH_REMATCH[2]}
         elif [[ $REPLY =~ ^($esc\[[0-9;]+m)*([\ +-]) ]]; then
-            echo "$path:$line"
+            echo "$path:$line:"
             if [[ ${BASH_REMATCH[2]} != - ]]; then
                 ((line++))
             fi
@@ -112,7 +112,7 @@ if [ -n "$diff" ]; then
     echo "$diff"
 
     # Remove lines from findings based on lines changed
-    DIFF_LINES=$(git diff "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
+    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
     CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
 
     echo -e "\n\nChanged lines findings:\n"
