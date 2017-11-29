@@ -16,7 +16,6 @@ from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 
 
-@ci_skip
 class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def setUp(self):
@@ -327,7 +326,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             tc.task_request_rejected("xyz", "my rejection reason")
 
 
-@ci_skip
 class TestTaskThread(DatabaseFixture):
     def test_thread(self):
         ts = mock.MagicMock()
