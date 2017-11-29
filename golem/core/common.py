@@ -9,8 +9,6 @@ import pytz
 
 from golem.core import simpleenv
 
-logger = logging.getLogger(__name__)
-
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
 MAX_CPU_WINDOWS = 32
@@ -173,11 +171,12 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
+    wrong_loglevel = None
     if loglevel and loglevel not in ['WARNING', 'INFO', 'DEBUG']:
-        logger.warning('Invalid log level "%r", reset to default.', loglevel)
+        wrong_loglevel = loglevel
         loglevel = None
 
-    for handler in list(LOGGING.get('handlers', {}).values()):
+    for handler in LOGGING.get('handlers', {}).values():
         if loglevel:
             handler['level'] = loglevel
         if 'filename' in handler:
@@ -187,7 +186,7 @@ def config_logging(suffix='', datadir=None, loglevel=None):
             }
 
     if loglevel:
-        for _logger in list(LOGGING.get('loggers', {}).values()):
+        for _logger in LOGGING.get('loggers', {}).values():
             if 'level' in _logger:
                 _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
@@ -203,6 +202,11 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         )
         return  # Avoid consequent errors
     logging.captureWarnings(True)
+
+    logger = logging.getLogger(__name__)
+    if wrong_loglevel is not None:
+        logger.warning('Invalid log level "%r", reset to default.',
+                       wrong_loglevel)
 
     import txaio
     txaio.use_twisted()
