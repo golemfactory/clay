@@ -351,11 +351,11 @@ class TestMessages(unittest.TestCase):
         resource = 'test-r-{}'.format(uuid.uuid4())
         copies = random.randint(-10**10, 10**10)
         msg = message.PushResource(resource=resource, copies=copies)
-        expected = [
+        expected = sorted([
             ['resource', resource],
             ['copies', copies],
-        ]
-        self.assertEqual(expected, msg.slots())
+        ])
+        self.assertEqual(expected, sorted(msg.slots()))
 
     def test_message_pull_answer(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
