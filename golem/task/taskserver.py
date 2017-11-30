@@ -68,7 +68,9 @@ class TaskResourcesMixin(object):
         if not self.task_manager.task_persistence:
             return
 
-        for task_id, task_state in self.task_manager.tasks_states.items():
+        states = dict(self.task_manager.tasks_states)
+
+        for task_id, task_state in states.items():
             task = self.task_manager.tasks[task_id]
             files = task.get_resources(None, ResourceType.HASHES)
 
