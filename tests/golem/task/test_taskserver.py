@@ -8,6 +8,8 @@ from math import ceil
 
 from unittest.mock import Mock, MagicMock, patch, ANY
 
+from requests import HTTPError
+
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -21,6 +23,7 @@ from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
+from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDatabaseWithReactor
@@ -872,3 +875,95 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
         return ccd
+
+
+class TestRestoreResources(TestWithKeysAuth, LogTestCase,
+                           testutils.DatabaseFixture):
+
+    def setUp(self):
+        for parent in self.__class__.__bases__:
+            parent.setUp(self)
+
+        self.resource_manager = Mock(
+            add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
+        )
+        self.ts = TaskServer(Mock(), ClientConfigDescriptor(), Mock(),
+                             self.client, use_docker_machine_manager=False)
+        self.ts.task_manager.notify_update_task = Mock(
+            side_effect=self.ts.task_manager.notify_update_task
+        )
+        self.ts.task_manager.delete_task = Mock(
+            side_effect=self.ts.task_manager.delete_task
+        )
+        self.ts._get_resource_manager = Mock(
+            return_value=self.resource_manager
+        )
+        self.ts.task_manager.dump_task = Mock()
+        self.task_count = 3
+
+    @staticmethod
+    def _create_tasks(task_server, count):
+        for i in range(count):
+            task_id = str(uuid.uuid4())
+            task_server.task_manager.tasks[task_id] = Mock()
+            task_server.task_manager.tasks_states[task_id] = TaskState()
+
+    @staticmethod
+    def _build_raise(cls):
+        def _raise(*_a, **_kw):
+            raise cls()
+        return Mock(side_effect=_raise)
+
+    def test_without_tasks(self):
+        with patch.object(self.resource_manager, 'add_task',
+                          side_effect=self._build_raise(ConnectionError)):
+            self.ts.restore_resources()
+            assert not self.resource_manager.add_task.called
+            assert not self.ts.task_manager.delete_task.called
+            assert not self.ts.task_manager.notify_update_task.called
+
+    def test_with_connection_error(self):
+        self._create_tasks(self.ts, self.task_count)
+
+        with patch.object(self.resource_manager, 'add_task',
+                          side_effect=self._build_raise(ConnectionError)):
+            self.ts.restore_resources()
+            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.ts.task_manager.delete_task.call_count == \
+                self.task_count
+            assert not self.ts.task_manager.notify_update_task.called
+
+    def test_with_http_error(self):
+        self._create_tasks(self.ts, self.task_count)
+
+        with patch.object(self.resource_manager, 'add_task',
+                          side_effect=self._build_raise(HTTPError)):
+            self.ts.restore_resources()
+            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.ts.task_manager.delete_task.call_count == \
+                self.task_count
+            assert not self.ts.task_manager.notify_update_task.called
+
+    def test_with_http_error_and_resource_hashes(self):
+        self._create_tasks(self.ts, self.task_count)
+        for state in self.ts.task_manager.tasks_states.values():
+            state.resource_hash = str(uuid.uuid4())
+
+        with patch.object(self.resource_manager, 'add_task',
+                          side_effect=self._build_raise(HTTPError)):
+            self.ts.restore_resources()
+            assert self.resource_manager.add_task.call_count == \
+                self.task_count * 2
+            assert self.ts.task_manager.delete_task.call_count == \
+                self.task_count
+            assert not self.ts.task_manager.notify_update_task.called
+
+    def test_restore_resources(self):
+        self._create_tasks(self.ts, self.task_count)
+
+        self.ts.restore_resources()
+        assert self.resource_manager.add_task.call_count == self.task_count
+        assert not self.ts.task_manager.delete_task.called
+        assert self.ts.task_manager.notify_update_task.call_count == \
+            self.task_count
+
