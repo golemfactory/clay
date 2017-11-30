@@ -134,7 +134,8 @@ class TaskManager(TaskEventListener):
         return task_type.task_builder_type.build_dictionary(definition)
 
     def add_new_task(self, task):
-        if task.header.task_id in self.tasks:
+        task_id = task.header.task_id
+        if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
         if not self.key_id:
@@ -149,23 +150,25 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
-        self.dir_manager.clear_temporary(task.header.task_id)
-        self.dir_manager.get_task_temporary_dir(task.header.task_id,
-                                                create=True)
+        self.dir_manager.clear_temporary(task_id)
+        self.dir_manager.get_task_temporary_dir(task_id, create=True)
 
         task.create_reference_data_for_task_validation()
+        task.register_listener(self)
+
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
-        self.tasks[task.header.task_id] = task
-        self.tasks_states[task.header.task_id] = ts
+        self.tasks[task_id] = task
+        self.tasks_states[task_id] = ts
+        self.notice_task_updated(task_id)
+        logger.info("Task %s added", task_id)
 
     @handle_task_key_error
     def start_task(self, task_id):
-        task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
 
         if task_state.status != TaskStatus.notStarted:
@@ -173,12 +176,8 @@ class TaskManager(TaskEventListener):
                                .format(task_id))
 
         task_state.status = TaskStatus.waiting
-        task.register_listener(self)
-
-        if self.task_persistence:
-            self.dump_task(task.header.task_id)
-            logger.info("Task %s added" % task.header.task_id)
-            self.notice_task_updated(task.header.task_id)
+        self.notice_task_updated(task_id)
+        logger.info("Task %s started", task_id)
 
     def _dump_filepath(self, task_id):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
@@ -227,6 +226,9 @@ class TaskManager(TaskEventListener):
                     task_id = task.header.task_id
                     self.tasks[task_id] = task
                     self.tasks_states[task_id] = state
+
+                    for sub in state.subtask_states.values():
+                        self.subtask2task_mapping[sub.subtask_id] = task
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
@@ -540,7 +542,7 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def restart_task(self, task_id):
-        logger.info("restarting task")
+        logger.info("Restarting task %s", task_id)
         self.dir_manager.clear_temporary(task_id)
         task = self.tasks[task_id]
 

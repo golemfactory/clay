@@ -518,7 +518,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.add_new_task(t)
             self.tm.start_task(t.header.task_id)
             self.tm.resources_send("xyz")
-            self.assertEqual(listener_mock.call_count, 2)
+            self.assertEqual(listener_mock.call_count, 3)
         finally:
             dispatcher.disconnect(listener, signal='golem.taskmanager')
 
@@ -676,7 +676,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
-                               "key_id", "environment", task_owner=node), '', Mock())
+                               "key_id", "environment", task_owner=node), '',
+                    TaskDefinition())
 
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
         self.tm.add_new_task(task)
