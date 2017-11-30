@@ -104,6 +104,10 @@ class TaskResourcesMixin(object):
             task_state.resource_hash = resource_hash
             self.task_manager.notify_update_task(task_id)
 
+    def download_pending_results(self) -> None:
+        # TODO: extract TaskSession logic
+        pass
+
     def get_download_options(self, key_id):
         resource_manager = self._get_resource_manager()
         peer = self.get_resource_peer(key_id)

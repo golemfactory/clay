@@ -475,24 +475,20 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         return True
 
-    def task_result_incoming(self, subtask_id):
-        node_id = self.get_node_id_for_subtask(subtask_id)
+    @handle_subtask_key_error
+    def task_result_incoming(self, subtask_id: str,
+                             result_secret: str,
+                             result_hash: str):
+        task_id = self.subtask2task_mapping[subtask_id]
+        task = self.tasks[task_id]
+        task.result_incoming(subtask_id)
 
-        if node_id and subtask_id in self.subtask2task_mapping:
-            task_id = self.subtask2task_mapping[subtask_id]
-            if task_id in self.tasks:
-                task = self.tasks[task_id]
-                states = self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_state.result_secret = result_secret
+        subtask_state.result_hash = result_hash
+        subtask_state.subtask_status = SubtaskStatus.downloading
 
-                task.result_incoming(subtask_id)
-                states.subtask_status = SubtaskStatus.downloading
-
-                self.notify_update_task(task_id)
-            else:
-                logger.error("Unknown task id: {}".format(task_id))
-        else:
-            logger.error("Node_id {} or subtask_id {} does not exist"
-                         .format(node_id, subtask_id))
+        self.notify_update_task(task_id)
 
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def check_timeouts(self):

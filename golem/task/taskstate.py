@@ -24,6 +24,7 @@ class TaskState(object):
         return {
             'time_started': self.time_started,
             'time_remaining': self.remaining_time,
+            'resource_hash': self.resource_hash,
             'status': to_unicode(self.status)
         }
 
@@ -54,6 +55,8 @@ class SubtaskState(object):
         self.stderr = ""
         self.results = []
         self.computation_time = 0
+        self.result_secret = None
+        self.result_hash = None
 
         self.computer = ComputerState()
 
@@ -73,6 +76,7 @@ class SubtaskState(object):
             'stderr': to_unicode(self.stderr),
             'stdout': to_unicode(self.stdout),
             'description': self.subtask_definition,
+            'result_hash': self.result_hash
         }
 
 
