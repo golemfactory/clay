@@ -349,7 +349,7 @@ class TaskManager(TaskEventListener):
     def get_tasks_headers(self):
         ret = []
         for tid, task in self.tasks.items():
-            status = self.tasks_states.get(tid).status
+            status = self.tasks_states[tid].status
             if task.needs_computation() and status in self.activeStatus:
                 ret.append(task.header)
 

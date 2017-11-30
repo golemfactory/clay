@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import deque
 import datetime
-from typing import Dict
+from typing import Dict, Iterable, Optional
 
 from golem_messages import message
 import itertools
@@ -63,19 +63,24 @@ class TaskResourcesMixin(object):
         resources = resource_manager.get_resources(task_id)
         return resource_manager.to_wire(resources)
 
-    def restore_resources(self,
-                          tasks: Dict[str, Task],
-                          task_states: Dict[str, TaskState]):
+    def restore_resources(self) -> None:
 
-        for task_id, task_state in task_states.items():
-            task = tasks[task_id]
+        if not self.task_manager.task_persistence:
+            return
+
+        for task_id, task_state in self.task_manager.tasks_states.items():
+            task = self.task_manager.tasks[task_id]
             files = task.get_resources(None, ResourceType.HASHES)
 
             logger.info("Restoring task resources: %r", task_id)
             self._restore_resources(files, task_id,
                                     resource_hash=task_state.resource_hash)
 
-    def _restore_resources(self, files, task_id, resource_hash=None):
+    def _restore_resources(self,
+                           files: Iterable[str],
+                           task_id: str,
+                           resource_hash: Optional[str] = None):
+
         resource_manager = self._get_resource_manager()
 
         try:
@@ -132,46 +137,29 @@ class TaskResourcesMixin(object):
 
 
 class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
-
     def __init__(self, node,
                  config_desc: ClientConfigDescriptor(),
                  keys_auth,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True):
-
-        use_dist_resources = config_desc.use_distributed_resource_management
-        session_wait_timeout = config_desc.waiting_for_task_session_timeout
-
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
+
         self.node = node
-
-        self.task_keeper = TaskHeaderKeeper(
-            client.environments_manager,
-            min_price=config_desc.min_price
-        )
-        self.task_manager = TaskManager(
-            config_desc.node_name,
-            self.node,
-            self.keys_auth,
-            root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=use_dist_resources,
-            tasks_dir=os.path.join(client.datadir, 'tasks')
-        )
-        self.benchmark_manager = BenchmarkManager(
-            config_desc.node_name,
-            task_server=self,
-            root_path=client.datadir,
-            benchmarks=self.task_manager.apps_manager.get_benchmarks()
-        )
-        self.task_computer = TaskComputer(
-            config_desc.node_name,
-            task_server=self,
-            use_docker_machine_manager=use_docker_machine_manager
-        )
-
+        self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
+        self.task_manager = TaskManager(config_desc.node_name, self.node, self.keys_auth,
+                                        root_path=TaskServer.__get_task_manager_root(client.datadir),
+                                        use_distributed_resources=config_desc.use_distributed_resource_management,
+                                        tasks_dir=os.path.join(client.datadir, 'tasks'))
+        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
+                                                  client.datadir, benchmarks)
+        udmm = use_docker_machine_manager
+        self.task_computer = TaskComputer(config_desc.node_name,
+                                          task_server=self,
+                                          use_docker_machine_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -190,24 +178,16 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
         self.use_ipv6 = use_ipv6
 
-        self.forwarded_session_request_timeout = session_wait_timeout
+        self.forwarded_session_request_timeout = config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
         self.response_list = {}
-        self.resource_handshakes = {}
         self.deny_set = get_deny_set(datadir=client.datadir)
+        self.resource_handshakes = {}
 
-        network = TCPNetwork(
-            ProtocolFactory(protocol_class=FilesProtocol,
-                            server=self,
-                            session_factory=SessionFactory(TaskSession)),
-            use_ipv6
-        )
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
-
-        dispatcher.connect(self.paymentprocessor_listener,
-                           signal="golem.paymentprocessor")
-        dispatcher.connect(self.transactions_listener,
-                           signal="golem.transactions")
+        dispatcher.connect(self.paymentprocessor_listener, signal="golem.paymentprocessor")
+        dispatcher.connect(self.transactions_listener, signal="golem.transactions")
 
     def paymentprocessor_listener(self, sender, signal, event='default', **kwargs):
         if event != 'payment.confirmed':
@@ -242,11 +222,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if next(tmp_cycler) == 0:
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
-
-    def restore_task_resources(self):
-        if self.task_manager.task_persistence:
-            self.restore_resources(self.task_manager.tasks,
-                                   self.task_manager.tasks_states)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(env_id)
