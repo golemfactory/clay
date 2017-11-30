@@ -208,7 +208,7 @@ class TestBasicProtocol(LogTestCase):
         self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
 
-        m = message.MessageDisconnect()
+        m = message.Disconnect()
         data = m.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)

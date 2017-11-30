@@ -67,7 +67,7 @@ class BasicSession(FileSession):
 
         self.last_message_time = time.time()
         self._disconnect_sent = False
-        self._interpretation = {message.MessageDisconnect.TYPE: self._react_to_disconnect}
+        self._interpretation = {message.Disconnect.TYPE: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
@@ -87,7 +87,7 @@ class BasicSession(FileSession):
         if action:
             action(msg)
         else:
-            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
 
     def dropped(self):
         """ Close connection """
@@ -145,11 +145,11 @@ class BasicSession(FileSession):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
             self._disconnect_sent = True
-            self.send(message.MessageDisconnect(reason=reason))
+            self.send(message.Disconnect(reason=reason))
 
     def _check_msg(self, msg):
         if msg is None or not isinstance(msg, message.Message):
-            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
         return True
 
@@ -171,9 +171,9 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [message.MessageDisconnect.TYPE]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [message.MessageDisconnect.TYPE]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [message.MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
+        self.can_be_unverified = [message.Disconnect.TYPE]  # React to message even if it's self.verified is set to False
+        self.can_be_unsigned = [message.Disconnect.TYPE]  # React to message even if it's not signed.
+        self.can_be_not_encrypted = [message.Disconnect.TYPE]  # React to message even if it's not encrypted.
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
@@ -198,7 +198,7 @@ class BasicSafeSession(BasicSession, SafeSession):
                         .format(message, self.address, self.port))
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
-                self.disconnect(message.MessageDisconnect.REASON.Unverified)
+                self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
         BasicSession.send(self, message)
@@ -213,17 +213,17 @@ class BasicSafeSession(BasicSession, SafeSession):
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
-            self.disconnect(message.MessageDisconnect.REASON.Unverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
         if not msg.encrypted and type_ not in self.can_be_not_encrypted:
-            self.disconnect(message.MessageDisconnect.REASON.BadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
             logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
-            self.disconnect(message.MessageDisconnect.REASON.Unverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
         return True
