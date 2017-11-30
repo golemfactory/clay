@@ -73,8 +73,7 @@ class TaskResourcesMixin(object):
             files = task.get_resources(None, ResourceType.HASHES)
 
             logger.info("Restoring task resources: %r", task_id)
-            self._restore_resources(files, task_id,
-                                    resource_hash=task_state.resource_hash)
+            self._restore_resources(files, task_id, task_state.resource_hash)
 
     def _restore_resources(self,
                            files: Iterable[str],
@@ -84,9 +83,11 @@ class TaskResourcesMixin(object):
         resource_manager = self._get_resource_manager()
 
         try:
-            _, resource_hash = resource_manager.add_files(
-                files, task_id,
-                resource_hash=resource_hash
+            _, resource_hash = resource_manager.add_task(
+                files,
+                task_id,
+                resource_hash=resource_hash,
+                async=False
             )
         except ConnectionError:
             logger.error("Cannot restore resources for task: %r", task_id)
