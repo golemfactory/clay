@@ -3,7 +3,7 @@ import queue
 import threading
 import time
 from enum import Enum
-from typing import Optional, Hashable
+from typing import Optional, Hashable, Type
 
 import requests
 from golem_messages import message
@@ -21,19 +21,19 @@ class ConcentClient:
 
     @classmethod
     def send(cls,
-             msg: message.Message,
+             data: bytes,
              url: str = CONCENT_URL) -> Optional[str]:
         """
         Sends a message to the concent server
 
-        :param msg: Message to send
+        :param data: Serialized message to send
         :param url: Concent API endpoint URL
         :return: Raw reply message, None or exception
         :rtype: Bytes|None
         """
 
         try:
-            response = requests.post(url, data=msg.raw)
+            response = requests.post(url, data=data)
         except requests.exceptions.RequestException as e:
             logger.warning('Concent RequestException %r', e)
             response = e.response
@@ -62,12 +62,12 @@ class ConcentClient:
 
 class ConcentRequestStatus(Enum):
 
-    Initial = 0
-    Waiting = 1
-    Queued = 2
-    Success = 3
-    TimedOut = 4
-    Error = 5
+    Initial = object()
+    Waiting = object()
+    Queued = object()
+    Success = object()
+    TimedOut = object()
+    Error = object()
 
     def completed(self) -> bool:
         return self.success() or self.error()
@@ -81,18 +81,19 @@ class ConcentRequestStatus(Enum):
 
 class ConcentRequest:
 
-    __slots__ = ('key', 'msg', 'url', 'status', 'content',
+    __slots__ = ('key', 'msg_data', 'msg_cls', 'status', 'content',
                  'sent_ts', 'deadline_ts')
 
     def __init__(self,
                  key: Hashable,
-                 msg: message.Message,
-                 lifetime: float,
-                 url: Optional[str] = None) -> None:
+                 msg_data: bytes,
+                 msg_cls: Type[message.Message],
+                 lifetime: float) -> None:
 
         self.key = key
-        self.msg = msg
-        self.url = url
+        self.msg_data = msg_data
+        self.msg_cls = msg_cls
+
         self.status = ConcentRequestStatus.Initial
         self.content = None
 
@@ -113,7 +114,7 @@ class ConcentRequest:
         return (
             "<ConcentRequest({}, {}, {}, sent_ts={}, deadline_ts={})>".format(
                 self.key,
-                self.msg,
+                self.msg_cls,
                 self.status.name,
                 self.sent_ts,
                 self.deadline_ts
@@ -130,7 +131,7 @@ class ConcentClientService(threading.Thread):
     QUEUE_TIMEOUT = 5  # s
 
     def __init__(self, enabled=True):
-        super(ConcentClientService, self).__init__(daemon=True)
+        super().__init__(daemon=True)
 
         self._enabled = enabled  # FIXME: remove
         self._stop_event = threading.Event()
@@ -151,25 +152,25 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: Hashable,
-               msg: message.Message,
-               delay: Optional[float] = None,
-               url: Optional[str] = None) -> None:
+               msg_data: bytes,
+               msg_cls: Type[message.Message],
+               delay: Optional[float] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
-        :param msg: Message to send
-        :param url: Concent API endpoint URL
+        :param msg_data: Serialized message to send
+        :param msg_cls: Class of the sent message
         :param delay: Time to wait before sending the message
         :return: None
         """
         from twisted.internet import reactor
 
-        lifetime = MSG_LIFETIMES.get(msg.__class__, DEFAULT_MSG_LIFETIME)
+        lifetime = MSG_LIFETIMES.get(msg_cls, DEFAULT_MSG_LIFETIME)
         if delay is None:
-            delay = MSG_DELAYS.get(msg.__class__, 0)
+            delay = MSG_DELAYS.get(msg_cls, 0)
 
-        req = ConcentRequest(key, msg, lifetime=lifetime, url=url)
+        req = ConcentRequest(key, msg_data, msg_cls, lifetime=lifetime)
         req.status = ConcentRequestStatus.Waiting
 
         if delay:
@@ -227,7 +228,7 @@ class ConcentClientService(threading.Thread):
 
         try:
             req.sent_ts = now
-            res = self._client.send(req.msg, req.url)
+            res = self._client.send(req.msg_data)
         except Exception as exc:
             req.content = exc
             req.status = ConcentRequestStatus.Error

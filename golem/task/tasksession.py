@@ -362,15 +362,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             extra_data=extra_data))
 
         # FIXME: MessageForceReportComputedTask is going to be updated
-        concent_msg = message.MessageForceReportComputedTask(
-            task_result.subtask_id)
-        # FIXME: create a property setter for messages._raw
-        concent_msg._raw = concent_msg.serialize(self.sign)
+        msg_cls = message.MessageForceReportComputedTask
+        msg = msg_cls(task_result.subtask_id)
+        msg_data = msg.serialize(self.sign)
 
         self.concent_service.submit(
-            ConcentRequest.build_key(task_result.subtask_id,
-                                     message.MessageForceReportComputedTask),
-            concent_msg
+            ConcentRequest.build_key(task_result.subtask_id, msg_cls),
+            msg_data, msg_cls
         )
 
     def send_task_failure(self, subtask_id, err_msg):

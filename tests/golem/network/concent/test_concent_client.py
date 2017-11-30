@@ -14,16 +14,24 @@ from golem.network.concent.exceptions import ConcentUnavailableException, \
 logger = logging.getLogger(__name__)
 
 
+def mock_sign(*_):
+    return b'0' * message.Message.SIG_LEN
+
+
+def mock_encrypt(source):
+    return source
+
+
 mock_msg = message.MessageForceReportComputedTask('subtask_id')
-mock_msg._raw = mock_msg.serialize(
-    sign_func=lambda x: b'0' * message.Message.SIG_LEN,
-    encrypt_func=lambda x: x
+mock_msg_data = mock_msg.serialize(
+    sign_func=mock_sign,
+    encrypt_func=mock_encrypt
 )
 
 # Succesfull mock
 mock_success = mock.MagicMock()
 mock_success.status_code = 200
-mock_success.content = mock_msg
+mock_success.content = mock_msg_data
 
 # Succesfull empty mock
 mock_empty = mock.MagicMock()
@@ -33,12 +41,12 @@ mock_empty.content = ""
 # Client error mock
 mock_client_error = mock.MagicMock()
 mock_client_error.status_code = 400
-mock_client_error.content = mock_msg
+mock_client_error.content = mock_msg_data
 
 # Server error mock
 mock_server_error = mock.MagicMock()
 mock_server_error.status_code = 500
-mock_server_error.content = mock_msg
+mock_server_error.content = mock_msg_data
 
 
 # Exception mock
@@ -56,21 +64,21 @@ class TestConcentClient(TestCase):
     def test_message(self, mock_requests_post):
 
         client = ConcentClient()
-        response = client.send(mock_msg)
+        response = client.send(data=mock_msg_data)
 
-        self.assertEqual(response, mock_msg)
+        self.assertEqual(response, mock_msg_data)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('requests.post', return_value=mock_empty)
     def test_message_empty(self, mock_requests_post):
 
         client = ConcentClient()
-        response = client.send(mock_msg)
+        response = client.send(data=mock_msg_data)
 
         self.assertEqual(response, None)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('requests.post', return_value=mock_client_error)
     def test_message_client_error(self, mock_requests_post):
@@ -78,9 +86,9 @@ class TestConcentClient(TestCase):
         client = ConcentClient()
 
         with self.assertRaises(ConcentRequestException):
-            client.send(mock_msg)
+            client.send(data=mock_msg_data)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('requests.post', return_value=mock_server_error)
     def test_message_server_error(self, mock_requests_post):
@@ -88,9 +96,9 @@ class TestConcentClient(TestCase):
         client = ConcentClient()
 
         with self.assertRaises(ConcentServiceException):
-            client.send(mock_msg)
+            client.send(data=mock_msg_data)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('requests.post', side_effect=RequestException)
     def test_message_exception(self, mock_requests_post):
@@ -98,9 +106,9 @@ class TestConcentClient(TestCase):
         client = ConcentClient()
 
         with self.assertRaises(ConcentUnavailableException):
-            client.send(mock_msg)
+            client.send(data=mock_msg_data)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('requests.post', side_effect=connection_error)
     def test_message_exception_data(self, mock_requests_post):
@@ -108,9 +116,9 @@ class TestConcentClient(TestCase):
         client = ConcentClient()
 
         with self.assertRaises(ConcentUnavailableException):
-            client.send(mock_msg)
+            client.send(data=mock_msg_data)
 
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg.raw)
+        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('golem.network.concent.client.logger')
     @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60)),
@@ -121,9 +129,9 @@ class TestConcentClient(TestCase):
 
         client = ConcentClient()
 
-        self.assertRaises(ConcentServiceException, client.send, mock_msg)
+        self.assertRaises(ConcentServiceException, client.send, mock_msg_data)
         self.assertEqual(mock_time.call_count, 0)
-        self.assertRaises(ConcentServiceException, client.send, mock_msg)
+        self.assertRaises(ConcentServiceException, client.send, mock_msg_data)
         self.assertEqual(mock_time.call_count, 0)
         self.assertEqual(mock_requests_post.call_count, 2)
 
@@ -147,9 +155,12 @@ class TestConcentClientService(TestCase):
 
     def test_submit(self, *_):
         concent_service = ConcentClientService(enabled=False)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -164,9 +175,12 @@ class TestConcentClientService(TestCase):
 
     def test_delayed_submit(self, *_):
         concent_service = ConcentClientService(enabled=False)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=60
         )
 
@@ -182,9 +196,12 @@ class TestConcentClientService(TestCase):
     # FIXME: remove when 'enabled' property is dropped
     def test_disabled(self, *_):
         concent_service = ConcentClientService(enabled=False)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -194,9 +211,12 @@ class TestConcentClientService(TestCase):
     # FIXME: remove when 'enabled' property is dropped
     def test_enabled(self, *_):
         concent_service = ConcentClientService(enabled=True)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -206,9 +226,12 @@ class TestConcentClientService(TestCase):
     @mock.patch('time.sleep')
     def test_loop_exception(self, sleep, *_):
         concent_service = ConcentClientService(enabled=True)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -232,9 +255,12 @@ class TestConcentClientService(TestCase):
     })
     def test_loop_request_timeout(self, *_):
         concent_service = ConcentClientService(enabled=True)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -245,9 +271,12 @@ class TestConcentClientService(TestCase):
 
     def test_loop(self, *_):
         concent_service = ConcentClientService(enabled=True)
+        msg = message.MessageForceReportComputedTask('id')
+
         concent_service.submit(
             'key',
-            message.MessageForceReportComputedTask('id'),
+            msg.serialize(mock_sign),
+            msg.__class__,
             delay=0
         )
 
@@ -264,15 +293,19 @@ class TestConcentRequest(TestCase):
             'subtask_id',
             message.MessageForceReportComputedTask
         )
+
         msg = message.MessageForceReportComputedTask('id')
+        msg_data = msg.serialize(mock_sign)
+        msg_cls = msg.__class__
+
         lifetime = 10.5
 
-        req = ConcentRequest(key, msg, lifetime)
+        req = ConcentRequest(key, msg_data, msg_cls, lifetime)
 
         assert isinstance(key, str)
         assert req.key is key
-        assert req.msg is msg
-        assert req.url is None
+        assert req.msg_data is msg_data
+        assert req.msg_cls is msg_cls
         assert req.status == ConcentRequestStatus.Initial
         assert req.sent_ts is None
         assert req.deadline_ts > time.time()
