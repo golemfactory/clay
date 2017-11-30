@@ -460,7 +460,6 @@ class Client(HardwarePresetsMixin):
         def add_task(result):
             task_state = task_manager.tasks_states[task_id]
             task_state.resource_hash = result[1]
-            self.task_server.task_manager.notify_update_task(task_id)
 
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
