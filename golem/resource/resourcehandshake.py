@@ -13,11 +13,11 @@ class ResourceHandshake:
     __slots__ = ('nonce', 'file', 'hash', 'message',
                  'started', 'local_result', 'remote_result')
 
-    def __init__(self, message=None):
+    def __init__(self, message_=None):
         self.nonce = str(uuid.uuid4())
         self.file = None
         self.hash = None
-        self.message = message
+        self.message = message_
 
         self.started = False
         self.local_result = None

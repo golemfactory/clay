@@ -267,7 +267,11 @@ class TestMessages(unittest.TestCase):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
-        msg = message.WantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
+        msg = message.WantToStartTaskSession(
+            node_info=node_info,
+            conn_id=conn_id,
+            super_node_info=super_node_info
+        )
         expected = [
             ['node_info', node_info],
             ['conn_id', conn_id],
@@ -280,7 +284,12 @@ class TestMessages(unittest.TestCase):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
         conn_id = 'test-ci-{}'.format(uuid.uuid4())
         super_node_info = 'test-sni-{}'.format(uuid.uuid4())
-        msg = message.SetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
+        msg = message.SetTaskSession(
+            key_id=key_id,
+            node_info=node_info,
+            conn_id=conn_id,
+            super_node_info=super_node_info
+        )
         expected = [
             ['key_id', key_id],
             ['node_info', node_info],

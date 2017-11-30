@@ -67,7 +67,9 @@ class BasicSession(FileSession):
 
         self.last_message_time = time.time()
         self._disconnect_sent = False
-        self._interpretation = {message.Disconnect.TYPE: self._react_to_disconnect}
+        self._interpretation = {
+            message.Disconnect.TYPE: self._react_to_disconnect,
+        }
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
@@ -171,9 +173,12 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [message.Disconnect.TYPE]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [message.Disconnect.TYPE]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [message.Disconnect.TYPE]  # React to message even if it's not encrypted.
+        # React to message even if it's self.verified is set to False
+        self.can_be_unverified = [message.Disconnect.TYPE]
+        # React to message even if it's not signed.
+        self.can_be_unsigned = [message.Disconnect.TYPE]
+        # React to message even if it's not encrypted.
+        self.can_be_not_encrypted = [message.Disconnect.TYPE]
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
