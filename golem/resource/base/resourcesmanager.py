@@ -340,14 +340,19 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                                     client=client,
                                     client_options=client_options)
 
-    def add_task(self, files, task_id,
-                 client=None, client_options=None):
+    def add_task(self, files, task_id, resource_hash=None,
+                 client=None, client_options=None, async=True):
 
-        request = AsyncRequest(self._add_task, files, task_id,
-                               client=client, client_options=client_options)
-        return async_run(request)
+        args = (files, task_id)
+        kwargs = dict(resource_hash=resource_hash, client=client,
+                      client_options=client_options)
 
-    def _add_task(self, files, task_id,
+        if async:
+            request = AsyncRequest(self._add_task, *args, **kwargs)
+            return async_run(request)
+        return self._add_task(*args, **kwargs)
+
+    def _add_task(self, files, task_id, resource_hash=None,
                   client=None, client_options=None):
 
         if self.storage.cache.get_prefix(task_id):
@@ -364,13 +369,13 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
         self.storage.cache.set_prefix(task_id, prefix)
         return self.add_files(files, task_id,
+                              resource_hash=resource_hash,
                               absolute_path=True,
                               client=client,
                               client_options=client_options)
 
-    def add_files(self, files, task_id,
-                  absolute_path=False, client=None,
-                  client_options=None):
+    def add_files(self, files, task_id, resource_hash=None,
+                  absolute_path=False, client=None, client_options=None):
 
         if files:
             client = client or self.new_client()
