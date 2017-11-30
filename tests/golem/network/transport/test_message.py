@@ -1,13 +1,15 @@
 # -*- encoding: utf-8 -*-
 
 from copy import copy
-from golem_messages import message
+import inspect
 import os
 import random
 import time
 import unittest
 import unittest.mock as mock
 import uuid
+
+from golem_messages import message
 
 from golem.core.common import to_unicode
 from golem.network.transport.tcpnetwork import BasicProtocol
@@ -376,6 +378,22 @@ class TestMessages(unittest.TestCase):
             ['options', options],
         ]
         self.assertEqual(expected, msg.slots())
+
+    def test_init_messages(self):
+        def is_message_class(cls):
+            return inspect.isclass(cls)\
+                and issubclass(cls, message.Message)\
+                and cls.TYPE is not None
+
+        message_classes = inspect.getmembers(message, is_message_class)
+
+        message_types = {}
+        for _, message_class in message_classes:
+            message_types[message_class.TYPE] = message_class
+
+        message.init_messages()
+
+        assert message_types == message.registered_message_types
 
     @mock.patch("golem_messages.message.MessageRandVal")
     def test_init_messages_error(self, mock_message_rand_val):
