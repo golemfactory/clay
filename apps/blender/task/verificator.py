@@ -107,7 +107,7 @@ class BlenderVerificator(FrameRenderingVerificator):
 
             scene_file = task.main_scene_file
 
-            cmd = "validation.py " + scene_file + " " \
+            cmd = "validation_parser_runner.py " + scene_file + " " \
                 "--crop_window_size " \
                 + str(min_x) + "," + str(max_x) + "," \
                 + str(min_y) + "," + str(max_x) + " " \
