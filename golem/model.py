@@ -10,7 +10,7 @@ from typing import Optional, Type  # pylint: disable=unused-import
 from ethereum.utils import denoms
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
-                    SqliteDatabase, TextField)
+                    SqliteDatabase, TextField, BlobField)
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
@@ -27,7 +27,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 5
+    SCHEMA_VERSION = 6
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -59,6 +59,7 @@ class Database:
             Stats,
             TaskPreset,
             Performance,
+            NetworkMessage
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -404,7 +405,7 @@ class Performance(BaseModel):
         database = db
 
     @classmethod
-    def update_or_create(cl, env_id, performance):
+    def update_or_create(cls, env_id, performance):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             perf.value = performance
@@ -412,3 +413,27 @@ class Performance(BaseModel):
         except Performance.DoesNotExist:
             perf = Performance(environment_id=env_id, value=performance)
             perf.save()
+
+
+##################
+# MESSAGE MODELS #
+##################
+
+
+class Actor(Enum):
+    Concent = 0
+    Requestor = 1
+    Provider = 2
+
+
+class NetworkMessage(BaseModel):
+    local_role = EnumField(Actor, null=False)
+    remote_role = EnumField(Actor, null=False)
+
+    task = CharField(null=False, index=True)
+    subtask = CharField(index=True)
+    node = CharField()
+
+    msg_date = DateTimeField(null=False)
+    msg_cls = CharField(null=False)
+    msg_data = BlobField(null=False)
