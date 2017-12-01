@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import deque
 import datetime
+from golem_messages import message
 import itertools
 import logging
 import os
@@ -266,7 +267,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if self.active:
             self.task_sessions_incoming.add(session)
         else:
-            session.disconnect(TaskSession.DCRNoMoreMessages)
+            session.disconnect(message.MessageDisconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)

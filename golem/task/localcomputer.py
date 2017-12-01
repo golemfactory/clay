@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import logging
 import os
 import shutil
@@ -10,7 +11,7 @@ from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
-from golem.task.taskbase import Task, ResourceType, ComputeTaskDef
+from golem.task.taskbase import Task, ResourceType
 
 logger = logging.getLogger("golem.task")
 
@@ -142,12 +143,12 @@ class LocalComputer(object):
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         return DockerTaskThread(self,
-                                ctd.subtask_id,
-                                ctd.docker_images,
-                                ctd.working_directory,
-                                ctd.src_code,
-                                ctd.extra_data,
-                                ctd.short_description,
+                                ctd['subtask_id'],
+                                ctd['docker_images'],
+                                ctd['working_directory'],
+                                ctd['src_code'],
+                                ctd['extra_data'],
+                                ctd['short_description'],
                                 self.test_task_res_path,
                                 self.tmp_dir,
                                 0,

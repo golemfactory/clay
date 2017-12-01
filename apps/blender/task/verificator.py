@@ -170,12 +170,11 @@ class BlenderVerificator(FrameRenderingVerificator):
         return extra_data, (0, 0)
 
     def query_extra_data_for_advanced_verification(self, extra_data):
-        ctd = super(BlenderVerificator,
-                    self).query_extra_data_for_advanced_verification(extra_data)
-        ctd.subtask_id = str(random.getrandbits(128))
-        ctd.src_code = self.src_code
-        ctd.docker_images = self.docker_images
-        ctd.deadline = timeout_to_deadline(self.verification_timeout)
+        ctd = super(BlenderVerificator, self).query_extra_data_for_advanced_verification(extra_data)
+        ctd['subtask_id'] = str(random.getrandbits(128))
+        ctd['src_code'] = self.src_code
+        ctd['docker_images'] = self.docker_images
+        ctd['deadline'] = timeout_to_deadline(self.verification_timeout)
         return ctd
 
     def _get_part_img_size(self, subtask_info):
