@@ -13,7 +13,7 @@ from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
-    HyperdriveResourceManager  # noqa
+    HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
     ResourceType
@@ -838,6 +838,30 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def notice_task_updated(self, task_id, subtask_id=None, task_op=None,
                             persist=True):
+        """Called when a task is modified, saves the task and
+        propagates information
+
+        Whenever task is changed `notice_task_updated` should be called
+        to save the task - if the change is save-worthy, as specified
+        by the `persist` parameter - and propagate information about
+        changed task to other parts of the system.
+
+        Most of the calls are save-worthy, but a minority is not: for
+        instance when the work offer is received, the task does not
+        change so saving it does not make sense, but it still makes
+        sense to let other parts of the system know about the change.
+        Also, when a number of minor changes are always followed by a
+        major one, as it is with restarting a frame task, it does not
+        make sense to store all the partial changes, so only the
+        final one is considered save-worthy.
+
+        :param str task_id: id of the updated task
+        :param Optional[str] subtask_id: if the operation done on the
+          task is related to a subtask, id of that subtask
+        :param Optional[TaskOp] task_op: description of the performed
+          operation
+        :param bool persist: should the task be persisted now
+        """
         # self.save_state()
         if persist and self.task_persistence:
             self.dump_task(task_id)

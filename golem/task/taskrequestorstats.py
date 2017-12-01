@@ -253,6 +253,11 @@ CurrentStats = NamedTuple("CurrentStats", [
     ("not_downloadable_subtasks_cnt", int),
     ("failed_subtasks_cnt", int),
     ("work_offers_cnt", int)])
+CurrentStats.__doc__ = """Statistics about a set of tasks
+
+Intended to be used as a summary of information from a set of
+`TaskStats`, this is periodically sent to the monitor.
+"""
 
 EMPTY_CURRENT_STATS = CurrentStats(0, 0, 0, 0, 0, 0, 0, 0, 0)
 
@@ -314,7 +319,7 @@ FinishedTasksStats = NamedTuple("FinishedTasksStats", [
     ("finished_ok", FinishedTasksSummary),
     ("finished_with_failures", FinishedTasksSummary),
     ("failed", FinishedTasksSummary)])
-FinishedTasksSummary.__doc__ = """Statisitics about tasks that are done
+FinishedTasksSummary.__doc__ = """Statisitics about finished tasks
 
 Divided into groups depending on the level of success: `finished_ok`
 are tasks that were verified ok and had no problems along the way,
@@ -424,7 +429,7 @@ class RequestorTaskStats:
 
         elif task_op == TaskOp.TASK_RESTORED:
             if task_state.status in TASK_COMPLETED_STATUSES:
-                logger.info("Skipping completed task {}".format(task_id))
+                logger.debug("Skipping completed task %r", task_id)
             else:
                 the_time = time.time()
                 msg1 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_RESTARTED)
@@ -464,7 +469,7 @@ class RequestorTaskStats:
 
         else:
             # Unknown task_op, log problem
-            logger.info("Unknown TaskOp {}".format(task_op.name))
+            logger.debug("Unknown TaskOp %r", task_op.name)
 
         if task_id in self.tasks:
             new_task_stats = self.get_task_stats(task_id)
