@@ -7,12 +7,18 @@ from golem_messages import message
 from peewee import DataError, PeeweeException
 
 from golem.model import NetworkMessage, Actor
-from golem.network.history import MessageHistoryService
+from golem.network.history import MessageHistoryService, record_history, \
+    IMessageHistoryProvider, requestor_history, provider_history, \
+    install_service
 from golem.testutils import DatabaseFixture
 
 
 def message_count():
     return len(NetworkMessage.select().execute())
+
+
+def mock_sign(*_):
+    return b'\0' * message.Message.SIG_LEN
 
 
 class TestMessageHistoryService(DatabaseFixture):
@@ -35,7 +41,7 @@ class TestMessageHistoryService(DatabaseFixture):
             node=str(uuid.uuid4()),
 
             msg_date=datetime.datetime.now(),
-            msg_cls=message.MessageHello.__class__.__name__,
+            msg_cls=message.Hello.__class__.__name__,
             msg_data=b'0' * 64,
 
             local_role=Actor.Provider,
@@ -152,8 +158,8 @@ class TestMessageHistoryService(DatabaseFixture):
 
         for msg in msgs:
             self.service.add_sync(msg)
-        assert message_count() == 3
 
+        assert message_count() == 3
         self.service._sweep()
         assert message_count() == 3
 
@@ -227,3 +233,87 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service.remove_sync.reset_mock()
         self.service._loop()
         assert not self.service.remove_sync.called
+
+
+class TestMessageHistoryProvider(DatabaseFixture):
+
+    def test_invalid_class(self):
+        with self.assertRaises(AttributeError):
+
+            class Invalid:
+                @record_history(local_role=Actor.Provider,
+                                remote_role=Actor.Requestor)
+                def method(self):
+                    pass
+
+            invalid = Invalid()
+            invalid.method(None)
+
+    def test_record_history(self):
+        service = install_service()
+
+        class Provider(IMessageHistoryProvider):
+
+            def __init__(self):
+                self.provider_subtask_to_task = {'subtask_1': 'task_1'}
+                self.requestor_subtask_to_task = {'subtask_2': 'task_2'}
+                self.node = 'a0b1c2'
+
+            def resolve_subtask_to_task(self, local_role, subtask_id):
+                if local_role == Actor.Provider:
+                    return self.provider_subtask_to_task.get(subtask_id)
+                elif local_role == Actor.Requestor:
+                    return self.requestor_subtask_to_task.get(subtask_id)
+
+            def resolve_node(self):
+                return self.node
+
+            @requestor_history
+            def react_to_report_computed_task(self, msg):
+                pass
+
+            @provider_history
+            def react_to_task_to_compute(self, msg):
+                pass
+
+        provider = Provider()
+        provider.resolve_subtask_to_task = Mock(
+            side_effect=provider.resolve_subtask_to_task
+        )
+        provider.resolve_node = Mock(
+            side_effect=provider.resolve_node
+        )
+
+        msg_hello = message.Hello()
+        msg_request = message.WantToComputeTask(task_id='task_2')
+        msg_request._raw = msg_request.serialize(sign_func=mock_sign)
+        msg_result = message.ReportComputedTask(subtask_id='subtask_2')
+        msg_result._raw = msg_request.serialize(sign_func=mock_sign)
+
+        NetworkMessage.delete().execute()
+
+        # Resolve node_id
+        assert service._save_queue.qsize() == 0
+        provider.react_to_task_to_compute(msg_request)
+        assert provider.resolve_node.called
+        assert not provider.resolve_subtask_to_task.called
+        assert service._save_queue.qsize() == 1
+
+        provider.resolve_node.reset_mock()
+        service._save_queue = queue.Queue()
+
+        # Also resolve task_id using the interface
+        assert service._save_queue.qsize() == 0
+        provider.react_to_report_computed_task(msg_result)
+        assert provider.resolve_node.called
+        assert provider.resolve_subtask_to_task.called
+        assert service._save_queue.qsize() == 1
+
+        provider.resolve_node.reset_mock()
+        service._save_queue = queue.Queue()
+
+        # Logs an error when task_id is not available
+        assert service._save_queue.qsize() == 0
+        provider.react_to_task_to_compute(msg_hello)
+        assert provider.resolve_node.called
+        assert service._save_queue.qsize() == 0

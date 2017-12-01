@@ -13,9 +13,10 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment
+from golem.model import Payment, Actor
 from golem.model import db
 from golem.network.concent.client import ConcentRequest
+from golem.network.history import IMessageHistoryProvider
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -48,7 +49,8 @@ def dropped_after():
     return inner
 
 
-class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
+                  IMessageHistoryProvider):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.FilesProtocol
@@ -178,6 +180,26 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.get_short_hash(),
             self.key_id
         )
+
+    ###################################
+    # IMessageHistoryProvider methods #
+    ###################################
+
+    def resolve_node(self):
+        return self.key_id
+
+    def resolve_subtask_to_task(self, local_role, subtask_id):
+        if not self.task_manager:
+            return None
+
+        if local_role == Actor.Provider:
+            mapping = self.task_manager.comp_task_keeper.subtask_to_task
+        elif local_role == Actor.Requestor:
+            mapping = self.task_manager.subtask2task_mapping
+        else:
+            mapping = None
+
+        return mapping and mapping.get(subtask_id)
 
     #######################
     # FileSession methods #

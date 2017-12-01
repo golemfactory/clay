@@ -3,13 +3,14 @@ import logging
 import operator
 import queue
 import threading
-from functools import reduce
+from abc import abstractmethod, ABC
+from functools import reduce, wraps
 from typing import List
 
 from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field)
 
-from golem.model import NetworkMessage
+from golem.model import NetworkMessage, Actor
 
 logger = logging.getLogger('golem.network.history')
 
@@ -27,6 +28,7 @@ class MessageHistoryService(threading.Thread):
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
+        self._running = False
 
     @classmethod
     def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
@@ -124,14 +126,20 @@ class MessageHistoryService(threading.Thread):
         Starts the service.
         :return:
         """
+        self._running = True
         while not self._stop_event.isSet():
             self._loop()
+        self._running = False
 
     def stop(self) -> None:
         """
         Stops the service.
         """
         self._stop_event.set()
+
+    @property
+    def running(self) -> bool:
+        return self._running
 
     def _loop(self) -> None:
         """
@@ -177,3 +185,60 @@ class MessageHistoryService(threading.Thread):
                 .execute()
         except PeeweeException as exc:
             logger.error("Message sweep failed: %r", exc)
+
+
+_service = None
+
+
+def install_service():
+    global _service
+    _service = MessageHistoryService()
+    return _service
+
+
+class IMessageHistoryProvider(ABC):
+
+    @abstractmethod
+    def resolve_subtask_to_task(self, local_role, subtask_id):
+        pass
+
+    @abstractmethod
+    def resolve_node(self):
+        pass
+
+
+def record_history(local_role, remote_role):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, msg, *args, **kwargs):
+            task = getattr(msg, 'task_id', None)
+            subtask = getattr(msg, 'subtask_id', None)
+            node = self.resolve_node()
+
+            if subtask and not task:
+                task = self.resolve_subtask_to_task(local_role, subtask)
+
+            if task and _service:
+                _service.add(NetworkMessage(
+                    task=task,
+                    subtask=subtask,
+                    node=node,
+                    msg_date=datetime.datetime.now(),
+                    msg_cls=msg.__class__.__name__,
+                    msg_data=msg.raw,
+                    local_role=local_role,
+                    remote_role=remote_role,
+                ))
+            else:
+                logger.error("Cannot log message: %r", msg)
+
+            return func(self, msg, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+provider_history = record_history(local_role=Actor.Provider,
+                                  remote_role=Actor.Requestor)
+
+requestor_history = record_history(local_role=Actor.Requestor,
+                                   remote_role=Actor.Provider)
