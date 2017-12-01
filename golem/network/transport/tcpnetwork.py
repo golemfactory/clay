@@ -473,11 +473,11 @@ class BasicProtocol(SessionProtocol):
     def dataReceived(self, data):
         """Called when additional chunk of data is received from another peer"""
         if not self._can_receive():
-            return None
+            return
 
         if not self.session:
             logger.warning("No session argument in connection state")
-            return None
+            return
 
         self._interpret(data)
 
