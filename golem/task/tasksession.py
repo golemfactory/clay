@@ -711,10 +711,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON
-        if not isinstance(ctd, message.ComputeTaskDef):
-            self.err_msg = reasons.WrongCTD
-            # FIXME: Should be enforced in deserialization of taskmsg
-            return False
         if ctd['key_id'] != self.key_id\
                 or ctd['task_owner'].key != self.key_id:
             self.err_msg = reasons.WrongKey
