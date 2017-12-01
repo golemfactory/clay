@@ -43,8 +43,8 @@
     }
   ],
   "resolution":[
-    300,
-    200
+    10,
+    35
   ],
   "output_format":"PNG",
   "output_file":"output.png",
@@ -57,5 +57,5 @@
   "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
-  "total_subtasks":1
+  "total_subtasks":3
 }
