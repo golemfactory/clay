@@ -16,6 +16,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
+from golem.resource.client import ClientOptions
 from golem.task.taskbase import ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
@@ -516,6 +517,35 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             transaction_id=transaction_id,
             block_number=block_number
         )
+
+    def test_react_to_resource_list(self):
+        task_server = self.task_session.task_server
+
+        client = 'test_client'
+        version = 1.0
+        peers = [{'TCP': ('127.0.0.1', 3282)}]
+        client_options = ClientOptions(client, version,
+                                       options={'peers': peers})
+        msg = message.MessageResourceList(resources=[['1'], ['2']],
+                                          options=client_options)
+
+        # Use locally saved hyperdrive client options
+        self.task_session._react_to_resource_list(msg)
+        call_options = task_server.pull_resources.call_args[1]
+
+        assert task_server.get_download_options.called
+        assert task_server.pull_resources.called
+        assert isinstance(call_options['client_options'], Mock)
+
+        # Use remote options when local ones are not available
+        task_server.get_download_options.return_value = ClientOptions(client,
+                                                                      version)
+        self.task_session.task_server.pull_resources.reset_mock()
+        self.task_session._react_to_resource_list(msg)
+        call_options = task_server.pull_resources.call_args[1]
+
+        assert not isinstance(call_options['client_options'], Mock)
+        assert call_options['client_options'].options['peers'] == peers
 
 
 class TestSessionWithDB(testutils.DatabaseFixture):
