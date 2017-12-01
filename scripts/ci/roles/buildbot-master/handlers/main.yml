@@ -1,7 +1,9 @@
 - name: reconfigure buildbot
   become: yes
   become_user: buildbot
-  shell: kill -s HUP $(ps -C buildbot -o pid=)
+  shell: /var/lib/virtualenv/buildbot-master/bin/buildbot  stop --clean /home/buildbot/master
+  args:
+    chdir: /home/buildbot/master
 
 
 - name: restart buildbot master service

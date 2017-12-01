@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=buildbot-worker
 Group=buildbot-worker
-WorkingDirectory=/home/buildbot-worker/worker
+WorkingDirectory=/home/buildbot-worker/worker_{{worker_name}}
 ExecStart=/home/buildbot-worker/.local/bin/buildbot-worker start --nodaemon
 Restart=on-failure
 

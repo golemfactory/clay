@@ -1,0 +1,104 @@
+---
+
+- name: Install docker-ce dependencies
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  with_items:
+    - software-properties-common
+    - apt-transport-https
+    - ca-certificates
+    - curl
+
+
+- name: Install docker-ce key
+  apt_key:
+    url: "https://download.docker.com/linux/ubuntu/gpg"
+
+
+- debug:
+    msg: "TODO purge all other docker repositories"
+
+
+- name: Add docker repo, 64bit ONLY!
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb['codename'] }} stable"
+
+
+- name: Install docker-ce
+  apt:
+    name: docker-ce
+    update_cache: yes
+
+
+- name: Add GETH repo
+  apt_repository:
+    repo: "ppa:ethereum/ethereum"
+
+
+- name: Install GETH
+  apt:
+    name: ethereum
+    update_cache: yes
+
+- name: setup buildbot-worker user
+  user:
+    name: buildbot-worker
+    group: buildbot-worker
+    groups:
+      - docker
+    home: /home/buildbot-worker
+
+- name: Install taskcollector dependencies
+  apt:
+    name: "{{item}}"
+  with_items:
+    - gcc-5
+    - g++-5
+    - libfreeimage3
+    - libfreeimage-dev
+
+
+- name: Prepare hyperg directory
+  file:
+    dest: /opt
+    state: directory
+
+
+- name: Install hyperg
+  unarchive:
+    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_linux-x64.tar.gz
+    dest: /opt
+    remote_src: yes
+  args:
+    creates: /opt/hyperg
+
+
+- name: Link hyperg
+  file:
+    src: /opt/hyperg/hyperg
+    dest: /usr/local/bin/hyperg
+    state: link
+
+
+- name: install golemapp dependencies
+  apt:
+    name: "{{ item }}"
+  with_items:
+    - python3
+    - python3-venv
+    - python3-dev
+    - openssl
+    - pkg-config
+    - libjpeg-dev
+    - libopenexr-dev
+    - libssl-dev
+    - autoconf
+    - libgmp-dev
+    - libtool
+    - libffi-dev
+    - libgtk2.0-0
+    - libxss1
+    - libgconf-2-4
+    - libnss3
+    - libasound2
