@@ -613,7 +613,7 @@ class TestRequestorTaskStats(LogTestCase):
         tstate.status = TaskStatus.notStarted
         tstate.time_started = 0.0
 
-        with self.assertLogs(logger, level="INFO") as log:
+        with self.assertLogs(logger, level="DEBUG") as log:
             rs.on_message("task1", tstate, TaskOp.UNEXPECTED_SUBTASK_RECEIVED)
 
             assert any("Unknown TaskOp" in l for l in log.output)
@@ -626,7 +626,7 @@ class TestRequestorTaskStats(LogTestCase):
         tstate.status = TaskStatus.timeout
         tstate.time_started = 0.0
 
-        with self.assertLogs(logger, level="INFO") as log:
+        with self.assertLogs(logger, level="DEBUG") as log:
             rs.on_message("task1", tstate, TaskOp.TASK_RESTORED)
             assert any("Skipping completed task" in l for l in log.output)
 
