@@ -340,21 +340,23 @@ class TestMessages(unittest.TestCase):
         err = 'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
 
         msg = message.TaskFailure(subtask_id=subtask_id, err=err)
-        expected = [
+        expected = sorted([
             ['subtask_id', subtask_id],
             ['err', err],
-        ]
-        self.assertEqual(expected, msg.slots())
+            ['task_to_compute', None],
+        ])
+        self.assertEqual(expected, sorted(msg.slots()))
 
     def test_message_cannot_compute_task(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
         reason = "Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
         msg = message.CannotComputeTask(subtask_id=subtask_id, reason=reason)
-        expected = [
+        expected = sorted([
             ['reason', reason],
             ['subtask_id', subtask_id],
-        ]
-        self.assertEqual(expected, msg.slots())
+            ['task_to_compute', None],
+        ])
+        self.assertEqual(expected, sorted(msg.slots()))
 
     def test_message_push(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
