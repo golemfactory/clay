@@ -14,7 +14,7 @@ from golem.docker.image import DockerImage
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ResultType, TaskHeader, ComputeTaskDef
+from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -37,8 +37,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     BLENDER_TASK_FILE_RUN_PAYLOAD = "docker-blender-render-task-payload.json"
     # GG todo: BLENDER_TASK_FILE_RUN_PAYLOAD shall run with uneven img splitting like:
     # "resolution": [
-    #   400,
-    #   350
+    #   10,
+    #   35
     # ],
     # "total_subtasks": 3
 
@@ -136,7 +136,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         return new_file
 
-    @pytest.mark.slow
+    # @pytest.mark.slow
     def test_blender_real_task_png_should_pass(self):
         #arrange
         task = self._create_test_task(self.BLENDER_TASK_FILE_RUN_PAYLOAD)
@@ -146,7 +146,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self._test_blender_real_task(task , ctd)
 
         # assert good results - should pass
-        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
         self.assertTrue(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 1)
 
@@ -169,7 +169,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         computer.tt.join()
 
         file_for_validation = self._extract_results(
-            computer, task, ctd.subtask_id)
+            computer, task, ctd['subtask_id'])
 
         task.create_reference_data_for_task_validation()
         self.assertEqual(task.num_tasks_received, 0)
@@ -186,16 +186,16 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         make_test_img(bad_file, size=(300,200))
 
-        task.computation_finished(ctd.subtask_id,
+        task.computation_finished(ctd['subtask_id'],
                                   [bad_file],
                                   result_type=ResultType.FILES)
 
-        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
         self.assertFalse(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 0)
 
     def _test_blender_real_task(self, task: BlenderRenderTask,
-                                ctd: ComputeTaskDef):
+                                ctd):
         # act
         computer = LocalComputer(
             task,
@@ -209,11 +209,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         computer.tt.join()
 
         file_for_validation = self._extract_results(
-            computer, task, ctd.subtask_id)
+            computer, task, ctd['subtask_id'])
 
         task.create_reference_data_for_task_validation()
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd.subtask_id,
+        task.computation_finished(ctd['subtask_id'],
                                   [file_for_validation],
                                   result_type=ResultType.FILES)
 
@@ -273,7 +273,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         if task_thread:
             started = time.time()
             while task_thread.is_alive():
-                if time.time() - started >= 60:
+                if time.time() - started >= timeout:
                     task_thread.end_comp()
                     break
                 time.sleep(1)

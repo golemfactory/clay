@@ -8,10 +8,10 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.task import blenderrendertask
 
-import golem_verificator
-import shlex
-import subprocess
-from subprocess import PIPE
+from golem_verificator.blender.validator import Validator as \
+    BlenderValidator
+
+import os
 from apps.core.task.verificator import SubtaskVerificationState
 
 import logging
@@ -100,47 +100,22 @@ class BlenderVerificator(FrameRenderingVerificator):
 
         file_for_verification = tr_files[0]
 
-        try:
-            start_task = subtask_info['start_task']
-            frames, parts = task.get_frames_and_parts(start_task)
-            min_x, max_x, min_y, max_y = task.get_crop_window(start_task, parts)
+        start_task = subtask_info['start_task']
+        frames, parts = task.get_frames_and_parts(start_task)
+        min_x, max_x, min_y, max_y = task.get_crop_window(start_task, parts)
 
-            scene_file = task.main_scene_file
+        scene_file = task.main_scene_file
 
-            cmd = "validation_parser_runner.py " + scene_file + " " \
-                "--crop_window_size " \
-                + str(min_x) + "," + str(max_x) + "," \
-                + str(min_y) + "," + str(max_x) + " " \
-                "--resolution " + str(res_x) + "," + str(res_y) + " "\
-                "--rendered_scene " + file_for_verification + " " \
-                "--name_of_excel_file wynik_liczby"  # noqa
-
-            process = subprocess.run(
-                shlex.split(cmd),
-                stdin=PIPE, stdout=PIPE, stderr=PIPE, check=True)
-
-            stdout = process.stdout.decode()
-            print(stdout)
-
-            if process.returncode == 0:
-                self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-
-
-        except subprocess.CalledProcessError as e:
-            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
-            logger.warning("Subtask %s verification failed %s: ",
-                           str(subtask_id), str(e))
-
-            logger.info("e.stderr: subtask_id %s \n %s \n",
-                        str(subtask_id), str(e.stderr.decode()))
-
-            logger.info("e.stdout: subtask_id %s \n %s \n",
-                        str(subtask_id), str(e.stdout.decode()))
-
-            # GG todo remove prints
-            print(str(e))
-            print(str(e.stdout.decode()))
-            print(str(e.stderr.decode()))
+        blender_validator = BlenderValidator()
+        verification_state_code = blender_validator.validate(
+            scene_file=scene_file,
+            crop_window_size=[min_x, max_x, min_y, max_y],
+            number_of_tests=3,
+            resolution=[res_x, res_y],
+            rendered_scene_path=file_for_verification,
+            scene_format=os.path.splitext(file_for_verification)[1]
+        )
+        self.ver_states[subtask_id] =  SubtaskVerificationState(verification_state_code)
 
         logger.info("Subtask %s verification result: %s",
                     str(subtask_id), self.ver_states[subtask_id].name)
