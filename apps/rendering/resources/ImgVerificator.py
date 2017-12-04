@@ -10,7 +10,7 @@ from ssim import compute_ssim
 
 logger = logging.getLogger("apps.rendering")
 
-# GG todo - shall be merged with the one from CP
+# golem_verificator todo - shall be merged with the one from CP
 class ImgStatistics(object):
     def __init__(self, base_img: ImgRepr, img: ImgRepr):
         if not isinstance(base_img, ImgRepr) or not isinstance(img, ImgRepr):

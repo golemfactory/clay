@@ -23,7 +23,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.res_y = 600
         assert rv._get_part_size(dict()) == (800, 600)
 
-    # GG todo - obsolete, since RenderingVerificator().verify is overridden
+    # golem_verificator todo - obsolete, since RenderingVerificator().verify is overridden
     # either in LuxVerificator or in BlenderVerificator...
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
@@ -62,7 +62,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
                SubtaskVerificationState.VERIFIED
 
         # ADVANCE VERIFICATION
-        # todo GG enable advanced verification by default?
+        # todo golem_verificator enable advanced verification by default?
         rv.advanced_verification = True
         rv.verification_options = AdvanceVerificationOptions()
         rv.tmp_dir = self.path

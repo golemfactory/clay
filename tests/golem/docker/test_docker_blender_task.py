@@ -35,7 +35,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
     BLENDER_TASK_FILE_RUN_PAYLOAD = "docker-blender-render-task-payload.json"
-    # GG todo: BLENDER_TASK_FILE_RUN_PAYLOAD shall run with uneven img splitting like:
+    # golem_verificator todo: BLENDER_TASK_FILE_RUN_PAYLOAD shall run with uneven img splitting like:
     # "resolution": [
     #   10,
     #   35
@@ -79,7 +79,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_def.main_scene_file = set_root_dir(task_def.main_scene_file)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
 
-        # GG todo
+        # golem_verificator todo
         # def set_root_dir(p, new_root_dir=golem_dir):
         #     return p.replace("$GOLEM_DIR", new_root_dir)
         #

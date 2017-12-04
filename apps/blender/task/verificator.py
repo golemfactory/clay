@@ -89,7 +89,7 @@ class BlenderVerificator(FrameRenderingVerificator):
                 return
 
         res_x, res_y = self._get_part_size(subtask_info)
-        for img in tr_files:  # GG todo do we still need it - yes?
+        for img in tr_files:  # golem_verificator todo do we still need it?
             if not self._check_size(img, res_x, res_y):
                 logger.warning("Subtask %s verification failed. \n"
                                "Img size mismatch", str(subtask_id))
