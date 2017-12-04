@@ -13,10 +13,10 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment, Actor
+from golem.model import Payment, Actor, NetworkMessage
 from golem.model import db
 from golem.network.concent.client import ConcentRequest
-from golem.network.history import IMessageHistoryProvider
+from golem.network.history import IMessageHistoryProvider, provider_history
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -185,21 +185,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     # IMessageHistoryProvider methods #
     ###################################
 
-    def resolve_node(self):
-        return self.key_id
+    def message_to_model(self, msg, local_role, remote_role):
+        task = getattr(msg, 'task_id', None)
+        subtask = getattr(msg, 'subtask_id', None)
 
-    def resolve_subtask_to_task(self, local_role, subtask_id):
+        if subtask and not task:
+            task = self._subtask_to_task(subtask, local_role)
+
+        return NetworkMessage(
+            task=task,
+            subtask=subtask,
+            node=self.key_id,
+            msg_date=time.time(),
+            msg_cls=msg.__class__.__name__,
+            msg_data=msg.raw,
+            local_role=local_role,
+            remote_role=remote_role,
+        ) if task else None
+
+    def _subtask_to_task(self, sid, local_role):
         if not self.task_manager:
             return None
 
         if local_role == Actor.Provider:
-            mapping = self.task_manager.comp_task_keeper.subtask_to_task
+            return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
         elif local_role == Actor.Requestor:
-            mapping = self.task_manager.subtask2task_mapping
-        else:
-            mapping = None
-
-        return mapping and mapping.get(subtask_id)
+            return self.task_manager.subtask2task_mapping.get(sid)
 
     #######################
     # FileSession methods #
@@ -477,6 +488,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
 
     @handle_attr_error_with_task_computer
+    @provider_history
     def _react_to_task_to_compute(self, msg):
         if msg.compute_task_def is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
@@ -513,6 +525,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         self.dropped()
 
+    @provider_history
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
@@ -537,6 +550,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         else:
             self.dropped()
 
+    @provider_history
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
@@ -612,10 +626,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             options=options
         ))
 
+    @provider_history
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
 
+    @provider_history
     def _react_to_subtask_result_rejected(self, msg):
         self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
@@ -689,6 +705,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
+    @provider_history
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(

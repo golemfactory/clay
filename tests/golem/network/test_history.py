@@ -8,8 +8,7 @@ from peewee import DataError, PeeweeException
 
 from golem.model import NetworkMessage, Actor
 from golem.network.history import MessageHistoryService, record_history, \
-    IMessageHistoryProvider, requestor_history, provider_history, \
-    install_service
+    IMessageHistoryProvider, requestor_history, provider_history
 from golem.testutils import DatabaseFixture
 
 
@@ -26,6 +25,10 @@ class TestMessageHistoryService(DatabaseFixture):
     def setUp(self):
         super().setUp()
         self.service = MessageHistoryService()
+
+    def tearDown(self):
+        super().tearDown()
+        MessageHistoryService.instance = None
 
     @staticmethod
     def _build_raise(cls):
@@ -237,6 +240,10 @@ class TestMessageHistoryService(DatabaseFixture):
 
 class TestMessageHistoryProvider(DatabaseFixture):
 
+    def tearDown(self):
+        super().tearDown()
+        MessageHistoryService.instance = None
+
     def test_invalid_class(self):
         with self.assertRaises(AttributeError):
 
@@ -250,23 +257,17 @@ class TestMessageHistoryProvider(DatabaseFixture):
             invalid.method(None)
 
     def test_record_history(self):
-        service = install_service()
+        service = MessageHistoryService()
 
         class Provider(IMessageHistoryProvider):
 
             def __init__(self):
-                self.provider_subtask_to_task = {'subtask_1': 'task_1'}
-                self.requestor_subtask_to_task = {'subtask_2': 'task_2'}
-                self.node = 'a0b1c2'
+                self.key_id = 'a0b1c2'
 
-            def resolve_subtask_to_task(self, local_role, subtask_id):
-                if local_role == Actor.Provider:
-                    return self.provider_subtask_to_task.get(subtask_id)
-                elif local_role == Actor.Requestor:
-                    return self.requestor_subtask_to_task.get(subtask_id)
-
-            def resolve_node(self):
-                return self.node
+            def message_to_model(self, msg: 'golem_messages.message.Message',
+                                 local_role: Actor,
+                                 remote_role: Actor):
+                return NetworkMessage()
 
             @requestor_history
             def react_to_report_computed_task(self, msg):
@@ -277,12 +278,6 @@ class TestMessageHistoryProvider(DatabaseFixture):
                 pass
 
         provider = Provider()
-        provider.resolve_subtask_to_task = Mock(
-            side_effect=provider.resolve_subtask_to_task
-        )
-        provider.resolve_node = Mock(
-            side_effect=provider.resolve_node
-        )
 
         msg_hello = message.Hello()
         msg_request = message.WantToComputeTask(task_id='task_2')
@@ -295,25 +290,19 @@ class TestMessageHistoryProvider(DatabaseFixture):
         # Resolve node_id
         assert service._save_queue.qsize() == 0
         provider.react_to_task_to_compute(msg_request)
-        assert provider.resolve_node.called
-        assert not provider.resolve_subtask_to_task.called
         assert service._save_queue.qsize() == 1
 
-        provider.resolve_node.reset_mock()
         service._save_queue = queue.Queue()
 
         # Also resolve task_id using the interface
         assert service._save_queue.qsize() == 0
         provider.react_to_report_computed_task(msg_result)
-        assert provider.resolve_node.called
-        assert provider.resolve_subtask_to_task.called
         assert service._save_queue.qsize() == 1
 
-        provider.resolve_node.reset_mock()
         service._save_queue = queue.Queue()
 
-        # Logs an error when task_id is not available
+        # Logs an error when model is not available
         assert service._save_queue.qsize() == 0
+        provider.message_to_model = Mock(return_value=None)
         provider.react_to_task_to_compute(msg_hello)
-        assert provider.resolve_node.called
         assert service._save_queue.qsize() == 0

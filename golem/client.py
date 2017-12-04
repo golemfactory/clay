@@ -36,7 +36,7 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.concent.client import ConcentClientService
-from golem.network import history
+from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
@@ -49,7 +49,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI,\
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
     Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
@@ -145,7 +145,7 @@ class Client(HardwarePresetsMixin):
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
-            history.install_service()
+            MessageHistoryService()
         ]
 
         clean_resources_older_than = \

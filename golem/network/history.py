@@ -21,14 +21,41 @@ class MessageHistoryService(threading.Thread):
     SWEEP_INTERVAL = datetime.timedelta(hours=12)
     QUEUE_TIMEOUT = datetime.timedelta(seconds=2).total_seconds()
 
+    # Decorators (at the end of this file) need to access an instance
+    # of MessageHistoryService
+    instance = None
+
     def __init__(self):
         super().__init__(daemon=True)
+
+        if self.__class__.instance is None:
+            self.__class__.instance = self
 
         self._stop_event = threading.Event()
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
-        self._running = False
+
+    def run(self) -> None:
+        """
+        Thread activity method.
+        """
+        while not self._stop_event.isSet():
+            self._loop()
+
+    @property
+    def running(self) -> bool:
+        """
+        Returns whether the service was stopped by the user.
+        """
+        return self._stop_event.is_set()
+
+    def stop(self) -> None:
+        """
+        Stops the service.
+        """
+        self._stop_event.set()
+        self.instance = None
 
     @classmethod
     def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
@@ -121,26 +148,6 @@ class MessageHistoryService(threading.Thread):
 
         return clauses
 
-    def run(self) -> None:
-        """
-        Starts the service.
-        :return:
-        """
-        self._running = True
-        while not self._stop_event.isSet():
-            self._loop()
-        self._running = False
-
-    def stop(self) -> None:
-        """
-        Stops the service.
-        """
-        self._stop_event.set()
-
-    @property
-    def running(self) -> bool:
-        return self._running
-
     def _loop(self) -> None:
         """
         Main service loop.
@@ -187,52 +194,44 @@ class MessageHistoryService(threading.Thread):
             logger.error("Message sweep failed: %r", exc)
 
 
-_service = None
-
-
-def install_service():
-    global _service
-    _service = MessageHistoryService()
-    return _service
+##############
+# INTERFACES #
+##############
 
 
 class IMessageHistoryProvider(ABC):
 
     @abstractmethod
-    def resolve_subtask_to_task(self, local_role, subtask_id):
-        pass
+    def message_to_model(self, msg: 'golem_messages.message.Message',
+                         local_role: Actor,
+                         remote_role: Actor) -> NetworkMessage:
+        """
+        Convert a message to its database model representation.
+        :param msg: Session message
+        :param local_role: Local node's role in computation
+        :param remote_role: Remote node's role in computation
+        :return:
+        """
 
-    @abstractmethod
-    def resolve_node(self):
-        pass
+##############
+# DECORATORS #
+##############
 
 
 def record_history(local_role, remote_role):
     def decorator(func):
+
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
-            task = getattr(msg, 'task_id', None)
-            subtask = getattr(msg, 'subtask_id', None)
-            node = self.resolve_node()
+            service = MessageHistoryService.instance
+            model = self.message_to_model(msg, local_role, remote_role)
 
-            if subtask and not task:
-                task = self.resolve_subtask_to_task(local_role, subtask)
-
-            if task and _service:
-                _service.add(NetworkMessage(
-                    task=task,
-                    subtask=subtask,
-                    node=node,
-                    msg_date=datetime.datetime.now(),
-                    msg_cls=msg.__class__.__name__,
-                    msg_data=msg.raw,
-                    local_role=local_role,
-                    remote_role=remote_role,
-                ))
+            if model and service:
+                service.add(model)
             else:
                 logger.error("Cannot log message: %r", msg)
-
             return func(self, msg, *args, **kwargs)
+
         return wrapper
     return decorator
 
