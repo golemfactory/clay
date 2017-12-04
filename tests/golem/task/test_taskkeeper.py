@@ -495,6 +495,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
+        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, "abc")
+        assert not ctk.check_task_owner_by_subtask(th.task_owner_key_id, "!!!")
+        assert not ctk.check_task_owner_by_subtask('???', "abc")
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = "xyz"
         ctd2['subtask_id'] = "def"

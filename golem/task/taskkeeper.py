@@ -151,6 +151,11 @@ class CompTaskKeeper:
             )
         return compute_subtask_value(price, computing_time)
 
+    def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
+        task_id = self.subtask_to_task.get(subtask_id)
+        task = self.active_tasks.get(task_id)
+        return task and task.header.task_owner_key_id == task_owner_key_id
+
     @handle_key_error
     def request_failure(self, task_id):
         logger.debug('CT.request_failure(%r)', task_id)

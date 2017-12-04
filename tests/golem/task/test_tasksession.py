@@ -1,27 +1,29 @@
-from golem_messages import message
 import os
+import pathlib
 import pickle
 import random
 import unittest
-from unittest.mock import Mock, MagicMock, patch
 import uuid
+from unittest.mock import Mock, MagicMock, patch
 
+from golem_messages import message
 
 from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task.taskbase import ResultType
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
-from golem.core.variables import PROTOCOL_CONST
 
 
 class DockerEnvironmentMock(DockerEnvironment):
@@ -146,6 +148,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
@@ -484,6 +487,36 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.key_id = keys_auth.get_key_id()
         assert ts.verify(msg)
 
+    def test_react_to_ack_reject_report_computed_task(self):
+        task_keeper = CompTaskKeeper(pathlib.Path(self.path))
+
+        session = self.task_session
+        session.concent_service = MagicMock()
+        session.task_manager.comp_task_keeper = task_keeper
+        session.key_id = 'owner_id'
+
+        msg_ack = message.AckReportComputedTask('subtask_id')
+        msg_rej = message.RejectReportComputedTask('subtask_id')
+
+        # Subtask is not known
+        session._react_to_ack_report_computed_task(msg_ack)
+        assert not session.concent_service.cancel.called
+        session._react_to_reject_report_computed_task(msg_rej)
+        assert not session.concent_service.cancel.called
+
+        # Save subtask information
+        task = Mock(header=Mock(task_owner_key_id='owner_id'))
+        task_keeper.subtask_to_task['subtask_id'] = 'task_id'
+        task_keeper.active_tasks['task_id'] = task
+
+        # Subtask is known
+        session._react_to_ack_report_computed_task(msg_ack)
+        assert session.concent_service.cancel.called
+
+        session.concent_service.cancel.reset_mock()
+        session._react_to_reject_report_computed_task(msg_ack)
+        assert session.concent_service.cancel.called
+
     @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
     def test_react_to_subtask_payment(self, check_msg_mock):
         reward_mock = MagicMock()
@@ -527,7 +560,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         client_options = ClientOptions(client, version,
                                        options={'peers': peers})
         msg = message.ResourceList(resources=[['1'], ['2']],
-                                          options=client_options)
+                                   options=client_options)
 
         # Use locally saved hyperdrive client options
         self.task_session._react_to_resource_list(msg)
