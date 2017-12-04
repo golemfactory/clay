@@ -21,7 +21,7 @@ DEFAULT_MSG_LIFETIME = (3 * mmtt + 3 * mat).total_seconds()
 
 # Time to wait before sending a message
 MSG_DELAYS = {  # FIXME: values
-    message.MessageForceReportComputedTask: (2 * mmtt + mat).total_seconds()
+    message.ForceReportComputedTask: (2 * mmtt + mat).total_seconds()
 }
 
 # A valid period of time for sending a message

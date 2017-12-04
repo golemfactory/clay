@@ -101,7 +101,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         key_id = 'deadbeef'
         peer_info = mock.MagicMock()
         peer_info.key = key_id
-        msg = message.MessageHello(
+        msg = message.Hello(
             port=1, node_name='node2', client_key_id=key_id,
             node_info=peer_info, proto_id=-1
         )
@@ -109,12 +109,12 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.verify = create_verify(False)
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
-            message.MessageDisconnect.REASON.Unverified)
+            message.Disconnect.REASON.Unverified)
 
         peer_session.verify = create_verify(True)
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
-            message.MessageDisconnect.REASON.ProtocolVersion)
+            message.Disconnect.REASON.ProtocolVersion)
 
         msg.proto_id = PROTOCOL_CONST.P2P_ID
 
@@ -128,7 +128,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(
-            message.MessageDisconnect.REASON.DuplicatePeers)
+            message.Disconnect.REASON.DuplicatePeers)
 
     @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
     def test_react_to_hello_new_version(self, m_verify):
@@ -156,14 +156,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         }
 
         # Test unverified
-        msg = message.MessageHello(**msg_kwargs)
+        msg = message.Hello(**msg_kwargs)
         m_verify.return_value = False
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
 
         # Test verified, not seed
-        msg = message.MessageHello(**msg_kwargs)
+        msg = message.Hello(**msg_kwargs)
         m_verify.return_value = True
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
@@ -175,7 +175,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.address = chosen_seed[0]
 
         # Test verified, with seed, default version (0)
-        msg = message.MessageHello(**msg_kwargs)
+        msg = message.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
@@ -183,7 +183,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         # Test verified, with seed, newer version
         version = semantic_version.Version(APP_VERSION).next_patch()
         msg_kwargs['client_ver'] = str(version)
-        msg = message.MessageHello(**msg_kwargs)
+        msg = message.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         listener.assert_called_once_with(
             signal='golem.p2p',
@@ -203,19 +203,19 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         peer_session.conn.opened = False
         peer_session.disconnect(
-            message.MessageDisconnect.REASON.ProtocolVersion)
+            message.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.dropped.called
         assert not peer_session.send.called
 
         peer_session.conn.opened = True
         peer_session.disconnect(
-            message.MessageDisconnect.REASON.ProtocolVersion)
+            message.Disconnect.REASON.ProtocolVersion)
         assert peer_session.dropped.called
         assert peer_session.send.called
 
         peer_session.send.called = False
         peer_session.disconnect(
-            message.MessageDisconnect.REASON.ProtocolVersion)
+            message.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.send.called
 
     def test_dropped(self):
@@ -240,7 +240,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
         peer_session.key_id = "NEW KEY_ID"
-        peer_session._react_to_stop_gossip(message.MessageStopGossip())
+        peer_session._react_to_stop_gossip(message.StopGossip())
 
     def test_verify(self):
         conn = mock.MagicMock()
@@ -248,7 +248,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         keys_auth = EllipticalKeysAuth(self.path)
         peer_session.key_id = keys_auth.get_key_id()
         peer_session.p2p_service.verify_sig = keys_auth.verify
-        msg = message.MessageStopGossip()
+        msg = message.StopGossip()
         assert not peer_session.verify(msg)
         msg.sig = keys_auth.sign(msg.get_short_hash())
         assert peer_session.verify(msg)
@@ -257,7 +257,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         conn = mock.MagicMock()
         peer_session = PeerSession(conn)
         peer_session.key_id = "KEY_ID"
-        msg = message.MessageStopGossip()
+        msg = message.StopGossip()
         peer_session.interpret(msg)
         assert peer_session.p2p_service.set_last_message.called
 

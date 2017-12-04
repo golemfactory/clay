@@ -129,8 +129,8 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         fake_sign = lambda x: b'\000' * message.Message.SIG_LEN
 
-        msg_get_resource = message.MessageGetResource(task_id=self.task_id)
-        msg = message.MessageGetResource.deserialize(
+        msg_get_resource = message.GetResource(task_id=self.task_id)
+        msg = message.GetResource.deserialize(
             msg_get_resource.serialize(fake_sign),
             lambda x: x
         )
@@ -139,7 +139,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_1._react_to_get_resource(msg)
 
         msg_resource_list = send_buf_1.pop()
-        msg = message.MessageResourceList.deserialize(
+        msg = message.ResourceList.deserialize(
             msg_resource_list.serialize(fake_sign),
             lambda x: x
         )
