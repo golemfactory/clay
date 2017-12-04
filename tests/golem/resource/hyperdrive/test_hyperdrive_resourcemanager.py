@@ -1,13 +1,16 @@
 import uuid
 from unittest import skipIf, TestCase
 
+import os
 from mock import Mock
 from requests import ConnectionError
 
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.resource.base.resourcetest import AddGetResources
+from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager, HyperdrivePeerManager
+from golem.testutils import TempDirFixture
 
 
 def running():
@@ -55,8 +58,44 @@ class TestHyperdrivePeerManager(TestCase):
         assert len(peer_manager.get_for_task(task_id)) == 1
 
 
+class TestHyperdriveResourceManager(TempDirFixture):
+
+    def test_add_files(self):
+        dir_manager = DirManager(self.tempdir)
+        resource_manager = HyperdriveResourceManager(dir_manager)
+        resource_manager._handle_retries = Mock()
+
+        task_id = str(uuid.uuid4())
+        resource_hash = None
+        files = {str(uuid.uuid4()): 'does_not_exist'}
+
+        # Invalid file paths
+        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
+        assert not resource_manager._handle_retries.called
+
+        # Create files
+        file_name = 'test_file'
+        file_path = os.path.join(self.tempdir, file_name)
+        files = {file_path: file_name}
+        open(file_path, 'w').close()
+
+        # Valid file paths, empty resource hash
+        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
+        assert resource_manager._handle_retries.called
+        command = resource_manager._handle_retries.call_args[0][1]
+        assert command == resource_manager.commands.add
+
+        resource_manager._handle_retries.reset_mock()
+
+        # Valid file paths, non-empty resource hash
+        resource_hash = str(uuid.uuid4())
+        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
+        assert resource_manager._handle_retries.called
+        command = resource_manager._handle_retries.call_args[0][1]
+        assert command == resource_manager.commands.restore
+
+
 @skipIf(not running(), "Hyperdrive daemon isn't running")
 class TestHyperdriveResources(AddGetResources):
     __test__ = True
     _resource_manager_class = HyperdriveResourceManager
-
