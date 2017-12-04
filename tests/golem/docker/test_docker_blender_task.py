@@ -136,7 +136,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         return new_file
 
-    # @pytest.mark.slow
+    @pytest.mark.slow
     def test_blender_real_task_png_should_pass(self):
         #arrange
         task = self._create_test_task(self.BLENDER_TASK_FILE_RUN_PAYLOAD)
