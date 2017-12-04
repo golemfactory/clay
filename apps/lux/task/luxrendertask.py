@@ -15,6 +15,7 @@ from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
+from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
@@ -464,7 +465,8 @@ class LuxTask(renderingtask.RenderingTask):
 
         img_current = self._open_preview()
         img_current = ImageChops.blend(img_current, scaled, 1.0 / self.num_add)
-        img_current.save(self.preview_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img_current, self.preview_file_path,
+                                PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
@@ -489,7 +491,7 @@ class LuxTask(renderingtask.RenderingTask):
             ),
             method=Image.BILINEAR
         )
-        scaled.save(self.preview_file_path, PREVIEW_EXT)
+        save_image_or_log_error(scaled, self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
