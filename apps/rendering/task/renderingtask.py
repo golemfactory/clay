@@ -284,10 +284,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
                            .format(total, defaults.default_subtasks))
             return defaults.default_subtasks
 
-    def _set_verification_options(self, new_task):
-        new_task.verificator.set_verification_options(
-            self.task_definition.verification_options)
-
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
@@ -306,7 +302,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     def build(self):
         task = super(RenderingTaskBuilder, self).build()
-        self._set_verification_options(task)
         return task
 
     @classmethod

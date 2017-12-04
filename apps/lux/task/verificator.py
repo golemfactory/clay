@@ -6,8 +6,8 @@ import glob
 
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.task.localcomputer import LocalComputer
+from golem.verification.verificator import SubtaskVerificationState
 
-from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator
 
 from apps.rendering.resources.ImgVerificator import \

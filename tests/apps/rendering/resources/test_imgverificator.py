@@ -2,10 +2,8 @@ import os
 
 from apps.rendering.resources.ImgVerificator import ImgStatistics, \
     ImgVerificator
-
-from apps.core.task.verificator import \
-    SubtaskVerificationState as VerificationState
 from apps.rendering.resources.imgrepr import PILImgRepr
+from golem.verification.verificator import SubtaskVerificationState
 
 from golem.tools.assertlogs import LogTestCase
 from golem import testutils
@@ -195,11 +193,11 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
                               if 'malicious' in key.lower()]
 
         for w in should_be_rejected:
-            assert w == VerificationState.WRONG_ANSWER
+            assert w == SubtaskVerificationState.WRONG_ANSWER
 
         should_be_verified = [value for key, value
                               in validation_results.items()
                               if 'malicious' not in key.lower()]
 
         for w in should_be_verified:
-            assert w == VerificationState.VERIFIED
+            assert w == SubtaskVerificationState.VERIFIED

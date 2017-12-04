@@ -10,7 +10,7 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.core.task.verificator import CoreVerificator
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -24,6 +24,7 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     ResourceType, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verification.verificator import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 

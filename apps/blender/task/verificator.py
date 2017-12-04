@@ -19,14 +19,6 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.docker_images = []
         self.verification_timeout = 0
 
-    def set_verification_options(self, verification_options):
-        super(BlenderVerificator, self).set_verification_options(verification_options)
-        if self.advanced_verification:
-            box_x = min(verification_options.box_size[0], self.res_x)
-            box_y = min(verification_options.box_size[1],
-                        int(self.res_y / self.total_tasks))
-            self.box_size = (box_x, box_y)
-
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data, _ = super(BlenderVerificator, self).change_scope(subtask_id, start_box,
                                                                      tr_file, subtask_info)

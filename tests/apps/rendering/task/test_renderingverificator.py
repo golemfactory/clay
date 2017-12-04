@@ -7,8 +7,8 @@ from golem.core.common import is_linux
 from golem.task.taskbase import Task
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
+from golem.verification.verificator import SubtaskVerificationState
 
-from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator, logger, FrameRenderingVerificator
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
@@ -103,7 +103,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
                                           "output_format": "png",
                                           "node_id": "ONENODE"},
                              [img_path], Mock()) == \
-                   SubtaskVerificationState.UNKNOWN
+                   SubtaskVerificationState.UNKNOWN_SUBTASK
 
     def test_get_part_img_size(self):
         rv = RenderingVerificator()

@@ -3,8 +3,8 @@ from mock import patch, Mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.verification.verificator import SubtaskVerificationState
 
-from apps.core.task.verificator import SubtaskVerificationState
 from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
