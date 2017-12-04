@@ -177,7 +177,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             session.start()
         else:
             session.disconnect(
-                message.MessageDisconnect.REASON.NoMoreMessages
+                message.Disconnect.REASON.NoMoreMessages
             )
 
     def add_known_peer(self, node, ip_address, port):
@@ -945,7 +945,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(
-                    message.MessageDisconnect.REASON.Timeout
+                    message.Disconnect.REASON.Timeout
                 )
 
     def __refresh_old_peers(self):
@@ -957,7 +957,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
                 peer.disconnect(
-                    message.MessageDisconnect.REASON.Refresh
+                    message.Disconnect.REASON.Refresh
                 )
 
     def __sync_free_peers(self):
