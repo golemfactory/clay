@@ -548,6 +548,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             image = collector.finalize()
             save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -585,6 +586,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             image = collector.finalize()
             save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
         self.collected_file_names[frame_num] = output_file_name

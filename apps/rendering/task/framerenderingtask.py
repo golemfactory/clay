@@ -283,6 +283,7 @@ class FrameRenderingTask(RenderingTask):
             img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
                                     int(round(self.res_y * self.scale_factor))))
             save_image_or_log_error(img, preview_file_path, PREVIEW_EXT)
+            img.close()
 
         return Image.open(preview_file_path)
 
@@ -325,6 +326,7 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             image = collector.finalize()
             save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -341,6 +343,7 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             image = collector.finalize()
             save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
 
@@ -383,6 +386,7 @@ class FrameRenderingTask(RenderingTask):
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         save_image_or_log_error(img_task, preview_task_file_path, PREVIEW_EXT)
+        img_task.close()
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:

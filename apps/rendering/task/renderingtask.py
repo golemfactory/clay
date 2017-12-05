@@ -142,6 +142,7 @@ class RenderingTask(CoreTask):
         img_current = ImageChops.add(img_current, img)
         save_image_or_log_error(img_current, self.preview_file_path,
                                 PREVIEW_EXT)
+        img_current.close()
         img.close()
 
     @CoreTask.handle_key_error
@@ -150,6 +151,7 @@ class RenderingTask(CoreTask):
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
         save_image_or_log_error(img, self.preview_file_path, PREVIEW_EXT)
+        img.close()
 
     def _update_task_preview(self):
         sent_color = (0, 255, 0)
@@ -169,6 +171,7 @@ class RenderingTask(CoreTask):
                 self._mark_task_area(sub, img_task, failed_color)
 
         save_image_or_log_error(img_task, preview_task_file_path, PREVIEW_EXT)
+        img_task.close()
         self._update_preview_task_file_path(preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
