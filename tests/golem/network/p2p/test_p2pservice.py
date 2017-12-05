@@ -402,29 +402,6 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.change_config(ccd)
         assert self.service.node_name == "test name change"
 
-    def test_broadcast_on_name_change(self):
-        conn = mock.MagicMock()
-        peer = PeerSession(conn)
-        peer.hello_called = False
-
-        def fake_hello(self):
-            self.hello_called = True
-
-        import types
-        peer.hello = types.MethodType(fake_hello, peer)
-        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
-                                       "PUBTESTPATH2")
-        peer.key_id = keys_auth.key_id
-        self.service.add_peer(keys_auth.key_id, peer)
-        ccd = ClientConfigDescriptor()
-        assert not peer.hello_called
-        self.service.change_config(ccd)
-        assert not peer.hello_called  # negative test
-        ccd = ClientConfigDescriptor()
-        ccd.node_name = "test sending hello on name change"
-        self.service.change_config(ccd)
-        assert peer.hello_called  # positive test
-
     def test_disconnect(self):
         self.service.peers = {'peer_id': mock.Mock()}
         self.service.disconnect()

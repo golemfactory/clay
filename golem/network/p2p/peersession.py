@@ -190,15 +190,15 @@ class PeerSession(BasicSafeSession):
         """
         Send first hello message
         """
+        if self.conn_type is None:
+            raise Exception('Connection type (client/server) unknown')
         logger.info(
             "Starting peer session %r:%r",
             self.address,
             self.port
         )
-        self.__send_hello()
-
-    def hello(self):
-        self.__send_hello()
+        if self.__should_init_handshake():
+            self.__send_hello()
 
     def ping(self, interval):
         """Will send ping message if time from last message was longer
@@ -298,6 +298,9 @@ class PeerSession(BasicSafeSession):
             )
         )
 
+    def __should_init_handshake(self):
+        return self.conn_type == self.CONN_TYPE_SERVER
+
     def _react_to_ping(self, msg):
         self._send_pong()
 
@@ -305,29 +308,19 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
+        if self.verified:
+            logger.error("Received unexpected Hello message, ignoring")
+            return
         self.node_name = msg.node_name
         self.node_info = msg.node_info
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
-
-        next_hello = self.key_id == msg.client_key_id
         self.key_id = msg.client_key_id
 
         metadata = msg.metadata
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
-
-        if not self.verify(msg):
-            logger.warning(
-                "Wrong signature for Hello msg from %r:%r",
-                self.address,
-                self.port
-            )
-            self.disconnect(
-                message.Disconnect.REASON.Unverified
-            )
-            return
 
         # Check if sender is a seed/bootstrap node
         if (self.address, msg.port) in self.p2p_service.seeds:
@@ -342,9 +335,7 @@ class PeerSession(BasicSafeSession):
                 self.address,
                 self.port
             )
-            self.disconnect(
-                message.Disconnect.REASON.ProtocolVersion
-            )
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
@@ -353,26 +344,10 @@ class PeerSession(BasicSafeSession):
                                             self.listen_port,
                                             self.node_info)
 
-        if self.p2p_service.enough_peers():
-            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
-                .format(self.node_name, self.address, self.port)
-            logger.info(logger_msg)
-            self._send_peers(node_key_id=self.p2p_service.get_key_id())
-            self.disconnect(
-                message.Disconnect.REASON.TooManyPeers
-            )
-
-            self.p2p_service.try_to_add_peer({"address": self.address,
-                                              "port": msg.port,
-                                              "node": self.node_info,
-                                              "node_name": self.node_name,
-                                              "conn_trials": 0})
-            return
-
         p = self.p2p_service.find_peer(self.key_id)
 
         if p:
-            if not next_hello and p != self and p.conn.opened:
+            if p != self and p.conn.opened:
                 # self.sendPing()
                 logger_msg = "PEER DUPLICATED: %r %r : %r AND %r : %r"
                 logger.warning(
@@ -383,23 +358,18 @@ class PeerSession(BasicSafeSession):
                     msg.node_name,
                     msg.port
                 )
-                self.disconnect(
-                    message.Disconnect.REASON.DuplicatePeers
-                )
+                self.disconnect(message.Disconnect.REASON.DuplicatePeers)
                 return
 
             if solve_challenge and not self.verified:
                 self._solve_challenge(challenge, difficulty)
         else:
-            self.p2p_service.add_peer(self.key_id, self)
+            if not self.__should_init_handshake():
+                self.__send_hello()
             if solve_challenge:
                 self._solve_challenge(challenge, difficulty)
             else:
-                self.send(
-                    message.RandVal(rand_val=msg.rand_val),
-                    send_unverified=True
-                )
-            self.__send_hello()
+                self.send(message.RandVal(rand_val=msg.rand_val))
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(
@@ -407,10 +377,7 @@ class PeerSession(BasicSafeSession):
             challenge,
             difficulty
         )
-        self.send(
-            message.ChallengeSolution(solution=solution),
-            send_unverified=True
-        )
+        self.send(message.ChallengeSolution(solution=solution))
 
     def _react_to_get_peers(self, msg):
         self._send_peers()
@@ -553,6 +520,22 @@ class PeerSession(BasicSafeSession):
 
     def __set_verified_conn(self):
         self.verified = True
+
+        if self.p2p_service.enough_peers():
+            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
+                .format(self.node_name, self.address, self.port)
+            logger.info(logger_msg)
+            self._send_peers(node_key_id=self.p2p_service.get_key_id())
+            self.disconnect(message.Disconnect.REASON.TooManyPeers)
+
+            self.p2p_service.try_to_add_peer({"address": self.address,
+                                              "port": self.listen_port,
+                                              "node": self.node_info,
+                                              "node_name": self.node_name,
+                                              "conn_trials": 0})
+            return
+
+        self.p2p_service.add_peer(self.key_id, self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
             self.node_info,

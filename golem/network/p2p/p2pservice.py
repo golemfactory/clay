@@ -416,10 +416,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
-        if is_node_name_changed:
-            for peer in list(self.peers.values()):
-                peer.hello()
-
         for peer in list(self.peers.values()):
             if peer.port == self.config_desc.seed_port\
                     and peer.address == self.config_desc.seed_host:

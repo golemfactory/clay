@@ -26,9 +26,91 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         random.seed()
         self.peer_session = PeerSession(mock.MagicMock())
 
+    def __setup_handshake_server_test(self, send_mock):
+        self.peer_session.conn.server.node = node = 'node info'
+        self.peer_session.conn.server.node_name = node_name = 'node name'
+        self.peer_session.conn.server.keys_auth.get_key_id.return_value = \
+            key_id = 'server_key_id'
+        self.peer_session.conn.server.metadata_manager.\
+            get_metadata.return_value = metadata = 'metadata'
+        self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
+        self.peer_session.conn_type = self.peer_session.CONN_TYPE_SERVER
+        self.peer_session.start()
+        self.assertEqual(1, send_mock.call_count)
+        expected = message.Hello(
+            challenge=None,
+            client_key_id=key_id,
+            client_ver=APP_VERSION,
+            difficulty=0,
+            metadata=metadata,
+            node_info=node,
+            node_name=node_name,
+            port=port,
+            proto_id=PROTOCOL_CONST.P2P_ID,
+            rand_val=self.peer_session.rand_val,
+            solve_challenge=False,
+        )
+
+        self.assertEqual(send_mock.call_args[0][1].slots(), expected.slots())
+
+        def find_peer(key):
+            if key == key_id:
+                return self.peer_session
+            return None
+        self.peer_session.p2p_service.find_peer = find_peer
+        self.peer_session.p2p_service.enough_peers = lambda: False
+
+        client_peer_info = mock.MagicMock()
+        client_peer_info.key = 'client_key_id'
+        client_hello = message.Hello(
+            port=1,
+            node_name='client',
+            rand_val=random.random(),
+            client_key_id=client_peer_info.key,
+            node_info=client_peer_info,
+            proto_id=PROTOCOL_CONST.P2P_ID)
+        return client_hello
+
     @mock.patch('golem.network.transport.session.BasicSession.send')
-    def test_hello(self, send_mock):
-        self.maxDiff = None
+    def test_handshake_server_successful(self, send_mock):
+        client_hello = self.__setup_handshake_server_test(send_mock)
+        self.peer_session._react_to_hello(client_hello)
+        self.peer_session._react_to_rand_val(
+            message.RandVal(rand_val=self.peer_session.rand_val))
+
+        self.assertTrue(self.peer_session.verified)
+        self.assertEqual(2, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[1][0][1].slots(),
+            message.RandVal(rand_val=client_hello.rand_val).slots())
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_handshake_server_protoid(self, send_mock):
+        client_hello = self.__setup_handshake_server_test(send_mock)
+        client_hello.proto_id = -1
+        self.peer_session._react_to_hello(client_hello)
+        self.assertEqual(2, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[1][0][1].slots(),
+            message.Disconnect(
+                reason=message.Disconnect.REASON.ProtocolVersion).slots())
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_handshake_server_randval(self, send_mock):
+        client_hello = self.__setup_handshake_server_test(send_mock)
+        self.peer_session._react_to_hello(client_hello)
+        self.peer_session._react_to_rand_val(
+            message.RandVal(rand_val=-1))
+        self.assertEqual(3, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[1][0][1].slots(),
+            message.RandVal(rand_val=client_hello.rand_val).slots())
+        self.assertEqual(
+            send_mock.call_args_list[2][0][1].slots(),
+            message.Disconnect(
+                reason=message.Disconnect.REASON.Unverified).slots())
+
+    def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = 'node info'
         self.peer_session.conn.server.node_name = node_name = 'node name'
         self.peer_session.conn.server.keys_auth.get_key_id.return_value = \
@@ -36,24 +118,85 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.conn.server.metadata_manager.\
             get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
-        self.peer_session.hello()
-        send_mock.assert_called_once_with(mock.ANY, mock.ANY)
+        self.peer_session.conn_type = self.peer_session.CONN_TYPE_CLIENT
+        self.peer_session.start()
+        self.assertEqual(0, send_mock.call_count)
+        server_peer_info = mock.MagicMock()
+        server_peer_info.key = 'server_key_id'
 
-        expected = [
-            ['rand_val', self.peer_session.rand_val],
-            ['proto_id', PROTOCOL_CONST.P2P_ID],
-            ['node_name', node_name],
-            ['node_info', node],
-            ['port', port],
-            ['client_ver', APP_VERSION],
-            ['client_key_id', key_id],
-            ['solve_challenge', False],
-            ['challenge', None],
-            ['difficulty', 0],
-            ['metadata', metadata],
-        ]
+        def find_peer(key):
+            if key == key_id:
+                return self.peer_session
+            return None
+        self.peer_session.p2p_service.find_peer = find_peer
+        self.peer_session.p2p_service.should_solve_challenge = False
+        self.peer_session.p2p_service.enough_peers = lambda: False
+        server_hello = message.Hello(
+            port=1,
+            node_name='server',
+            rand_val=random.random(),
+            client_key_id=server_peer_info.key,
+            node_info=server_peer_info,
+            proto_id=PROTOCOL_CONST.P2P_ID)
+        expected = message.Hello(
+            challenge=None,
+            client_key_id=key_id,
+            client_ver=APP_VERSION,
+            difficulty=0,
+            metadata=metadata,
+            node_info=node,
+            node_name=node_name,
+            port=port,
+            proto_id=PROTOCOL_CONST.P2P_ID,
+            rand_val=self.peer_session.rand_val,
+            solve_challenge=False,
+        )
 
-        self.assertEqual(send_mock.call_args[0][1].slots(), expected)
+        return (server_hello, expected)
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_handshake_client_successful(self, send_mock):
+        server_hello, expected = self.__setup_handshake_client_test(send_mock)
+        self.peer_session._react_to_hello(server_hello)
+        self.assertEqual(2, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[0][0][1].slots(),
+            expected.slots())
+        self.assertEqual(
+            send_mock.call_args_list[1][0][1].slots(),
+            message.RandVal(rand_val=server_hello.rand_val).slots())
+        self.assertFalse(self.peer_session.verified)
+        self.peer_session._react_to_rand_val(
+            message.RandVal(rand_val=self.peer_session.rand_val))
+        self.assertTrue(self.peer_session.verified)
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_handshake_client_protoid(self, send_mock):
+        server_hello, _ = self.__setup_handshake_client_test(send_mock)
+        server_hello.proto_id = -1
+        self.peer_session._react_to_hello(server_hello)
+        self.assertEqual(1, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[0][0][1].slots(),
+            message.Disconnect(
+                reason=message.Disconnect.REASON.ProtocolVersion).slots())
+        self.assertFalse(self.peer_session.verified)
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_handshake_client_randval(self, send_mock):
+        server_hello, expected = self.__setup_handshake_client_test(send_mock)
+        self.peer_session._react_to_hello(server_hello)
+        self.assertEqual(2, send_mock.call_count)
+        self.assertEqual(
+            send_mock.call_args_list[0][0][1].slots(),
+            expected.slots())
+        self.assertEqual(
+            send_mock.call_args_list[1][0][1].slots(),
+            message.RandVal(rand_val=server_hello.rand_val).slots())
+        self.assertFalse(self.peer_session.verified)
+        self.peer_session._react_to_rand_val(
+            message.RandVal(rand_val=-1))
+        self.assertFalse(self.peer_session.verified)
 
     def test_encrypt_decrypt(self):
         ps = PeerSession(mock.MagicMock())
@@ -74,61 +217,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         with self.assertLogs(logger, level='INFO') as lctx:
             self.assertEqual(ps2.decrypt(data), data)
             self.assertTrue(any("not encrypted" in log for log in lctx.output))
-
-    def test_react_to_hello(self):
-
-        conn = mock.MagicMock()
-        conf = mock.MagicMock()
-        conf.opt_peer_num = 10
-
-        node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
-
-        peer_session = PeerSession(conn)
-        peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
-        peer_session.p2p_service.metadata_manager = mock.MagicMock()
-        peer_session.send = mock.MagicMock()
-        peer_session.disconnect = mock.MagicMock()
-        peer_session._solve_challenge = mock.MagicMock()
-
-        def create_verify(value):
-            def verify(*args):
-                return value
-            return verify
-
-        key_id = 'deadbeef'
-        peer_info = mock.MagicMock()
-        peer_info.key = key_id
-        msg = message.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=-1
-        )
-
-        peer_session.verify = create_verify(False)
-        peer_session._react_to_hello(msg)
-        peer_session.disconnect.assert_called_with(
-            message.Disconnect.REASON.Unverified)
-
-        peer_session.verify = create_verify(True)
-        peer_session._react_to_hello(msg)
-        peer_session.disconnect.assert_called_with(
-            message.Disconnect.REASON.ProtocolVersion)
-
-        msg.proto_id = PROTOCOL_CONST.P2P_ID
-
-        peer_session._react_to_hello(msg)
-        assert key_id in peer_session.p2p_service.peers
-        assert peer_session.p2p_service.peers[key_id]
-
-        peer_session.p2p_service.peers[key_id] = mock.MagicMock()
-        conn.opened = True
-        peer_session.key_id = None
-
-        peer_session._react_to_hello(msg)
-        peer_session.disconnect.assert_called_with(
-            message.Disconnect.REASON.DuplicatePeers)
 
     @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
     def test_react_to_hello_new_version(self, m_verify):
@@ -202,20 +290,17 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.conn = mock.Mock()
 
         peer_session.conn.opened = False
-        peer_session.disconnect(
-            message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.dropped.called
         assert not peer_session.send.called
 
         peer_session.conn.opened = True
-        peer_session.disconnect(
-            message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
         assert peer_session.dropped.called
         assert peer_session.send.called
 
         peer_session.send.called = False
-        peer_session.disconnect(
-            message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.send.called
 
     def test_dropped(self):
