@@ -1,11 +1,12 @@
-from golem_messages import message
 import os
 import unittest.mock as mock
 import uuid
 
+from golem_messages import message
+
 from golem.client import Client
+from golem.core.simplehash import SimpleHash
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.client import file_sha_256
 from golem.resource.dirmanager import DirManager
 from golem.task.taskserver import TaskServer
 from golem.task.tasksession import TaskSession
@@ -106,12 +107,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.resource_dir_2 = self.resource_manager_2.storage.get_dir(
             self.task_id)
 
-        client_options = self.resource_manager_1.build_client_options()
-
         self.resources_relative, self.resources = self._create_resources(
             self.resource_dir_1)
-        self.resource_manager_1._add_task(self.resources, self.task_id,
-                                          client_options=client_options)
+        self.resource_manager_1._add_task(self.resources, self.task_id)
 
     def tearDown(self):
         self.client_1.quit()
@@ -155,7 +153,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
             assert os.path.exists(location_1)
             assert os.path.exists(location_2)
 
-            sha_256_1 = file_sha_256(location_1)
-            sha_256_2 = file_sha_256(location_2)
+            sha_256_1 = SimpleHash.hash_file_base64(location_1)
+            sha_256_2 = SimpleHash.hash_file_base64(location_2)
             assert sha_256_1 == sha_256_2, '{} != {}'.format(
                 encode_hex(sha_256_1), encode_hex(sha_256_2))
