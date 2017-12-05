@@ -1,4 +1,5 @@
 from copy import copy
+import datetime
 import os
 import time
 import unittest
@@ -7,13 +8,15 @@ import uuid
 from unittest.mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
+from freezegun import freeze_time
+
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService, ResourceCleanerService
+    BalancePublisherService, ResourceCleanerService, TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timestamp_to_datetime
+from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
@@ -553,6 +556,65 @@ class TestResourceCleanerService(TestWithReactor):
         c.remove_computed_files.assert_called_with(older_than_seconds)
         c.remove_distributed_files.assert_called_with(older_than_seconds)
         c.remove_received_files.assert_called_with(older_than_seconds)
+
+
+class TestTaskCleanerService(TestWithReactor):
+    @freeze_time('2017-11-27 10:00:00.1')
+    @patch('golem.client.log')
+    def test_run_noop(self, log):
+        older_than_seconds = 5
+        now = time.time()
+        timeout_seconds = 3
+
+        c = Mock()
+        c.get_tasks = lambda: [{
+            'id': 'some_task_id',
+            'time_started': int(now),
+            'timeout': timeout_to_string(timeout_seconds)
+        }]
+
+        service = TaskCleanerService(
+            c,
+            interval_seconds=1,
+            older_than_seconds=older_than_seconds)
+        service._run()
+
+        c.delete_task.assert_not_called()
+        log.info.assert_not_called()
+
+    @patch('golem.client.log')
+    def test_run(self, log):
+        with freeze_time('2017-11-27 10:00:00.1') as frozen_time:
+
+            older_than_seconds = 5
+            task_id = 'some_task_id'
+            now = time.time()
+            timeout_seconds = 3
+
+            c = Mock()
+            c.get_tasks = lambda: [{
+                'id': task_id,
+                'time_started': int(now),
+                'timeout': timeout_to_string(timeout_seconds)
+            }]
+
+            service = TaskCleanerService(
+                c,
+                interval_seconds=1,
+                older_than_seconds=older_than_seconds)
+
+            frozen_time.tick(delta=datetime.timedelta(
+                seconds=older_than_seconds+timeout_seconds-1))
+            service._run()
+
+            c.delete_task.assert_not_called()
+
+            frozen_time.tick()
+            service._run()
+
+            c.delete_task.assert_called_with(task_id)
+            # log.info.assert_called()  is since python 3.6
+            assert log.info.called
 
 
 @patch('signal.signal')
