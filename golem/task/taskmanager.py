@@ -12,7 +12,7 @@ from golem.core.common import HandleKeyError, get_timestamp_utc, \
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
     ResourceType
