@@ -1,7 +1,69 @@
 import requests
+from twisted.internet import defer
 from buildbot.plugins import steps, util
+from buildbot.process import results
+from buildbot.reporters import utils as reporters_utils
 
 from .settings import buildbot_host
+
+
+@defer.inlineCallbacks
+def has_no_previous_success_check(step):
+    # function taken from stackoverflow and adjusted for our use:
+    # https://stackoverflow.com/questions/34284466/buildbot-how-do-i-skip-a-build-if-got-revision-is-the-same-as-the-last-run  # noqa
+
+    cur_build = step.build
+    # never skip if this is a forced run
+    if cur_build.getProperty("revision") is None \
+            or cur_build.getProperty("revision") == "" \
+            or cur_build.getProperty("scheduler") == "force":
+        print("No check for succes on force build")
+        defer.returnValue(True)
+        return True
+
+    # Get builderId and buildNumber to scan succesfull builds
+    # print("Properties build: {}".format(cur_build.getProperties()))
+    builder_id = yield cur_build.master.db.builders.findBuilderId(
+        cur_build.getProperty('buildername'), autoCreate=False)
+    dict_build = {
+        'number': cur_build.number,
+        'builderid': builder_id
+    }
+    # print("Current build: {}".format(dict_build))
+    prev_build = yield reporters_utils.getPreviousBuild(step.build.master,
+                                                        dict_build)
+    # this is the first build
+    if prev_build is None:
+        print("No previous build to check success")
+        defer.returnValue(True)
+        return True
+    while prev_build is not None:
+        yield reporters_utils.getDetailsForBuild(step.build.master,
+                                                 prev_build,
+                                                 wantProperties=True)
+        if prev_build['results'] == results.SUCCESS \
+                and prev_build['properties']['revision'][0] \
+                == cur_build.getProperty("revision"):
+            print("Found previous succes, skipping build")
+            defer.returnValue(False)
+            return False
+        prev_build = yield reporters_utils.getPreviousBuild(step.build.master,
+                                                            prev_build)
+    print("No previous success, run build")
+    defer.returnValue(True)
+    return True
+
+
+@defer.inlineCallbacks
+def has_no_previous_success(step):
+    last_success = step.build.getProperty('checked_success')
+    print("Checked if last step was success: {}".format(last_success))
+    if last_success is None:
+        last_success = yield has_no_previous_success_check(step)
+        print("Storing result of first success check: {}".format(last_success))
+        step.build.setProperty('checked_success', last_success)
+    defer.returnValue(last_success)
+    return last_success
 
 
 class StepsFactory(object):
@@ -32,17 +94,39 @@ class StepsFactory(object):
         factory.addStep(self.file_upload_step())
         return factory
 
+    def test_factory(self, run_slow=False):
+        factory = util.BuildFactory()
+        factory.addStep(self.git_step())
+        factory.addStep(self.venv_step())
+        factory.addStep(self.requirements_step())
+        factory.addStep(self.taskcollector_step())
+        factory.addStep(self.daemon_start_step())
+        factory.addStep(self.test_step(run_slow))
+        factory.addStep(self.coverage_step(run_slow))
+        factory.addStep(self.daemon_stop_step())
+        return factory
+
+    def linttest_factory(self):
+        factory = util.BuildFactory()
+        factory.addStep(self.git_step())
+        factory.addStep(self.venv_step())
+        factory.addStep(self.requirements_step())
+        # TODO: add lint command
+        return factory
+
     @staticmethod
     def git_step():
         return steps.Git(
             repourl='https://github.com/maaktweluit/golem.git',
-            mode='full', method='fresh', branch='mwu/bb-unit-test')
+            mode='full', method='fresh', branch='mwu/bb-unit-test',
+            doStepIf=has_no_previous_success)
 
     def venv_step(self):
         return steps.ShellCommand(
             name='virtualenv',
             haltOnFailure=True,
-            command=self.venv_command + ['.venv'])
+            command=self.venv_command + ['.venv'],
+            doStepIf=has_no_previous_success)
 
     def requirements_step(self):
         gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
@@ -78,7 +162,8 @@ class StepsFactory(object):
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for readline
-            })
+            },
+            doStepIf=has_no_previous_success)
 
     @staticmethod
     def taskcollector_step():
@@ -86,6 +171,7 @@ class StepsFactory(object):
             name='build taskcollector',
             haltOnFailure=True,
             command=['make', '-C', 'apps/rendering/resources/taskcollector'],
+            doStepIf=has_no_previous_success,
         )
 
     def create_binaries_step(self):
@@ -98,7 +184,8 @@ class StepsFactory(object):
             env={
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'VIRTUAL_ENV': self.venv_path,
-            })
+            },
+            doStepIf=has_no_previous_success)
 
     def file_upload_step(self):
         return steps.FileUpload(
@@ -116,6 +203,7 @@ class StepsFactory(object):
                 ext=self.golem_package_extension),
             blocksize=640 * 1024,
             mode=0o644,
+            doStepIf=has_no_previous_success,
         )
 
     def load_version_step(self):
@@ -131,26 +219,16 @@ class StepsFactory(object):
                     command='cat .version.ini | '
                             'grep "version =" | grep -o "[^ =]*$"',
                     property='version')
-            ])
-
-    def test_factory(self, run_slow=False):
-        factory = util.BuildFactory()
-        factory.addStep(self.git_step())
-        factory.addStep(self.venv_step())
-        factory.addStep(self.requirements_step())
-        factory.addStep(self.taskcollector_step())
-        factory.addStep(self.daemon_start_step())
-        factory.addStep(self.test_step(run_slow))
-        factory.addStep(self.coverage_step(run_slow))
-        factory.addStep(self.daemon_stop_step())
-        return factory
+            ],
+            doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_start_step():
         return steps.ShellCommand(
             name='start hyperg',
             haltOnFailure=True,
-            command=['scripts/test-daemon-start.sh'])
+            command=['scripts/test-daemon-start.sh'],
+            doStepIf=has_no_previous_success)
 
     def test_step(self, run_slow):
         install_req_cmd = self.pip_command + ['install', '-r',
@@ -184,7 +262,8 @@ class StepsFactory(object):
                     logfile='run tests',
                     flunkOnFailure=True,
                     command=self.python_command + test_command)
-            ])
+            ],
+            doStepIf=has_no_previous_success)
 
     def coverage_step(self, run_slow):
         def is_slow(*_):
@@ -193,22 +272,15 @@ class StepsFactory(object):
             name='handle coverage',
             flunkOnFailure=True,
             command=self.python_command + ['-m', 'codecov'],
-            doStepIf=is_slow)
+            doStepIf=has_no_previous_success and is_slow)
 
     @staticmethod
     def daemon_stop_step():
         return steps.ShellCommand(
             name='stop hyperg',
             haltOnFailure=True,
-            command=['scripts/test-daemon-stop.sh'])
-
-    def linttest_factory(self):
-        factory = util.BuildFactory()
-        factory.addStep(self.git_step())
-        factory.addStep(self.venv_step())
-        factory.addStep(self.requirements_step())
-        # TODO: add lint command
-        return factory
+            command=['scripts/test-daemon-stop.sh'],
+            doStepIf=has_no_previous_success)
 
 
 class WindowsStepsFactory(StepsFactory):
@@ -446,19 +518,26 @@ class ControlStepFactory():
         return factory
 
 
+control_workers = [
+    "control_01",
+    "control_02",
+    "control_03",
+    "control_04",
+]
+
 builders = [
     # controling builders
-    util.BuilderConfig(name="pr_control", workernames=["control"],
+    util.BuilderConfig(name="pr_control", workernames=control_workers,
                        factory=ControlStepFactory().pr_control()),
-    util.BuilderConfig(name="branch_control", workernames=["control"],
+    util.BuilderConfig(name="branch_control", workernames=control_workers,
                        factory=ControlStepFactory().branch_control()),
-    util.BuilderConfig(name="fast_test", workernames=["control"],
+    util.BuilderConfig(name="fast_test", workernames=control_workers,
                        factory=ControlStepFactory().fast_test()),
-    util.BuilderConfig(name="slow_test", workernames=["control"],
+    util.BuilderConfig(name="slow_test", workernames=control_workers,
                        factory=ControlStepFactory().slow_test()),
-    util.BuilderConfig(name="build_package", workernames=["control"],
+    util.BuilderConfig(name="build_package", workernames=control_workers,
                        factory=ControlStepFactory().build_package()),
-    util.BuilderConfig(name="nightly_upload", workernames=["control"],
+    util.BuilderConfig(name="nightly_upload", workernames=control_workers,
                        factory=ControlStepFactory().nightly_upload()),
     # lint tests
     util.BuilderConfig(name="linttest", workernames=["linux"],
