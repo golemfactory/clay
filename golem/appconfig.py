@@ -50,31 +50,13 @@ USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
 WAITING_FOR_TASK_TIMEOUT = 720  # 36000
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 
 # Default max price per hour -- 5.0 GNT ~ 0.05 USD
 MAX_PRICE = int(5.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
-
-
-# FIXME: deprecated
-class CommonConfig:
-    def __init__(self, section="Common", **kwargs):
-        self._section = section
-
-        for k, v in list(kwargs.items()):
-            ConfigEntry.create_property(
-                section,
-                k.replace("_", " "),
-                v,
-                self,
-                k
-            )
-
-        self.prop_names = list(kwargs.keys())
-
-    def section(self):
-        return self._section
 
 
 class NodeConfig:
@@ -122,6 +104,7 @@ class AppConfig:
             # peers
             seed_host="",
             seed_port=START_PORT,
+            seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
             # flags
             accept_tasks=ACCEPT_TASKS,
@@ -148,7 +131,9 @@ class AppConfig:
             use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
-            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT)
+            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
+            clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
+            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS)
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)

@@ -1,4 +1,5 @@
 import abc
+from twisted.internet.tcp import Client, Server
 from twisted.internet.protocol import Factory, Protocol, connectionDone
 
 
@@ -60,14 +61,22 @@ class SessionProtocol(Protocol):
 
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
+        if isinstance(self.transport, Client):
+            self.session.conn_type = Session.CONN_TYPE_CLIENT
+        elif isinstance(self.transport, Server):
+            self.session.conn_type = Session.CONN_TYPE_SERVER
 
     def connectionLost(self, reason=connectionDone):
         del self.session
 
 
 class Session(object, metaclass=abc.ABCMeta):
+    CONN_TYPE_CLIENT = 1
+    CONN_TYPE_SERVER = 2
+
     @abc.abstractmethod
     def __init__(self, conn):
+        self.conn_type = None
         return
 
     @abc.abstractmethod

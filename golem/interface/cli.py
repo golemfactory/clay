@@ -227,6 +227,8 @@ class CLI(object):
 
         if is_callable:
             subparser.set_defaults(callback=self._build_callback(parent, source))
+        else:
+            subparser.set_defaults(callback=subparser.format_help)
         if arguments:
             self._build_arguments(subparser, arguments)
         if children:
@@ -241,11 +243,8 @@ class CLI(object):
     @staticmethod
     def _build_callback(parent, elem):
         if parent:
-            method = CommandHelper.wrap_call(elem)
-        else:
-            method = elem
-
-        return lambda *a, **kw: method(*a, **kw)
+            return CommandHelper.wrap_call(elem)
+        return elem
 
     @staticmethod
     def _build_arguments(parser, arguments):

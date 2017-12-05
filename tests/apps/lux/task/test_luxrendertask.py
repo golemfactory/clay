@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 import pickle
 import unittest
@@ -18,7 +19,6 @@ from apps.lux.task.luxrendertask import (
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_linux, get_golem_path
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -115,9 +115,9 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask.collected_file_names["abcd"] = "abcdfile"
         ctd = luxtask.query_extra_data_for_final_flm()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        assert ctd.src_code is not None
-        assert ctd.extra_data['output_flm'] == luxtask.output_file
-        assert set(ctd.extra_data['flm_files']) == {"xxyyzzfile", "abcdfile"}
+        assert ctd['src_code'] is not None
+        assert ctd['extra_data']['output_flm'] == luxtask.output_file
+        assert set(ctd['extra_data']['flm_files']) == {"xxyyzzfile", "abcdfile"}
 
     def test_remove_from_preview(self):
         luxtask = self.get_test_lux_task()
@@ -308,7 +308,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
 class TestLuxRenderTaskTypeInfo(TempDirFixture):
     def test_init(self):
-        typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
+        typeinfo = LuxRenderTaskTypeInfo()
         assert isinstance(typeinfo, CoreTaskTypeInfo)
         assert typeinfo.output_formats == ["EXR", "PNG", "TGA"]
         assert typeinfo.output_file_ext == ["lxs"]
@@ -317,11 +317,9 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         assert typeinfo.options == LuxRenderOptions
         assert typeinfo.definition == RenderingTaskDefinition
         assert typeinfo.task_builder_type == LuxRenderTaskBuilder
-        assert typeinfo.dialog == "dialog"
-        assert typeinfo.dialog_controller == "controller"
 
     def test_get_task_border(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (4, 4)
         border = typeinfo.get_task_border("subtask1", definition, 10)
@@ -392,7 +390,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         assert typeinfo.get_task_border("subtask1", definition, 10) == []
 
     def test_task_border_path(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (300, 200)
         border = typeinfo.get_task_border("subtask1", definition, 10,
@@ -409,7 +407,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
                                         as_path=True) == []
 
     def test_get_task_num_from_pixels(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (0, 0)
         assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
@@ -447,7 +445,7 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
 
         dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
         definition = LuxRenderTaskBuilder.build_definition(
-            LuxRenderTaskTypeInfo(None, None), dictionary
+            LuxRenderTaskTypeInfo(), dictionary
         )
 
         assert definition.task_id == dictionary['id']

@@ -1,5 +1,5 @@
+from golem_messages import message
 from golem import testutils
-from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
@@ -94,7 +94,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         super_send_mock.reset_mock()
 
         # connection verified
-        msg = message.MessageRandVal(rand_val=self.instance.rand_val)
+        msg = message.RandVal(rand_val=self.instance.rand_val)
         msg.encrypted = True
         self.instance.interpret(msg)
         self.assertTrue(self.instance.verified)
@@ -132,7 +132,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             self.instance.send.assert_called_once_with(mock.ANY)
             mock_args, mock_kwargs = self.instance.send.call_args
             msg = mock_args[0]
-            self.assertIsInstance(msg, message.MessageHasResource)
+            self.assertIsInstance(msg, message.HasResource)
             self.assertEqual(msg.resource, file_name)
             self.assertFalse(self.instance.confirmation)
             self.assertEqual(self.instance.copies, 0)
@@ -155,7 +155,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         self.instance.send.assert_called_once_with(mock.ANY)
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
-        self.assertIsInstance(msg, message.MessagePullResource)
+        self.assertIsInstance(msg, message.PullResource)
         self.assertEqual(msg.resource, resource)
         self.instance.send.reset_mock()
 

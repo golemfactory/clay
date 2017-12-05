@@ -5,32 +5,34 @@ import struct
 import threading
 import time
 
+from golem_messages import message
+
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
+from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment
 from golem.model import db
-from golem.network.transport import message
+from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
-from golem.network.transport.session import MiddlemanSafeSession
+from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ComputeTaskDef, ResultType, ResourceType
+from golem.task.taskbase import ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.core.variables import TASK_PROTOCOL_ID
 
 logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occur")
+    logger.warning("Attribute error occured")
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -46,10 +48,10 @@ def dropped_after():
     return inner
 
 
-class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.MidAndFilesProtocol
+    ConnectionStateType = tcpnetwork.FilesProtocol
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
@@ -62,11 +64,12 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                               session should enhance
         :return:
         """
-        MiddlemanSafeSession.__init__(self, conn)
+        BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
+        self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
@@ -100,11 +103,11 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
-        MiddlemanSafeSession.interpret(self, msg)
+        BasicSafeSession.interpret(self, msg)
 
     def dropped(self):
         """ Close connection """
-        MiddlemanSafeSession.dropped(self)
+        BasicSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
             if self.key_id:
@@ -145,7 +148,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 self.port
             )
         except Exception as err:
-            logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
             self.dropped()
             return None
@@ -186,7 +189,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         """
         if extra_data and "subtask_id" in extra_data:
             self.task_server.task_result_sent(extra_data["subtask_id"])
-        MiddlemanSafeSession.data_sent(self, extra_data)
+        BasicSafeSession.data_sent(self, extra_data)
         self.dropped()
 
     def full_data_received(self, extra_data):
@@ -270,7 +273,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             return
 
         self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.MessageSubtaskResultAccepted(subtask_id=subtask_id))
+        self.send(message.SubtaskResultAccepted(subtask_id=subtask_id))
 
     @log_error()
     def inform_worker_about_payment(self, payment):
@@ -279,7 +282,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             logger.debug('payment.details: %r', payment.details)
         transaction_id = payment.details.tx
         block_number = payment.details.block_number
-        msg = message.MessageSubtaskPayment(
+        msg = message.SubtaskPayment(
             subtask_id=payment.subtask,
             reward=payment.value,
             transaction_id=transaction_id,
@@ -290,7 +293,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     @log_error()
     def request_payment(self, expected_income):
         logger.debug('request_payment(%r)', expected_income)
-        msg = message.MessageSubtaskPaymentRequest(
+        msg = message.SubtaskPaymentRequest(
             subtask_id=expected_income.subtask
         )
         self.send(msg)
@@ -309,7 +312,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         :return:
         """
         self.send(
-            message.MessageGetResource(
+            message.GetResource(
                 task_id=task_id,
                 resource_header=resource_header
             )
@@ -346,7 +349,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(message.MessageReportComputedTask(
+        self.send(message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
             computation_time=task_result.computing_time,
@@ -358,13 +361,23 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             eth_account=eth_account,
             extra_data=extra_data))
 
+        # FIXME: message.ForceReportComputedTask is going to be updated
+        msg_cls = message.ForceReportComputedTask
+        msg = msg_cls(task_result.subtask_id)
+        msg_data = msg.serialize(self.sign)
+
+        self.concent_service.submit(
+            ConcentRequest.build_key(task_result.subtask_id, msg_cls),
+            msg_data, msg_cls
+        )
+
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
         self.send(
-            message.MessageTaskFailure(
+            message.TaskFailure(
                 subtask_id=subtask_id,
                 err=err_msg
             )
@@ -374,15 +387,15 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(message.MessageSubtaskResultRejected(subtask_id=subtask_id))
+        self.send(message.SubtaskResultRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
         self.send(
-            message.MessageHello(
+            message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=TASK_PROTOCOL_ID
+                proto_id=PROTOCOL_CONST.TASK_ID
             ),
             send_unverified=True
         )
@@ -392,61 +405,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
            to start task session
         :param uuid conn_id: connection id for reference
         """
-        self.send(message.MessageStartSessionResponse(conn_id=conn_id))
-
-    # TODO Maybe dest_node is not necessary?
-    def send_middleman(self, asking_node, dest_node, ask_conn_id):
-        """ Ask node to become middleman in the communication with other node
-        :param Node asking_node: other node information. Middleman should
-                                 connect with that node.
-        :param Node dest_node: information about this node
-        :param ask_conn_id: connection id that asking node gave for reference
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageMiddleman(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
-
-    def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
-        """Ask node communicate with other through middleman connection
-           (this node is the middleman and connection with other node
-           is already opened
-        :param key_id:  this node public key
-        :param conn_id: connection id for reference
-        :param dest_node_key_id: public key of the other node of
-                                 the middleman connection
-        """
-        self.send(
-            message.MessageJoinMiddlemanConn(
-                key_id=key_id,
-                conn_id=conn_id,
-                dest_node_key_id=dest_node_key_id
-            )
-        )
-
-    def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
-        """Ask node to inform other node about nat hole that this node will
-           prepare with this connection
-        :param Node asking_node: node that should be informed about potential
-                                 hole based on this connection
-        :param Node dest_node: node that will try to end this connection
-                               and open hole in it's NAT
-        :param uuid ask_conn_id: connection id that asking node gave
-                                 for reference
-        :return:
-        """
-        self.asking_node_key_id = asking_node.key
-        self.send(
-            message.MessageNatPunch(
-                asking_node=asking_node,
-                dest_node=dest_node,
-                ask_conn_id=ask_conn_id
-            )
-        )
+        self.send(message.StartSessionResponse(conn_id=conn_id))
 
     #########################
     # Reactions to messages #
@@ -473,40 +432,46 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
+        reasons = message.CannotAssignTask.REASON
         if wrong_task:
             self.send(
-                message.MessageCannotAssignTask(
+                message.CannotAssignTask(
                     task_id=msg.task_id,
-                    reason="Not my task  {}".format(msg.task_id)
+                    reason=reasons.NotMyTask,
                 )
             )
             self.dropped()
         elif ctd:
-            self.send(message.MessageTaskToCompute(compute_task_def=ctd))
+            self.send(message.TaskToCompute(compute_task_def=ctd))
         elif wait:
-            self.send(message.MessageWaitingForResults())
+            self.send(message.WaitingForResults())
         else:
             self.send(
-                message.MessageCannotAssignTask(
+                message.CannotAssignTask(
                     task_id=msg.task_id,
-                    reason="No more subtasks in {}".format(msg.task_id)
+                    reason=reasons.NoMoreSubtasks,
                 )
             )
             self.dropped()
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
+        if msg.compute_task_def is None:
+            logger.debug('TaskToCompute without ctd: %r', msg)
+            self.task_computer.session_closed()
+            self.dropped()
+            return
         if self._check_ctd_params(msg.compute_task_def)\
                 and self._set_env_params(msg.compute_task_def)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
-                msg.compute_task_def.subtask_id, self
+                msg.compute_task_def['subtask_id'], self
             )
             self.task_computer.task_given(msg.compute_task_def)
         else:
             self.send(
-                message.MessageCannotComputeTask(
-                    subtask_id=msg.compute_task_def.subtask_id,
+                message.CannotComputeTask(
+                    subtask_id=msg.compute_task_def['subtask_id'],
                     reason=self.err_msg
                 )
             )
@@ -516,7 +481,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
         if not self.msgs_to_send:
-            self.disconnect(self.DCRNoMoreMessages)
+            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
@@ -546,7 +511,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 msg.node_info,
                 msg.eth_account
             )
-            self.send(message.MessageGetTaskResult(subtask_id=msg.subtask_id))
+            self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
         else:
             self.dropped()
 
@@ -620,7 +585,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         resources = self.task_server.get_resources(task_id)
         options = self.task_server.get_share_options(task_id, key_id)
 
-        self.send(message.MessageResourceList(
+        self.send(message.ResourceList(
             resources=resources,
             options=options
         ))
@@ -651,7 +616,11 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
-        client_options = msg.options
+
+        # Prefer known client options to ones provided in the message
+        client_options = self.task_server.get_download_options(self.key_id)
+        if not (client_options.options and client_options.options.get('peers')):
+            client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
@@ -666,22 +635,22 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.verify(msg):
             logger.info("Wrong signature for Hello msg")
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
-        if msg.proto_id != TASK_PROTOCOL_ID:
+        if msg.proto_id != PROTOCOL_CONST.TASK_ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                TASK_PROTOCOL_ID
+                PROTOCOL_CONST.TASK_ID
             )
-            self.disconnect(TaskSession.DCRProtocolVersion)
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
         if send_hello:
             self.send_hello()
         self.send(
-            message.MessageRandVal(rand_val=msg.rand_val),
+            message.RandVal(rand_val=msg.rand_val),
             send_unverified=True
         )
 
@@ -693,66 +662,10 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 self.send(msg)
             self.msgs_to_send = []
         else:
-            self.disconnect(TaskSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
-
-    def _react_to_middleman(self, msg):
-        self.send(message.MessageBeingMiddlemanAccepted())
-        self.task_server.be_a_middleman(
-            self.key_id,
-            self,
-            self.conn_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-
-    def _react_to_join_middleman_conn(self, msg):
-        self.middleman_conn_data = {
-            'key_id': msg.key_id,
-            'conn_id': msg.conn_id,
-            'dest_node_key_id': msg.dest_node_key_id,
-        }
-        self.send(message.MessageMiddlemanAccepted())
-
-    def _react_to_middleman_ready(self, msg):
-        key_id = self.middleman_conn_data.get('key_id')
-        conn_id = self.middleman_conn_data.get('conn_id')
-        dest_node_key_id = self.middleman_conn_data.get('dest_node_key_id')
-        self.task_server.respond_to_middleman(
-            key_id,
-            self,
-            conn_id,
-            dest_node_key_id
-        )
-
-    def _react_to_being_middleman_accepted(self, msg):
-        self.key_id = self.asking_node_key_id
-
-    def _react_to_middleman_accepted(self, msg):
-        self.send(message.MessageMiddlemanReady())
-        self.is_middleman = True
-        self.open_session.is_middleman = True
-
-    def _react_to_nat_punch(self, msg):
-        self.task_server.organize_nat_punch(
-            self.address,
-            self.port,
-            self.key_id,
-            msg.asking_node,
-            msg.dest_node,
-            msg.ask_conn_id
-        )
-        self.send(message.MessageWaitForNatTraverse(port=self.port))
-        self.dropped()
-
-    def _react_to_wait_for_nat_traverse(self, msg):
-        self.task_server.wait_for_nat_traverse(msg.port, self)
-
-    def _react_to_nat_punch_failure(self, msg):
-        pass
 
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
@@ -797,11 +710,41 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             return
         self.inform_worker_about_payment(payment)
 
+    def _react_to_ack_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.debug("Requestor '%r' accepted the computed subtask '%r' "
+                         "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.ForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' acknowledged a computed task report "
+                           "of an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
+
+    def _react_to_reject_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.info("Requestor '%r' rejected the computed subtask '%r' "
+                        "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.ForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' rejected a computed task report of"
+                           "an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
+
     def send(self, msg, send_unverified=False):
-        if not self.is_middleman and not self.verified and not send_unverified:
+        if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
             return
-        MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
+        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(
             "->",
             time.localtime(),
@@ -811,26 +754,25 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _check_ctd_params(self, ctd):
-        if not isinstance(ctd, ComputeTaskDef):
-            self.err_msg = "Received task is not a ComputeTaskDef instance"
-            return False
-        if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
-            self.err_msg = "Wrong key_id"
+        reasons = message.CannotComputeTask.REASON
+        if ctd['key_id'] != self.key_id\
+                or ctd['task_owner'].key != self.key_id:
+            self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
-                ctd.return_address,
-                ctd.return_port
+                ctd['return_address'],
+                ctd['return_port']
                 ):
-            self.err_msg = "Wrong return address {}:{}"\
-                .format(ctd.return_address, ctd.return_port)
+            self.err_msg = reasons.WrongAddress
             return False
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
         env = self.task_server.get_environment_by_id(environment)
+        reasons = message.CannotComputeTask.REASON
         if not env:
-            self.err_msg = "Wrong environment {}".format(environment)
+            self.err_msg = reasons.WrongEnvironment
             return False
 
         if isinstance(env, DockerEnvironment):
@@ -838,23 +780,23 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
                 return False
 
         if not env.allow_custom_main_program_file:
-            ctd.src_code = env.get_source_code()
+            ctd['src_code'] = env.get_source_code()
 
-        if not ctd.src_code:
-            self.err_msg = "No source code for environment {}"\
-                .format(environment)
+        if not ctd['src_code']:
+            self.err_msg = reasons.NoSourceCode
             return False
 
         return True
 
     def __check_docker_images(self, ctd, env):
-        for image in ctd.docker_images:
+        for image in ctd['docker_images']:
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
-                    ctd.docker_images = [image]
+                    ctd['docker_images'] = [image]
                     return True
 
-        self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
+        reasons = message.CannotComputeTask.REASON
+        self.err_msg = reasons.WrongDockerImages
         return False
 
     def __send_delta_resource(self, msg):
@@ -885,7 +827,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             return
         delta_header, parts_list = res
 
-        self.send(message.MessageDeltaParts(
+        self.send(message.DeltaParts(
             task_id=self.task_id,
             delta_header=delta_header,
             parts=parts_list,
@@ -911,7 +853,7 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
             )
 
             self.send(
-                message.MessageTaskResultHash(
+                message.TaskResultHash(
                     subtask_id=subtask_id,
                     multihash=result_hash,
                     secret=secret,
@@ -971,41 +913,40 @@ class TaskSession(MiddlemanSafeSession, ResourceHandshakeSessionMixin):
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            message.MessageWantToComputeTask.TYPE: self._react_to_want_to_compute_task,  # noqa
-            message.MessageTaskToCompute.TYPE: self._react_to_task_to_compute,
-            message.MessageCannotAssignTask.TYPE: self._react_to_cannot_assign_task,  # noqa
-            message.MessageCannotComputeTask.TYPE: self._react_to_cannot_compute_task,  # noqa
-            message.MessageReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
-            message.MessageGetTaskResult.TYPE: self._react_to_get_task_result,
-            message.MessageTaskResultHash.TYPE: self._react_to_task_result_hash,  # noqa
-            message.MessageGetResource.TYPE: self._react_to_get_resource,
-            message.MessageResourceList.TYPE: self._react_to_resource_list,
-            message.MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
-            message.MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
-            message.MessageTaskFailure.TYPE: self._react_to_task_failure,
-            message.MessageDeltaParts.TYPE: self._react_to_delta_parts,
-            message.MessageHello.TYPE: self._react_to_hello,
-            message.MessageRandVal.TYPE: self._react_to_rand_val,
-            message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            message.MessageMiddleman.TYPE: self._react_to_middleman,
-            message.MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
-            message.MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,  # noqa
-            message.MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,  # noqa
-            message.MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,  # noqa
-            message.MessageNatPunch.TYPE: self._react_to_nat_punch,
-            message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
-            message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
-            message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
-            message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+            message.WantToComputeTask.TYPE: self._react_to_want_to_compute_task,
+            message.TaskToCompute.TYPE: self._react_to_task_to_compute,
+            message.CannotAssignTask.TYPE: self._react_to_cannot_assign_task,
+            message.CannotComputeTask.TYPE: self._react_to_cannot_compute_task,
+            message.ReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
+            message.GetTaskResult.TYPE: self._react_to_get_task_result,
+            message.TaskResultHash.TYPE: self._react_to_task_result_hash,
+            message.GetResource.TYPE: self._react_to_get_resource,
+            message.ResourceList.TYPE: self._react_to_resource_list,
+            message.SubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
+            message.SubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
+            message.TaskFailure.TYPE: self._react_to_task_failure,
+            message.DeltaParts.TYPE: self._react_to_delta_parts,
+            message.Hello.TYPE: self._react_to_hello,
+            message.RandVal.TYPE: self._react_to_rand_val,
+            message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
+            message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.SubtaskPayment.TYPE: self._react_to_subtask_payment,
+            message.SubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+
+            # Concent messages
+            message.AckReportComputedTask.TYPE:
+                self._react_to_ack_report_computed_task,
+            message.RejectReportComputedTask.TYPE:
+                self._react_to_reject_report_computed_task,
         })
 
-        # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
-        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        # self.can_be_not_encrypted.append(message.Hello.TYPE)
+        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
-                message.MessageHello.TYPE,
-                message.MessageRandVal.TYPE,
-                message.MessageChallengeSolution.TYPE
+                message.Hello.TYPE,
+                message.RandVal.TYPE,
+                message.ChallengeSolution.TYPE
             ]
         )
-        self.can_be_not_encrypted.extend([message.MessageHello.TYPE])
+        self.can_be_not_encrypted.extend([message.Hello.TYPE])

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import deque
 import datetime
+from golem_messages import message
 import itertools
 import logging
 import os
@@ -10,7 +11,7 @@ import time
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
+from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
 from golem.task.benchmarkmanager import BenchmarkManager
@@ -140,7 +141,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.deny_set = get_deny_set(datadir=client.datadir)
         self.resource_handshakes = {}
 
-        network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
+        network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         dispatcher.connect(self.paymentprocessor_listener, signal="golem.paymentprocessor")
         dispatcher.connect(self.transactions_listener, signal="golem.transactions")
@@ -164,6 +165,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_manager.key_id = self.keys_auth.get_key_id()
 
     def sync_network(self):
+        super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
         self.send_waiting_payments()
@@ -194,7 +196,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 performance = 0.0
             is_requestor_accepted = self.should_accept_requestor(
                 theader.task_owner_key_id)
-            is_price_accepted = self.config_desc.min_price < theader.max_price
+            is_price_accepted = self.config_desc.min_price <= theader.max_price
             if is_requestor_accepted and is_price_accepted:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(theader=theader,
@@ -265,7 +267,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if self.active:
             self.task_sessions_incoming.add(session)
         else:
-            session.disconnect(TaskSession.DCRNoMoreMessages)
+            session.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)
@@ -366,9 +368,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def get_resource_port(self):
         return self.client.resource_port
 
-    def get_subtask_ttl(self, task_id):
-        return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
-
     def task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
 
@@ -405,50 +404,48 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def reward_for_subtask_paid(self, subtask_id, reward, transaction_id,
                                 block_number):
-        logger.info(
-            "Received payment for subtask %r (val:%r, tid:%r, bn:%r)",
-            subtask_id,
-            reward,
-            transaction_id,
-            block_number
-        )
         try:
             expected_income = model.ExpectedIncome.get(subtask=subtask_id)
         except model.ExpectedIncome.DoesNotExist:
             logger.warning(
-                'Received unexpected payment for subtask %r'
-                '(val:%rGNT, tid: %r, bn:%r)',
+                'Received unexpected payment confirmation message for subtask '
+                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
                 subtask_id,
+                reward,
+                transaction_id,
+                block_number)
+            return
+
+        logger.info(
+                'Received payment confirmation message for subtask_id %r \n '
+                '(expected reward: %r GNT, reward claimed in message %r GNT \n '
+                'transaction_id: %r, block number:%r)',
+                subtask_id,
+                expected_income.value,
                 reward,
                 transaction_id,
                 block_number
             )
-            return
-        if expected_income.value != reward:
-            logger.error(
-                "Reward mismatch for subtask: %r. expected: %r got: %r",
-                subtask_id,
-                expected_income.value,
-                reward
-            )
-            return
-        task_id = expected_income.task
-        node_id = expected_income.sender_node
 
-        # check that the reward has been successfully written in db
+        # Checks whether the claimed reward value matches
+        # expectations (db vs blockchain).
+        # We don't care what is the value of reward claimed in message
+        # since byzantine node can send whatever it likes.
         result = self.client.transaction_system.incomes_keeper.received(
-            sender_node_id=node_id,
-            task_id=task_id,
+            sender_node_id=expected_income.sender_node,
+            task_id=expected_income.task,
             subtask_id=subtask_id,
             transaction_id=transaction_id,
             block_number=block_number,
-            value=reward,
+            value=expected_income.value,
         )
 
         # Trust is increased only after confirmation from incomes keeper
         from golem.model import Income
         if type(result) is Income:
-            Trust.PAYMENT.increase(node_id, self.max_trust)
+            Trust.PAYMENT.increase(
+                expected_income.sender_node,
+                self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -515,47 +512,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 res(session)
         else:
             session.dropped()
-
-    def respond_to_middleman(self, key_id, session, conn_id, dest_key_id):
-        if conn_id in self.response_list:
-            self.respond_to(dest_key_id, session, conn_id)
-        else:
-            logger.warning("No response for {}".format(dest_key_id))
-            session.dropped()
-
-    def be_a_middleman(self, key_id, open_session, conn_id, asking_node, dest_node, ask_conn_id):
-        key_id = asking_node.key
-        response = lambda session: self.__asking_node_for_middleman_connection_established(session, conn_id, key_id,
-                                                                                           open_session, asking_node,
-                                                                                           dest_node, ask_conn_id)
-        if key_id in self.response_list:
-            self.response_list[conn_id].append(response)
-        else:
-            self.response_list[conn_id] = deque([response])
-
-        self.client.want_to_start_task_session(key_id, self.node, conn_id)
-        open_session.is_middleman = True
-
-    def wait_for_nat_traverse(self, port, session):
-        session.close_now()
-        args = {'super_node': session.extra_data['super_node'],
-                'asking_node': session.extra_data['asking_node'],
-                'dest_node': session.extra_data['dest_node'],
-                'ask_conn_id': session.extra_data['ans_conn_id']}
-        self._add_pending_listening(TaskListenTypes.StartSession, port, args)
-
-    def organize_nat_punch(self, addr, port, client_key_id, asking_node, dest_node, ans_conn_id):
-        self.client.inform_about_task_nat_hole(asking_node.key, client_key_id, addr, port, ans_conn_id)
-
-    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        connect_info = TCPConnectInfo([SocketAddress(addr, port)], self.__connection_for_traverse_nat_established,
-                                      self.__connection_for_traverse_nat_failure)
-        self.network.connect(connect_info, client_key_id=key_id, conn_id=conn_id, super_key_id=super_key_id)
-
-    def traverse_nat_failure(self, conn_id):
-        pc = self.pending_connections.get(conn_id)
-        if pc:
-            pc.failure(conn_id, *pc.args)
 
     def get_socket_addresses(self, node_info, port, key_id):
         if self.client.get_suggested_conn_reverse(key_id):
@@ -649,7 +605,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if listen_id in self.open_listenings:
             del self.open_listenings['listen_id']
 
-        self.__connection_for_nat_punch_failure(listen_id, super_node, asking_node, dest_node, ask_conn_id)
 
     #############################
     #   CONNECTION REACTIONS    #
@@ -805,77 +760,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.final_conn_failure(conn_id)
         # self.__initiate_nat_traversal(key_id, node_info, super_node_info, ans_conn_id)
 
-    def __initiate_nat_traversal(self, key_id, node_info, super_node_info, ans_conn_id):
-        if super_node_info is None:
-            logger.info("Permanently can't connect to node {}".format(key_id))
-            return
-
-        if self.node.nat_type in TaskServer.supported_nat_types:
-            args = {
-                'super_node': super_node_info,
-                'asking_node': node_info,
-                'dest_node': self.node,
-                'ans_conn_id': ans_conn_id
-            }
-            self._add_pending_request(TASK_CONN_TYPES['nat_punch'], super_node_info, super_node_info.prv_port,
-                                      super_node_info.key, args)
-        else:
-            args = {
-                'key_id': super_node_info.key,
-                'asking_node_info': node_info,
-                'self_node_info': self.node,
-                'ans_conn_id': ans_conn_id
-            }
-            self._add_pending_request(TASK_CONN_TYPES['middleman'], super_node_info, super_node_info.prv_port,
-                                      super_node_info.key, args)
-
-    def __connection_for_nat_punch_established(self, session, conn_id, super_node, asking_node, dest_node, ans_conn_id):
-        session.key_id = super_node.key
-        session.conn_id = conn_id
-        session.extra_data = {'super_node': super_node, 'asking_node': asking_node, 'dest_node': dest_node,
-                              'ans_conn_id': ans_conn_id}
-        session.send_hello()
-        session.send_nat_punch(asking_node, dest_node, ans_conn_id)
-
-    def __connection_for_nat_punch_failure(self, conn_id, super_node, asking_node, dest_node, ans_conn_id):
-        self.final_conn_failure(conn_id)
-        args = {
-            'key_id': super_node.key,
-            'asking_node_info': asking_node,
-            'self_node_info': dest_node,
-            'ans_conn_id': ans_conn_id
-        }
-        self._add_pending_request(TASK_CONN_TYPES['middleman'], super_node, super_node.prv_port,
-                                  super_node.key, args)
-
-    def __connection_for_traverse_nat_established(self, session, client_key_id, conn_id, super_key_id):
-        self.respond_to(client_key_id, session, conn_id)  # FIXME
-
-    def __connection_for_traverse_nat_failure(self, client_key_id, conn_id, super_key_id):
-        logger.error("Connection for traverse nat failure")
-        self.client.inform_about_nat_traverse_failure(super_key_id, client_key_id, conn_id)
-
-    def __connection_for_middleman_established(self, session, conn_id, key_id, asking_node_info, self_node_info,
-                                               ans_conn_id):
-        session.key_id = key_id
-        session.conn_id = conn_id
-        session.send_hello()
-        session.send_middleman(asking_node_info, self_node_info, ans_conn_id)
-
-    def __connection_for_middleman_failure(self, conn_id, key_id, asking_node_info, self_node_info, ans_conn_id):
-        self.final_conn_failure(conn_id)
-        logger.info("Permanently can't connect to node {}".format(key_id))
-        return
-
-    def __asking_node_for_middleman_connection_established(self, session, conn_id, key_id, open_session, asking_node,
-                                                           dest_node, ans_conn_id):
-        session.key_id = key_id
-        session.conn_id = conn_id
-        session.send_hello()
-        session.send_join_middleman_conn(key_id, ans_conn_id, dest_node.key)
-        session.open_session = open_session
-        open_session.open_session = session
-
     def __connection_for_task_request_final_failure(self, conn_id, node_name,
                                                     key_id, task_id,
                                                     estimated_performance,
@@ -979,6 +863,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
+        self.task_manager.comp_task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)
@@ -1027,6 +912,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 p2p_node = p2p_node_getter(elem)
                 if p2p_node is None:
                     logger.debug('Empty node info in %r', elem)
+                    elems_set.remove(elem)
+                    continue
+                if not isinstance(p2p_node.prv_port, int):
+                    logger.debug('Invalid port in %r', elem)
                     elems_set.remove(elem)
                     continue
                 self._add_pending_request(
@@ -1121,8 +1010,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_established,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_established,
-            TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_established,
-            TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_established,
             TASK_CONN_TYPES['payment']: self.connection_for_payment_established,
             TASK_CONN_TYPES['payment_request']: self.connection_for_payment_request_established,
         })
@@ -1133,8 +1020,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
-            TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_failure,
-            TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
             TASK_CONN_TYPES['payment']:
                 self.__connection_for_payment_failure,
             TASK_CONN_TYPES['payment_request']:
@@ -1147,8 +1032,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_final_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['middleman']: self.noop,
-            TASK_CONN_TYPES['nat_punch']: self.noop,
             TASK_CONN_TYPES['payment']:self.noop,
             TASK_CONN_TYPES['payment_request']: self.noop,
         })
@@ -1199,8 +1082,6 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
-    'middleman': 8,
-    'nat_punch': 9,
     'payment': 10,
     'payment_request': 11,
 }

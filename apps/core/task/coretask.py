@@ -1,5 +1,6 @@
 import abc
 import copy
+import golem_messages.message
 import logging
 import os
 import uuid
@@ -20,7 +21,7 @@ from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    ResourceType, ComputeTaskDef, TaskTypeInfo
+    ResourceType, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -50,12 +51,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
                  definition: 'Type[TaskDefinition]',
                  defaults: 'TaskDefaults',
                  options: Type[Options],
-                 builder_type: Type[TaskBuilder],
-                 dialog=None,
-                 dialog_controller=None):
+                 builder_type: Type[TaskBuilder]):
         super().__init__(name, definition, defaults, options, builder_type)
-        self.dialog = dialog
-        self.dialog_controller = dialog_controller
         self.output_formats = []
         self.output_file_ext = []
 
@@ -326,18 +323,18 @@ class CoreTask(Task):
         }
 
     def _new_compute_task_def(self, hash, extra_data, working_directory=".", perf_index=0):
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = hash
-        ctd.extra_data = extra_data
-        ctd.short_description = self.short_extra_data_repr(extra_data)
-        ctd.src_code = self.src_code
-        ctd.performance = perf_index
-        ctd.working_directory = working_directory
-        ctd.docker_images = self.header.docker_images
-        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
-        ctd.task_owner = self.header.task_owner
-        ctd.environment = self.header.environment
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['task_id'] = self.header.task_id
+        ctd['subtask_id'] = hash
+        ctd['extra_data'] = extra_data
+        ctd['short_description'] = self.short_extra_data_repr(extra_data)
+        ctd['src_code'] = self.src_code
+        ctd['performance'] = perf_index
+        ctd['working_directory'] = working_directory
+        ctd['docker_images'] = self.header.docker_images
+        ctd['deadline'] = timeout_to_deadline(self.header.subtask_timeout)
+        ctd['task_owner'] = self.header.task_owner
+        ctd['environment'] = self.header.environment
 
         return ctd
 
@@ -370,7 +367,7 @@ class CoreTask(Task):
 
     # TODO why is it here and not in the Task?
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
         pass  # Implement in derived methods
 
     def load_task_results(self, task_result, result_type: int, subtask_id):
@@ -502,11 +499,11 @@ def accepting(query_extra_data_func):
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
             if should_wait:
-                logger.warning("Waiting for results from {}"
-                               .format(node_name))
+                logger.warning("Waiting for results from {} on {}"
+                               .format(node_name, self.task_definition.task_id))
             else:
-                logger.warning("Client {} banned from this task"
-                               .format(node_name))
+                logger.warning("Client {} banned from {} task"
+                               .format(node_name, self.task_definition.task_id))
 
             return self.ExtraData(should_wait=should_wait)
 

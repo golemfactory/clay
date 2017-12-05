@@ -75,11 +75,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=60*5):
+    def _run_docker_task(self, render_task, timeout=60):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd.deadline = timeout_to_deadline(timeout)
+        ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -120,7 +120,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
+        result = task_computer.resource_given(ctd['task_id'])
         assert result
 
         # Thread for task computation should be created by now
@@ -130,7 +130,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         if task_thread:
             started = time.time()
             while task_thread.is_alive():
-                if time.time() - started >= 60:
+                if time.time() - started >= timeout:
                     task_thread.end_comp()
                     break
                 time.sleep(1)
@@ -198,7 +198,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
         assert not task.use_frames
-        assert len(task.frames_given) == 10
+        assert len(task.frames_given) == 5
         assert isinstance(task.preview_file_path, str)
         assert not task.preview_updaters
         assert task.scale_factor == 0.8

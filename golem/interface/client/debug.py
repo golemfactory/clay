@@ -1,7 +1,7 @@
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, command, CommandResult, Argument
 from golem.interface.exceptions import CommandException
-from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 
 
 def _build_alias_to_method():

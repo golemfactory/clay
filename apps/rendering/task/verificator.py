@@ -1,5 +1,6 @@
 
 from copy import copy
+import golem_messages.message
 import logging
 import math
 import os
@@ -8,7 +9,6 @@ import uuid
 
 from golem.core.keysauth import get_random, get_random_float
 from golem.core.fileshelper import ensure_dir_exists, find_file_with_ext
-from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
@@ -143,8 +143,8 @@ class RenderingVerificator(CoreVerificator):
             return img
 
     def query_extra_data_for_advanced_verification(self, extra_data):
-        ctd = ComputeTaskDef()
-        ctd.extra_data = extra_data
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['extra_data'] = extra_data
         return ctd
 
     def __box_rendered(self, results, time_spent):

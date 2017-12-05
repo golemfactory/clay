@@ -14,10 +14,10 @@ from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 
+from golem.core.service import Service
 from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
-from golem.transactions.service import Service
 from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger("golem.pay")
@@ -68,6 +68,9 @@ class PaymentProcessor(Service):
     TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
     SYNC_CHECK_INTERVAL = 10
+
+    # Minimal number of confirmations before we treat transactions as done
+    REQUIRED_CONFIRMATIONS = 12
 
     def __init__(self, client: Client, privkey, faucet=False) -> None:
         self.__client = client
@@ -310,6 +313,8 @@ class PaymentProcessor(Service):
                         "block hash length should be 64, but is: {}".format(
                             len(block_hash)))
                 block_number = receipt['blockNumber']
+                if block_number < self.REQUIRED_CONFIRMATIONS:
+                    continue
                 gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE
                 fee = total_fee // len(payments)

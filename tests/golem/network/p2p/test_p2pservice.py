@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 import random
 import time
+import unittest.mock as mock
 import uuid
-
-import mock
-from mock import MagicMock, Mock
 
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -81,19 +79,19 @@ class TestP2PService(testutils.DatabaseFixture):
     def test_add_to_peer_keeper(self):
         node = Node()
         node.key = EllipticalKeysAuth("TEST").get_key_id()
-        m_test2 = MagicMock()
-        m_test3 = MagicMock()
+        m_test2 = mock.MagicMock()
+        m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
         self.service.peers["TEST2"] = m_test2
-        self.service.peer_keeper = MagicMock()
+        self.service.peer_keeper = mock.MagicMock()
         node2 = Node()
         node2.key = "TEST2"
-        self.service.peer_keeper.add_peer = MagicMock(return_value=node2)
+        self.service.peer_keeper.add_peer = mock.MagicMock(return_value=node2)
         self.service.add_to_peer_keeper(node)
         m_test2.ping.assert_called_with(0)
         m_test3.ping.assert_not_called()
         for i in range(100):
-            self.service.peers[str(i)] = MagicMock()
+            self.service.peers[str(i)] = mock.MagicMock()
         node2.key = "59"
         self.service.add_to_peer_keeper(node)
         self.service.peers["59"].ping.assert_called_with(0)
@@ -109,7 +107,7 @@ class TestP2PService(testutils.DatabaseFixture):
         self.assertEqual(len(self.service.peers), 102)
 
     def test_remove_old_peers(self):
-        node = MagicMock()
+        node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
                                       "TESTPUB").get_key_id()
         node.key_id = node.key
@@ -131,13 +129,13 @@ class TestP2PService(testutils.DatabaseFixture):
     def test_refresh_peers(self):
         sa = SocketAddress('127.0.0.1', 11111)
 
-        node = MagicMock()
+        node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
                                       "TESTPUB").get_key_id()
         node.key_id = node.key
         node.address = sa
 
-        node2 = MagicMock()
+        node2 = mock.MagicMock()
         node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2",
                                        "TESTPUB2").get_key_id()
         node2.key_id = node2.key
@@ -221,7 +219,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        node = MagicMock()
+        node = mock.MagicMock()
         node.key = EllipticalKeysAuth(self.path, "PRIVTEST",
                                       "PUBTEST").get_key_id()
         node.key_id = node.key
@@ -264,14 +262,25 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.sync_network()
         assert last_time < self.service.last_time_tried_connect_with_seed
 
+    @mock.patch('golem.network.p2p.p2pservice.P2PService.connect')
+    def test_seeds_round_robin(self, m_connect):
+        self.assertGreater(len(self.service.seeds), 0)
+        self.service.connect_to_known_hosts = True
+        self.service.connect_to_seeds()
+        self.assertEquals(m_connect.call_count, 1)
+        m_connect.reset_mock()
+        m_connect.side_effect = RuntimeError('ConnectionProblem')
+        self.service.connect_to_seeds()
+        self.assertEquals(m_connect.call_count, len(self.service.seeds))
+
     def test_want_to_start_task_session(self):
-        self.service.task_server = MagicMock()
+        self.service.task_server = mock.MagicMock()
         self.service.task_server.task_connections_helper = \
             TaskConnectionsHelper()
         self.service.task_server.task_connections_helper.task_server = \
             self.service.task_server
         self.service.task_server.task_connections_helper \
-            .is_new_conn_request = Mock(side_effect=lambda *_: True)
+            .is_new_conn_request = mock.Mock(side_effect=lambda *_: True)
 
         def true_method(*args) -> bool:
             return True
@@ -280,11 +289,11 @@ class TestP2PService(testutils.DatabaseFixture):
         conn_id = str(uuid.uuid4())
         peer_id = str(uuid.uuid4())
 
-        node_info = MagicMock()
+        node_info = mock.MagicMock()
         node_info.key = key_id
         node_info.is_super_node = true_method
 
-        peer = MagicMock()
+        peer = mock.MagicMock()
         peer.key_id = str(uuid.uuid4())
 
         self.service.peers[peer_id] = peer
@@ -302,13 +311,13 @@ class TestP2PService(testutils.DatabaseFixture):
         assert peer.send_want_to_start_task_session.called
 
     def test_get_diagnostic(self):
-        m = MagicMock()
+        m = mock.MagicMock()
         m.transport.getPeer.return_value.port = "10432"
         m.transport.getPeer.return_value.host = "10.10.10.10"
         ps1 = PeerSession(m)
         ps1.key_id = self.keys_auth.key_id
         self.service.add_peer(self.keys_auth.key_id, ps1)
-        m2 = MagicMock()
+        m2 = mock.MagicMock()
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
@@ -319,18 +328,18 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
 
     def test(self):
-        self.service.task_server = Mock()
-        self.service.peer_keeper = Mock()
+        self.service.task_server = mock.Mock()
+        self.service.peer_keeper = mock.Mock()
         self.service.peer_keeper.sync.return_value = dict()
-        self.service.connect = Mock()
+        self.service.connect = mock.Mock()
         self.service.last_tasks_request = 0
 
-        p = Mock()
+        p = mock.Mock()
         p.key_id = 'deadbeef'
         p.degree = 1
         p.last_message_time = 0
 
-        p2 = Mock()
+        p2 = mock.Mock()
         p2.key_id = 'deadbeef02'
         p2.degree = 1
         p2.last_message_time = 0
@@ -359,25 +368,6 @@ class TestP2PService(testutils.DatabaseFixture):
 
         self.service.remove_task('task_id')
         assert p.send_remove_task.called
-
-        self.service.inform_about_nat_traverse_failure(
-            str(uuid.uuid4()), 'res_key_id', 'conn_id')
-        assert not p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id',
-                                                       'conn_id')
-        assert p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_task_nat_hole(
-            str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert not p.send_task_nat_hole.called
-
-        self.service.inform_about_task_nat_hole(
-            p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert p.send_task_nat_hole.called
-
-        self.service.send_nat_traverse_failure(p.key_id, 'conn_id')
-        assert p.send_nat_traverse_failure.called
 
         self.service.send_stop_gossip()
         assert p.send_stop_gossip.called
@@ -412,30 +402,7 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.change_config(ccd)
         assert self.service.node_name == "test name change"
 
-    def test_broadcast_on_name_change(self):
-        conn = MagicMock()
-        peer = PeerSession(conn)
-        peer.hello_called = False
-
-        def fake_hello(self):
-            self.hello_called = True
-
-        import types
-        peer.hello = types.MethodType(fake_hello, peer)
-        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
-                                       "PUBTESTPATH2")
-        peer.key_id = keys_auth.key_id
-        self.service.add_peer(keys_auth.key_id, peer)
-        ccd = ClientConfigDescriptor()
-        assert not peer.hello_called
-        self.service.change_config(ccd)
-        assert not peer.hello_called  # negative test
-        ccd = ClientConfigDescriptor()
-        ccd.node_name = "test sending hello on name change"
-        self.service.change_config(ccd)
-        assert peer.hello_called  # positive test
-
     def test_disconnect(self):
-        self.service.peers = {'peer_id': Mock()}
+        self.service.peers = {'peer_id': mock.Mock()}
         self.service.disconnect()
         assert self.service.peers['peer_id'].dropped.called

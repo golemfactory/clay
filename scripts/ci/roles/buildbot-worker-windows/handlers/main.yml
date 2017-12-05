@@ -1,0 +1,2 @@
+- name: pywin32 installed
+  win_shell: py -2 C:\Python27\Scripts\pywin32_postinstall.py -install

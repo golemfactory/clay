@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -76,15 +77,26 @@ class DirManager(object):
         filename, file_extension = os.path.splitext(fullpath)
         return file_extension
 
-
-    def clear_dir(self, d):
+    def clear_dir(self, d, older_than_seconds: int = 0):
         """ Remove everything from given directory
         :param str d: directory that should be cleared
+        :param older_than_seconds: delete contents, that are older than given
+                                   amount of seconds.
         """
         if not os.path.isdir(d):
             return
+
+        current_time_seconds = time.time()
+        min_allowed_mtime = current_time_seconds - older_than_seconds
+
         for i in os.listdir(d):
             path = os.path.join(d, i)
+
+            if older_than_seconds > 0:
+                mtime = os.path.getmtime(path)
+                if mtime > min_allowed_mtime:
+                    continue
+
             if os.path.isfile(path):
                 os.remove(path)
             if os.path.isdir(path):

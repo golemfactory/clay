@@ -1,11 +1,10 @@
 import abc
+from golem_messages import message
 import logging
-import random
 import time
 
 from golem.core.keysauth import get_random_float
-from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
-from golem.network.transport import message
+from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
 logger = logging.getLogger(__name__)
@@ -54,12 +53,6 @@ class BasicSession(FileSession):
     of messages.
     """
 
-    # Disconnect reasons
-    DCRProtocolVersion = "Protocol version"
-    DCRBadProtocol = "Bad protocol"
-    DCRTimeout = "Timeout"
-    DCRNoMoreMessages = "No more messages"
-
     def __init__(self, conn):
         """
         Create new Session
@@ -74,9 +67,12 @@ class BasicSession(FileSession):
 
         self.last_message_time = time.time()
         self._disconnect_sent = False
-        self._interpretation = {message.MessageDisconnect.TYPE: self._react_to_disconnect}
+        self._interpretation = {
+            message.Disconnect.TYPE: self._react_to_disconnect,
+        }
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
+        self.conn.server.pending_sessions.add(self)
 
     def interpret(self, msg):
         """
@@ -93,15 +89,23 @@ class BasicSession(FileSession):
         if action:
             action(msg)
         else:
-            self.disconnect(BasicSession.DCRBadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
 
     def dropped(self):
         """ Close connection """
         self.conn.close()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def close_now(self):
         """ Close connection quickly without flushing buffors or waiting for producents. """
         self.conn.close_now()
+        try:
+            self.conn.server.pending_sessions.remove(self)
+        except KeyError:
+            pass
 
     def disconnect(self, reason):
         """ Send "disconnect" message to the peer and drop the connection.
@@ -143,11 +147,11 @@ class BasicSession(FileSession):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
             self._disconnect_sent = True
-            self.send(message.MessageDisconnect(reason=reason))
+            self.send(message.Disconnect(reason=reason))
 
     def _check_msg(self, msg):
         if msg is None or not isinstance(msg, message.Message):
-            self.disconnect(BasicSession.DCRBadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
         return True
 
@@ -163,23 +167,18 @@ class BasicSafeSession(BasicSession, SafeSession):
     Cryptographic operation should be implemented in descendant class.
     """
 
-    # Disconnect reasons
-    DCROldMessage = "Message expired"
-    DCRWrongTimestamp = "Wrong timestamp"
-    DCRUnverified = "Unverified connection"
-    DCRWrongEncryption = "Wrong encryption"
-
     def __init__(self, conn):
         BasicSession.__init__(self, conn)
         self.key_id = 0
-        self.message_ttl = MSG_TTL  # how old messages should be accepted
-        self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [message.MessageDisconnect.TYPE]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [message.MessageDisconnect.TYPE]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [message.MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
+        # React to message even if it's self.verified is set to False
+        self.can_be_unverified = [message.Disconnect.TYPE]
+        # React to message even if it's not signed.
+        self.can_be_unsigned = [message.Disconnect.TYPE]
+        # React to message even if it's not encrypted.
+        self.can_be_not_encrypted = [message.Disconnect.TYPE]
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
@@ -204,7 +203,7 @@ class BasicSafeSession(BasicSession, SafeSession):
                         .format(message, self.address, self.port))
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
-                self.disconnect(BasicSafeSession.DCRUnverified)
+                self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
         BasicSession.send(self, message)
@@ -216,94 +215,21 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        if not self._verify_time(msg):
-            return False
-
         type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
-            self.disconnect(BasicSafeSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
         if not msg.encrypted and type_ not in self.can_be_not_encrypted:
-            self.disconnect(BasicSafeSession.DCRBadProtocol)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.error("Failed to verify message signature ({} from {}:{})"
+            logger.info("Failed to verify message signature ({} from {}:{})"
                          .format(msg, self.address, self.port))
-            self.disconnect(BasicSafeSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
         return True
 
-    def _verify_time(self, msg):
-        """ Verify message timestamp. If message is to old or have timestamp from distant future return False.
-        """
-        try:
-            if self.last_message_time - msg.timestamp > self.message_ttl:
-                self.disconnect(BasicSafeSession.DCROldMessage)
-                return False
-            elif msg.timestamp - self.last_message_time > self.future_time_tolerance:
-                self.disconnect(BasicSafeSession.DCRWrongTimestamp)
-                return False
-        except TypeError:
-            return False
-
-        return True
-
-
-class MiddlemanSafeSession(BasicSafeSession):
-    """ Enhance BasicSafeSession with logic that supports middleman connection. If is_middleman variable is set True,
-        that cryptographic logic should not apply and data should be transfer to open_session without addtional
-        interpretations.
-    """
-    def __init__(self, conn):
-        BasicSafeSession.__init__(self, conn)
-
-        self.is_middleman = False
-        self.open_session = None  # transfer data to that session in middleman mode
-        self.middleman_conn_data = None
-
-    def send(self, message, send_unverified=False):
-        """ Send given message if connection was verified or send_unverified option is set to True.
-        :param Message message: message to be sent.
-        :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
-        """
-        if not self.is_middleman:
-            BasicSafeSession.send(self, message, send_unverified)
-        else:
-            BasicSession.send(self, message)
-
-    def interpret(self, msg):
-        """ React to specific message. Disconnect, if message type is unknown for that session.
-        In middleman mode doesn't react to message, just sends it to other open session.
-        :param Message msg: Message to interpret and react to.
-        :return None:
-        """
-        if not self.is_middleman:
-            BasicSafeSession.interpret(self, msg)
-        else:
-            self.last_message_time = time.time()
-
-            if self.open_session is None:
-                logger.error("Destination session for middleman don't exist")
-                self.dropped()
-            self.open_session.send(msg)
-
-    def dropped(self):
-        """ If it's called for the first time, send "disconnect" message to the peer. Otherwise, drops
-        connection.
-        In middleman mode additionally drops the other open session.
-        """
-        if self.is_middleman and self.open_session:
-            open_session = self.open_session
-            self.open_session = None
-            open_session.dropped()
-        BasicSafeSession.dropped(self)
-
-    def _check_msg(self, msg):
-        if not self.is_middleman:
-            return BasicSafeSession._check_msg(self, msg)
-        else:
-            return BasicSession._check_msg(self, msg)

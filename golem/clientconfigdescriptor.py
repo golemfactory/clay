@@ -21,6 +21,7 @@ class ClientConfigDescriptor(object):
 
         self.seed_host = ""
         self.seed_port = 0
+        self.seeds = ""
 
         self.getting_peers_interval = 0.0
         self.getting_tasks_interval = 0.0
@@ -32,6 +33,8 @@ class ClientConfigDescriptor(object):
         self.p2p_session_timeout = 0
         self.task_session_timeout = 0
         self.resource_session_timeout = 0
+        self.clean_resources_older_than_seconds = 0
+        self.clean_tasks_older_than_seconds = 0
 
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
