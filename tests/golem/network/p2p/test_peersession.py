@@ -62,11 +62,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         client_peer_info = mock.MagicMock()
         client_peer_info.key = 'client_key_id'
-        client_hello = message.Hello(port=1, node_name='client',
-                                    rand_val=random.random(),
-                                    client_key_id=client_peer_info.key,
-                                    node_info=client_peer_info,
-                                    proto_id=PROTOCOL_CONST.P2P_ID)
+        client_hello = message.Hello(
+            port=1,
+            node_name='client',
+            rand_val=random.random(),
+            client_key_id=client_peer_info.key,
+            node_info=client_peer_info,
+            proto_id=PROTOCOL_CONST.P2P_ID)
         return client_hello
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
@@ -105,7 +107,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             message.RandVal(rand_val=client_hello.rand_val).slots())
         self.assertEqual(
             send_mock.call_args_list[2][0][1].slots(),
-            message.Disconnect(reason=message.Disconnect.REASON.Unverified).slots())
+            message.Disconnect(
+                reason=message.Disconnect.REASON.Unverified).slots())
 
     def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = 'node info'
@@ -128,11 +131,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.should_solve_challenge = False
         self.peer_session.p2p_service.enough_peers = lambda: False
-        server_hello = message.Hello(port=1, node_name='server',
-                                    rand_val=random.random(),
-                                    client_key_id=server_peer_info.key,
-                                    node_info=server_peer_info,
-                                    proto_id=PROTOCOL_CONST.P2P_ID)
+        server_hello = message.Hello(
+            port=1,
+            node_name='server',
+            rand_val=random.random(),
+            client_key_id=server_peer_info.key,
+            node_info=server_peer_info,
+            proto_id=PROTOCOL_CONST.P2P_ID)
         expected = message.Hello(
             challenge=None,
             client_key_id=key_id,

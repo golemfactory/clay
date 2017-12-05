@@ -335,9 +335,7 @@ class PeerSession(BasicSafeSession):
                 self.address,
                 self.port
             )
-            self.disconnect(
-                message.Disconnect.REASON.ProtocolVersion
-            )
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
@@ -360,9 +358,7 @@ class PeerSession(BasicSafeSession):
                     msg.node_name,
                     msg.port
                 )
-                self.disconnect(
-                    message.Disconnect.REASON.DuplicatePeers
-                )
+                self.disconnect(message.Disconnect.REASON.DuplicatePeers)
                 return
 
             if solve_challenge and not self.verified:
@@ -530,7 +526,7 @@ class PeerSession(BasicSafeSession):
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
-            self.disconnect(PeerSession.DCRTooManyPeers)
+            self.disconnect(message.Disconnect.REASON.TooManyPeers)
 
             self.p2p_service.try_to_add_peer({"address": self.address,
                                               "port": self.listen_port,
