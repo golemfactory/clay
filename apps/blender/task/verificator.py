@@ -9,7 +9,6 @@ from apps.blender.resources.imgcompare import check_size
 class BlenderVerificator(FrameRenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(BlenderVerificator, self).__init__(*args, **kwargs)
-        self.box_size = [1, 1]
         self.compositing = False
         self.output_format = ""
         self.src_code = ""

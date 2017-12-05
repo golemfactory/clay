@@ -390,10 +390,11 @@ class LuxTask(renderingtask.RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.verificator.advanced_verification \
-                    and os.path.isfile(self.__get_test_flm()):
-                self.__generate_final_flm_advanced_verification()
-            else:
+            # FIXME After final verification
+            # if self.verificator.advanced_verification \
+            #         and os.path.isfile(self.__get_test_flm()):
+            #     self.__generate_final_flm_advanced_verification()
+            # else:
                 self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
@@ -587,14 +588,15 @@ class LuxTask(renderingtask.RenderingTask):
         logger.error("Cannot generate final flm: {}".format(error))
         # TODO What should we do in this sitution?
 
-    def __generate_final_flm_advanced_verification(self):
-        # the file containing result of task test
-        test_result_flm = self.__get_test_flm()
-
-        new_flm = self.output_file + ".flm"
-        shutil.copy(test_result_flm, new_flm)
-        logger.debug("Copying " + test_result_flm + " to " + new_flm)
-        self.__generate_final_file(new_flm)
+    # TODO Implement with proper Verificator
+    # def __generate_final_flm_advanced_verification(self):
+    #     # the file containing result of task test
+    #     test_result_flm = self.__get_test_flm()
+    #
+    #     new_flm = self.output_file + ".flm"
+    #     shutil.copy(test_result_flm, new_flm)
+    #     logger.debug("Copying " + test_result_flm + " to " + new_flm)
+    #     self.__generate_final_file(new_flm)
 
     def __get_test_flm(self):
         return os.path.join(self.tmp_dir, "test_result.flm")

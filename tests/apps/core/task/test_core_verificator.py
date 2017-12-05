@@ -4,7 +4,7 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.verification.verificator import SubtaskVerificationState
 
-from apps.core.task.verificator import CoreVerificator, logger
+from apps.core.task.verificator import CoreFilesVerificator, logger
 
 
 class TestCoreVerificator(TempDirFixture, LogTestCase):

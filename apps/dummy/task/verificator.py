@@ -1,10 +1,10 @@
 import os
 
-from apps.core.task.verificator import CoreVerificator
+from apps.core.task.verificator import CoreFilesVerificator
 from apps.dummy.resources.code_dir import computing
 
 
-class DummyTaskVerificator(CoreVerificator):
+class DummyTaskVerificator(CoreFilesVerificator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.verification_options = {}

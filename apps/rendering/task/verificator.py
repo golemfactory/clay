@@ -1,17 +1,18 @@
 import logging
 import math
 
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.core.task.verificator import CoreFilesVerificator, \
+    SubtaskVerificationState
 from apps.rendering.resources.imgcompare import check_size
 
 
 logger = logging.getLogger("apps.rendering")
 
 
-class RenderingVerificator(CoreVerificator):
-    def __init__(self, verification_options=None, advanced_verification=False):
+class RenderingVerificator(CoreFilesVerificator):
+    def __init__(self, verification_options=None):
         super(RenderingVerificator, self).\
-            __init__(verification_options, advanced_verification)
+            __init__(verification_options)
         self.tmp_dir = None
         self.res_x = 0
         self.res_y = 0

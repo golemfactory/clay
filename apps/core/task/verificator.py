@@ -1,50 +1,35 @@
-import logging
+from datetime import datetime
 import os
 
-from golem.core.common import HandleKeyError
-from golem.verification.verificator import SubtaskVerificationState
-
-logger = logging.getLogger("apps.core")
+from golem.verification.verificator import (StateVerificator,
+                                            SubtaskVerificationState)
 
 
-def state_check_log_key_error(*args, **kwargs):
-    logger.warning("This is not my subtask {}".format(args[1]))
-    return SubtaskVerificationState.UNKNOWN_SUBTASK
+class CoreVerificator(StateVerificator):
 
+    def start_verification(self, subtask_info: dict, reference_data: list,
+                           resources: list, results: list):
+        super(StateVerificator, self).start_verification(subtask_info,
+                                                         reference_data,
+                                                         resources,
+                                                         results)
+        self._check_files(subtask_info, results)
+        self.time_ended = datetime.utcnow()
+        self.callback(subtask_id=self.subtask_info['subtask_id'],
+                      verdict=self.state,
+                      result=self._get_anwser())
+        self._clear_state()
 
-class CoreVerificator(object):
-    handle_key_error_for_state = HandleKeyError(state_check_log_key_error)
-
-    def __init__(self, verification_options=None, advanced_verification=False):
-        self.ver_states = {}
-        self.advanced_verification = advanced_verification
-        self.verification_options = verification_options
-
-    def is_verified(self, subtask_id):
-        return self.ver_states.get(subtask_id) == \
-               SubtaskVerificationState.VERIFIED
-
-    @handle_key_error_for_state
-    def get_verification_state(self, subtask_id):
-        return self.ver_states[subtask_id]
-
-    # subtask_info is what sits in the task.subtasks_given[subtask_id"]
-    # it is set in the query_extra_data function
-    @handle_key_error_for_state
-    def verify(self, subtask_id, subtask_info, tr_files, task):
-        self._check_files(subtask_id, subtask_info, tr_files, task)
-        return self.ver_states[subtask_id]
-
-    def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        for tr_file in tr_files:
-            if os.path.isfile(tr_file):
-                if self._verify_result(subtask_id, subtask_info, tr_file, task):
-                    self.ver_states[subtask_id] = \
-                        SubtaskVerificationState.VERIFIED
+    def _check_files(self, subtask_info, results):
+        for result in results:
+            if os.path.isfile(result):
+                if self._verify_result(subtask_info, result):
+                    self.state = SubtaskVerificationState.VERIFIED
                     return
-        self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+        self.state = SubtaskVerificationState.WRONG_ANSWER
+        self.message = "No proper task result found"
 
-    def _verify_result(self, subtask_id, subtask_info, tr_file, task):
+    def _verify_result(self, subtask_info, result):
         """ Override this to change verification method
         """
         return True
