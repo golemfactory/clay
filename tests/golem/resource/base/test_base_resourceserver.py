@@ -3,11 +3,10 @@ import shutil
 import time
 import uuid
 
-from golem.core.fileshelper import common_dir
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.resource.base import resourcesmanager
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
 from golem.tools import testwithreactor
 
 node_name = 'test_suite'
@@ -39,17 +38,17 @@ class MockConfig:
 class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def setUp(self):
-        super(TestResourceServer, self).setUp()
+        super().setUp()
+
+        src_dir = os.path.join(self.path, 'sources')
 
         self.task_id = str(uuid.uuid4())
-
         self.dir_manager = DirManager(self.path)
-        self.dir_manager_aux = DirManager(self.path)
         self.config_desc = MockConfig()
         self.target_resources = [
-            'test_file',
-            os.path.join('test_dir', 'dir_file'),
-            os.path.join('test_dir', 'dir_file_copy')
+            os.path.join(src_dir, 'test_file'),
+            os.path.join(src_dir, 'test_dir', 'dir_file'),
+            os.path.join(src_dir, 'test_dir', 'dir_file_copy')
         ]
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
@@ -58,19 +57,14 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         test_dir_file = os.path.join(test_dir, 'dir_file')
         test_dir_file_copy = os.path.join(test_dir, 'dir_file_copy')
 
-        open(test_file, 'w').close()
-
-        if not os.path.isdir(test_dir):
-            os.mkdir(test_dir)
-
-        with open(test_dir_file, 'w') as f:
-            f.write("test content")
-
-        if os.path.exists(test_dir_file_copy):
-            os.remove(test_dir_file_copy)
+        for path in self.target_resources + [test_file, test_dir_file]:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w') as f:
+                f.write("test content")
 
         shutil.copy(test_dir_file, test_dir_file_copy)
-        self.resource_manager = resourcesmanager.TestResourceManager(self.dir_manager)
+
+        self.resource_manager = DummyResourceManager(self.dir_manager)
         self.keys_auth = EllipticalKeysAuth(self.path)
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
@@ -113,11 +107,9 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         return existing_paths
 
     def _add_task(self):
-        new_config_desc = MockConfig(self.path, node_name)
-
         rs = self.resource_server
         rm = self.resource_server.resource_manager
-        rm.storage.clear_cache()
+        rm.storage.cache.clear()
 
         existing_paths = self._resources()
         return rm, rs.add_task(existing_paths, self.task_id)
@@ -146,8 +138,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         self.resource_manager.add_files(
             self._resources(),
-            self.task_id,
-            absolute_path=True
+            self.task_id
         )
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
@@ -172,8 +163,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         self.resource_manager.add_files(
             self._resources(),
-            self.task_id,
-            absolute_path=True
+            self.task_id
         )
 
         assert self.resource_manager.storage.get_resources(self.task_id)
@@ -184,40 +174,41 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         assert not resources
 
     def testGetResources(self):
+        self.resource_manager.add_task(self.target_resources,
+                                       self.task_id, async=False)
 
-        self.resource_manager.storage.clear_cache()
-        self.resource_manager.add_files(self.target_resources, self.task_id)
-
-        common_path = common_dir(self.target_resources)
         resources = self.resource_manager.storage.get_resources(self.task_id)
-        assert len(resources) == len(self.target_resources)
+        assert sum(len(r) for r in resources) == len(self.target_resources)
 
         assert len(self.resource_server.pending_resources) == 0
         self.resource_server.download_resources(resources, self.task_id)
-        assert len(self.resource_server.pending_resources[self.task_id]) == len(resources)  # noqa
+        pending = self.resource_server.pending_resources[self.task_id]
+        assert len(pending) == len(resources)
 
-        rs_aux = BaseResourceServer(
-            resourcesmanager.TestResourceManager(self.dir_manager),
-            self.dir_manager_aux,
+        relative_f = self.resource_manager.storage.relative_path
+        relative = [(r.hash, [relative_f(f, self.task_id) for f in r.files])
+                    for r in resources]
+        assert sum(len(r[1]) for r in relative) == len(self.target_resources)
+
+        new_dir_manager = DirManager(self.path, '2')
+        new_server = BaseResourceServer(
+            DummyResourceManager(self.dir_manager),
+            new_dir_manager,
             self.keys_auth,
             self.client
         )
+        new_task_id = str(uuid.uuid4())
+        new_task_path = new_server.resource_manager.storage.get_dir(new_task_id)
 
-        relative_resources = []
-        for resource in resources:
-            relative_resources.append((resource.path.replace(common_path, '', 1),
-                                       resource.hash))
+        assert len(new_server.pending_resources) == 0
+        new_server.download_resources(relative, new_task_id)
+        assert len(new_server.pending_resources[new_task_id]) == len(resources)
+        new_server._download_resources(async=False)
 
-        task_id_2 = str(uuid.uuid4())
-
-        assert len(rs_aux.pending_resources) == 0
-        rs_aux.download_resources(relative_resources, task_id_2)
-        assert len(rs_aux.pending_resources[task_id_2]) == len(resources)
-
-        rs_aux._download_resources(async=False)
-
-        for entry in relative_resources:
-            assert os.path.exists(entry[0])
+        for entry in relative:
+            for f in entry[1]:
+                file_path = os.path.join(new_task_path, f)
+                assert os.path.exists(file_path)
 
         assert self.client.downloaded
 
