@@ -587,7 +587,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_task_result_hash(self, msg):
         secret = msg.secret
-        multihash = msg.multihash
+        content_hash = msg.multihash
         subtask_id = msg.subtask_id
         client_options = self.task_server.get_download_options(self.key_id)
 
@@ -604,7 +604,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
-            multihash,
+            content_hash,
             self.address,
             self.port,
             client_options
@@ -629,7 +629,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
-            multihash,
+            content_hash,
             task_id,
             subtask_id,
             secret,
@@ -911,11 +911,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         secret = task_result_manager.gen_secret()
 
         def success(result):
-            result_path, result_hash = result
+            result_hash, result_path = result
             logger.debug(
                 "Task session: sending task result hash: %r (%r)",
-                result_path,
-                result_hash
+                result_hash, result_path
             )
 
             self.send(

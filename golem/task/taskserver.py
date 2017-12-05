@@ -85,7 +85,7 @@ class TaskResourcesMixin(object):
         resource_manager = self._get_resource_manager()
 
         try:
-            _, resource_hash = resource_manager.add_task(
+            resource_hash, _ = resource_manager.add_task(
                 files,
                 task_id,
                 resource_hash=resource_hash,

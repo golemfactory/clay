@@ -465,12 +465,10 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        options = resource_manager.build_client_options()
         files = task.get_resources(None, ResourceType.HASHES)
 
         def add_task(result):
@@ -483,7 +481,7 @@ class Client(HardwarePresetsMixin):
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
 
-        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred = self.resource_server.add_task(files, task_id)
         deferred.addCallbacks(add_task, error)
         return task
 
