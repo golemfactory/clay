@@ -44,6 +44,11 @@ class Resource:
     def __len__(self):
         return len(self.files) if self.files else 0
 
+    @property
+    def exists(self):
+        return all(os.path.exists(os.path.join(self.path, f))
+                   for f in self.files)
+
     def serialize(self):
         return [self.hash, [split_path(path) for path in self.files]]
 
