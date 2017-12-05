@@ -218,21 +218,16 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        client_options = self.task_server.get_share_options(handshake.nonce,
-                                                            key_id)
-
         async_req = AsyncRequest(self.resource_manager.add_file,
                                  handshake.file,
-                                 self.NONCE_TASK,
-                                 absolute_path=True,
-                                 client_options=client_options)
+                                 self.NONCE_TASK)
         async_run(async_req,
                   success=lambda res: self._nonce_shared(key_id, res),
                   error=lambda exc: self._handshake_error(key_id, exc))
 
     def _nonce_shared(self, key_id, result):
         handshake = self._get_handshake(key_id)
-        _, handshake.hash = result
+        handshake.hash, _ = result
 
         logger.debug("Resource handshake: sending resource hash: "
                      "%r to peer %r", handshake.hash, key_id)
@@ -246,6 +241,7 @@ class ResourceHandshakeSessionMixin:
 
     def _download_handshake_nonce(self, key_id, resource):
         entry = resource, ''
+        print('DOWNLOAD NONCE', entry)
 
         self.resource_manager.pull_resource(
             entry, self.NONCE_TASK,
