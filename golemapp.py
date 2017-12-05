@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import sys
-import click
-from multiprocessing import freeze_support
 import logging
+from multiprocessing import freeze_support
+import click
 from ethereum import slogging
 
 from golem.core.variables import PROTOCOL_CONST
@@ -65,10 +65,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--worker', expose_value=False)
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
-@click.option('--loglevel', expose_value=False)
+@click.option('--loglevel', default=None,
+              help="Change level for all loggers and handlers, "
+              "possible values are WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, version, m, geth_port):
+          start_geth, version, m, geth_port, loglevel):
     freeze_support()
     delete_reactor()
 
@@ -93,7 +95,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir)
+        config_logging(datadir=datadir, loglevel=loglevel)
         install_reactor()
         log_golem_version()
 
