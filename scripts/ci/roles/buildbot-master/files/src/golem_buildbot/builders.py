@@ -107,11 +107,12 @@ class StepsFactory(object):
         return factory
 
     def linttest_factory(self):
+        self.requirements_files += ['requirements-lint.txt']
         factory = util.BuildFactory()
         factory.addStep(self.git_step())
         factory.addStep(self.venv_step())
         factory.addStep(self.requirements_step())
-        # TODO: add lint command
+        factory.addStep(self.lint_step())
         return factory
 
     @staticmethod
@@ -280,6 +281,21 @@ class StepsFactory(object):
             name='stop hyperg',
             haltOnFailure=True,
             command=['scripts/test-daemon-stop.sh'],
+            doStepIf=has_no_previous_success)
+
+    def lint_step(self):
+        return steps.ShellSequence(
+            name='run tests',
+            commands=[
+                util.ShellArg(
+                    logfile='update to develop',
+                    haltOnFailure=True,
+                    command=['git', 'merge', 'origin/develop']),
+                util.ShellArg(
+                    logfile='run lint.sh',
+                    haltOnFailure=True,
+                    command=['./lint.sh', 'origin/develop']),
+            ],
             doStepIf=has_no_previous_success)
 
 
