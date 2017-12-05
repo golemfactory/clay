@@ -420,6 +420,9 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
+        self.subtasks_given[hash]['res_x'] = self.res_x
+        self.subtasks_given[hash]['res_y'] = self.res_y
+        self.subtasks_given[hash]['totla_tasks'] = self.total_tasks
 
         part = self._count_part(start_task, parts)
 

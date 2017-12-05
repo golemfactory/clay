@@ -84,7 +84,6 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 
 class CoreTask(Task):
-    VERIFICATOR_CLASS = CoreVerificator  # type: Type[CoreVerificator]
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -175,7 +174,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verificator = self.VERIFICATOR_CLASS()
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
@@ -185,7 +183,6 @@ class CoreTask(Task):
 
     def initialize(self, dir_manager):
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
-        self.verificator.tmp_dir = self.tmp_dir
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
@@ -202,10 +199,16 @@ class CoreTask(Task):
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
-                                            result_files, self)
-        if ver_state == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result_files)
+        verificator = CoreVerificator(self.verification_finished)
+        verificator.start_verification(
+            subtask_info=self.subtasks_given[subtask_id],
+            results=result_files,
+            resources=[],
+            reference_data=[])
+
+    def verification_finished(self, subtask_id, verdict, result):
+        if verdict == SubtaskVerificationState.VERIFIED:
+            self.accept_results(subtask_id, result['results'])
         # TODO Add support for different verification states
         else:
             self.computation_failed(subtask_id)

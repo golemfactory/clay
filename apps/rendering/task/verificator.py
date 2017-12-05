@@ -1,38 +1,30 @@
 import logging
 import math
 
-from apps.core.task.verificator import CoreFilesVerificator, \
-    SubtaskVerificationState
+from apps.core.task.verificator import CoreVerificator
 from apps.rendering.resources.imgcompare import check_size
 
+from golem.verification.verificator import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")
 
 
-class RenderingVerificator(CoreFilesVerificator):
-    def __init__(self, verification_options=None):
-        super(RenderingVerificator, self).\
-            __init__(verification_options)
-        self.tmp_dir = None
-        self.res_x = 0
-        self.res_y = 0
-        self.total_tasks = 0
-        self.root_path = ""
-        self.verified_clients = list()
+class RenderingVerificator(CoreVerificator):
 
-    def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        if self._verify_imgs(subtask_id, subtask_info, tr_files, task):
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+
+    def _check_files(self, subtask_info, results):
+        if self._verify_imgs(subtask_info, results):
+            self.state = SubtaskVerificationState.VERIFIED
         else:
-            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+            self.state = SubtaskVerificationState.WRONG_ANSWER
 
-    def _verify_imgs(self, subtask_id, subtask_info, tr_files, task):
-        if len(tr_files) == 0:
+    def _verify_imgs(self, subtask_info, results):
+        if len(results) == 0:
             return False
 
         res_x, res_y = self._get_part_size(subtask_info)
 
-        for img in tr_files:
+        for img in results:
             if not self._check_size(img, res_x, res_y):
                 return False
         return True
@@ -41,30 +33,28 @@ class RenderingVerificator(CoreFilesVerificator):
         return check_size(file_, res_x, res_y)
 
     def _get_part_size(self, subtask_info):
-        return self.res_x, self.res_y
+        return self.subtask_info['res_x'], self.subtask_info['res_y']
 
     def _get_part_img_size(self, subtask_info):
         # verification method reacts to key error
         num_task = subtask_info['start_task']
-        if self.total_tasks == 0 \
-                or num_task > self.total_tasks:
+        total_tasks = subtask_info['total_tasks']
+        res_x = subtask_info['res_x']
+        res_y = subtask_info['res_y']
+        if total_tasks == 0 \
+                or num_task > total_tasks:
             logger.error("Wrong total tasks number ({}) "
                          "for subtask number {}".format(
-                            self.total_tasks, num_task))
+                            total_tasks, num_task))
             return 0, 0, 0, 0
-        img_height = int(math.floor(self.res_y / self.total_tasks))
-        return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
+        img_height = int(math.floor(res_y / total_tasks))
+        return 0, (num_task - 1) * img_height, res_x, num_task * img_height
 
 
 class FrameRenderingVerificator(RenderingVerificator):
 
-    def __init__(self, *args, **kwargs):
-        super(FrameRenderingVerificator, self).\
-            __init__(*args, **kwargs)
-        self.use_frames = False
-        self.frames = []
 
-    def _check_files(self, subtask_id, subtask_info, tr_files, task):
+    def _check_files(self, subtask_info, results):
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list):
