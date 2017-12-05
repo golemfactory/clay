@@ -1,0 +1,27 @@
+---
+
+- hosts: control_worker
+  remote_user: ubuntu
+  become: yes
+  gather_facts: False
+  pre_tasks:
+    - name: Install python for Ansible
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      changed_when: False
+  roles:
+    - role: buildbot-worker-linux
+      worker_name: control_01
+      worker_postfix: _control_01
+      worker_master_hostname: 172.31.95.42
+    - role: buildbot-worker-linux
+      worker_name: control_02
+      worker_postfix: _control_02
+      worker_master_hostname: 172.31.95.42
+    - role: buildbot-worker-linux
+      worker_name: control_03
+      worker_postfix: _control_03
+      worker_master_hostname: 172.31.95.42
+    - role: buildbot-worker-linux
+      worker_name: control_04
+      worker_postfix: _control_04
+      worker_master_hostname: 172.31.95.42

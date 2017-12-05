@@ -1,0 +1,6 @@
+---
+
+- hosts: mac_worker
+  remote_user: admin
+  roles:
+    - buildbot-worker-mac

@@ -1,0 +1,21 @@
+---
+
+- hosts: windows_worker
+  gather_facts: False
+  become_method: runas
+  pre_tasks:
+    - include_vars: vault.yml
+    # - name: get windows user password
+    #   local_action:
+    #     module: ec2_win_password
+    #     instance_id: "{{hostvars[inventory_hostname]['ec2_id']}}"
+    #     region: us-east-1
+    #     key_file: "~/.ssh/{{hostvars[inventory_hostname]['ec2_key_name']}}"
+    #   register: win_password
+    #   no_log: True
+    # - set_fact:
+    #     ansible_password: "{{win_password['win_password']}}"
+    #   no_log: True
+    # - setup:
+  roles:
+    - buildbot-worker-windows

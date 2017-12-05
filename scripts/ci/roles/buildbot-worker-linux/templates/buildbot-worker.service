@@ -1,12 +1,12 @@
 [Unit]
-Description=BuildBot worker service
+Description=BuildBot worker{{worker_postfix}} service
 After=network.target
 
 [Service]
-User=buildbot-worker
-Group=buildbot-worker
-WorkingDirectory=/home/buildbot-worker/worker_{{worker_name}}
-ExecStart=/home/buildbot-worker/.local/bin/buildbot-worker start --nodaemon
+User={{worker_user}}
+Group={{worker_group}}
+WorkingDirectory={{_worker_service_dir}}
+ExecStart={{_worker_service_bin}} start --nodaemon
 Restart=on-failure
 
 [Install]

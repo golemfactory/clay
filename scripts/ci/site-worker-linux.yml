@@ -1,0 +1,19 @@
+---
+
+- hosts: linux_worker
+  remote_user: ubuntu
+  become: yes
+  gather_facts: False
+  pre_tasks:
+    - name: Install python for Ansible
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      changed_when: False
+
+- hosts: linux_worker
+  remote_user: ubuntu
+  become: yes
+  roles:
+    - role: buildbot-worker-linux
+      worker_name: linux
+      worker_master_hostname: 172.31.95.42
+    - golem-dev-linux

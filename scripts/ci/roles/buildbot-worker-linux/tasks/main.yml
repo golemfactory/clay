@@ -2,20 +2,26 @@
     file: site_settings.yml
     name: site_settings
 
+- name: check mandatory input variables
+  assert:
+    that:
+      - "worker_name != ''"
+      - "worker_master_hostname != ''"
+
 
 - name: setup buildbot-worker group
   group:
-    name: buildbot-worker
+    name: "{{worker_group}}"
 
 
 - name: setup buildbot-worker user
   user:
-    name: buildbot-worker
-    group: buildbot-worker
-    home: /home/buildbot-worker
+    name: "{{worker_user}}"
+    group: "{{worker_group}}"
+    home: "{{_worker_user_home}}"
 
 
-- name: install golemapp dependencies
+- name: install buildbot-worker dependencies
   apt:
     name: "{{ item }}"
   with_items:
@@ -24,34 +30,35 @@
     - python3-pip
 
 
-- name: install buildbot and its requirements
+- name: install buildbot-worker and its requirements
   pip:
     executable: pip3
     name: buildbot-worker
-  become_user: buildbot-worker
+  become_user: "{{worker_user}}"
 
 
 # NOTE: master address will not be updated once configuration is generated
 - name: initialized workspace for the worker
-  command:
-    /home/buildbot-worker/.local/bin/buildbot-worker create-worker
-      /home/buildbot-worker/worker
-      {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}
+  command: >
+    {{_worker_service_bin}}
+      create-worker
+      {{_worker_service_dir}}
+      {{worker_master_hostname}}
       {{worker_name}}
       {{site_settings.worker_pass}}
-    creates=/home/buildbot-worker/worker_{{worker_name}}/
-  become_user: buildbot-worker
+    creates="{{_worker_service_dir}}"
+  become_user: "{{worker_user}}"
 
 
 - name: copy a systemd unit file
   template:
     src: buildbot-worker.service
-    dest: /etc/systemd/system/buildbot-worker_{{worker_name}}.service
+    dest: /etc/systemd/system/buildbot-worker{{worker_postfix}}.service
   notify: restart buildbot worker service
 
 
 - systemd:
-    name: buildbot-worker_{{worker_name}}.service
+    name: buildbot-worker{{worker_postfix}}.service
     daemon_reload: yes
     enabled: yes
     state: started
