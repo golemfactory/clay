@@ -3,8 +3,8 @@ import logging
 import math
 
 from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
-from apps.core.task.verificator \
-    import SubtaskVerificationState as VerificationState
+
+from golem.verification.verificator import SubtaskVerificationState
 
 from ssim import compute_ssim
 
@@ -153,13 +153,13 @@ class ImgVerificator(object):
             #  < reference_imgStat.mse_bw
             # and imgStat.psnr > acceptance_ratio
             #  * reference_imgStat.psnr:
-            return VerificationState.VERIFIED
+            return SubtaskVerificationState.VERIFIED
 
         if imgStat.ssim > maybe_ratio * reference_imgStat.ssim: \
                 # and acceptance_ratio * imgStat.mse_bw
             # < reference_imgStat.mse_bw:
             # and imgStat.psnr > acceptance_ratio
             #  * reference_imgStat.psnr:
-            return VerificationState.UNKNOWN
+            return SubtaskVerificationState.UNKNOWN
 
-        return VerificationState.WRONG_ANSWER
+        return SubtaskVerificationState.WRONG_ANSWER
