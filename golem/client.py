@@ -314,6 +314,7 @@ class Client(HardwarePresetsMixin):
                                                       dir_manager,
                                                       self.keys_auth, self)
             self.task_server.restore_resources()
+            self.task_server.download_pending_results()
 
         def connect(ports):
             p2p_port, task_port = ports

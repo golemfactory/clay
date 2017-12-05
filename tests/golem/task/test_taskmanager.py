@@ -442,7 +442,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ctd['subtask_id'] == "sss4"
         assert self.tm.computed_task_received("sss4", [], 0)
 
-
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_task_result_incoming(self, dump_mock):
         subtask_id = "xxyyzz"
@@ -452,7 +451,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock.counting_nodes = {}
 
         with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
-            self.tm.task_result_incoming(subtask_id)
+            self.tm.task_result_incoming(subtask_id, "secret", "a1b2c3")
             assert not result_incoming_mock.called
 
         task_mock.subtasks_given = dict()
@@ -473,13 +472,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.tasks_states["xyz"] = task_state
 
         with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
-            self.tm.task_result_incoming(subtask_id)
+            self.tm.task_result_incoming(subtask_id, "secret", "a1b2c3")
             assert result_incoming_mock.called
             assert dump_mock.called
 
-        self.tm.tasks = []
+        self.tm.tasks = {}
         with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
-            self.tm.task_result_incoming(subtask_id)
+            self.tm.task_result_incoming(subtask_id, "secret", "a1b2c3")
             assert not result_incoming_mock.called
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)

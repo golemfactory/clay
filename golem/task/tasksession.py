@@ -551,7 +551,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.dropped()
 
-        self.task_manager.task_result_incoming(subtask_id)
+        self.task_manager.task_result_incoming(subtask_id, secret, multihash)
         self.task_manager.task_result_manager.pull_package(
             multihash,
             task_id,
