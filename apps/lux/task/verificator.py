@@ -21,22 +21,22 @@ logger = logging.getLogger("apps.lux")
 class LuxRenderVerificator(RenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
-        self.test_flm = None
-        self.merge_ctd = None
-        self.verification_error = False
+        # self.test_flm = None
+        # self.merge_ctd = None
+        # self.verification_error = False
 
-    def _get_test_flm(self, task):
-        dm = task.dirManager
-        dir = os.path.join(
-                dm.get_ref_data_dir(
-                    task.header.task_id,
-                    counter='flmMergingTest'),
-                dm.tmp,
-                dm.output
-                )
-
-        test_flm = glob.glob(os.path.join(dir, '*.flm'))
-        return test_flm.pop()
+    # def _get_test_flm(self, task):
+    #     dm = task.dirManager
+    #     dir = os.path.join(
+    #             dm.get_ref_data_dir(
+    #                 task.header.task_id,
+    #                 counter='flmMergingTest'),
+    #             dm.tmp,
+    #             dm.output
+    #             )
+    #
+    #     test_flm = glob.glob(os.path.join(dir, '*.flm'))
+    #     return test_flm.pop()
 
     def _get_reference_imgs(self, task):
         ref_imgs = []

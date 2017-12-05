@@ -18,26 +18,13 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/rendering/task/verificator.py',
     ]
 
-    def test_box_start(self):
-        rv = RenderingVerificator()
-
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.verification_options.box_size = (5, 5)
-        sizes = [(24, 12, 44, 20), (0, 0, 800, 600), (10, 150, 12, 152)]
-        for size in sizes:
-            for i in range(20):
-                x, y = rv._get_box_start(*size)
-                assert size[0] <= x <= size[2]
-                assert size[1] <= y <= size[3]
-
     def test_get_part_size(self):
         rv = RenderingVerificator()
         rv.res_x = 800
         rv.res_y = 600
         assert rv._get_part_size(dict()) == (800, 600)
 
-    @patch("apps.rendering.task.verificator.LocalComputer")
-    def test_verify(self, computer_mock):
+    def test_verify(self):
         rv = RenderingVerificator()
         # Result us not a file
         assert rv.verify("Subtask1", dict(), ["file1"], Mock()) == \
@@ -72,38 +59,6 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
                          [img_path, img_path2], Mock()) == \
                SubtaskVerificationState.VERIFIED
 
-        # ADVANCE VERIFICATION
-
-        rv.advanced_verification = True
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.verification_options.type = "forAll"
-        rv.verification_options.box_size = [5, 5]
-        rv.tmp_dir = self.path
-        rv.root_path = self.path
-
-        # No image files in results
-        computer_mock.return_value.tt.result.get.return_value = \
-            self.additional_dir_content([3])
-        assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
-                         [img_path], Mock()) == \
-               SubtaskVerificationState.WRONG_ANSWER
-
-        # Properly verified
-        adv_ver_res = [img_path3,  os.path.join(ver_dir, "cos.log")]
-        computer_mock.return_value.tt.result.get.return_value = adv_ver_res
-        assert rv.verify("Subtask1", {"start_task": 3,
-                                      "output_format": "png",
-                                      "node_id": "ONENODE"},
-                         [img_path], Mock()) == \
-               SubtaskVerificationState.VERIFIED
-
-        if is_linux() and os.geteuid() == 0:
-            rv.tmp_dir = "/nonexisting"
-            assert rv.verify("Subtask1", {"start_task": 3,
-                                          "output_format": "png",
-                                          "node_id": "ONENODE"},
-                             [img_path], Mock()) == \
-                   SubtaskVerificationState.UNKNOWN_SUBTASK
 
     def test_get_part_img_size(self):
         rv = RenderingVerificator()
@@ -123,48 +78,6 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.total_tasks = 11
         rv.res_y = 211
         assert rv._get_part_img_size({"start_task": 5}) == (0, 76, 800, 95)
-
-    def test_choose_adv_ver_file(self):
-        rv = RenderingVerificator()
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.advanced_verification = False
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "nodeX"}) is None
-        rv.advanced_verification = True
-        rv.verification_options.type = "forFirst"
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verified_clients.append("NodeX")
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
-        rv.verification_options.type = "forAll"
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verification_options.type = "random"
-        rv.verification_options.probability = 1.0
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verification_options.probability = 0.0
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
-
-    def test_error_in_change_scope(self):
-        rv = RenderingVerificator()
-        rv.tmp_dir = None
-        subtask_info = {'start_task': 1, 'tmp_path': 'blabla'}
-        with self.assertRaises(Exception):
-            rv.change_scope("subtask_id", (0, 0), self.temp_file_name("tmpfile"), subtask_info)
-
-    def test_box_render_error(self):
-        rv = RenderingVerificator()
-        with self.assertLogs(logger, level="WARNING") as l:
-            rv._RenderingVerificator__box_render_error("some error")
-            assert any("some error" in log for log in l.output)
-
-    @patch.multiple(Task, __abstractmethods__=frozenset())
-    def test_run_task_with_errors(self):
-        rv = RenderingVerificator()
-        rv.root_path = self.path
-        extra_data = {}
-
-        class MockTask(Task):
-            pass
-
-        assert rv._run_task(extra_data, MockTask(Mock(), Mock(), Mock())) is None
 
 
 class TestFrameRenderingVerificator(TempDirFixture):
