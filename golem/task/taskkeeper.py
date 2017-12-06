@@ -18,8 +18,7 @@ logger = logging.getLogger('golem.task.taskkeeper')
 
 
 def compute_subtask_value(price, computation_time):
-    value = int(math.ceil(price * computation_time / 3600))
-    return value
+    return (price * computation_time + 3599) // 3600
 
 
 class CompTaskInfo:
