@@ -13,7 +13,7 @@ from golem.testutils import DatabaseFixture
 
 
 def message_count():
-    return len(NetworkMessage.select().execute())
+    return NetworkMessage.select().count()
 
 
 def mock_sign(*_):

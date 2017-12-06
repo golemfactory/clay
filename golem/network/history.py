@@ -16,6 +16,21 @@ logger = logging.getLogger('golem.network.history')
 
 
 class MessageHistoryService(threading.Thread):
+    """
+    The purpose of this class is to:
+    - save NetworkMessages (in background)
+    - remove given NetworkMessages (in background)
+    - sweep NetworkMessages past their MESSAGE_LIFETIME every ~ SWEEP_INTERVAL
+      (in background)
+    - retrieve, save and remove NetworkMessages in-place via *_sync methods
+
+    Assumptions:
+    - NetworkMessages have to be saved ASAP
+    - removal and sweeping is not critical and can be slightly delayed
+
+    Background operations performed by this service do not fit the looping call
+    model of golem.core.service.Service.
+    """
 
     MESSAGE_LIFETIME = datetime.timedelta(days=1)
     SWEEP_INTERVAL = datetime.timedelta(hours=12)

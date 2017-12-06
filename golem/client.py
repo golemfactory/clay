@@ -145,7 +145,7 @@ class Client(HardwarePresetsMixin):
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
-            MessageHistoryService()
+            MessageHistoryService(),
         ]
 
         clean_resources_older_than = \
