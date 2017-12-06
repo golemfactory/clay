@@ -749,6 +749,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.inform_worker_about_payment(payment)
 
+    @provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -764,6 +765,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
+    @provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
