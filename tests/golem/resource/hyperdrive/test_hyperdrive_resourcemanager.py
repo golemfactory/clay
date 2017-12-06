@@ -1,8 +1,9 @@
+import os
 import uuid
 from unittest import skipIf, TestCase
+from unittest.mock import Mock
 
-import os
-from mock import Mock
+from pathlib import Path
 from requests import ConnectionError
 
 from golem.network.hyperdrive.client import HyperdriveClient
@@ -64,13 +65,14 @@ class TestHyperdriveResourceManager(TempDirFixture):
         super().setUp()
 
         self.task_id = str(uuid.uuid4())
+        self.handle_retries = Mock()
         self.dir_manager = DirManager(self.tempdir)
         self.resource_manager = HyperdriveResourceManager(self.dir_manager)
-        self.resource_manager._handle_retries = Mock()
+        self.resource_manager._handle_retries = self.handle_retries
 
         file_name = 'test_file'
         file_path = os.path.join(self.tempdir, file_name)
-        open(file_path, 'w').close()
+        Path(file_path).touch()
 
         self.files = {file_path: file_name}
 
@@ -78,20 +80,20 @@ class TestHyperdriveResourceManager(TempDirFixture):
         files = {str(uuid.uuid4()): 'does_not_exist'}
         self.resource_manager._add_files(files, self.task_id,
                                          resource_hash=None)
-        assert not self.resource_manager._handle_retries.called
+        assert not self.handle_retries.called
 
     def test_add_files_empty_resource_hash(self):
         self.resource_manager._add_files(self.files, self.task_id,
                                          resource_hash=None)
-        assert self.resource_manager._handle_retries.called
-        command = self.resource_manager._handle_retries.call_args[0][1]
+        assert self.handle_retries.called
+        command = self.handle_retries.call_args[0][1]
         assert command == self.resource_manager.commands.add
 
     def test_add_files_with_resource_hash(self):
         self.resource_manager._add_files(self.files, self.task_id,
                                          resource_hash=str(uuid.uuid4()))
-        assert self.resource_manager._handle_retries.called
-        command = self.resource_manager._handle_retries.call_args[0][1]
+        assert self.handle_retries.called
+        command = self.handle_retries.call_args[0][1]
         assert command == self.resource_manager.commands.restore
 
 

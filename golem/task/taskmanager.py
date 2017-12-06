@@ -542,7 +542,6 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def restart_task(self, task_id):
-        logger.info("Restarting task %s", task_id)
         self.dir_manager.clear_temporary(task_id)
         task = self.tasks[task_id]
 
@@ -558,6 +557,7 @@ class TaskManager(TaskEventListener):
 
         task.header.signature = self.sign_task_header(task.header)
 
+        logger.info("Task %s restarted", task_id)
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error

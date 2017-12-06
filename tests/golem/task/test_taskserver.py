@@ -903,7 +903,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
 
     @staticmethod
     def _create_tasks(task_server, count):
-        for i in range(count):
+        for _ in range(count):
             task_id = str(uuid.uuid4())
             task_server.task_manager.tasks[task_id] = Mock()
             task_server.task_manager.tasks_states[task_id] = TaskState()
