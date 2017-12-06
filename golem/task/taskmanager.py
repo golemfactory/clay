@@ -208,7 +208,7 @@ class TaskManager(TaskEventListener):
             logger.debug('TASK DUMP with id %s REMOVED from %r',
                          task_id, filepath)
         except (FileNotFoundError, OSError) as e:
-            logger.warning("Couldn't remove dump file: %s - %s", e)
+            logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')

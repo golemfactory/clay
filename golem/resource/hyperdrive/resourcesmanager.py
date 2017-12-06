@@ -75,7 +75,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def _add_files(self, files, task_id, resource_hash=None,
                    client=None, client_options=None):
 
-        if not all(os.path.exists(f) for f in files.keys()):
+        if not all(os.path.exists(f) for f in files):
             logger.error("Resource manager: missing files (task: %r)", task_id)
             return
 

@@ -908,15 +908,9 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             task_server.task_manager.tasks[task_id] = Mock()
             task_server.task_manager.tasks_states[task_id] = TaskState()
 
-    @staticmethod
-    def _build_raise(cls):
-        def _raise(*_a, **_kw):
-            raise cls()
-        return Mock(side_effect=_raise)
-
     def test_without_tasks(self):
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=self._build_raise(ConnectionError)):
+                          side_effect=ConnectionError):
             self.ts.restore_resources()
             assert not self.resource_manager.add_task.called
             assert not self.ts.task_manager.delete_task.called
@@ -926,7 +920,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
         self._create_tasks(self.ts, self.task_count)
 
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=self._build_raise(ConnectionError)):
+                          side_effect=ConnectionError):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
@@ -937,7 +931,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
         self._create_tasks(self.ts, self.task_count)
 
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=self._build_raise(HTTPError)):
+                          side_effect=HTTPError):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
@@ -950,7 +944,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             state.resource_hash = str(uuid.uuid4())
 
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=self._build_raise(HTTPError)):
+                          side_effect=HTTPError):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == \
                 self.task_count * 2

@@ -60,39 +60,39 @@ class TestHyperdrivePeerManager(TestCase):
 
 class TestHyperdriveResourceManager(TempDirFixture):
 
-    def test_add_files(self):
-        dir_manager = DirManager(self.tempdir)
-        resource_manager = HyperdriveResourceManager(dir_manager)
-        resource_manager._handle_retries = Mock()
+    def setUp(self):
+        super().setUp()
 
-        task_id = str(uuid.uuid4())
-        resource_hash = None
-        files = {str(uuid.uuid4()): 'does_not_exist'}
+        self.task_id = str(uuid.uuid4())
+        self.dir_manager = DirManager(self.tempdir)
+        self.resource_manager = HyperdriveResourceManager(self.dir_manager)
+        self.resource_manager._handle_retries = Mock()
 
-        # Invalid file paths
-        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
-        assert not resource_manager._handle_retries.called
-
-        # Create files
         file_name = 'test_file'
         file_path = os.path.join(self.tempdir, file_name)
-        files = {file_path: file_name}
         open(file_path, 'w').close()
 
-        # Valid file paths, empty resource hash
-        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
-        assert resource_manager._handle_retries.called
-        command = resource_manager._handle_retries.call_args[0][1]
-        assert command == resource_manager.commands.add
+        self.files = {file_path: file_name}
 
-        resource_manager._handle_retries.reset_mock()
+    def test_add_files_invalid_paths(self):
+        files = {str(uuid.uuid4()): 'does_not_exist'}
+        self.resource_manager._add_files(files, self.task_id,
+                                         resource_hash=None)
+        assert not self.resource_manager._handle_retries.called
 
-        # Valid file paths, non-empty resource hash
-        resource_hash = str(uuid.uuid4())
-        resource_manager._add_files(files, task_id, resource_hash=resource_hash)
-        assert resource_manager._handle_retries.called
-        command = resource_manager._handle_retries.call_args[0][1]
-        assert command == resource_manager.commands.restore
+    def test_add_files_empty_resource_hash(self):
+        self.resource_manager._add_files(self.files, self.task_id,
+                                         resource_hash=None)
+        assert self.resource_manager._handle_retries.called
+        command = self.resource_manager._handle_retries.call_args[0][1]
+        assert command == self.resource_manager.commands.add
+
+    def test_add_files_with_resource_hash(self):
+        self.resource_manager._add_files(self.files, self.task_id,
+                                         resource_hash=str(uuid.uuid4()))
+        assert self.resource_manager._handle_retries.called
+        command = self.resource_manager._handle_retries.call_args[0][1]
+        assert command == self.resource_manager.commands.restore
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")
