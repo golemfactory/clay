@@ -495,8 +495,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
-        msg_ack = message.AckReportComputedTask('subtask_id')
-        msg_rej = message.RejectReportComputedTask('subtask_id')
+        msg_ack = message.AckReportComputedTask('subtask_id', raw=b'')
+        msg_rej = message.RejectReportComputedTask('subtask_id', raw=b'')
 
         # Subtask is not known
         session._react_to_ack_report_computed_task(msg_ack)
