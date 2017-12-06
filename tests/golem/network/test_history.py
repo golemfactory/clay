@@ -31,12 +31,6 @@ class TestMessageHistoryService(DatabaseFixture):
         MessageHistoryService.instance = None
 
     @staticmethod
-    def _build_raise(cls):
-        def _raise(*_a, **_kw):
-            raise cls()
-        return Mock(side_effect=_raise)
-
-    @staticmethod
     def _build_msg(task=None, subtask=None):
         return NetworkMessage(
             task=task or str(uuid.uuid4()),
@@ -44,7 +38,7 @@ class TestMessageHistoryService(DatabaseFixture):
             node=str(uuid.uuid4()),
 
             msg_date=datetime.datetime.now(),
-            msg_cls=message.Hello.__class__.__name__,
+            msg_cls='Hello',
             msg_data=b'0' * 64,
 
             local_role=Actor.Provider,
@@ -65,14 +59,12 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._save_queue = Mock()
         msg = self._build_msg()
 
-        with patch.object(msg, 'save',
-                          side_effect=self._build_raise(DataError)):
+        with patch.object(msg, 'save', side_effect=DataError):
             self.service.add_sync(msg)
             assert not self.service._save_queue.put.called
             assert message_count() == 0
 
-        with patch.object(msg, 'save',
-                          side_effect=self._build_raise(PeeweeException)):
+        with patch.object(msg, 'save', side_effect=PeeweeException):
             self.service.add_sync(msg)
             assert self.service._save_queue.put.called
             assert message_count() == 0
@@ -99,14 +91,12 @@ class TestMessageHistoryService(DatabaseFixture):
 
         assert message_count() == 1
 
-        with patch('peewee.DeleteQuery.execute',
-                   side_effect=self._build_raise(DataError)):
+        with patch('peewee.DeleteQuery.execute', side_effect=DataError):
             self.service.remove_sync(msg.task)
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
-        with patch('peewee.DeleteQuery.execute',
-                   side_effect=self._build_raise(PeeweeException)):
+        with patch('peewee.DeleteQuery.execute', side_effect=PeeweeException):
             self.service.remove_sync(msg.task)
             assert self.service._remove_queue.put.called
             assert message_count() == 1
@@ -253,8 +243,8 @@ class TestMessageHistoryProvider(DatabaseFixture):
             class Invalid:
                 @record_history(local_role=Actor.Provider,
                                 remote_role=Actor.Requestor)
-                def method(self):
-                    pass
+                def method(self, msg):
+                    print('Got', msg)
 
             invalid = Invalid()
             invalid.method(None)
@@ -268,16 +258,15 @@ class TestMessageHistoryProvider(DatabaseFixture):
                 self.key_id = 'a0b1c2'
 
             def message_to_model(self, msg: 'golem_messages.message.Message',
-                                 local_role: Actor,
-                                 remote_role: Actor):
+                                 local_role: Actor, remote_role: Actor):
                 return NetworkMessage()
 
             @requestor_history
-            def react_to_report_computed_task(self, msg):
+            def react_to_report_computed_task(self, *_):
                 pass
 
             @provider_history
-            def react_to_task_to_compute(self, msg):
+            def react_to_task_to_compute(self, *_):
                 pass
 
         provider = Provider()

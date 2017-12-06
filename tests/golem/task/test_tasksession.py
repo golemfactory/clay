@@ -686,7 +686,8 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.send.called
         assert not ts.dropped.called
 
-    @patch('golem.task.tasksession.async_run', side_effect=executor_recoverable_error)
+    @patch('golem.task.tasksession.async_run',
+           side_effect=executor_recoverable_error)
     def test_send_task_result_hash_recoverable_error(self, _):
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
