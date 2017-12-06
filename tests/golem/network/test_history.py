@@ -118,7 +118,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 3
 
         result = self.service.get_sync(task="task", subtask="unknown")
-        assert len(result) == 0
+        assert not result
 
         result = self.service.get_sync(task="task")
         assert len(result) == 3
@@ -257,8 +257,7 @@ class TestMessageHistoryProvider(DatabaseFixture):
             def __init__(self):
                 self.key_id = 'a0b1c2'
 
-            def message_to_model(self, msg: 'golem_messages.message.Message',
-                                 local_role: Actor, remote_role: Actor):
+            def message_to_model(self, msg, local_role, remote_role):
                 return NetworkMessage()
 
             @requestor_history
