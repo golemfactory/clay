@@ -416,13 +416,15 @@ class BlenderRenderTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
         self.subtasks_given[hash] = extra_data
+        self.subtasks_given[hash]['subtask_id'] = hash
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
         self.subtasks_given[hash]['res_x'] = self.res_x
         self.subtasks_given[hash]['res_y'] = self.res_y
-        self.subtasks_given[hash]['totla_tasks'] = self.total_tasks
+        self.subtasks_given[hash]['use_frames'] = self.use_frames
+        self.subtasks_given[hash]['all_frames'] = self.frames
 
         part = self._count_part(start_task, parts)
 

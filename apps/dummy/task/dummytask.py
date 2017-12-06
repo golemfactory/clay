@@ -62,7 +62,6 @@ class DummyTask(CoreTask):
         ver_opts["difficulty"] = self.task_definition.options.difficulty
         ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         ver_opts["result_size"] = self.task_definition.result_size
-        ver_opts["result_extension"] = self.RESULT_EXT
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -105,6 +104,15 @@ class DummyTask(CoreTask):
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
+        self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
+        self.subtasks_given[sid]["result_size"] = \
+            self.task_definition.result_size
+        self.subtasks_given[sid]["difficulty"] = \
+            self.task_definition.options.difficulty
+        self.subtasks_given[sid]["shared_data_files"] = \
+            self.task_definition.shared_data_files
+
+
 
         return self.ExtraData(ctd=ctd)
 
