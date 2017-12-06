@@ -55,32 +55,31 @@ class FrameRenderingVerificator(RenderingVerificator):
 
 
     def _check_files(self, subtask_info, results):
-        if self.use_frames and self.total_tasks <= len(self.frames):
+        use_frames = subtask_info['use_frames']
+        total_tasks = subtask_info['total_tasks']
+        frames = subtask_info['all_frames']
+        if use_frames and total_tasks <= len(frames):
             frames_list = subtask_info['frames']
-            if len(tr_files) < len(frames_list):
-                self.ver_states[subtask_id] = \
-                    SubtaskVerificationState.WRONG_ANSWER
+            if len(results) < len(frames_list):
+                self.state = SubtaskVerificationState.WRONG_ANSWER
                 return
-        if not self._verify_imgs(
-                subtask_id,
-                subtask_info,
-                tr_files,
-                task):
-            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+        if not self._verify_imgs(subtask_info, results):
+            self.state = SubtaskVerificationState.WRONG_ANSWER
         else:
-            self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+            self.state = SubtaskVerificationState.VERIFIED
 
     def _get_part_img_size(self, subtask_info):
-        if not self.use_frames or self.__full_frames():
+        use_frames = subtask_info['user_frames']
+        if not use_frames or self.__full_frames(subtask_info):
             return super(FrameRenderingVerificator, self)\
                 ._get_part_img_size(subtask_info)
         else:
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']
             num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(self.res_y / parts))
+            img_height = int(math.floor(subtask_info['res_y']/ parts))
             part_min_x = 1
-            part_max_x = self.res_x - 1
+            part_max_x = subtask_info['res_x'] - 1
             part_min_y = (num_task - 1) * img_height + 1
             part_max_y = num_task * img_height - 1
             return part_min_x, part_min_y, part_max_x, part_max_y
@@ -88,5 +87,5 @@ class FrameRenderingVerificator(RenderingVerificator):
     def _count_part(self, start_num, parts):
         return ((start_num - 1) % parts) + 1
 
-    def __full_frames(self):
-        return self.total_tasks <= len(self.frames)
+    def __full_frames(self, subtask_info):
+        return subtask_info['total_tasks'] <= len(subtask_info['all_frames'])

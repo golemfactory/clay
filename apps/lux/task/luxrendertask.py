@@ -221,7 +221,7 @@ class LuxTask(renderingtask.RenderingTask):
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['res_x'] = self.res_x
         self.subtasks_given[hash]['res_y'] = self.res_y
-        self.subtasks_given[hash]['total_tasks'] = self.total_tasks
+        self.subtasks_given[hash]['subtask_id'] = hash
 
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
