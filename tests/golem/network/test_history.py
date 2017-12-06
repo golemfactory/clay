@@ -146,9 +146,12 @@ class TestMessageHistoryService(DatabaseFixture):
     def test_start_stop(self, *_):
         self.service._loop = Mock()
 
+        assert not self.service.running
         self.service.start()
+        assert self.service.running
         self.service.join(1.)
         self.service.stop()
+        assert not self.service.running
 
         assert self.service._loop.called
 

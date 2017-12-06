@@ -50,6 +50,7 @@ class MessageHistoryService(threading.Thread):
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
+        self._queue_timeout = self.QUEUE_TIMEOUT
 
     def run(self) -> None:
         """
@@ -63,14 +64,18 @@ class MessageHistoryService(threading.Thread):
         """
         Returns whether the service was stopped by the user.
         """
-        return self._stop_event.is_set()
+        return self._started.is_set() and not self._stop_event.is_set()
 
     def stop(self) -> None:
         """
-        Stops the service.
+        Stops the service and saves remaining messages.
         """
         self._stop_event.set()
         self.instance = None
+
+        self._queue_timeout = 0
+        while not self._save_queue.empty():
+            self._loop()
 
     @classmethod
     def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
@@ -188,7 +193,7 @@ class MessageHistoryService(threading.Thread):
 
         # Save messages
         try:
-            msg = self._save_queue.get(True, self.QUEUE_TIMEOUT)
+            msg = self._save_queue.get(True, self._queue_timeout)
         except queue.Empty:
             pass
         else:
