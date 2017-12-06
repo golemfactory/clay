@@ -68,6 +68,7 @@ class PeerSession(BasicSafeSession):
         self.client_ver = None
         self.listen_port = None
         self.conn_id = None
+        self.metadata = None
 
         # Verification by challenge not a random value
         self.solve_challenge = False
@@ -316,8 +317,8 @@ class PeerSession(BasicSafeSession):
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
         self.key_id = msg.client_key_id
+        self.metadata = msg.metadata
 
-        metadata = msg.metadata
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
@@ -338,38 +339,13 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
-        self.p2p_service.add_to_peer_keeper(self.node_info)
-        self.p2p_service.interpret_metadata(metadata,
-                                            self.address,
-                                            self.listen_port,
-                                            self.node_info)
+        if not self.__should_init_handshake():
+            self.__send_hello()
 
-        p = self.p2p_service.find_peer(self.key_id)
-
-        if p:
-            if p != self and p.conn.opened:
-                # self.sendPing()
-                logger_msg = "PEER DUPLICATED: %r %r : %r AND %r : %r"
-                logger.warning(
-                    logger_msg,
-                    p.node_name,
-                    p.address,
-                    p.port,
-                    msg.node_name,
-                    msg.port
-                )
-                self.disconnect(message.Disconnect.REASON.DuplicatePeers)
-                return
-
-            if solve_challenge and not self.verified:
-                self._solve_challenge(challenge, difficulty)
+        if solve_challenge:
+            self._solve_challenge(challenge, difficulty)
         else:
-            if not self.__should_init_handshake():
-                self.__send_hello()
-            if solve_challenge:
-                self._solve_challenge(challenge, difficulty)
-            else:
-                self.send(message.RandVal(rand_val=msg.rand_val))
+            self.send(message.RandVal(rand_val=msg.rand_val))
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(
@@ -535,6 +511,26 @@ class PeerSession(BasicSafeSession):
                                               "conn_trials": 0})
             return
 
+        p = self.p2p_service.find_peer(self.key_id)
+
+        if p:
+            if p != self and p.conn.opened:
+                logger.warning(
+                    "PEER DUPLICATED: %r %r : %r AND %r : %r",
+                    p.node_name,
+                    p.address,
+                    p.port,
+                    self.node_name,
+                    self.port
+                )
+                self.disconnect(message.Disconnect.REASON.DuplicatePeers)
+                return
+
+        self.p2p_service.add_to_peer_keeper(self.node_info)
+        self.p2p_service.interpret_metadata(self.metadata,
+                                            self.address,
+                                            self.listen_port,
+                                            self.node_info)
         self.p2p_service.add_peer(self.key_id, self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
