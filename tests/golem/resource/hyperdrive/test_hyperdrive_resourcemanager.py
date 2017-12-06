@@ -1,7 +1,7 @@
 import os
 import uuid
 from unittest import skipIf, TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY
 
 from pathlib import Path
 from requests import ConnectionError
@@ -85,16 +85,26 @@ class TestHyperdriveResourceManager(TempDirFixture):
     def test_add_files_empty_resource_hash(self):
         self.resource_manager._add_files(self.files, self.task_id,
                                          resource_hash=None)
-        assert self.handle_retries.called
-        command = self.handle_retries.call_args[0][1]
-        assert command == self.resource_manager.commands.add
+
+        self.handle_retries.assert_called_once_with(
+            ANY, self.resource_manager.commands.add, ANY,
+            client_options=None,
+            id=ANY,
+            obj_id=ANY,
+            raise_exc=False
+        )
 
     def test_add_files_with_resource_hash(self):
         self.resource_manager._add_files(self.files, self.task_id,
                                          resource_hash=str(uuid.uuid4()))
-        assert self.handle_retries.called
-        command = self.handle_retries.call_args[0][1]
-        assert command == self.resource_manager.commands.restore
+
+        self.handle_retries.assert_called_once_with(
+            ANY, self.resource_manager.commands.restore, ANY,
+            client_options=None,
+            id=ANY,
+            obj_id=ANY,
+            raise_exc=True
+        )
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")
