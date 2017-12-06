@@ -9,7 +9,7 @@ peewee>=2.8.1
 Pillow==4.2.1
 psutil==5.2.1
 pycodestyle
-pyelliptic==1.5.7
+-e git://github.com/etam/pyelliptic.git@make_compatible_with_openssl1_1#egg=pyelliptic
 coincurve>=5.0.1
 asn1crypto==0.22.0
 pysha3>=1.0.2
