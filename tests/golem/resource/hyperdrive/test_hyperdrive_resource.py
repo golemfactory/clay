@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 
 from golem.resource.hyperdrive.resource import ResourceCache, Resource, \
     ResourceStorage
@@ -14,7 +15,7 @@ class TestResourceCache(TempDirFixture):
         super().setUp()
 
         self.cache = ResourceCache()
-        self.resource_path = str(os.path.join('abstract', 'prefix', 'path'))
+        self.resource_path = str(os.path.join(self.tempdir, 'prefix', 'path'))
         self.resource_name = '\0!abstract_name\0!'
         self.resource_files = [self.resource_name]
         self.resource_hash = str(uuid.uuid4())
@@ -47,61 +48,52 @@ class TestResourceCache(TempDirFixture):
             path=self.resource_path
         )
 
-        new_task_id = str(uuid.uuid4())
         new_task_file = 'new_name'
         new_resource = Resource(
             str(uuid.uuid4()),
-            task_id=new_task_id,
+            task_id=str(uuid.uuid4()),
             files=[new_task_file],
-            path=self.resource_path
-        )
-
-        tmp_task_id = str(uuid.uuid4())
-        tmp_task_file = 'tmp_name'
-        tmp_resource = Resource(
-            str(uuid.uuid4()),
-            task_id=tmp_task_id,
-            files=[tmp_task_file],
             path=self.resource_path
         )
 
         def create_file(name):
             directory = os.path.join(self.tempdir, self.resource_path, name)
             os.makedirs(directory, exist_ok=True)
-            open(os.path.join(directory, name), 'w').close()
+            Path(os.path.join(directory, name)).touch()
 
-        create_file(new_task_file)
-        create_file(tmp_task_file)
         self.cache.add_resource(resource)
-        self.cache.add_resource(new_resource)
 
         assert self.cache.get_resources(self.task_id) == [resource]
-        assert self.cache.get_resources(new_task_id) == [new_resource]
+        assert self.cache.get_resources(new_resource.task_id) == []
+        assert self.cache.get_resources('unknown') == []
+        assert self.cache.has_resource(resource)
+        assert not self.cache.has_resource(new_resource)
+
+        assert not new_resource.exists
+        create_file(new_task_file)
+        self.cache.add_resource(new_resource)
+        print(new_resource.path, new_resource.files)
+        assert new_resource.exists
+
+        assert self.cache.get_resources(self.task_id) == [resource]
+        assert self.cache.get_resources(new_resource.task_id) == [new_resource]
         assert self.cache.get_resources('unknown') == []
         assert self.cache.has_resource(resource)
         assert self.cache.has_resource(new_resource)
-        assert not self.cache.has_resource(tmp_resource)
-
-        self.cache.add_resource(tmp_resource)
-
-        assert self.cache.get_resources(self.task_id) == [resource]
-        assert self.cache.get_resources(tmp_task_id) == [tmp_resource]
 
         assert self.cache.remove(self.task_id)
         assert self.cache.remove('unknown') == []
-        assert self.cache.get_resources(new_task_id) == [new_resource]
+        assert self.cache.get_resources(new_resource.task_id) == [new_resource]
 
     def test_remove(self):
         self._add_all()
         self.cache.remove(self.task_id)
         assert self._all_default_empty()
 
-        new_hash = str(uuid.uuid4())
         new_path = '/other/path'
-        new_task = str(uuid.uuid4())
         new_resource = Resource(
-            new_hash,
-            task_id=new_task,
+            str(uuid.uuid4()),
+            task_id=str(uuid.uuid4()),
             path=new_path,
             files=[new_path]
         )
@@ -112,8 +104,8 @@ class TestResourceCache(TempDirFixture):
 
         assert self._all_default_empty()
         assert self.cache.has_resource(new_resource)
-        assert self.cache.get_by_path(new_path) == new_resource
-        assert self.cache.get_by_hash(new_hash) == new_resource
+        assert self.cache.get_by_path(new_resource.path) == new_resource
+        assert self.cache.get_by_hash(new_resource.hash) == new_resource
 
     def test_clear(self):
         self._add_all()
@@ -162,11 +154,11 @@ class TestResourceStorage(ResourceSetUp):
 
     def test_get_path(self):
         valid = self.storage.get_path(self.test_dir_file, self.task_id)
-        invalid = self.storage.get_path(self.test_dir_file + '_2', self.task_id)
-
         assert valid is not None
         assert os.path.exists(valid)
 
+    def test_get_path_invalid(self):
+        invalid = self.storage.get_path(self.test_dir_file + '_2', self.task_id)
         assert invalid is not None
         assert not os.path.exists(invalid)
 
