@@ -1,24 +1,20 @@
+import json
 import logging
 import sys
 import time
-import json
-
-from .contracts import TestGNT
-from .node import tETH_faucet_donate
-
 from time import sleep
-from typing import List, Set, Dict, Any
-from pydispatch import dispatcher
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from pydispatch import dispatcher
 
 from golem.core.service import LoopingCallService
-from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
+from .contracts import TestGNT
+from .node import tETH_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
