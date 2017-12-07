@@ -1,11 +1,11 @@
 from unittest import TestCase
 
-from apps.blender.task.verificator import BlenderVerificator
+from apps.blender.task.verifier import BlenderVerifier
 
 
-class TestBlenderVerificator(TestCase):
+class TestBlenderVerifier(TestCase):
     def test_get_part_size_from_subtask_number(self):
-        bv = BlenderVerificator(lambda: None)
+        bv = BlenderVerifier (lambda: None)
         subtask_info = {
             "res_y": 600,
             "total_tasks": 20,
@@ -21,7 +21,7 @@ class TestBlenderVerificator(TestCase):
         assert bv._get_part_size_from_subtask_number(subtask_info) == 46
 
     def test_get_part_size(self):
-        bv = BlenderVerificator(lambda: None)
+        bv = BlenderVerifier(lambda: None)
         subtask_info = {
             "use_frames": False,
             "res_x": 800,

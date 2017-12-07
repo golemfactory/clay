@@ -13,7 +13,7 @@ class SubtaskVerificationState(Enum):
 
 
 
-class Verificator:
+class Verifier:
 
     def __init__(self, callback: Callable):
         self.callback = callback
@@ -26,13 +26,13 @@ class Verificator:
         raise NotImplementedError
 
 
-class StateVerificator(Verificator):
+class StateVerifier(Verifier):
 
     active_status = [SubtaskVerificationState.WAITING,
                      SubtaskVerificationState.IN_PROGRESS]
 
     def __init__(self, callback: Callable):
-        super(StateVerificator, self).__init__(callback)
+        super(StateVerifier, self).__init__(callback)
         self.subtask_info = {}
         self.reference_data = []
         self.resources = []

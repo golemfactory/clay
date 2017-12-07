@@ -2,11 +2,11 @@
 import math
 
 
-from apps.rendering.task.verificator import FrameRenderingVerificator
+from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
 
 
-class BlenderVerificator(FrameRenderingVerificator):
+class BlenderVerifier(FrameRenderingVerifier):
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)

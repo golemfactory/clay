@@ -10,7 +10,7 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verificator import CoreVerificator
+from apps.core.task.verifier import CoreVerifier
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -24,7 +24,7 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     ResourceType, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verification.verificator import SubtaskVerificationState
+from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -199,8 +199,8 @@ class CoreTask(Task):
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        verificator = CoreVerificator(self.verification_finished)
-        verificator.start_verification(
+        verifier = CoreVerifier(self.verification_finished)
+        verifier.start_verification(
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
             resources=[],

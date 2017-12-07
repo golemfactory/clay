@@ -1,15 +1,15 @@
 from datetime import datetime
 import os
 
-from golem.verification.verificator import (StateVerificator,
-                                            SubtaskVerificationState)
+from golem.verification.verifier import (StateVerifier,
+                                         SubtaskVerificationState)
 
 
-class CoreVerificator(StateVerificator):
+class CoreVerifier(StateVerifier):
 
     def start_verification(self, subtask_info: dict, reference_data: list,
                            resources: list, results: list):
-        super(CoreVerificator, self).start_verification(subtask_info,
+        super(CoreVerifier, self).start_verification(subtask_info,
                                                          reference_data,
                                                          resources,
                                                          results)

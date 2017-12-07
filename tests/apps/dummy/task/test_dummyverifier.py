@@ -3,16 +3,16 @@ import os
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
     DummyTaskDefinition
-from apps.dummy.task.verificator import DummyTaskVerificator
+from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.testutils import TempDirFixture
 
 
-class TestDummyTaskVerificator(TempDirFixture):
+class TestDummyTaskVerifier(TempDirFixture):
     def test_init(self):
         def callback(*args, **kwargs):
             pass
-        dv = DummyTaskVerificator(callback)
-        assert isinstance(dv, DummyTaskVerificator)
+        dv = DummyTaskVerifier(callback)
+        assert isinstance(dv, DummyTaskVerifier)
 
     def test_verify_result(self):
         correct_solution = 0x8e3b3
@@ -46,7 +46,7 @@ class TestDummyTaskVerificator(TempDirFixture):
 
         td = DummyTaskDefinition(dd)
         dt = DummyTask(3, "a", td, self.tempdir)
-        ver = DummyTaskVerificator(lambda: None)
+        ver = DummyTaskVerifier(lambda: None)
         ed = dt.query_extra_data(perf_index=1.0)
         ver_opts = dt.subtasks_given[ed.ctd['subtask_id']]
 

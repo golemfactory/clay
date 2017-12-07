@@ -1,11 +1,11 @@
 
 import logging
 
-from apps.rendering.task.verificator import RenderingVerificator
+from apps.rendering.task.verifier import RenderingVerifier
 
 
 logger = logging.getLogger("apps.lux")
 
 
-class LuxRenderVerificator(RenderingVerificator):
+class LuxRenderVerifier(RenderingVerifier):
     pass

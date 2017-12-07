@@ -1,15 +1,15 @@
 import logging
 import math
 
-from apps.core.task.verificator import CoreVerificator
+from apps.core.task.verifier import CoreVerifier
 from apps.rendering.resources.imgcompare import check_size
 
-from golem.verification.verificator import SubtaskVerificationState
+from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")
 
 
-class RenderingVerificator(CoreVerificator):
+class RenderingVerifier(CoreVerifier):
 
     def _check_files(self, subtask_info, results):
         if self._verify_imgs(subtask_info, results):
@@ -50,7 +50,7 @@ class RenderingVerificator(CoreVerificator):
         return 0, (num_task - 1) * img_height, res_x, num_task * img_height
 
 
-class FrameRenderingVerificator(RenderingVerificator):
+class FrameRenderingVerifier(RenderingVerifier):
 
     def _check_files(self, subtask_info, results):
         use_frames = subtask_info['use_frames']
@@ -69,7 +69,7 @@ class FrameRenderingVerificator(RenderingVerificator):
     def _get_part_img_size(self, subtask_info):
         use_frames = subtask_info['use_frames']
         if not use_frames or self.__full_frames(subtask_info):
-            return super(FrameRenderingVerificator, self)\
+            return super(FrameRenderingVerifier, self)\
                 ._get_part_img_size(subtask_info)
         else:
             start_task = subtask_info['start_task']

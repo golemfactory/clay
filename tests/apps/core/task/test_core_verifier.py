@@ -2,18 +2,18 @@ from mock import Mock
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.verification.verificator import SubtaskVerificationState
+from golem.verification.verifier import SubtaskVerificationState
 
-from apps.core.task.verificator import CoreVerificator
+from apps.core.task.verifier import CoreVerifier
 
 
-class TestCoreVerificator(TempDirFixture, LogTestCase):
+class TestCoreVerifierr(TempDirFixture, LogTestCase):
 
     def test_check_files(self):
         def callback(*args, **kwargs):
             pass
 
-        cv = CoreVerificator(callback)
+        cv = CoreVerifier(callback)
         cv._check_files(dict(), [])
         assert cv.state == SubtaskVerificationState.WRONG_ANSWER
 

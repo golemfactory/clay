@@ -1,40 +1,32 @@
 import os
 from PIL import Image
 
-from mock import patch, Mock
-
-from golem.core.common import is_linux
-from golem.task.taskbase import Task
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
-from golem.verification.verificator import SubtaskVerificationState
+from golem.verification.verifier import SubtaskVerificationState
 
-from apps.rendering.task.verificator import RenderingVerificator, logger, FrameRenderingVerificator
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
+from apps.rendering.task.verifier import RenderingVerifier, logger, FrameRenderingVerifier
 
 
-class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
+class TestRenderingVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
-        'apps/rendering/task/verificator.py',
+        'apps/rendering/task/verifier.py',
     ]
     last_verdict = None
 
     def test_get_part_size(self):
-        rv = RenderingVerificator(lambda: None)
+        rv = RenderingVerifier(lambda: None)
         subtask_info = {
             "res_x": 800,
             "res_y": 600}
         assert rv._get_part_size(subtask_info) == (800, 600)
 
     def verification_callback(self, subtask_id, verdict, result):
-        print("Verfication callback")
-        print("\t subtask_id %r" % subtask_id)
-        print("\t verdict %r" % verdict)
         self.last_verdict = verdict
 
     def test_start_verification(self):
         self.last_verdict = None
-        rv = RenderingVerificator(self.verification_callback)
+        rv = RenderingVerifier(self.verification_callback)
         # Result us not a file
         subtask_info = {
             "res_x": 80,
@@ -88,7 +80,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
 
 
     def test_get_part_img_size(self):
-        rv = RenderingVerificator(lambda: None)
+        rv = RenderingVerifier(lambda: None)
         subtask_info = {
             "res_x": 800,
             "res_y": 600,
@@ -112,12 +104,12 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         assert rv._get_part_img_size(subtask_info) == (0, 76, 800, 95)
 
 
-class TestFrameRenderingVerificator(TempDirFixture):
+class TestFrameRenderingVerifier(TempDirFixture):
     def test_check_files(self):
         def callback(*args, **kwargs):
             pass
 
-        frv = FrameRenderingVerificator(callback)
+        frv = FrameRenderingVerifier(callback)
         subtask_info = {"frames": [3], "use_frames": False, "total_tasks": 20,
                         "all_frames": [3], "res_x": 800, "res_y": 600}
         frv._check_files(subtask_info, [])
@@ -141,7 +133,7 @@ class TestFrameRenderingVerificator(TempDirFixture):
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_get_part_img_size(self):
-        frv = FrameRenderingVerificator(lambda: None)
+        frv = FrameRenderingVerifier(lambda: None)
         subtask_info = {
             "res_x": 600,
             "res_y": 800,

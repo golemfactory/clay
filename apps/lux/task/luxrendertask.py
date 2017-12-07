@@ -166,8 +166,8 @@ class LuxTask(renderingtask.RenderingTask):
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
         # FIXME With full verification
-        # self.verificator.test_flm = self.__get_test_flm()
-        # self.verificator.merge_ctd = self.__get_merge_ctd([])
+        # self.verifier.test_flm = self.__get_test_flm()
+        # self.verifier.merge_ctd = self.__get_merge_ctd([])
 
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:
@@ -393,7 +393,7 @@ class LuxTask(renderingtask.RenderingTask):
 
         if self.num_tasks_received == self.total_tasks:
             # FIXME After final verification
-            # if self.verificator.advanced_verification \
+            # if self.verifier.advanced_verification \
             #         and os.path.isfile(self.__get_test_flm()):
             #     self.__generate_final_flm_advanced_verification()
             # else:
@@ -590,7 +590,7 @@ class LuxTask(renderingtask.RenderingTask):
         logger.error("Cannot generate final flm: {}".format(error))
         # TODO What should we do in this sitution?
 
-    # TODO Implement with proper Verificator
+    # TODO Implement with proper verifier
     # def __generate_final_flm_advanced_verification(self):
     #     # the file containing result of task test
     #     test_result_flm = self.__get_test_flm()

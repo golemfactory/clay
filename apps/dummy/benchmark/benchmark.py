@@ -6,7 +6,7 @@ from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
-from apps.dummy.task.verificator import DummyTaskVerificator
+from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
 
 APP_DIR = join(get_golem_path(), 'apps', 'dummy')
@@ -28,7 +28,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
-        self.verificator = DummyTaskVerificator(lambda: None)
+        self.verifier = DummyTaskVerifier(lambda: None)
         self.verification_options = {"difficulty": td.options.difficulty,
                                     "shared_data_files": td.shared_data_files,
                                     "result_size": td.result_size,
@@ -50,6 +50,6 @@ class DummyTaskBenchmark(CoreBenchmark):
             sd = self.verification_options.copy()
             sd["subtask_data"]  = self.subtask_data
             if ext == '.result' and \
-                    self.verificator._verify_result(sd, filepath):
+                    self.verifier._verify_result(sd, filepath):
                 return True
         return False

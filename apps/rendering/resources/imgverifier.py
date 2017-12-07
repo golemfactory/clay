@@ -4,7 +4,7 @@ import math
 
 from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
 
-from golem.verification.verificator import SubtaskVerificationState
+from golem.verification.verifier import SubtaskVerificationState
 
 from ssim import compute_ssim
 
@@ -91,7 +91,7 @@ class ImgStatistics(object):
         return self.ssim, self.mse, self.norm_mse, self.mse_bw, self.psnr
 
 
-class ImgVerificator(object):
+class ImgVerifier(object):
     def __init__(self):
         pass
 
