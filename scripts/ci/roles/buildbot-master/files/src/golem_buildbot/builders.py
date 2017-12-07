@@ -13,8 +13,7 @@ from .settings import buildbot_host
 @defer.inlineCallbacks
 def has_no_previous_success_check(step):
     # function taken from stackoverflow and adjusted for our use:
-    # https://stackoverflow.com/questions/34284466/buildbot-how-do-i-skip-a-build-if-got-revision-is-the-same-as-the-last-run
-    # # noqa pylint: disable=C0301
+    # https://stackoverflow.com/questions/34284466/buildbot-how-do-i-skip-a-build-if-got-revision-is-the-same-as-the-last-run # noqa pylint: disable=C0301
 
     cur_build = step.build
     # never skip if this is a forced run
