@@ -16,7 +16,8 @@ class MockClientHandler(ClientHandler):
     def command_failed(self, exc, cmd, obj_id):
         pass
 
-    def new_client(self):
+    @staticmethod
+    def new_client():
         return Mock()
 
 
@@ -28,32 +29,33 @@ class MockClientConfig(ClientConfig):
 class TestClientHandler(unittest.TestCase):
 
     def test_retry(self):
-        valid_exceptions = ClientHandler.retry_exceptions
         max_retries = 2
         config = MockClientConfig(max_retries=max_retries)
         handler = MockClientHandler(config)
+        valid_exceptions = ClientHandler.retry_exceptions
         value_exc = valid_exceptions[0]()
 
         for exc_class in valid_exceptions:
             counter = 0
             exc = exc_class(value_exc)
 
-            def func():
+            def func_1():
                 nonlocal counter
                 counter += 1
                 raise exc
 
-            handler._retry(func, raise_exc=False)
+            handler._retry(func_1, raise_exc=False)
             assert counter == max_retries
 
         counter = 0
         with self.assertRaises(ArithmeticError):
-            def func():
+
+            def func_2():
                 nonlocal counter
                 counter += 1
                 raise ArithmeticError
 
-            handler._retry(func, raise_exc=False)
+            handler._retry(func_2, raise_exc=False)
 
         # Exception was raised on first retry
         assert counter == 1
