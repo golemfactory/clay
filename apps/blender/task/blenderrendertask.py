@@ -18,8 +18,7 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.blender.task.verificator import BlenderVerificator
-from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
@@ -318,7 +317,6 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
-    VERIFICATOR_CLASS = BlenderVerificator
 
     BLENDER_MIN_BOX = [8, 8]
 
@@ -332,13 +330,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         FrameRenderingTask.__init__(self, task_definition=task_definition,
                                     **kwargs)
-
-        definition = self.task_definition
-        self.verificator.compositing = self.compositing
-        self.verificator.output_format = self.output_format
-        self.verificator.src_code = self.src_code
-        self.verificator.docker_images = definition.docker_images
-        self.verificator.verification_timeout = definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)

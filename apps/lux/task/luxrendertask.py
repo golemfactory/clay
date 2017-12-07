@@ -13,7 +13,6 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
@@ -123,7 +122,6 @@ class LuxRenderOptions(Options):
 
 class LuxTask(renderingtask.RenderingTask):
     ENVIRONMENT_CLASS = LuxRenderEnvironment
-    VERIFICATOR_CLASS = LuxRenderVerificator
 
     ################
     # Task methods #
@@ -167,8 +165,9 @@ class LuxTask(renderingtask.RenderingTask):
 
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
-        self.verificator.test_flm = self.__get_test_flm()
-        self.verificator.merge_ctd = self.__get_merge_ctd([])
+        # FIXME With full verification
+        # self.verificator.test_flm = self.__get_test_flm()
+        # self.verificator.merge_ctd = self.__get_merge_ctd([])
 
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:

@@ -100,6 +100,7 @@ class DummyTask(CoreTask):
         self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
         self.subtasks_given[sid]["shared_data_files"] = \
             self.task_definition.shared_data_files
+        self.subtasks_given[sid]["subtask_id"] = sid
 
         return self.ExtraData(ctd=ctd)
 

@@ -234,7 +234,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.results == {}
         assert task.res_files == {}
         assert path.isdir(task.tmp_dir)
-        assert task.verificator.verification_options is None
 
     @pytest.mark.slow
     def test_blender_render_subtask(self):

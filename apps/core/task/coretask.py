@@ -207,8 +207,10 @@ class CoreTask(Task):
             reference_data=[])
 
     def verification_finished(self, subtask_id, verdict, result):
+        print("VERIFICATION FINISHED")
+        print(result)
         if verdict == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result['results'])
+            self.accept_results(subtask_id, result['extra_data']['results'])
         # TODO Add support for different verification states
         else:
             self.computation_failed(subtask_id)
