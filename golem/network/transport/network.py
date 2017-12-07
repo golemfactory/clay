@@ -24,6 +24,7 @@ class SessionFactory(object):
     def get_session(self, conn):
         return self.session_class(conn)
 
+
 class IncomingSessionFactoryWrapper(object):
     def __init__(self, session_factory):
         self.session_factory = session_factory
@@ -33,6 +34,7 @@ class IncomingSessionFactoryWrapper(object):
         session.conn_type = Session.CONN_TYPE_SERVER
         return session
 
+
 class OutgoingSessionFactoryWrapper(object):
     def __init__(self, session_factory):
         self.session_factory = session_factory
@@ -41,6 +43,7 @@ class OutgoingSessionFactoryWrapper(object):
         session = self.session_factory.get_session(conn)
         session.conn_type = Session.CONN_TYPE_CLIENT
         return session
+
 
 class ProtocolFactory(Factory):
     def __init__(self, protocol_class, server=None, session_factory=None):
@@ -53,6 +56,7 @@ class ProtocolFactory(Factory):
         protocol.set_session_factory(self.session_factory)
         return protocol
 
+
 class IncomingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
         self.protocol_factory = protocol_factory
@@ -64,6 +68,7 @@ class IncomingProtocolFactoryWrapper(Factory):
         protocol.set_session_factory(self.session_factory)
         return protocol
 
+
 class OutgoingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
         self.protocol_factory = protocol_factory
@@ -74,6 +79,7 @@ class OutgoingProtocolFactoryWrapper(Factory):
         protocol = self.protocol_factory.buildProtocol(addr)
         protocol.set_session_factory(self.session_factory)
         return protocol
+
 
 class SessionProtocol(Protocol):
     def __init__(self):
