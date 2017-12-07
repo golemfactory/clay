@@ -17,7 +17,7 @@ from .taskbase import TaskHeader
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price, computation_time):
+def compute_subtask_value(price: int, computation_time: int):
     """
     Don't use math.ceil (this is general advice, not specific to the case here)
     >>> math.ceil(10 ** 18 / 6)
