@@ -241,7 +241,6 @@ class ResourceHandshakeSessionMixin:
 
     def _download_handshake_nonce(self, key_id, resource):
         entry = resource, ''
-        print('DOWNLOAD NONCE', entry)
 
         self.resource_manager.pull_resource(
             entry, self.NONCE_TASK,

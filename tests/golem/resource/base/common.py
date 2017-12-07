@@ -14,14 +14,6 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-def fake_sign(_):
-    return b'\000' * message.Message.SIG_LEN
-
-
-def fake_decrypt(data):
-    return data
-
-
 class AddGetResources(TempDirFixture, LogTestCase):
 
     __test__ = False

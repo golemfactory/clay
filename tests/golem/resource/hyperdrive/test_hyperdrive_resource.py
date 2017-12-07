@@ -72,7 +72,6 @@ class TestResourceCache(TempDirFixture):
         assert not new_resource.exists
         create_file(new_task_file)
         self.cache.add_resource(new_resource)
-        print(new_resource.path, new_resource.files)
         assert new_resource.exists
 
         assert self.cache.get_resources(self.task_id) == [resource]
