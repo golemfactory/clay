@@ -12,6 +12,7 @@ from apps.core.task.coretask import (CoreTask,
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 
@@ -32,6 +33,7 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
 @enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
+    VERIFIEr_CLASS = DummyTaskVerifier
 
     RESULT_EXT = ".result"
     TESTING_CHAR = "a"

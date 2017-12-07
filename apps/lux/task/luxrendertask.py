@@ -13,6 +13,7 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
+from apps.lux.task.verifier import LuxRenderVerifier
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
@@ -122,6 +123,7 @@ class LuxRenderOptions(Options):
 
 class LuxTask(renderingtask.RenderingTask):
     ENVIRONMENT_CLASS = LuxRenderEnvironment
+    VERIFIER_CLASS = LuxRenderVerifier
 
     ################
     # Task methods #

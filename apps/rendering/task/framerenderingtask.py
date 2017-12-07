@@ -1,5 +1,3 @@
-
-
 import logging
 import math
 import os
@@ -17,6 +15,7 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
+from apps.rendering.task.verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
@@ -46,6 +45,8 @@ class FrameState(object):
 
 
 class FrameRenderingTask(RenderingTask):
+
+    VERIFIER_CLASS = FrameRenderingVerifier
 
     ################
     # Task methods #
@@ -89,6 +90,10 @@ class FrameRenderingTask(RenderingTask):
         super(FrameRenderingTask, self).computation_finished(subtask_id,
                                                              task_result,
                                                              result_type)
+
+    def verification_finished(self, subtask_id, verdict, result):
+        super(FrameRenderingTask, self).verification_finished(subtask_id,
+                                                              verdict, result)
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 

@@ -1,11 +1,8 @@
-
 import logging
 import math
 import os
 import random
 from collections import OrderedDict
-
-
 import time
 from PIL import Image, ImageChops
 
@@ -18,6 +15,7 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
@@ -317,6 +315,7 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
+    VERIFIER_CLASS = BlenderVerifier
 
     BLENDER_MIN_BOX = [8, 8]
 
