@@ -416,4 +416,4 @@ class TestP2PService(testutils.DatabaseFixture):
         for i in range(SEEDS_NUM):
             seed = self.service._get_next_random_seed()
             seeds.remove(seed)
-        assert len(seeds) == 0
+        assert not seeds
