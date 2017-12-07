@@ -69,7 +69,6 @@
 # install pythons
 - name: install python and deps
   become_user: buildbot-worker
-  become: yes
   homebrew:
     name: "{{ item }}"
   with_items:
@@ -80,18 +79,26 @@
 
 - name: install buildbot venv
   become_user: buildbot-worker
+  become: yes
   pip:
     executable: pip3
     name: virtualenv
 
 
+- name: create buildbot venv
+  become_user: buildbot-worker
+  become: yes
+  command: /usr/local/bin/python3 -m venv /Users/buildbot-worker/.venv
+  args:
+    creates: /Users/buildbot-worker/.venv
+
 - name: install buildbot and its requirements
   become_user: buildbot-worker
   become: yes
-  pip:
-    name: buildbot-worker
-    virtualenv: /Users/buildbot-worker/.venv
-    virtualenv_command: /usr/bin/python3 -m venv
+  command: /Users/buildbot-worker/.venv/bin/pip3 install buildbot-worker
+  args:
+    creates: /Users/buildbot-worker/.venv/bin/buildbot-worker
+
 
 # # TODO: master address will not be updated once configuration is generated
 - name: initialized workspace for the worker
@@ -112,10 +119,3 @@
     src: network.golem.buildbot-worker.plist
     dest: /Library/LaunchDaemons/network.golem.buildbot-worker.plist
   notify: load buildbot worker service
-
-- name: remove wrong python3, should use /usr/local/bin/
-  become_user: buildbot-worker
-  become: yes
-  file:
-    dest: /Users/buildbot-worker/.venv/bin/python3
-    state: absent
