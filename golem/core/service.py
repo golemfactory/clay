@@ -1,4 +1,5 @@
 import logging
+from abc import ABC, abstractmethod
 
 from golem.core.async import AsyncRequest, async_run
 from twisted.internet.task import LoopingCall
@@ -6,7 +7,25 @@ from twisted.internet.task import LoopingCall
 log = logging.getLogger("golem")
 
 
-class Service:
+class IService(ABC):
+    """
+    An interface of a Golem service.
+    """
+
+    @abstractmethod
+    def start(self) -> None:
+        pass
+
+    @abstractmethod
+    def stop(self) -> None:
+        pass
+
+    @abstractmethod
+    def running(self) -> bool:
+        pass
+
+
+class LoopingCallService(IService):
     """
     A prototype of Golem service -- an long running "thread" that performs
     some tasks in background and responds to request from users and other

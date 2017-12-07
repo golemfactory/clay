@@ -22,7 +22,7 @@ from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.core.service import Service
+from golem.core.service import IService, LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
@@ -77,7 +77,7 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(HardwarePresetsMixin):
-    _services = []  # type: List[Service]
+    _services = []  # type: List[IService]
 
     def __init__(
             self,
@@ -1095,7 +1095,7 @@ class Client(HardwarePresetsMixin):
         self.__datadir_lock.close()
 
 
-class DoWorkService(Service):
+class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
     def __init__(self, client: Client):
@@ -1134,7 +1134,7 @@ class DoWorkService(Service):
             log.exception("check_payments failed")
 
 
-class MonitoringPublisherService(Service):
+class MonitoringPublisherService(LoopingCallService):
     _task_server = None  # type: TaskServer
 
     def __init__(self,
@@ -1158,7 +1158,7 @@ class MonitoringPublisherService(Service):
         )
 
 
-class NetworkConnectionPublisherService(Service):
+class NetworkConnectionPublisherService(LoopingCallService):
     _client = None  # type: Client
 
     def __init__(self,
@@ -1172,7 +1172,7 @@ class NetworkConnectionPublisherService(Service):
                               self._client.connection_status())
 
 
-class TasksPublisherService(Service):
+class TasksPublisherService(LoopingCallService):
     _rpc_publisher = None  # type: Publisher
     _task_manager = None  # type: TaskManager
 
@@ -1188,7 +1188,7 @@ class TasksPublisherService(Service):
                                     self._task_manager.get_tasks_dict())
 
 
-class BalancePublisherService(Service):
+class BalancePublisherService(LoopingCallService):
     _rpc_publisher = None  # type: Publisher
     _transaction_system = None  # type: EthereumTransactionSystem
 
@@ -1212,7 +1212,7 @@ class BalancePublisherService(Service):
             })
 
 
-class ResourceCleanerService(Service):
+class ResourceCleanerService(LoopingCallService):
     _client = None  # type: Client
     older_than_seconds = 0  # type: int
 
@@ -1231,7 +1231,7 @@ class ResourceCleanerService(Service):
         self._client.remove_received_files(self.older_than_seconds)
 
 
-class TaskCleanerService(Service):
+class TaskCleanerService(LoopingCallService):
     _client = None  # type: Client
     older_than_seconds = 0  # type: int
 

@@ -14,7 +14,7 @@ from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 
-from golem.core.service import Service
+from golem.core.service import LoopingCallService
 from golem.report import report_calls, Component
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
@@ -49,7 +49,7 @@ def _encode_payments(payments):
     return args, value
 
 
-class PaymentProcessor(Service):
+class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 

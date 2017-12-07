@@ -29,7 +29,7 @@ class MessageHistoryService(threading.Thread):
     - removal and sweeping is not critical and can be slightly delayed
 
     Background operations performed by this service do not fit the looping call
-    model of golem.core.service.Service.
+    model of golem.core.service.LoopingCallService.
     """
 
     MESSAGE_LIFETIME = datetime.timedelta(days=1)
