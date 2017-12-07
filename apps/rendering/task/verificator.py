@@ -11,7 +11,6 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerificator(CoreVerificator):
 
-
     def _check_files(self, subtask_info, results):
         if self._verify_imgs(subtask_info, results):
             self.state = SubtaskVerificationState.VERIFIED
@@ -33,7 +32,7 @@ class RenderingVerificator(CoreVerificator):
         return check_size(file_, res_x, res_y)
 
     def _get_part_size(self, subtask_info):
-        return self.subtask_info['res_x'], self.subtask_info['res_y']
+        return subtask_info['res_x'], subtask_info['res_y']
 
     def _get_part_img_size(self, subtask_info):
         # verification method reacts to key error
@@ -53,7 +52,6 @@ class RenderingVerificator(CoreVerificator):
 
 class FrameRenderingVerificator(RenderingVerificator):
 
-
     def _check_files(self, subtask_info, results):
         use_frames = subtask_info['use_frames']
         total_tasks = subtask_info['total_tasks']
@@ -69,7 +67,7 @@ class FrameRenderingVerificator(RenderingVerificator):
             self.state = SubtaskVerificationState.VERIFIED
 
     def _get_part_img_size(self, subtask_info):
-        use_frames = subtask_info['user_frames']
+        use_frames = subtask_info['use_frames']
         if not use_frames or self.__full_frames(subtask_info):
             return super(FrameRenderingVerificator, self)\
                 ._get_part_img_size(subtask_info)
@@ -77,7 +75,7 @@ class FrameRenderingVerificator(RenderingVerificator):
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']
             num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(subtask_info['res_y']/ parts))
+            img_height = int(math.floor(subtask_info['res_y'] / parts))
             part_min_x = 1
             part_max_x = subtask_info['res_x'] - 1
             part_min_y = (num_task - 1) * img_height + 1

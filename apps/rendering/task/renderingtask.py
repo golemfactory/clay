@@ -13,8 +13,7 @@ from pathlib import Path
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.verificator import RenderingVerificator
-from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.common import get_golem_path
 from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
@@ -31,7 +30,6 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingTask(CoreTask):
 
-    VERIFICATOR_CLASS = RenderingVerificator
     ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
 
     @classmethod

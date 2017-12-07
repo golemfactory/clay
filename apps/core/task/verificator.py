@@ -9,7 +9,7 @@ class CoreVerificator(StateVerificator):
 
     def start_verification(self, subtask_info: dict, reference_data: list,
                            resources: list, results: list):
-        super(StateVerificator, self).start_verification(subtask_info,
+        super(CoreVerificator, self).start_verification(subtask_info,
                                                          reference_data,
                                                          resources,
                                                          results)

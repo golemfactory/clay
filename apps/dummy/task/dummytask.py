@@ -12,7 +12,6 @@ from apps.core.task.coretask import (CoreTask,
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-from apps.dummy.task.verificator import DummyTaskVerificator
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 
@@ -33,7 +32,6 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
 @enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
-    VERIFICATOR_CLASS = DummyTaskVerificator
 
     RESULT_EXT = ".result"
     TESTING_CHAR = "a"
@@ -57,11 +55,6 @@ class DummyTask(CoreTask):
             root_path=root_path,
             total_tasks=total_tasks
         )
-
-        ver_opts = self.verificator.verification_options
-        ver_opts["difficulty"] = self.task_definition.options.difficulty
-        ver_opts["shared_data_files"] = self.task_definition.shared_data_files
-        ver_opts["result_size"] = self.task_definition.result_size
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -105,14 +98,8 @@ class DummyTask(CoreTask):
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
-        self.subtasks_given[sid]["result_size"] = \
-            self.task_definition.result_size
-        self.subtasks_given[sid]["difficulty"] = \
-            self.task_definition.options.difficulty
         self.subtasks_given[sid]["shared_data_files"] = \
             self.task_definition.shared_data_files
-
-
 
         return self.ExtraData(ctd=ctd)
 

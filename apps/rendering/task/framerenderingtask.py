@@ -17,7 +17,6 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
-from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
@@ -48,8 +47,6 @@ class FrameState(object):
 
 class FrameRenderingTask(RenderingTask):
 
-    VERIFICATOR_CLASS = FrameRenderingVerificator
-
     ################
     # Task methods #
     ################
@@ -77,9 +74,6 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
         self.last_preview_path = None
-
-        self.verificator.use_frames = self.use_frames
-        self.verificator.frames = self.frames
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
