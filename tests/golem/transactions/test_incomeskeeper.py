@@ -83,7 +83,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             income = Income.get(sender_node=sender_node_id, task=task_id,
                                 subtask=subtask_id)
         self.assertEqual(income.value, value)
-        self.assertEqual(income.transaction, transaction_id)
+        self.assertEqual(income.transaction_, transaction_id)
         self.assertEqual(income.block_number, block_number)
 
         # try to duplicate key
@@ -133,7 +133,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             sender_node=sender_node_id,
             task=task_id,
             subtask=subtask_id,
-            transaction=transaction_id,
+            transaction_=transaction_id,
             block_number=random.randint(0, sys.maxsize),
             value=value)
 

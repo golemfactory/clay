@@ -58,7 +58,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
             with db.transaction():
                 spent_tokens = \
                     model.Income.select().where(
-                        model.Income.transaction == transaction_id).get().value
+                        model.Income.transaction_ == transaction_id).get().value
         except Income.DoesNotExist:
             spent_tokens = 0
 

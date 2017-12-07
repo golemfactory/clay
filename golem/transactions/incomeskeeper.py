@@ -76,7 +76,7 @@ class IncomesKeeper(object):
                     sender_node=sender_node_id,
                     task=task_id,
                     subtask=subtask_id,
-                    transaction=transaction_id,
+                    transaction_=transaction_id,
                     block_number=block_number,
                     value=value)
                 return income
@@ -91,7 +91,7 @@ class IncomesKeeper(object):
                 subtask_id,
                 value,
                 transaction_id,
-                db_income.transaction
+                db_income.transaction_
             )
 
     def expect(self, sender_node_id, p2p_node, task_id, subtask_id, value):
@@ -125,7 +125,7 @@ class IncomesKeeper(object):
             Income.sender_node,
             Income.task,
             Income.subtask,
-            Income.transaction,
+            Income.transaction_,
             Income.block_number,
             Income.value
         )

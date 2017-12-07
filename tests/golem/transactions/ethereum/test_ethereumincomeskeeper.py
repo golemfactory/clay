@@ -148,7 +148,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
                 task=received_kwargs['task_id'],
                 subtask=received_kwargs['subtask_id'])
             self.assertEqual(getincome.value, received_kwargs['value'])
-            self.assertEqual(getincome.transaction,
+            self.assertEqual(getincome.transaction_,
                              received_kwargs['transaction_id'])
             self.assertEqual(getincome.block_number,
                              received_kwargs['block_number'])

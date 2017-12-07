@@ -27,7 +27,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 5
+    SCHEMA_VERSION = 6
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -256,7 +256,8 @@ class Income(BaseModel):
     sender_node = CharField()
     task = CharField()
     subtask = CharField()
-    transaction = CharField()
+    # trailing underscore to avoid potential conflict with sql keyword
+    transaction_ = CharField()
     block_number = BigIntegerField()
     value = BigIntegerField()
 
@@ -269,7 +270,7 @@ class Income(BaseModel):
             .format(
                 self.subtask,
                 self.value,
-                self.transaction,
+                self.transaction_,
                 self.block_number
             )
 
