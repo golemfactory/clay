@@ -137,6 +137,9 @@ class Client(object):
         }
         return self.web3.eth.call(obj, block)
 
+    def get_block_number(self):
+        return self.web3.eth.blockNumber
+
     def get_transaction_receipt(self, tx_hash):
         """
         Returns the receipt of a transaction by transaction hash.

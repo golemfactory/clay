@@ -395,18 +395,24 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
         assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
-        required_confs = self.pp.REQUIRED_CONFIRMATIONS
-        receipt = {'blockNumber': required_confs-1, 'blockHash': '0x' + 64*'f', 'gasUsed': 55001}
+        tx_block_number = 1337
+        self.client.get_block_number.return_value = tx_block_number
+        receipt = {
+            'blockNumber': tx_block_number,
+            'blockHash': '0x' + 64*'f',
+            'gasUsed': 55001,
+        }
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         self.assertEqual(len(inprogress), 1)
 
-        receipt['blockNumber'] = required_confs
+        self.client.get_block_number.return_value =\
+            tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         self.assertEqual(len(inprogress), 0)
         self.assertEqual(p.status, PaymentStatus.confirmed)
-        self.assertEqual(p.details.block_number, required_confs)
+        self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64*'f')
         self.assertEqual(p.details.fee, 55001 * self.pp.GAS_PRICE)
         self.assertEqual(self.pp._gnt_reserved(), 0)
