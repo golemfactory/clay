@@ -10,12 +10,13 @@ from typing import List
 from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field)
 
+from golem.core.service import IService
 from golem.model import NetworkMessage, Actor
 
 logger = logging.getLogger('golem.network.history')
 
 
-class MessageHistoryService(threading.Thread):
+class MessageHistoryService(IService, threading.Thread):
     """
     The purpose of this class is to:
     - save NetworkMessages (in background)
@@ -41,7 +42,8 @@ class MessageHistoryService(threading.Thread):
     instance = None
 
     def __init__(self):
-        super().__init__(daemon=True)
+        IService.__init__(self)
+        threading.Thread.__init__(self, daemon=True)
 
         if self.__class__.instance is None:
             self.__class__.instance = self
@@ -65,6 +67,9 @@ class MessageHistoryService(threading.Thread):
         Returns whether the service was stopped by the user.
         """
         return self._started.is_set() and not self._stop_event.is_set()
+
+    def start(self) -> None:
+        threading.Thread.start(self)
 
     def stop(self) -> None:
         """
