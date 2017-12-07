@@ -1,15 +1,25 @@
+import re
+
 from buildbot.plugins import schedulers, util
 
 
-branch_filter = util.ChangeFilter(branch_re=r'develop|b\d+\..+')
+def branch_check(c):
+    print("Branch check {}".format(c))
+    if c.category == 'pull':
+        return False
+
+    if c.branch == 'develop' or re.match('b[0-9].*', c.branch):
+        return True
+
+    return False
 
 
 def pr_check(c):
-    print("Check PR")
-    print(c)
+    print("Pull check {}".format(c))
     return c.category == 'pull'
 
 
+branch_filter = util.ChangeFilter(filter_fn=branch_check)
 pr_filter = util.ChangeFilter(filter_fn=pr_check)
 
 schedulers = [

@@ -16,9 +16,11 @@ def has_no_previous_success_check(step):
     # https://stackoverflow.com/questions/34284466/buildbot-how-do-i-skip-a-build-if-got-revision-is-the-same-as-the-last-run # noqa pylint: disable=C0301
 
     cur_build = step.build
+    cur_rev = cur_build.getProperty("revision")
+    if cur_rev is None or cur_rev == "":
+        cur_rev = cur_build.getProperty("got_revision")
     # never skip if this is a forced run
-    if cur_build.getProperty("revision") is None \
-            or cur_build.getProperty("revision") == "" \
+    if cur_rev is None or cur_rev == "" \
             or cur_build.getProperty("scheduler") == "force":
         print("No check for succes on force build")
         defer.returnValue(True)
@@ -44,9 +46,12 @@ def has_no_previous_success_check(step):
         yield reporters_utils.getDetailsForBuild(step.build.master,
                                                  prev_build,
                                                  wantProperties=True)
+        prev_rev = prev_build['properties']['revision'][0]
+        if (prev_rev is None or prev_rev == "") \
+                and 'got_revision' in prev_build['properties']:
+            prev_rev = prev_build['properties']['got_revision'][0]
         if prev_build['results'] == results.SUCCESS \
-                and prev_build['properties']['revision'][0] \
-                == cur_build.getProperty("revision"):
+                and prev_rev == cur_rev:
             print("Found previous succes, skipping build")
             defer.returnValue(False)
             return False
@@ -164,7 +169,8 @@ class StepsFactory(object):
                 util.ShellArg(
                     logfile='install missing requirements',
                     haltOnFailure=True,
-                    command=self.pip_command + ['install', gitpy_repo]),
+                    command=self.pip_command + ['install', '--upgrade',
+                                                gitpy_repo]),
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for readline
@@ -624,14 +630,16 @@ class ControlStepFactory():
         return factory
 
 
-build_lock = util.WorkerLock("worker_builds",
-                             maxCount=1).access('counting')
-
 control_workers = [
     "control_01",
     "control_02",
     "control_03",
     "control_04",
+]
+
+linux_workers = [
+    "linux_01",
+    "linux_02",
 ]
 
 builders = [
@@ -648,12 +656,10 @@ builders = [
     util.BuilderConfig(name="buildpackage_control", workernames=control_workers,
                        factory=ControlStepFactory().buildpackage_control()),
     util.BuilderConfig(name="hook_nightly", workernames=control_workers,
-                       factory=ControlStepFactory().hook_nightly(),
-                       locks=[build_lock]),
+                       factory=ControlStepFactory().hook_nightly()),
     # lint tests
-    util.BuilderConfig(name="linttest", workernames=["linux"],
-                       factory=LinuxStepsFactory().linttest_factory(),
-                       locks=[build_lock]),
+    util.BuilderConfig(name="linttest", workernames=linux_workers,
+                       factory=LinuxStepsFactory().linttest_factory()),
     # fast unit tests
     util.BuilderConfig(name="unittest-fast_macOS", workernames=["macOS"],
                        factory=LinuxStepsFactory().test_factory(),
@@ -661,11 +667,9 @@ builders = [
                            'TRAVIS': 'TRUE',
                            # required for mkdir, ioreg, rm and cat
                            'PATH': ['/usr/sbin/', '/bin/', '${PATH}'],
-                       },
-                       locks=[build_lock]),
-    util.BuilderConfig(name="unittest-fast_linux", workernames=["linux"],
-                       factory=LinuxStepsFactory().test_factory(),
-                       locks=[build_lock]),
+                       }),
+    util.BuilderConfig(name="unittest-fast_linux", workernames=linux_workers,
+                       factory=LinuxStepsFactory().test_factory()),
     util.BuilderConfig(name="unittest-fast_windows",
                        workernames=["windows_server_2016"],
                        factory=WindowsStepsFactory().test_factory(),
@@ -674,8 +678,7 @@ builders = [
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
                                     r'C:\BuildResources'
                                     r'\geth-windows-amd64-1.7.2-1db4ecdc']
-                       },
-                       locks=[build_lock]),
+                       }),
     # slow unit tests
     util.BuilderConfig(name="unittest_macOS", workernames=["macOS"],
                        factory=LinuxStepsFactory().test_factory(True),
@@ -683,9 +686,8 @@ builders = [
                            'TRAVIS': 'TRUE',
                            # required for mkdir, ioreg, rm and cat
                            'PATH': ['/usr/sbin/', '/bin/', '${PATH}'],
-                       },
-                       locks=[build_lock]),
-    util.BuilderConfig(name="unittest_linux", workernames=["linux"],
+                       }),
+    util.BuilderConfig(name="unittest_linux", workernames=linux_workers,
                        factory=LinuxStepsFactory().test_factory(True)),
     util.BuilderConfig(name="unittest_windows",
                        workernames=["windows_server_2016"],
@@ -695,17 +697,18 @@ builders = [
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
                                     r'C:\BuildResources'
                                     r'\geth-windows-amd64-1.7.2-1db4ecdc']
-                       },
-                       locks=[build_lock]),
+                       }),
     # build package
     util.BuilderConfig(name="buildpackage_macOS", workernames=["macOS"],
                        factory=MacOsStepsFactory().build_factory(),
-                       locks=[build_lock]),
-    util.BuilderConfig(name="buildpackage_linux", workernames=["linux"],
-                       factory=LinuxStepsFactory().build_factory(),
-                       locks=[build_lock]),
+                       env={
+                           'TRAVIS': 'TRUE',
+                           # required for mkdir, ioreg, rm and cat
+                           'PATH': ['/usr/sbin/', '/bin/', '${PATH}'],
+                       }),
+    util.BuilderConfig(name="buildpackage_linux", workernames=linux_workers,
+                       factory=LinuxStepsFactory().build_factory()),
     util.BuilderConfig(name="buildpackage_windows",
                        workernames=["windows_server_2016"],
-                       factory=WindowsStepsFactory().build_factory(),
-                       locks=[build_lock]),
+                       factory=WindowsStepsFactory().build_factory()),
 ]

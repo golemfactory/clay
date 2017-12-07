@@ -62,3 +62,18 @@
     daemon_reload: yes
     enabled: yes
     state: started
+
+- git_config:
+    name: user.email
+    scope: global
+    value: "{{worker_name}}@buildbot.local"
+  become_user: "{{worker_user}}"
+  when: need_git
+
+- git_config:
+    name: user.name
+    scope: global
+    value: "{{worker_name}}"
+  become_user: "{{worker_user}}"
+  when: need_git
+
