@@ -340,6 +340,7 @@ class WindowsStepsFactory(StepsFactory):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
+        factory.addStep(self.create_version_step())
         factory.addStep(self.load_version_step())
         factory.addStep(self.create_installer_step())
         factory.addStep(self.file_upload_step())

@@ -78,8 +78,6 @@
 
 
 - name: install buildbot venv
-  become_user: buildbot-worker
-  become: yes
   pip:
     executable: pip3
     name: virtualenv
