@@ -22,7 +22,7 @@ from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.core.service import IService, LoopingCallService
+from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
