@@ -100,7 +100,7 @@
   command:
     /Users/buildbot-worker/.venv/bin/buildbot-worker create-worker
       /Users/buildbot-worker/worker
-      {{hostvars[groups['master'][0]]['ec2_public_ip_address']}}
+      {{worker_master_hostname}}
       macOS
       {{site_settings.worker_pass}}
     creates=/Users/buildbot-worker/worker/

@@ -4,6 +4,8 @@
   remote_user: ubuntu
   become: yes
   gather_facts: False
+  vars:
+    - master_host: {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}
   pre_tasks:
     - name: Install python for Ansible
       raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
@@ -12,16 +14,16 @@
     - role: buildbot-worker-linux
       worker_name: control_01
       worker_postfix: _control_01
-      worker_master_hostname: 172.31.95.42
+      worker_master_hostname: {{master_host}}
     - role: buildbot-worker-linux
       worker_name: control_02
       worker_postfix: _control_02
-      worker_master_hostname: 172.31.95.42
+      worker_master_hostname: {{master_host}}
     - role: buildbot-worker-linux
       worker_name: control_03
       worker_postfix: _control_03
-      worker_master_hostname: 172.31.95.42
+      worker_master_hostname: {{master_host}}
     - role: buildbot-worker-linux
       worker_name: control_04
       worker_postfix: _control_04
-      worker_master_hostname: 172.31.95.42
+      worker_master_hostname: {{master_host}}

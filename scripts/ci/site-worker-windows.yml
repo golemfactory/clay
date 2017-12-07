@@ -18,4 +18,5 @@
     #   no_log: True
     # - setup:
   roles:
-    - buildbot-worker-windows
+    - role: buildbot-worker-windows
+      worker_master_hostname: {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}

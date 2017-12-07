@@ -82,6 +82,7 @@ class StepsFactory(object):
     pathsep = '/'
     golem_package = 'dist/golem.tar.gz'
     golem_package_extension = 'tar.gz'
+    version_script = 'Installer/Installer_Win/version.py'
 
     def build_factory(self):
         factory = util.BuildFactory()
@@ -90,6 +91,7 @@ class StepsFactory(object):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.create_binaries_step())
+        factory.addStep(self.create_version_step())
         factory.addStep(self.load_version_step())
         factory.addStep(self.file_upload_step())
         return factory
@@ -192,13 +194,13 @@ class StepsFactory(object):
         return steps.FileUpload(
             workersrc=util.Interpolate(self.golem_package),
             masterdest=util.Interpolate(
-                '/var/build-artifacts/golem-%(prop:version)s-'
-                '%(kw:platform)s.%(kw:ext)s',
+                '/var/build-artifacts/%(prop:branch)s'
+                '/golem-%(prop:version)s-%(kw:platform)s.%(kw:ext)s',
                 platform=self.platform,
                 ext=self.golem_package_extension),
             url=util.Interpolate(
-                '%(kw:buildbot_host)s/artifacts/golem-%(prop:version)s-'
-                '%(kw:platform)s.%(kw:ext)s',
+                '%(kw:buildbot_host)s/artifacts/%(prop:branch)s'
+                '/golem-%(prop:version)s-%(kw:platform)s.%(kw:ext)s',
                 buildbot_host=buildbot_host,
                 platform=self.platform,
                 ext=self.golem_package_extension),
@@ -207,21 +209,20 @@ class StepsFactory(object):
             doStepIf=has_no_previous_success,
         )
 
-    def load_version_step(self):
-        return steps.ShellSequence(
+    def create_version_step(self):
+        return steps.ShellCommand(
             name='load current version',
-            commands=[
-                util.ShellArg(
-                    logfile='generate version',
-                    haltOnFailure=True,
-                    command=self.python_command + [
-                        r'Installer\Installer_Win\version.py']),
-                steps.SetPropertyFromCommand(
+            haltOnFailure=True,
+            command=self.python_command + [self.version_script],
+            doStepIf=has_no_previous_success)
+
+    @staticmethod
+    def load_version_step():
+        return steps.SetPropertyFromCommand(
                     command='cat .version.ini | '
                             'grep "version =" | grep -o "[^ =]*$"',
-                    property='version')
-            ],
-            doStepIf=has_no_previous_success)
+                    property='version',
+                    doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_start_step():
@@ -296,16 +297,19 @@ class StepsFactory(object):
                     haltOnFailure=True,
                     command=['./lint.sh', 'origin/develop']),
             ],
+            env={
+                'PATH': [self.venv_bin_path, '${PATH}'],
+            },
             doStepIf=has_no_previous_success)
 
 
 class WindowsStepsFactory(StepsFactory):
     platform = 'windows'
     venv_command = ['py', '-3', '-m', 'venv']
-    python_command = ['.venv\Scripts\python.exe']
-    pip_command = ['.venv\Scripts\pip.exe']
-    venv_bin_path = util.Interpolate('%(prop:builddir)s\\build\\.venv\\Scripts')
-    venv_path = util.Interpolate('%(prop:builddir)s\\build\\.venv')
+    python_command = [r'.venv\Scripts\python.exe']
+    pip_command = [r'.venv\Scripts\pip.exe']
+    venv_bin_path = util.Interpolate(r'%(prop:builddir)s\build\.venv\Scripts')
+    venv_path = util.Interpolate(r'%(prop:builddir)s\build\.venv')
     requirements_files = ['requirements.txt', 'requirements-win.txt']
     build_taskcollector_command = [
         'msbuild',
@@ -317,6 +321,7 @@ class WindowsStepsFactory(StepsFactory):
     pathsep = '\\'
     golem_package = r'Installer\Installer_Win\Golem_win_%(prop:version)s.exe'
     golem_package_extension = 'exe'
+    version_script = r'Installer\Installer_Win\version.py'
 
     def build_factory(self):
         factory = util.BuildFactory()
@@ -338,7 +343,8 @@ class WindowsStepsFactory(StepsFactory):
             command=self.build_taskcollector_command,
             env={
                 'PATH': r'${PATH};C:\Program Files (x86)'
-                r'\Microsoft Visual Studio\2017\Community\MSBuild\15.0\Bin'
+                        r'\Microsoft Visual Studio\2017\Community'
+                        r'\MSBuild\15.0\Bin'
             }
         )
 
@@ -387,7 +393,7 @@ class MacOsStepsFactory(StepsFactory):
 
 class ControlStepFactory():
     @staticmethod
-    def pr_control():
+    def hook_pr():
 
         @util.renderer
         def extract_pr_data(props):
@@ -417,8 +423,10 @@ class ControlStepFactory():
                     raise ApprovalError
 
                 check_states = ["APPROVED", "CHANGES_REQUESTED"]
-                review_states = [a for a in json_data if a["state"] in check_states]
-                unique_reviews = {x['user']['login']: x for x in review_states}.values()
+                review_states = [
+                    a for a in json_data if a["state"] in check_states]
+                unique_reviews = {
+                    x['user']['login']: x for x in review_states}.values()
 
                 result = [a for a in unique_reviews if a["state"] == "APPROVED"]
                 approvals = len(result)
@@ -439,21 +447,21 @@ class ControlStepFactory():
         factory.addStep(steps.SetProperties(properties=extract_pr_data))
         # Trigger fast if < 1
         factory.addStep(
-            steps.Trigger(schedulerNames=['fast_test'],
+            steps.Trigger(schedulerNames=['unittest-fast_control'],
                           waitForFinish=True,
                           doStepIf=is_fast,
                           # hideStepIf=is_slow,
                           haltOnFailure=True))
         # Trigger slow if >= 1
         factory.addStep(
-            steps.Trigger(schedulerNames=['slow_test'],
+            steps.Trigger(schedulerNames=['unittest_control'],
                           waitForFinish=True,
                           doStepIf=is_slow,
                           # hideStepIf=is_fast,
                           haltOnFailure=True))
         # Trigger buildpackage if >= 1
         factory.addStep(
-            steps.Trigger(schedulerNames=['build_package'],
+            steps.Trigger(schedulerNames=['buildpackage_control'],
                           waitForFinish=False,
                           doStepIf=is_slow,
                           # hideStepIf=is_fast,
@@ -461,43 +469,41 @@ class ControlStepFactory():
         return factory
 
     @staticmethod
-    def branch_control():
+    def hook_push():
         factory = util.BuildFactory()
         # Trigger slow
         factory.addStep(
-            steps.Trigger(schedulerNames=['slow_test'],
+            steps.Trigger(schedulerNames=['unittest_control'],
                           waitForFinish=True,
                           haltOnFailure=True))
         # Trigger buildpackage
         factory.addStep(
-            steps.Trigger(schedulerNames=['build_package'],
+            steps.Trigger(schedulerNames=['buildpackage_control'],
                           waitForFinish=False,
                           haltOnFailure=True))
         return factory
 
     @staticmethod
-    def fast_test():
+    def unittest_fast_control():
         factory = util.BuildFactory()
-        factory.addStep(
-            steps.SetProperty(value="test", property="buildtype"))
         factory.addStep(
             steps.Trigger(
                 schedulerNames=[
-                    'unittest_fast_macOS',
-                    'unittest_fast_linux',
-                    'unittest_fast_windows'],
+                    'linttest',
+                    'unittest-fast_macOS',
+                    'unittest-fast_linux',
+                    'unittest-fast_windows'],
                 waitForFinish=True,
                 haltOnFailure=True))
         return factory
 
     @staticmethod
-    def slow_test():
+    def unittest_control():
         factory = util.BuildFactory()
-        factory.addStep(
-            steps.SetProperty(value="test", property="buildtype"))
         factory.addStep(
             steps.Trigger(
                 schedulerNames=[
+                    'linttest',
                     'unittest_macOS',
                     'unittest_linux',
                     'unittest_windows'],
@@ -506,10 +512,8 @@ class ControlStepFactory():
         return factory
 
     @staticmethod
-    def build_package():
+    def buildpackage_control():
         factory = util.BuildFactory()
-        factory.addStep(
-            steps.SetProperty(value="build", property="buildtype"))
         factory.addStep(
             steps.Trigger(
                 schedulerNames=[
@@ -521,18 +525,100 @@ class ControlStepFactory():
         return factory
 
     @staticmethod
-    def nightly_upload():
+    def hook_nightly():
+
+        @util.renderer
+        @defer.inlineCallbacks
+        def get_last_nightly(step):
+
+            @defer.inlineCallbacks
+            def get_last_buildpackage_success(cur_build):
+
+                # Get builderId and buildNumber to scan succesfull builds
+                # print("Properties build: {}".format(cur_build.getProperties()))
+                builder_id = yield cur_build.master.db.builders.findBuilderId(
+                    'buildpackage_control', autoCreate=False)
+                builder = yield cur_build.master.db.builds.getBuilds(
+                    builderid=builder_id, complete=True)
+                print('Build properties: {}'.format(builder))
+                # TODO: Add check for only develop
+                dict_build = {
+                    'number': builder,
+                    'builderid': builder_id
+                }
+                # print("Current build: {}".format(dict_build))
+                prev_build = yield reporters_utils.getPreviousBuild(cur_build.master,
+                                                                    dict_build)
+                # this is the first build
+                if prev_build is None:
+                    print("No previous build to check success")
+                    defer.returnValue(True)
+                    return True
+                while prev_build is not None:
+                    if prev_build['results'] == results.SUCCESS:
+                        yield reporters_utils.getDetailsForBuild(cur_build.master,
+                                                                prev_build,
+                                                                wantProperties=True)
+                        print("Found previous succes, skipping build")
+                        defer.returnValue(prev_build['properties']['revision'][0])
+                        return False
+                    prev_build = yield reporters_utils.getPreviousBuild(cur_build.master,
+                                                                        prev_build)
+                print("No previous success, run build")
+                defer.returnValue(True)
+                return True
+
+            def is_uploaded_to_github(sha):
+
+                base_url = "https://api.github.com/" \
+                           "repos/maaktweluit/golem/releases"
+
+                try:
+                    # Github API requires user agent.
+                    req = requests.get(base_url, headers={'User-Agent': 'build-bot'})
+
+                    if req.text.contains("API rate"):
+                        print("Raw reply:{}".format(req.text))
+                        raise Exception("Cant get latest release from github")
+
+                    # Check if SHA to upload is on the return data
+                    return req.text.contains(sha)
+                except(requests.HTTPError, requests.Timeout) as e:
+                    print("Error calling github, run all tests."
+                          " {} - {}".format(base_url, e))
+
+                return False
+
+            print("Nightly hook")
+            master_result = yield get_last_buildpackage_success(step.build)
+            print("Master result: {}".format(master_result))
+            github_result = is_uploaded_to_github(master_result)
+            print("Githuib result: {}".format(github_result))
+            defer.returnValue({
+                'same_as_github': github_result,
+                'last_nightly_build': master_result
+            })
+
+        def is_not_same(step):
+            return not step.getProperty('same_as_github')
+
         factory = util.BuildFactory()
 
-        # Get last nights SHA
-        # Get last successfull develop package
+        # Get last nights SHA from github releases
+        # Get last successfull develop package from artefact dir
         # Exit success when SHA's are the same
+        factory.addStep(steps.SetProperties(properties=get_last_nightly))
 
         # Get all packages from last successfull develop build
+        # factory.addStep(download all 3 packages, doStepIf=is_not_same)
         # Upload to github nightly repository as release
+        # factory.addStep(upload all 3 packages, doStepIf=is_not_same)
 
         return factory
 
+
+build_lock = util.WorkerLock("worker_builds",
+                             maxCount=1).access('counting')
 
 control_workers = [
     "control_01",
@@ -543,39 +629,45 @@ control_workers = [
 
 builders = [
     # controling builders
-    util.BuilderConfig(name="pr_control", workernames=control_workers,
-                       factory=ControlStepFactory().pr_control()),
-    util.BuilderConfig(name="branch_control", workernames=control_workers,
-                       factory=ControlStepFactory().branch_control()),
-    util.BuilderConfig(name="fast_test", workernames=control_workers,
-                       factory=ControlStepFactory().fast_test()),
-    util.BuilderConfig(name="slow_test", workernames=control_workers,
-                       factory=ControlStepFactory().slow_test()),
-    util.BuilderConfig(name="build_package", workernames=control_workers,
-                       factory=ControlStepFactory().build_package()),
-    util.BuilderConfig(name="nightly_upload", workernames=control_workers,
-                       factory=ControlStepFactory().nightly_upload()),
+    util.BuilderConfig(name="hook_pr", workernames=control_workers,
+                       factory=ControlStepFactory().hook_pr()),
+    util.BuilderConfig(name="hook_push", workernames=control_workers,
+                       factory=ControlStepFactory().hook_push()),
+    util.BuilderConfig(name="unittest-fast_control",
+                       workernames=control_workers,
+                       factory=ControlStepFactory().unittest_fast_control()),
+    util.BuilderConfig(name="unittest_control", workernames=control_workers,
+                       factory=ControlStepFactory().unittest_control()),
+    util.BuilderConfig(name="buildpackage_control", workernames=control_workers,
+                       factory=ControlStepFactory().buildpackage_control()),
+    util.BuilderConfig(name="hook_nightly", workernames=control_workers,
+                       factory=ControlStepFactory().hook_nightly(),
+                       locks=[build_lock]),
     # lint tests
     util.BuilderConfig(name="linttest", workernames=["linux"],
-                       factory=LinuxStepsFactory().linttest_factory()),
+                       factory=LinuxStepsFactory().linttest_factory(),
+                       locks=[build_lock]),
     # fast unit tests
-    util.BuilderConfig(name="unittest_fast_macOS", workernames=["macOS"],
+    util.BuilderConfig(name="unittest-fast_macOS", workernames=["macOS"],
                        factory=LinuxStepsFactory().test_factory(),
                        env={
                            'TRAVIS': 'TRUE',
                            # required for mkdir, ioreg, rm and cat
                            'PATH': ['/usr/sbin/', '/bin/', '${PATH}'],
-                       }),
-    util.BuilderConfig(name="unittest_fast_linux", workernames=["linux"],
-                       factory=LinuxStepsFactory().test_factory()),
-    util.BuilderConfig(name="unittest_fast_windows",
+                       },
+                       locks=[build_lock]),
+    util.BuilderConfig(name="unittest-fast_linux", workernames=["linux"],
+                       factory=LinuxStepsFactory().test_factory(),
+                       locks=[build_lock]),
+    util.BuilderConfig(name="unittest-fast_windows",
                        workernames=["windows_server_2016"],
                        factory=WindowsStepsFactory().test_factory(),
                        env={
                            'APPVEYOR': 'TRUE',
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
                                     'C:\\BuildResources\\geth-windows-amd64-1.7.2-1db4ecdc']
-                       }),
+                       },
+                       locks=[build_lock]),
     # slow unit tests
     util.BuilderConfig(name="unittest_macOS", workernames=["macOS"],
                        factory=LinuxStepsFactory().test_factory(True),
@@ -583,7 +675,8 @@ builders = [
                            'TRAVIS': 'TRUE',
                            # required for mkdir, ioreg, rm and cat
                            'PATH': ['/usr/sbin/', '/bin/', '${PATH}'],
-                       }),
+                       },
+                       locks=[build_lock]),
     util.BuilderConfig(name="unittest_linux", workernames=["linux"],
                        factory=LinuxStepsFactory().test_factory(True)),
     util.BuilderConfig(name="unittest_windows",
@@ -593,13 +686,17 @@ builders = [
                            'APPVEYOR': 'TRUE',
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
                                     'C:\\BuildResources\\geth-windows-amd64-1.7.2-1db4ecdc']
-                       }),
+                       },
+                       locks=[build_lock]),
     # build package
     util.BuilderConfig(name="buildpackage_macOS", workernames=["macOS"],
-                       factory=MacOsStepsFactory().build_factory()),
+                       factory=MacOsStepsFactory().build_factory(),
+                       locks=[build_lock]),
     util.BuilderConfig(name="buildpackage_linux", workernames=["linux"],
-                       factory=LinuxStepsFactory().build_factory()),
+                       factory=LinuxStepsFactory().build_factory(),
+                       locks=[build_lock]),
     util.BuilderConfig(name="buildpackage_windows",
                        workernames=["windows_server_2016"],
-                       factory=WindowsStepsFactory().build_factory()),
+                       factory=WindowsStepsFactory().build_factory(),
+                       locks=[build_lock]),
 ]

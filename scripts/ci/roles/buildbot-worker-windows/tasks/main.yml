@@ -12,11 +12,23 @@
     - name: git
       params: '"/GitAndUnixToolsOnPath"'
     - name: visualstudio2017community
-    - name: visualstudio2017-workload-nativedesktop
-      params: "--includeOptional"
     - name: microsoft-visual-cpp-build-tools
     - name: innosetup
 
+# TODO: Remove hack after fix on: https://github.com/jberezanski/ChocolateyPackages/issues/28
+- win_lineinfile:
+    path: C:\ProgramData\chocolatey\extensions\chocolatey-visualstudio\Start-VisualStudioModifyOperation.ps1
+    backrefs: yes
+    regexp: '(.+)-ProgramsAndFeaturesDisplayName "Microsoft Visual Studio \$VisualStudioYear" `'
+    line: '$1-ProgramsAndFeaturesDisplayName "Microsoft Visual Studio Installer" `'
+
+- win_chocolatey:
+    name: "{{ item.name }}"
+    params: "{{ item.params|default('') }}"
+    timeout: 5400
+  with_items:
+    - name: visualstudio2017-workload-nativedesktop
+      params: "--includeOptional"
 
 - name: install pypiwin32
   win_shell: py -3 -m pip install pypiwin32
@@ -59,7 +71,7 @@
   win_shell:
     py -3 C:\Python36\Scripts\buildbot-worker.exe create-worker
       C:\BuildbotWorker
-      "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
+      "{{worker_master_hostname}}"
       windows_server_2016
       "{{site_settings.worker_pass}}"
   args:
@@ -192,11 +204,11 @@
   become_user: buildbot-worker
   win_shell:
     Start-Process C:\Python36\Scripts\buildbot-worker.exe -ArgumentList "start","C:\BuildbotWorker"
-  when: not log_exists.exception and not log_exists.stat.exists
+  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
 
 - pause:
     seconds: 10
-  when: not log_exists.exception and not log_exists.stat.exists
+  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
 
 
 - name: Stop worker for first time
@@ -204,7 +216,7 @@
   become_user: buildbot-worker
   win_shell:
     Stop-Process -name buildbot-worker
-  when: not log_exists.exception and not log_exists.stat.exists
+  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
 
 
 - name: set registry key right

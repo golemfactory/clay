@@ -3,4 +3,5 @@
 - hosts: mac_worker
   remote_user: admin
   roles:
-    - buildbot-worker-mac
+    - role: buildbot-worker-mac
+      worker_master_hostname: {{hostvars[groups['master'][0]]['ec2_public_ip_address']}}
