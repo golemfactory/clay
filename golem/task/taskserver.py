@@ -74,7 +74,7 @@ class TaskResourcesMixin(object):
             task = self.task_manager.tasks[task_id]
             files = task.get_resources(None, ResourceType.HASHES)
 
-            logger.info("Restoring task resources: %r", task_id)
+            logger.info("Restoring task '%s' resources", task_id)
             self._restore_resources(files, task_id, task_state.resource_hash)
 
     def _restore_resources(self,
@@ -91,18 +91,20 @@ class TaskResourcesMixin(object):
                 resource_hash=resource_hash,
                 async=False
             )
-        except ConnectionError:
-            logger.error("Cannot restore resources for task: %r", task_id)
-            self.task_manager.delete_task(task_id)
-        except HTTPError:
+        except ConnectionError as exc:
+            self._restore_resources_error(task_id, exc)
+        except HTTPError as exc:
             if resource_hash:
                 return self._restore_resources(files, task_id)
-            logger.error("Cannot restore resources for task: %r", task_id)
-            self.task_manager.delete_task(task_id)
+            self._restore_resources_error(task_id, exc)
         else:
             task_state = self.task_manager.tasks_states[task_id]
             task_state.resource_hash = resource_hash
             self.task_manager.notify_update_task(task_id)
+
+    def _restore_resources_error(self, task_id, error):
+        logger.error("Cannot restore task '%s' resources: %r", task_id, error)
+        self.task_manager.delete_task(task_id)
 
     def get_download_options(self, key_id):
         resource_manager = self._get_resource_manager()
