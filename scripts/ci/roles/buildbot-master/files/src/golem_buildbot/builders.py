@@ -1,8 +1,11 @@
 import requests
 from twisted.internet import defer
+
+# pylint: disable=E0401
 from buildbot.plugins import steps, util
 from buildbot.process import results
 from buildbot.reporters import utils as reporters_utils
+# pylint: enable=E0401
 
 from .settings import buildbot_host
 
@@ -535,7 +538,6 @@ class ControlStepFactory():
             def get_last_buildpackage_success(cur_build):
 
                 # Get builderId and buildNumber to scan succesfull builds
-                # print("Properties build: {}".format(cur_build.getProperties()))
                 builder_id = yield cur_build.master.db.builders.findBuilderId(
                     'buildpackage_control', autoCreate=False)
                 builder = yield cur_build.master.db.builds.getBuilds(
@@ -547,8 +549,9 @@ class ControlStepFactory():
                     'builderid': builder_id
                 }
                 # print("Current build: {}".format(dict_build))
-                prev_build = yield reporters_utils.getPreviousBuild(cur_build.master,
-                                                                    dict_build)
+                prev_build = yield reporters_utils.getPreviousBuild(
+                    cur_build.master,
+                    dict_build)
                 # this is the first build
                 if prev_build is None:
                     print("No previous build to check success")
@@ -556,14 +559,17 @@ class ControlStepFactory():
                     return True
                 while prev_build is not None:
                     if prev_build['results'] == results.SUCCESS:
-                        yield reporters_utils.getDetailsForBuild(cur_build.master,
-                                                                prev_build,
-                                                                wantProperties=True)
+                        yield reporters_utils.getDetailsForBuild(
+                            cur_build.master,
+                            prev_build,
+                            wantProperties=True)
                         print("Found previous succes, skipping build")
-                        defer.returnValue(prev_build['properties']['revision'][0])
+                        defer.returnValue(
+                            prev_build['properties']['revision'][0])
                         return False
-                    prev_build = yield reporters_utils.getPreviousBuild(cur_build.master,
-                                                                        prev_build)
+                    prev_build = yield reporters_utils.getPreviousBuild(
+                        cur_build.master,
+                        prev_build)
                 print("No previous success, run build")
                 defer.returnValue(True)
                 return True
@@ -575,7 +581,8 @@ class ControlStepFactory():
 
                 try:
                     # Github API requires user agent.
-                    req = requests.get(base_url, headers={'User-Agent': 'build-bot'})
+                    req = requests.get(
+                        base_url, headers={'User-Agent': 'build-bot'})
 
                     if req.text.contains("API rate"):
                         print("Raw reply:{}".format(req.text))
@@ -665,7 +672,8 @@ builders = [
                        env={
                            'APPVEYOR': 'TRUE',
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
-                                    'C:\\BuildResources\\geth-windows-amd64-1.7.2-1db4ecdc']
+                                    r'C:\BuildResources'
+                                    r'\geth-windows-amd64-1.7.2-1db4ecdc']
                        },
                        locks=[build_lock]),
     # slow unit tests
@@ -685,7 +693,8 @@ builders = [
                        env={
                            'APPVEYOR': 'TRUE',
                            'PATH': ['${PATH}', 'C:\\BuildResources\\hyperg',
-                                    'C:\\BuildResources\\geth-windows-amd64-1.7.2-1db4ecdc']
+                                    r'C:\BuildResources'
+                                    r'\geth-windows-amd64-1.7.2-1db4ecdc']
                        },
                        locks=[build_lock]),
     # build package
