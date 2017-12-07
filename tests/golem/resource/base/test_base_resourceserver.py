@@ -160,55 +160,39 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             shutil.rmtree(new_path)
 
     def testRemoveTask(self):
-
-        self.resource_manager.add_files(
-            self._resources(),
-            self.task_id
-        )
-
+        self.resource_manager.add_files(self._resources(), self.task_id)
         assert self.resource_manager.storage.get_resources(self.task_id)
-
         self.resource_server.remove_task(self.task_id)
-        resources = self.resource_manager.storage.get_resources(self.task_id)
-
-        assert not resources
+        assert not self.resource_manager.storage.get_resources(self.task_id)
 
     def testGetResources(self):
-        self.resource_manager.add_task(self.target_resources,
-                                       self.task_id, async=False)
+        self.resource_manager.add_task(self.target_resources, self.task_id,
+                                       async=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
-        assert sum(len(r) for r in resources) == len(self.target_resources)
+        relative = [[r.hash, r.files] for r in resources]
 
         assert len(self.resource_server.pending_resources) == 0
         self.resource_server.download_resources(resources, self.task_id)
         pending = self.resource_server.pending_resources[self.task_id]
         assert len(pending) == len(resources)
 
-        relative_f = self.resource_manager.storage.relative_path
-        relative = [(r.hash, [relative_f(f, self.task_id) for f in r.files])
-                    for r in resources]
-        assert sum(len(r[1]) for r in relative) == len(self.target_resources)
-
-        new_dir_manager = DirManager(self.path, '2')
         new_server = BaseResourceServer(
             DummyResourceManager(self.dir_manager),
-            new_dir_manager,
+            DirManager(self.path, '2'),
             self.keys_auth,
             self.client
         )
         new_task_id = str(uuid.uuid4())
         new_task_path = new_server.resource_manager.storage.get_dir(new_task_id)
 
-        assert len(new_server.pending_resources) == 0
         new_server.download_resources(relative, new_task_id)
-        assert len(new_server.pending_resources[new_task_id]) == len(resources)
         new_server._download_resources(async=False)
 
         for entry in relative:
             for f in entry[1]:
-                file_path = os.path.join(new_task_path, f)
-                assert os.path.exists(file_path)
+                new_file_path = os.path.join(new_task_path, f)
+                assert os.path.exists(new_file_path)
 
         assert self.client.downloaded
 

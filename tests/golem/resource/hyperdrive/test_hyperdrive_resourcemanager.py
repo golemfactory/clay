@@ -7,11 +7,11 @@ from pathlib import Path
 from requests import ConnectionError
 
 from golem.network.hyperdrive.client import HyperdriveClient
-from tests.golem.resource.base.common import AddGetResources
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager, HyperdrivePeerManager
 from golem.testutils import TempDirFixture
+from tests.golem.resource.base.common import AddGetResources
 
 
 def running():

@@ -21,13 +21,13 @@ class TestHyperdrivePeerManager(TestCase):
         peer_manager.interpret_metadata(metadata, None, None, node)
 
         assert len(peer_manager._peers) == 1
-        assert len(peer_manager._tasks) == 0
+        assert not peer_manager._tasks
         assert len(peer_manager.get_for_task(task_id)) == 1
 
         peer_manager.interpret_metadata(metadata, None, None, node)
 
         assert len(peer_manager._peers) == 1
-        assert len(peer_manager._tasks) == 0
+        assert not peer_manager._tasks
         assert len(peer_manager.get_for_task(task_id)) == 1
 
         peer_manager.add(task_id, node.key)
@@ -38,6 +38,6 @@ class TestHyperdrivePeerManager(TestCase):
 
         peer_manager.remove(task_id, node.key)
 
-        assert len(peer_manager._peers) == 0
+        assert not peer_manager._peers
         assert len(peer_manager._tasks) == 1
         assert len(peer_manager.get_for_task(task_id)) == 1

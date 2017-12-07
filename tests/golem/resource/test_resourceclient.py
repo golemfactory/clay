@@ -1,7 +1,7 @@
 import time
-import unittest
 
-from mock import Mock
+from unittest import TestCase
+from unittest.mock import Mock
 
 from golem.core.async import AsyncRequest, async_run
 from golem.resource.client import ClientHandler, ClientError, \
@@ -9,59 +9,46 @@ from golem.resource.client import ClientHandler, ClientError, \
 from golem.tools.testwithreactor import TestWithReactor
 
 
-class MockClientHandler(ClientHandler):
-    def __init__(self, config):
-        super(MockClientHandler, self).__init__(config)
+class TestClientHandler(TestCase):
 
-    def command_failed(self, exc, cmd, obj_id):
-        pass
-
-    @staticmethod
-    def new_client():
-        return Mock()
-
-
-class MockClientConfig(ClientConfig):
-    def __init__(self, max_retries=8, timeout=None):
-        super(MockClientConfig, self).__init__(max_retries, timeout)
-
-
-class TestClientHandler(unittest.TestCase):
+    def setUp(self):
+        config = ClientConfig(max_retries=3)
+        self.handler = ClientHandler(config)
 
     def test_retry(self):
-        max_retries = 2
-        config = MockClientConfig(max_retries=max_retries)
-        handler = MockClientHandler(config)
         valid_exceptions = ClientHandler.retry_exceptions
         value_exc = valid_exceptions[0]()
+        counter = 0
+
+        def func(e):
+            nonlocal counter
+            counter += 1
+            raise e
 
         for exc_class in valid_exceptions:
             counter = 0
-            exc = exc_class(value_exc)
+            self.handler._retry(func, exc_class(value_exc), raise_exc=False)
 
-            def func_1():
-                nonlocal counter
-                counter += 1
-                raise exc
+            # All retries spent
+            assert counter == self.handler.config.max_retries
 
-            handler._retry(func_1, raise_exc=False)
-            assert counter == max_retries
-
+    def test_retry_unsupported_exception(self):
         counter = 0
+
         with self.assertRaises(ArithmeticError):
 
-            def func_2():
+            def func():
                 nonlocal counter
                 counter += 1
                 raise ArithmeticError
 
-            handler._retry(func_2, raise_exc=False)
+            self.handler._retry(func, raise_exc=False)
 
         # Exception was raised on first retry
         assert counter == 1
 
 
-class TestClientOptions(unittest.TestCase):
+class TestClientOptions(TestCase):
 
     def test_init(self):
         with self.assertRaises(AssertionError):
@@ -112,27 +99,31 @@ class TestClientOptions(unittest.TestCase):
 class TestAsyncRequest(TestWithReactor):
 
     def test_callbacks(self):
-        done = [False]
-
         method = Mock()
-        req = AsyncRequest(method)
+        request = AsyncRequest(method)
+        result = Mock(value=None)
 
         def success(*_):
-            done[0] = True
+            result.value = True
 
         def error(*_):
-            done[0] = True
+            result.value = False
 
-        done[0] = False
-        method.called = False
-        async_run(req, success, error)
-        time.sleep(1)
+        async_run(request)
+        time.sleep(0.5)
 
-        assert method.called
+        assert method.call_count == 1
+        assert result.value is None
 
-        done[0] = False
-        method.called = False
-        async_run(req)
-        time.sleep(1)
+        async_run(request, success)
+        time.sleep(0.5)
 
-        assert method.called
+        assert method.call_count == 2
+        assert result.value is True
+
+        method.side_effect = Exception
+        async_run(request, success, error)
+        time.sleep(0.5)
+
+        assert method.call_count == 3
+        assert result.value is False
