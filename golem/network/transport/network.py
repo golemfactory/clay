@@ -17,13 +17,30 @@ class Network(object, metaclass=abc.ABCMeta):
         return
 
 
-class SessionFactory(Factory):
+class SessionFactory(object):
     def __init__(self, session_class):
         self.session_class = session_class
 
     def get_session(self, conn):
         return self.session_class(conn)
 
+class IncomingSessionFactoryWrapper(object):
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
+
+    def get_session(self, conn):
+        session = self.session_factory.get_session(conn)
+        session.conn_type = Session.CONN_TYPE_SERVER
+        return session
+
+class OutgoingSessionFactoryWrapper(object):
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
+
+    def get_session(self, conn):
+        session = self.session_factory.get_session(conn)
+        session.conn_type = Session.CONN_TYPE_CLIENT
+        return session
 
 class ProtocolFactory(Factory):
     def __init__(self, protocol_class, server=None, session_factory=None):
@@ -36,6 +53,27 @@ class ProtocolFactory(Factory):
         protocol.set_session_factory(self.session_factory)
         return protocol
 
+class IncomingProtocolFactoryWrapper(Factory):
+    def __init__(self, protocol_factory):
+        self.protocol_factory = protocol_factory
+        self.session_factory = IncomingSessionFactoryWrapper(
+            protocol_factory.session_factory)
+
+    def buildProtocol(self, addr):
+        protocol = self.protocol_factory.buildProtocol(addr)
+        protocol.set_session_factory(self.session_factory)
+        return protocol
+
+class OutgoingProtocolFactoryWrapper(Factory):
+    def __init__(self, protocol_factory):
+        self.protocol_factory = protocol_factory
+        self.session_factory = OutgoingSessionFactoryWrapper(
+            protocol_factory.session_factory)
+
+    def buildProtocol(self, addr):
+        protocol = self.protocol_factory.buildProtocol(addr)
+        protocol.set_session_factory(self.session_factory)
+        return protocol
 
 class SessionProtocol(Protocol):
     def __init__(self):
@@ -61,10 +99,6 @@ class SessionProtocol(Protocol):
 
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
-        if isinstance(self.transport, Client):
-            self.session.conn_type = Session.CONN_TYPE_CLIENT
-        elif isinstance(self.transport, Server):
-            self.session.conn_type = Session.CONN_TYPE_SERVER
 
     def connectionLost(self, reason=connectionDone):
         del self.session
