@@ -1,3 +1,4 @@
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .modelbase import BasicModel
 
 
@@ -38,3 +39,32 @@ class ComputationTime(BasicModel):
         )
         self.success = success
         self.value = value
+
+class RequestorStatsModel(BasicModel):
+    # pylint: disable=too-many-instance-attributes,too-few-public-methods
+    def __init__(self, meta_data: BasicModel, current_stats: CurrentStats,
+                 finished_stats: FinishedTasksStats):
+        super().__init__("RequestorStats", meta_data.cliid, meta_data.sessid)
+
+        self.tasks_cnt = current_stats.tasks_cnt
+        self.finished_task_cnt = current_stats.finished_task_cnt
+        self.requested_subtasks_cnt = current_stats.requested_subtasks_cnt
+        self.collected_results_cnt = current_stats.collected_results_cnt
+        self.verified_results_cnt = current_stats.verified_results_cnt
+        self.timed_out_subtasks_cnt = current_stats.timed_out_subtasks_cnt
+        self.not_downloadable_subtasks_cnt = (current_stats
+                                              .not_downloadable_subtasks_cnt)
+        self.failed_subtasks_cnt = current_stats.failed_subtasks_cnt
+        self.work_offers_cnt = current_stats.work_offers_cnt
+
+        self.finished_ok_cnt = finished_stats.finished_ok.tasks_cnt
+        self.finished_ok_total_time = finished_stats.finished_ok.total_time
+
+        self.finished_with_failures_cnt = (finished_stats
+                                           .finished_with_failures.tasks_cnt)
+        self.finished_with_failures_total_time = (finished_stats
+                                                  .finished_with_failures
+                                                  .total_time)
+
+        self.failed_cnt = finished_stats.failed.tasks_cnt
+        self.failed_total_time = finished_stats.failed.total_time

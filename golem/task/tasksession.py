@@ -23,6 +23,9 @@ from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType, ResourceType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
+# For type annotations:
+from golem.task.taskmanager import TaskManager  # pylint: disable=unused-import
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,7 +70,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
-        self.task_manager = self.task_server.task_manager
+        self.task_manager = self.task_server.task_manager  # type: TaskManager
         self.task_computer = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
@@ -412,6 +415,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
+                                               msg.node_name)
         if self.task_server.should_accept_provider(self.key_id):
 
             if self._handshake_required(self.key_id):
