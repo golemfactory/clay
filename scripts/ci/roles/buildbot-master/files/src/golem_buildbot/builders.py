@@ -458,7 +458,7 @@ class ControlStepFactory():
         # Trigger fast if < 1
         factory.addStep(
             steps.Trigger(schedulerNames=['unittest-fast_control'],
-                          waitForFinish=True,
+                          waitForFinish=False,
                           doStepIf=is_fast,
                           # hideStepIf=is_slow,
                           haltOnFailure=True))

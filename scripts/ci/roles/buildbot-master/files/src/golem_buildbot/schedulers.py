@@ -1,6 +1,8 @@
 import re
 
+# pylint: disable=E0401
 from buildbot.plugins import schedulers, util
+# pylint: enable=E0401
 
 
 def branch_check(c):
