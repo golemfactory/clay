@@ -4,7 +4,7 @@ import json
 import logging
 from pprint import pformat
 
-from golem.core.service import Service
+from golem.core.service import LoopingCallService
 
 
 __all__ = ['DiagnosticsOutputFormat', 'DiagnosticsProvider', 'DiagnosticsService']
@@ -36,7 +36,7 @@ class DiagnosticsProvider(object, metaclass=abc.ABCMeta):
         raise ValueError("Unknown output format")
 
 
-class DiagnosticsService(Service):
+class DiagnosticsService(LoopingCallService):
     def __init__(self, output_format=None):
         super().__init__(interval_seconds=300)
         self._providers = dict()

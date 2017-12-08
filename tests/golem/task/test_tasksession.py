@@ -495,8 +495,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
-        msg_ack = message.AckReportComputedTask('subtask_id')
-        msg_rej = message.RejectReportComputedTask('subtask_id')
+        msg_ack = message.AckReportComputedTask('subtask_id', raw=b'')
+        msg_rej = message.RejectReportComputedTask('subtask_id', raw=b'')
 
         # Subtask is not known
         session._react_to_ack_report_computed_task(msg_ack)
@@ -529,7 +529,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Pending
         msg = message.SubtaskPayment(
             subtask_id=subtask_id,
-            reward=reward
+            reward=reward,
+            raw=b''
         )
 
         self.task_session.interpret(msg)
@@ -671,7 +672,7 @@ class TestCreatePackage(unittest.TestCase):
         res.subtask_id = subtask_id
         ts.task_server.get_waiting_task_result.return_value = res
 
-        msg = message.GetTaskResult(subtask_id=subtask_id)
+        msg = message.GetTaskResult(subtask_id=subtask_id, raw=b'')
 
         self.subtask_id = subtask_id
         self.ts = ts
@@ -685,7 +686,8 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.send.called
         assert not ts.dropped.called
 
-    @patch('golem.task.tasksession.async_run', side_effect=executor_recoverable_error)
+    @patch('golem.task.tasksession.async_run',
+           side_effect=executor_recoverable_error)
     def test_send_task_result_hash_recoverable_error(self, _):
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
