@@ -406,3 +406,14 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.peers = {'peer_id': mock.Mock()}
         self.service.disconnect()
         assert self.service.peers['peer_id'].dropped.called
+
+    def test_round_robin_seeds(self):
+        SEEDS_NUM = 10
+        seeds = set()
+        for i in range(SEEDS_NUM):
+            seeds.add(('127.0.0.1', i+1))
+        self.service.seeds = seeds.copy()
+        for i in range(SEEDS_NUM):
+            seed = self.service._get_next_random_seed()
+            seeds.remove(seed)
+        assert not seeds
