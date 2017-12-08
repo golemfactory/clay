@@ -117,8 +117,6 @@ class ClientHandler(metaclass=abc.ABCMeta):
             try:
                 result = method(*args, **kwargs)
             except Exception as exc:
-                import traceback
-                traceback.print_exc()
                 logger.error('Error executing %r (%r, %r): %r',
                              method, args, kwargs, exc)
 

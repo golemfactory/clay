@@ -61,7 +61,7 @@ class TestHyperdriveClient(unittest.TestCase):
             assert client.restore(self.response['files']) == \
                    self.response['hash']
 
-    def test_get_file(self):
+    def test_get(self):
         client = HyperdriveClient()
         content_hash = str(uuid.uuid4())
         filepath = str(uuid.uuid4())
