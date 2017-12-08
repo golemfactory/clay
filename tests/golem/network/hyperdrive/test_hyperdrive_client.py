@@ -63,37 +63,28 @@ class TestHyperdriveClient(unittest.TestCase):
 
     def test_get_file(self):
         client = HyperdriveClient()
-        multihash = str(uuid.uuid4())
+        content_hash = str(uuid.uuid4())
         filepath = str(uuid.uuid4())
 
         with mock.patch.object(HyperdriveClient, '_request',
                                return_value=self.response):
 
             with self.assertRaises(KeyError):
-                client.get_file(multihash)
+                client.get(content_hash)
 
-            assert client.get_file(multihash,
-                                   client_options=None,
-                                   filepath=filepath) == \
-                [(filepath, multihash, self.response['files'])]
+            assert client.get(content_hash,
+                              client_options=None,
+                              filepath=filepath) == \
+                [(filepath, content_hash, self.response['files'])]
 
-    def test_pin_add(self):
+    def test_cancel(self):
         client = HyperdriveClient()
-        multihash = str(uuid.uuid4())
-        filepath = str(uuid.uuid4())
-
+        content_hash = str(uuid.uuid4())
         with mock.patch.object(HyperdriveClient, '_request',
                                return_value=self.response):
 
-            assert client.pin_add(filepath, multihash) == self.response['hash']
-
-    def test_pin_rm(self):
-        client = HyperdriveClient()
-        multihash = str(uuid.uuid4())
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-
-            assert client.pin_rm(multihash) == self.response['hash']
+            response_hash = self.response['hash']
+            assert client.cancel(content_hash) == response_hash
 
     @mock.patch('json.loads')
     @mock.patch('requests.post')

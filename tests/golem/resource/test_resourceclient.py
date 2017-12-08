@@ -1,19 +1,17 @@
 import time
 import unittest
-import uuid
 
-import twisted
 from mock import Mock
 
 from golem.core.async import AsyncRequest, async_run
-from golem.resource.client import ClientHandler, ClientCommands, ClientError, \
+from golem.resource.client import ClientHandler, ClientError, \
     ClientOptions, ClientConfig
 from golem.tools.testwithreactor import TestWithReactor
 
 
 class MockClientHandler(ClientHandler):
-    def __init__(self, commands_class, config):
-        super(MockClientHandler, self).__init__(commands_class, config)
+    def __init__(self, config):
+        super(MockClientHandler, self).__init__(config)
 
     def command_failed(self, exc, cmd, obj_id):
         pass
@@ -23,46 +21,42 @@ class MockClientHandler(ClientHandler):
 
 
 class MockClientConfig(ClientConfig):
-    def __init__(self, max_concurrent_downloads=3, max_retries=8, timeout=None):
-        super(MockClientConfig, self).__init__(max_concurrent_downloads, max_retries, timeout)
+    def __init__(self, max_retries=8, timeout=None):
+        super(MockClientConfig, self).__init__(max_retries, timeout)
 
 
 class TestClientHandler(unittest.TestCase):
 
-    def test_can_retry(self):
-        valid_exceptions = ClientHandler.timeout_exceptions
-        config = MockClientConfig()
-        handler = MockClientHandler(ClientCommands, config)
+    def test_retry(self):
+        valid_exceptions = ClientHandler.retry_exceptions
+        max_retries = 2
+        config = MockClientConfig(max_retries=max_retries)
+        handler = MockClientHandler(config)
         value_exc = valid_exceptions[0]()
 
         for exc_class in valid_exceptions:
-            try:
-                exc = exc_class(value_exc)
-            except:
-                exc = exc_class.__new__(exc_class)
+            counter = 0
+            exc = exc_class(value_exc)
 
-            assert handler._can_retry(exc, ClientCommands.get, str(uuid.uuid4()))
-        assert not handler._can_retry(Exception(value_exc), ClientCommands.get, str(uuid.uuid4()))
+            def func():
+                nonlocal counter
+                counter += 1
+                raise exc
 
-        obj_id = str(uuid.uuid4())
-        exc = valid_exceptions[0]()
+            handler._retry(func, raise_exc=False)
+            assert counter == max_retries
 
-        for i in range(0, config.max_retries):
-            can_retry = handler._can_retry(exc, ClientCommands.get, obj_id)
-            assert can_retry
-        assert not handler._can_retry(exc, ClientCommands.get, obj_id)
+        counter = 0
+        with self.assertRaises(ArithmeticError):
+            def func():
+                nonlocal counter
+                counter += 1
+                raise ArithmeticError
 
-    def test_exception_type(self):
+            handler._retry(func, raise_exc=False)
 
-        valid_exceptions = ClientHandler.timeout_exceptions
-        exc = valid_exceptions[0]()
-        failure_exc = twisted.python.failure.Failure(exc_value=exc)
-
-        def is_class(object):
-            return isinstance(object, type)
-
-        assert is_class(ClientHandler._exception_type(failure_exc))
-        assert is_class(ClientHandler._exception_type(exc))
+        # Exception was raised on first retry
+        assert counter == 1
 
 
 class TestClientOptions(unittest.TestCase):
