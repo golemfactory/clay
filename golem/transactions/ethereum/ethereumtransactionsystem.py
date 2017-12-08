@@ -66,6 +66,7 @@ class EthereumTransactionSystem(TransactionSystem):
         """ Human readable Ethereum address for incoming payments."""
         return self.__eth_addr.get_str_addr()
 
+    # GG todo check if get_balance needs updates...
     def get_balance(self):
         if not self.incomes_keeper.processor.balance_known():
             return None, None, None
@@ -74,6 +75,7 @@ class EthereumTransactionSystem(TransactionSystem):
         eth = self.incomes_keeper.processor.eth_balance()
         return gnt, av_gnt, eth
 
+    # todo GG sync - deadcode?
     @report_calls(Component.ethereum, 'sync')
     def sync(self):
         syncing = True

@@ -17,7 +17,7 @@ class MockPopen(Mock):
         return "Version: 1.6.2", Mock()
 
 
-class RopstenFaucetTest(unittest.TestCase, PEP8MixIn):
+class FaucetTest(unittest.TestCase, PEP8MixIn):
     PEP8_FILES = ["golem/ethereum/node.py"]
 
     @patch('requests.get')
