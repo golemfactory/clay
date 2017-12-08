@@ -1,48 +1,19 @@
 import abc
-import hashlib
-import inspect
 import logging
 import os
-import shutil
 import socket
 import uuid
-from enum import Enum
-from threading import Lock
-
-import base58
-import multihash
-import requests
-import twisted
 from copy import deepcopy
-from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
-    ReadTimeoutError, ConnectTimeoutError, ConnectionError
-from twisted.internet import threads
+from types import MethodType
+from typing import Optional
 
-from golem.core.async import AsyncRequest, async_run
+import requests
 
-log = logging.getLogger(__name__)
-
-
-SHA1_BLOCK_SIZE = 64
+logger = logging.getLogger(__name__)
 
 
-def file_sha_256(file_path):
-    sha = hashlib.sha256()
-
-    with open(file_path, 'rb') as f:
-        buf = f.read(SHA1_BLOCK_SIZE)
-
-        while len(buf) > 0:
-            sha.update(buf)
-            buf = f.read(SHA1_BLOCK_SIZE)
-
-    return sha.hexdigest()
-
-
-def file_multihash(file_path):
-    h = file_sha_256(file_path)
-    encoded = multihash.encode(h, multihash.SHA2_256)
-    return base58.b58encode(bytes(encoded))
+class ClientError(Exception):
+    pass
 
 
 class IClient(object):
@@ -51,66 +22,25 @@ class IClient(object):
     def build_options(cls, **kwargs):
         raise NotImplementedError
 
-    def add(self, files, recursive=False, client_options=None, **kwargs):
+    def add(self, files, recursive=False, **kwargs):
         raise NotImplementedError
 
-    def get_file(self, content_hash, client_options=None, **kwargs):
+    def cancel(self, content_hash):
+        raise NotImplementedError
+
+    def get(self, content_hash, client_options=None, **kwargs):
         raise NotImplementedError
 
     def id(self, client_options=None, *args, **kwargs):
         raise NotImplementedError
 
 
-class IClientHandler(object, metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def new_client(self):
-        pass
-
-    @abc.abstractmethod
-    def command_failed(self, exc, cmd, obj_id, **kwargs):
-        pass
-
-    @abc.abstractmethod
-    def _can_retry(self, exc, cmd, obj_id):
-        pass
-
-    @abc.abstractmethod
-    def _clear_retry(self, cmd, obj_id):
-        pass
-
-    @abc.abstractmethod
-    def _handle_retries(self, method, cmd, *args, **kwargs):
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def _async_call(method, success, error, *args, **kwargs):
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def _exception_type(exc):
-        pass
-
-
-class ClientCommands(Enum):
-    add = 0
-    get = 1
-    id = 2
-    restore = 3
-
-
-class ClientError(Exception):
-    pass
-
-
 class ClientConfig(object):
     """
     Initial configuration for classes implementing the IClient interface
     """
-    def __init__(self, max_concurrent_downloads=3, max_retries=3, timeout=None):
+    def __init__(self, max_retries=3, timeout=None):
 
-        self.max_concurrent_downloads = max_concurrent_downloads
         self.max_retries = max_retries
         self.client = dict(
             timeout=timeout or (12000, 12000)
@@ -140,11 +70,11 @@ class ClientOptions(object):
 
     def filtered(self, client_id, version):
         if self.client_id != client_id:
-            log.warning('Resource client: invalid client id: %s',
-                        self.client_id)
+            logger.warning('Resource client: invalid client id: %s',
+                           self.client_id)
         elif not isinstance(self.version, float):
-            log.warning('Resource client: invalid version format: %s',
-                        self.version)
+            logger.warning('Resource client: invalid version format: %s',
+                           self.version)
         else:
             return self.clone()
 
@@ -160,115 +90,89 @@ class ClientOptions(object):
         return kwargs.get('client_options', kwargs.get('options', None))
 
 
-class ClientHandler(IClientHandler, metaclass=abc.ABCMeta):
+class ClientHandler(metaclass=abc.ABCMeta):
 
-    __retry_lock = Lock()
+    retry_exceptions = (
+        requests.exceptions.Timeout,
+        requests.exceptions.RetryError,
+        requests.exceptions.ConnectionError,
+        socket.timeout,
+        socket.error
+    )
 
-    timeout_exceptions = (requests.exceptions.ConnectionError,
-                          requests.exceptions.ConnectTimeout,
-                          requests.exceptions.ReadTimeout,
-                          requests.exceptions.RetryError,
-                          requests.exceptions.Timeout,
-                          requests.exceptions.HTTPError,
-                          requests.exceptions.RequestException,
-                          twisted.internet.defer.TimeoutError,
-                          twisted.python.failure.Failure,
-                          socket.timeout, socket.error,
-                          MaxRetryError, TimeoutError, ReadTimeoutError,
-                          ConnectTimeoutError, ConnectionError)
+    def __init__(self, config: Optional[ClientConfig]):
+        self.config = config or ClientConfig()
 
-    def __init__(self, commands_class, config):
-        self.commands = commands_class
-        self.command_retries = {c: {} for c in commands_class}
-        self.config = config
+    def _retry(self, method: MethodType,
+               *args,
+               raise_exc: Optional[bool] = False,
+               **kwargs):
 
-    def _can_retry(self, exc, cmd, obj_id):
-        exc_type = self._exception_type(exc)
-        if exc_type in self.timeout_exceptions:
-            this_cmd = self.command_retries[cmd]
-
-            with self.__retry_lock:
-                if obj_id not in this_cmd:
-                    this_cmd[obj_id] = 0
-
-                if this_cmd[obj_id] < self.config.max_retries:
-                    this_cmd[obj_id] += 1
-                    return True
-
-            this_cmd.pop(obj_id, None)
-
-        return False
-
-    def _clear_retry(self, cmd, obj_id):
-        self.command_retries[cmd].pop(obj_id, None)
-
-    def _handle_retries(self, method, cmd, *args, **kwargs):
-        default_id = args[0] if args else str(uuid.uuid4())
-        obj_id = kwargs.pop('obj_id', default_id)
-        raise_exc = kwargs.pop('raise_exc', False)
+        retries = 0
         result = None
 
         while not result:
+            retries += 1
+
             try:
                 result = method(*args, **kwargs)
             except Exception as exc:
-                self.command_failed(exc, cmd, obj_id)
+                import traceback
+                traceback.print_exc()
+                logger.error('Error executing %r (%r, %r): %r',
+                             method, args, kwargs, exc)
 
-                if not self._can_retry(exc, cmd, obj_id):
-                    self._clear_retry(cmd, obj_id)
-                    if raise_exc:
-                        raise exc
-                    break
-            else:
-                self._clear_retry(cmd, obj_id)
-                return result
+                if exc.__class__ not in self.retry_exceptions:
+                    raise exc
+                if retries < self.config.max_retries:
+                    continue
+                if raise_exc:
+                    raise exc
 
-    @staticmethod
-    def _async_call(method, success, error, *args, **kwargs):
-        call = AsyncRequest(method, *args, **kwargs)
-        async_run(call, success, error)
-
-    @staticmethod
-    def _exception_type(exc):
-        if isinstance(exc, twisted.python.failure.Failure):
-            exc = exc.value
-        exc_type = type(exc)
-        if not inspect.isclass(exc_type):
-            exc_type = exc.__class__
-        return exc_type
+                return None
+            return result
 
 
-class TestClient(IClient):
+class DummyClient(IClient):
 
     _resources = dict()
+    _paths = dict()
     _id = "test"
 
-    def add(self, resource_path, **_):
-        resource_hash = 'hash_' + str(uuid.uuid4())
-        self._resources[resource_hash] = resource_path
+    def add(self, files: dict, **_):
+        from golem.core.fileshelper import common_dir
 
-        return dict(
-            Name=resource_path,
-            Hash=resource_hash
-        )
+        resource_hash = str(uuid.uuid4())
+        self._resources[resource_hash] = files
+        self._paths[resource_hash] = common_dir(files.keys())
+        return resource_hash
 
-    def get_file(self, multihash, client_options=None, filename=None, filepath=None, **_):
-        path = self._resources[multihash]
-        dst = os.path.join(filepath, filename)
+    def get(self,
+            content_hash: str,
+            client_options: Optional[ClientOptions] = None,
+            filepath: Optional[str] = None,
+            **_) -> tuple:
 
-        if not os.path.exists(filepath):
-            os.makedirs(filepath)
+        from golem.core.fileshelper import copy_file_tree
 
-        if path != dst:
-            shutil.copy(path, dst)
+        resource = self._resources[content_hash]
+        path = self._paths[content_hash]
+        files = [os.path.join(filepath, f) for f in resource.values()]
 
-        return dict(
-            Name=os.path.join(filepath, filename),
-            Hash=multihash
-        )
+        if path != filepath:
+            copy_file_tree(path, filepath)
 
-    def id(self, client_options=None, *args, **kwargs):
+        return content_hash, files
+
+    def id(self,
+           client_options: Optional[ClientOptions] = None,
+           *args, **kwargs) -> str:
+
         return self._id
+
+    def cancel(self, content_hash: str):
+
+        return content_hash
 
     @classmethod
     def build_options(cls, **kwargs):
