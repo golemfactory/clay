@@ -99,7 +99,7 @@ class HyperdriveResourceManager(ClientHandler):
         if not path:
             logger.warning("Resource manager: trying to add an empty file "
                            "path for task '%s'", task_id)
-            return
+            return None, None
 
         files = {path: os.path.basename(path)}
         return self._add_files(files, task_id)
@@ -109,15 +109,15 @@ class HyperdriveResourceManager(ClientHandler):
         if not files:
             logger.warning("Resource manager: trying to add an empty file "
                            "collection for task '%s'", task_id)
-            return
         elif not all(os.path.isabs(f) for f in files):
             logger.error("Resource manager: trying to add relative file paths "
                          "for task '%s'", task_id)
-            return
+        else:
+            files = {path: self.storage.relative_path(path, task_id)
+                     for path in files}
+            return self._add_files(files, task_id, resource_hash)
 
-        files = {path: self.storage.relative_path(path, task_id)
-                 for path in files}
-        return self._add_files(files, task_id, resource_hash)
+        return None, None
 
     def _add_files(self, files, task_id, resource_hash=None):
 
