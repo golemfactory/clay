@@ -52,6 +52,14 @@ class TestHyperdriveClient(unittest.TestCase):
                                return_value=self.response):
             assert client.add(self.response['files']) == self.response['hash']
 
+    def test_restore(self):
+        client = HyperdriveClient()
+
+        with mock.patch.object(HyperdriveClient, '_request',
+                               return_value=self.response):
+            assert client.restore(self.response['files']) == \
+                   self.response['hash']
+
     def test_get_file(self):
         client = HyperdriveClient()
         multihash = str(uuid.uuid4())

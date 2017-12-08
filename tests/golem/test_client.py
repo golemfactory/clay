@@ -1,15 +1,16 @@
-from copy import copy
 import datetime
 import os
 import time
-import unittest
 import uuid
-
+from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
+
 from twisted.internet.defer import Deferred
 
 from freezegun import freeze_time
 
+from apps.dummy.task.dummytask import DummyTask
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -20,6 +21,7 @@ from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
+from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
@@ -28,8 +30,7 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, ResourceType
-from golem.task.taskcomputer import TaskComputer
+from golem.task.taskbase import Task, ResourceType
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
@@ -37,8 +38,6 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
-from golem.core.variables import APP_VERSION
-from apps.appsmanager import AppsManager
 
 
 def mock_async_run(req, success, error):
@@ -199,10 +198,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    @patch(
-        'golem.transactions.ethereum.ethereumtransactionsystem.'
-        'EthereumTransactionSystem.sync'
-    )
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+           'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -384,10 +381,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.environments.environmentsmanager.'
+           'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
-    @patch('golem.environments.environmentsmanager.EnvironmentsManager.load_config')
-    def test_start_stop(self, load_config, connect_to_network, *_):
+    def test_start_stop(self, connect_to_network, *_):
         self.client = Client(
             datadir=self.path,
             transaction_system=False,
@@ -471,7 +469,7 @@ class TestMonitoringPublisherService(TestWithReactor):
     def test_run(self, send, log):
         task_server = Mock()
         task_server.task_keeper = Mock()
-        task_server.task_keeper.get_all_tasks = lambda: list()
+        task_server.task_keeper.get_all_tasks.return_value = list()
         task_server.task_keeper.supported_tasks = list()
         task_server.task_computer.stats = dict()
 
@@ -489,9 +487,7 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
     def test_run(self, log):
         c = Mock()
 
-        service = NetworkConnectionPublisherService(
-            c,
-            interval_seconds=1)
+        service = NetworkConnectionPublisherService(c, interval_seconds=1)
         service._run()
 
         assert not log.debug.called
@@ -708,6 +704,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.resource_server = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.dump_task = Mock()
         c.task_server.task_manager.listen_address = '127.0.0.1'
         c.task_server.task_manager.listen_port = 40103
         c.keys_auth = Mock()
@@ -725,7 +722,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert not c.task_server.task_manager.start_task.called
 
         deferred = Deferred()
-        deferred.callback(True)
+        deferred.callback((['file_1', 'file_2'], 'hash'))
         c.task_server.task_manager.tasks.pop(task.header.task_id, None)
 
         c.resource_server.add_task.called = False
@@ -843,7 +840,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
 
-
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
         benchmark_manager = self.client.task_server.benchmark_manager
@@ -907,19 +903,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
-    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
+        t = DummyTask(total_tasks=10, node_name="node_name",
+                      task_definition=DummyTaskDefinition())
+
         c = self.client
         c.enqueue_new_task = Mock()
-
-        # create a task
-        t = Task(TaskHeader("node_name", "task_id",
-                            "10.10.10.10", 123,
-                            "owner_id", "DEFAULT"),
-                 src_code="print('hello')",
-                 task_definition=Mock())
-
-
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
 
@@ -1051,9 +1040,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         return session
 
 
-class TestEventListener(unittest.TestCase):
+class TestEventListener(TestCase):
     def test_task_computer_event_listener(self):
-
         client = Mock()
         listener = ClientTaskComputerEventListener(client)
 
@@ -1064,7 +1052,7 @@ class TestEventListener(unittest.TestCase):
         client.lock_config.assert_called_with(False)
 
 
-class TestClientPEP8(unittest.TestCase, testutils.PEP8MixIn):
+class TestClientPEP8(TestCase, testutils.PEP8MixIn):
     PEP8_FILES = [
         "golem/client.py",
     ]

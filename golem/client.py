@@ -329,6 +329,7 @@ class Client(HardwarePresetsMixin):
             self.resource_server = BaseResourceServer(resource_manager,
                                                       dir_manager,
                                                       self.keys_auth, self)
+            self.task_server.restore_resources()
 
         def connect(ports):
             p2p_port, task_port = ports
@@ -472,7 +473,10 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options()
         files = task.get_resources(None, ResourceType.HASHES)
 
-        def add_task(_):
+        def add_task(result):
+            task_state = task_manager.tasks_states[task_id]
+            task_state.resource_hash = result[1]
+
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
