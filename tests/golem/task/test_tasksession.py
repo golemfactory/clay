@@ -6,8 +6,6 @@ import unittest
 from unittest.mock import Mock, MagicMock, patch
 import uuid
 
-
-from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
@@ -17,6 +15,7 @@ from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger

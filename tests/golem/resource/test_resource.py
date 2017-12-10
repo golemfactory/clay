@@ -1,12 +1,20 @@
+import mock
 import os
-from golem.resource.resource import TaskResourceHeader, TaskResource
+import zipfile
+
+from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+
 from golem.resource.dirmanager import DirManager
-from test_dirmanager import TestDirFixture
+from golem.resource.resource import (get_resources_for_task, ResourceType,
+                                     TaskResource, TaskResourceHeader)
+from golem.resource.resourcesmanager import DistributedResourceManager
+from golem.testutils import TempDirFixture
 
 
-class TestTaskResourceHeader(TestDirFixture):
+class TestTaskResourceHeader(TempDirFixture):
     def setUp(self):
-        TestDirFixture.setUp(self)
+        TempDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path)
         res_path = self.dir_manager.get_task_resource_dir('task2')
@@ -48,7 +56,91 @@ class TestTaskResourceHeader(TestDirFixture):
             TaskResourceHeader.build_header_delta_from_header(None, None, None)
 
 
-class TestTaskResource(TestDirFixture):
+class TestTaskResource(TempDirFixture):
 
     def testInit(self):
         self.assertIsNotNone(TaskResource(self.path))
+
+
+class TestGetTaskResources(TempDirFixture):
+
+    @staticmethod
+    def _get_core_task_definition():
+        task_definition = TaskDefinition()
+        task_definition.max_price = 100
+        task_definition.task_id = "xyz"
+        task_definition.estimated_memory = 1024
+        task_definition.full_task_timeout = 3000
+        task_definition.subtask_timeout = 30
+        return task_definition
+
+    def _get_core_task(self):
+        task_def = self._get_core_task_definition()
+
+        class CoreTaskDeabstacted(CoreTask):
+            ENVIRONMENT_CLASS = mock.MagicMock()
+
+            def query_extra_data(self, *args, **kwargs):
+                pass
+
+            def short_extra_data_repr(self, extra_data):
+                pass
+
+            def query_extra_data_for_test_task(self):
+                pass
+
+
+        task = CoreTaskDeabstacted(
+            task_definition=task_def,
+            node_name="ABC",
+            owner_address="10.10.10.10",
+            owner_port=123,
+            owner_key_id="key",
+            resource_size=1024
+        )
+        dm = DirManager(self.path)
+        task.initialize(dm)
+        return task
+
+    def test_get_task_resources(self):
+        c = self._get_core_task()
+        th = TaskResourceHeader(self.path)
+        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir) is None
+
+        files = self.additional_dir_content([[1], [[1], [2, [3]]]])
+        c.task_resources = files[1:]
+        resource = get_resources_for_task(th, c.get_resources(), c.tmp_dir)
+        assert os.path.isfile(resource)
+        assert zipfile.is_zipfile(resource)
+        z = zipfile.ZipFile(resource)
+        in_z = z.namelist()
+        assert len(in_z) == 6
+
+        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                      ResourceType.HASHES) == files[1:]
+
+        th2, p = get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                        ResourceType.PARTS,
+                                        res_files=c.res_files)
+        assert p == []
+        assert th2.files_data == []
+        assert th2.sub_dir_headers == []
+
+        with open(files[0], 'w') as f:
+            f.write("ABCD")
+
+        drm = DistributedResourceManager(os.path.dirname(files[0]))
+        res_files = drm.split_file(files[0])
+        c.add_resources({files[0]: res_files})
+        th2, p = get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                        ResourceType.PARTS, c.res_files)
+        assert len(p) == 1
+        assert len(th2.files_data) == 1
+        assert th2.sub_dir_headers == []
+
+        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                      resource_type=3) is None
+        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                      resource_type="aaa") is None
+        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
+                                      resource_type=None) is None

@@ -66,28 +66,37 @@ class TestDummyTaskVerifier(TempDirFixture):
         # zero difficulty condition
         ver_opts["difficulty"], tmp = tmp, ver_opts["difficulty"]  # noqa
         self.assertFalse(ver._verify_result(subtask_data,
-                                            bad_length_result_file))  # noqa
+                                            result=bad_length_result_file,
+                                            reference_data=[],
+                                            resources=[]))  # noqa
         self.assertTrue(ver._verify_result(subtask_data,
-                                           good_result_file))  # noqa
+                                           result=good_result_file,
+                                           reference_data=[],
+                                           resources=[])) # noqa
         self.assertFalse(ver._verify_result(subtask_data,
-                                            bad_ext_result_file))  # noqa
+                                            result=bad_ext_result_file,
+                                            reference_data=[],
+                                            resources=[]))  # noqa
         self.assertTrue(ver._verify_result(subtask_data,
-                                           bad_num_result_file))  # noqa
+                                           result=bad_num_result_file,
+                                           reference_data=[],
+                                           resources=[]))  # noqa
         ver_opts["difficulty"], tmp = tmp, ver_opts["difficulty"]  # noqa
 
         # result size length condition
         self.assertFalse(ver._verify_result(subtask_data,
-                                            bad_length_result_file))  # noqa
+                                            bad_length_result_file,
+                                            [], []))  # noqa
 
         # non-existing file
         with self.assertRaises(IOError):
-            ver._verify_result(subtask_data, "non/non/nonfile.result")
+            ver._verify_result(subtask_data, "non/non/nonfile.result", [], [])
 
         # good result
-        assert ver._verify_result(subtask_data, good_result_file)
+        assert ver._verify_result(subtask_data, good_result_file, [], [])
 
         # changing subtask data
         ver_opts["subtask_data"] = "1" * 128
         changed_subtask_data = ver_opts
         self.assertFalse(ver._verify_result(changed_subtask_data,
-                                            good_result_file))  # noqa
+                                            good_result_file, [], []))  # noqa
