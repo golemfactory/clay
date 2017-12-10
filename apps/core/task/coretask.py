@@ -18,8 +18,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.resource.resource import (prepare_delta_zip, ResourceType,
-                                     TaskResourceHeader)
+from golem.task.localcomputer import ComputerAdapter
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
@@ -202,6 +201,7 @@ class CoreTask(Task):
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
         verifier = self.VERIFIER_CLASS(self.verification_finished)
+        verifier.computer = ComputerAdapter()
         verifier.start_verification(
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,

@@ -1,10 +1,13 @@
+from copy import deepcopy
 import logging
 import os
+import shutil
 
 from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 from apps.rendering.resources.imgverifier import ImgVerifier, ImgStatistics
 from apps.rendering.task.verifier import RenderingVerifier
 
+from golem.core.fileshelper import common_dir, find_file_with_ext
 from golem.verification.verifier import SubtaskVerificationState
 
 
@@ -55,7 +58,7 @@ class LuxRenderVerifier(RenderingVerifier):
                     imgstat, reference_stats)
 
             is_flm_merging_validation_passed \
-                = self.merge_flm_files(flm_file, task, self.test_flm)
+                = self.merge_flm_files(flm_file, subtask_info, self.test_flm)
 
             if is_valid_against_reference == \
                     SubtaskVerificationState.VERIFIED \
@@ -105,24 +108,28 @@ class LuxRenderVerifier(RenderingVerifier):
     def _has_ext(self, filename, ext):
         return filename.lower().endswith(ext.lower())
 
-    def merge_flm_files(self, new_flm, task, output):
-        computer = LocalComputer(self.root_path, self.__verify_flm_ready,
-                                 self.__verify_flm_failure,
-                                 lambda:
-                                 self.query_extra_data_for_advanced_verification
-                                     (new_flm),
-                                 use_task_resources=[],
-                                 additional_resources=[self.test_flm, new_flm])
-        computer.run()
-        if computer.tt is not None:
-            computer.tt.join()
-        else:
+    def merge_flm_files(self, new_flm, subtask_info, output):
+        if not self.computer:
+            self.state = SubtaskVerificationState.NOT_SURE
+            self.message = "No computer available to verify data"
+            return
+
+        ctd = self.query_extra_data_for_advanced_verification(new_flm,
+                                                              subtask_info)
+        self.computer.start_computation(subtask_info["root_path"],
+                      success_callback=self.__verify_flm_ready,
+                      error_callback=self.__verify_flm_failure,
+                      compute_task_def=ctd,
+                      resources=self.resources,
+                      additional_resources=[output, new_flm])
+
+        if not self.computer.wait():
             return False
         if self.verification_error:
             return False
-        commonprefix = common_dir(computer.tt.result['data'])
+        commonprefix = common_dir(self.computer.tt.result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
-        stderr = [x for x in computer.tt.result['data']
+        stderr = [x for x in self.computer.tt.result['data']
                   if os.path.basename(x) == "stderr.log"]
 
         if flm is None or len(stderr) == 0:
@@ -136,5 +143,21 @@ class LuxRenderVerifier(RenderingVerifier):
             except (IOError, OSError):
                 return False
 
-            shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
+            shutil.copy(flm, os.path.join(subtask_info["tmp_dir"],
+                                          "test_result.flm"))
             return True
+
+    def query_extra_data_for_advanced_verification(self, new_flm, subtask_info):
+        files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
+        merge_ctd = deepcopy(subtask_info["merge_ctd"])
+        merge_ctd['extra_data']['flm_files'] = files
+        return merge_ctd
+
+
+    def __verify_flm_ready(self, results, time_spend):
+        logger.info("Advance verification finished")
+        self.verification_error = False
+
+    def __verify_flm_failure(self, error):
+        logger.info("Advance verification failure {}".format(error))
+        self.verification_error = True

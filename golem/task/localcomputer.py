@@ -25,7 +25,8 @@ class LocalComputer(object):
                  root_path: str,
                  success_callback,
                  error_callback,
-                 get_compute_task_def: Callable[[], ComputeTaskDef],
+                 get_compute_task_def: Callable[[], ComputeTaskDef] = None,
+                 compute_task_def: ComputeTaskDef = None,
                  check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING,
                  comp_success_message=DEFAULT_SUCCESS,
@@ -37,6 +38,7 @@ class LocalComputer(object):
         self.lock = Lock()
         self.tt = None
         self.dir_manager = DirManager(root_path)
+        self.compute_task_def = compute_task_def,
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
         self.success_callback = success_callback
@@ -56,9 +58,12 @@ class LocalComputer(object):
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
-            self.__prepare_resources() # makes a copy
+            self.__prepare_resources(self.resources) # makes a copy
 
-            ctd = self.get_compute_task_def()
+            if not self.compute_task_def:
+                ctd = self.get_compute_task_def()
+            else:
+                ctd = self.compute_task_def
 
             self.tt = self._get_task_thread(ctd)
             self.tt.start()
@@ -149,3 +154,22 @@ class LocalComputer(object):
                                 self.tmp_dir,
                                 0,
                                 check_mem=self.check_mem)
+
+
+class ComputerAdapter(object):
+
+    def __init__(self):
+        self.computer = None
+
+    def start_computation(self, root_path, success_callback, error_callback,
+                          compute_task_def, resources, additional_resources):
+        self.computer = LocalComputer(root_path, success_callback,
+                                      error_callback, compute_task_def,
+                                      resources, additional_resources)
+        self.computer.run()
+
+    def wait(self):
+        if self.computer.tt is not None:
+            self.computer.tt.join()
+            return True
+        return False

@@ -226,6 +226,9 @@ class LuxTask(renderingtask.RenderingTask):
         self.subtasks_given[hash]['verification_crop_window'] = \
             self.random_crop_window_for_verification
         self.subtasks_given[hash]['subtask_id'] = hash
+        self.subtasks_given[hash]['root_path'] = self.root_path
+        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir
+        self.subtasks_given[hash]['merge_ctd'] = self.__get_merge_ctd([])
 
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)

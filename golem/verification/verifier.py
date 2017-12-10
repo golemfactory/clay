@@ -42,6 +42,7 @@ class StateVerifier(Verifier):
         self.time_ended = None
         self.extra_data = {}
         self.message = ""
+        self.computer = None
 
     def start_verification(self, subtask_info: dict, reference_data: list,
                            resources: list, results: list):
