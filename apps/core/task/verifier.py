@@ -13,7 +13,7 @@ class CoreVerifier(StateVerifier):
                                                          reference_data,
                                                          resources,
                                                          results)
-        self._check_files(subtask_info, results)
+        self._check_files(subtask_info, results, reference_data, resources)
         self.time_ended = datetime.utcnow()
         self.extra_data['results'] = self.results
         self.callback(subtask_id=self.subtask_info['subtask_id'],
@@ -21,16 +21,17 @@ class CoreVerifier(StateVerifier):
                       result=self._get_anwser())
         self._clear_state()
 
-    def _check_files(self, subtask_info, results):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         for result in results:
             if os.path.isfile(result):
-                if self._verify_result(subtask_info, result):
+                if self._verify_result(subtask_info, result, reference_data,
+                                       resources):
                     self.state = SubtaskVerificationState.VERIFIED
                     return
         self.state = SubtaskVerificationState.WRONG_ANSWER
         self.message = "No proper task result found"
 
-    def _verify_result(self, subtask_info, result):
+    def _verify_result(self, subtask_info, result, reference_data, resources):
         """ Override this to change verification method
         """
         return True

@@ -13,9 +13,9 @@ from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
+from golem.resource.resource import ResourceType
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, \
-    ResourceType
+from golem.task.taskbase import TaskEventListener, Task
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 

@@ -112,24 +112,24 @@ class TestFrameRenderingVerifier(TempDirFixture):
         frv = FrameRenderingVerifier(callback)
         subtask_info = {"frames": [3], "use_frames": False, "total_tasks": 20,
                         "all_frames": [3], "res_x": 800, "res_y": 600}
-        frv._check_files(subtask_info, [])
+        frv._check_files(subtask_info, [], [], [])
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["use_frames"] = True
         subtask_info["all_frames"] = [3, 4, 5, 6]
-        frv._check_files(subtask_info, [])
+        frv._check_files(subtask_info, [], [], [])
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["total_tasks"] = 2
-        frv._check_files(subtask_info, [])
+        frv._check_files(subtask_info, [], [], [])
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["frames"] = [3, 4]
-        frv._check_files(subtask_info, ["file1"])
+        frv._check_files(subtask_info, ["file1"], [], [])
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["start_task"] = 1
-        frv._check_files(subtask_info, ["file1", "file2"])
+        frv._check_files(subtask_info, ["file1", "file2"], [], [])
         assert frv.state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_get_part_img_size(self):

@@ -1,11 +1,140 @@
-
 import logging
+import os
 
+from apps.rendering.resources.imgrepr import load_as_PILImgRepr
+from apps.rendering.resources.imgverifier import ImgVerifier, ImgStatistics
 from apps.rendering.task.verifier import RenderingVerifier
+
+from golem.verification.verifier import SubtaskVerificationState
 
 
 logger = logging.getLogger("apps.lux")
 
 
 class LuxRenderVerifier(RenderingVerifier):
-    pass
+
+    def _check_files(self, subtask_info, results, reference_data, resources):
+        # First, assume it is wrong ;p
+        self.state = SubtaskVerificationState.WRONG_ANSWER
+
+        try:
+            self._validate_lux_results(subtask_info, results, reference_data,
+                                       resources)
+        except TypeError as e:
+            self.message = "Exception during verification of subtask: "
+            self.message += str(subtask_info["subtask_id"]) + " " + str(e)
+            logger.info(self.message)
+
+    def _validate_lux_results(self, subtask_info, results, reference_data,
+                              resources):
+        tr_flm_files, tr_preview_files = \
+            self._extract_tr_files(subtask_info, results)
+        self.test_flm = self.reference_data[0]
+        ref_imgs = self.reference_data[1:]
+        img_verifier = ImgVerifier()
+
+        cropped_ref_imgs = self.__prepare_reference_images(subtask_info,
+                                                           ref_imgs,
+                                                           img_verifier)
+        reference_stats = ImgStatistics(cropped_ref_imgs[0],
+                                        cropped_ref_imgs[1])
+
+        for img, flm_file in zip(tr_preview_files, tr_flm_files):
+            self.__compare_img_with_flm(img, flm_file, subtask_info,
+                                        img_verifier, cropped_ref_imgs,
+                                        reference_stats)
+
+    def __compare_img_with_flm(self, img, flm_file, subtask_info, img_verifier,
+                               cropped_ref_imgs, reference_stats):
+            cropped_img = img_verifier.crop_img_relative(
+                img, subtask_info['verification_crop_window'])
+            imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
+
+            is_valid_against_reference = \
+                img_verifier.is_valid_against_reference(
+                    imgstat, reference_stats)
+
+            is_flm_merging_validation_passed \
+                = self.merge_flm_files(flm_file, task, self.test_flm)
+
+            if is_valid_against_reference == \
+                    SubtaskVerificationState.VERIFIED \
+                    and is_flm_merging_validation_passed:
+                self.state = SubtaskVerificationState.VERIFIED
+
+            logger.info("Subtask "
+                        + str(subtask_info["subtask_id"])
+                        + " verification result: "
+                        + self.state.name
+                        )
+
+    def __prepare_reference_images(self, subtask_info, ref_imgs,
+                                   img_verifier):
+        cropped_ref_imgs = []
+        for ref_img in ref_imgs:
+            if subtask_info["output_format"] == "exr":
+                # exr comes already cropped
+                cropped_ref_img = ref_img
+            elif subtask_info["output_format"] == "png":
+                # crop manually
+                cropped_ref_img = \
+                    img_verifier.crop_img_relative(
+                        ref_img,
+                        subtask_info['verification_crop_window'])
+            else:
+                raise TypeError("Unsupported output format: "
+                                + subtask_info["output_format"])
+            cropped_ref_imgs.append(cropped_ref_img)
+        return cropped_ref_imgs
+
+    def _extract_tr_files(self, subtask_info, results):
+        tr_preview_files = []
+        ext = '.' + subtask_info["output_format"]
+        tr_preview_paths = [os.path.normpath(f) for f in results
+                            if self._has_ext(f, ext)]
+
+        for f in tr_preview_paths:
+            ref_img_pil = load_as_PILImgRepr(f)
+            tr_preview_files.append(ref_img_pil)
+
+        tr_flm_files = [os.path.normpath(f)
+                        for f in results if self._has_ext(f, '.flm')]
+
+        return tr_flm_files, tr_preview_files
+
+    def _has_ext(self, filename, ext):
+        return filename.lower().endswith(ext.lower())
+
+    def merge_flm_files(self, new_flm, task, output):
+        computer = LocalComputer(self.root_path, self.__verify_flm_ready,
+                                 self.__verify_flm_failure,
+                                 lambda:
+                                 self.query_extra_data_for_advanced_verification
+                                     (new_flm),
+                                 use_task_resources=[],
+                                 additional_resources=[self.test_flm, new_flm])
+        computer.run()
+        if computer.tt is not None:
+            computer.tt.join()
+        else:
+            return False
+        if self.verification_error:
+            return False
+        commonprefix = common_dir(computer.tt.result['data'])
+        flm = find_file_with_ext(commonprefix, [".flm"])
+        stderr = [x for x in computer.tt.result['data']
+                  if os.path.basename(x) == "stderr.log"]
+
+        if flm is None or len(stderr) == 0:
+            return False
+        else:
+            try:
+                with open(stderr[0]) as f:
+                    stderr_in = f.read()
+                if "ERROR" in stderr_in:
+                    return False
+            except (IOError, OSError):
+                return False
+
+            shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
+            return True

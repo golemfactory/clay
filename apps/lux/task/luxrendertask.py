@@ -1,3 +1,4 @@
+import glob
 import logging
 import math
 import os
@@ -14,7 +15,7 @@ from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verifier import LuxRenderVerifier
-from apps.rendering.resources.imgrepr import load_img, blend
+from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
@@ -222,6 +223,8 @@ class LuxTask(renderingtask.RenderingTask):
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['res_x'] = self.res_x
         self.subtasks_given[hash]['res_y'] = self.res_y
+        self.subtasks_given[hash]['verification_crop_window'] = \
+            self.random_crop_window_for_verification
         self.subtasks_given[hash]['subtask_id'] = hash
 
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
@@ -294,6 +297,42 @@ class LuxTask(renderingtask.RenderingTask):
             0)
 
         return ctd
+
+    # FIXME check if just get_test_flm is not enough
+    def get_reference_data(self):
+        get_test_flm = self.get_test_flm_for_verifier()
+        return [get_test_flm] + self.get_reference_imgs()
+
+    def get_reference_imgs(self):
+        ref_imgs = []
+        dm = self.dirManager
+
+        for i in range(0, self.reference_runs):
+            dir = os.path.join(
+                dm.get_ref_data_dir(self.header.task_id, counter=i),
+                dm.tmp,
+                dm.output)
+
+            f = glob.glob(os.path.join(dir, '*.' + self.output_format))
+
+            ref_img_pil = load_as_PILImgRepr(f.pop())
+            ref_imgs.append(ref_img_pil)
+
+        return ref_imgs
+
+
+    def get_test_flm_for_verifier(self):
+        dm = self.dirManager
+        dir = os.path.join(
+            dm.get_ref_data_dir(
+                self.header.task_id,
+                counter='flmMergingTest'),
+            dm.tmp,
+            dm.output
+        )
+
+        test_flm = glob.glob(os.path.join(dir, '*.flm'))
+        return test_flm.pop()
 
     ###################
     # CoreTask methods #
@@ -505,11 +544,11 @@ class LuxTask(renderingtask.RenderingTask):
                 self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
 
             computer = LocalComputer(
-                self,
                 path,
                 self.__final_img_ready,
                 self.__final_img_error,
-                lambda: self.query_extra_data_for_reference_task(counter=i)
+                lambda: self.query_extra_data_for_reference_task(counter=i),
+                resources=self.task_resources
             )
             computer.run()
             computer.tt.join()
@@ -520,22 +559,22 @@ class LuxTask(renderingtask.RenderingTask):
         )
 
         computer = LocalComputer(
-            self,
             path,
             self.__final_img_ready,
             self.__final_img_error,
-            self.query_extra_data_for_flm_merging_test
+            self.query_extra_data_for_flm_merging_test,
+            resources=self.task_resources
         )
         computer.run()
         computer.tt.join()
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(
-            self,
             self.root_path,
             self.__final_img_ready,
             self.__final_img_error,
             self.query_extra_data_for_merge,
+            resources=self.task_resources,
             additional_resources=[flm]
         )
         computer.run()
@@ -564,12 +603,11 @@ class LuxTask(renderingtask.RenderingTask):
             sorted(self.collected_file_names.items())
         )
         computer = LocalComputer(
-            self,
             self.root_path,
             self.__final_flm_ready,
             self.__final_flm_failure,
             self.query_extra_data_for_final_flm,
-            use_task_resources=False,
+            resources=[],
             additional_resources=list(self.collected_file_names.values())
         )
         computer.run()
@@ -593,14 +631,14 @@ class LuxTask(renderingtask.RenderingTask):
         # TODO What should we do in this sitution?
 
     # TODO Implement with proper verifier
-    # def __generate_final_flm_advanced_verification(self):
-    #     # the file containing result of task test
-    #     test_result_flm = self.__get_test_flm()
-    #
-    #     new_flm = self.output_file + ".flm"
-    #     shutil.copy(test_result_flm, new_flm)
-    #     logger.debug("Copying " + test_result_flm + " to " + new_flm)
-    #     self.__generate_final_file(new_flm)
+    def __generate_final_flm_advanced_verification(self):
+        # the file containing result of task test
+        test_result_flm = self.__get_test_flm()
+
+        new_flm = self.output_file + ".flm"
+        shutil.copy(test_result_flm, new_flm)
+        logger.debug("Copying " + test_result_flm + " to " + new_flm)
+        self.__generate_final_file(new_flm)
 
     def __get_test_flm(self):
         return os.path.join(self.tmp_dir, "test_result.flm")

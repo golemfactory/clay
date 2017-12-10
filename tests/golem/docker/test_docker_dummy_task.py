@@ -231,11 +231,11 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(1.0).ctd
 
         computer = LocalComputer(
-            task,
             self.tempdir,
             Mock(),
             Mock(),
-            lambda: ctd
+            lambda: ctd,
+            resources=task.task_resources,
         )
 
         computer.run()

@@ -11,9 +11,9 @@ from golem.core.common import is_linux, timeout_to_deadline
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader
+from golem.resource.resource import ResourceType, TaskResourceHeader
 from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType
+from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture

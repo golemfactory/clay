@@ -15,9 +15,9 @@ from golem.model import Payment
 from golem.model import db
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.resource.resource import decompress_dir
+from golem.resource.resource import decompress_dir, ResourceType
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ResultType, ResourceType
+from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.core.variables import PROTOCOL_CONST
 logger = logging.getLogger(__name__)

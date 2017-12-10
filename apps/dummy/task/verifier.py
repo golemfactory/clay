@@ -7,7 +7,7 @@ from apps.dummy.resources.code_dir import computing
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def _verify_result(self, subtask_info, result):
+    def _verify_result(self, subtask_info, result, reference_data, resources):
 
         root, ext = os.path.splitext(result)
         ext = ext.lower()

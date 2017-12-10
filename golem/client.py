@@ -47,11 +47,12 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.resource import ResourceType
+from golem.resource.resourcesmanager import get_resources_for_task
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI,\
     Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import ResourceType
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
@@ -454,7 +455,10 @@ class Client(HardwarePresetsMixin):
 
         task_id = task.header.task_id
         options = resource_manager.build_client_options()
-        files = task.get_resources(None, ResourceType.HASHES)
+        files = get_resources_for_task(resource_header=None,
+                                       resource_type=ResourceType.HASHES,
+                                       tmp_dir=task.tmp_dir,
+                                       resources=task.res_files)
 
         def add_task(_):
             request = AsyncRequest(task_manager.start_task, task_id)

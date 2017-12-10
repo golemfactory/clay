@@ -23,9 +23,10 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
+from golem.resource.resource import ResourceType
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, ResourceType
+from golem.task.taskbase import Task, TaskHeader
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState

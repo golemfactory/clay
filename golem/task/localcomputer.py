@@ -10,7 +10,8 @@ from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader, decompress_dir
+from golem.resource.resource import TaskResourceHeader, decompress_dir, \
+    get_resources_for_task
 from golem.task.taskbase import Task, ResourceType
 
 logger = logging.getLogger("golem.task")
@@ -21,7 +22,6 @@ class LocalComputer(object):
     DEFAULT_SUCCESS = "Task computation success!"
 
     def __init__(self,
-                 task: Task,
                  root_path: str,
                  success_callback,
                  error_callback,
@@ -29,12 +29,8 @@ class LocalComputer(object):
                  check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING,
                  comp_success_message=DEFAULT_SUCCESS,
-                 use_task_resources=True,
+                 resources =None,
                  additional_resources=None):
-        # TODO remove this isinstance
-        if not isinstance(task, Task):
-            raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
-        self.task = task
         self.res_path = None
         self.tmp_dir = None
         self.success = False
@@ -47,11 +43,12 @@ class LocalComputer(object):
         self.check_mem = check_mem
         self.comp_failed_warning = comp_failed_warning
         self.comp_success_message = comp_success_message
-        self.use_task_resources = use_task_resources
+        if resources is None:
+            resources = []
+        self.resources = resources
         if additional_resources is None:
             additional_resources = []
         self.additional_resources = additional_resources
-
         self.start_time = None
         self.end_time = None
 
@@ -112,21 +109,20 @@ class LocalComputer(object):
         except TypeError:
             logger.error("Cannot measure execution time")
 
-    def __prepare_resources(self):
+    def __prepare_resources(self, resources):
 
-        self.test_task_res_path = self.dir_manager.get_task_test_dir("")#self.task.header.task_id)
-        #  get_test_task_path(self.root_path)
+        self.test_task_res_path = self.dir_manager.get_task_test_dir("")
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
         else:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
-
-        # self.test_task_res_dir = get_test_task_path(self.root_path)
-        if self.use_task_resources:
+        if resources:
             rh = TaskResourceHeader(self.test_task_res_path)
-            # rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(rh, ResourceType.ZIP, self.tmp_dir)
+            res_file = get_resources_for_task(resource_header=rh,
+                                              resource_type=ResourceType.ZIP,
+                                              tmp_dir=self.tmp_dir,
+                                              resources=resources)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)

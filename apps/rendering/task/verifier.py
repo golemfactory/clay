@@ -11,13 +11,13 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerifier(CoreVerifier):
 
-    def _check_files(self, subtask_info, results):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         if self._verify_imgs(subtask_info, results):
             self.state = SubtaskVerificationState.VERIFIED
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
 
-    def _verify_imgs(self, subtask_info, results):
+    def _verify_imgs(self, subtask_info, results, reference_data, resources):
         if len(results) == 0:
             return False
 
@@ -52,7 +52,7 @@ class RenderingVerifier(CoreVerifier):
 
 class FrameRenderingVerifier(RenderingVerifier):
 
-    def _check_files(self, subtask_info, results):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         use_frames = subtask_info['use_frames']
         total_tasks = subtask_info['total_tasks']
         frames = subtask_info['all_frames']
@@ -61,7 +61,8 @@ class FrameRenderingVerifier(RenderingVerifier):
             if len(results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return
-        if not self._verify_imgs(subtask_info, results):
+        if not self._verify_imgs(subtask_info, results, reference_data,
+                                 resources):
             self.state = SubtaskVerificationState.WRONG_ANSWER
         else:
             self.state = SubtaskVerificationState.VERIFIED
