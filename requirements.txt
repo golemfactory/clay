@@ -48,4 +48,4 @@ scipy==0.19.1
 pyssim
 enforce==0.3.4
 # TODO messages release
--e git://github.com/golemfactory/golem-messages.git@force_report#egg=golem_messages
+-e git://github.com/golemfactory/golem-messages.git@0fbe8deab9bbb140e11647711c1859d61f2e8d0a#egg=golem_messages
