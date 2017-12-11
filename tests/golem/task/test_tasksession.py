@@ -706,7 +706,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             service = history.MessageHistoryService()
             service.add_sync(nmsg)
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-            ts.concent_service.submit.assert_called_once()
+            self.assertEqual(ts.concent_service.submit.call_count, 1)
         finally:
             history.MessageHistoryService.instance = None
 
