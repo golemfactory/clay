@@ -41,6 +41,7 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.upnpthread import UpnpThread
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -269,6 +270,12 @@ class Client(HardwarePresetsMixin):
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
+        if self.config_desc.use_upnp:
+            # TODO: gather from config
+            ports = [3282, 40102, 40103]
+            upnp = UpnpThread(ports)
+            upnp.start()
+
         if not self.p2pservice:
             self.p2pservice = P2PService(
                 self.node,
@@ -379,6 +386,11 @@ class Client(HardwarePresetsMixin):
                                          listening_failure=task.errback)
 
     def stop_network(self):
+        if self.config_desc.use_upnp:
+            # TODO: gather from config
+            ports = [3282, 40102, 40103]
+            upnp = UpnpThread(ports, True)
+            upnp.start()
         if self.p2pservice:
             self.p2pservice.stop_accepting()
             self.p2pservice.disconnect()
