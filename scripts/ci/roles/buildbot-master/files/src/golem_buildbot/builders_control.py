@@ -67,7 +67,10 @@ class ControlStepFactory():
             steps.Trigger(schedulerNames=['control_test'],
                           waitForFinish=True,
                           # hideStepIf=is_fast,
-                          haltOnFailure=True))
+                          haltOnFailure=True,
+                          set_properties={
+                              'runslow': util.Interpolate('%(prop:runslow)s')
+                          }))
         # Trigger buildpackage if >= 1
         factory.addStep(
             steps.Trigger(schedulerNames=['control_build'],
@@ -87,7 +90,10 @@ class ControlStepFactory():
         factory.addStep(
             steps.Trigger(schedulerNames=['control_test'],
                           waitForFinish=True,
-                          haltOnFailure=True))
+                          haltOnFailure=True,
+                          set_properties={
+                              'runslow': util.Interpolate('%(prop:runslow)s')
+                          }))
         # Trigger buildpackage
         factory.addStep(
             steps.Trigger(schedulerNames=['control_build'],
@@ -106,14 +112,17 @@ class ControlStepFactory():
                     'unittest_linux',
                     'unittest_windows'],
                 waitForFinish=True,
-                haltOnFailure=True))
+                haltOnFailure=True,
+                set_properties={
+                    'runslow': util.Interpolate('%(prop:runslow)s')
+                }))
         return factory
 
     @staticmethod
     def control_build():
         def set_version_property(result, step):
-            print("result: {}".format(result))
             print("step: {}".format(step))
+            print("build: {}".format(step.build))
             return False
 
         factory = util.BuildFactory()

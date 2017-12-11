@@ -109,7 +109,7 @@ class StepsFactory(object):
         factory.addStep(self.requirements_step())
         factory.addStep(self.taskcollector_step())
         factory.addStep(self.daemon_start_step())
-        factory.addStep(self.test_step())
+        factory.addSteps(self.test_step())
         factory.addStep(self.coverage_step())
         factory.addStep(self.daemon_stop_step())
         return factory
@@ -240,51 +240,94 @@ class StepsFactory(object):
             doStepIf=has_no_previous_success)
 
     def test_step(self):
-        run_slow = util.Interpolate('%(prop:runslow)s')
         install_req_cmd = self.pip_command + ['install', '-r',
                                               'requirements-test.txt']
 
         test_command = ['-m', 'pytest', '--cov=golem', '--durations=5', '-rxs']
-        if run_slow:
-            test_command += ['--runslow']
+
+        test_slow_command = test_command + ['--runslow']
+
+        def is_fast(step):
+            return step.build.getProperty('runslow') == ''
+
+        def is_slow(step):
+            return step.build.getProperty('runslow') != ''
 
         # Since test-daemons are running commands should not halt on failure.
-        return steps.ShellSequence(
-            name='run tests',
-            commands=[
-                util.ShellArg(
-                    logfile='install requirements',
-                    flunkOnFailure=True,
-                    command=install_req_cmd),
-                # TODO: move to requirements itself?
-                util.ShellArg(
-                    logfile='install missing requirement',
-                    flunkOnFailure=True,
-                    command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                'codecov', 'pytest-cov']),
-                util.ShellArg(
-                    logfile='prepare for test',
-                    flunkOnFailure=True,
-                    command=self.python_command + ['setup.py', 'develop']),
-                # TODO: add xml results
-                # TODO 2: add run slow
-                util.ShellArg(
-                    logfile='run tests',
-                    flunkOnFailure=True,
-                    command=self.python_command + test_command)
-            ],
-            doStepIf=has_no_previous_success)
+        return [
+            steps.ShellSequence(
+                name='run tests',
+                commands=[
+                    util.ShellArg(
+                        logfile='install requirements',
+                        flunkOnFailure=True,
+                        command=install_req_cmd),
+                    # TODO: move to requirements itself?
+                    util.ShellArg(
+                        logfile='install missing requirement',
+                        flunkOnFailure=True,
+                        command=self.pip_command + ['install', 'pyasn1==0.2.3',
+                                                    'codecov', 'pytest-cov']),
+                    util.ShellArg(
+                        logfile='prepare for test',
+                        flunkOnFailure=True,
+                        command=self.python_command + ['setup.py', 'develop']),
+                    # TODO: add xml results
+                    # TODO 2: add run slow
+                    util.ShellArg(
+                        logfile='run tests',
+                        flunkOnFailure=True,
+                        command=self.python_command + test_command)
+                ],
+                doStepIf=has_no_previous_success and is_fast),
+            steps.ShellSequence(
+                name='run slow tests',
+                commands=[
+                    util.ShellArg(
+                        logfile='install requirements',
+                        flunkOnFailure=True,
+                        command=install_req_cmd),
+                    # TODO: move to requirements itself?
+                    util.ShellArg(
+                        logfile='install missing requirement',
+                        flunkOnFailure=True,
+                        command=self.pip_command + ['install', 'pyasn1==0.2.3',
+                                                    'codecov', 'pytest-cov']),
+                    util.ShellArg(
+                        logfile='prepare for test',
+                        flunkOnFailure=True,
+                        command=self.python_command + ['setup.py', 'develop']),
+                    # TODO: add xml results
+                    # TODO 2: add run slow
+                    util.ShellArg(
+                        logfile='run tests',
+                        flunkOnFailure=True,
+                        command=self.python_command + test_slow_command)
+                ],
+                doStepIf=has_no_previous_success and is_slow),
+            ]
 
     def coverage_step(self):
-        run_slow = util.Interpolate('%(prop:runslow)s')
 
-        def is_slow(*_):
-            return run_slow
+        @defer.inlineCallbacks
+        def is_slow(step):
+            prev_success = yield has_no_previous_success(step)
+            run_slow = step.getProperty('runslow') != ''
+            print("Check coverage is_slow: {} and {}".format(prev_success,
+                                                             run_slow))
+            defer.returnValue(prev_success and run_slow)
+
         return steps.ShellCommand(
             name='handle coverage',
             flunkOnFailure=True,
             command=self.python_command + ['-m', 'codecov'],
-            doStepIf=has_no_previous_success and is_slow)
+            doStepIf=is_slow,
+            env={
+                'PATH': [self.venv_bin_path, '${PATH}'],
+                'CODECOV_TOKEN': util.Interpolate(
+                    '%(secret:codecov_api_token)s'),
+                'CODECOV_SLUG': 'maaktweluit/golem'
+            })
 
     @staticmethod
     def daemon_stop_step():
@@ -356,7 +399,8 @@ class WindowsStepsFactory(StepsFactory):
                 'PATH': r'${PATH};C:\Program Files (x86)'
                         r'\Microsoft Visual Studio\2017\Community'
                         r'\MSBuild\15.0\Bin'
-            }
+            },
+            doStepIf=has_no_previous_success
         )
 
     def pywin32_step(self):
@@ -370,28 +414,32 @@ class WindowsStepsFactory(StepsFactory):
             env={
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'VIRTUAL_ENV': self.venv_path,
-            })
+            },
+            doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_start_step():
         return steps.ShellCommand(
             name='start hyperg',
             haltOnFailure=True,
-            command=['powershell.exe', r'scripts\test-daemon-start.ps1'])
+            command=['powershell.exe', r'scripts\test-daemon-start.ps1'],
+            doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_stop_step():
         return steps.ShellCommand(
             name='stop hyperg',
             haltOnFailure=True,
-            command=['powershell.exe', r'scripts\test-daemon-stop.ps1'])
+            command=['powershell.exe', r'scripts\test-daemon-stop.ps1'],
+            doStepIf=has_no_previous_success)
 
     @staticmethod
     def create_installer_step():
         return steps.ShellCommand(
             name='run inno',
             haltOnFailure=True,
-            command=['iscc', r'Installer\Installer_Win\install_script.iss'])
+            command=['iscc', r'Installer\Installer_Win\install_script.iss'],
+            doStepIf=has_no_previous_success)
 
 
 class LinuxStepsFactory(StepsFactory):

@@ -5,6 +5,8 @@ from .settings import buildbot_host
 from .workers import workers
 from .www import www
 
+from buildbot.plugins import secrets
+
 
 BuildmasterConfig = {
     'workers': workers,
@@ -20,4 +22,6 @@ BuildmasterConfig = {
     'db': {
         'db_url': 'sqlite:///state.sqlite',
     },
+    'secretsProviders': [
+        secrets.SecretInAFile(dirname="/home/buildbot/secrets")],
 }

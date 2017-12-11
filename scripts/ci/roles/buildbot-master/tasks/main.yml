@@ -21,6 +21,22 @@
     group: buildbot
     mode: u=rwx,g=rx,o=rx
 
+- name: secrets directory
+  file:
+    path: /home/buildbot/secrets
+    state: directory
+    owner: buildbot
+    group: buildbot
+
+- name: codecov secret file
+  lineinfile:
+    path: /home/buildbot/secrets/codecov_api_token
+    line: "{{site_settings.codecov_api_token}}"
+    create: yes
+    owner: buildbot
+    group: buildbot
+    mode: 0600
+
 
 - apt:
     name: python3-pip,python3-venv
