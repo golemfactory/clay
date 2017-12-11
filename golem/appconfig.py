@@ -28,6 +28,7 @@ RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
+USE_UPNP = 0
 
 USE_IP6 = 0
 ACCEPT_TASKS = 1
@@ -101,6 +102,7 @@ class AppConfig:
             end_port=END_PORT,
             rpc_address=RPC_ADDRESS,
             rpc_port=RPC_PORT,
+            use_upnp=USE_UPNP,
             # peers
             seed_host="",
             seed_port=START_PORT,
