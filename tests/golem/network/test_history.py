@@ -184,7 +184,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    def test_loop_sweep(self, *_):
+    def test_loop_sweep(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
 

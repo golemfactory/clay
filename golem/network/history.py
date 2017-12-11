@@ -58,7 +58,7 @@ class MessageHistoryService(IService, threading.Thread):
         """
         Thread activity method.
         """
-        while not self._stop_event.isSet():
+        while not self._stop_event.is_set():
             self._loop()
 
     @property
@@ -74,6 +74,7 @@ class MessageHistoryService(IService, threading.Thread):
 
     def start(self) -> None:
         if not self.running:
+            self._stop_event.clear()
             self._queue_timeout = self.QUEUE_TIMEOUT
             threading.Thread.__init__(self, daemon=True)
             threading.Thread.start(self)
