@@ -145,6 +145,16 @@ class TestMessageHistoryService(DatabaseFixture):
 
         assert self.service._loop.called
 
+    @patch('threading.Thread.start')
+    def test_multiple_starts(self, start):
+        self.service.start()
+        assert start.called
+
+        start.reset_mock()
+        self.service._started = Mock(is_set=Mock(return_value=True))
+        self.service.start()
+        assert not start.called
+
     def test_sweep(self):
         msgs = [
             self._build_msg(),
@@ -174,9 +184,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_sweep(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
 
         self.service._loop()
         assert self.service._sweep.called
@@ -185,9 +195,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service._sweep.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
-    def test_loop_add_sync(self, *_):
+    def test_loop_add_sync(self):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.add_sync = Mock()
 
         # No message
@@ -207,9 +217,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service.add_sync.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
-    def test_loop_remove_sync(self, *_):
+    def test_loop_remove_sync(self):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.remove_sync = Mock()
 
         # No tuple

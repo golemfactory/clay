@@ -43,16 +43,16 @@ class MessageHistoryService(IService, threading.Thread):
 
     def __init__(self):
         IService.__init__(self)
-        threading.Thread.__init__(self, daemon=True)
 
         if self.__class__.instance is None:
             self.__class__.instance = self
 
+        self._started = None  # set in start by Thread.__init__
+        self._queue_timeout = None  # set in start
         self._stop_event = threading.Event()
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
-        self._queue_timeout = self.QUEUE_TIMEOUT
 
     def run(self) -> None:
         """
@@ -66,10 +66,17 @@ class MessageHistoryService(IService, threading.Thread):
         """
         Returns whether the service was stopped by the user.
         """
-        return self._started.is_set() and not self._stop_event.is_set()
+        return (
+            self._started and
+            self._started.is_set() and
+            not self._stop_event.is_set()
+        )
 
     def start(self) -> None:
-        threading.Thread.start(self)
+        if not self.running:
+            self._queue_timeout = self.QUEUE_TIMEOUT
+            threading.Thread.__init__(self, daemon=True)
+            threading.Thread.start(self)
 
     def stop(self) -> None:
         """
