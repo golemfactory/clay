@@ -148,7 +148,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(message.CannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
-    def test_send_report_computed_task(self):
+    @patch(
+        'golem.network.history.MessageHistoryService.get_sync',
+        return_value=[]
+    )
+    def test_send_report_computed_task(self, get_mock):
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -647,7 +651,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         inform_mock.assert_called_once_with(payment)
 
     def test_send_report_computed_task_concent_no_service(self):
-        self.assertIs(history.MessageHistoryService.instance, None)
+        history.MessageHistoryService.instance = None
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -660,7 +664,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             get_mock.assert_not_called()
 
     def test_send_report_computed_task_concent_no_message(self):
-        self.assertIs(history.MessageHistoryService.instance, None)
+        history.MessageHistoryService.instance = None
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -676,7 +680,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             history.MessageHistoryService.instance = None
 
     def test_send_report_computed_task_concent_succes(self):
-        self.assertIs(history.MessageHistoryService.instance, None)
+        history.MessageHistoryService.instance = None
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
