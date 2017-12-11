@@ -1,4 +1,5 @@
 import abc
+import decimal
 import golem_messages.message
 import logging
 import os
@@ -565,7 +566,8 @@ class CoreTaskBuilder(TaskBuilder):
     def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
-        definition.max_price = float(dictionary['bid']) * denoms.ether
+        definition.max_price = \
+            int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
         definition.full_task_timeout = string_to_timeout(
             dictionary['timeout'])

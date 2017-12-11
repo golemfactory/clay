@@ -1,14 +1,56 @@
+from unittest.mock import patch
 import os
 import shutil
 import time
 
-from golem.core.common import is_windows
-from golem.resource.dirmanager import DirManager, find_task_script, logger
+from golem.resource.dirmanager import symlink_or_copy, DirManager, \
+    find_task_script, logger
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import TempDirFixture
 
 
-class TestDirManager(TestDirFixture):
+class TestSymlinkOrCopy(TempDirFixture):
+    def test_OSError_file(self):
+        # given
+        source_path = os.path.join(self.path, 'source')
+        target_path = os.path.join(self.path, 'target')
+
+        with open(source_path, 'w') as f:
+            f.write('source')
+        with open(target_path, 'w') as f:
+            f.write('target')
+
+        # when
+        with patch('os.symlink', side_effect=OSError):
+            symlink_or_copy(source_path, target_path)
+
+        # then
+        with open(target_path, 'r') as f:
+            target_contents = f.read()
+        assert target_contents == 'source'
+
+    def test_OSError_dir(self):
+        # given
+        source_dir_path = os.path.join(self.path, 'source')
+        source_file_path = os.path.join(source_dir_path, 'file')
+        target_path = os.path.join(self.path, 'target')
+
+        os.mkdir(source_dir_path)
+        with open(source_file_path, 'w') as f:
+            f.write('source')
+
+        # when
+        with patch('os.symlink', side_effect=OSError):
+            symlink_or_copy(source_dir_path, target_path)
+
+        # then
+        with open(os.path.join(target_path, 'file')) as f:
+            target_file_contents = f.read()
+
+        assert target_file_contents == 'source'
+
+
+class TestDirManager(TempDirFixture):
 
     node1 = 'node1'
 
@@ -221,7 +263,7 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isdir(dir1))
 
 
-class TestFindTaskScript(TestDirFixture, LogTestCase):
+class TestFindTaskScript(TempDirFixture, LogTestCase):
     def test_find_task_script(self):
         script_path = os.path.join(self.path, "resources", "scripts")
         os.makedirs(script_path)

@@ -19,6 +19,7 @@ from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
+from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
@@ -89,12 +90,14 @@ class PreviewUpdater(object):
                 img_offset = Image.new("RGB", (self.preview_res_x,
                                                self.preview_res_y))
                 img_offset.paste(img, (0, offset))
-                img_offset.save(self.preview_file_path, PREVIEW_EXT)
+                save_image_or_log_error(img_offset, self.preview_file_path,
+                                        PREVIEW_EXT)
                 img_offset.close()
             else:
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
-                img_current.save(self.preview_file_path, PREVIEW_EXT)
+                save_image_or_log_error(img_current, self.preview_file_path,
+                                        PREVIEW_EXT)
                 img_current.close()
             img.close()
         except Exception:
@@ -112,7 +115,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             img = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
-            img.save(self.preview_file_path, PREVIEW_EXT)
+            save_image_or_log_error(img, self.preview_file_path, PREVIEW_EXT)
             img.close()
 
 
@@ -520,8 +523,9 @@ class BlenderRenderTask(FrameRenderingTask):
             preview_task_file_path = self._get_preview_task_file_path(num)
             self.last_preview_path = preview_task_file_path
 
-            scaled.save(preview_task_file_path, PREVIEW_EXT)
-            scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
+            save_image_or_log_error(scaled, preview_task_file_path, PREVIEW_EXT)
+            save_image_or_log_error(scaled, self._get_preview_file_path(num),
+                                    PREVIEW_EXT)
 
             scaled.close()
             img.close()
@@ -537,7 +541,9 @@ class BlenderRenderTask(FrameRenderingTask):
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-            collector.finalize().save(output_file_name, self.output_format)
+            image = collector.finalize()
+            save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -573,7 +579,9 @@ class BlenderRenderTask(FrameRenderingTask):
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
-            collector.finalize().save(output_file_name, self.output_format)
+            image = collector.finalize()
+            save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
         self.collected_file_names[frame_num] = output_file_name

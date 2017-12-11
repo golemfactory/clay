@@ -3,13 +3,13 @@ from io import StringIO
 from unittest import TestCase
 
 import pytest
-from golem.core.service import Service, log
+from golem.core.service import LoopingCallService, log
 from golem.tools.testwithreactor import TestWithReactor
 from twisted.internet.task import Clock
 
 
 def test_service_start_stop():
-    service = Service()
+    service = LoopingCallService()
     assert not service.running
     service.start()
     assert service.running
@@ -18,7 +18,7 @@ def test_service_start_stop():
 
 
 def test_service_invalid_start():
-    service = Service()
+    service = LoopingCallService()
     service.start()
     with pytest.raises(RuntimeError):
         service.start()
@@ -27,7 +27,7 @@ def test_service_invalid_start():
 
 
 def test_service_invalid_stop():
-    service = Service()
+    service = LoopingCallService()
     with pytest.raises(RuntimeError):
         service.stop()
     with pytest.raises(RuntimeError):
@@ -40,7 +40,7 @@ def test_service_invalid_stop():
         service.stop()
 
 
-class CountingService(Service):
+class CountingService(LoopingCallService):
     def __init__(self):
         super(CountingService, self).__init__()
         self.clock = Clock()
@@ -52,7 +52,7 @@ class CountingService(Service):
         self.count += 1
 
 
-class AsyncCountingService(Service):
+class AsyncCountingService(LoopingCallService):
     def __init__(self):
         super(AsyncCountingService, self).__init__()
         self.count = 0
@@ -61,7 +61,7 @@ class AsyncCountingService(Service):
         self.count += 1
 
 
-class ExceptionalService(Service):
+class ExceptionalService(LoopingCallService):
     def __init__(self, delay):
         super(ExceptionalService, self).__init__()
         self.initial_delay = delay

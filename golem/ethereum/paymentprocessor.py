@@ -1,24 +1,20 @@
+import json
 import logging
 import sys
 import time
-import json
-
-from .contracts import TestGNT
-from .node import tETH_faucet_donate
-
 from time import sleep
-from typing import List, Set, Dict, Any
-from pydispatch import dispatcher
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from pydispatch import dispatcher
 
-from golem.core.service import Service
-from golem.report import report_calls, Component
+from golem.core.service import LoopingCallService
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
+from .contracts import TestGNT
+from .node import tETH_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
@@ -49,7 +45,7 @@ def _encode_payments(payments):
     return args, value
 
 
-class PaymentProcessor(Service):
+class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 
@@ -301,7 +297,11 @@ class PaymentProcessor(Service):
         return True
 
     def monitor_progress(self):
+        if not self._inprogress:
+            return
+
         confirmed = []
+        current_block = self.__client.get_block_number()
         for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
@@ -313,7 +313,7 @@ class PaymentProcessor(Service):
                         "block hash length should be 64, but is: {}".format(
                             len(block_hash)))
                 block_number = receipt['blockNumber']
-                if block_number < self.REQUIRED_CONFIRMATIONS:
+                if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
                     continue
                 gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE

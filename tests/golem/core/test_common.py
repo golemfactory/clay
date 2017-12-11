@@ -58,6 +58,22 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
         with patch('logging.config.dictConfig') as m_dconfig:
             config_logging(suffix, datadir=datadir)
             m_dconfig.assert_called_once_with(ANY)
+
+            # test with a level
+            m_dconfig.reset_mock()
+            t_lvl = 'WARNING'
+            config_logging(suffix, datadir=datadir,
+                           loglevel=t_lvl)
+            self.assertEqual(m_dconfig.call_args[0][0]['root']['level'], t_lvl)
+
+            # test with wrong level
+            m_dconfig.reset_mock()
+            t_lvl = 'BANANAS'
+            config_logging(suffix, datadir=datadir,
+                           loglevel=t_lvl)
+            self.assertNotEqual(m_dconfig.call_args[0][0]['root']['level'],
+                                t_lvl)
+
         self.assertTrue(os.path.exists(logsdir))
 
 

@@ -12,7 +12,7 @@ logger = logging.getLogger("apps.rendering")
 class RenderingVerifier(CoreVerifier):
 
     def _check_files(self, subtask_info, results, reference_data, resources):
-        if self._verify_imgs(subtask_info, results):
+        if self._verify_imgs(subtask_info, results, reference_data, resources):
             self.state = SubtaskVerificationState.VERIFIED
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER

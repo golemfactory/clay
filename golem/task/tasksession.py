@@ -1,25 +1,29 @@
 import functools
-from golem_messages import message
 import logging
 import os
 import struct
 import threading
 import time
 
+from golem_messages import message
+
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
+from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment
+from golem.model import Payment, Actor, NetworkMessage
 from golem.model import db
+from golem.network.concent.client import ConcentRequest
+from golem.network.history import IMessageHistoryProvider, provider_history
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir, ResourceType
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.core.variables import PROTOCOL_CONST
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +49,8 @@ def dropped_after():
     return inner
 
 
-class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
+                  IMessageHistoryProvider):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.FilesProtocol
@@ -66,6 +71,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server = self.conn.server
         self.task_manager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
+        self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
@@ -174,6 +180,37 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.get_short_hash(),
             self.key_id
         )
+
+    ###################################
+    # IMessageHistoryProvider methods #
+    ###################################
+
+    def message_to_model(self, msg, local_role, remote_role):
+        task = getattr(msg, 'task_id', None)
+        subtask = getattr(msg, 'subtask_id', None)
+
+        if subtask and not task:
+            task = self._subtask_to_task(subtask, local_role)
+
+        return NetworkMessage(
+            task=task,
+            subtask=subtask,
+            node=self.key_id,
+            msg_date=time.time(),
+            msg_cls=msg.__class__.__name__,
+            msg_data=msg.raw,
+            local_role=local_role,
+            remote_role=remote_role,
+        ) if task else None
+
+    def _subtask_to_task(self, sid, local_role):
+        if not self.task_manager:
+            return None
+
+        if local_role == Actor.Provider:
+            return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
+        elif local_role == Actor.Requestor:
+            return self.task_manager.subtask2task_mapping.get(sid)
 
     #######################
     # FileSession methods #
@@ -357,6 +394,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             eth_account=eth_account,
             extra_data=extra_data))
 
+        # FIXME: message.ForceReportComputedTask is going to be updated
+        msg_cls = message.ForceReportComputedTask
+        msg = msg_cls(task_result.subtask_id)
+        msg_data = msg.serialize(self.sign)
+
+        self.concent_service.submit(
+            ConcentRequest.build_key(task_result.subtask_id, msg_cls),
+            msg_data, msg_cls
+        )
+
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
         :param str subtask_id:
@@ -441,6 +488,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
 
     @handle_attr_error_with_task_computer
+    @provider_history
     def _react_to_task_to_compute(self, msg):
         if msg.compute_task_def is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
@@ -477,6 +525,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
         self.dropped()
 
+    @provider_history
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
@@ -501,6 +550,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             self.dropped()
 
+    @provider_history
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
@@ -576,10 +626,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             options=options
         ))
 
+    @provider_history
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
 
+    @provider_history
     def _react_to_subtask_result_rejected(self, msg):
         self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
@@ -653,6 +705,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
+    @provider_history
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -695,6 +748,38 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
             return
         self.inform_worker_about_payment(payment)
+
+    @provider_history
+    def _react_to_ack_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.debug("Requestor '%r' accepted the computed subtask '%r' "
+                         "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.ForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' acknowledged a computed task report "
+                           "of an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
+
+    @provider_history
+    def _react_to_reject_report_computed_task(self, msg):
+        keeper = self.task_manager.comp_task_keeper
+        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
+            logger.info("Requestor '%r' rejected the computed subtask '%r' "
+                        "report", self.key_id, msg.subtask_id)
+
+            self.concent_service.cancel(
+                ConcentRequest.build_key(msg.subtask_id,
+                                         message.ForceReportComputedTask)
+            )
+        else:
+            logger.warning("Requestor '%r' rejected a computed task report of"
+                           "an unknown task (subtask_id='%s')",
+                           self.key_id, msg.subtask_id)
 
     def send(self, msg, send_unverified=False):
         if not self.verified and not send_unverified:
@@ -888,6 +973,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
             message.SubtaskPayment.TYPE: self._react_to_subtask_payment,
             message.SubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
+
+            # Concent messages
+            message.AckReportComputedTask.TYPE:
+                self._react_to_ack_report_computed_task,
+            message.RejectReportComputedTask.TYPE:
+                self._react_to_reject_report_computed_task,
         })
 
         # self.can_be_not_encrypted.append(message.Hello.TYPE)

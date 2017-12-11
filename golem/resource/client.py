@@ -97,6 +97,7 @@ class ClientCommands(Enum):
     add = 0
     get = 1
     id = 2
+    restore = 3
 
 
 class ClientError(Exception):

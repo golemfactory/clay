@@ -9,7 +9,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 
 
 # Do not remove! (even if pycharm complains that this import is not used)
-from node import immunes_start
+from .node import immunes_start
 from twisted.internet import reactor  # noqa
 
 

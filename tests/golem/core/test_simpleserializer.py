@@ -122,8 +122,10 @@ class TestDictSerializer(unittest.TestCase):
                             'list', 'of', ('items', ),
                             obj.property_1['u'].property_4[-1]
                         ],
-                        DictCoder.cls_key:
-                        'test_simpleserializer.MockSerializationInnerSubject'
+                        DictCoder.cls_key: (
+                            'tests.golem.core.test_simpleserializer'
+                            '.MockSerializationInnerSubject'
+                        )
                     }
                 },
                 'property_2': {
@@ -133,8 +135,10 @@ class TestDictSerializer(unittest.TestCase):
                     'string',
                     'property_4':
                     ['list', 'of', ('items', ), obj.property_2.property_4[-1]],
-                    DictCoder.cls_key:
-                    'test_simpleserializer.MockSerializationInnerSubject'
+                    DictCoder.cls_key: (
+                        'tests.golem.core.test_simpleserializer'
+                        '.MockSerializationInnerSubject'
+                    )
                 },
                 'property_4': [
                     'v', 1, (1, 2, 3), {
@@ -146,12 +150,16 @@ class TestDictSerializer(unittest.TestCase):
                             'list', 'of', ('items', ),
                             obj.property_4[-1].property_4[-1]
                         ],
-                        DictCoder.cls_key:
-                        'test_simpleserializer.MockSerializationInnerSubject'
+                        DictCoder.cls_key: (
+                            'tests.golem.core.test_simpleserializer'
+                            '.MockSerializationInnerSubject'
+                        )
                     }
                 ],
-                DictCoder.cls_key:
-                'test_simpleserializer.MockSerializationSubject'
+                DictCoder.cls_key: (
+                    'tests.golem.core.test_simpleserializer'
+                    '.MockSerializationSubject'
+                )
             })
 
         self.assertFalse(

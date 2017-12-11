@@ -9,8 +9,8 @@ from threading import Lock
 
 from golem.core.hostaddress import get_host_addresses
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
-    TCP6ClientEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
+    TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
 from zope.interface import implements, implementer
@@ -20,7 +20,8 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem_messages.message import Message
-from .network import Network, SessionProtocol
+from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
+    OutgoingProtocolFactoryWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +231,10 @@ class TCPNetwork(Network):
         """
         from twisted.internet import reactor
         self.reactor = reactor
-        self.protocol_factory = protocol_factory
+        self.incoming_protocol_factory = IncomingProtocolFactoryWrapper(
+            protocol_factory)
+        self.outgoing_protocol_factory = OutgoingProtocolFactoryWrapper(
+            protocol_factory)
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
         self.active_listeners = {}
@@ -326,7 +330,7 @@ class TCPNetwork(Network):
         else:
             endpoint = TCP4ClientEndpoint(self.reactor, address, port, self.timeout)
 
-        defer = endpoint.connect(self.protocol_factory)
+        defer = endpoint.connect(self.outgoing_protocol_factory)
 
         defer.addCallback(self.__connection_established, established_callback, **kwargs)
         defer.addErrback(self.__connection_failure, failure_callback, **kwargs)
@@ -361,7 +365,7 @@ class TCPNetwork(Network):
         else:
             ep = TCP4ServerEndpoint(self.reactor, port)
 
-        defer = ep.listen(self.protocol_factory)
+        defer = ep.listen(self.incoming_protocol_factory)
 
         defer.addCallback(self.__listening_established, established_callback, **kwargs)
         defer.addErrback(self.__listening_failure, port, max_port, established_callback, failure_callback, **kwargs)

@@ -9,6 +9,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.resource import (get_resources_for_task, ResourceType,
                                      TaskResource, TaskResourceHeader)
 from golem.resource.resourcesmanager import DistributedResourceManager
+
 from golem.testutils import TempDirFixture
 
 

@@ -4,9 +4,8 @@ from datetime import datetime
 import logging.config
 from multiprocessing import cpu_count
 import os
-from pathlib import Path
-import pytz
 import sys
+import pytz
 
 from golem.core import simpleenv
 
@@ -54,8 +53,7 @@ def to_unicode(value):
     try:
         if isinstance(value, bytes):
             return value.decode('utf-8')
-        else:
-            return str(value)
+        return str(value)
     except UnicodeDecodeError:
         return value
 
@@ -162,7 +160,7 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None):
+def config_logging(suffix='', datadir=None, loglevel=None):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -171,18 +169,31 @@ def config_logging(suffix='', datadir=None):
 
     if datadir is None:
         datadir = simpleenv.get_local_datadir("default")
-    logdir_path = Path(datadir) / 'logs'
+    logdir_path = os.path.join(datadir, 'logs')
 
-    for handler in list(LOGGING.get('handlers', {}).values()):
+    wrong_loglevel = None
+    if loglevel and loglevel not in ['WARNING', 'INFO', 'DEBUG']:
+        wrong_loglevel = loglevel
+        loglevel = None
+
+    for handler in LOGGING.get('handlers', {}).values():
+        if loglevel:
+            handler['level'] = loglevel
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
                 'suffix': suffix,
             }
 
+    if loglevel:
+        for _logger in LOGGING.get('loggers', {}).values():
+            if 'level' in _logger:
+                _logger['level'] = loglevel
+        LOGGING['root']['level'] = loglevel
+
     try:
-        if not logdir_path.exists():
-            logdir_path.mkdir(parents=True)
+        if not os.path.exists(logdir_path):
+            os.makedirs(logdir_path)
 
         logging.config.dictConfig(LOGGING)
     except (ValueError, PermissionError) as e:
@@ -191,6 +202,11 @@ def config_logging(suffix='', datadir=None):
         )
         return  # Avoid consequent errors
     logging.captureWarnings(True)
+
+    logger = logging.getLogger(__name__)
+    if wrong_loglevel is not None:
+        logger.warning('Invalid log level "%r", reset to default.',
+                       wrong_loglevel)
 
     import txaio
     txaio.use_twisted()
@@ -202,7 +218,11 @@ def config_logging(suffix='', datadir=None):
 
     crossbar_log_lvl = logging.getLevelName(
         logging.getLogger('golem.rpc.crossbar').level).lower()
-    txaio.set_global_log_level(crossbar_log_lvl)
+    # Fix inconsistency in log levels, only warn affected
+    if crossbar_log_lvl == 'warning':
+        crossbar_log_lvl = 'warn'
+
+    txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
 
 
 def get_cpu_count():

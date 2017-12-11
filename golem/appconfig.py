@@ -50,7 +50,8 @@ USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
 WAITING_FOR_TASK_TIMEOUT = 720  # 36000
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
-CLEAN_RESOURES_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 
 # Default max price per hour -- 5.0 GNT ~ 0.05 USD
 MAX_PRICE = int(5.0 * denoms.ether)
@@ -131,7 +132,8 @@ class AppConfig:
             waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
-            clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECONDS)
+            clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
+            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS)
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)
