@@ -659,7 +659,8 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
-        with patch('golem.network.history.MessageHistoryService.get_sync') as get_mock:  # noqa
+        with patch('golem.network.history.MessageHistoryService.get_sync')\
+                as get_mock:
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
             get_mock.assert_not_called()
 
@@ -673,7 +674,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
         try:
-            service = history.MessageHistoryService()
+            history.MessageHistoryService()
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
             ts.concent_service.submit.assert_not_called()
         finally:
