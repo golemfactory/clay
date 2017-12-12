@@ -232,7 +232,16 @@ class IMessageHistoryProvider(ABC):
                          local_role: Actor,
                          remote_role: Actor) -> dict:
         """
-        Convert a message to its database model representation.
+        Converts a message to its database model dictionary representation.
+
+        MessageHistoryService operates in a separate thread, whereas peewee
+        models are created on per-connection (here: per-thread) basis. If
+        MessageHistoryService used objects created in another thread, it would
+        lock the database for that thread.
+
+        The returned dict representation is used for creating NetworkMessage
+        models in MessageHistoryService thread.
+
         :param msg: Session message
         :param local_role: Local node's role in computation
         :param remote_role: Remote node's role in computation
