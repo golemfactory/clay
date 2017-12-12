@@ -134,7 +134,8 @@ class ConfigApprover(object):
 
     @staticmethod
     def _to_int(val, name):
-        """ Try to change value <val> to int. If it's not possible return unchanged val
+        """ Try to change value <val> to int. If it's not possible return 
+        unchanged val
         :param val: value that should be changed to int
         :param str name: name of a config description option for logs
         :return: value change to int or unchanged value if it's not possible

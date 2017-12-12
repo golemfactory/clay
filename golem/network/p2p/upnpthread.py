@@ -49,9 +49,11 @@ class UpnpThread(Thread):
             for port in self.ports:
                 retries = 0
                 while True:
-                    logger.debug("removing %s port %u TCP => %s port %u TCP", upnpc.lanaddr, port, external_ip, port)
+                    logger.debug("removing %s port %u TCP => %s port %u TCP", 
+                    upnpc.lanaddr, port, external_ip, port)
                     if not self.check_if_mapped(upnpc, port):
-                        logger.debug("%s port %u TCP does not exists", external_ip, port)
+                        logger.debug("%s port %u TCP does not exists", 
+                        external_ip, port)
                         break
 
                     try:
@@ -70,12 +72,14 @@ class UpnpThread(Thread):
             for port in self.ports:
                 retries = 0
                 while True:
-                    logger.debug("redirecting %s port %u TCP => %s port %u TCP", upnpc.lanaddr, port, external_ip, port)
+                    logger.debug("redirecting %s port %u TCP => %s port %u TCP",
+                    upnpc.lanaddr, port, external_ip, port)
                     if self.check_if_mapped(upnpc, port):
                         logger.debug("%s port %u TCP already redirected", external_ip, port)
                         break
 
-                    res = upnpc.addportmapping(port, 'TCP', upnpc.lanaddr, port, 'golem port %u' % port, '')
+                    res = upnpc.addportmapping(port, 'TCP', upnpc.lanaddr, port,
+                    'golem port %u' % port, '')
                 
                     if res:
                         logger.info("Redirected with success")
