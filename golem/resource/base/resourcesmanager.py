@@ -366,7 +366,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
         if prefix and resources:
             logger.warning("Resource manager: Task {} already exists"
                            .format(task_id))
-            return files, resources[0].hash
+            resource = resources[0]
+            return resource.files, resource.hash
 
         if not files:
             raise RuntimeError("Empty input task resources")
