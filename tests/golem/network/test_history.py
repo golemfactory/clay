@@ -31,8 +31,8 @@ class TestMessageHistoryService(DatabaseFixture):
         MessageHistoryService.instance = None
 
     @staticmethod
-    def _build_msg(task=None, subtask=None):
-        return NetworkMessage(
+    def _build_dict(task=None, subtask=None):
+        return dict(
             task=task or str(uuid.uuid4()),
             subtask=subtask or str(uuid.uuid4()),
             node=str(uuid.uuid4()),
@@ -44,6 +44,10 @@ class TestMessageHistoryService(DatabaseFixture):
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
+
+    @classmethod
+    def _build_msg(cls, task=None, subtask=None):
+        return NetworkMessage(**cls._build_dict(task, subtask))
 
     def test_add(self):
         msg = self._build_msg()
@@ -174,9 +178,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_sweep(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
 
         self.service._loop()
         assert self.service._sweep.called
@@ -185,9 +189,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service._sweep.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_add_sync(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.add_sync = Mock()
 
         # No message
@@ -195,7 +199,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.add_sync.called
 
         # Add message
-        msg = self._build_msg()
+        msg = self._build_dict()
         self.service._save_queue.put(msg)
 
         # With message
@@ -207,9 +211,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service.add_sync.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_remove_sync(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.remove_sync = Mock()
 
         # No tuple
@@ -250,7 +254,7 @@ class TestMessageHistoryProvider(DatabaseFixture):
             invalid.method(None)
 
     def test_record_history(self):
-        service = MessageHistoryService()
+        service = MessageHistoryService().instance
 
         class Provider(IMessageHistoryProvider):
 
@@ -258,7 +262,7 @@ class TestMessageHistoryProvider(DatabaseFixture):
                 self.key_id = 'a0b1c2'
 
             def message_to_model(self, msg, local_role, remote_role):
-                return NetworkMessage()
+                return dict(key='value')
 
             @requestor_history
             def react_to_report_computed_task(self, *_):
@@ -270,11 +274,9 @@ class TestMessageHistoryProvider(DatabaseFixture):
 
         provider = Provider()
 
-        msg_hello = message.Hello()
-        msg_request = message.WantToComputeTask(task_id='task_2')
-        msg_request._raw = msg_request.serialize(sign_func=mock_sign)
-        msg_result = message.ReportComputedTask(subtask_id='subtask_2')
-        msg_result._raw = msg_request.serialize(sign_func=mock_sign)
+        msg_hello = message.Hello(raw=b'\0')
+        msg_request = message.WantToComputeTask(task_id='t', raw=b'\0')
+        msg_result = message.ReportComputedTask(subtask_id='s', raw=b'\0')
 
         NetworkMessage.delete().execute()
 
