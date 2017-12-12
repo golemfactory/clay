@@ -139,21 +139,21 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.running
         self.service.start()
         assert self.service.running
-        self.service.join(1.)
+        self.service._thread.join(1.)
         self.service.stop()
         assert not self.service.running
 
         assert self.service._loop.called
 
-    @patch('threading.Thread.start')
-    def test_multiple_starts(self, start):
+    @patch('threading.Thread')
+    def test_multiple_starts(self, *_):
         self.service.start()
-        assert start.called
+        assert self.service._thread.start.called
 
-        start.reset_mock()
-        self.service._started = Mock(is_set=Mock(return_value=True))
+        self.service._thread.reset_mock()
+        self.service._thread.is_alive.return_value = True
         self.service.start()
-        assert not start.called
+        assert not self.service._thread.start.called
 
     def test_sweep(self):
         msgs = [

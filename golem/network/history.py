@@ -16,7 +16,7 @@ from golem.model import NetworkMessage, Actor
 logger = logging.getLogger('golem.network.history')
 
 
-class MessageHistoryService(IService, threading.Thread):
+class MessageHistoryService(IService):
     """
     The purpose of this class is to:
     - save NetworkMessages (in background)
@@ -47,7 +47,7 @@ class MessageHistoryService(IService, threading.Thread):
         if self.__class__.instance is None:
             self.__class__.instance = self
 
-        self._started = None  # set in start by Thread.__init__
+        self._thread = None  # set in start
         self._queue_timeout = None  # set in start
         self._stop_event = threading.Event()
         self._save_queue = queue.Queue()
@@ -67,8 +67,8 @@ class MessageHistoryService(IService, threading.Thread):
         Returns whether the service was stopped by the user.
         """
         return (
-            self._started and
-            self._started.is_set() and
+            self._thread and
+            self._thread.is_alive() and
             not self._stop_event.is_set()
         )
 
@@ -76,8 +76,8 @@ class MessageHistoryService(IService, threading.Thread):
         if not self.running:
             self._stop_event.clear()
             self._queue_timeout = self.QUEUE_TIMEOUT
-            threading.Thread.__init__(self, daemon=True)
-            threading.Thread.start(self)
+            self._thread = threading.Thread(target=self.run, daemon=True)
+            self._thread.start()
 
     def stop(self) -> None:
         """
