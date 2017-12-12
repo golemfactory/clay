@@ -20,6 +20,8 @@ cffi==1.10.0
 web3==3.8.0
 ethereum==1.6.1
 ethereum-abi-utils==0.4.0
+#Newer version contains no code. Only deprecation warning.
+#https://pypi.python.org/pypi/ethereum-utils
 ethereum-utils==0.5.1
 autobahn==0.18.1
 cbor2==3.0.4
