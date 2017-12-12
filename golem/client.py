@@ -146,6 +146,7 @@ class Client(HardwarePresetsMixin):
                 self,
                 int(self.config_desc.network_check_interval)),
             MessageHistoryService(),
+            DoWorkService(self),
         ]
 
         clean_resources_older_than = \
@@ -276,10 +277,6 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth,
                 connect_to_known_hosts=self.connect_to_known_hosts
             )
-
-            do_work_service = DoWorkService(self)
-            do_work_service.start()
-            self._services.append(do_work_service)
 
         if not self.task_server:
             self.task_server = TaskServer(
