@@ -349,16 +349,24 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
         if async:
             request = AsyncRequest(self._add_task, *args, **kwargs)
-            return async_run(request)
+            return async_run(request, error=self._add_task_error)
+
         return self._add_task(*args, **kwargs)
+
+    @staticmethod
+    def _add_task_error(error):
+        logger.error("Error adding task: %r", error)
 
     def _add_task(self, files, task_id, resource_hash=None,
                   client=None, client_options=None):
 
-        if self.storage.cache.get_prefix(task_id):
-            logger.warn("Resource manager: Task {} already exists"
-                        .format(task_id))
-            return
+        prefix = self.storage.cache.get_prefix(task_id)
+        resources = self.storage.get_resources(task_id)
+
+        if prefix and resources:
+            logger.warning("Resource manager: Task {} already exists"
+                           .format(task_id))
+            return files, resources[0].hash
 
         if not files:
             raise RuntimeError("Empty input task resources")
@@ -454,8 +462,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                                    async=async,
                                    pin=pin)
             else:
-                logger.error("Resource manager: error downloading {} ({}): {}"
-                             .format(resource.path, resource.hash, exception))
+                logger.error("Resource manager: error downloading %s (%s): %s",
+                             resource.path, resource.hash, exception)
 
                 error(exception, entry, task_id)
                 self.__process_queue()
