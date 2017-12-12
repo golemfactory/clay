@@ -10,7 +10,8 @@
 ; https://www.microsoft.com/pl-pl/download/details.aspx?id=48145 vc_redist.x64.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://github.com/docker/toolbox/releases/download/v17.06.2-ce/DockerToolbox-17.06.2-ce.exe DockerToolbox.exe
-#define Repository "C:\golem"
+#define Repository "C:\BuildbotWorker\buildpackage_windows\build"
+#define BuildResources "C:\BuildResources"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
@@ -66,12 +67,11 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
-Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-; @todo temporary - until VBox 5.1.26 won't be installed by DockerToolbox
+Source: "{#BuildResources}\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#BuildResources}\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#BuildResources}\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#BuildResources}\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
