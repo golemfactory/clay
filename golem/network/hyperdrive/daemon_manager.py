@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+import time
 from requests import ConnectionError
 
 from golem.core.common import DEVNULL, is_frozen
@@ -49,6 +50,7 @@ class HyperdriveDaemonManager(object):
                 self._addresses = HyperdriveClient(**self._config).addresses()
             return self._addresses
         except ConnectionError:
+            logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 
     def public_addresses(self, ip, addresses=None):
@@ -87,13 +89,28 @@ class HyperdriveDaemonManager(object):
             process = subprocess.Popen(self._command, stdin=DEVNULL,
                                        stdout=pipe, stderr=pipe)
         except OSError:
-            logger.critical("Can't run hyperdrive executable %r. "
-                            "Make sure path is correct and check "
-                            "if it starts correctly.",
-                            ' '.join(self._command))
-            sys.exit(1)
+            return self._critical_error()
 
         if process.poll() is None:
             self._monitor.add_child_processes(process)
+            self._wait()
         else:
             raise RuntimeError("Cannot start {}".format(self._executable))
+
+    def _wait(self, timeout: int = 10):
+        deadline = time.time() + timeout
+
+        while time.time() < deadline:
+            addresses = self.addresses()
+            if addresses:
+                return
+            time.sleep(1.)
+
+        self._critical_error()
+
+    def _critical_error(self):
+        logger.critical("Can't run hyperdrive executable %r. "
+                        "Make sure path is correct and check "
+                        "if it starts correctly.",
+                        ' '.join(self._command))
+        sys.exit(1)
