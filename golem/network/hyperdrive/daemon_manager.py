@@ -50,6 +50,7 @@ class HyperdriveDaemonManager(object):
                 self._addresses = HyperdriveClient(**self._config).addresses()
             return self._addresses
         except ConnectionError:
+            logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 
     def public_addresses(self, ip, addresses=None):
@@ -103,7 +104,7 @@ class HyperdriveDaemonManager(object):
             addresses = self.addresses()
             if addresses:
                 return
-            time.sleep(0.5)
+            time.sleep(1.)
 
         self._critical_error()
 
