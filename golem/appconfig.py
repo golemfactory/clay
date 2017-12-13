@@ -30,6 +30,7 @@ OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
 
 USE_IP6 = 0
+USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
 
@@ -97,6 +98,7 @@ class AppConfig:
             public_address="",
             eth_account="",
             use_ipv6=USE_IP6,
+            use_upnp=USE_UPNP,
             start_port=START_PORT,
             end_port=END_PORT,
             rpc_address=RPC_ADDRESS,

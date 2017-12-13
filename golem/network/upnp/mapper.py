@@ -135,6 +135,11 @@ class PortMapperManager(IPortMapper):
                     self._active_mapper.name, external_port, protocol)
         return True
 
+    def update_node(self, node: 'Node') -> None:
+        mapping = self._mapping['TCP']
+        node.pub_port = mapping.get(node.prv_port, node.pub_port)
+        node.p2p_pub_port = mapping.get(node.p2p_prv_port, node.p2p_pub_port)
+
     def quit(self) -> None:
         if not self.available:
             return
