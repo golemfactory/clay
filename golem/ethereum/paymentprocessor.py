@@ -261,7 +261,7 @@ class PaymentProcessor(LoopingCallService):
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
-        gas = 21000 + 800 + len(p) * 30000
+        gas = 21000 + 800 + 5000 + len(p) * 30000
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
                          value=0, data=data)
         tx.sign(self.__privkey)
