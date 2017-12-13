@@ -106,13 +106,13 @@ class MessageHistoryService(IService):
 
         return list(result)
 
-    def add(self, msg: NetworkMessage) -> None:
+    def add(self, msg_dict: dict) -> None:
         """
-        Appends the message to the save queue.
-        :param msg:
+        Appends the dict message representation to the save queue.
+        :param msg_dict:
         """
-        if msg:
-            self._save_queue.put(msg)
+        if msg_dict:
+            self._save_queue.put(msg_dict)
 
     def add_sync(self, msg: NetworkMessage) -> None:
         """
@@ -206,7 +206,8 @@ class MessageHistoryService(IService):
 
         # Save messages
         try:
-            msg = self._save_queue.get(True, self._queue_timeout)
+            msg_dict = self._save_queue.get(True, self._queue_timeout)
+            msg = NetworkMessage(**msg_dict)
         except queue.Empty:
             pass
         else:
@@ -237,13 +238,22 @@ class IMessageHistoryProvider(ABC):
     @abstractmethod
     def message_to_model(self, msg: 'golem_messages.message.Message',
                          local_role: Actor,
-                         remote_role: Actor) -> NetworkMessage:
+                         remote_role: Actor) -> dict:
         """
-        Convert a message to its database model representation.
+        Converts a message to its database model dictionary representation.
+
+        MessageHistoryService operates in a separate thread, whereas peewee
+        models are created on per-connection (here: per-thread) basis. If
+        MessageHistoryService used objects created in another thread, it would
+        lock the database for that thread.
+
+        The returned dict representation is used for creating NetworkMessage
+        models in MessageHistoryService thread.
+
         :param msg: Session message
         :param local_role: Local node's role in computation
         :param remote_role: Remote node's role in computation
-        :return:
+        :return: Dict representation of NetworkMessage
         """
 
 ##############
