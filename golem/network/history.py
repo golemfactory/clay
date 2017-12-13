@@ -73,11 +73,13 @@ class MessageHistoryService(IService):
         )
 
     def start(self) -> None:
-        if not self.running:
-            self._stop_event.clear()
-            self._queue_timeout = self.QUEUE_TIMEOUT
-            self._thread = threading.Thread(target=self.run, daemon=True)
-            self._thread.start()
+        if self.running:
+            return
+
+        self._stop_event.clear()
+        self._queue_timeout = self.QUEUE_TIMEOUT
+        self._thread = threading.Thread(target=self.run, daemon=True)
+        self._thread.start()
 
     def stop(self) -> None:
         """
