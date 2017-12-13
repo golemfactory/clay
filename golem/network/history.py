@@ -106,21 +106,23 @@ class MessageHistoryService(IService, threading.Thread):
         if msg_dict:
             self._save_queue.put(msg_dict)
 
-    def add_sync(self, msg: NetworkMessage) -> None:
+    def add_sync(self, msg: NetworkMessage) -> bool:
         """
         Saves a message in the database.
         :param msg: Message to save
         """
         try:
             msg.save()
+            return True
         except (DataError, ProgrammingError, NotSupportedError) as exc:
             # Unrecoverable error
             logger.error("Cannot save message '%s' to database: %r",
                          msg.msg_cls, exc)
+            return True
         except PeeweeException:
             # Temporary error
             logger.debug("Message '%s' save queued", msg.msg_cls)
-            self._save_queue.put(msg)
+            return False
 
     def remove(self, task: str, **properties) -> None:
         """
@@ -203,7 +205,8 @@ class MessageHistoryService(IService, threading.Thread):
         except queue.Empty:
             pass
         else:
-            self.add_sync(msg)
+            if not self.add_sync(msg):
+                self._save_queue.put(msg_dict)
 
     def _sweep(self) -> None:
         """
