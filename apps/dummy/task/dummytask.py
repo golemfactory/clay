@@ -1,4 +1,4 @@
-from golem_messages.message import ComputeTaskDef
+from copy import copy
 import logging
 import os
 import random
@@ -13,6 +13,7 @@ from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
+from golem_messages.message import ComputeTaskDef
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 
@@ -95,7 +96,7 @@ class DummyTask(CoreTask):
         ctd = self._extra_data(perf_index)
         sid = ctd['subtask_id']
 
-        self.subtasks_given[sid] = ctd['extra_data']
+        self.subtasks_given[sid] = copy(ctd['extra_data'])
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id

@@ -238,10 +238,10 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(10000).ctd
         # act
         computer = LocalComputer(
-            self.tempdir,
-            Mock(),
-            Mock(),
-            lambda: ctd,
+            root_path=self.tempdir,
+            success_callback=Mock(),
+            error_callback=Mock(),
+            compute_task_def=ctd,
             resources=task.task_resources
         )
 
@@ -294,10 +294,10 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
             # act
             computer = LocalComputer(
-                self.tempdir,
-                Mock(),
-                Mock(),
-                lambda: ctd,
+                root_path=self.tempdir,
+                success_callback=Mock(),
+                error_callback=Mock(),
+                compute_task_def=ctd,
                 resources=task.task_resources
             )
 

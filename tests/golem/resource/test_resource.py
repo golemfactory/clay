@@ -120,24 +120,12 @@ class TestGetTaskResources(TempDirFixture):
         assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
                                       ResourceType.HASHES) == files[1:]
 
-        th2, p = get_resources_for_task(th, c.get_resources(), c.tmp_dir,
-                                        ResourceType.PARTS,
-                                        res_files=c.res_files)
-        assert p == []
-        assert th2.files_data == []
-        assert th2.sub_dir_headers == []
-
         with open(files[0], 'w') as f:
             f.write("ABCD")
 
         drm = DistributedResourceManager(os.path.dirname(files[0]))
         res_files = drm.split_file(files[0])
         c.add_resources({files[0]: res_files})
-        th2, p = get_resources_for_task(th, c.get_resources(), c.tmp_dir,
-                                        ResourceType.PARTS, c.res_files)
-        assert len(p) == 1
-        assert len(th2.files_data) == 1
-        assert th2.sub_dir_headers == []
 
         assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
                                       resource_type=3) is None

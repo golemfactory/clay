@@ -474,7 +474,7 @@ class Client(HardwarePresetsMixin):
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
                                        tmp_dir=task.tmp_dir,
-                                       resources=task.res_files)
+                                       resources=task.get_resources())
 
         def add_task(result):
             task_state = task_manager.tasks_states[task_id]

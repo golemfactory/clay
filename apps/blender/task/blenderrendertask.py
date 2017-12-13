@@ -3,6 +3,7 @@ import math
 import os
 import random
 from collections import OrderedDict
+from copy import copy
 import time
 from PIL import Image, ImageChops
 
@@ -408,7 +409,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[hash] = extra_data
+        self.subtasks_given[hash] = copy(extra_data)
         self.subtasks_given[hash]['subtask_id'] = hash
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index

@@ -858,25 +858,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self
         )
 
-    def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.PARTS
-        )
-        if res is None:
-            return
-        delta_header, parts_list = res
-
-        self.send(message.DeltaParts(
-            task_id=self.task_id,
-            delta_header=delta_header,
-            parts=parts_list,
-            node_name=self.task_server.get_node_name(),
-            node_info=self.task_server.node,
-            address=self.task_server.get_resource_addr(),
-            port=self.task_server.get_resource_port()))
-
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager

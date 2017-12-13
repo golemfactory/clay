@@ -477,7 +477,7 @@ class ResourceType(object): # class ResourceType(Enum):
 
 
 def get_resources_for_task(resource_header, resources, tmp_dir,
-                           resource_type=ResourceType.ZIP, res_files=None
+                           resource_type=ResourceType.ZIP,
                            ):
     dir_name = common_dir(resources)
 
@@ -485,12 +485,6 @@ def get_resources_for_task(resource_header, resources, tmp_dir,
         if resource_type == ResourceType.ZIP:
             return prepare_delta_zip(dir_name, resource_header, tmp_dir,
                                      resources)
-
-        elif resource_type == ResourceType.PARTS:
-            return TaskResourceHeader.build_parts_header_delta_from_chosen(
-                resource_header,
-                dir_name,
-                res_files)
         elif resource_type == ResourceType.HASHES:
             return copy.copy(resources)
 

@@ -38,7 +38,7 @@ class LocalComputer(object):
         self.lock = Lock()
         self.tt = None
         self.dir_manager = DirManager(root_path)
-        self.compute_task_def = compute_task_def,
+        self.compute_task_def = compute_task_def
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
         self.success_callback = success_callback

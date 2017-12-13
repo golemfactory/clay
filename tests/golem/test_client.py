@@ -714,9 +714,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock()
         task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
+        task.get_resources.return_value = []
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, ResourceType.HASHES)
+        task.get_resources.assert_called_with()
 
         assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called

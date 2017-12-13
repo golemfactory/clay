@@ -5,6 +5,7 @@ import os
 import random
 import shutil
 from collections import OrderedDict
+from copy import copy
 
 from PIL import Image, ImageChops, ImageOps
 
@@ -218,7 +219,7 @@ class LuxTask(renderingtask.RenderingTask):
                       }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[hash] = extra_data
+        self.subtasks_given[hash] = copy(extra_data)
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
@@ -548,10 +549,11 @@ class LuxTask(renderingtask.RenderingTask):
                 self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
 
             computer = LocalComputer(
-                path,
-                self.__final_img_ready,
-                self.__final_img_error,
-                lambda: self.query_extra_data_for_reference_task(counter=i),
+                root_path=path,
+                success_callback=self.__final_img_ready,
+                error_callback=self.__final_img_error,
+                compute_task_def=self.query_extra_data_for_reference_task(
+                    counter=i),
                 resources=self.task_resources
             )
             computer.run()
@@ -563,10 +565,10 @@ class LuxTask(renderingtask.RenderingTask):
         )
 
         computer = LocalComputer(
-            path,
-            self.__final_img_ready,
-            self.__final_img_error,
-            self.query_extra_data_for_flm_merging_test,
+            root_path=path,
+            success_callback=self.__final_img_ready,
+            error_callback=self.__final_img_error,
+            get_compute_task_def=self.query_extra_data_for_flm_merging_test,
             resources=self.task_resources
         )
         computer.run()
@@ -574,10 +576,10 @@ class LuxTask(renderingtask.RenderingTask):
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(
-            self.root_path,
-            self.__final_img_ready,
-            self.__final_img_error,
-            self.query_extra_data_for_merge,
+            root_path=self.root_path,
+            success_callback=self.__final_img_ready,
+            error_callback=self.__final_img_error,
+            get_compute_task_def=self.query_extra_data_for_merge,
             resources=self.task_resources,
             additional_resources=[flm]
         )
@@ -607,10 +609,10 @@ class LuxTask(renderingtask.RenderingTask):
             sorted(self.collected_file_names.items())
         )
         computer = LocalComputer(
-            self.root_path,
-            self.__final_flm_ready,
-            self.__final_flm_failure,
-            self.query_extra_data_for_final_flm,
+            root_path=self.root_path,
+            success_callback=self.__final_flm_ready,
+            error_callback=self.__final_flm_failure,
+            get_compute_task_def=self.query_extra_data_for_final_flm,
             resources=[],
             additional_resources=list(self.collected_file_names.values())
         )
