@@ -607,12 +607,12 @@ class CoreTaskBuilder(TaskBuilder):
             return options['output_path']
 
         absolute_path = cls.get_nonexistant_path(
-            options['output_path'], definition.task_name, options['format'])
+            options['output_path'], definition.task_name, options.get('format', ''))
 
         return absolute_path
 
     @classmethod
-    def get_nonexistant_path(cls, path, name, extension):
+    def get_nonexistant_path(cls, path, name, extension=""):
         """
         Prevent overwriting with incremental filename
         @ref https://stackoverflow.com/a/43167607/1763249
@@ -634,7 +634,11 @@ class CoreTaskBuilder(TaskBuilder):
         ...
         """
         fname_path = os.path.join(path, name)
-        path_with_ext = os.path.join(path, name + "." + extension)
+
+        if extension:
+            extension = "." + extension
+
+        path_with_ext = os.path.join(path, name + extension)
 
         if not os.path.exists(path_with_ext):
             return fname_path
@@ -642,7 +646,7 @@ class CoreTaskBuilder(TaskBuilder):
         i = 1
         new_fname = "{}({})".format(fname_path, i)
 
-        while os.path.exists(os.path.join(path, name + "(" + str(i) + ")." + extension)):
+        while os.path.exists(os.path.join(path, name + "(" + str(i) + ")" + extension)):
             i += 1
             new_fname = "{}({})".format(fname_path, i)
 
