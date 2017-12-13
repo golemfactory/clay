@@ -23,6 +23,7 @@ class TaskTester(LocalComputer):
             comp_failed_warning=TaskTester.TESTER_WARNING,
             comp_success_message=TaskTester.TESTER_SUCCESS,
             resources=task.get_resources())
+        self.task = task
 
     def _get_task_thread(self, ctd):
         # ctd: ComputeTaskDef

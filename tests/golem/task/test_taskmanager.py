@@ -106,6 +106,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                        subtask_timeout=120.0):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='', task_definition=Mock())
+        task_mock.tmp_dir = self.path
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -317,21 +318,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.assertTrue(self.tm.use_distributed_resources)
         self.tm.change_config(self.path, False)
         self.assertFalse(self.tm.use_distributed_resources)
-
-    def test_get_resources(self):
-        task_id = "xyz"
-
-        resources = ['first', 'second']
-
-        task_mock = self._get_task_mock()
-        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources):
-            self.tm.add_new_task(task_mock)
-            assert self.tm.get_resources(task_id, task_mock.header) is resources
-
-        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'", Mock())
-        self.tm.tasks["xyz"] = task
-        self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
-
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, dump_mock):

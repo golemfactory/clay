@@ -840,24 +840,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.err_msg = reasons.WrongDockerImages
         return False
 
-    def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.ZIP
-        )
-
-        if not res_file_path:
-            logger.error("Task {} has no resource".format(msg.task_id))
-            self.conn.transport.write(struct.pack("!L", 0))
-            self.dropped()
-            return
-
-        self.conn.producer = tcpnetwork.EncryptFileProducer(
-            [res_file_path],
-            self
-        )
-
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager
