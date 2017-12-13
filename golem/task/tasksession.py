@@ -204,7 +204,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if isinstance(msg, message.TaskToCompute):
             definition = msg.compute_task_def
-            if isinstance(definition, dict):
+            if definition:
                 task = definition.get('task_id')
                 subtask = definition.get('subtask_id')
         else:
