@@ -95,7 +95,7 @@ class Client(object):
             return 0
 
     def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0,
-             data=None, nonce=0, block=None):
+             data=None, block=None):
         """
         Executes a message call transaction,
         which is directly executed in the VM of the node,
@@ -115,10 +115,6 @@ class Client(object):
         Either a byte string containing the associated data of the message,
         or in the case of a contract-creation transaction,
         the initialisation code
-        :param nonce:
-        Integer of a nonce.
-        This allows to overwrite your own pending
-        transactions that use the same nonce
         :param block:
         integer block number,
         or the string "latest", "earliest" or "pending"
@@ -133,7 +129,6 @@ class Client(object):
             'gasPrice': gas_price,
             'value': value,
             'data': data,
-            'nonce': nonce
         }
         return self.web3.eth.call(obj, block)
 
