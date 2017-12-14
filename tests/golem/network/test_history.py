@@ -1,6 +1,7 @@
 import datetime
 import queue
 import uuid
+import unittest.mock as mock
 from unittest.mock import Mock, patch
 
 from golem_messages import message
@@ -31,8 +32,8 @@ class TestMessageHistoryService(DatabaseFixture):
         MessageHistoryService.instance = None
 
     @staticmethod
-    def _build_msg(task=None, subtask=None):
-        return NetworkMessage(
+    def _build_dict(task=None, subtask=None):
+        return dict(
             task=task or str(uuid.uuid4()),
             subtask=subtask or str(uuid.uuid4()),
             node=str(uuid.uuid4()),
@@ -45,6 +46,10 @@ class TestMessageHistoryService(DatabaseFixture):
             remote_role=Actor.Requestor,
         )
 
+    @classmethod
+    def _build_msg(cls, task=None, subtask=None):
+        return NetworkMessage(**cls._build_dict(task, subtask))
+
     def test_add(self):
         msg = self._build_msg()
 
@@ -55,21 +60,26 @@ class TestMessageHistoryService(DatabaseFixture):
         with self.assertRaises(queue.Empty):
             self.service._save_queue.get(block=False)
 
-    def test_add_sync(self):
+    @mock.patch('golem.model.NetworkMessage.save')
+    def test_add_sync_fail(self, save):
         self.service._save_queue = Mock()
-        msg = self._build_msg()
+        msg_dict = self._build_dict(None, None)
 
-        with patch.object(msg, 'save', side_effect=DataError):
-            self.service.add_sync(msg)
-            assert not self.service._save_queue.put.called
-            assert message_count() == 0
+        save.side_effect = DataError
 
-        with patch.object(msg, 'save', side_effect=PeeweeException):
-            self.service.add_sync(msg)
-            assert self.service._save_queue.put.called
-            assert message_count() == 0
+        self.service.add_sync(msg_dict)
+        assert not self.service._save_queue.put.called
+        assert message_count() == 0
 
-        self.service.add_sync(msg)
+        save.side_effect = PeeweeException
+
+        self.service.add_sync(msg_dict)
+        assert self.service._save_queue.put.called
+        assert message_count() == 0
+
+    def test_add_sync_success(self):
+        msg_dict = self._build_dict(None, None)
+        self.service.add_sync(msg_dict)
         assert message_count() == 1
 
     def test_remove(self):
@@ -84,7 +94,7 @@ class TestMessageHistoryService(DatabaseFixture):
             self.service._remove_queue.get(block=False)
 
     def test_remove_sync(self):
-        msg = self._build_msg()
+        msg = self._build_dict(None, None)
 
         self.service.add_sync(msg)
         self.service._remove_queue = Mock()
@@ -92,25 +102,25 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=DataError):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=PeeweeException):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert self.service._remove_queue.put.called
             assert message_count() == 1
 
-        self.service.remove_sync(msg.task, subtask=str(uuid.uuid4()))
+        self.service.remove_sync(msg['task'], subtask=str(uuid.uuid4()))
         assert message_count() == 1
-        self.service.remove_sync(msg.task, subtask=msg.subtask)
+        self.service.remove_sync(msg['task'], subtask=msg['subtask'])
         assert message_count() == 0
 
     def test_get_sync(self):
         msgs = [
-            self._build_msg(task="task"),
-            self._build_msg(task="task"),
-            self._build_msg(task="task")
+            self._build_dict("task", None),
+            self._build_dict("task", None),
+            self._build_dict("task", None)
         ]
 
         for msg in msgs:
@@ -123,7 +133,7 @@ class TestMessageHistoryService(DatabaseFixture):
         result = self.service.get_sync(task="task")
         assert len(result) == 3
 
-        result = self.service.get_sync(task="task", subtask=msgs[0].subtask)
+        result = self.service.get_sync(task="task", subtask=msgs[0]['subtask'])
         assert len(result) == 1
 
     def test_build_clauses(self):
@@ -147,9 +157,9 @@ class TestMessageHistoryService(DatabaseFixture):
 
     def test_sweep(self):
         msgs = [
-            self._build_msg(),
-            self._build_msg(),
-            self._build_msg()
+            self._build_dict(),
+            self._build_dict(),
+            self._build_dict()
         ]
 
         for msg in msgs:
@@ -160,7 +170,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 3
 
         result = NetworkMessage.select() \
-            .where(NetworkMessage.task == msgs[0].task) \
+            .where(NetworkMessage.task == msgs[0]['task']) \
             .execute()
 
         msg = list(result)[0]
@@ -174,9 +184,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_sweep(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
 
         self.service._loop()
         assert self.service._sweep.called
@@ -185,9 +195,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service._sweep.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_add_sync(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.add_sync = Mock()
 
         # No message
@@ -195,7 +205,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.add_sync.called
 
         # Add message
-        msg = self._build_msg()
+        msg = self._build_dict()
         self.service._save_queue.put(msg)
 
         # With message
@@ -207,9 +217,9 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service.add_sync.called
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
     def test_loop_remove_sync(self, *_):
         self.service._sweep = Mock()
+        self.service._queue_timeout = 0.1
         self.service.remove_sync = Mock()
 
         # No tuple
@@ -250,7 +260,7 @@ class TestMessageHistoryProvider(DatabaseFixture):
             invalid.method(None)
 
     def test_record_history(self):
-        service = MessageHistoryService()
+        service = MessageHistoryService().instance
 
         class Provider(IMessageHistoryProvider):
 
@@ -258,7 +268,7 @@ class TestMessageHistoryProvider(DatabaseFixture):
                 self.key_id = 'a0b1c2'
 
             def message_to_model(self, msg, local_role, remote_role):
-                return NetworkMessage()
+                return dict(key='value')
 
             @requestor_history
             def react_to_report_computed_task(self, *_):
@@ -270,11 +280,9 @@ class TestMessageHistoryProvider(DatabaseFixture):
 
         provider = Provider()
 
-        msg_hello = message.Hello()
-        msg_request = message.WantToComputeTask(task_id='task_2')
-        msg_request._raw = msg_request.serialize(sign_func=mock_sign)
-        msg_result = message.ReportComputedTask(subtask_id='subtask_2')
-        msg_result._raw = msg_request.serialize(sign_func=mock_sign)
+        msg_hello = message.Hello(raw=b'\0')
+        msg_request = message.WantToComputeTask(task_id='t', raw=b'\0')
+        msg_result = message.ReportComputedTask(subtask_id='s', raw=b'\0')
 
         NetworkMessage.delete().execute()
 
