@@ -74,6 +74,11 @@ class CrossbarRouter(object):
     def _build_config(address, serializers, allowed_origins='*', realm='golem', enable_webstatus=False):
         return {
             'version': 2,
+            'controller': {
+                'options': {
+                    'shutdown': ['shutdown_on_shutdown_requested']
+                }
+            },
             'workers': [{
                 'type': 'router',
                 'options': {
