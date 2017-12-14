@@ -1,6 +1,8 @@
 import datetime
+from golem_messages import message
 import json
 import logging
+import pickle
 from enum import Enum
 from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
@@ -440,3 +442,7 @@ class NetworkMessage(BaseModel):
     msg_date = DateTimeField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+
+    def as_message(self) -> message.Message:
+        msg = pickle.loads(self.msg_data)
+        return msg

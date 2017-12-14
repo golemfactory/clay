@@ -1,4 +1,5 @@
 import datetime
+from golem_messages import message
 import logging
 import operator
 import queue
@@ -97,6 +98,14 @@ class MessageHistoryService(IService, threading.Thread):
             .order_by(+NetworkMessage.msg_date)
 
         return list(result)
+
+    @classmethod
+    def get_sync_as_message(cls, *args, **kwargs) -> message.Message:
+        db_result = cls.get_sync(*args, **kwargs)
+        if not db_result:
+            raise MessageNotFound()
+        db_msg = db_result[0]
+        return db_msg.as_message()
 
     def add(self, msg: NetworkMessage) -> None:
         """

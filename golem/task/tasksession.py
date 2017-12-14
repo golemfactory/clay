@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import pickle
 import struct
 import threading
 import time
@@ -198,7 +199,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             node=self.key_id,
             msg_date=time.time(),
             msg_cls=msg.__class__.__name__,
-            msg_data=msg.raw,
+            msg_data=pickle.dumps(msg),
             local_role=local_role,
             remote_role=remote_role,
         ) if task else None
@@ -381,6 +382,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         node_name = self.task_server.get_node_name()
+        task_to_compute = MessageHistoryService.get_sync_as_message(
+            task=task_result.task_id,
+            subtask=task_result.subtask_id,
+            msg_cls='TaskToCompute',
+        )
 
         self.send(message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -397,7 +403,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # FIXME: message.ForceReportComputedTask is going to be updated
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls(task_result.subtask_id)
-        msg_data = msg.serialize(self.sign)
+        msg_data = pickle.dumps(msg)
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),

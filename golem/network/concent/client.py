@@ -152,6 +152,7 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: Hashable,
+               msg: message.Message,
                msg_data: bytes,
                msg_cls: Type[message.Message],
                delay: Optional[float] = None) -> None:
