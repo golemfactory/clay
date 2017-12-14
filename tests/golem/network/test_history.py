@@ -149,11 +149,21 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.running
         self.service.start()
         assert self.service.running
-        self.service.join(1.)
+        self.service._thread.join(1.)
         self.service.stop()
         assert not self.service.running
 
         assert self.service._loop.called
+
+    @patch('threading.Thread')
+    def test_multiple_starts(self, *_):
+        self.service.start()
+        assert self.service._thread.start.called
+
+        self.service._thread.reset_mock()
+        self.service._thread.is_alive.return_value = True
+        self.service.start()
+        assert not self.service._thread.start.called
 
     def test_sweep(self):
         msgs = [
@@ -184,7 +194,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    def test_loop_sweep(self, *_):
+    def test_loop_sweep(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
 
@@ -195,7 +205,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service._sweep.called
 
-    def test_loop_add_sync(self, *_):
+    def test_loop_add_sync(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
         self.service.add_sync = Mock()
@@ -217,7 +227,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service.add_sync.called
 
-    def test_loop_remove_sync(self, *_):
+    def test_loop_remove_sync(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
         self.service.remove_sync = Mock()
