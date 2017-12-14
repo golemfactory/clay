@@ -127,14 +127,15 @@ class StepsFactory(object):
     def git_step():
         return steps.Git(
             repourl='https://github.com/{}.git'.format(github_slug),
-            mode='full', method='fresh', branch='mwu/bb-unit-test',
+            mode='full', method='fresh', branch='develop',
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     def venv_step(self):
         return steps.ShellCommand(
             name='virtualenv',
-            haltOnFailure=True,
             command=self.venv_command + ['.venv'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     def requirements_step(self):
@@ -150,44 +151,44 @@ class StepsFactory(object):
             commands=[
                 util.ShellArg(
                     logfile='install wheel',
-                    haltOnFailure=True,
-                    command=self.pip_command + ['install', 'wheel']),
+                    command=self.pip_command + ['install', 'wheel'],
+                    haltOnFailure=True),
                 util.ShellArg(
                     logfile='upgrade pip',
-                    haltOnFailure=True,
-                    command=self.pip_command + ['install', '--upgrade', 'pip']),
+                    command=self.pip_command + ['install', '--upgrade', 'pip'],
+                    haltOnFailure=True),
                 util.ShellArg(
                     logfile='install requirements',
-                    haltOnFailure=True,
-                    command=install_req_cmd),
+                    command=install_req_cmd,
+                    haltOnFailure=True),
                 util.ShellArg(
                     logfile='uninstall enum34',
-                    haltOnFailure=True,
-                    command=self.pip_command + ['uninstall', '-y', 'enum34']),
+                    command=self.pip_command + ['uninstall', '-y', 'enum34'],
+                    haltOnFailure=True),
                 util.ShellArg(
                     logfile='install missing requirements',
-                    haltOnFailure=True,
                     command=self.pip_command + ['install', '--upgrade',
-                                                gitpy_repo]),
+                                                gitpy_repo],
+                    haltOnFailure=True),
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for readline
             },
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
     def taskcollector_step():
         return steps.ShellCommand(
             name='build taskcollector',
-            haltOnFailure=True,
             command=['make', '-C', 'apps/rendering/resources/taskcollector'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success,
         )
 
     def create_binaries_step(self):
         return steps.ShellCommand(
             name='create binaries',
-            haltOnFailure=True,
             command=self.python_command + ['setup.py', 'pyinstaller',
                                            '--package-path',
                                            self.golem_package],
@@ -195,6 +196,7 @@ class StepsFactory(object):
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'VIRTUAL_ENV': self.venv_path,
             },
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     def file_upload_step(self):
@@ -219,8 +221,8 @@ class StepsFactory(object):
     def create_version_step(self):
         return steps.ShellCommand(
             name='load current version',
-            haltOnFailure=True,
             command=self.python_command + [self.version_script],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
@@ -229,14 +231,15 @@ class StepsFactory(object):
             command='cat .version.ini | '
                     'grep "version =" | grep -o "[^ =]*$"',
             property='version',
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_start_step():
         return steps.ShellCommand(
             name='start hyperg',
-            haltOnFailure=True,
             command=['scripts/test-daemon-start.sh'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     def test_step(self):
@@ -260,50 +263,58 @@ class StepsFactory(object):
                 commands=[
                     util.ShellArg(
                         logfile='install requirements',
-                        flunkOnFailure=True,
-                        command=install_req_cmd),
+                        command=install_req_cmd,
+                        flunkOnFailure=True),
                     # TODO: move to requirements itself?
                     util.ShellArg(
                         logfile='install missing requirement',
-                        flunkOnFailure=True,
                         command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                    'codecov', 'pytest-cov']),
+                                                    'codecov', 'pytest-cov'],
+                        flunkOnFailure=True),
                     util.ShellArg(
                         logfile='prepare for test',
-                        flunkOnFailure=True,
-                        command=self.python_command + ['setup.py', 'develop']),
+                        command=self.python_command + ['setup.py', 'develop'],
+                        flunkOnFailure=True),
                     # TODO: add xml results
                     # TODO 2: add run slow
                     util.ShellArg(
                         logfile='run tests',
-                        flunkOnFailure=True,
-                        command=self.python_command + test_command)
+                        command=self.python_command + test_command,
+                        flunkOnFailure=True),
                 ],
+                env={
+                    'LANG': 'en_US.UTF-8',  # required for test with 'click'
+                },
+                flunkOnFailure=True,
                 doStepIf=has_no_previous_success and is_fast),
             steps.ShellSequence(
                 name='run slow tests',
                 commands=[
                     util.ShellArg(
                         logfile='install requirements',
-                        flunkOnFailure=True,
-                        command=install_req_cmd),
+                        command=install_req_cmd,
+                        flunkOnFailure=True),
                     # TODO: move to requirements itself?
                     util.ShellArg(
                         logfile='install missing requirement',
-                        flunkOnFailure=True,
                         command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                    'codecov', 'pytest-cov']),
+                                                    'codecov', 'pytest-cov'],
+                        flunkOnFailure=True),
                     util.ShellArg(
                         logfile='prepare for test',
-                        flunkOnFailure=True,
-                        command=self.python_command + ['setup.py', 'develop']),
+                        command=self.python_command + ['setup.py', 'develop'],
+                        flunkOnFailure=True),
                     # TODO: add xml results
                     # TODO 2: add run slow
                     util.ShellArg(
                         logfile='run tests',
-                        flunkOnFailure=True,
-                        command=self.python_command + test_slow_command)
+                        command=self.python_command + test_slow_command,
+                        flunkOnFailure=True),
                 ],
+                env={
+                    'LANG': 'en_US.UTF-8',  # required for test with 'click'
+                },
+                flunkOnFailure=True,
                 doStepIf=has_no_previous_success and is_slow),
             ]
 
@@ -319,22 +330,23 @@ class StepsFactory(object):
 
         return steps.ShellCommand(
             name='handle coverage',
-            flunkOnFailure=True,
             command=self.python_command + ['-m', 'codecov'],
-            doStepIf=is_slow,
             env={
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'CODECOV_TOKEN': util.Interpolate(
                     '%(secret:codecov_api_token)s'),
                 'CODECOV_SLUG': github_slug
-            })
+            },
+            flunkOnFailure=True,
+            doStepIf=is_slow,
+        )
 
     @staticmethod
     def daemon_stop_step():
         return steps.ShellCommand(
             name='stop hyperg',
-            haltOnFailure=True,
             command=['scripts/test-daemon-stop.sh'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     def lint_step(self):
@@ -393,20 +405,19 @@ class WindowsStepsFactory(StepsFactory):
     def taskcollector_step(self):
         return steps.ShellCommand(
             name='build taskcollector',
-            haltOnFailure=True,
             command=self.build_taskcollector_command,
             env={
                 'PATH': r'${PATH};C:\Program Files (x86)'
                         r'\Microsoft Visual Studio\2017\Community'
                         r'\MSBuild\15.0\Bin'
             },
+            haltOnFailure=True,
             doStepIf=has_no_previous_success
         )
 
     def pywin32_step(self):
         return steps.ShellCommand(
             name='install pywin32',
-            haltOnFailure=True,
             command=self.pip_command + [
                 'install',
                 r'C:\BuildResources\pywin32-221-cp36-cp36m-win_amd64.whl'
@@ -415,30 +426,31 @@ class WindowsStepsFactory(StepsFactory):
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'VIRTUAL_ENV': self.venv_path,
             },
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_start_step():
         return steps.ShellCommand(
             name='start hyperg',
-            haltOnFailure=True,
             command=['powershell.exe', r'scripts\test-daemon-start.ps1'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
     def daemon_stop_step():
         return steps.ShellCommand(
             name='stop hyperg',
-            haltOnFailure=True,
             command=['powershell.exe', r'scripts\test-daemon-stop.ps1'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
     @staticmethod
     def create_installer_step():
         return steps.ShellCommand(
             name='run inno',
-            haltOnFailure=True,
             command=['iscc', r'Installer\Installer_Win\install_script.iss'],
+            haltOnFailure=True,
             doStepIf=has_no_previous_success)
 
 
