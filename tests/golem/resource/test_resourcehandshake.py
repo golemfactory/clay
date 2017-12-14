@@ -147,7 +147,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         assert session._start_handshake.called
         assert not session._handshake_error.called
-        session._download_handshake_nonce.assert_called_with(ANY, resource)
+        session._download_handshake_nonce.assert_called_with(ANY, resource, ANY)
 
     def test_react_to_resource_handshake_start_blocked_peer(self, *_):
         session = MockTaskSession(self.tempdir)
@@ -478,6 +478,7 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session._start_handshake(remote_session.key_id)
         msg = remote_session.send.call_args[0][0]
         remote_hash = msg.resource
+        options = Mock()
 
         local_session.send.reset_mock()
         remote_session.send.reset_mock()
@@ -485,12 +486,12 @@ class TestResourceHandshakeShare(TempDirFixture):
         # Download nonces on both sides
 
         local_session._download_handshake_nonce(local_session.key_id,
-                                                remote_hash)
+                                                remote_hash, options)
         assert not local_session._handshake_error.called
         assert local_session.send.called
 
         remote_session._download_handshake_nonce(remote_session.key_id,
-                                                 local_hash)
+                                                 local_hash, options)
         assert not remote_session._handshake_error.called
         assert remote_session.send.called
 
@@ -603,6 +604,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.successful_downloads = successful_downloads
         self.successful_uploads = successful_uploads
 
+        self.address = "192.168.0.11"
         self.key_id = str(uuid.uuid4())
         self.data_dir = data_dir
         self.task_server = Mock(

@@ -116,9 +116,11 @@ class ResourceHandshakeSessionMixin:
         if not handshake:
             self._start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
-            self.send(message.ResourceHandshakeStart(handshake.hash))
+            options = self.task_server.get_share_options(handshake.nonce,
+                                                         key_id)
+            self.send(message.ResourceHandshakeStart(handshake.hash, options))
 
-        self._download_handshake_nonce(key_id, msg.resource)
+        self._download_handshake_nonce(key_id, msg.resource, msg.options)
 
     def _react_to_resource_handshake_nonce(self, msg):
         key_id = self.key_id
@@ -218,19 +220,18 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        client_options = self.task_server.get_share_options(handshake.nonce,
-                                                            key_id)
+        options = self.task_server.get_share_options(handshake.nonce, key_id)
 
         async_req = AsyncRequest(self.resource_manager.add_file,
                                  handshake.file,
                                  self.NONCE_TASK,
                                  absolute_path=True,
-                                 client_options=client_options)
+                                 client_options=options)
         async_run(async_req,
-                  success=lambda res: self._nonce_shared(key_id, res),
+                  success=lambda res: self._nonce_shared(key_id, res, options),
                   error=lambda exc: self._handshake_error(key_id, exc))
 
-    def _nonce_shared(self, key_id, result):
+    def _nonce_shared(self, key_id, result, options):
         handshake = self._get_handshake(key_id)
         _, handshake.hash = result
 
@@ -238,20 +239,21 @@ class ResourceHandshakeSessionMixin:
                      "%r to peer %r", handshake.hash, key_id)
 
         os.remove(handshake.file)
-        self.send(message.ResourceHandshakeStart(handshake.hash))
+        self.send(message.ResourceHandshakeStart(handshake.hash, options))
 
     # ########################
     #      DOWNLOAD NONCE
     # ########################
 
-    def _download_handshake_nonce(self, key_id, resource):
+    def _download_handshake_nonce(self, key_id, resource, options):
         entry = resource, ''
 
         self.resource_manager.pull_resource(
             entry, self.NONCE_TASK,
             success=lambda res, files, _: self._nonce_downloaded(key_id, files),
             error=lambda exc, *_: self._handshake_error(key_id, exc),
-            client_options=self.task_server.get_download_options(key_id)
+            client_options=self.task_server.get_download_options(options,
+                                                                 self.address)
         )
 
     def _nonce_downloaded(self, key_id, files):

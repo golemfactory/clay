@@ -580,7 +580,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         call_options = task_server.pull_resources.call_args[1]
 
         assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options'].options['peers'] == peers
+        assert not call_options['client_options'].options
 
     def test_task_subtask_from_message(self):
         self.task_session._subtask_to_task = Mock(return_value=None)

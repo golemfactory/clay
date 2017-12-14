@@ -527,6 +527,7 @@ class PeerSession(BasicSafeSession):
                 return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
+        # TODO: send message.Hello with metadata in task session
         self.p2p_service.interpret_metadata(self.metadata,
                                             self.address,
                                             self.listen_port,

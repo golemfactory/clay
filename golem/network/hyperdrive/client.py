@@ -2,6 +2,7 @@ import collections
 import json
 import logging
 from ipaddress import AddressValueError, ip_address
+from typing import Optional
 
 import requests
 from requests import HTTPError
@@ -121,6 +122,34 @@ class HyperdriveClientOptions(ClientOptions):
 
     max_peers = 64
 
+    def replace_host(self,
+                     address: str) -> Optional['HyperdriveClientOptions']:
+
+        filtered = self.filtered()
+        if not filtered:
+            return
+
+        host = self.filter_peer(self.peers[0], forced_ip=address)
+
+        if filtered.peers:
+            filtered.peers.insert(0, host)
+        else:
+            filtered.peers = [host]
+
+        return filtered
+
+    @property
+    def peers(self) -> list:
+        if isinstance(self.options, dict):
+            return self.options.get('peers', [])
+        return []
+
+    @peers.setter
+    def peers(self, value: list) -> None:
+        if not isinstance(self.options, dict):
+            self.options = dict()
+        self.options['peers'] = value
+
     def filtered(self,
                  client_id=HyperdriveClient.CLIENT_ID,
                  version=HyperdriveClient.VERSION,
@@ -176,16 +205,15 @@ class HyperdriveClientOptions(ClientOptions):
                 ip = ip_address(ip_str)
                 port = int(entry[1])
 
-                # FIXME: filter out only private IPs we're not connected to
-                # if ip.is_private:
-                #     raise ValueError('address {} is private'
-                #                      .format(ip))
-                if excluded_ips and entry[0] in excluded_ips:
-                    raise ValueError('address {} was excluded'
-                                     .format(ip))
+                if ip_str != forced_ip:
+                    if ip.is_private:
+                        raise ValueError('address {} is private'.format(ip))
+                    if excluded_ips and ip_str in excluded_ips:
+                        raise ValueError('address {} was excluded'.format(ip))
+
                 if not 0 < port < 65536:
-                    raise ValueError('port {} is invalid'
-                                     .format(port))
+                    raise ValueError('port {} is invalid'.format(port))
+
                 if forced_ip and ip_str != forced_ip:
                     log.warning("Replacing provider's IP address %s with %s",
                                 ip, forced_ip)

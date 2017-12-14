@@ -49,4 +49,5 @@ numpy==1.13.1
 scipy==0.19.1
 pyssim
 enforce==0.3.4
--e git://github.com/golemfactory/golem-messages.git@v1.2.1#egg=golem_messages
+# FIXME: switch to release version after merge
+-e git://github.com/golemfactory/golem-messages.git@resource_handshake_options#egg=golem_messages

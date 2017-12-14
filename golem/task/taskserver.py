@@ -1,33 +1,34 @@
 # -*- coding: utf-8 -*-
-from collections import deque
 import datetime
-from typing import Dict, Iterable, Optional
-
-from golem_messages import message
 import itertools
 import logging
 import os
-from pydispatch import dispatcher
 import time
+import weakref
+from collections import deque
+from typing import Iterable, Optional
 
+from golem_messages import message
+from pydispatch import dispatcher
 from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
-from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
+from golem.network.transport.tcpnetwork import TCPNetwork, SocketAddress, \
+    FilesProtocol
+from golem.network.transport.tcpserver import PendingConnectionsServer, \
+    PenConnStatus
 from golem.ranking.helper.trust import Trust
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader, ResourceType, Task
+from golem.task.taskbase import TaskHeader, ResourceType
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.task.taskstate import TaskState
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-import weakref
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -106,11 +107,13 @@ class TaskResourcesMixin(object):
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def get_download_options(self, key_id):
+    def get_download_options(self, received_options, address=None):
+        if isinstance(received_options, HyperdriveClientOptions) and address:
+            options = received_options.clone()
+            return options.replace_host(address)
+
         resource_manager = self._get_resource_manager()
-        peer = self.get_resource_peer(key_id)
-        peers = [peer] if peer else []
-        return resource_manager.build_client_options(peers=peers)
+        return resource_manager.build_client_options()
 
     def get_share_options(self, task_id, key_id):
         resource_manager = self._get_resource_manager()
