@@ -43,10 +43,10 @@ class IPortMapper(ABC):
 
 class PortMapperManager(IPortMapper):
 
-    def __init__(self):
+    def __init__(self, mappers=None):
         from golem.network.upnp.igd import IGDPortMapper
 
-        self._mappers = [IGDPortMapper()]
+        self._mappers = mappers or [IGDPortMapper()]
         self._active_mapper = None
 
         self._mapping = {
@@ -62,7 +62,7 @@ class PortMapperManager(IPortMapper):
 
     @property
     def available(self) -> bool:
-        return self._active_mapper
+        return bool(self._active_mapper)
 
     @property
     def network(self) -> dict:
@@ -91,7 +91,7 @@ class PortMapperManager(IPortMapper):
                             mapper.name, mapper.network)
                 break
 
-            logger.warning('%s-compatible device not found', mapper.name)
+            logger.warning('%s-compatible device was not found', mapper.name)
 
     def create_mapping(self,
                        local_port: int,
@@ -100,7 +100,7 @@ class PortMapperManager(IPortMapper):
                        lease_duration: int = None) -> Optional[int]:
 
         if not self.available:
-            return False
+            return None
 
         mapper = self._active_mapper
 
