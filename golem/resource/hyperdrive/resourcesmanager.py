@@ -94,7 +94,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                         id=task_id,
                                         client_options=client_options,
                                         obj_id=str(uuid.uuid4()),
-                                        raise_exc=bool(resource_hash))
+                                        raise_exc=True)
 
         file_list = list(files.values())
         self._cache_response(file_list, response, task_id)
