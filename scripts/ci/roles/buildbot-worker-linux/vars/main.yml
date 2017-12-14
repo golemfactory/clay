@@ -5,6 +5,7 @@ worker_group: "buildbot-worker"
 worker_name: ""
 worker_postfix: ""
 worker_master_hostname: ""
+need_git: No
 
 _worker_user_home: "/home/{{worker_user}}"
 _worker_service_dir: "{{_worker_user_home}}/worker{{worker_postfix}}"

@@ -7,10 +7,13 @@ control_workers = [
     "control_02",
     "control_03",
     "control_04",
+    "control_05",
+    "control_06",
+    "control_07",
+    "control_08",
 ]
 
 macos_workers = [
-    "macOS",
     "macos_01",
     "macos_02",
 ]
@@ -18,10 +21,11 @@ macos_workers = [
 linux_workers = [
     "linux_01",
     "linux_02",
+    "linux_03",
+    "linux_04",
 ]
 
 windows_workers = [
-    "windows_server_2016",
     "windows_01",
     "windows_02",
 ]

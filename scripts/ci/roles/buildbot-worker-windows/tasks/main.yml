@@ -15,12 +15,6 @@
     - name: microsoft-visual-cpp-build-tools
     - name: innosetup
 
-# TODO: Remove hack after fix on: https://github.com/jberezanski/ChocolateyPackages/issues/28
-- win_lineinfile:
-    path: C:\ProgramData\chocolatey\extensions\chocolatey-visualstudio\Start-VisualStudioModifyOperation.ps1
-    backrefs: yes
-    regexp: '(.+)-ProgramsAndFeaturesDisplayName "Microsoft Visual Studio \$VisualStudioYear" `'
-    line: '$1-ProgramsAndFeaturesDisplayName "Microsoft Visual Studio Installer" `'
 
 - win_chocolatey:
     name: "{{ item.name }}"
@@ -72,7 +66,7 @@
     py -3 C:\Python36\Scripts\buildbot-worker.exe create-worker
       C:\BuildbotWorker
       "{{worker_master_hostname}}"
-      windows_server_2016
+      "{{worker_name}}"
       "{{site_settings.worker_pass}}"
   args:
     creates: C:\BuildbotWorker
@@ -196,7 +190,11 @@
   ignore_errors: yes
   win_stat:
     path: C:\BuildbotWorker\twistd.log
-  register: log_exists
+  register: log_exists_raw
+
+# Check for exists, stat fails when file is locked, meaning its there.
+- set_fact:
+    log_not_exists: " ( 'exception' in log_exists_raw and not log_exists_raw.exception ) or ( 'stat' in log_exists_raw and not log_exists_raw.stat.exists )"
 
 
 - name: Start worker for first time
@@ -204,11 +202,11 @@
   become_user: buildbot-worker
   win_shell:
     Start-Process C:\Python36\Scripts\buildbot-worker.exe -ArgumentList "start","C:\BuildbotWorker"
-  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
+  when: log_not_exists
 
 - pause:
     seconds: 10
-  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
+  when: log_not_exists
 
 
 - name: Stop worker for first time
@@ -216,7 +214,7 @@
   become_user: buildbot-worker
   win_shell:
     Stop-Process -name buildbot-worker
-  when: "'exists' in log_exists and not log_exists.exception or not log_exists.stat.exists"
+  when: log_not_exists
 
 
 - name: set registry key right

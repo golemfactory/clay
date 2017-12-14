@@ -12,18 +12,18 @@
       changed_when: False
   roles:
     - role: buildbot-worker-linux
-      worker_name: control_01
-      worker_postfix: _control_01
-      worker_master_hostname: {{master_host}}
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 1 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 1 }}"
+      worker_master_hostname: "{{master_host}}"
     - role: buildbot-worker-linux
-      worker_name: control_02
-      worker_postfix: _control_02
-      worker_master_hostname: {{master_host}}
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 2 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 2 }}"
+      worker_master_hostname: "{{master_host}}"
     - role: buildbot-worker-linux
-      worker_name: control_03
-      worker_postfix: _control_03
-      worker_master_hostname: {{master_host}}
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 3 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 3 }}"
+      worker_master_hostname: "{{master_host}}"
     - role: buildbot-worker-linux
-      worker_name: control_04
-      worker_postfix: _control_04
-      worker_master_hostname: {{master_host}}
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 4 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 4 }}"
+      worker_master_hostname: "{{master_host}}"

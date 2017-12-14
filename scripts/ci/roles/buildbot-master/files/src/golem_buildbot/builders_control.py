@@ -8,6 +8,7 @@ from buildbot.reporters import utils as reporters_utils
 # pylint: enable=E0401
 
 
+from .settings import github_slug
 from .builders_util import extract_rev
 
 
@@ -27,8 +28,8 @@ class ControlStepFactory():
                 pass
 
             base_url = "https://api.github.com/" \
-                "repos/maaktweluit/golem/pulls/{}/reviews"
-            url = base_url.format(pr_number)
+                "repos/{}/pulls/{}/reviews"
+            url = base_url.format(github_slug, pr_number)
 
             try:
                 # Github API requires user agent.
@@ -189,7 +190,7 @@ class ControlStepFactory():
             def is_uploaded_to_github(sha):
 
                 base_url = "https://api.github.com/" \
-                           "repos/maaktweluit/golem/releases"
+                           "repos/{}/releases".format(github_slug)
 
                 try:
                     # Github API requires user agent.

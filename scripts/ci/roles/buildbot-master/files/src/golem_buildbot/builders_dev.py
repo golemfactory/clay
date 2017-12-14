@@ -6,7 +6,7 @@ from buildbot.process import results
 from buildbot.reporters import utils as reporters_utils
 # pylint: enable=E0401
 
-from .settings import buildbot_host
+from .settings import buildbot_host, github_slug
 from .builders_util import extract_rev
 
 
@@ -126,7 +126,7 @@ class StepsFactory(object):
     @staticmethod
     def git_step():
         return steps.Git(
-            repourl='https://github.com/maaktweluit/golem.git',
+            repourl='https://github.com/{}.git'.format(github_slug),
             mode='full', method='fresh', branch='mwu/bb-unit-test',
             doStepIf=has_no_previous_success)
 
@@ -326,7 +326,7 @@ class StepsFactory(object):
                 'PATH': [self.venv_bin_path, '${PATH}'],
                 'CODECOV_TOKEN': util.Interpolate(
                     '%(secret:codecov_api_token)s'),
-                'CODECOV_SLUG': 'maaktweluit/golem'
+                'CODECOV_SLUG': github_slug
             })
 
     @staticmethod

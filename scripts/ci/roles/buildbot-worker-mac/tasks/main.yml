@@ -106,7 +106,7 @@
     /Users/buildbot-worker/.venv/bin/buildbot-worker create-worker
       /Users/buildbot-worker/worker
       {{worker_master_hostname}}
-      macOS
+      {{worker_name}}
       {{site_settings.worker_pass}}
     creates=/Users/buildbot-worker/worker/
 
