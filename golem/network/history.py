@@ -106,12 +106,13 @@ class MessageHistoryService(IService, threading.Thread):
         if msg_dict:
             self._save_queue.put(msg_dict)
 
-    def add_sync(self, msg: NetworkMessage) -> None:
+    def add_sync(self, msg_dict: dict) -> None:
         """
         Saves a message in the database.
-        :param msg: Message to save
+        :param msg_dict: Message to save
         """
         try:
+            msg = NetworkMessage(**msg_dict)
             msg.save()
         except (DataError, ProgrammingError, NotSupportedError) as exc:
             # Unrecoverable error
@@ -120,7 +121,7 @@ class MessageHistoryService(IService, threading.Thread):
         except PeeweeException:
             # Temporary error
             logger.debug("Message '%s' save queued", msg.msg_cls)
-            self._save_queue.put(msg)
+            self._save_queue.put(msg_dict)
 
     def remove(self, task: str, **properties) -> None:
         """
@@ -199,11 +200,11 @@ class MessageHistoryService(IService, threading.Thread):
         # Save messages
         try:
             msg_dict = self._save_queue.get(True, self._queue_timeout)
-            msg = NetworkMessage(**msg_dict)
         except queue.Empty:
             pass
         else:
-            self.add_sync(msg)
+            self.add_sync(msg_dict)
+
 
     def _sweep(self) -> None:
         """

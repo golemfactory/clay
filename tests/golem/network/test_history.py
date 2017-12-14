@@ -1,6 +1,7 @@
 import datetime
 import queue
 import uuid
+import unittest.mock as mock
 from unittest.mock import Mock, patch
 
 from golem_messages import message
@@ -59,21 +60,26 @@ class TestMessageHistoryService(DatabaseFixture):
         with self.assertRaises(queue.Empty):
             self.service._save_queue.get(block=False)
 
-    def test_add_sync(self):
+    @mock.patch('golem.model.NetworkMessage.save')
+    def test_add_sync_fail(self, save):
         self.service._save_queue = Mock()
-        msg = self._build_msg()
+        msg_dict = self._build_dict(None, None)
 
-        with patch.object(msg, 'save', side_effect=DataError):
-            self.service.add_sync(msg)
-            assert not self.service._save_queue.put.called
-            assert message_count() == 0
+        save.side_effect = DataError
 
-        with patch.object(msg, 'save', side_effect=PeeweeException):
-            self.service.add_sync(msg)
-            assert self.service._save_queue.put.called
-            assert message_count() == 0
+        self.service.add_sync(msg_dict)
+        assert not self.service._save_queue.put.called
+        assert message_count() == 0
 
-        self.service.add_sync(msg)
+        save.side_effect = PeeweeException
+
+        self.service.add_sync(msg_dict)
+        assert self.service._save_queue.put.called
+        assert message_count() == 0
+
+    def test_add_sync_success(self):
+        msg_dict = self._build_dict(None, None)
+        self.service.add_sync(msg_dict)
         assert message_count() == 1
 
     def test_remove(self):
@@ -88,7 +94,7 @@ class TestMessageHistoryService(DatabaseFixture):
             self.service._remove_queue.get(block=False)
 
     def test_remove_sync(self):
-        msg = self._build_msg()
+        msg = self._build_dict(None, None)
 
         self.service.add_sync(msg)
         self.service._remove_queue = Mock()
@@ -96,25 +102,25 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=DataError):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=PeeweeException):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert self.service._remove_queue.put.called
             assert message_count() == 1
 
-        self.service.remove_sync(msg.task, subtask=str(uuid.uuid4()))
+        self.service.remove_sync(msg['task'], subtask=str(uuid.uuid4()))
         assert message_count() == 1
-        self.service.remove_sync(msg.task, subtask=msg.subtask)
+        self.service.remove_sync(msg['task'], subtask=msg['subtask'])
         assert message_count() == 0
 
     def test_get_sync(self):
         msgs = [
-            self._build_msg(task="task"),
-            self._build_msg(task="task"),
-            self._build_msg(task="task")
+            self._build_dict("task", None),
+            self._build_dict("task", None),
+            self._build_dict("task", None)
         ]
 
         for msg in msgs:
@@ -127,7 +133,7 @@ class TestMessageHistoryService(DatabaseFixture):
         result = self.service.get_sync(task="task")
         assert len(result) == 3
 
-        result = self.service.get_sync(task="task", subtask=msgs[0].subtask)
+        result = self.service.get_sync(task="task", subtask=msgs[0]['subtask'])
         assert len(result) == 1
 
     def test_build_clauses(self):
@@ -151,9 +157,9 @@ class TestMessageHistoryService(DatabaseFixture):
 
     def test_sweep(self):
         msgs = [
-            self._build_msg(),
-            self._build_msg(),
-            self._build_msg()
+            self._build_dict(),
+            self._build_dict(),
+            self._build_dict()
         ]
 
         for msg in msgs:
@@ -164,7 +170,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 3
 
         result = NetworkMessage.select() \
-            .where(NetworkMessage.task == msgs[0].task) \
+            .where(NetworkMessage.task == msgs[0]['task']) \
             .execute()
 
         msg = list(result)[0]
