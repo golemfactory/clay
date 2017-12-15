@@ -292,7 +292,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         options = HyperdriveClientOptions(*args)
         assert options.peers == []
 
-        peers = dict(TCP=('192.168.0.10', 3282))
+        peers = [dict(TCP=('192.168.0.10', 3282))]
         options.peers = peers
         assert options.peers == peers
 
@@ -309,7 +309,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.replace_host(options, None) is None
 
     def test_replace_host_invalid_args(self):
-        peers = dict(TCP=('1.2.3.4', 3282))
+        peers = [dict(TCP=('1.2.3.4', 3282))]
         options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
                                           HyperdriveClient.VERSION,
                                           options=dict(peers=peers))

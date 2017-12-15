@@ -124,28 +124,28 @@ class HyperdriveClientOptions(ClientOptions):
                      options: 'HyperdriveClientOptions',
                      address: str) -> Optional['HyperdriveClientOptions']:
         """
-        Replaces host (first) peer's address and prepends it to the peers list.
+        Replaces first peer's address and prepends it to the peers list.
         Filters the options instance but does not remove valid peer addresses.
 
         :param options: received client options
         :param address: IP address to replace with
         """
-        if not (options and options.peers and address):
+        if not (options and options.peers):
             return None
 
         filtered = options.filtered()
-        if not filtered:  # Version / client mismatch
+        # Version / client mismatch or no address
+        if not (filtered and address):
             return None
-        elif not address:
-            return filtered
 
         peer = cls.filter_peer(options.peers[0], forced_ip=address)
-        if filtered.peers:
-            if peer not in filtered.peers:
-                filtered.peers.insert(0, peer)
-        else:
-            filtered.peers = [peer]
 
+        if not peer:
+            pass
+        elif not filtered.peers:
+            filtered.peers = [peer]
+        elif peer not in filtered.peers:
+            filtered.peers.insert(0, peer)
         return filtered
 
     @property
@@ -211,21 +211,15 @@ class HyperdriveClientOptions(ClientOptions):
         for protocol, entry in peer.items():
             try:
                 ip_str = entry[0]
-                ip = ip_address(ip_str)
                 port = int(entry[1])
-
-                if ip_str != forced_ip:
-                    if ip.is_private or ip.is_multicast or ip.is_unspecified:
-                        raise ValueError('address {} is not allowed'.format(ip))
-                    if excluded_ips and ip_str in excluded_ips:
-                        raise ValueError('address {} was excluded'.format(ip))
 
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'.format(port))
-
-                if forced_ip and ip_str != forced_ip:
+                if not forced_ip:
+                    cls.verify_ip(ip_str, excluded_ips)
+                elif ip_str != forced_ip:
                     log.warning("Replacing provider's IP address %s with %s",
-                                ip, forced_ip)
+                                ip_str, forced_ip)
                     ip_str = forced_ip
 
             except (ValueError, TypeError, AddressValueError) as err:
@@ -235,3 +229,13 @@ class HyperdriveClientOptions(ClientOptions):
 
         if new_entry:
             return new_entry
+
+    @staticmethod
+    def verify_ip(ip_str, excluded_ips=None):
+        ip = ip_address(ip_str)
+
+        if ip.is_private or ip.is_multicast or ip.is_unspecified:
+            raise ValueError('address {} is not allowed'.format(ip))
+        if excluded_ips and ip_str in excluded_ips:
+            raise ValueError('address {} was excluded'.format(ip))
+
