@@ -62,12 +62,15 @@ class Client(object):
 
     def get_transaction_count(self, address):
         """
-        Returns the number of transactions
-        that have been sent from account
+        Returns the number of transactions that have been sent from account.
+        Use `pending` block to account the transactions that haven't been mined
+        yet. Otherwise it would be problematic to send more than one transaction
+        in less than ~15 seconds span.
         :param address: account address
         :return: number of transactions
         """
-        return self.web3.eth.getTransactionCount(Client.__add_padding(address))
+        return self.web3.eth.getTransactionCount(Client.__add_padding(address),
+                                                 'pending')
 
     def send(self, transaction):
         """
