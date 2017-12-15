@@ -17,6 +17,10 @@ from golem.model import NetworkMessage, Actor
 logger = logging.getLogger('golem.network.history')
 
 
+class MessageNotFound(Exception):
+    pass
+
+
 class MessageHistoryService(IService, threading.Thread):
     """
     The purpose of this class is to:
@@ -213,7 +217,6 @@ class MessageHistoryService(IService, threading.Thread):
             pass
         else:
             self.add_sync(msg_dict)
-
 
     def _sweep(self) -> None:
         """
