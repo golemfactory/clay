@@ -132,12 +132,14 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.client.get_balance.call_count == 2
 
     def test_available_eth_zero(self):
-        assert self.pp._eth_available() == 0
+        assert self.pp._eth_available() == \
+            -PaymentProcessor.ETH_BATCH_PAYMENT_BASE
 
     def test_available_eth_nonzero(self):
-        eth = random.randint(0, 10 * denoms.ether)
+        eth = random.randint(1, 10 * denoms.ether)
         self.client.get_balance.return_value = eth
-        assert self.pp._eth_available() == eth
+        eth_available = eth - PaymentProcessor.ETH_BATCH_PAYMENT_BASE
+        assert self.pp._eth_available() == eth_available
 
     def test_add_failure(self):
         a1 = urandom(20)
@@ -351,16 +353,21 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt
-        assert self.pp._eth_reserved() == 0
-        assert self.pp._eth_available() == balance_eth
+        assert self.pp._eth_reserved() == \
+            PaymentProcessor.ETH_BATCH_PAYMENT_BASE
+        eth_available = balance_eth - PaymentProcessor.ETH_BATCH_PAYMENT_BASE
+        assert self.pp._eth_available() == eth_available
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         assert self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
         assert self.pp._gnt_available() == balance_gnt - gnt_value
-        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
-        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        eth_reserved = PaymentProcessor.ETH_BATCH_PAYMENT_BASE + \
+            1 * PaymentProcessor.ETH_PER_PAYMENT
+        assert self.pp._eth_reserved() == eth_reserved
+        eth_available = balance_eth - eth_reserved
+        assert self.pp._eth_available() == eth_available
 
         self.pp.deadline = int(time.time())
         assert self.pp.sendout()
@@ -377,21 +384,30 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_transaction_receipt.return_value = None
         self.client.call.return_value = hex(balance_gnt - gnt_value)
         self.pp.monitor_progress()
+        balance_eth_after_sendout = balance_eth - \
+            PaymentProcessor.ETH_BATCH_PAYMENT_BASE - \
+            1 * PaymentProcessor.ETH_PER_PAYMENT
+        self.client.get_balance.return_value = balance_eth_after_sendout
         assert len(inprogress) == 1
         assert tx.hash in inprogress
         assert inprogress[tx.hash] == [p]
         assert self.pp.gnt_balance(True) == balance_gnt - gnt_value
+        assert self.pp.eth_balance(True) == balance_eth_after_sendout
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt - gnt_value
-        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
-        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        assert self.pp._eth_reserved() == \
+            PaymentProcessor.ETH_BATCH_PAYMENT_BASE
+        assert self.pp._eth_available() == \
+            balance_eth_after_sendout - PaymentProcessor.ETH_BATCH_PAYMENT_BASE
 
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt - gnt_value
-        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
-        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        assert self.pp._eth_reserved() == \
+            PaymentProcessor.ETH_BATCH_PAYMENT_BASE
+        assert self.pp._eth_available() == \
+            balance_eth_after_sendout - PaymentProcessor.ETH_BATCH_PAYMENT_BASE
 
         tx_block_number = 1337
         self.client.get_block_number.return_value = tx_block_number
