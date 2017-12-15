@@ -71,11 +71,8 @@ class HyperdriveClient(IClient):
         filepath = kwargs.pop('filepath')
         peers = None
 
-        if client_options:
-            filtered_options = client_options.filtered(self.CLIENT_ID,
-                                                       self.VERSION)
-            if filtered_options:
-                peers = filtered_options.options.get('peers')
+        if client_options and isinstance(client_options.options, dict):
+            peers = client_options.options.get('peers')
 
         response = self._request(
             command='download',
