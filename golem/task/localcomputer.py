@@ -163,9 +163,12 @@ class ComputerAdapter(object):
 
     def start_computation(self, root_path, success_callback, error_callback,
                           compute_task_def, resources, additional_resources):
-        self.computer = LocalComputer(root_path, success_callback,
-                                      error_callback, compute_task_def,
-                                      resources, additional_resources)
+        self.computer = LocalComputer(root_path=root_path,
+                                      success_callback=success_callback,
+                                      error_callback=error_callback,
+                                      compute_task_def=compute_task_def,
+                                      resources=resources,
+                                      additional_resources=additional_resources)
         self.computer.run()
 
     def wait(self):
@@ -173,3 +176,9 @@ class ComputerAdapter(object):
             self.computer.tt.join()
             return True
         return False
+
+    def get_result(self):
+        try:
+            return self.computer.tt.result
+        except AttributeError:
+            return None

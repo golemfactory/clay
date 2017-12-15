@@ -127,9 +127,10 @@ class LuxRenderVerifier(RenderingVerifier):
             return False
         if self.verification_error:
             return False
-        commonprefix = common_dir(self.computer.tt.result['data'])
+        result = self.computer.get_result()
+        commonprefix = common_dir(result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
-        stderr = [x for x in self.computer.tt.result['data']
+        stderr = [x for x in result['data']
                   if os.path.basename(x) == "stderr.log"]
 
         if flm is None or len(stderr) == 0:
