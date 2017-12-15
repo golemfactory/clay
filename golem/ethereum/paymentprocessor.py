@@ -49,17 +49,15 @@ class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 
-    # Gas price: 20 shannons, Homestead suggested gas price.
+    # Gas price: 20 gwei, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
 
-    # Max gas cost for a single payment. Estimated in tests.
-    SINGLE_PAYMENT_GAS_COST = 60000
-
-    SINGLE_PAYMENT_ETH_COST = GAS_PRICE * SINGLE_PAYMENT_GAS_COST
-
-    # Gas reservation for performing single batch payment.
-    # TODO: Adjust this value later and add MAX_PAYMENTS limit.
-    GAS_RESERVATION = 21000 + 1000 * 50000
+    # Total gas for a batchTransfer is BASE + len(payments) * PER_PAYMENT
+    GAS_PER_PAYMENT = 30000
+    ETH_PER_PAYMENT = GAS_PRICE * GAS_PER_PAYMENT
+    # tx: 21000, balance substract: 5000, arithmetics < 800
+    GAS_BATCH_PAYMENT_BASE = 21000 + 800 + 5000
+    ETH_BATCH_PAYMENT_BASE = GAS_PRICE * GAS_BATCH_PAYMENT_BASE
 
     # Time required to reset the current balance when errors occur
     BALANCE_RESET_TIMEOUT = 30
@@ -79,6 +77,7 @@ class PaymentProcessor(LoopingCallService):
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
+        self.__eth_reserved = 0
         self.__gnt_reserved = 0
         self.__eth_update_ts = 0
         self.__gnt_update_ts = 0
@@ -214,12 +213,7 @@ class PaymentProcessor(LoopingCallService):
             return 0
 
     def _eth_reserved(self):
-        # Here we keep the same simple estimation by number of atomic payments.
-        # FIXME: This is different than estimation in sendout(). Create
-        #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in
-                                                 self._inprogress.values())
-        return num_payments * self.SINGLE_PAYMENT_ETH_COST
+        return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
 
     def _eth_available(self):
         """ Returns available ETH balance for new payments fees."""
@@ -256,7 +250,7 @@ class PaymentProcessor(LoopingCallService):
             payment.value / denoms.ether))
 
         # Check if enough ETH available to pay the gas cost.
-        if self._eth_available() < self.SINGLE_PAYMENT_ETH_COST:
+        if self._eth_available() < self.ETH_PER_PAYMENT:
             log.warning("Low ETH: {} available".format(self._eth_available()))
             return False
 
@@ -267,6 +261,7 @@ class PaymentProcessor(LoopingCallService):
 
         self._awaiting.append(payment)
         self.__gnt_reserved += payment.value
+        self.__eth_reserved += self.ETH_PER_PAYMENT
 
         # Set new deadline if not set already or shorter than the current one.
         # TODO: Optimize by checking the time once per service update.
@@ -294,7 +289,7 @@ class PaymentProcessor(LoopingCallService):
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
-        gas = 21000 + 800 + 5000 + len(p) * 30000
+        gas = self.GAS_BATCH_PAYMENT_BASE + len(p) * self.GAS_PER_PAYMENT
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
                          value=0, data=data)
         tx.sign(self.__privkey)
@@ -327,6 +322,7 @@ class PaymentProcessor(LoopingCallService):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
         self.__gnt_reserved -= value
+        self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
 
     def monitor_progress(self):
