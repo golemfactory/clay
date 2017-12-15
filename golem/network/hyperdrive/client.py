@@ -1,10 +1,10 @@
 import collections
 import json
 import logging
+from ipaddress import AddressValueError, ip_address
 
 import requests
-from copy import deepcopy
-from ipaddress import AddressValueError, ip_address
+from requests import HTTPError
 
 from golem.resource.client import IClient, ClientOptions
 
@@ -104,7 +104,14 @@ class HyperdriveClient(IClient):
                                  headers=self._headers,
                                  data=json.dumps(data),
                                  timeout=self.timeout)
-        response.raise_for_status()
+
+        try:
+            response.raise_for_status()
+        except HTTPError:
+            if response.text:
+                raise HTTPError('Hyperdrive HTTP {} error: {}'.format(
+                    response.status_code, response.text), response=response)
+            raise
 
         if response.content:
             return json.loads(response.content.decode('utf-8'))
