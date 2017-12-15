@@ -217,8 +217,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, resource_header, resource_type=ResourceType.ZIP,
-                      tmp_dir=None):
+    def get_resources(self):
         return self.task_resources
 
     def add_resources(self, resource_parts):

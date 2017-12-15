@@ -471,9 +471,10 @@ class Client(HardwarePresetsMixin):
 
         task_id = task.header.task_id
         options = resource_manager.build_client_options()
+        tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
-                                       tmp_dir=task.tmp_dir,
+                                       tmp_dir=tmp_dir,
                                        resources=task.get_resources())
 
         def add_task(result):
