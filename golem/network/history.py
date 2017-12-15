@@ -16,7 +16,7 @@ from golem.model import NetworkMessage, Actor
 logger = logging.getLogger('golem.network.history')
 
 
-class MessageHistoryService(IService, threading.Thread):
+class MessageHistoryService(IService):
     """
     The purpose of this class is to:
     - save NetworkMessages (in background)
@@ -43,22 +43,22 @@ class MessageHistoryService(IService, threading.Thread):
 
     def __init__(self):
         IService.__init__(self)
-        threading.Thread.__init__(self, daemon=True)
 
         if self.__class__.instance is None:
             self.__class__.instance = self
 
+        self._thread = None  # set in start
+        self._queue_timeout = None  # set in start
         self._stop_event = threading.Event()
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
-        self._queue_timeout = self.QUEUE_TIMEOUT
 
     def run(self) -> None:
         """
         Thread activity method.
         """
-        while not self._stop_event.isSet():
+        while not self._stop_event.is_set():
             self._loop()
 
     @property
@@ -66,10 +66,20 @@ class MessageHistoryService(IService, threading.Thread):
         """
         Returns whether the service was stopped by the user.
         """
-        return self._started.is_set() and not self._stop_event.is_set()
+        return (
+            self._thread and
+            self._thread.is_alive() and
+            not self._stop_event.is_set()
+        )
 
     def start(self) -> None:
-        threading.Thread.start(self)
+        if self.running:
+            return
+
+        self._stop_event.clear()
+        self._queue_timeout = self.QUEUE_TIMEOUT
+        self._thread = threading.Thread(target=self.run, daemon=True)
+        self._thread.start()
 
     def stop(self) -> None:
         """
@@ -106,12 +116,13 @@ class MessageHistoryService(IService, threading.Thread):
         if msg_dict:
             self._save_queue.put(msg_dict)
 
-    def add_sync(self, msg: NetworkMessage) -> None:
+    def add_sync(self, msg_dict: dict) -> None:
         """
         Saves a message in the database.
-        :param msg: Message to save
+        :param msg_dict: Message to save
         """
         try:
+            msg = NetworkMessage(**msg_dict)
             msg.save()
         except (DataError, ProgrammingError, NotSupportedError) as exc:
             # Unrecoverable error
@@ -120,7 +131,7 @@ class MessageHistoryService(IService, threading.Thread):
         except PeeweeException:
             # Temporary error
             logger.debug("Message '%s' save queued", msg.msg_cls)
-            self._save_queue.put(msg)
+            self._save_queue.put(msg_dict)
 
     def remove(self, task: str, **properties) -> None:
         """
@@ -199,11 +210,11 @@ class MessageHistoryService(IService, threading.Thread):
         # Save messages
         try:
             msg_dict = self._save_queue.get(True, self._queue_timeout)
-            msg = NetworkMessage(**msg_dict)
         except queue.Empty:
             pass
         else:
-            self.add_sync(msg)
+            self.add_sync(msg_dict)
+
 
     def _sweep(self) -> None:
         """

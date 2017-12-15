@@ -1,7 +1,7 @@
 import os
 import uuid
 from unittest import skipIf, TestCase
-from unittest.mock import Mock, ANY
+from unittest.mock import Mock, ANY, patch
 
 from pathlib import Path
 from requests import ConnectionError
@@ -91,7 +91,7 @@ class TestHyperdriveResourceManager(TempDirFixture):
             client_options=None,
             id=ANY,
             obj_id=ANY,
-            raise_exc=False
+            raise_exc=True
         )
 
     def test_add_files_with_resource_hash(self):
@@ -105,6 +105,25 @@ class TestHyperdriveResourceManager(TempDirFixture):
             obj_id=ANY,
             raise_exc=True
         )
+
+    @patch('golem.resource.base.resourcesmanager.async_run')
+    def test_add_task_failure(self, async_run):
+
+        def mock_async_run(request, _success=None, error=None):
+            try:
+                request.method(*request.args,
+                               **request.kwargs)
+            except Exception as exc:
+                error(exc)
+
+        self.resource_manager._add_task = Mock(side_effect=Exception)
+        self.resource_manager._add_task_error = Mock()
+        async_run.side_effect = mock_async_run
+
+        self.resource_manager.add_task(self.files, self.task_id,
+                                       resource_hash=str(uuid.uuid4()))
+
+        assert self.resource_manager._add_task_error.called
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")

@@ -2,6 +2,7 @@ import unittest
 import uuid
 
 import mock
+from requests import HTTPError
 
 from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions
@@ -93,6 +94,46 @@ class TestHyperdriveClient(unittest.TestCase):
                                return_value=self.response):
 
             assert client.pin_rm(multihash) == self.response['hash']
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        client._request(key="value")
+        assert json_loads.called
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request_exception(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        exception = Exception()
+        response.raise_for_status.side_effect = exception
+
+        with self.assertRaises(Exception) as exc:
+            client._request(key="value")
+            assert exc is exception
+            assert not json_loads.called
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request_http_error(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        exception = HTTPError()
+        response.raise_for_status.side_effect = exception
+
+        with self.assertRaises(HTTPError) as exc:
+            client._request(key="value")
+            assert exc is not exception
+            assert not json_loads.called
 
 
 class TestHyperdriveClientOptions(unittest.TestCase):
