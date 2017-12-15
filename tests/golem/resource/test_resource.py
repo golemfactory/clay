@@ -90,7 +90,6 @@ class TestGetTaskResources(TempDirFixture):
             def query_extra_data_for_test_task(self):
                 pass
 
-
         task = CoreTaskDeabstacted(
             task_definition=task_def,
             node_name="ABC",

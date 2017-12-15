@@ -5,7 +5,8 @@ from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 from golem.verification.verifier import SubtaskVerificationState
 
-from apps.rendering.task.verifier import RenderingVerifier, logger, FrameRenderingVerifier
+from apps.rendering.task.verifier import (RenderingVerifier, logger,
+                                          FrameRenderingVerifier)
 
 
 class TestRenderingVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
@@ -78,7 +79,6 @@ class TestRenderingVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
                               resources=[])
         assert self.last_verdict == SubtaskVerificationState.VERIFIED
 
-
     def test_get_part_img_size(self):
         rv = RenderingVerifier(lambda: None)
         subtask_info = {
@@ -145,4 +145,3 @@ class TestFrameRenderingVerifier(TempDirFixture):
         assert frv._get_part_img_size(subtask_info) == (1, 1, 599, 199)
         subtask_info["use_frames"] = False
         assert frv._get_part_img_size(subtask_info) == (0, 0, 600, 40)
-
