@@ -154,19 +154,18 @@ class ConcentClientService(threading.Thread):
                key: Hashable,
                msg: message.Message,
                msg_data: bytes,
-               msg_cls: Type[message.Message],
                delay: Optional[float] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
         :param msg_data: Serialized message to send
-        :param msg_cls: Class of the sent message
         :param delay: Time to wait before sending the message
         :return: None
         """
         from twisted.internet import reactor
 
+        msg_cls = msg.__class__
         lifetime = MSG_LIFETIMES.get(msg_cls, DEFAULT_MSG_LIFETIME)
         if delay is None:
             delay = MSG_DELAYS.get(msg_cls, 0)
