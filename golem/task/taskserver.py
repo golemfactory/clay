@@ -109,8 +109,10 @@ class TaskResourcesMixin(object):
 
     def get_download_options(self, received_options, address=None):
         if isinstance(received_options, HyperdriveClientOptions) and address:
-            options = received_options.clone()
-            return options.replace_host(address)
+            options = HyperdriveClientOptions.replace_host(received_options,
+                                                           address)
+            if options:
+                return options
 
         resource_manager = self._get_resource_manager()
         return resource_manager.build_client_options()

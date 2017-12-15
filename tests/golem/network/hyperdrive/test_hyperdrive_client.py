@@ -286,3 +286,65 @@ class TestHyperdriveClientOptions(unittest.TestCase):
 
         assert HyperdriveClientOptions.filter_peer(
             valid_addresses) == valid_addresses
+
+    def test_peers(self):
+        args = (HyperdriveClient.CLIENT_ID, HyperdriveClient.VERSION)
+        options = HyperdriveClientOptions(*args)
+        assert options.peers == []
+
+        peers = dict(TCP=('192.168.0.10', 3282))
+        options.peers = peers
+        assert options.peers == peers
+
+        options = HyperdriveClientOptions(*args, options=dict(peers=peers))
+        assert options.peers == peers
+
+    def test_replace_host_no_peers(self):
+        options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
+                                          HyperdriveClient.VERSION)
+
+        assert HyperdriveClientOptions.replace_host(None, '1.2.3.4') is None
+        assert HyperdriveClientOptions.replace_host(options, '1.2.3.4') is None
+        assert HyperdriveClientOptions.replace_host(options, '') is None
+        assert HyperdriveClientOptions.replace_host(options, None) is None
+
+    def test_replace_host_invalid_args(self):
+        peers = dict(TCP=('1.2.3.4', 3282))
+        options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
+                                          HyperdriveClient.VERSION,
+                                          options=dict(peers=peers))
+
+        assert HyperdriveClientOptions.replace_host(None, '1.2.3.4') is None
+        assert HyperdriveClientOptions.replace_host(options, '') is None
+        assert HyperdriveClientOptions.replace_host(options, None) is None
+
+    def test_replace_host(self):
+        peers = [
+            dict(TCP=('85.2.3.4', 3282), uTP=('85.2.3.4', 3283)),
+            dict(TCP=('85.2.3.4', 3282), uTP=('127.0.0.1', 3283)),
+        ]
+        options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
+                                          HyperdriveClient.VERSION,
+                                          options=dict(peers=peers))
+        filtered = options.filtered()
+
+        def compare(first, second):
+            return (
+                first.options == second.options and
+                first.client_id == second.client_id and
+                first.version == second.version
+            )
+
+        tmp_options = HyperdriveClientOptions.replace_host(options, '85.2.3.4')
+        assert compare(tmp_options, filtered)
+        assert not compare(tmp_options, options)
+
+        tmp_options = HyperdriveClientOptions.replace_host(options, '5.6.7.8')
+        assert not compare(tmp_options, filtered)
+        assert not compare(tmp_options, options)
+
+        assert len(tmp_options.peers) == 3
+        assert tmp_options.peers[2] == dict(TCP=('85.2.3.4', 3282))
+        assert tmp_options.peers[1] == peers[0]
+        assert tmp_options.peers[0] == dict(TCP=('5.6.7.8', 3282),
+                                            uTP=('5.6.7.8', 3283))

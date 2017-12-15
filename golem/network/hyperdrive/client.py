@@ -122,19 +122,32 @@ class HyperdriveClientOptions(ClientOptions):
 
     max_peers = 64
 
-    def replace_host(self,
+    @classmethod
+    def replace_host(cls,
+                     options: 'HyperdriveClientOptions',
                      address: str) -> Optional['HyperdriveClientOptions']:
+        """
+        Replaces host (first) peer's address and prepends it to the peers list.
+        Filters the options instance but does not remove valid peer addresses.
 
-        filtered = self.filtered()
-        if not filtered:
-            return
+        :param options: received client options
+        :param address: IP address to replace with
+        """
+        if not (options and options.peers and address):
+            return None
 
-        host = self.filter_peer(self.peers[0], forced_ip=address)
+        filtered = options.filtered()
+        if not filtered:  # Version / client mismatch
+            return None
+        elif not address:
+            return filtered
 
+        peer = cls.filter_peer(options.peers[0], forced_ip=address)
         if filtered.peers:
-            filtered.peers.insert(0, host)
+            if peer not in filtered.peers:
+                filtered.peers.insert(0, peer)
         else:
-            filtered.peers = [host]
+            filtered.peers = [peer]
 
         return filtered
 
@@ -173,8 +186,7 @@ class HyperdriveClientOptions(ClientOptions):
             log.warning('Resource client: peers not provided')
 
         else:
-            opts.options['peers'] = self.filter_peers(opts.options['peers'],
-                                                      excluded_ips)
+            opts.peers = self.filter_peers(opts.peers, excluded_ips)
             return opts
 
     @classmethod
@@ -206,8 +218,8 @@ class HyperdriveClientOptions(ClientOptions):
                 port = int(entry[1])
 
                 if ip_str != forced_ip:
-                    if ip.is_private:
-                        raise ValueError('address {} is private'.format(ip))
+                    if ip.is_private or ip.is_multicast or ip.is_unspecified:
+                        raise ValueError('address {} is not allowed'.format(ip))
                     if excluded_ips and ip_str in excluded_ips:
                         raise ValueError('address {} was excluded'.format(ip))
 
