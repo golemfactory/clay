@@ -5,7 +5,6 @@ import string
 import unicodedata
 import zipfile
 
-from golem.core.fileshelper import common_dir
 from golem.core.simplehash import SimpleHash
 from golem.resource.dirmanager import split_path
 
@@ -479,7 +478,7 @@ class ResourceType(object): # class ResourceType(Enum):
 def get_resources_for_task(resource_header, resources, tmp_dir,
                            resource_type=ResourceType.ZIP,
                            ):
-    dir_name = common_dir(resources)
+    dir_name = get_resources_root_dir(resources)
 
     if os.path.exists(dir_name):
         if resource_type == ResourceType.ZIP:
@@ -489,3 +488,9 @@ def get_resources_for_task(resource_header, resources, tmp_dir,
             return copy.copy(resources)
 
     return None
+
+
+def get_resources_root_dir(resources):
+    resources = list(resources)
+    prefix = os.path.commonprefix(resources)
+    return os.path.dirname(prefix)
