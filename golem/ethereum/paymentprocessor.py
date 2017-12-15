@@ -370,7 +370,7 @@ class PaymentProcessor(LoopingCallService):
                 self.add(p)
 
     def get_ether_from_faucet(self):
-        if self.__faucet and self.eth_balance(True) < 10 ** 15:
+        if self.__faucet and self.eth_balance(True) < 0.01 * denoms.ether:
             log.info("Requesting tETH")
             addr = keys.privtoaddr(self.__privkey)
             tETH_faucet_donate(addr)
