@@ -889,8 +889,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
-        resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options()
+        client_options = self.task_server.get_share_options()
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
