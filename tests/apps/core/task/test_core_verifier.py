@@ -19,7 +19,7 @@ class TestCoreVerifierr(TempDirFixture, LogTestCase):
 
         files = self.additional_dir_content([3])
         cv._check_files(dict(), files, [], [])
-        assert cv.state ==  SubtaskVerificationState.VERIFIED
+        assert cv.state == SubtaskVerificationState.VERIFIED
 
         files = self.additional_dir_content([3])
         cv._check_files(dict(), [files[0]], [], [])

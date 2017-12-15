@@ -29,13 +29,16 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
+
+
     def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
+        gctd=lambda: task.query_extra_data(10000).ctd
         super().__init__(
                          root_path=root_path,
                          success_callback=success_callback,
                          error_callback=error_callback,
                          # ugly lambda, should think of something prettier
-                         get_compute_task_def=lambda: task.query_extra_data(10000).ctd,
+                         get_compute_task_def=gctd,
                          check_mem=True,
                          comp_failed_warning=BenchmarkRunner.RUNNER_WARNING,
                          comp_success_message=BenchmarkRunner.RUNNER_SUCCESS,

@@ -72,7 +72,7 @@ class TestDummyTaskVerifier(TempDirFixture):
         self.assertTrue(ver._verify_result(subtask_data,
                                            result=good_result_file,
                                            reference_data=[],
-                                           resources=[])) # noqa
+                                           resources=[]))  # noqa
         self.assertFalse(ver._verify_result(subtask_data,
                                             result=bad_ext_result_file,
                                             reference_data=[],

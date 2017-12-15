@@ -26,7 +26,7 @@ class LocalComputer(object):
                  success_callback,
                  error_callback,
                  get_compute_task_def: Callable[[], ComputeTaskDef] = None,
-                 compute_task_def: ComputeTaskDef = None,
+                 compute_task_def: ComputeTaskDef=None,
                  check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING,
                  comp_success_message=DEFAULT_SUCCESS,
@@ -58,7 +58,7 @@ class LocalComputer(object):
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
-            self.__prepare_resources(self.resources) # makes a copy
+            self.__prepare_resources(self.resources)  # makes a copy
 
             if not self.compute_task_def:
                 ctd = self.get_compute_task_def()

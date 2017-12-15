@@ -30,9 +30,9 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.add_to_resources()
         self.verifier = DummyTaskVerifier(lambda: None)
         self.verification_options = {"difficulty": td.options.difficulty,
-                                    "shared_data_files": td.shared_data_files,
-                                    "result_size": td.result_size,
-                                    "result_extension": DummyTask.RESULT_EXT}
+                                     "shared_data_files": td.shared_data_files,
+                                     "result_size": td.result_size,
+                                     "result_extension": DummyTask.RESULT_EXT}
         self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
 
     @property
@@ -48,7 +48,7 @@ class DummyTaskBenchmark(CoreBenchmark):
             root, ext = os.path.splitext(filepath)
             ext = ext.lower()
             sd = self.verification_options.copy()
-            sd["subtask_data"]  = self.subtask_data
+            sd["subtask_data"] = self.subtask_data
             if ext == '.result' and \
                     self.verifier._verify_result(sd, filepath):
                 return True

@@ -5,7 +5,7 @@ from apps.blender.task.verifier import BlenderVerifier
 
 class TestBlenderVerifier(TestCase):
     def test_get_part_size_from_subtask_number(self):
-        bv = BlenderVerifier (lambda: None)
+        bv = BlenderVerifier(lambda: None)
         subtask_info = {
             "res_y": 600,
             "total_tasks": 20,

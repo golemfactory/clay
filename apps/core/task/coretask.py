@@ -183,7 +183,8 @@ class CoreTask(Task):
                and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager):
-        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
+        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id,
+                                                          create=True)
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)

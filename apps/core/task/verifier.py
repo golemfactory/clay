@@ -10,9 +10,9 @@ class CoreVerifier(StateVerifier):
     def start_verification(self, subtask_info: dict, reference_data: list,
                            resources: list, results: list):
         super(CoreVerifier, self).start_verification(subtask_info,
-                                                         reference_data,
-                                                         resources,
-                                                         results)
+                                                     reference_data,
+                                                     resources,
+                                                     results)
         self._check_files(subtask_info, results, reference_data, resources)
         self.time_ended = datetime.utcnow()
         self.extra_data['results'] = self.results

@@ -12,7 +12,6 @@ class SubtaskVerificationState(Enum):
     NOT_SURE = 5
 
 
-
 class Verifier:
 
     def __init__(self, callback: Callable):

@@ -469,7 +469,7 @@ def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
     return compress_dir(root_dir, delta_header, output_dir)
 
 
-class ResourceType(object): # class ResourceType(Enum):
+class ResourceType(object):  # class ResourceType(Enum):
     ZIP = 0
     PARTS = 1
     HASHES = 2
