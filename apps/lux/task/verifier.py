@@ -112,7 +112,7 @@ class LuxRenderVerifier(RenderingVerifier):
         if not self.computer:
             self.state = SubtaskVerificationState.NOT_SURE
             self.message = "No computer available to verify data"
-            return
+            return False
 
         ctd = self.query_extra_data_for_advanced_verification(new_flm,
                                                               subtask_info)
@@ -127,8 +127,13 @@ class LuxRenderVerifier(RenderingVerifier):
         )
 
         if not self.computer.wait():
+            self.state = SubtaskVerificationState.NOT_SURE
+            self.message = "Computation was not run correctly"
             return False
         if self.verification_error:
+            self.state = SubtaskVerificationState.NOT_SURE
+            self.message = "There was an verification error: {}".format(
+                self.verification_error)
             return False
         result = self.computer.get_result()
         commonprefix = common_dir(result['data'])
@@ -137,14 +142,18 @@ class LuxRenderVerifier(RenderingVerifier):
                   if os.path.basename(x) == "stderr.log"]
 
         if flm is None or len(stderr) == 0:
+            self.message = "No produre output produce in verification " \
+                           "merging phase"
             return False
         else:
             try:
                 with open(stderr[0]) as f:
                     stderr_in = f.read()
                 if "ERROR" in stderr_in:
+                    self.message ="Error while merging results"
                     return False
-            except (IOError, OSError):
+            except (IOError, OSError) as ex:
+                self.message = "Cannot merge results {}".format(ex)
                 return False
 
             shutil.copy(flm, os.path.join(subtask_info["tmp_dir"],
