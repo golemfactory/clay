@@ -8,7 +8,6 @@ from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.resource.resource import ResourceType
 from golem.task.taskbase import Task, TaskHeader, ResultType
 
 

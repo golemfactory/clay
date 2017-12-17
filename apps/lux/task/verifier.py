@@ -119,8 +119,8 @@ class LuxRenderVerifier(RenderingVerifier):
 
         self.computer.start_computation(
             root_path=subtask_info["root_path"],
-            success_callback=self.__verify_flm_ready,
-            error_callback=self.__verify_flm_failure,
+            success_callback=self._verify_flm_ready,
+            error_callback=self._verify_flm_failure,
             compute_task_def=ctd,
             resources=self.resources,
             additional_resources=[output, new_flm]
@@ -166,10 +166,10 @@ class LuxRenderVerifier(RenderingVerifier):
         merge_ctd['extra_data']['flm_files'] = files
         return merge_ctd
 
-    def __verify_flm_ready(self, results, time_spend):
+    def _verify_flm_ready(self, results, time_spend):
         logger.info("Advance verification finished")
         self.verification_error = False
 
-    def __verify_flm_failure(self, error):
+    def _verify_flm_failure(self, error):
         logger.info("Advance verification failure {}".format(error))
         self.verification_error = True

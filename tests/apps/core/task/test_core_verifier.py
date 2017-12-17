@@ -1,5 +1,3 @@
-from mock import Mock
-
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.verification.verifier import SubtaskVerificationState
@@ -10,7 +8,7 @@ from apps.core.task.verifier import CoreVerifier
 class TestCoreVerifierr(TempDirFixture, LogTestCase):
 
     def test_check_files(self):
-        def callback(*args, **kwargs):
+        def callback():
             pass
 
         cv = CoreVerifier(callback)

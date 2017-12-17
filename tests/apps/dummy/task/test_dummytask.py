@@ -8,8 +8,6 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
-from apps.dummy.task.verifier import DummyTaskVerifier
-from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 

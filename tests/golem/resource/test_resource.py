@@ -1,6 +1,7 @@
-import mock
 import os
 import zipfile
+
+import mock
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
@@ -81,7 +82,8 @@ class TestGetTaskResources(TempDirFixture):
         class CoreTaskDeabstacted(CoreTask):
             ENVIRONMENT_CLASS = mock.MagicMock()
 
-            def query_extra_data(self, *args, **kwargs):
+            def query_extra_data(self, perf_index, num_cores=0, node_id=None,
+                                 node_name=None):
                 pass
 
             def short_extra_data_repr(self, extra_data):

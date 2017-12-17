@@ -1,5 +1,5 @@
 import os
-from mock import patch, Mock
+from mock import Mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -51,5 +51,5 @@ class TestLuxRenderVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_flm_verify_failure(self):
         lrv = LuxRenderVerifier(AdvanceRenderingVerificationOptions)
         with self.assertLogs(logger, level="INFO"):
-            lrv._LuxRenderVerifier__verify_flm_failure("Error in something")
+            lrv._verify_flm_failure("Error in something")
         assert lrv.verification_error

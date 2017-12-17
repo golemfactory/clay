@@ -14,25 +14,19 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
-from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, \
     TaskEventListener, ResultType
 from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager, logger, subtask_priority
+from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, ComputerState
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
-from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
-    DummyTaskBuilder,
-    DummyTaskTypeInfo, DummyTask)
-from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
-    DummyTaskOptions
-from apps.dummy.task.verifier import DummyTaskVerifier
+    DummyTaskBuilder)
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.resource.dirmanager import DirManager
 
 class PickableMock(Mock):
@@ -46,6 +40,7 @@ class TaskMock(Task):
         super().__init__(*args, **kwargs)
         self.task_definition = Mock()
         self.task_definition.full_task_timeout = 10
+        self.tmp_dir = None
 
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value

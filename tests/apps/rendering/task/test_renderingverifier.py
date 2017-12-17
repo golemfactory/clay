@@ -22,8 +22,8 @@ class TestRenderingVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
             "res_y": 600}
         assert rv._get_part_size(subtask_info) == (800, 600)
 
-    def verification_callback(self, subtask_id, verdict, result):
-        self.last_verdict = verdict
+    def verification_callback(self, **kwargs):
+        self.last_verdict = kwargs['verdict']
 
     def test_start_verification(self):
         self.last_verdict = None
@@ -106,7 +106,7 @@ class TestRenderingVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
 
 class TestFrameRenderingVerifier(TempDirFixture):
     def test_check_files(self):
-        def callback(*args, **kwargs):
+        def callback():
             pass
 
         frv = FrameRenderingVerifier(callback)

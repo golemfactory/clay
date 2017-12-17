@@ -9,7 +9,7 @@ from golem.testutils import TempDirFixture
 
 class TestDummyTaskVerifier(TempDirFixture):
     def test_init(self):
-        def callback(*args, **kwargs):
+        def callback():
             pass
         dv = DummyTaskVerifier(callback)
         assert isinstance(dv, DummyTaskVerifier)
