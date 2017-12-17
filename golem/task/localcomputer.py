@@ -30,7 +30,7 @@ class LocalComputer(object):
                  check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING,
                  comp_success_message=DEFAULT_SUCCESS,
-                 resources =None,
+                 resources=None,
                  additional_resources=None):
         self.res_path = None
         self.tmp_dir = None

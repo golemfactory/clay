@@ -53,5 +53,3 @@ class TestLuxRenderVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
         with self.assertLogs(logger, level="INFO"):
             lrv._LuxRenderVerifier__verify_flm_failure("Error in something")
         assert lrv.verification_error
-
-

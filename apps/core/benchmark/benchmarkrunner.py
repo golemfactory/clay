@@ -32,13 +32,15 @@ class BenchmarkRunner(LocalComputer):
 
 
     def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
-        gctd=lambda: task.query_extra_data(10000).ctd
+        def get_compute_task_def():
+            return task.query_extra_data(10000).ctd
+
         super().__init__(
                          root_path=root_path,
                          success_callback=success_callback,
                          error_callback=error_callback,
                          # ugly lambda, should think of something prettier
-                         get_compute_task_def=gctd,
+                         get_compute_task_def=get_compute_task_def,
                          check_mem=True,
                          comp_failed_warning=BenchmarkRunner.RUNNER_WARNING,
                          comp_success_message=BenchmarkRunner.RUNNER_SUCCESS,

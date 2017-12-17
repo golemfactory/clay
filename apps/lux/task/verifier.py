@@ -150,7 +150,7 @@ class LuxRenderVerifier(RenderingVerifier):
                 with open(stderr[0]) as f:
                     stderr_in = f.read()
                 if "ERROR" in stderr_in:
-                    self.message ="Error while merging results"
+                    self.message = "Error while merging results"
                     return False
             except (IOError, OSError) as ex:
                 self.message = "Cannot merge results {}".format(ex)
