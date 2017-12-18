@@ -1,5 +1,4 @@
 import datetime
-from golem_messages import message
 import logging
 import operator
 import queue
@@ -8,6 +7,7 @@ from abc import abstractmethod, ABC
 from functools import reduce, wraps
 from typing import List
 
+from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field)
 

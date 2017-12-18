@@ -1,5 +1,4 @@
 import datetime
-from golem_messages import message
 import json
 import logging
 import pickle
@@ -10,6 +9,7 @@ from typing import Optional, Type  # pylint: disable=unused-import
 
 
 from ethereum.utils import denoms
+from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     SqliteDatabase, TextField, BlobField)
