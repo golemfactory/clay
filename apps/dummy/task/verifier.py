@@ -9,7 +9,7 @@ class DummyTaskVerifier(CoreVerifier):
     # it is set in the query_extra_data
     def _verify_result(self, subtask_info, result, reference_data, resources):
 
-        root, ext = os.path.splitext(result)
+        _, ext = os.path.splitext(result)
         ext = ext.lower()
         if ext != subtask_info["result_extension"]:
             return False

@@ -28,11 +28,12 @@ class LuxRenderVerifier(RenderingVerifier):
             self.message += str(subtask_info["subtask_id"]) + " " + str(e)
             logger.info(self.message)
 
+    # pylint: disable=unused-argument
     def _validate_lux_results(self, subtask_info, results, reference_data,
                               resources):
         tr_flm_files, tr_preview_files = \
             self._extract_tr_files(subtask_info, results)
-        self.test_flm = self.reference_data[0]
+        test_flm = self.reference_data[0]
         ref_imgs = self.reference_data[1:]
         img_verifier = ImgVerifier()
 
@@ -45,30 +46,30 @@ class LuxRenderVerifier(RenderingVerifier):
         for img, flm_file in zip(tr_preview_files, tr_flm_files):
             self.__compare_img_with_flm(img, flm_file, subtask_info,
                                         img_verifier, cropped_ref_imgs,
-                                        reference_stats)
+                                        reference_stats, test_flm)
 
     def __compare_img_with_flm(self, img, flm_file, subtask_info, img_verifier,
-                               cropped_ref_imgs, reference_stats):
-            cropped_img = img_verifier.crop_img_relative(
-                img, subtask_info['verification_crop_window'])
-            imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
+                               cropped_ref_imgs, reference_stats, test_flm):
+        crop_window = subtask_info['verification_crop_window']
+        cropped_img = img_verifier.crop_img_relative(img, crop_window)
+        imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
 
-            is_valid_against_reference = \
-                img_verifier.is_valid_against_reference(
-                    imgstat, reference_stats)
+        is_valid_against_reference = \
+            img_verifier.is_valid_against_reference(imgstat,
+                                                    reference_stats)
 
-            is_flm_merging_validation_passed \
-                = self.merge_flm_files(flm_file, subtask_info, self.test_flm)
+        is_flm_merging_validation_passed = \
+            self.merge_flm_files(flm_file, subtask_info, test_flm)
 
-            if is_valid_against_reference == \
-                    SubtaskVerificationState.VERIFIED \
-                    and is_flm_merging_validation_passed:
-                self.state = SubtaskVerificationState.VERIFIED
+        if is_valid_against_reference == \
+                SubtaskVerificationState.VERIFIED and \
+                is_flm_merging_validation_passed:
+            self.state = SubtaskVerificationState.VERIFIED
 
-            logger.info("Subtask "
-                        + str(subtask_info["subtask_id"])
-                        + " verification result: "
-                        + self.state.name)
+        logger.info("Subtask "
+                    + str(subtask_info["subtask_id"])
+                    + " verification result: "
+                    + self.state.name)
 
     def __prepare_reference_images(self, subtask_info, ref_imgs,
                                    img_verifier):
@@ -114,7 +115,8 @@ class LuxRenderVerifier(RenderingVerifier):
             return False
 
         ctd = self.query_extra_data_for_advanced_verification(new_flm,
-                                                              subtask_info)
+                                                              subtask_info,
+                                                              output)
 
         self.computer.start_computation(
             root_path=subtask_info["root_path"],
@@ -159,8 +161,9 @@ class LuxRenderVerifier(RenderingVerifier):
                                           "test_result.flm"))
             return True
 
-    def query_extra_data_for_advanced_verification(self, new_flm, subtask_info):
-        files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
+    def query_extra_data_for_advanced_verification(self, new_flm,
+                                                   subtask_info, test_flm):
+        files = [os.path.basename(new_flm), os.path.basename(test_flm)]
         merge_ctd = deepcopy(subtask_info["merge_ctd"])
         merge_ctd['extra_data']['flm_files'] = files
         return merge_ctd

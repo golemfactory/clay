@@ -21,7 +21,7 @@ from golem.ranking.helper.trust import Trust
 from golem.resource.resource import ResourceType
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader, Task
+from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskState
 from .taskcomputer import TaskComputer

@@ -8,6 +8,7 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
+from golem.verification.verifier import SubtaskVerificationState
 
 APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 
@@ -49,7 +50,9 @@ class DummyTaskBenchmark(CoreBenchmark):
             ext = ext.lower()
             sd = self.verification_options.copy()
             sd["subtask_data"] = self.subtask_data
-            if ext == '.result' and \
-                    self.verifier._verify_result(sd, filepath, [], []):
+            if ext != '.result':
+                return False
+            self.verifier.start_verification(sd, filepath, [], [])
+            if self.verifier.state == SubtaskVerificationState.VERIFIED:
                 return True
         return False

@@ -18,7 +18,7 @@ from golem.network.concent.client import ConcentRequest
 from golem.network.history import IMessageHistoryProvider, provider_history
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.resource.resource import decompress_dir, ResourceType
+from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
