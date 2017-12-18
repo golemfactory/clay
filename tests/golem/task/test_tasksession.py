@@ -655,19 +655,6 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
 
-    def test_send_report_computed_task_concent_no_service(self):
-        ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
-        ts.verified = True
-        n = Node()
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
-                                13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
-        with patch('golem.network.history.MessageHistoryService.get_sync')\
-                as get_mock:
-            ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-            get_mock.assert_not_called()
-
     def test_send_report_computed_task_concent_no_message(self):
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
