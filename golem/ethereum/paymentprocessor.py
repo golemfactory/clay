@@ -301,52 +301,73 @@ class PaymentProcessor(LoopingCallService):
             return
 
         confirmed = []
+        failed = {}
         current_block = self.__client.get_block_number()
+
         for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
-            if receipt:
-                block_hash = receipt['blockHash'][2:]
-                if len(block_hash) != 64:
-                    raise ValueError(
-                        "block hash length should be 64, but is: {}".format(
-                            len(block_hash)))
-                block_number = receipt['blockNumber']
-                if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
-                    continue
-                gas_used = receipt['gasUsed']
-                total_fee = gas_used * self.GAS_PRICE
-                fee = total_fee // len(payments)
-                log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
-                         .format(hstr, block_hash, block_number, gas_used, fee))
+            if not receipt:
+                continue
+
+            block_hash = receipt['blockHash'][2:]
+            if len(block_hash) != 64:
+                raise ValueError(
+                    "block hash length should be 64, but is: {}".format(
+                        len(block_hash)))
+
+            block_number = receipt['blockNumber']
+            if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
+                continue
+
+            # if the transaction failed for whatever reason we need to retry
+            if receipt['status'] != '0x1':
                 with Payment._meta.database.transaction():
                     for p in payments:
-                        p.status = PaymentStatus.confirmed
-                        p.details.block_number = block_number
-                        p.details.block_hash = block_hash
-                        p.details.fee = fee
+                        p.status = PaymentStatus.awaiting
                         p.save()
-                        dispatcher.send(
-                            signal='golem.monitor',
-                            event='payment',
-                            addr=encode_hex(p.payee),
-                            value=p.value
-                        )
-                        dispatcher.send(
-                            signal='golem.paymentprocessor',
-                            event='payment.confirmed',
-                            payment=p
-                        )
-                        log.debug(
-                            "- %.6f confirmed fee %.6f",
-                            p.subtask,
-                            fee / denoms.ether
-                        )
-                confirmed.append(h)
+                failed[h] = payments
+                log.warning("Failed transaction: {}".format(receipt))
+                continue
+
+            gas_used = receipt['gasUsed']
+            total_fee = gas_used * self.GAS_PRICE
+            fee = total_fee // len(payments)
+            log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
+                     .format(hstr, block_hash, block_number, gas_used, fee))
+            with Payment._meta.database.transaction():
+                for p in payments:
+                    p.status = PaymentStatus.confirmed
+                    p.details.block_number = block_number
+                    p.details.block_hash = block_hash
+                    p.details.fee = fee
+                    p.save()
+                    dispatcher.send(
+                        signal='golem.monitor',
+                        event='payment',
+                        addr=encode_hex(p.payee),
+                        value=p.value
+                    )
+                    dispatcher.send(
+                        signal='golem.paymentprocessor',
+                        event='payment.confirmed',
+                        payment=p
+                    )
+                    log.debug(
+                        "- %.6f confirmed fee %.6f",
+                        p.subtask,
+                        fee / denoms.ether
+                    )
+            confirmed.append(h)
+
         for h in confirmed:
-            # Delete in progress entry.
             del self._inprogress[h]
+
+        for h, payments in failed.items():
+            del self._inprogress[h]
+            for p in payments:
+                self.add(p)
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 0.01 * denoms.ether:

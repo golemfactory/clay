@@ -341,8 +341,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
     def test_monitor_progress(self):
-        a1 = urandom(20)
-
         inprogress = self.pp._inprogress
 
         # Give 1 ETH and 99 GNT
@@ -357,7 +355,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp._eth_available() == balance_eth
 
         gnt_value = 10**17
-        p = Payment.create(subtask="p1", payee=a1, value=gnt_value)
+        p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         assert self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
         assert self.pp._gnt_available() == balance_gnt - gnt_value
@@ -401,6 +399,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64*'f',
             'gasUsed': 55001,
+            'status': '0x1',
         }
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
@@ -408,6 +407,55 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         self.client.get_block_number.return_value =\
             tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
+        self.client.get_transaction_receipt.return_value = receipt
+        self.pp.monitor_progress()
+        self.assertEqual(len(inprogress), 0)
+        self.assertEqual(p.status, PaymentStatus.confirmed)
+        self.assertEqual(p.details.block_number, tx_block_number)
+        self.assertEqual(p.details.block_hash, 64*'f')
+        self.assertEqual(p.details.fee, 55001 * self.pp.GAS_PRICE)
+        self.assertEqual(self.pp._gnt_reserved(), 0)
+
+    def test_failed_transaction(self):
+        inprogress = self.pp._inprogress
+
+        balance_eth = 1 * denoms.ether
+        balance_gnt = 99 * denoms.ether
+        self.client.get_balance.return_value = balance_eth
+        self.client.call.return_value = hex(balance_gnt)
+
+        gnt_value = 10**17
+        p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
+        assert self.pp.add(p)
+
+        self.pp.deadline = int(time.time())
+        assert self.pp.sendout()
+        tx = self.client.send.call_args[0][0]
+
+        # Check payment status in the Blockchain
+        self.client.get_transaction_receipt.return_value = None
+        self.client.call.return_value = hex(balance_gnt - gnt_value)
+
+        tx_block_number = 1337
+        receipt = {
+            'blockNumber': tx_block_number,
+            'blockHash': '0x' + 64*'f',
+            'gasUsed': 55001,
+            'status': '0x0',
+        }
+        self.client.get_block_number.return_value = \
+            tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
+        self.client.get_transaction_receipt.return_value = receipt
+        self.pp.monitor_progress()
+        self.assertEqual(len(inprogress), 0)
+        self.assertEqual(p.status, PaymentStatus.awaiting)
+
+        self.pp.deadline = int(time.time())
+        assert self.pp.sendout()
+        self.assertEqual(len(inprogress), 1)
+        tx = self.client.send.call_args[0][0]
+
+        receipt['status'] = '0x1'
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         self.assertEqual(len(inprogress), 0)

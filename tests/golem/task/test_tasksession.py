@@ -16,6 +16,7 @@ from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.model import Actor
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -326,7 +327,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             conn.reset_mock()
 
         # msg.ctd is None -> failure
-        msg = message.TaskToCompute()
+        msg = message.TaskToCompute(raw=b'\0')
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -345,7 +346,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 1112
         ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
-        msg = message.TaskToCompute(ctd)
+        msg = message.TaskToCompute(ctd, raw=b'\0')
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -364,7 +365,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Wrong key id -> failure
         __reset_mocks()
         ctd['key_id'] = "KEY_ID2"
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -373,7 +374,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         __reset_mocks()
         ctd['key_id'] = "KEY_ID"
         ctd['task_owner'].key = "KEY_ID2"
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -382,7 +383,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         __reset_mocks()
         ctd['task_owner'].key = "KEY_ID"
         ctd['return_port'] = 0
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -391,14 +392,14 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         __reset_mocks()
         ctd['task_owner'].key = "KEY_ID"
         ctd['return_port'] = 1319
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         conn.close.assert_not_called()
 
         # Allow custom code / no code in message.ComputeTaskDef -> failure
         __reset_mocks()
         env.allow_custom_main_program_file = True
         ctd['src_code'] = ""
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -406,7 +407,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
         ctd['src_code'] = "print 'Hello world!'"
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
@@ -415,7 +416,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # No environment available -> failure
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -429,7 +430,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                 DockerImage("dockerix/xiii", tag="325"),
                 DockerImage("dockerix/xiii")
             ])
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -443,7 +444,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             DockerImage("dockerix/xiii", tag="323")
         ])
         ts.task_server.get_environment_by_id.return_value = de
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         assert ts.err_msg == reasons.NoSourceCode
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -455,7 +456,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         with open(file_name, 'w') as f:
             f.write("Hello world!")
         de.main_program_file = file_name
-        ts._react_to_task_to_compute(message.TaskToCompute(ctd))
+        ts._react_to_task_to_compute(message.TaskToCompute(ctd, raw=b'\0'))
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
@@ -580,6 +581,48 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         assert not isinstance(call_options['client_options'], Mock)
         assert call_options['client_options'].options['peers'] == peers
+
+    def test_task_subtask_from_message(self):
+        self.task_session._subtask_to_task = Mock(return_value=None)
+        definition = message.ComputeTaskDef({'task_id': 't', 'subtask_id': 's'})
+        msg = message.TaskToCompute(definition, raw=b'\0')
+
+        task, subtask = self.task_session._task_subtask_from_message(
+            msg, Actor.Provider)
+
+        assert task == definition['task_id']
+        assert subtask == definition['subtask_id']
+        assert not self.task_session._subtask_to_task.called
+
+    def test_task_subtask_from_other_message(self):
+        self.task_session._subtask_to_task = Mock(return_value=None)
+        msg = message.Hello(raw=b'\0')
+
+        task, subtask = self.task_session._task_subtask_from_message(
+            msg, Actor.Provider
+        )
+
+        assert not task
+        assert not subtask
+        assert self.task_session._subtask_to_task.called
+
+    def test_subtask_to_task(self):
+        task_keeper = Mock(subtask_to_task=dict())
+        mapping = dict()
+
+        self.task_session.task_manager.comp_task_keeper = task_keeper
+        self.task_session.task_manager.subtask2task_mapping = mapping
+        task_keeper.subtask_to_task['sid_1'] = 'task_1'
+        mapping['sid_2'] = 'task_2'
+
+        assert self.task_session._subtask_to_task('sid_1', Actor.Provider)
+        assert self.task_session._subtask_to_task('sid_2', Actor.Requestor)
+        assert not self.task_session._subtask_to_task('sid_2', Actor.Provider)
+        assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
+
+        self.task_session.task_manager = None
+        assert not self.task_session._subtask_to_task('sid_1', Actor.Provider)
+        assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
 
 
 class TestSessionWithDB(testutils.DatabaseFixture):

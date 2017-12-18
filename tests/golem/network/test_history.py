@@ -5,7 +5,7 @@ import unittest.mock as mock
 from unittest.mock import Mock, patch
 
 from golem_messages import message
-from peewee import DataError, PeeweeException
+from peewee import DataError, PeeweeException, IntegrityError
 
 from golem.model import NetworkMessage, Actor
 from golem.network.history import MessageHistoryService, record_history, \
@@ -315,3 +315,71 @@ class TestMessageHistoryProvider(DatabaseFixture):
         provider.message_to_model = Mock(return_value=None)
         provider.react_to_task_to_compute(msg_hello)
         assert service._save_queue.qsize() == 0
+
+
+class TestNetworkMessage(DatabaseFixture):
+
+    def setUp(self):
+        super().setUp()
+        self.param_kwargs = dict(node='node', task=None, subtask=None)
+
+    def test_save(self):
+        NetworkMessage(
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+
+            msg_date=datetime.time(),
+            msg_cls='cls',
+            msg_data=b'bytes',
+
+            **self.param_kwargs
+        ).save()
+
+    def test_save_failing_role_constraints(self):
+        msg_kwargs = dict(msg_date=datetime.time(),
+                          msg_cls='cls',
+                          msg_data=b'bytes')
+        self.param_kwargs.update(msg_kwargs)
+
+        with self.assertRaises(TypeError):
+            NetworkMessage(
+                local_role=None,
+                remote_role=Actor.Requestor,
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(TypeError):
+            NetworkMessage(
+                local_role=Actor.Provider,
+                remote_role=None,
+                **self.param_kwargs
+            ).save()
+
+    def test_save_failing_msg_constraints(self):
+        role_kwargs = dict(local_role=Actor.Provider,
+                           remote_role=Actor.Requestor)
+        self.param_kwargs.update(role_kwargs)
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=None,
+                msg_cls='cls',
+                msg_data=b'bytes',
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=datetime.time(),
+                msg_cls=None,
+                msg_data=b'bytes',
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=datetime.time(),
+                msg_cls='cls',
+                msg_data=None,
+                **self.param_kwargs
+            ).save()
