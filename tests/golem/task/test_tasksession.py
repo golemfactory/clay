@@ -593,6 +593,11 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         super(TestSessionWithDB, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        history.MessageHistoryService.instance = None
+
+    def tearDown(self):
+        super().tearDown()
+        history.MessageHistoryService.instance = None
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
@@ -651,7 +656,6 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         inform_mock.assert_called_once_with(payment)
 
     def test_send_report_computed_task_concent_no_service(self):
-        history.MessageHistoryService.instance = None
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -665,7 +669,6 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             get_mock.assert_not_called()
 
     def test_send_report_computed_task_concent_no_message(self):
-        history.MessageHistoryService.instance = None
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -673,15 +676,11 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
-        try:
-            history.MessageHistoryService()
-            ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-            ts.concent_service.submit.assert_not_called()
-        finally:
-            history.MessageHistoryService.instance = None
+        history.MessageHistoryService()
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_not_called()
 
-    def test_send_report_computed_task_concent_succes(self):
-        history.MessageHistoryService.instance = None
+    def test_send_report_computed_task_concent_success(self):
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -703,13 +702,10 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             local_role=model.Actor.Provider,
             remote_role=model.Actor.Requestor,
         )
-        try:
-            service = history.MessageHistoryService()
-            service.add_sync(nmsg)
-            ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-            self.assertEqual(ts.concent_service.submit.call_count, 1)
-        finally:
-            history.MessageHistoryService.instance = None
+        service = history.MessageHistoryService()
+        service.add_sync(nmsg)
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        self.assertEqual(ts.concent_service.submit.call_count, 1)
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))

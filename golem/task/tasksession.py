@@ -1,5 +1,4 @@
 import functools
-import hashlib
 import logging
 import os
 import struct
@@ -16,9 +15,9 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor, NetworkMessage
 from golem.model import db
+from golem.network import history
 from golem.network.concent.client import ConcentRequest
 from golem.network.history import IMessageHistoryProvider, provider_history
-from golem.network.history import MessageHistoryService
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -396,17 +395,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             eth_account=eth_account,
             extra_data=extra_data))
 
-        if MessageHistoryService.instance is None:
-            logger.warning('[CONCENT] MessageHistoryService not available.')
-            return
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls()
-        db_result = MessageHistoryService.instance.get_sync(
-            task_result.task_id,
-            subtask=task_result.subtask_id,
-            msg_cls='TaskToCompute',
-        )
-        if not db_result:
+        # FIXME: depends on #1770
+        try:
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(  # noqa
+                task=task_result.task_id,
+                subtask=task_result.subtask_id,
+                msg_cls='TaskToCompute',
+            )
+        except history.MessageNotFound:
             logger.warning(
                 '[CONCENT] Cannot create ForceReportComputedTask. '
                 'TaskToCompute message not found for task: %r subtask: %r',
@@ -414,10 +412,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 task_result.subtask_id,
             )
             return
-        msg.task_to_compute = db_result[0]
-        msg.result_hash = 'sha1:' + hashlib.sha1(
-            task_result.result.encode('utf-8')
-        ).hexdigest()
+        msg.task_to_compute = task_to_compute
+        msg.result_hash = task_result.result_hash
         logger.debug('[CONCENT] ForceReport: %s', msg)
         msg_data = msg.serialize(self.sign)
 
