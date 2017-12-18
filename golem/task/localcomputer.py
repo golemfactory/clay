@@ -6,13 +6,11 @@ from threading import Lock
 import time
 from typing import Callable
 
-from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader, decompress_dir, \
-    get_resources_for_task
-from golem.task.taskbase import Task, ResourceType
+from golem.resource.resource import (TaskResourceHeader, decompress_dir,
+                                     get_resources_for_task, ResourceType)
 
 logger = logging.getLogger("golem.task")
 

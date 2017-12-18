@@ -18,9 +18,10 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
+from golem.resource.resource import ResourceType
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader, ResourceType, Task
+from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskState
 from .taskcomputer import TaskComputer
