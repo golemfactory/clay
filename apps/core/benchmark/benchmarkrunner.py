@@ -35,8 +35,7 @@ class BenchmarkRunner(LocalComputer):
         def get_compute_task_def():
             return task.query_extra_data(10000).ctd
 
-        super().__init__(
-                         root_path=root_path,
+        super().__init__(root_path=root_path,
                          success_callback=success_callback,
                          error_callback=error_callback,
                          # ugly lambda, should think of something prettier
@@ -44,8 +43,7 @@ class BenchmarkRunner(LocalComputer):
                          check_mem=True,
                          comp_failed_warning=BenchmarkRunner.RUNNER_WARNING,
                          comp_success_message=BenchmarkRunner.RUNNER_SUCCESS,
-                         resources=task.get_resources()
-            )
+                         resources=task.get_resources())
         # probably this could be done differently
         self.benchmark = benchmark
 

@@ -5,6 +5,8 @@ import random
 
 import enforce
 
+from golem_messages.message import ComputeTaskDef
+
 from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
@@ -13,7 +15,6 @@ from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
-from golem_messages.message import ComputeTaskDef
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 

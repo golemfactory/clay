@@ -50,6 +50,6 @@ class DummyTaskBenchmark(CoreBenchmark):
             sd = self.verification_options.copy()
             sd["subtask_data"] = self.subtask_data
             if ext == '.result' and \
-                    self.verifier._verify_result(sd, filepath):
+                    self.verifier._verify_result(sd, filepath, [], []):
                 return True
         return False

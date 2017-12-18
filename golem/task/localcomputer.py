@@ -25,7 +25,7 @@ class LocalComputer(object):
                  root_path: str,
                  success_callback,
                  error_callback,
-                 get_compute_task_def: Callable[[], ComputeTaskDef] = None,
+                 get_compute_task_def: Callable[[], ComputeTaskDef]=None,
                  compute_task_def: ComputeTaskDef=None,
                  check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING,
@@ -53,6 +53,7 @@ class LocalComputer(object):
         self.additional_resources = additional_resources
         self.start_time = None
         self.end_time = None
+        self.test_task_res_path = None
 
     def run(self):
         try:

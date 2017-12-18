@@ -17,8 +17,9 @@ class RenderingVerifier(CoreVerifier):
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
 
+    # pylint: disable=unused-argument
     def _verify_imgs(self, subtask_info, results, reference_data, resources):
-        if len(results) == 0:
+        if not results:
             return False
 
         res_x, res_y = self._get_part_size(subtask_info)
@@ -43,8 +44,8 @@ class RenderingVerifier(CoreVerifier):
         if total_tasks == 0 \
                 or num_task > total_tasks:
             logger.error("Wrong total tasks number ({}) "
-                         "for subtask number {}".format(
-                            total_tasks, num_task))
+                         "for subtask number {}".format(total_tasks,
+                                                        num_task))
             return 0, 0, 0, 0
         img_height = int(math.floor(res_y / total_tasks))
         return 0, (num_task - 1) * img_height, res_x, num_task * img_height

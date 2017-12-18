@@ -68,8 +68,7 @@ class LuxRenderVerifier(RenderingVerifier):
             logger.info("Subtask "
                         + str(subtask_info["subtask_id"])
                         + " verification result: "
-                        + self.state.name
-                        )
+                        + self.state.name)
 
     def __prepare_reference_images(self, subtask_info, ref_imgs,
                                    img_verifier):
@@ -141,7 +140,7 @@ class LuxRenderVerifier(RenderingVerifier):
         stderr = [x for x in result['data']
                   if os.path.basename(x) == "stderr.log"]
 
-        if flm is None or len(stderr) == 0:
+        if flm is None or not stderr:
             self.message = "No produre output produce in verification " \
                            "merging phase"
             return False

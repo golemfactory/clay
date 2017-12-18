@@ -476,8 +476,7 @@ class ResourceType(object):  # class ResourceType(Enum):
 
 
 def get_resources_for_task(resource_header, resources, tmp_dir,
-                           resource_type=ResourceType.ZIP,
-                           ):
+                           resource_type=ResourceType.ZIP):
     dir_name = get_resources_root_dir(resources)
 
     if os.path.exists(dir_name):

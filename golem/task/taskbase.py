@@ -8,7 +8,6 @@ from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
-from golem.resource.resource import ResourceType, TaskResourceHeader
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
