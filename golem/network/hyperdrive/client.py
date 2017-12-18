@@ -148,18 +148,6 @@ class HyperdriveClientOptions(ClientOptions):
             filtered.peers.insert(0, peer)
         return filtered
 
-    @property
-    def peers(self) -> list:
-        if isinstance(self.options, dict):
-            return self.options.get('peers', [])
-        return []
-
-    @peers.setter
-    def peers(self, value: list) -> None:
-        if not isinstance(self.options, dict):
-            self.options = dict()
-        self.options['peers'] = value
-
     def filtered(self,
                  client_id=HyperdriveClient.CLIENT_ID,
                  version=HyperdriveClient.VERSION,
@@ -215,6 +203,7 @@ class HyperdriveClientOptions(ClientOptions):
 
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'.format(port))
+
                 if not forced_ip:
                     cls.verify_ip(ip_str, excluded_ips)
                 elif ip_str != forced_ip:
@@ -238,4 +227,3 @@ class HyperdriveClientOptions(ClientOptions):
             raise ValueError('address {} is not allowed'.format(ip))
         if excluded_ips and ip_str in excluded_ips:
             raise ValueError('address {} was excluded'.format(ip))
-
