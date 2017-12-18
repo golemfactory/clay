@@ -433,9 +433,9 @@ class NetworkMessage(BaseModel):
     # The node on the other side of the communication.
     # It can be a receiver or a sender, depending on local_role,
     # remote_role and msg_cls.
-    node = CharField()
-    task = CharField(null=False, index=True)
-    subtask = CharField(index=True)
+    node = CharField(null=False)
+    task = CharField(null=True, index=True)
+    subtask = CharField(null=True, index=True)
 
     msg_date = DateTimeField(null=False)
     msg_cls = CharField(null=False)
