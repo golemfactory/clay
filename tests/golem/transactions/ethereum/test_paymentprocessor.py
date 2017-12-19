@@ -646,3 +646,29 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.pp._balance_value(None, 0) == 0
         assert self.pp._balance_value(None, now - dt) == 0
         assert self.pp._balance_value(None, now) is None
+
+    def test_get_incomes_from_block(self):
+        block_number = 1
+        receiver_address = '0xbadcode'
+        some_address = '0xdeadbeef'
+
+        self.client.get_logs.return_value = []
+        assert not self.pp.get_incomes_from_block(block_number,
+                                                  receiver_address)
+
+        topics = [self.pp.LOG_ID, None, receiver_address]
+        self.client.get_logs.assert_called_with(
+            address='0x' + encode_hex(self.pp.TESTGNT_ADDR),
+            from_block=block_number,
+            to_block=block_number,
+            topics=topics)
+
+        self.client.get_logs.return_value = [{
+            'topics': ['0x0', some_address, receiver_address],
+            'data': '0xf',
+        }]
+        incomes = self.pp.get_incomes_from_block(block_number,
+                                                 receiver_address)
+        assert len(incomes) == 1
+        assert incomes[0]['sender'] == some_address
+        assert incomes[0]['value'] == 15

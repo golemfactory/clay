@@ -167,7 +167,7 @@ class Client(object):
         obj = {
             'fromBlock': from_block,
             'toBlock': to_block,
-            'address': Client.__add_padding(address),
+            'address': address,
             'topics': topics
         }
         return self.web3.eth.filter(obj).filter_id
@@ -210,8 +210,7 @@ class Client(object):
         """
         for i in range(len(topics)):
             topics[i] = Client.__add_padding(topics[i])
-        filter_id = self.new_filter(from_block, to_block,
-                                    Client.__add_padding(address), topics)
+        filter_id = self.new_filter(from_block, to_block, address, topics)
         return self.web3.eth.getFilterLogs(filter_id)
 
     @staticmethod
