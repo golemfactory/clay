@@ -148,18 +148,10 @@ class ImgVerifier(object):
                 and not isinstance(reference_imgStat, ImgStatistics):
             raise TypeError("imgStatistics be instance of ImgStatistics")
 
-        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim: \
-                # and acceptance_ratio * imgStat.mse_bw
-            #  < reference_imgStat.mse_bw
-            # and imgStat.psnr > acceptance_ratio
-            #  * reference_imgStat.psnr:
+        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim:
             return SubtaskVerificationState.VERIFIED
 
-        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim: \
-                # and acceptance_ratio * imgStat.mse_bw
-            # < reference_imgStat.mse_bw:
-            # and imgStat.psnr > acceptance_ratio
-            #  * reference_imgStat.psnr:
+        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim:
             return SubtaskVerificationState.UNKNOWN
 
         return SubtaskVerificationState.WRONG_ANSWER

@@ -35,7 +35,7 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
 @enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
-    VERIFIEr_CLASS = DummyTaskVerifier
+    VERIFIER_CLASS = DummyTaskVerifier
 
     RESULT_EXT = ".result"
     TESTING_CHAR = "a"

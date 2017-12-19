@@ -171,8 +171,6 @@ class LuxTask(renderingtask.RenderingTask):
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
         # FIXME With full verification
-        # self.verifier.test_flm = self.__get_test_flm()
-        # self.verifier.merge_ctd = self.__get_merge_ctd([])
 
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:
@@ -282,7 +280,6 @@ class LuxTask(renderingtask.RenderingTask):
             output_format=self.output_format)
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-        # self._temp_save("refscenejob.txt", scene_src)
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -437,12 +434,7 @@ class LuxTask(renderingtask.RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            # FIXME After final verification
-            # if self.verifier.advanced_verification \
-            #         and os.path.isfile(self.__get_test_flm()):
-            #     self.__generate_final_flm_advanced_verification()
-            # else:
-                self.__generate_final_flm()
+            self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
         script_file = dirmanager.find_task_script(
