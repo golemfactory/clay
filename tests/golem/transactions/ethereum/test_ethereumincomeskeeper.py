@@ -48,7 +48,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         }
 
         # Transaction not in blockchain
-        self.instance.processor.get_logs.return_value = None
+        self.instance.processor.get_incomes_from_block.return_value = None
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()
         self.instance.processor.wait_until_synchronized.assert_not_called()
@@ -57,57 +57,40 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.received(**received_kwargs)
         assert self.instance.processor.wait_until_synchronized.call_count == 1
         self.instance.processor.is_synchronized.return_value = True
+        self.instance.processor.get_incomes_from_block.assert_called_with(
+            received_kwargs['block_number'],
+            self.instance.processor.eth_address())
 
-        # Payment for someone else
-        self.instance.processor.get_logs.return_value = [
+        self.instance.processor.get_incomes_from_block.return_value = []
+        # Payment for us but value too small
+        self.instance.processor.get_incomes_from_block.return_value.append(
             {
-                'topics': [
-                    EthereumIncomesKeeper.LOG_ID,
-                    get_some_id(),  # sender
-                    get_some_id(),  # receiver
-                ],
-                'data': hex(random.randint(1, sys.maxsize)),
+                'sender': get_some_id(),
+                'value': received_kwargs['value'] - 1,
             },
-        ]
-        self.instance.received(**received_kwargs)
-        super_received_mock.assert_not_called()
-        super_received_mock.reset_mock()
-
-        # Payment for us but value to small
-        self.instance.processor.get_logs.return_value.append({
-            'topics': [
-                EthereumIncomesKeeper.LOG_ID,
-                get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
-            ],
-            'data': hex(received_kwargs['value'] - 1),
-        })
+        )
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()
         super_received_mock.reset_mock()
 
         # Payment with exact value
-        self.instance.processor.get_logs.return_value.append({
-            'topics': [
-                EthereumIncomesKeeper.LOG_ID,
-                get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
-            ],
-            'data': hex(1),
-        })
+        self.instance.processor.get_incomes_from_block.return_value.append(
+            {
+                'sender': get_some_id(),
+                'value': 1,
+            },
+        )
         self.instance.received(**received_kwargs)
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
 
         # Payment with higher value
-        self.instance.processor.get_logs.return_value.append({
-            'topics': [
-                EthereumIncomesKeeper.LOG_ID,
-                get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
-            ],
-            'data': hex(1),
-        })
+        self.instance.processor.get_incomes_from_block.return_value.append(
+            {
+                'sender': get_some_id(),
+                'value': 1,
+            },
+        )
         self.instance.received(**received_kwargs)
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
@@ -123,14 +106,12 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         }
         db_value = BigIntegerField().db_value(received_kwargs['value'])
 
-        self.instance.processor.get_logs.return_value = [{
-            'topics': [
-                EthereumIncomesKeeper.LOG_ID,
-                get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
-            ],
-            'data': db_value
-        }]
+        self.instance.processor.get_incomes_from_block.return_value = [
+            {
+                'sender': get_some_id(),
+                'value': int(db_value, 16),
+            },
+        ]
 
         self.instance.received(**received_kwargs)
 
@@ -194,13 +175,12 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
         # Batched Payment with exact value
         db_value = BigIntegerField().db_value(2 * value)
-        self.instance.processor.get_logs.return_value = [{
-            'topics': [
-                EthereumIncomesKeeper.LOG_ID,
-                get_some_id(),  # sender
-                self.instance.processor.eth_address(),  # receiver
-            ],
-            'data': db_value}]
+        self.instance.processor.get_incomes_from_block.return_value = [
+            {
+                'sender': get_some_id(),
+                'value': int(db_value, 16),
+            },
+        ]
 
         # ACT
         # inform about the payment for the first subtask

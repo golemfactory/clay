@@ -71,6 +71,9 @@ class PaymentProcessor(LoopingCallService):
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
+    # keccak256(Transfer(address,address,uint256))
+    LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
+
     def __init__(self, client: Client, privkey, faucet=False) -> None:
         self.__client = client
         self.__privkey = privkey
@@ -419,6 +422,26 @@ class PaymentProcessor(LoopingCallService):
             self.__client.send(tx)
             return False
         return True
+
+    def get_incomes_from_block(self, block, address):
+        logs = self.get_logs(block,
+                             block,
+                             '0x' + encode_hex(self.TESTGNT_ADDR),
+                             [self.LOG_ID, None, address])
+        if not logs:
+            return logs
+
+        res = []
+        for entry in logs:
+            if entry['topics'][2] != address:
+                raise Exception("Unexpected income event from {}"
+                    .format(entry['topics'][2]))
+
+            res.append({
+                'sender': entry['topics'][1],
+                'value': int(entry['data'], 16),
+            })
+        return res
 
     def get_logs(self,
                  from_block=None,
