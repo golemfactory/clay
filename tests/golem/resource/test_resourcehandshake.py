@@ -393,6 +393,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert session._block_peer.called
         assert session._finalize_handshake.called
         assert session.task_server.task_computer.session_closed.called
+        assert session.task_server.notify_monitor_task_failed.called
         assert not session.disconnect.called
 
     def test_handshake_timeout(self, *_):

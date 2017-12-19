@@ -1,7 +1,7 @@
 import os
 import random
 import uuid
-from collections import deque
+from collections import deque, namedtuple
 from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
@@ -618,6 +618,31 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert not ss.is_ok()
         assert UnsupportReason.DENY_LIST in ss.desc
         self.assertEqual(ss.desc[UnsupportReason.DENY_LIST], "ABC")
+
+    @patch('golem.task.taskserver.dispatcher')
+    @patch('golem.task.taskserver.psutil')
+    def test_notify_monitor_task_failed(self, psutil_mock, dispatcher_mock):
+        ts = TaskServer(node=Node(),
+                        config_desc=self.ccd,
+                        client=self.client,
+                        use_docker_manager=False)
+        performances = ts.client.get_performance_values()
+        cpu_count = 1
+        VirtualMemory = namedtuple('VirtualMemory', 'system free')
+        virtual_memory = VirtualMemory(10, 2)
+        psutil_mock.cpu_count.return_value = cpu_count
+        psutil_mock.virtual_memory.return_value = virtual_memory
+        ts.notify_monitor_task_failed(task_id='task_id',
+                                      subtask_id='subtask_id',
+                                      reason='reason')
+        dispatcher_mock.send.assert_called_with(
+            signal='golem.monitor', event='compute_task_failed',
+            task_id='task_id',
+            subtask_id='subtask_id',
+            performances=performances,
+            hardware={'cpu_count': cpu_count,
+                      'memory': virtual_memory._asdict()},
+            reason='reason')
 
     @patch('golem.task.taskserver.TaskServer._mark_connected')
     def test_new_session_prepare(self, mark_mock, *_):

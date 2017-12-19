@@ -382,6 +382,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            subtask_id, task_id)
             return
 
+        self.task_server.notify_monitor_task_failed(task_id=task_id,
+                                                    subtask_id=subtask_id,
+                                                    reason=err_msg)
         self.send(
             message.TaskFailure(
                 task_to_compute=task_to_compute,
@@ -521,13 +524,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_task_to_compute(self, msg):
         ctd = msg.compute_task_def
         if ctd is None:
-            logger.debug('TaskToCompute without ctd: %r', msg)
+            failure_reason = f'TaskToCompute without ctd: {msg}'
+            logger.debug(failure_reason)
+            self.task_server.notify_monitor_task_failed(reason=failure_reason)
             self.task_computer.session_closed()
             self.dropped()
             return
 
         def _cannot_compute(reason):
             logger.debug("Cannot %r", reason)
+            subtask_id = ctd['subtask_id']
+            self.task_server.notify_monitor_task_failed(
+                task_id=self.task_id,
+                subtask_id=subtask_id,
+                reason=reason)
             self.send(
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,

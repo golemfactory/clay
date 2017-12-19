@@ -288,16 +288,37 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         )
 
         compute_task(*args, **kwargs)
+        assert task_computer.task_server.notify_monitor_task_failed.called
         assert task_computer.session_closed.called
         assert not start.called
 
         header = mock.Mock(deadline=time.time() + 3600)
         task_computer.task_server.task_keeper.task_headers[task_id] = header
         task_computer.session_closed.reset_mock()
+        task_computer.task_server.notify_monitor_task_failed.reset_mock()
 
         compute_task(*args, **kwargs)
+        assert not task_computer.task_server.notify_monitor_task_failed.called
         assert not task_computer.session_closed.called
         assert start.called
+
+    def test_nonexisting_task_computed(self):
+        task_server = mock.MagicMock()
+        task_server.config_desc = ClientConfigDescriptor()
+        task_computer = TaskComputer("ABC", task_server,
+                                     use_docker_manager=False)
+
+        task_thread = mock.MagicMock()
+        task_thread.start_time = time.time()
+        duration = random.randint(1, 100)
+        task_thread.end_time = task_thread.start_time + duration
+        task_thread.subtask_id = 's11'
+
+        task_computer.task_computed(task_thread)
+        task_server.notify_monitor_task_failed.assert_called_once_with(
+            reason='TaskComputer.task_computed for subtask s11 but no subtask'
+                   ' with that id is present in task_server.assigned_subtasks',
+            subtask_id='s11')
 
     @staticmethod
     def __wait_for_tasks(tc):

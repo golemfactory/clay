@@ -188,6 +188,11 @@ class TaskComputer(object):
 
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
+            self.task_server.notify_monitor_task_failed(
+                subtask_id=subtask_id,
+                reason=f'TaskComputer.task_computed for subtask {subtask_id}'
+                       ' but no subtask with that id is present in'
+                       ' task_server.assigned_subtasks')
             return
 
         was_success = False
@@ -357,9 +362,13 @@ class TaskComputer(object):
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
         if not task_header:
-            logger.warning("Subtask '%s' of task '%s' cannot be computed: "
-                           "task header has been unexpectedly removed",
-                           subtask_id, task_id)
+            message = (f"Subtask '{subtask_id}' of task '{task_id}' cannot "
+                       "be computed: task header has been unexpectedly removed")
+            self.task_server.notify_monitor_task_failed(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                reason=message)
+            logger.warning(message)
             return self.session_closed()
 
         deadline = min(task_header.deadline, subtask_deadline)

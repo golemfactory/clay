@@ -16,6 +16,7 @@ from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
 from .model.paymentmodel import ExpenditureModel, IncomeModel
+from .model.subtaskfailedmodel import SubtaskFailedModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .transport.sender import DefaultJSONSender as Sender
 
@@ -164,6 +165,20 @@ class SystemMonitor(object):
 
     def on_logout(self):
         self.sender_thread.send(LogoutModel(self.meta_data))
+
+    # pylint:disable=too-many-arguments
+    def on_compute_task_failed(self, hardware, performances,
+                               task_id, subtask_id, reason):
+        msg = SubtaskFailedModel(
+            self.meta_data.cliid,
+            self.meta_data.sessid,
+            hardware,
+            performances,
+            task_id,
+            subtask_id,
+            reason
+        )
+        self.sender_thread.send(msg)
 
     def on_stats_snapshot(self, known_tasks, supported_tasks, stats):
         msg = statssnapshotmodel.StatsSnapshotModel(

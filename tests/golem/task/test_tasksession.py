@@ -248,6 +248,27 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ts.send_report_computed_task(
                 wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", wtr.owner)
 
+    def test_send_task_failure(self):
+        task_id = 'task_id'
+        subtask_id = 'subtask_id'
+
+        ts = TaskSession(Mock())
+        ts._subtask_to_task = Mock(return_value=task_id)
+
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            compute_task_def__subtask_id=subtask_id,
+            compute_task_def__task_id=task_id,
+        )
+
+        with patch("golem.task.tasksession.get_task_message") as get_mock:
+            get_mock.return_value = ttc
+            ts.send_task_failure(subtask_id, 'error_msg')
+            ts.task_server.notify_monitor_task_failed.assert_called_with(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                reason='error_msg'
+            )
+
     def test_react_to_hello_protocol_version(self):
         # given
         conn = MagicMock()
@@ -459,6 +480,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         reasons = message.CannotComputeTask.REASON
 
         def __reset_mocks():
+            ts.task_server.reset_mock()
             ts.task_manager.reset_mock()
             ts.task_computer.reset_mock()
             conn.reset_mock()
@@ -467,6 +489,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg = message.TaskToCompute()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         ts.task_computer.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
@@ -489,6 +512,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Source code from local environment -> proper execution
@@ -499,6 +523,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.notify_monitor_task_failed.assert_not_called()
         conn.close.assert_not_called()
 
         # Wrong key id -> failure
@@ -510,6 +535,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Wrong task owner key id -> failure
@@ -521,6 +547,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Wrong return port -> failure
@@ -533,6 +560,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Proper port and key -> proper execution
@@ -542,6 +570,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
+        ts.task_server.notify_monitor_task_failed.assert_not_called()
         conn.close.assert_not_called()
 
         # Allow custom code / no code in message.ComputeTaskDef -> failure
@@ -553,6 +582,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Allow custom code / code in ComputerTaskDef -> proper execution
@@ -564,6 +594,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.notify_monitor_task_failed.assert_not_called()
         conn.close.assert_not_called()
 
         # No environment available -> failure
@@ -575,6 +606,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
+        ts.task_server.notify_monitor_task_failed.assert_called()
         assert conn.close.called
 
         # Envrionment is Docker environment but with different images -> failure

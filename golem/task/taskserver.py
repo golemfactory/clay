@@ -6,6 +6,7 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
+import psutil
 
 from golem_messages import message
 from pydispatch import dispatcher
@@ -260,6 +261,7 @@ class TaskServer(
     def send_task_failed(
             self, subtask_id: str, task_id: str, err_msg: str) -> None:
 
+        self.notify_monitor_task_failed(task_id, subtask_id, err_msg)
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
@@ -586,6 +588,20 @@ class TaskServer(
             return SupportStatus.ok()
         else:
             return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
+
+    def notify_monitor_task_failed(self, task_id=None, subtask_id=None,
+                                   reason=None):
+        performance_values = self.client.get_performance_values()
+        hw = {
+            'cpu_count': psutil.cpu_count(),
+            'memory': psutil.virtual_memory()._asdict(),
+        }
+        dispatcher.send(signal='golem.monitor', event='compute_task_failed',
+                        task_id=task_id,
+                        subtask_id=subtask_id,
+                        hardware=hw,
+                        performances=performance_values,
+                        reason=reason)
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
