@@ -61,6 +61,9 @@ class PaymentProcessor(LoopingCallService):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
+    # Time required to reset the current balance when errors occur
+    BALANCE_RESET_TIMEOUT = 10
+
     TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
     SYNC_CHECK_INTERVAL = 10
@@ -74,6 +77,8 @@ class PaymentProcessor(LoopingCallService):
         self.__eth_balance = None
         self.__gnt_balance = None
         self.__gnt_reserved = 0
+        self.__eth_update_ts = 0
+        self.__gnt_update_ts = 0
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
@@ -161,7 +166,7 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            self.__eth_balance = self.__client.get_balance(addr)
+            self._update_eth_balance(self.__client.get_balance(addr))
             log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
 
@@ -173,12 +178,37 @@ class PaymentProcessor(LoopingCallService):
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
                                    data='0x' + encode_hex(data),
                                    block='pending')
-            if r is None or r == '0x':
-                self.__gnt_balance = 0
+            if r is None:
+                gnt_balance = None
             else:
-                self.__gnt_balance = int(r, 16)
+                gnt_balance = 0 if r == '0x' else int(r, 16)
+
+            self._update_gnt_balance(gnt_balance)
             log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
         return self.__gnt_balance
+
+    def _update_eth_balance(self, eth_balance):
+        eth_balance = self._balance_value(eth_balance, self.__eth_update_ts)
+        if eth_balance is None:
+            return
+        self.__eth_update_ts = time.time()
+        self.__eth_balance = eth_balance
+
+    def _update_gnt_balance(self, gnt_balance):
+        gnt_balance = self._balance_value(gnt_balance, self.__gnt_update_ts)
+        if gnt_balance is None:
+            return
+        self.__gnt_update_ts = time.time()
+        self.__gnt_balance = gnt_balance
+
+    @classmethod
+    def _balance_value(cls, balance, last_update_ts):
+        if balance is not None:
+            return balance
+
+        dt = time.time() - last_update_ts
+        if dt >= cls.BALANCE_RESET_TIMEOUT:
+            return 0
 
     def _eth_reserved(self):
         # Here we keep the same simple estimation by number of atomic payments.
