@@ -5,8 +5,8 @@
 
 import os
 import sys
-import logging
-logger = logging.getLogger(__name__)
+
+# pyelliptic loading hacks:
 CIPHERNAMES = set(('aes-128-ctr',))
 if sys.platform not in ('darwin', 'win32'):
     import pyelliptic
@@ -28,17 +28,23 @@ elif sys.platform == 'win32':
         if not CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
             raise Exception("Required cyphers not found")
     except Exception as e:
-        logger.debug("Failed to load openssl: %r", e)
         has_openssl = False
 
     if not has_openssl:
+        if not getattr(sys, 'frozen', False):
+            # Running source
+            print('Failed to load openssl, please add it to your PATH.')
+            sys.exit(1)
         # USE APP DIR FOR WINDOWS DLL ()
         # https://github.com/golemfactory/golem/issues/1612
-        _openssl_lib_paths = [os.getcwd()]
+        _openssl_lib_paths = [os.path.dirname(sys.executable)]
         for p in _openssl_lib_paths:
             if os.path.exists(p):
-                p = os.path.join(p, os.listdir(p)[-1])
-                os.environ['DYLD_LIBRARY_PATH'] = p
+                tmp_path = os.environ['PATH'].split(';')
+                if p in tmp_path:
+                    tmp_path.remove(p)
+                tmp_path.insert(0, p)
+                os.environ['PATH'] = ';'.join(tmp_path)
                 import pyelliptic
                 if CIPHERNAMES.issubset(
                         set(pyelliptic.Cipher.get_all_cipher())):
