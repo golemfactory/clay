@@ -62,7 +62,7 @@ class PaymentProcessor(LoopingCallService):
     GAS_RESERVATION = 21000 + 1000 * 50000
 
     # Time required to reset the current balance when errors occur
-    BALANCE_RESET_TIMEOUT = 10
+    BALANCE_RESET_TIMEOUT = 30
 
     TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
