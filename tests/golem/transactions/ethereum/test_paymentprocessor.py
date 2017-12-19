@@ -635,3 +635,14 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         q = Payment.create(subtask='F', payee=payee, value=value)
         assert not self.pp.add(q)
+
+    def test_balance_value(self):
+        now = time.time()
+        dt = self.pp.BALANCE_RESET_TIMEOUT * 2
+        valid_value = 10 * denoms.ether
+
+        assert self.pp._balance_value(valid_value, 0) is valid_value
+        assert self.pp._balance_value(valid_value, now + 10) is valid_value
+        assert self.pp._balance_value(None, 0) == 0
+        assert self.pp._balance_value(None, now - dt) == 0
+        assert self.pp._balance_value(None, now) is None
