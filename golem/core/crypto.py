@@ -3,13 +3,14 @@
 # https://github.com/ethereum/pydevp2p/blob/
 # 8d7c44633ddcc9a00396c9f111f1427f89781b8b/devp2p/crypto.py
 
-CIPHERNAMES = set(('aes-128-ctr',))
-import warnings
 import os
 import sys
-if sys.platform not in ('darwin',):
+import logging
+logger = logging.getLogger(__name__)
+CIPHERNAMES = set(('aes-128-ctr',))
+if sys.platform not in ('darwin', 'win32'):
     import pyelliptic
-else:
+elif sys.platform == 'darwin':
     # FIX PATH ON OS X ()
     # https://github.com/yann2192/pyelliptic/issues/11
     _openssl_lib_paths = ['/usr/local/Cellar/openssl/']
@@ -20,7 +21,31 @@ else:
             import pyelliptic
             if CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
                 break
-if 'pyelliptic' not in dir() or not CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
+elif sys.platform == 'win32':
+    has_openssl = True
+    try:
+        import pyelliptic
+        if not CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
+            raise Exception("Required cyphers not found")
+    except Exception as e:
+        logger.debug("Failed to load openssl: %r", e)
+        has_openssl = False
+
+    if not has_openssl:
+        # USE APP DIR FOR WINDOWS DLL ()
+        # https://github.com/golemfactory/golem/issues/1612
+        _openssl_lib_paths = [os.getcwd()]
+        for p in _openssl_lib_paths:
+            if os.path.exists(p):
+                p = os.path.join(p, os.listdir(p)[-1])
+                os.environ['DYLD_LIBRARY_PATH'] = p
+                import pyelliptic
+                if CIPHERNAMES.issubset(
+                        set(pyelliptic.Cipher.get_all_cipher())):
+                    break
+
+if 'pyelliptic' not in dir() or \
+        not CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
     print('required ciphers %r not available in openssl library' % CIPHERNAMES)
     if sys.platform == 'darwin':
         print('use homebrew or macports to install newer openssl')
