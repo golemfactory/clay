@@ -93,6 +93,22 @@ class EthereumNodeTest(TempDirFixture, LogTestCase):
         with self.assertRaises(OSError):
             node.start()
 
+    def test_start_timed_out(self):
+        provider = Mock()
+        port = 3000
+
+        np = NodeProcess(self.tempdir)
+        np.start = Mock()
+        np.start_node = True
+
+        with self.assertRaises(OSError):
+            np._start_timed_out(provider, port)
+        assert not np.start.called
+
+        np.start_node = False
+        np._start_timed_out(provider, port)
+        assert np.start.called
+
 
 class TestPublicNodeList(unittest.TestCase):
 
