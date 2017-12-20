@@ -11,6 +11,7 @@ def get_golem_path():
     """
     return sep.join(dirname(abspath(__file__)).split(sep=sep)[:-2])
 
+
 def get_tag():
     """
     Get wheel name
