@@ -242,6 +242,8 @@ def get_version():
     tags = Repo(get_golem_path()).tags
     versions = []
 
+    tags.sort(key=lambda s: list(map(int, s.name.split('.'))))
+
     for tag in tags:
         if not tag.is_valid:
             continue
