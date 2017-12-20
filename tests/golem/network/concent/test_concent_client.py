@@ -14,19 +14,8 @@ from golem.network.concent.exceptions import ConcentUnavailableException, \
 logger = logging.getLogger(__name__)
 
 
-def mock_sign(*_):
-    return b'0' * message.Message.SIG_LEN
-
-
-def mock_encrypt(source):
-    return source
-
-
-mock_msg = message.ForceReportComputedTask('subtask_id')
-mock_msg_data = mock_msg.serialize(
-    sign_func=mock_sign,
-    encrypt_func=mock_encrypt
-)
+mock_msg = message.ForceReportComputedTask()
+mock_msg_data = mock_msg.serialize()
 
 # Succesfull mock
 mock_success = mock.MagicMock()
@@ -121,7 +110,9 @@ class TestConcentClient(TestCase):
         mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
 
     @mock.patch('golem.network.concent.client.logger')
-    @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60)),
+    # FIXME use freezegun
+    @mock.patch('time.time', side_effect=[time.time(),
+                                          (time.time() + (6 * 60)),
                                           time.time()])
     @mock.patch('requests.post', return_value=mock_server_error)
     def test_message_error_repeat_retry(self, mock_requests_post,
@@ -155,12 +146,12 @@ class TestConcentClientService(TestCase):
 
     def test_submit(self, *_):
         concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -175,12 +166,12 @@ class TestConcentClientService(TestCase):
 
     def test_delayed_submit(self, *_):
         concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=60
         )
 
@@ -196,12 +187,12 @@ class TestConcentClientService(TestCase):
     # FIXME: remove when 'enabled' property is dropped
     def test_disabled(self, *_):
         concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -211,12 +202,12 @@ class TestConcentClientService(TestCase):
     # FIXME: remove when 'enabled' property is dropped
     def test_enabled(self, *_):
         concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -226,12 +217,12 @@ class TestConcentClientService(TestCase):
     @mock.patch('time.sleep')
     def test_loop_exception(self, sleep, *_):
         concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -255,12 +246,12 @@ class TestConcentClientService(TestCase):
     })
     def test_loop_request_timeout(self, *_):
         concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -271,12 +262,12 @@ class TestConcentClientService(TestCase):
 
     def test_loop(self, *_):
         concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+        msg = message.ForceReportComputedTask()
 
         concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            msg,
+            msg.serialize(),
             delay=0
         )
 
@@ -294,8 +285,8 @@ class TestConcentRequest(TestCase):
             message.ForceReportComputedTask
         )
 
-        msg = message.ForceReportComputedTask('id')
-        msg_data = msg.serialize(mock_sign)
+        msg = message.ForceReportComputedTask()
+        msg_data = msg.serialize()
         msg_cls = msg.__class__
 
         lifetime = 10.5

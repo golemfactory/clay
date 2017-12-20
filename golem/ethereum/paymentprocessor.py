@@ -49,17 +49,18 @@ class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 
-    # Gas price: 20 shannons, Homestead suggested gas price.
+    # Gas price: 20 gwei, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
 
-    # Max gas cost for a single payment. Estimated in tests.
-    SINGLE_PAYMENT_GAS_COST = 60000
+    # Total gas for a batchTransfer is BASE + len(payments) * PER_PAYMENT
+    GAS_PER_PAYMENT = 30000
+    ETH_PER_PAYMENT = GAS_PRICE * GAS_PER_PAYMENT
+    # tx: 21000, balance substract: 5000, arithmetics < 800
+    GAS_BATCH_PAYMENT_BASE = 21000 + 800 + 5000
+    ETH_BATCH_PAYMENT_BASE = GAS_PRICE * GAS_BATCH_PAYMENT_BASE
 
-    SINGLE_PAYMENT_ETH_COST = GAS_PRICE * SINGLE_PAYMENT_GAS_COST
-
-    # Gas reservation for performing single batch payment.
-    # TODO: Adjust this value later and add MAX_PAYMENTS limit.
-    GAS_RESERVATION = 21000 + 1000 * 50000
+    # Time required to reset the current balance when errors occur
+    BALANCE_RESET_TIMEOUT = 30
 
     TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
@@ -68,12 +69,18 @@ class PaymentProcessor(LoopingCallService):
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
+    # keccak256(Transfer(address,address,uint256))
+    LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
+
     def __init__(self, client: Client, privkey, faucet=False) -> None:
         self.__client = client
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
+        self.__eth_reserved = 0
         self.__gnt_reserved = 0
+        self.__eth_update_ts = 0
+        self.__gnt_update_ts = 0
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
@@ -161,7 +168,7 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            self.__eth_balance = self.__client.get_balance(addr)
+            self._update_eth_balance(self.__client.get_balance(addr))
             log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
 
@@ -173,20 +180,40 @@ class PaymentProcessor(LoopingCallService):
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
                                    data='0x' + encode_hex(data),
                                    block='pending')
-            if r is None or r == '0x':
-                self.__gnt_balance = 0
+            if r is None:
+                gnt_balance = None
             else:
-                self.__gnt_balance = int(r, 16)
+                gnt_balance = 0 if r == '0x' else int(r, 16)
+
+            self._update_gnt_balance(gnt_balance)
             log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
         return self.__gnt_balance
 
+    def _update_eth_balance(self, eth_balance):
+        eth_balance = self._balance_value(eth_balance, self.__eth_update_ts)
+        if eth_balance is None:
+            return
+        self.__eth_update_ts = time.time()
+        self.__eth_balance = eth_balance
+
+    def _update_gnt_balance(self, gnt_balance):
+        gnt_balance = self._balance_value(gnt_balance, self.__gnt_update_ts)
+        if gnt_balance is None:
+            return
+        self.__gnt_update_ts = time.time()
+        self.__gnt_balance = gnt_balance
+
+    @classmethod
+    def _balance_value(cls, balance, last_update_ts):
+        if balance is not None:
+            return balance
+
+        dt = time.time() - last_update_ts
+        if dt >= cls.BALANCE_RESET_TIMEOUT:
+            return 0
+
     def _eth_reserved(self):
-        # Here we keep the same simple estimation by number of atomic payments.
-        # FIXME: This is different than estimation in sendout(). Create
-        #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in
-                                                 self._inprogress.values())
-        return num_payments * self.SINGLE_PAYMENT_ETH_COST
+        return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
 
     def _eth_available(self):
         """ Returns available ETH balance for new payments fees."""
@@ -223,7 +250,7 @@ class PaymentProcessor(LoopingCallService):
             payment.value / denoms.ether))
 
         # Check if enough ETH available to pay the gas cost.
-        if self._eth_available() < self.SINGLE_PAYMENT_ETH_COST:
+        if self._eth_available() < self.ETH_PER_PAYMENT:
             log.warning("Low ETH: {} available".format(self._eth_available()))
             return False
 
@@ -234,6 +261,7 @@ class PaymentProcessor(LoopingCallService):
 
         self._awaiting.append(payment)
         self.__gnt_reserved += payment.value
+        self.__eth_reserved += self.ETH_PER_PAYMENT
 
         # Set new deadline if not set already or shorter than the current one.
         # TODO: Optimize by checking the time once per service update.
@@ -261,7 +289,7 @@ class PaymentProcessor(LoopingCallService):
         nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
-        gas = 21000 + 800 + 5000 + len(p) * 30000
+        gas = self.GAS_BATCH_PAYMENT_BASE + len(p) * self.GAS_PER_PAYMENT
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
                          value=0, data=data)
         tx.sign(self.__privkey)
@@ -294,6 +322,7 @@ class PaymentProcessor(LoopingCallService):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
         self.__gnt_reserved -= value
+        self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
 
     def monitor_progress(self):
@@ -389,6 +418,26 @@ class PaymentProcessor(LoopingCallService):
             self.__client.send(tx)
             return False
         return True
+
+    def get_incomes_from_block(self, block, address):
+        logs = self.get_logs(block,
+                             block,
+                             '0x' + encode_hex(self.TESTGNT_ADDR),
+                             [self.LOG_ID, None, address])
+        if not logs:
+            return logs
+
+        res = []
+        for entry in logs:
+            if entry['topics'][2] != address:
+                raise Exception("Unexpected income event from {}"
+                    .format(entry['topics'][2]))
+
+            res.append({
+                'sender': entry['topics'][1],
+                'value': int(entry['data'], 16),
+            })
+        return res
 
     def get_logs(self,
                  from_block=None,

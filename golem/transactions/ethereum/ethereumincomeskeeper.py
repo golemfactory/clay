@@ -14,7 +14,6 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
-    LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
 
     def __init__(self, processor: PaymentProcessor) -> None:
         self.processor = processor
@@ -43,11 +42,8 @@ class EthereumIncomesKeeper(IncomesKeeper):
                            "Please wait until synchronized")
             self.processor.wait_until_synchronized()
 
-        incomes = self.processor.get_logs(
-            from_block=block_number,
-            to_block=block_number,
-            topics=[self.LOG_ID, None, my_address])
-
+        incomes = self.processor.get_incomes_from_block(block_number,
+                                                        my_address)
         if not incomes:
             logger.error('Transaction not present in blockchain: %r',
                          transaction_id)
@@ -71,20 +67,16 @@ class EthereumIncomesKeeper(IncomesKeeper):
 
         received_tokens = 0
         received_tokens -= spent_tokens
-        for income_log in incomes:
+        for income in incomes:
             # Should we verify sender address?
-            sender = income_log['topics'][1]
-            receiver = income_log['topics'][2]
-            log_value = int(income_log['data'], 16)
+            sender = income['sender']
+            income_value = income['value']
             logger.debug(
-                'INCOME: from %r to %r v:%r',
+                'INCOME: from %r v:%r',
                 sender,
-                receiver,
-                log_value
+                income_value
             )
-            # Count tokens only when we're the receiver.
-            if receiver == my_address:
-                received_tokens += log_value
+            received_tokens += income_value
         if received_tokens < value:
             logger.error(
                 "Not enough tokens received for subtask: %r."
