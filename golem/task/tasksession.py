@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import logging
 import os
 import pickle
@@ -439,7 +440,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         msg.task_to_compute = task_to_compute
-        msg.result_hash = task_result.result_hash
+        # FIXME: Only ResultType.DATA is currently in use #1796
+        assert task_result.result_type == ResultType.DATA
+        msg.result_hash = 'sha1:' + hashlib.sha1(
+            task_result.result.encode('utf-8')
+        ).hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
         msg_data = msg.serialize(self.sign)
 
