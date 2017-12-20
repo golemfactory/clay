@@ -11,21 +11,18 @@ def get_golem_path():
     """
     return sep.join(dirname(abspath(__file__)).split(sep=sep)[:-2])
 
-
 def get_tag():
     """
     Get wheel name
     :return: Name for wheel
     """
     repo = Repo(get_golem_path())
-    tag = repo.tags[-1]  # get latest tag
-    commit_id = repo.head.commit.hexsha  # get last commit id
-    for rel_tag in repo.tags:
-        if rel_tag.commit.hexsha == commit_id:
-            tag = rel_tag
-            break
+    tags_sorted = repo.tags
+    tags_sorted.sort(key=lambda s: list(map(int, s.name.split('.'))))
 
+    tag = tags_sorted[-1]  # get latest tag
     tag_id = tag.commit.hexsha  # get commit id from tag
+    commit_id = repo.head.commit.hexsha  # get last commit id
     if commit_id != tag_id:  # devel package
         return "{}-0x{}{}".format(tag.name, commit_id[:4], commit_id[-4:])
     else:  # release package
