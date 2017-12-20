@@ -395,7 +395,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         node_name = self.task_server.get_node_name()
         try:
-            task_to_compute = history.MessageHistoryService.get_sync_as_message(  # noqa
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
                 subtask=task_result.subtask_id,
                 msg_cls='TaskToCompute',

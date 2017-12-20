@@ -18,7 +18,10 @@ def get_tag():
     :return: Name for wheel
     """
     repo = Repo(get_golem_path())
-    tag = repo.tags[-1]  # get latest tag
+    tags_sorted = repo.tags
+    tags_sorted.sort(key=lambda s: list(map(int, s.name.split('.'))))
+
+    tag = tags_sorted[-1]  # get latest tag
     tag_id = tag.commit.hexsha  # get commit id from tag
     commit_id = repo.head.commit.hexsha  # get last commit id
     if commit_id != tag_id:  # devel package

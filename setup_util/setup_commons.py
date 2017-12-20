@@ -255,7 +255,7 @@ def get_version():
     if not versions:
         raise EnvironmentError("No git version tag found "
                                "in the repository")
-    return sorted(versions)[-1]
+    return sorted(versions, key=lambda s: list(map(int, s.split('.'))))[-1]
 
 
 def file_name():
