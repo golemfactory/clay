@@ -1,6 +1,7 @@
 import functools
 import logging
 import os
+import pickle
 import struct
 import threading
 import time
@@ -16,6 +17,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
 from golem.network.concent.client import ConcentRequest
+from golem.network import history
 from golem.network.history import IMessageHistoryProvider, provider_history
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -194,7 +196,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             node=self.key_id,
             msg_date=time.time(),
             msg_cls=msg.__class__.__name__,
-            msg_data=msg.raw,
+            msg_data=pickle.dumps(msg),
             local_role=local_role,
             remote_role=remote_role,
         )
@@ -370,8 +372,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             address,
             port,
             eth_account,
-            node_info
-            ):
+            node_info):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result
                                               with additional information
@@ -392,8 +393,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         node_name = self.task_server.get_node_name()
+        try:
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(
+                task=task_result.task_id,
+                subtask=task_result.subtask_id,
+                msg_cls='TaskToCompute',
+            )
+        except history.MessageNotFound:
+            task_to_compute = None
+            logger.info(
+                '[CONCENT] TaskToCompute not found for subtask: %r',
+                task_result.subtask_id,
+            )
 
-        self.send(message.ReportComputedTask(
+        report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
             computation_time=task_result.computing_time,
@@ -403,12 +416,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             key_id=self.task_server.get_key_id(),
             node_info=node_info,
             eth_account=eth_account,
-            extra_data=extra_data))
+            extra_data=extra_data)
+        report_computed_task.task_to_compute = task_to_compute
+        self.send(report_computed_task)
 
         # FIXME: message.ForceReportComputedTask is going to be updated
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls(task_result.subtask_id)
-        msg_data = msg.serialize(self.sign)
+        msg_data = pickle.dumps(msg)
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),
@@ -813,8 +828,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
                 ctd['return_address'],
-                ctd['return_port']
-                ):
+                ctd['return_port']):
             self.err_msg = reasons.WrongAddress
             return False
         return True

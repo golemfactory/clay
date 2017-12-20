@@ -7,6 +7,7 @@ from abc import abstractmethod, ABC
 from functools import reduce, wraps
 from typing import List
 
+from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field, IntegrityError)
 
@@ -14,6 +15,10 @@ from golem.core.service import IService
 from golem.model import NetworkMessage, Actor
 
 logger = logging.getLogger('golem.network.history')
+
+
+class MessageNotFound(Exception):
+    pass
 
 
 class MessageHistoryService(IService):
@@ -107,6 +112,14 @@ class MessageHistoryService(IService):
             .order_by(+NetworkMessage.msg_date)
 
         return list(result)
+
+    @classmethod
+    def get_sync_as_message(cls, *args, **kwargs) -> message.Message:
+        db_result = cls.get_sync(*args, **kwargs)
+        if not db_result:
+            raise MessageNotFound()
+        db_msg = db_result[0]
+        return db_msg.as_message()
 
     def add(self, msg_dict: dict) -> None:
         """
@@ -216,7 +229,6 @@ class MessageHistoryService(IService):
             pass
         else:
             self.add_sync(msg_dict)
-
 
     def _sweep(self) -> None:
         """
