@@ -24,12 +24,10 @@ class HyperdriveResourceManager(ClientHandler):
         super().__init__(config)
 
         self.dir_manager = dir_manager
+        self.client = HyperdriveClient(**self.config.client)
         self.peer_manager = HyperdrivePeerManager(daemon_address)
         self.storage = ResourceStorage(self.dir_manager, resource_dir_method or
                                        dir_manager.get_task_resource_dir)
-
-    def new_client(self):
-        return HyperdriveClient(**self.config.client)
 
     @staticmethod
     def build_client_options(peers=None, **kwargs):
@@ -48,7 +46,7 @@ class HyperdriveResourceManager(ClientHandler):
                    if is_collection(entry) and len(entry) > 1]
 
         if len(results) != len(serialized):
-            logger.debug("Errors occurred while deserializing %r", serialized)
+            logger.warning("Errors occurred while deserializing %r", serialized)
 
         return results
 
@@ -66,9 +64,8 @@ class HyperdriveResourceManager(ClientHandler):
         if not resources:
             return
 
-        client = self.new_client()
         for resource in resources:
-            client.cancel(resource.hash)
+            self.client.cancel(resource.hash)
 
     def _add_task(self, files, task_id, resource_hash=None):
         prefix = self.storage.cache.get_prefix(task_id)
@@ -129,12 +126,10 @@ class HyperdriveResourceManager(ClientHandler):
                          task_id, missing)
             return None, None
 
-        client = self.new_client()
-
         if resource_hash:
-            method, arg = client.restore, resource_hash
+            method, arg = self.client.restore, resource_hash
         else:
-            method, arg = client.add, files
+            method, arg = self.client.add, files
 
         try:
             resource_hash = method(arg)
@@ -213,7 +208,7 @@ class HyperdriveResourceManager(ClientHandler):
               success, error,
               client=None, client_options=None, async=True):
 
-        client = client or self.new_client()
+        client = client or self.client
         kwargs = dict(
             content_hash=resource.hash,
             filename=self.storage.relative_path(resource.path, task_id),
@@ -240,8 +235,9 @@ class HyperdriveResourceManager(ClientHandler):
 
 class DummyResourceManager(HyperdriveResourceManager):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = DummyClient()
+
     def build_client_options(self, **kwargs):
         return DummyClient.build_options(**kwargs)
-
-    def new_client(self):
-        return DummyClient()
