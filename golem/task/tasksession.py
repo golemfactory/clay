@@ -16,6 +16,7 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
+from golem.network import history
 from golem.network.concent.client import ConcentRequest
 from golem.network import history
 from golem.network.history import IMessageHistoryProvider, provider_history
@@ -420,10 +421,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        # FIXME: message.ForceReportComputedTask is going to be updated
         msg_cls = message.ForceReportComputedTask
-        msg = msg_cls(task_result.subtask_id)
+        msg = msg_cls()
         msg_data = pickle.dumps(msg)
+        try:
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(
+                task=task_result.task_id,
+                subtask=task_result.subtask_id,
+                msg_cls='TaskToCompute',
+            )
+        except history.MessageNotFound:
+            logger.warning(
+                '[CONCENT] Cannot create ForceReportComputedTask. '
+                'TaskToCompute message not found for task: %r subtask: %r',
+                task_result.task_id,
+                task_result.subtask_id,
+            )
+            return
+        msg.task_to_compute = task_to_compute
+        msg.result_hash = task_result.result_hash
+        logger.debug('[CONCENT] ForceReport: %s', msg)
+        msg_data = msg.serialize(self.sign)
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),
