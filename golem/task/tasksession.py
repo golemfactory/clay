@@ -422,7 +422,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls()
-        msg_data = pickle.dumps(msg)
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
