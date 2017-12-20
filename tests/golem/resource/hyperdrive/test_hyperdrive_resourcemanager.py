@@ -225,8 +225,8 @@ class TestHyperdriveResourceManager(TempDirFixture):
         assert restore.called
         assert not add.called
 
-    @patch('golem.resource.base.resourcesmanager.async_run')
-    def test_add_task_failure(self, async_run):
+    @patch('golem.resource.hyperdrive.resourcesmanager.async_run')
+    def test_add_task_failure(self, async_run, *_):
 
         def mock_async_run(request, _success=None, error=None):
             try:

@@ -56,7 +56,8 @@ class HyperdriveResourceManager(ClientHandler):
     def add_task(self, files, task_id, resource_hash=None, async=True):
         args = (files, task_id, resource_hash)
         if async:
-            return async_run(AsyncRequest(self._add_task, *args))
+            return async_run(AsyncRequest(self._add_task, *args),
+                             error=self._add_task_error)
         return self._add_task(*args)
 
     def remove_task(self, task_id):
@@ -136,8 +137,6 @@ class HyperdriveResourceManager(ClientHandler):
         except Exception as exc:
             logger.error("Resource manager: Error occurred while adding files"
                          ": %r", exc)
-            if not resource_hash:
-                return None, None
             raise
 
         resource_files = list(files.values())

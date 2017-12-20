@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 from threading import Lock
+from typing import List
 
 from golem.core.fileshelper import copy_file_tree
 
@@ -139,7 +140,7 @@ class ResourceStorage(object):
     def get_root(self):
         return self.dir_manager.get_node_dir()
 
-    def get_resources(self, task_id) -> Resource:
+    def get_resources(self, task_id) -> List[Resource]:
         return self.cache.get_resources(task_id)
 
     def exists(self, resource):
