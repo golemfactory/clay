@@ -723,18 +723,18 @@ class TestSessionWithDB(testutils.DatabaseFixture):
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
         task_to_compute = message.TaskToCompute()
-        nmsg = model.NetworkMessage(
+        nmsg_dict = dict(
             task=task_id,
             subtask=subtask_id,
             node=node_id,
             msg_date=datetime.datetime.now(),
             msg_cls='TaskToCompute',
-            msg_data=task_to_compute.serialize(),
+            msg_data=pickle.dumps(task_to_compute),
             local_role=model.Actor.Provider,
             remote_role=model.Actor.Requestor,
         )
         service = history.MessageHistoryService()
-        service.add_sync(nmsg)
+        service.add_sync(nmsg_dict)
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         self.assertEqual(ts.concent_service.submit.call_count, 1)
 
