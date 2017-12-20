@@ -19,8 +19,6 @@ from golem.model import Payment, Actor
 from golem.model import db
 from golem.network import history
 from golem.network.concent.client import ConcentRequest
-from golem.network import history
-from golem.network.history import IMessageHistoryProvider, provider_history
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -54,7 +52,7 @@ def dropped_after():
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
-                  IMessageHistoryProvider):
+                  history.IMessageHistoryProvider):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.FilesProtocol
@@ -537,7 +535,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
 
     @handle_attr_error_with_task_computer
-    @provider_history
+    @history.provider_history
     def _react_to_task_to_compute(self, msg):
         if msg.compute_task_def is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
@@ -574,7 +572,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
@@ -599,7 +597,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         else:
             self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
@@ -675,12 +673,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             options=options
         ))
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_rejected(self, msg):
         self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
@@ -754,7 +752,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -798,7 +796,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.inform_worker_about_payment(payment)
 
-    @provider_history
+    @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -814,7 +812,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
