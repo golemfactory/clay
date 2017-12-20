@@ -9,7 +9,7 @@ from typing import List
 
 from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
-                    NotSupportedError, Field)
+                    NotSupportedError, Field, IntegrityError)
 
 from golem.core.service import IService
 from golem.model import NetworkMessage, Actor
@@ -137,13 +137,14 @@ class MessageHistoryService(IService):
         try:
             msg = NetworkMessage(**msg_dict)
             msg.save()
-        except (DataError, ProgrammingError, NotSupportedError) as exc:
+        except (DataError, ProgrammingError, NotSupportedError,
+                TypeError, IntegrityError) as exc:
             # Unrecoverable error
             logger.error("Cannot save message '%s' to database: %r",
-                         msg.msg_cls, exc)
+                         msg_dict.get('msg_cls'), exc)
         except PeeweeException:
             # Temporary error
-            logger.debug("Message '%s' save queued", msg.msg_cls)
+            logger.warning("Message '%s' save queued", msg_dict.get('msg_cls'))
             self._save_queue.put(msg_dict)
 
     def remove(self, task: str, **properties) -> None:
@@ -168,15 +169,16 @@ class MessageHistoryService(IService):
             NetworkMessage.delete() \
                 .where(reduce(operator.and_, clauses)) \
                 .execute()
-        except (DataError, ProgrammingError, NotSupportedError) as exc:
+        except (DataError, ProgrammingError, NotSupportedError,
+                TypeError, IntegrityError) as exc:
             # Unrecoverable error
             logger.error("Cannot remove task messages from the database: "
                          "(task: '%s', parameters: %r): %r",
                          task, properties, exc)
         except PeeweeException:
             # Temporary error
-            logger.debug("Task %s (%r) message removal queued",
-                         task, properties)
+            logger.warning("Task %s (%r) message removal queued",
+                           task, properties)
             self._remove_queue.put((task, properties))
 
     @staticmethod

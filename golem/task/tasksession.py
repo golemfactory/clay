@@ -188,11 +188,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     ###################################
 
     def message_to_model(self, msg, local_role, remote_role):
-        task = getattr(msg, 'task_id', None)
-        subtask = getattr(msg, 'subtask_id', None)
-
-        if subtask and not task:
-            task = self._subtask_to_task(subtask, local_role)
+        task, subtask = self._task_subtask_from_message(msg, local_role)
 
         return dict(
             task=task,
@@ -203,7 +199,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             msg_data=pickle.dumps(msg),
             local_role=local_role,
             remote_role=remote_role,
-        ) if task else None
+        )
+
+    def _task_subtask_from_message(self, msg, local_role):
+        task, subtask = None, None
+
+        if isinstance(msg, message.TaskToCompute):
+            definition = msg.compute_task_def
+            if definition:
+                task = definition.get('task_id')
+                subtask = definition.get('subtask_id')
+        else:
+            task = getattr(msg, 'task_id', None)
+            subtask = getattr(msg, 'subtask_id', None)
+            task = task or self._subtask_to_task(subtask, local_role)
+
+        return task, subtask
 
     def _subtask_to_task(self, sid, local_role):
         if not self.task_manager:
