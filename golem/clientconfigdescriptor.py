@@ -19,6 +19,7 @@ class ClientConfigDescriptor(object):
         self.pings_interval = 0.0
         self.use_ipv6 = 0
 
+        self.use_upnp = 0
         self.seed_host = ""
         self.seed_port = 0
         self.seeds = ""
@@ -80,7 +81,8 @@ class ConfigApprover(object):
     dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                        'use_distributed_resource_management',
                        'use_waiting_for_task_timeout', 'send_pings',
-                       'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
+                       'use_ipv6', 'use_upnp', 'eth_account', 'accept_tasks',
+                       'node_name']
     to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
                   'waiting_for_task_timeout', 'p2p_session_timeout',
                   'task_session_timeout', 'pings_interval',
@@ -133,7 +135,8 @@ class ConfigApprover(object):
 
     @staticmethod
     def _to_int(val, name):
-        """ Try to change value <val> to int. If it's not possible return unchanged val
+        """ Try to change value <val> to int. If it's not possible return
+        unchanged val
         :param val: value that should be changed to int
         :param str name: name of a config description option for logs
         :return: value change to int or unchanged value if it's not possible
