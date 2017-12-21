@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import logging
 import os
 import pickle
@@ -16,9 +17,8 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
-from golem.network.concent.client import ConcentRequest
 from golem.network import history
-from golem.network.history import IMessageHistoryProvider, provider_history
+from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -52,7 +52,7 @@ def dropped_after():
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
-                  IMessageHistoryProvider):
+                  history.IMessageHistoryProvider):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.FilesProtocol
@@ -420,10 +420,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        # FIXME: message.ForceReportComputedTask is going to be updated
         msg_cls = message.ForceReportComputedTask
-        msg = msg_cls(task_result.subtask_id)
-        msg_data = pickle.dumps(msg)
+        msg = msg_cls()
+        try:
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(
+                task=task_result.task_id,
+                subtask=task_result.subtask_id,
+                msg_cls='TaskToCompute',
+            )
+        except history.MessageNotFound:
+            logger.warning(
+                '[CONCENT] Cannot create ForceReportComputedTask. '
+                'TaskToCompute message not found for task: %r subtask: %r',
+                task_result.task_id,
+                task_result.subtask_id,
+            )
+            return
+        msg.task_to_compute = task_to_compute
+        # FIXME: Only ResultType.DATA is currently in use #1796
+        assert task_result.result_type == ResultType.DATA
+        msg.result_hash = 'sha1:' + hashlib.sha1(
+            task_result.result.encode('utf-8')
+        ).hexdigest()
+        logger.debug('[CONCENT] ForceReport: %s', msg)
+        msg_data = msg.serialize(self.sign)
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),
@@ -514,7 +534,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
 
     @handle_attr_error_with_task_computer
-    @provider_history
+    @history.provider_history
     def _react_to_task_to_compute(self, msg):
         if msg.compute_task_def is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
@@ -551,7 +571,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
@@ -576,7 +596,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         else:
             self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
@@ -652,12 +672,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             options=options
         ))
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_rejected(self, msg):
         self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
@@ -731,7 +751,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -775,7 +795,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.inform_worker_about_payment(payment)
 
-    @provider_history
+    @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -791,7 +811,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
