@@ -1,3 +1,4 @@
+import datetime
 import os
 import pathlib
 import pickle
@@ -16,6 +17,7 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
+from golem.network import history
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -147,7 +149,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(message.CannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
-    def test_send_report_computed_task(self):
+    @patch(
+        'golem.network.history.MessageHistoryService.get_sync',
+        return_value=[]
+    )
+    def test_send_report_computed_task(self, get_mock):
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -631,6 +637,11 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         super(TestSessionWithDB, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        history.MessageHistoryService.instance = None
+
+    def tearDown(self):
+        super().tearDown()
+        history.MessageHistoryService.instance = None
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
@@ -688,6 +699,44 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
 
+    def test_send_report_computed_task_concent_no_message(self):
+        ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
+        ts.verified = True
+        n = Node()
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        history.MessageHistoryService()
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_not_called()
+
+    def test_send_report_computed_task_concent_success(self):
+        ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
+        ts.verified = True
+        n = Node()
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4())
+        wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        task_to_compute = message.TaskToCompute()
+        nmsg_dict = dict(
+            task=task_id,
+            subtask=subtask_id,
+            node=node_id,
+            msg_date=datetime.datetime.now(),
+            msg_cls='TaskToCompute',
+            msg_data=pickle.dumps(task_to_compute),
+            local_role=model.Actor.Provider,
+            remote_role=model.Actor.Requestor,
+        )
+        service = history.MessageHistoryService()
+        service.add_sync(nmsg_dict)
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        self.assertEqual(ts.concent_service.submit.call_count, 1)
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))

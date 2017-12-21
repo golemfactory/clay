@@ -268,11 +268,12 @@ function install_golem()
     if [[ -f ${GOLEM_DIR}/golemapp ]]; then
         CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        NEWER_VERSION=$(printf "$CURRENT_VERSION\n$PACKAGE_VERSION" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | tail -n 1)
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi
-        if [[ "$CURRENT_VERSION" > "$PACKAGE_VERSION" ]]; then
+        if [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
             ask_user "Newer version ($CURRENT_VERSION) of Golem detected. Downgrade to version $PACKAGE_VERSION? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi
