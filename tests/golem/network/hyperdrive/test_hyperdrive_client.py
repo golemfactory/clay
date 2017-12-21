@@ -255,7 +255,12 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('192.168.0.1', 12345),
             uTP=('::1', 12345)
-        )) is not None
+        )) is None
+
+        assert HyperdriveClientOptions.filter_peer(dict(
+            TCP=('192.168.0.1', 12345),
+            uTP=('::1', 12345)
+        ), forced_ip='192.168.0.1') is not None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('::1.2.3.4', -1),

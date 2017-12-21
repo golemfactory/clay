@@ -176,16 +176,15 @@ class HyperdriveClientOptions(ClientOptions):
                 ip = ip_address(ip_str)
                 port = int(entry[1])
 
-                # FIXME: filter out only private IPs we're not connected to
-                # if ip.is_private:
-                #     raise ValueError('address {} is private'
-                #                      .format(ip))
-                if excluded_ips and entry[0] in excluded_ips:
-                    raise ValueError('address {} was excluded'
-                                     .format(ip))
+                if ip_str != forced_ip:
+                    if ip.is_private:
+                        raise ValueError('address {} is private'.format(ip))
+                    if excluded_ips and ip_str in excluded_ips:
+                        raise ValueError('address {} was excluded'.format(ip))
+
                 if not 0 < port < 65536:
-                    raise ValueError('port {} is invalid'
-                                     .format(port))
+                    raise ValueError('port {} is invalid'.format(port))
+
                 if forced_ip and ip_str != forced_ip:
                     log.warning("Replacing provider's IP address %s with %s",
                                 ip, forced_ip)
