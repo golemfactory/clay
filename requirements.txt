@@ -49,6 +49,6 @@ numpy==1.13.1
 scipy==0.19.1
 pyssim
 enforce==0.3.4
-miniupnpc>=2.0.2
+miniupnpc<2.1,>=2.0
 # TODO messages release
 -e git://github.com/golemfactory/golem-messages.git@0fbe8deab9bbb140e11647711c1859d61f2e8d0a#egg=golem_messages
