@@ -4,6 +4,7 @@ import pathlib
 import pickle
 import random
 import unittest
+import unittest.mock as mock
 import uuid
 from unittest.mock import Mock, MagicMock, patch
 
@@ -19,6 +20,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
+from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -637,11 +639,6 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         super(TestSessionWithDB, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
-        history.MessageHistoryService.instance = None
-
-    def tearDown(self):
-        super().tearDown()
-        history.MessageHistoryService.instance = None
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
@@ -699,22 +696,30 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
 
+
+class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
+                                      testutils.TempDirFixture):
+    def setUp(self):
+        testutils.DatabaseFixture.setUp(self)
+        testutils.TempDirFixture.setUp(self)
+        history.MessageHistoryService()
+
+    def tearDown(self):
+        testutils.DatabaseFixture.tearDown(self)
+        testutils.TempDirFixture.tearDown(self)
+        history.MessageHistoryService.instance = None
+
     def test_send_report_computed_task_concent_no_message(self):
         ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
-        ts.verified = True
         n = Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
-        history.MessageHistoryService()
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ts.concent_service.submit.assert_not_called()
 
     def test_send_report_computed_task_concent_success(self):
         ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
-        ts.verified = True
         n = Node()
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -733,10 +738,63 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             local_role=model.Actor.Provider,
             remote_role=model.Actor.Requestor,
         )
-        service = history.MessageHistoryService()
+        service = history.MessageHistoryService.instance
         service.add_sync(nmsg_dict)
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-        self.assertEqual(ts.concent_service.submit.call_count, 1)
+        ts.concent_service.submit.assert_called_once_with(
+            concent_client.ConcentRequest.build_key(
+                subtask_id,
+                'ForceReportComputedTask',
+            ),
+            mock.ANY,
+        )
+        msg = ts.concent_service.submit.call_args[0][1]
+        self.assertEqual(
+            msg.result_hash,
+            'sha1:37a5301a88da334dc5afc5b63979daa0f3f45e68',
+        )
+
+    def test_send_report_computed_task_concent_success_many_files(self):
+        ts = TaskSession(Mock())
+        n = Node()
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4())
+        result = []
+        for i in range(100, 300, 99):
+            p = pathlib.Path(self.tempdir) / str(i)
+            with p.open('wb') as f:
+                f.write(b'\0' * i*2**20)
+            result.append(str(p))
+        wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        task_to_compute = message.TaskToCompute()
+        nmsg_dict = dict(
+            task=task_id,
+            subtask=subtask_id,
+            node=node_id,
+            msg_date=datetime.datetime.now(),
+            msg_cls='TaskToCompute',
+            msg_data=pickle.dumps(task_to_compute),
+            local_role=model.Actor.Provider,
+            remote_role=model.Actor.Requestor,
+        )
+        service = history.MessageHistoryService().instance
+        service.add_sync(nmsg_dict)
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_called_once_with(
+            concent_client.ConcentRequest.build_key(
+                subtask_id,
+                'ForceReportComputedTask',
+            ),
+            mock.ANY,
+        )
+        msg = ts.concent_service.submit.call_args[0][1]
+        self.assertEqual(
+            msg.result_hash,
+            'sha1:2bebc22296f03225617704d29d277c9e96fafcc2',
+        )
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))
