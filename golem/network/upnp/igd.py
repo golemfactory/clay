@@ -31,13 +31,14 @@ class IGDPortMapper(IPortMapper):
             'status_info': self.upnp.statusinfo()
         }
 
-    def discover(self) -> None:
+    def discover(self) -> str:
         num_devices = self.upnp.discover()
         if not num_devices:
             raise RuntimeError('no devices discovered')
 
-        self.upnp.selectigd()
+        igd = self.upnp.selectigd()
         self._available = True
+        return igd
 
     def create_mapping(self,
                        local_port: int,

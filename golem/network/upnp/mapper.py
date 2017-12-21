@@ -23,7 +23,7 @@ class IPortMapper(ABC):
         pass
 
     @abstractmethod
-    def discover(self) -> None:
+    def discover(self) -> str:
         pass
 
     @abstractmethod
@@ -74,22 +74,22 @@ class PortMapperManager(IPortMapper):
     def mapping(self) -> Dict[str, Dict[int, int]]:
         return deepcopy(self._mapping)
 
-    def discover(self):
+    def discover(self) -> str:
         for mapper in self._mappers:
             logger.info('%s: starting discovery', mapper.name)
 
             try:
-                mapper.discover()
+                device = mapper.discover()
+                net = mapper.network
             except Exception as exc:
                 logger.warning('%s: discovery error: %s', mapper.name, exc)
                 continue
 
             if mapper.available:
                 self._active_mapper = mapper
-                logger.info('%s: discovery complete', mapper.name)
-                logger.info('%s: network configuration %r',
-                            mapper.name, mapper.network)
-                break
+                logger.info('%s: discovery complete: %s', mapper.name, device)
+                logger.info('%s: network configuration: %r', mapper.name, net)
+                return device
 
             logger.warning('%s-compatible device was not found', mapper.name)
 
