@@ -607,7 +607,9 @@ class CoreTaskBuilder(TaskBuilder):
             return options['output_path']
 
         absolute_path = cls.get_nonexistant_path(
-            options['output_path'], definition.task_name, options.get('format', ''))
+            options['output_path'],
+            definition.task_name,
+            options.get('format', ''))
 
         return absolute_path
 
@@ -646,7 +648,7 @@ class CoreTaskBuilder(TaskBuilder):
         i = 1
         new_fname = "{}({})".format(fname_path, i)
 
-        while os.path.exists(os.path.join(path, name + "(" + str(i) + ")" + extension)):
+        while os.path.exists(new_fname + extension):
             i += 1
             new_fname = "{}({})".format(fname_path, i)
 
