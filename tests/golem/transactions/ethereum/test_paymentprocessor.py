@@ -11,9 +11,11 @@ from ethereum import tester, processblock
 from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms, privtoaddr
+from freezegun import freeze_time
 from mock import patch, Mock
 from twisted.internet.task import Clock
 
+from golem.core.common import timestamp_to_datetime
 from golem.ethereum import Client
 from golem.ethereum.contracts import TestGNT
 from golem.ethereum.node import Faucet
@@ -481,6 +483,21 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.details.block_hash, 64*'f')
         self.assertEqual(p.details.fee, 55001 * self.pp.GAS_PRICE)
         self.assertEqual(self.pp._gnt_reserved(), 0)
+
+    def test_payment_timestamp(self):
+        self.client.get_balance.return_value = denoms.ether
+        self.client.call.return_value = hex(denoms.ether)
+
+        ts = 7
+        p = Payment.create(subtask="p1", payee=urandom(20), value=1)
+        with freeze_time(timestamp_to_datetime(ts)):
+            self.pp.add(p)
+        self.assertEqual(ts, p.processed_ts)
+
+        new_ts = 9
+        with freeze_time(timestamp_to_datetime(new_ts)):
+            self.pp.add(p)
+        self.assertEqual(ts, p.processed_ts)
 
 
 class PaymentProcessorFunctionalTest(DatabaseFixture):
