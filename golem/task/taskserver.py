@@ -208,10 +208,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         logger.debug('REQUESTS_TO_SEND: expected_income')
         self.payment_requests_to_send.add(expected_income)
 
-    def key_changed(self):
-        """React to the fact that key id has been changed. Inform task manager about new key """
-        self.task_manager.key_id = self.keys_auth.get_key_id()
-
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
