@@ -97,6 +97,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.resource_peers = {}
         self.seeds = set()
+        self.used_seeds = set()
 
         self._peer_lock = Lock()
 
@@ -140,7 +141,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for ip_address, port in random.sample(self.seeds, k=len(self.seeds)):
+        for _ in range(len(self.seeds)):
+            ip_address, port = self._get_next_random_seed()
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
@@ -177,7 +179,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             session.start()
         else:
             session.disconnect(
-                message.MessageDisconnect.REASON.NoMoreMessages
+                message.Disconnect.REASON.NoMoreMessages
             )
 
     def add_known_peer(self, node, ip_address, port):
@@ -415,10 +417,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.node_name = config_desc.node_name
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
-
-        if is_node_name_changed:
-            for peer in list(self.peers.values()):
-                peer.hello()
 
         for peer in list(self.peers.values()):
             if peer.port == self.config_desc.seed_port\
@@ -949,7 +947,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(
-                    message.MessageDisconnect.REASON.Timeout
+                    message.Disconnect.REASON.Timeout
                 )
 
     def __refresh_old_peers(self):
@@ -961,7 +959,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
                 peer.disconnect(
-                    message.MessageDisconnect.REASON.Refresh
+                    message.Disconnect.REASON.Refresh
                 )
 
     def __sync_free_peers(self):
@@ -1027,6 +1025,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 )
                 continue
             self.seeds.add((ip_address, port))
+
+    def _get_next_random_seed(self):
+        # this loop won't execute more than twice
+        while True:
+            for seed in random.sample(self.seeds, k=len(self.seeds)):
+                if seed not in self.used_seeds:
+                    self.used_seeds.add(seed)
+                    return seed
+            self.used_seeds = set()
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for node in self.peer_keeper.sessions_to_end:

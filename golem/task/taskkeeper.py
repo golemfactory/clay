@@ -17,9 +17,15 @@ from .taskbase import TaskHeader
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price, computation_time):
-    value = int(math.ceil(price * computation_time / 3600))
-    return value
+def compute_subtask_value(price: int, computation_time: int):
+    """
+    Don't use math.ceil (this is general advice, not specific to the case here)
+    >>> math.ceil(10 ** 18 / 6)
+    166666666666666656
+    >>> (10 ** 18 + 5) // 6
+    166666666666666667
+    """
+    return (price * computation_time + 3599) // 3600
 
 
 class CompTaskInfo:
@@ -150,6 +156,11 @@ class CompTaskKeeper:
                 " Should be int or long".format(type(price))
             )
         return compute_subtask_value(price, computing_time)
+
+    def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
+        task_id = self.subtask_to_task.get(subtask_id)
+        task = self.active_tasks.get(task_id)
+        return task and task.header.task_owner_key_id == task_owner_key_id
 
     @handle_key_error
     def request_failure(self, task_id):

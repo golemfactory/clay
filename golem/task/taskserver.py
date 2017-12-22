@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 from collections import deque
 import datetime
+from typing import Dict, Iterable, Optional
+
 from golem_messages import message
 import itertools
 import logging
 import os
 from pydispatch import dispatcher
 import time
+
+from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -16,8 +20,9 @@ from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnS
 from golem.ranking.helper.trust import Trust
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader
+from golem.task.taskbase import TaskHeader, ResourceType, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.task.taskstate import TaskState
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -57,6 +62,49 @@ class TaskResourcesMixin(object):
         resource_manager = self._get_resource_manager()
         resources = resource_manager.get_resources(task_id)
         return resource_manager.to_wire(resources)
+
+    def restore_resources(self) -> None:
+
+        if not self.task_manager.task_persistence:
+            return
+
+        states = dict(self.task_manager.tasks_states)
+
+        for task_id, task_state in states.items():
+            task = self.task_manager.tasks[task_id]
+            files = task.get_resources(None, ResourceType.HASHES)
+
+            logger.info("Restoring task '%s' resources", task_id)
+            self._restore_resources(files, task_id, task_state.resource_hash)
+
+    def _restore_resources(self,
+                           files: Iterable[str],
+                           task_id: str,
+                           resource_hash: Optional[str] = None):
+
+        resource_manager = self._get_resource_manager()
+
+        try:
+            _, resource_hash = resource_manager.add_task(
+                files,
+                task_id,
+                resource_hash=resource_hash,
+                async=False
+            )
+        except ConnectionError as exc:
+            self._restore_resources_error(task_id, exc)
+        except HTTPError as exc:
+            if resource_hash:
+                return self._restore_resources(files, task_id)
+            self._restore_resources_error(task_id, exc)
+        else:
+            task_state = self.task_manager.tasks_states[task_id]
+            task_state.resource_hash = resource_hash
+            self.task_manager.notify_update_task(task_id)
+
+    def _restore_resources_error(self, task_id, error):
+        logger.error("Cannot restore task '%s' resources: %r", task_id, error)
+        self.task_manager.delete_task(task_id)
 
     def get_download_options(self, key_id):
         resource_manager = self._get_resource_manager()
@@ -267,7 +315,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if self.active:
             self.task_sessions_incoming.add(session)
         else:
-            session.disconnect(message.MessageDisconnect.REASON.NoMoreMessages)
+            session.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)

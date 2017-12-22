@@ -145,7 +145,6 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         consumer_list = ["consumer{}".format(i + 1) for i in
                          range(len(file_list))]
 
-        print('-' * 64)
 
         if buff_size:
             p = file_producer_cls(file_list, session, buff_size)
@@ -208,7 +207,7 @@ class TestBasicProtocol(LogTestCase):
         self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
 
-        m = message.MessageDisconnect()
+        m = message.Disconnect(reason=None)
         data = m.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)

@@ -231,7 +231,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.key_id = ek.cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
-        msg = message.MessageWantToComputeTask(node_name='node_name',
+        msg = message.WantToComputeTask(node_name='node_name',
                                        task_id='task_id',
                                        perf_index=2200,
                                        price=5 * 10 ** 18,

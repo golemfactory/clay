@@ -340,20 +340,34 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                                     client=client,
                                     client_options=client_options)
 
-    def add_task(self, files, task_id,
-                 client=None, client_options=None):
+    def add_task(self, files, task_id, resource_hash=None,
+                 client=None, client_options=None, async=True):
 
-        request = AsyncRequest(self._add_task, files, task_id,
-                               client=client, client_options=client_options)
-        return async_run(request)
+        args = (files, task_id)
+        kwargs = dict(resource_hash=resource_hash, client=client,
+                      client_options=client_options)
 
-    def _add_task(self, files, task_id,
+        if async:
+            request = AsyncRequest(self._add_task, *args, **kwargs)
+            return async_run(request, error=self._add_task_error)
+
+        return self._add_task(*args, **kwargs)
+
+    @staticmethod
+    def _add_task_error(error):
+        logger.error("Error adding task: %r", error)
+
+    def _add_task(self, files, task_id, resource_hash=None,
                   client=None, client_options=None):
 
-        if self.storage.cache.get_prefix(task_id):
-            logger.warn("Resource manager: Task {} already exists"
-                        .format(task_id))
-            return
+        prefix = self.storage.cache.get_prefix(task_id)
+        resources = self.storage.get_resources(task_id)
+
+        if prefix and resources:
+            logger.warning("Resource manager: Task {} already exists"
+                           .format(task_id))
+            resource = resources[0]
+            return resource.files, resource.hash
 
         if not files:
             raise RuntimeError("Empty input task resources")
@@ -363,14 +377,14 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             prefix = common_dir(files)
 
         self.storage.cache.set_prefix(task_id, prefix)
-        self.add_files(files, task_id,
-                       absolute_path=True,
-                       client=client,
-                       client_options=client_options)
+        return self.add_files(files, task_id,
+                              resource_hash=resource_hash,
+                              absolute_path=True,
+                              client=client,
+                              client_options=client_options)
 
-    def add_files(self, files, task_id,
-                  absolute_path=False, client=None,
-                  client_options=None):
+    def add_files(self, files, task_id, resource_hash=None,
+                  absolute_path=False, client=None, client_options=None):
 
         if files:
             client = client or self.new_client()
@@ -449,8 +463,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                                    async=async,
                                    pin=pin)
             else:
-                logger.error("Resource manager: error downloading {} ({}): {}"
-                             .format(resource.path, resource.hash, exception))
+                logger.error("Resource manager: error downloading %s (%s): %s",
+                             resource.path, resource.hash, exception)
 
                 error(exception, entry, task_id)
                 self.__process_queue()

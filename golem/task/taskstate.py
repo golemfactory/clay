@@ -13,6 +13,7 @@ class TaskState(object):
         self.outputs = []
         self.total_subtasks = 0
         self.subtask_states = {}
+        self.resource_hash = None
 
         self.extra_data = {}
 
