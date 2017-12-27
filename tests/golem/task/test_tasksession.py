@@ -572,9 +572,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert task_server.pull_resources.called
         assert isinstance(call_options['client_options'], Mock)
 
-        # Use remote options when local ones are not available
-        task_server.get_download_options.return_value = ClientOptions(client,
-                                                                      version)
+        # Use download options built by TaskServer
+        task_server.get_download_options.return_value = client_options
+
         self.task_session.task_server.pull_resources.reset_mock()
         self.task_session._react_to_resource_list(msg)
         call_options = task_server.pull_resources.call_args[1]

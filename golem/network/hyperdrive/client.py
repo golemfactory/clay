@@ -11,12 +11,17 @@ from golem.resource.client import IClient, ClientOptions
 log = logging.getLogger(__name__)
 
 
+DEFAULT_HYPERDRIVE_PORT = 3282
+DEFAULT_HYPERDRIVE_RPC_PORT = 3292
+
+
 class HyperdriveClient(IClient):
 
     CLIENT_ID = 'hyperg'
     VERSION = 1.1
 
-    def __init__(self, port=3292, host='localhost', timeout=None):
+    def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT,
+                 host='localhost', timeout=None):
         super(HyperdriveClient, self).__init__()
 
         # API destination address
