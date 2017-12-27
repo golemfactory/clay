@@ -117,7 +117,7 @@ class TestClientOptions(unittest.TestCase):
 class TestAsyncRequest(unittest.TestCase):
 
     def test_initialization(self, reactor):
-        assert not AsyncRequest.initialized
+        AsyncRequest.initialized = False
         request = AsyncRequest(lambda x: x)
         assert AsyncRequest.initialized
 
