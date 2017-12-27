@@ -1,9 +1,11 @@
+import base64
 import logging
 import queue
 import threading
 import time
 from enum import Enum
 from typing import Optional, Hashable, Type
+from urllib.parse import urljoin
 
 import requests
 import golem_messages
@@ -16,22 +18,32 @@ from golem.network.concent import exceptions
 logger = logging.getLogger("golem.network.concent.client")
 
 
-def send_to_concent(msg: message.Message, signing_key) -> Optional[str]:
+def send_to_concent(msg: message.Message, signing_key, pubkey='????') -> Optional[str]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception
     :rtype: Bytes|None
     """
 
+    logger.debug('send_to_concent(): Encrypting msg %r', msg)
     data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
+    logger.debug('send_to_concent(): data: %r', data)
+    concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Concent-Client-Public-Key': base64.standard_b64encode(pubkey),
+        'X-Golem-Messages': '?.?.?',  # TODO
+    }
     try:
+        logger.debug(
+            'send_to_concent(): POST %r hdr: %r',
+            concent_post_url,
+            headers,
+        )
         response = requests.post(
-            variables.CONCENT_URL + '/api/send/',
+            concent_post_url,
             data=data,
-            headers={
-                'Content-Type': 'application/octet-stream',
-                #'Concent-Client-Public-Key': '????',
-            },
+            headers=headers,
         )
     except requests.exceptions.RequestException as e:
         logger.warning('Concent RequestException %r', e)

@@ -437,9 +437,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         msg.task_to_compute = task_to_compute
-        print("*"*80)
-        print(task_result.result_type)
-        print(task_result.result)
         result_hash = hashlib.sha1()
         if task_result.result_type == ResultType.FILES:
             # task_result.result is an array of filenames
