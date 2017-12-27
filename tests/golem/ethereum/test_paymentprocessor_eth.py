@@ -11,6 +11,14 @@ from golem.ethereum import paymentprocessor
 from golem.utils import encode_hex
 
 
+def mock_token():
+    token = mock.Mock()
+    token.GAS_PRICE = 0
+    token.GAS_PER_PAYMENT = 0
+    token.GAS_BATCH_PAYMENT_BASE = 0
+    return token
+
+
 class TestPaymentProcessor(unittest.TestCase):
     def setUp(self):
         privkey = (b'!\xcd!^\xfe#\x82-#!Z]b\xb4\x8ce[\n\xfbN\x18V\x8c\x1dA'
@@ -18,7 +26,8 @@ class TestPaymentProcessor(unittest.TestCase):
         with mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.load_from_db"):  # noqa
             self.payment_processor = paymentprocessor.PaymentProcessor(
                 client=mock.MagicMock(),
-                privkey=privkey
+                privkey=privkey,
+                token=mock_token()
             )
 
     def test_eth_address(self):
@@ -41,7 +50,8 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         client = mock.MagicMock()
         self.payment_processor = paymentprocessor.PaymentProcessor(
             client=client,
-            privkey=privkey
+            privkey=privkey,
+            token=mock_token()
         )
 
     @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance", return_value=2**100)  # noqa
