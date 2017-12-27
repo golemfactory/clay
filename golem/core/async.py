@@ -22,9 +22,17 @@ def async_run(deferred_call, success=None, error=None):
     if error is None:
         error = default_errback
     if success:
-        deferred.addCallback(success)
-    deferred.addErrback(error)
+        deferred.addCallback(wrap_callback(success))
+    deferred.addErrback(wrap_callback(error))
     return deferred
+
+
+def wrap_callback(func):
+    from twisted.internet import reactor
+
+    def wrapped(*args, **kwargs):
+        return reactor.callFromThread(func, *args, **kwargs)
+    return wrapped
 
   
 def async_callback(func):
