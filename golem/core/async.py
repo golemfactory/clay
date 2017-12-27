@@ -4,14 +4,27 @@ from twisted.internet import threads
 log = logging.getLogger(__name__)
 
 
+THREAD_POOL_SIZE = 30
+
+
 class AsyncRequest(object):
 
     """ Deferred job descriptor """
+    initialized = False
 
     def __init__(self, method, *args, **kwargs):
         self.method = method
         self.args = args or []
         self.kwargs = kwargs or {}
+
+        if not AsyncRequest.initialized:
+            AsyncRequest.initialized = True
+            self.increase_thread_pool_size()
+
+    @classmethod
+    def increase_thread_pool_size(cls):
+        from twisted.internet import reactor
+        reactor.suggestThreadPoolSize(THREAD_POOL_SIZE)
 
 
 def async_run(deferred_call, success=None, error=None):
