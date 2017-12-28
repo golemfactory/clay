@@ -5,7 +5,7 @@ from multiprocessing import freeze_support
 import click
 from ethereum import slogging
 
-from golem.core.variables import PROTOCOL_CONST
+from golem.core.variables import PROTOCOL_CONST, REACTOR_THREAD_POOL_SIZE
 from golem.node import OptNode
 
 
@@ -111,11 +111,17 @@ def delete_reactor():
 
 
 def install_reactor():
-    from golem.core.common import is_windows
+    from golem.core.common import is_osx, is_windows
+
     if is_windows():
         from twisted.internet import iocpreactor
         iocpreactor.install()
+    elif is_osx():
+        from twisted.internet import kqreactor
+        kqreactor.install()
+
     from twisted.internet import reactor
+    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
 
 
