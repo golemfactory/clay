@@ -1,11 +1,15 @@
-import collections
 import json
 import logging
 from ipaddress import AddressValueError, ip_address
 
+import collections
 import requests
 from requests import HTTPError
+from twisted.internet.defer import Deferred
+from twisted.web.client import readBody
+from twisted.web.http_headers import Headers
 
+from golem.core.async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
 
 log = logging.getLogger(__name__)
@@ -32,7 +36,9 @@ class HyperdriveClient(IClient):
 
         # default POST request headers
         self._url = 'http://{}:{}/api'.format(self.host, self.port)
+        self._url_bytes = self._url.encode('utf-8')
         self._headers = {'content-type': 'application/json'}
+        self._headers_obj = Headers({'Content-Type': ['application/json']})
 
     @classmethod
     def build_options(cls, peers=None, **kwargs):
@@ -72,22 +78,60 @@ class HyperdriveClient(IClient):
         return response['hash']
 
     def get(self, content_hash, client_options=None, **kwargs):
-        filepath = kwargs.pop('filepath')
+        path = kwargs['filepath']
+        params = self._download_params(content_hash, client_options, **kwargs)
+        response = self._request(**params)
+        return [(path, content_hash, response['files'])]
+
+    def get_async(self, content_hash, client_options=None, **kwargs):
+        path = kwargs['filepath']
+        wrapper = Deferred()
+
+        def on_response(response):
+            readBody(response).addCallbacks(on_body, on_error)
+
+        def on_body(body):
+            try:
+                decoded = body.decode('utf-8')
+                deserialized = json.loads(decoded)
+                files = deserialized['files']
+            except Exception as exc:
+                on_error(exc)
+            else:
+                wrapper.callback([(path, content_hash, files)])
+
+        def on_error(err):
+            wrapper.errback(HTTPError(err))
+
+        params = self._download_params(content_hash, client_options, **kwargs)
+        encoded_params = json.dumps(params).encode('utf-8')
+
+        deferred = AsyncHTTPRequest.run(
+            b'POST',
+            self._url_bytes,
+            self._headers_obj,
+            encoded_params
+        )
+        deferred.addCallbacks(on_response, on_error)
+
+        return wrapper
+
+    @classmethod
+    def _download_params(cls, content_hash, client_options, **kwargs):
+        path = kwargs['filepath']
         peers = None
 
         if client_options:
-            filtered_options = client_options.filtered(self.CLIENT_ID,
-                                                       self.VERSION)
-            if filtered_options:
-                peers = filtered_options.options.get('peers')
+            filtered = client_options.filtered(cls.CLIENT_ID, cls.VERSION)
+            if filtered:
+                peers = filtered.options.get('peers')
 
-        response = self._request(
+        return dict(
             command='download',
             hash=content_hash,
-            dest=filepath,
-            peers=peers
+            dest=path,
+            peers=peers or []
         )
-        return [(filepath, content_hash, response['files'])]
 
     def cancel(self, content_hash):
         response = self._request(
