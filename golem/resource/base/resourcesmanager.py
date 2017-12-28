@@ -541,9 +541,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
         )
 
         if async:
-            self._async_call(client.get_file,
-                             success, error,
-                             **kwargs)
+            client.get_file_async(**kwargs) \
+                .addCallbacks(success, error)
         else:
             try:
                 data = client.get_file(**kwargs)

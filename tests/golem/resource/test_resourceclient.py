@@ -115,6 +115,15 @@ class TestClientOptions(unittest.TestCase):
 
 class TestAsyncRequest(TestWithReactor):
 
+    def test_initialization(self):
+        request = AsyncRequest(lambda x: x)
+        assert request.args == []
+        assert request.kwargs == {}
+
+        request = AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
+        assert request.args == ("arg",)
+        assert request.kwargs == {"kwarg": "kwarg"}
+
     def test_callbacks(self):
         done = [False]
 
