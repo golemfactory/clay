@@ -211,16 +211,6 @@ class PaymentProcessor(LoopingCallService):
             encode_hex(payment.payee),
             payment.value / denoms.ether))
 
-        # Check if enough ETH available to pay the gas cost.
-        if self._eth_available() < self.ETH_PER_PAYMENT:
-            log.warning("Low ETH: {} available".format(self._eth_available()))
-            return False
-
-        av_gnt = self._gnt_available()
-        if av_gnt < payment.value:
-            log.warning("Low GNT: {:.6f}".format(av_gnt / denoms.ether))
-            return False
-
         with self._awaiting_lock:
             ts = get_timestamp()
             if not payment.processed_ts:
@@ -236,8 +226,31 @@ class PaymentProcessor(LoopingCallService):
         self.__eth_reserved += self.ETH_PER_PAYMENT
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
-            av_gnt / denoms.ether, self.__gnt_reserved / denoms.ether))
-        return True
+            self._gnt_available() / denoms.ether,
+            self.__gnt_reserved / denoms.ether))
+
+    def __get_next_batch(self,
+                         payments: List[Payment],
+                         closure_time: int) -> (List[Payment], List[Payment]):
+        payments.sort(key=lambda p: p.processed_ts)
+        gnt_balance = self.gnt_balance()
+        eth_balance = self.eth_balance() - self.ETH_BATCH_PAYMENT_BASE
+        ind = 0
+        for p in payments:
+            if p.processed_ts > closure_time:
+                break
+            gnt_balance -= p.value
+            eth_balance -= self.ETH_PER_PAYMENT
+            if gnt_balance < 0 or eth_balance < 0:
+                break
+            ind += 1
+
+        # we need to take either all payments with given processed_ts or none
+        if ind < len(payments):
+            while ind > 0 and payments[ind-1].processed_ts == payments[ind].processed_ts:  # noqa
+                ind -= 1
+
+        return payments[:ind], payments[ind:]
 
     def sendout(self):
         with self._awaiting_lock:
@@ -251,12 +264,12 @@ class PaymentProcessor(LoopingCallService):
 
             closure_time = now - self.CLOSURE_TIME_DELAY
 
-            payments = \
-                [p for p in self._awaiting if p.processed_ts <= closure_time]
+            payments, rest = self.__get_next_batch(
+                self._awaiting.copy(),
+                closure_time)
             if not payments:
                 return False
-            self._awaiting = \
-                [p for p in self._awaiting if p.processed_ts > closure_time]
+            self._awaiting = rest
 
         tx = self.__token.batch_transfer(self.__privkey, payments, closure_time)
         if not tx:

@@ -146,24 +146,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         eth_available = eth - self.pp.ETH_BATCH_PAYMENT_BASE
         assert self.pp._eth_available() == eth_available
 
-    def test_add_failure(self):
-        a1 = urandom(20)
-        a2 = urandom(20)
-        p1 = Payment.create(subtask="p1", payee=a1, value=1)
-        p2 = Payment.create(subtask="p2", payee=a2, value=2)
-
-        assert p1.status is PaymentStatus.awaiting
-        assert p2.status is PaymentStatus.awaiting
-
-        self.client.get_balance.return_value = 0
-        assert self.pp.add(p1) is False
-        assert self.pp.add(p2) is False
-        addr_hex = '0x' + encode_hex(self.addr)
-        self.client.get_balance.assert_called_once_with(addr_hex)
-
-        assert p1.status is PaymentStatus.awaiting
-        assert p2.status is PaymentStatus.awaiting
-
     def test_add_invalid_payment_status(self):
         a1 = urandom(20)
         p1 = Payment.create(subtask="p1", payee=a1, value=1, status=PaymentStatus.confirmed)
@@ -212,12 +194,12 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.call.return_value = hex(100 * denoms.ether)[:-1]
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
-        assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
-        assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1))
-        assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
-        assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1))
-        assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1))
+        self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
+        self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
+        self.pp.add(Payment.create(subtask="p3", payee=a2, value=1))
+        self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
+        self.pp.add(Payment.create(subtask="p5", payee=a3, value=1))
+        self.pp.add(Payment.create(subtask="p6", payee=a3, value=1))
 
         self.pp.deadline = int(time.time())
         assert self.pp.sendout()
@@ -235,25 +217,27 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.call.return_value = hex(100 * denoms.ether)[:-1]
 
         now = int(time.time())
-        assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
+        self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
         assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
-        assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
+        self.pp.add(
+            Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
         assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
-        assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
+        self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
-        assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
+        self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
         assert check_deadline(self.pp.deadline, now + 1)
 
-        assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
+        self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
-        assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
+        self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
         assert check_deadline(self.pp.deadline, now)
 
-        assert self.pp.add(Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
+        self.pp.add(
+            Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
         assert check_deadline(self.pp.deadline, now - 1)
 
     def test_payment_deadline_not_reached(self):
@@ -270,7 +254,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.deadline == deadline
 
         p = Payment.create(subtask="p1", payee=a1, value=1111)
-        assert self.pp.add(p, deadline=1111)
+        self.pp.add(p, deadline=1111)
         assert check_deadline(self.pp.deadline, now + 1111)
         assert not self.pp.sendout()
         assert check_deadline(self.pp.deadline, now + 1111)
@@ -386,7 +370,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
-        assert self.pp.add(p)
+        self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
         assert self.pp._gnt_available() == balance_gnt - gnt_value
         eth_reserved = self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.ETH_PER_PAYMENT
@@ -467,7 +451,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
-        assert self.pp.add(p)
+        self.pp.add(p)
 
         self.pp.deadline = int(time.time())
         self.pp.CLOSURE_TIME_DELAY = 0
@@ -679,24 +663,6 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.pp.monitor_progress.called
         assert self.pp.sendout.called
 
-    def test_no_gnt_available(self):
-        self.pp.start()
-        self.gnt.create(sender=self.privkey)
-        self.state.mine()
-        self.check_synchronized()
-        assert self.pp.gnt_balance() == 1000 * denoms.ether
-
-        payee = urandom(20)
-        b = self.pp.gnt_balance()
-        value = int(b / 5 - 100)
-        for i in range(5):
-            subtask_id = 's{}'.format(i)
-            p = Payment.create(subtask=subtask_id, payee=payee, value=value)
-            assert self.pp.add(p)
-
-        q = Payment.create(subtask='F', payee=payee, value=value)
-        assert not self.pp.add(q)
-
     def test_balance_value(self):
         now = time.time()
         dt = self.pp.BALANCE_RESET_TIMEOUT * 2
@@ -709,13 +675,13 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.pp._balance_value(None, now) is None
 
 
-def make_awaiting_payment(value=None):
+def make_awaiting_payment(value=None, ts=None):
     p = mock.Mock()
     p.status = PaymentStatus.awaiting
     p.payee = urandom(20)
     p.value = value if value else random.randint(1, 10)
     p.subtask = '123'
-    p.processed_ts = None
+    p.processed_ts = ts
     return p
 
 
@@ -724,11 +690,17 @@ class InteractionWithTokenTest(DatabaseFixture):
     def setUp(self):
         DatabaseFixture.setUp(self)
         self.token = mock.Mock()
-        self.token.GAS_BATCH_PAYMENT_BASE = 0
-        self.token.GAS_PER_PAYMENT = 0
-        self.token.GAS_PRICE = 0
+        self.token.GAS_BATCH_PAYMENT_BASE = 10
+        self.token.GAS_PER_PAYMENT = 1
+        self.token.GAS_PRICE = 20
         self.privkey = urandom(32)
         self.client = mock.Mock()
+
+        self.tx = mock.Mock()
+        tx_hash = '0xdead'
+        self.tx.hash = decode_hex(tx_hash)
+        self.client.send.return_value = tx_hash
+        self.token.batch_transfer.return_value = self.tx
 
         self.pp = PaymentProcessor(self.client, self.privkey, self.token)
 
@@ -743,9 +715,10 @@ class InteractionWithTokenTest(DatabaseFixture):
         self.assertFalse(self.pp.get_gnt_from_faucet())
         self.token.request_from_faucet.assert_called_with(self.privkey)
 
+    @freeze_time(timestamp_to_datetime(0))
     def test_batch_transfer(self):
-        self.pp.deadline = time.time() - 1
-        self.token.batch_transfer.return_value = None
+        self.pp.deadline = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
         self.assertFalse(self.pp.sendout())
 
         p1 = make_awaiting_payment()
@@ -754,14 +727,8 @@ class InteractionWithTokenTest(DatabaseFixture):
         self.token.get_balance.return_value = 1000 * denoms.ether
         self.pp.add(p1)
         self.pp.add(p2)
-        tx = mock.Mock()
-        tx_hash = '0xdead'
-        tx.hash = decode_hex(tx_hash)
-        self.client.send.return_value = tx_hash
-        self.token.batch_transfer.return_value = tx
-        self.pp.CLOSURE_TIME_DELAY = 0
         self.assertTrue(self.pp.sendout())
-        self.client.send.assert_called_with(tx)
+        self.client.send.assert_called_with(self.tx)
 
     def test_closure_time(self):
         self.client.get_balance.return_value = denoms.ether
@@ -778,11 +745,6 @@ class InteractionWithTokenTest(DatabaseFixture):
             self.pp.add(p5)
 
         self.pp.deadline = 0
-        tx = mock.Mock()
-        tx_hash = '0xdead'
-        tx.hash = decode_hex(tx_hash)
-        self.client.send.return_value = tx_hash
-        self.token.batch_transfer.return_value = tx
 
         closure_time = 2
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
@@ -810,6 +772,101 @@ class InteractionWithTokenTest(DatabaseFixture):
                 [p5],
                 closure_time)
             self.token.batch_transfer.reset_mock()
+
+    def test_short_on_gnt(self):
+        self.client.get_balance.return_value = denoms.ether
+        self.token.get_balance.return_value = 4 * denoms.ether
+        self.pp.deadline = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
+        p2 = make_awaiting_payment(value=2 * denoms.ether, ts=2)
+        p5 = make_awaiting_payment(value=5 * denoms.ether, ts=3)
+        self.pp.add(p1)
+        self.pp.add(p2)
+        self.pp.add(p5)
+
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p1, p2],
+                10)
+            self.token.batch_transfer.reset_mock()
+
+        self.token.get_balance.return_value = 5 * denoms.ether
+        self.pp.gnt_balance(refresh=True)
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p5],
+                10)
+            self.token.batch_transfer.reset_mock()
+
+    def test_short_on_gnt_closure_time(self):
+        self.client.get_balance.return_value = denoms.ether
+        self.token.get_balance.return_value = 4 * denoms.ether
+        self.pp.deadline = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
+        p2 = make_awaiting_payment(value=2 * denoms.ether, ts=2)
+        p5 = make_awaiting_payment(value=5 * denoms.ether, ts=2)
+        self.pp.add(p1)
+        self.pp.add(p2)
+        self.pp.add(p5)
+
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p1],
+                10)
+            self.token.batch_transfer.reset_mock()
+
+        self.token.get_balance.return_value = 10 * denoms.ether
+        self.pp.gnt_balance(refresh=True)
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p2, p5],
+                10)
+            self.token.batch_transfer.reset_mock()
+
+    def test_short_on_eth(self):
+        self.client.get_balance.return_value = self.token.GAS_PRICE * \
+            (self.token.GAS_BATCH_PAYMENT_BASE + 2 * self.token.GAS_PER_PAYMENT)
+        self.token.get_balance.return_value = 1000 * denoms.ether
+        self.pp.deadline = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1, ts=1)
+        p2 = make_awaiting_payment(value=2, ts=2)
+        p5 = make_awaiting_payment(value=5, ts=3)
+        self.pp.add(p1)
+        self.pp.add(p2)
+        self.pp.add(p5)
+
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p1, p2],
+                10)
+            self.token.batch_transfer.reset_mock()
+
+        self.client.get_balance.return_value = denoms.ether
+        self.pp.eth_balance(refresh=True)
+        with freeze_time(timestamp_to_datetime(10)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p5],
+                10)
+            self.token.batch_transfer.reset_mock()
+
 
     def test_get_incomes_from_block(self):
         block_number = 1
