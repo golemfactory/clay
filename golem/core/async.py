@@ -1,30 +1,57 @@
 import logging
+
 from twisted.internet import threads
+from twisted.internet.defer import succeed
+from twisted.web.client import Agent
+from twisted.web.iweb import IBodyProducer
+from zope.interface import implementer
 
 log = logging.getLogger(__name__)
 
 
-THREAD_POOL_SIZE = 30
+class AsyncHTTPRequest:
+
+    agent = None
+    timeout = 5
+
+    @implementer(IBodyProducer)
+    class StringProducer:
+
+        def __init__(self, body):
+            self.body = body
+            self.length = len(body)
+
+        def startProducing(self, consumer):
+            consumer.write(self.body)
+            return succeed(None)
+
+        def pauseProducing(self):
+            pass
+
+        def resumeProducing(self):
+            pass
+
+        def stopProducing(self):
+            pass
+
+    @classmethod
+    def run(cls, method, uri, headers, body):
+        if not cls.agent:
+            from twisted.internet import reactor
+            cls.agent = Agent(reactor, connectTimeout=cls.timeout)
+
+        return cls.agent.request(method, uri, headers,
+                                 cls.StringProducer(body))
 
 
 class AsyncRequest(object):
 
     """ Deferred job descriptor """
-    initialized = False
 
     def __init__(self, method, *args, **kwargs):
         self.method = method
         self.args = args or []
         self.kwargs = kwargs or {}
-
-        if not AsyncRequest.initialized:
-            AsyncRequest.initialized = True
-            self.increase_thread_pool_size()
-
-    @classmethod
-    def increase_thread_pool_size(cls):
-        from twisted.internet import reactor
-        reactor.suggestThreadPoolSize(THREAD_POOL_SIZE)
 
 
 def async_run(deferred_call, success=None, error=None):
@@ -35,17 +62,9 @@ def async_run(deferred_call, success=None, error=None):
     if error is None:
         error = default_errback
     if success:
-        deferred.addCallback(wrap_callback(success))
-    deferred.addErrback(wrap_callback(error))
+        deferred.addCallback(success)
+    deferred.addErrback(error)
     return deferred
-
-
-def wrap_callback(func):
-    from twisted.internet import reactor
-
-    def wrapped(*args, **kwargs):
-        return reactor.callFromThread(func, *args, **kwargs)
-    return wrapped
 
   
 def async_callback(func):
