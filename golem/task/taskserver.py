@@ -18,7 +18,7 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, FilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
-from golem.resource.resource import ResourceType
+from golem.resource.resource import ResourceType, get_resources_for_task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
@@ -73,7 +73,10 @@ class TaskResourcesMixin(object):
 
         for task_id, task_state in states.items():
             task = self.task_manager.tasks[task_id]
-            files = task.get_resources(None, ResourceType.HASHES)
+            files = get_resources_for_task(None,
+                                           resources=task.get_resources(),
+                                           tmp_dir=task.tmp_dir,
+                                           resource_type=ResourceType.HASHES)
 
             logger.info("Restoring task '%s' resources", task_id)
             self._restore_resources(files, task_id, task_state.resource_hash)
