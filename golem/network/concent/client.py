@@ -32,7 +32,7 @@ def send_to_concent(msg: message.Message, signing_key, pubkey='????') -> Optiona
     headers = {
         'Content-Type': 'application/octet-stream',
         'Concent-Client-Public-Key': base64.standard_b64encode(pubkey),
-        'X-Golem-Messages': '?.?.?',  # TODO
+        'X-Golem-Messages': golem_messages.__version__,
     }
     try:
         logger.debug(
