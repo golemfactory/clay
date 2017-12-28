@@ -299,8 +299,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self._reject_subtask_result(subtask_id)
             return
 
-        self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.SubtaskResultAccepted(subtask_id=subtask_id))
+        payment = self.task_server.accept_result(subtask_id, self.result_owner)
+        self.send(message.SubtaskResultAccepted(
+            subtask_id=subtask_id,
+            payment_ts=payment.processed_ts))
 
     @log_error()
     def inform_worker_about_payment(self, payment):
@@ -655,7 +657,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id)
+        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
         self.dropped()
 
     @history.provider_history
