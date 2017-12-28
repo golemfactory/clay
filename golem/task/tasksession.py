@@ -674,7 +674,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
+        self.task_server.subtask_accepted(msg.subtask_id)
         self.dropped()
 
     @history.provider_history

@@ -491,7 +491,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 expected_income.sender_node,
                 self.max_trust)
 
-    def subtask_accepted(self, subtask_id, reward):
+    def subtask_accepted(self, subtask_id):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
 
