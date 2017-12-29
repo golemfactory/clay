@@ -41,13 +41,14 @@ SEEDS = [
 
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
+
     def __init__(
             self,
             node,
             config_desc,
             keys_auth,
             connect_to_known_hosts=True
-            ):
+    ):
         """Create new P2P Server. Listen on port for connections and
            connect to other peers. Keeps up-to-date list of peers information
            and optimal number of open connections.
@@ -423,14 +424,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                     and peer.address == self.config_desc.seed_host:
                 return
 
-        try:
-            socket_address = tcpnetwork.SocketAddress(
-                self.config_desc.seed_host,
-                self.config_desc.seed_port
-            )
-            self.connect(socket_address)
-        except ipaddress.AddressValueError as err:
-            logger.error('Invalid seed address: ' + str(err))
+        if self.config_desc.seed_host and self.config_desc.seed_port:
+            try:
+                socket_address = tcpnetwork.SocketAddress(
+                    self.config_desc.seed_host,
+                    self.config_desc.seed_port
+                )
+                self.connect(socket_address)
+            except ipaddress.AddressValueError as err:
+                logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)
@@ -468,7 +470,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return str: solution of a challenge
         """
         self.challenge_history.append([key_id, challenge])
-        solution, time_ = simplechallenge.solve_challenge(challenge, difficulty)
+        solution, time_ = simplechallenge.solve_challenge(
+            challenge, difficulty)
         logger.debug(
             "Solved challenge with difficulty %r in %r sec",
             difficulty,
@@ -715,7 +718,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node_info,
             conn_id,
             super_node_info=None
-            ):
+    ):
         """Inform peer with public key <key_id> that node from node info wants
            to start task session with him. If peer with given id is on a list
            of peers that this message will be send directly. Otherwise all
