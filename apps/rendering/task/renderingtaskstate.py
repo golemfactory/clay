@@ -57,4 +57,3 @@ class RenderingTaskDefinition(TaskDefinition):
         super(RenderingTaskDefinition, self).load_preset(preset)
         self.resolution = preset["resolution"]
         self.output_format = preset["output_format"]
-

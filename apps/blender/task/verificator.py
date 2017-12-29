@@ -28,9 +28,9 @@ class BlenderVerificator(FrameRenderingVerificator):
         self.docker_images = []
         self.verification_timeout = 0
 
-    def _blender_check(self, subtask_id: str, frames:list, parts: int,
+    def _blender_check(self, subtask_id: str, frames: list, parts: int,
                        num_of_parts: int,
-                       resolution_x :int ,resolution_y: int,
+                       resolution_x: int, resolution_y: int,
                        output_fomat: str, compositing: bool, timeout: int,
                        reference_data, resources, results
                        ):
@@ -52,11 +52,12 @@ class BlenderVerificator(FrameRenderingVerificator):
         Is compositing turn on?
         :param timeout:
         How many seconds are to compute this task.
-	    If verification timeouts then it returns enum: NOT_SURE.
+        If verification timeouts then it returns enum: NOT_SURE.
 
         :param reference_data:
         Path to files that were already present on the machine.
-        These files has been already produced by requestor for verification purpose.
+        These files has been already produced by requestor for verification
+        purpose.
         If start_verification is used by Consent,
         then it shall generate the reference_data by itself based on ‘resources’
         :param resources:
@@ -67,7 +68,8 @@ class BlenderVerificator(FrameRenderingVerificator):
         Should contain final images produced for this subtask info.
         :return: None.
         However an exception shall be thrown if there were problems during start
-        (ex. missing files, missing access, unknown subtask_type, too much overload)
+        (ex. missing files, missing access, unknown subtask_type, too much
+        overload)
         """
         pass
 
@@ -105,7 +107,6 @@ class BlenderVerificator(FrameRenderingVerificator):
         min_x, max_x, min_y, max_y = task.get_crop_window(start_task, parts)
 
         scene_file = task.main_scene_file
-
         blender_validator = BlenderValidator()
         verification_state_code = blender_validator.validate(
             scene_file=scene_file,
@@ -115,11 +116,11 @@ class BlenderVerificator(FrameRenderingVerificator):
             rendered_scene_path=file_for_verification,
             scene_format=os.path.splitext(file_for_verification)[1]
         )
-        self.ver_states[subtask_id] =  SubtaskVerificationState(verification_state_code)
+        self.ver_states[subtask_id] = SubtaskVerificationState(
+            verification_state_code)
 
         logger.info("Subtask %s verification result: %s",
                     str(subtask_id), self.ver_states[subtask_id].name)
-
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data, _ = super(BlenderVerificator, self). \
@@ -145,7 +146,8 @@ class BlenderVerificator(FrameRenderingVerificator):
         return extra_data, (0, 0)
 
     def query_extra_data_for_advanced_verification(self, extra_data):
-        ctd = super(BlenderVerificator, self).query_extra_data_for_advanced_verification(extra_data)
+        ctd = super(BlenderVerificator, self).\
+            query_extra_data_for_advanced_verification(extra_data)
         ctd['subtask_id'] = str(random.getrandbits(128))
         ctd['src_code'] = self.src_code
         ctd['docker_images'] = self.docker_images

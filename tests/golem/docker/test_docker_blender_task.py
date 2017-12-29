@@ -216,7 +216,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
                                   result_type=ResultType.FILES)
 
 
-    def _run_docker_task(self, render_task, timeout=60):
+    def _run_docker_task(self, render_task, timeout=160):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd

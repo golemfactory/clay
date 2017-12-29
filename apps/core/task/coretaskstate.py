@@ -130,7 +130,8 @@ class TaskDefinition(object):
 
         return self.output_file.rsplit(path.sep, 1)[0]
 
-  # todo golem_verificator get rid of it?
+
+# todo golem_verificator get rid of it?
 class AdvanceVerificationOptions(object):
     def __init__(self):
         self.box_size = [5, 5]

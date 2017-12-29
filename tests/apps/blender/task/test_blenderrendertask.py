@@ -1,6 +1,8 @@
 from golem_messages.message import ComputeTaskDef
 import os
 from os import path
+from unittest import mock
+from golem_verificator.common.verificationstates import SubtaskVerificationState
 
 import array
 import unittest
@@ -50,7 +52,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.main_scene_file = self.temp_file_name("example.blend")
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
-        task_definition.resolution = [2, 300]
+        task_definition.resolution = [20, 300]
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
             task_definition=task_definition,
@@ -67,8 +69,11 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    def test_computation_failed_or_finished(self):
+    @mock.patch("golem_verificator.blender.validator.Validator.validate")
+    def test_computation_failed_or_finished(self, validate_mock):
         assert self.bt.total_tasks == 6
+
+        validate_mock.return_value = SubtaskVerificationState.VERIFIED.value
 
         # Failed compuation stays failed
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
