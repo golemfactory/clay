@@ -162,24 +162,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.disconnect = Mock()
         ts.send = Mock()
 
-        def create_verify(value):
-            def verify(*args):
-                return value
-
-            return verify
-
         key_id = 'deadbeef'
         peer_info = MagicMock()
         peer_info.key = key_id
         msg = message.Hello(port=1, node_name='node2', client_key_id=key_id, node_info=peer_info,
                            proto_id=-1)
 
-        ts.verify = create_verify(False)
-        ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.Unverified)
-
-        ts.verify = create_verify(True)
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)

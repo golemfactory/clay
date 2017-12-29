@@ -662,11 +662,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if not self.verify(msg):
-            logger.info("Wrong signature for Hello msg")
-            self.disconnect(message.Disconnect.REASON.Unverified)
-            return
-
         if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
