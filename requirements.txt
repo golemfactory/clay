@@ -49,5 +49,4 @@ numpy==1.13.1
 scipy==0.19.1
 pyssim
 enforce==0.3.4
-# FIXME update after gm release
-Golem-Messages==1.3.0+dev1.g182635b
+Golem-Messages==1.3.1
