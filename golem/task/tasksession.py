@@ -474,7 +474,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.TASK_ID
+                proto_id=PROTOCOL_CONST.ID
             ),
             send_unverified=True
         )
@@ -722,11 +722,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
-        if msg.proto_id != PROTOCOL_CONST.TASK_ID:
+        if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.TASK_ID
+                PROTOCOL_CONST.ID
             )
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
