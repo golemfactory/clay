@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import logging
 import pickle
 import time
@@ -13,7 +14,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, \
+from golem.task.taskbase import TaskEventListener, Task, \
     ResourceType
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
@@ -133,7 +134,8 @@ class TaskManager(TaskEventListener):
         return task_type.task_builder_type.build_dictionary(definition)
 
     def add_new_task(self, task):
-        if task.header.task_id in self.tasks:
+        task_id = task.header.task_id
+        if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
         if not self.key_id:
@@ -142,44 +144,40 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
-        self.dir_manager.clear_temporary(task.header.task_id)
-        self.dir_manager.get_task_temporary_dir(task.header.task_id,
-                                                create=True)
+        self.dir_manager.clear_temporary(task_id)
+        self.dir_manager.get_task_temporary_dir(task_id, create=True)
 
         task.create_reference_data_for_task_validation()
+        task.register_listener(self)
+
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
-        self.tasks[task.header.task_id] = task
-        self.tasks_states[task.header.task_id] = ts
+        self.tasks[task_id] = task
+        self.tasks_states[task_id] = ts
+        self.notice_task_updated(task_id)
+        logger.info("Task %s added", task_id)
 
     @handle_task_key_error
     def start_task(self, task_id):
-        task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
 
         if task_state.status != TaskStatus.notStarted:
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
-        task.task_status = TaskStatus.waiting
         task_state.status = TaskStatus.waiting
-        task.register_listener(self)
-
-        if self.task_persistence:
-            self.dump_task(task.header.task_id)
-            logger.info("Task %s added" % task.header.task_id)
-            self.notice_task_updated(task.header.task_id)
+        self.notice_task_updated(task_id)
+        logger.info("Task %s started", task_id)
 
     def _dump_filepath(self, task_id):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
@@ -209,8 +207,8 @@ class TaskManager(TaskEventListener):
             filepath.unlink()
             logger.debug('TASK DUMP with id %s REMOVED from %r',
                          task_id, filepath)
-        except OSError as e:
-            logger.warning("Couldn't remove dump file: %s - %s", e)
+        except (FileNotFoundError, OSError) as e:
+            logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
@@ -223,12 +221,16 @@ class TaskManager(TaskEventListener):
             with path.open('rb') as f:
                 try:
                     task, state = pickle.load(f)
-                    self.tasks[task.header.task_id] = task
-                    self.tasks_states[task.header.task_id] = state
+                    task.register_listener(self)
 
                     task_id = task.header.task_id
-                    logger.debug('TASK %s RESTORED from %r',
-                                 task.header.task_id, path)
+                    self.tasks[task_id] = task
+                    self.tasks_states[task_id] = state
+
+                    for sub in state.subtask_states.values():
+                        self.subtask2task_mapping[sub.subtask_id] = task
+
+                    logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
                     path.unlink()
@@ -243,7 +245,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
-        self.tasks[task_id].task_status = TaskStatus.waiting
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
@@ -317,29 +318,30 @@ class TaskManager(TaskEventListener):
         ctd = extra_data.ctd
 
         def check_compute_task_def():
-            if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+            if not isinstance(ctd, ComputeTaskDef) or not ctd['subtask_id']:
                 logger.debug('check ctd: ctd not instance or not subtask_id')
                 return False
-            if task_id != ctd.task_id\
-                    or ctd.subtask_id in self.subtask2task_mapping:
+            if task_id != ctd['task_id']\
+                    or ctd['subtask_id'] in self.subtask2task_mapping:
                 logger.debug(
                     'check ctd: %r != %r or %r in self.subtask2task_maping',
-                    task_id, ctd.task_id, ctd.subtask_id,
+                    task_id, ctd['task_id'], ctd['subtask_id'],
                 )
                 return False
-            if ctd.subtask_id in self.tasks_states[ctd.task_id].subtask_states:
+            if (ctd['subtask_id'] in self.tasks_states[ctd['task_id']].
+                    subtask_states):
                 logger.debug('check ctd: subtask_states')
                 return False
             return True
         if not check_compute_task_def():
             return None, False, False
 
-        ctd.key_id = task.header.task_owner_key_id
-        ctd.return_address = task.header.task_owner_address
-        ctd.return_port = task.header.task_owner_port
-        ctd.task_owner = task.header.task_owner
+        ctd['key_id'] = task.header.task_owner_key_id
+        ctd['return_address'] = task.header.task_owner_address
+        ctd['return_port'] = task.header.task_owner_port
+        ctd['task_owner'] = task.header.task_owner
 
-        self.subtask2task_mapping[ctd.subtask_id] = task_id
+        self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, price, ctd, address,
         )
@@ -349,8 +351,8 @@ class TaskManager(TaskEventListener):
     def get_tasks_headers(self):
         ret = []
         for tid, task in self.tasks.items():
-            if task.needs_computation() and \
-                    task.task_status in self.activeStatus:
+            status = self.tasks_states[tid].status
+            if task.needs_computation() and status in self.activeStatus:
                 ret.append(task.header)
 
         return ret
@@ -502,7 +504,6 @@ class TaskManager(TaskEventListener):
             cur_time = get_timestamp_utc()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
-                t.task_status = TaskStatus.timeout
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
@@ -541,12 +542,10 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def restart_task(self, task_id):
-        logger.info("restarting task")
         self.dir_manager.clear_temporary(task_id)
         task = self.tasks[task_id]
 
         task.restart()
-        task.task_status = TaskStatus.restarted
         self.tasks_states[task_id].status = TaskStatus.restarted
         task.header.deadline = timeout_to_deadline(
             task.task_definition.full_task_timeout)
@@ -558,6 +557,7 @@ class TaskManager(TaskEventListener):
 
         task.header.signature = self.sign_task_header(task.header)
 
+        logger.info("Task %s restarted", task_id)
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error
@@ -593,7 +593,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def abort_task(self, task_id):
         self.tasks[task_id].abort()
-        self.tasks[task_id].task_status = TaskStatus.aborted
         self.tasks_states[task_id].status = TaskStatus.aborted
         for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
@@ -758,24 +757,25 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
                      node_name, node_id, comp_price, ctd, address)
 
-        price = self.tasks[ctd.task_id].header.max_price
+        price = self.tasks[ctd['task_id']].header.max_price
 
         ss = SubtaskState()
         ss.computer.node_id = node_id
         ss.computer.node_name = node_name
-        ss.computer.performance = ctd.performance
+        ss.computer.performance = ctd['performance']
         ss.computer.ip_address = address
         ss.computer.price = price
         ss.time_started = time.time()
-        ss.deadline = ctd.deadline
+        ss.deadline = ctd['deadline']
         # TODO: read node ip address
-        ss.subtask_definition = ctd.short_description
-        ss.subtask_id = ctd.subtask_id
-        ss.extra_data = ctd.extra_data
+        ss.subtask_definition = ctd['short_description']
+        ss.subtask_id = ctd['subtask_id']
+        ss.extra_data = ctd['extra_data']
         ss.subtask_status = TaskStatus.starting
         ss.value = 0
 
-        self.tasks_states[ctd.task_id].subtask_states[ctd.subtask_id] = ss
+        (self.tasks_states[ctd['task_id']].
+            subtask_states[ctd['subtask_id']]) = ss
 
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)

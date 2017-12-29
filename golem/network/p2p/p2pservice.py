@@ -1,4 +1,5 @@
 from collections import deque
+from golem_messages import message
 import ipaddress
 import logging
 import random
@@ -96,6 +97,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.resource_peers = {}
         self.seeds = set()
+        self.used_seeds = set()
 
         self._peer_lock = Lock()
 
@@ -139,7 +141,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for ip_address, port in random.sample(self.seeds, k=len(self.seeds)):
+        for _ in range(len(self.seeds)):
+            ip_address, port = self._get_next_random_seed()
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
@@ -175,7 +178,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if self.active:
             session.start()
         else:
-            session.disconnect(PeerSession.DCRNoMoreMessages)
+            session.disconnect(
+                message.Disconnect.REASON.NoMoreMessages
+            )
 
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False
@@ -413,10 +418,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
-        if is_node_name_changed:
-            for peer in list(self.peers.values()):
-                peer.hello()
-
         for peer in list(self.peers.values()):
             if peer.port == self.config_desc.seed_port\
                     and peer.address == self.config_desc.seed_host:
@@ -485,24 +486,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def get_key_id(self):
         """ Return node public key in a form of an id """
         return self.peer_keeper.key_num
-
-    def key_changed(self):
-        """React to the fact that key id has been changed. Drop all
-           connections with peer,
-        restart peer keeper and connect to the network with new key id.
-        """
-        self.peer_keeper.restart(self.keys_auth.get_key_id())
-        for p in list(self.peers.values()):
-            p.dropped()
-
-        try:
-            socket_address = tcpnetwork.SocketAddress(
-                self.config_desc.seed_host,
-                self.config_desc.seed_port
-            )
-            self.connect(socket_address)
-        except ipaddress.AddressValueError as err:
-            logger.error("Invalid seed address: %s", err)
 
     def encrypt(self, data, public_key):
         """Encrypt data with given public_key. If no public_key is given,
@@ -789,43 +772,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
 
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-            ):
-        """
-        :param key_id:
-        :param rv_key_id:
-        :param addr:
-        :param port:
-        :param ans_conn_id:
-        :return:
-        """
-        logger.debug("Nat hole ready {}:{}".format(addr, port))
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
-
-    def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
-        self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
-
-    def send_nat_traverse_failure(self, key_id, conn_id):
-        peer = self.peers.get(key_id)
-        if peer:
-            peer.send_nat_traverse_failure(conn_id)
-
-    def traverse_nat_failure(self, conn_id):
-        self.task_server.traverse_nat_failure(conn_id)
-
     def peer_want_task_session(self, node_info, super_node_info, conn_id):
         """Process request to start task session from this node to a node
            from node_info.
@@ -982,7 +928,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             delta = time.time() - peer.last_message_time
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
-                peer.disconnect(PeerSession.DCRTimeout)
+                peer.disconnect(
+                    message.Disconnect.REASON.Timeout
+                )
 
     def __refresh_old_peers(self):
         cur_time = time.time()
@@ -992,7 +940,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer_id = random.choice(list(self.peers.keys()))
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
-                peer.disconnect(PeerSession.DCRRefresh)
+                peer.disconnect(
+                    message.Disconnect.REASON.Refresh
+                )
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():
@@ -1057,6 +1007,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 )
                 continue
             self.seeds.add((ip_address, port))
+
+    def _get_next_random_seed(self):
+        # this loop won't execute more than twice
+        while True:
+            for seed in random.sample(self.seeds, k=len(self.seeds)):
+                if seed not in self.used_seeds:
+                    self.used_seeds.add(seed)
+                    return seed
+            self.used_seeds = set()
 
     def __remove_sessions_to_end_from_peer_keeper(self):
         for node in self.peer_keeper.sessions_to_end:

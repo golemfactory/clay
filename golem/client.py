@@ -19,11 +19,11 @@ from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import to_unicode
+from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.core.service import Service
+from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
@@ -36,6 +36,8 @@ from golem.model import Database
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.concent.client import ConcentClientService
+from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
@@ -48,7 +50,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI,\
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
     Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
@@ -77,7 +79,7 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(HardwarePresetsMixin):
-    _services = []  # type: List[Service]
+    _services = []  # type: List[IService]
 
     def __init__(
             self,
@@ -137,6 +139,7 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
+        self.concent_service = ConcentClientService(enabled=False)
 
         self.task_server = None
 
@@ -146,7 +149,9 @@ class Client(HardwarePresetsMixin):
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
-            TaskArchiverService(self.task_archiver)
+            TaskArchiverService(self.task_archiver),
+            MessageHistoryService(),
+            DoWorkService(self),
         ]
 
         clean_resources_older_than = \
@@ -183,7 +188,6 @@ class Client(HardwarePresetsMixin):
 
         self.rpc_publisher = None
 
-        self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
@@ -236,6 +240,8 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
         self.environments_manager.load_config(self.datadir)
+        self.concent_service.start()
+
         if self.use_monitor and not self.monitor:
             self.init_monitor()
         try:
@@ -251,9 +257,12 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
         self.stop_network()
+
         for service in self._services:
             if service.running:
                 service.stop()
+        if self.concent_service:
+            self.concent_service.stop()
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
@@ -273,10 +282,6 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth,
                 connect_to_known_hosts=self.connect_to_known_hosts
             )
-
-            do_work_service = DoWorkService(self)
-            do_work_service.start()
-            self._services.append(do_work_service)
 
         if not self.task_server:
             self.task_server = TaskServer(
@@ -302,6 +307,16 @@ class Client(HardwarePresetsMixin):
                 tasks_publisher_service.start()
                 self._services.append(tasks_publisher_service)
 
+            clean_tasks_older_than = \
+                self.config_desc.clean_tasks_older_than_seconds
+            if clean_tasks_older_than > 0:
+                task_cleaner_service = TaskCleanerService(
+                    self,
+                    interval_seconds=max(1, int(clean_tasks_older_than/10)),
+                    older_than_seconds=clean_tasks_older_than)
+                task_cleaner_service.start()
+                self._services.append(task_cleaner_service)
+
         dir_manager = self.task_server.task_computer.dir_manager
 
         log.info("Starting resource server ...")
@@ -320,6 +335,7 @@ class Client(HardwarePresetsMixin):
             self.resource_server = BaseResourceServer(resource_manager,
                                                       dir_manager,
                                                       self.keys_auth, self)
+            self.task_server.restore_resources()
 
         def connect(ports):
             p2p_port, task_port = ports
@@ -443,11 +459,6 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def key_changed(self):
-        self.node.key = self.keys_auth.get_key_id()
-        self.task_server.key_changed()
-        self.p2pservice.key_changed()
-
     def enqueue_new_task(self, task_dict):
         # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
@@ -463,7 +474,10 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options()
         files = task.get_resources(None, ResourceType.HASHES)
 
-        def add_task(_):
+        def add_task(result):
+            task_state = task_manager.tasks_states[task_id]
+            task_state.resource_hash = result[1]
+
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
@@ -663,6 +677,7 @@ class Client(HardwarePresetsMixin):
     def get_task_count(self):
         if self.task_server:
             return len(self.task_server.task_keeper.get_all_tasks())
+        return 0
 
     def get_task(self, task_id):
         return self.task_server.task_manager.get_task_dict(task_id)
@@ -701,6 +716,7 @@ class Client(HardwarePresetsMixin):
     def get_supported_task_count(self) -> int:
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
+        return 0
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -726,7 +742,7 @@ class Client(HardwarePresetsMixin):
     def get_task_computer_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
-        return 0
+        return None, None
 
     @inlineCallbacks
     def get_balance(self):
@@ -776,28 +792,6 @@ class Client(HardwarePresetsMixin):
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
-
-    def inform_about_task_nat_hole(
-            self,
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id):
-        self.p2pservice.inform_about_task_nat_hole(
-            key_id,
-            rv_key_id,
-            addr,
-            port,
-            ans_conn_id
-        )
-
-    def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(
-            key_id,
-            res_key_id,
-            conn_id
-        )
 
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):
@@ -1111,7 +1105,7 @@ class Client(HardwarePresetsMixin):
         self.__datadir_lock.close()
 
 
-class DoWorkService(Service):
+class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
     def __init__(self, client: Client):
@@ -1150,7 +1144,7 @@ class DoWorkService(Service):
             log.exception("check_payments failed")
 
 
-class MonitoringPublisherService(Service):
+class MonitoringPublisherService(LoopingCallService):
     _task_server = None  # type: TaskServer
 
     def __init__(self,
@@ -1174,7 +1168,7 @@ class MonitoringPublisherService(Service):
         )
 
 
-class NetworkConnectionPublisherService(Service):
+class NetworkConnectionPublisherService(LoopingCallService):
     _client = None  # type: Client
 
     def __init__(self,
@@ -1188,7 +1182,7 @@ class NetworkConnectionPublisherService(Service):
                               self._client.connection_status())
 
 
-class TasksPublisherService(Service):
+class TasksPublisherService(LoopingCallService):
     _rpc_publisher = None  # type: Publisher
     _task_manager = None  # type: TaskManager
 
@@ -1204,7 +1198,7 @@ class TasksPublisherService(Service):
                                     self._task_manager.get_tasks_dict())
 
 
-class TaskArchiverService(Service):
+class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
     def __init__(self,
@@ -1216,7 +1210,8 @@ class TaskArchiverService(Service):
         self._task_archiver.do_maintenance()
 
 
-class BalancePublisherService(Service):
+class BalancePublisherService(LoopingCallService):
+
     _rpc_publisher = None  # type: Publisher
     _transaction_system = None  # type: EthereumTransactionSystem
 
@@ -1240,7 +1235,7 @@ class BalancePublisherService(Service):
             })
 
 
-class ResourceCleanerService(Service):
+class ResourceCleanerService(LoopingCallService):
     _client = None  # type: Client
     older_than_seconds = 0  # type: int
 
@@ -1257,3 +1252,26 @@ class ResourceCleanerService(Service):
         self._client.remove_computed_files(self.older_than_seconds)
         self._client.remove_distributed_files(self.older_than_seconds)
         self._client.remove_received_files(self.older_than_seconds)
+
+
+class TaskCleanerService(LoopingCallService):
+    _client = None  # type: Client
+    older_than_seconds = 0  # type: int
+
+    def __init__(self,
+                 client: Client,
+                 interval_seconds: int,
+                 older_than_seconds: int):
+        super().__init__(interval_seconds)
+        self._client = client
+        self.older_than_seconds = older_than_seconds
+
+    def _run(self):
+        now = time.time()
+        for task in self._client.get_tasks():
+            deadline = task['time_started'] \
+                       + string_to_timeout(task['timeout'])\
+                       + self.older_than_seconds
+            if deadline <= now:
+                log.info('Task %s got too old. Deleting.', task['id'])
+                self._client.delete_task(task['id'])

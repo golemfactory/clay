@@ -116,7 +116,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         slots = session.send.call_args[0][0].__slots__
 
-        msg = message.MessageWantToComputeTask(**self.message)
+        msg = message.WantToComputeTask(**self.message)
         msg_slots = msg.__slots__
 
         assert slots == msg_slots
@@ -142,7 +142,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._handshake_error = Mock()
 
         resource = str(uuid.uuid4())
-        msg = message.MessageResourceHandshakeStart(resource)
+        msg = message.ResourceHandshakeStart(resource)
         session._react_to_resource_handshake_start(msg)
 
         assert session._start_handshake.called
@@ -155,7 +155,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.MessageResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
         session._block_peer(session.key_id)
         session._react_to_resource_handshake_start(msg)
 
@@ -168,7 +168,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.MessageResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
 
         session._react_to_resource_handshake_start(msg)
 
@@ -180,7 +180,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._start_handshake = Mock()
         session._handshake_error = Mock()
 
-        msg = message.MessageResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
         handshake = ResourceHandshake(self.key_id)
 
         session._set_handshake(session.key_id, handshake)
@@ -196,7 +196,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.MessageResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(handshake.nonce)
 
         session._set_handshake(session.key_id, handshake)
         session._react_to_resource_handshake_nonce(msg)
@@ -212,14 +212,14 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.MessageResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(handshake.nonce)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.MessageResourceHandshakeNonce(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeNonce(str(uuid.uuid4()))
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -233,14 +233,14 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.MessageResourceHandshakeVerdict(handshake.nonce, accepted=True)
+        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=True)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.MessageResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
+        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -254,14 +254,14 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.MessageResourceHandshakeVerdict(handshake.nonce, accepted=False)
+        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=False)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.MessageResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
+        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -507,11 +507,11 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session._react_to_resource_handshake_nonce(msg_from_local)
 
         local_session._react_to_resource_handshake_verdict(
-            message.MessageResourceHandshakeVerdict(remote_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(remote_nonce, accepted=True)
         )
 
         remote_session._react_to_resource_handshake_verdict(
-            message.MessageResourceHandshakeVerdict(local_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(local_nonce, accepted=True)
         )
 
         assert local_session._finalize_handshake.called
@@ -535,7 +535,7 @@ class TestResourceHandshakeShare(TempDirFixture):
 
         assert session.send.called
         msg = session.send.call_args[0][0]
-        assert isinstance(msg, message.MessageResourceHandshakeStart)
+        assert isinstance(msg, message.ResourceHandshakeStart)
 
     def __create_task_server(self, session):
         from golem.clientconfigdescriptor import ClientConfigDescriptor

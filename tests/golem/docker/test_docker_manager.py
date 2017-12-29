@@ -1,12 +1,10 @@
 import json
 import os
 import unittest
+from unittest import mock
 import sys
 from contextlib import contextmanager
-import subprocess
 from subprocess import CalledProcessError
-
-import mock
 
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, \
                                  VirtualBoxHypervisor, XhyveHypervisor, \
@@ -560,10 +558,16 @@ class TestDockerManager(unittest.TestCase):
 
     def test_set_docker_machine_env(self):
         dmm = MockDockerManager()
+        dmm.hypervisor = mock.MagicMock()
         environ = dict()
 
         def raise_on_env(key, *args, **kwargs):
             if key == 'env':
+                raise_process_exception('error')
+            return key
+
+        def raise_not_start(key, *args, **kwargs):
+            if key != 'start':
                 raise_process_exception('error')
             return key
 
@@ -577,6 +581,10 @@ class TestDockerManager(unittest.TestCase):
                     dmm._set_docker_machine_env()
 
             with mock.patch.object(dmm, 'command', side_effect=raise_on_env):
+                with self.assertRaises(CalledProcessError):
+                    dmm._set_docker_machine_env()
+
+            with mock.patch.object(dmm, 'command', side_effect=raise_not_start):
                 with self.assertRaises(CalledProcessError):
                     dmm._set_docker_machine_env()
 

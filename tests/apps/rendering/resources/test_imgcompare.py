@@ -15,7 +15,7 @@ from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
-from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
+from .imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
 
 

@@ -21,7 +21,6 @@ declare -r GOLEM_DIR=$HOME'/golem'
 
 # Questions
 declare -i INSTALL_DOCKER=0
-declare -i INSTALL_GETH=1
 declare -i reinstall=0
 
 # PACKAGE VERSION
@@ -88,7 +87,7 @@ function release_url()
               ][0])'
 }
 
-# @brief check if dependencies (pip, Docker, and Ethereum)
+# @brief check if dependencies (Docker)
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
@@ -96,12 +95,6 @@ function check_dependencies()
     if [[ -z "$( service --status-all 2>&1 | grep -F 'docker' )" ]]; then
         ask_user "Docker not found. Do you want to install it? (y/n)"
         INSTALL_DOCKER=$?
-    fi
-
-    # check if geth is installed
-    if [[ -z "$( dpkg -l | awk '{print $2}' | grep geth )" ]]; then
-        ask_user "Geth not found. Do you want to install it? (y/n)"
-        INSTALL_GETH=$?
     fi
 }
 
@@ -119,13 +112,7 @@ function install_dependencies()
     declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
                libssl-dev autoconf libgmp-dev libtool libffi-dev \
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
-               ethereum libfreeimage3 )
-
-    if [[ ${INSTALL_GETH} -eq 1 ]]; then
-        info_msg "INSTALLING GETH"
-        sudo apt-get install -y -q software-properties-common >/dev/null
-        sudo add-apt-repository -y ppa:ethereum/ethereum >/dev/null
-    fi
+               libfreeimage3 )
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
@@ -281,11 +268,12 @@ function install_golem()
     if [[ -f ${GOLEM_DIR}/golemapp ]]; then
         CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        NEWER_VERSION=$(printf "$CURRENT_VERSION\n$PACKAGE_VERSION" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | tail -n 1)
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi
-        if [[ "$CURRENT_VERSION" > "$PACKAGE_VERSION" ]]; then
+        if [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
             ask_user "Newer version ($CURRENT_VERSION) of Golem detected. Downgrade to version $PACKAGE_VERSION? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi

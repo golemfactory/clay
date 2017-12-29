@@ -36,21 +36,21 @@ class ResourceSession(BasicSafeSession):
         # set_msg_interpretations
 
         self._interpretation.update({
-            message.MessagePushResource.TYPE: self._react_to_push_resource,
-            message.MessageHasResource.TYPE: self._react_to_has_resource,
-            message.MessageWantsResource.TYPE: self._react_to_wants_resource,
-            message.MessagePullResource.TYPE: self._react_to_pull_resource,
-            message.MessagePullAnswer.TYPE: self._react_to_pull_answer,
-            message.MessageHello.TYPE: self._react_to_hello,
-            message.MessageRandVal.TYPE: self._react_to_rand_val
+            message.PushResource.TYPE: self._react_to_push_resource,
+            message.HasResource.TYPE: self._react_to_has_resource,
+            message.WantsResource.TYPE: self._react_to_wants_resource,
+            message.PullResource.TYPE: self._react_to_pull_resource,
+            message.PullAnswer.TYPE: self._react_to_pull_answer,
+            message.Hello.TYPE: self._react_to_hello,
+            message.RandVal.TYPE: self._react_to_rand_val
         })
 
-        self.can_be_not_encrypted.append(message.MessageHello.TYPE)
-        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        self.can_be_not_encrypted.append(message.Hello.TYPE)
+        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
-                message.MessageHello.TYPE,
-                message.MessageRandVal.TYPE
+                message.Hello.TYPE,
+                message.RandVal.TYPE
             ]
         )
 
@@ -155,7 +155,7 @@ class ResourceSession(BasicSafeSession):
                                      may be needed
         """
         if self.confirmation:
-            self.send(message.MessageHasResource(self.file_name))
+            self.send(message.HasResource(self.file_name))
             self.confirmation = False
             if self.copies > 0:
                 self.resource_server.add_resource_to_send(
@@ -176,12 +176,12 @@ class ResourceSession(BasicSafeSession):
         """ Send information that given resource is needed.
         :param resource: resource name
         """
-        self.send(message.MessagePullResource(resource))
+        self.send(message.PullResource(resource))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
         self.send(
-            message.MessageHello(
+            message.Hello(
                 client_key_id=self.resource_server.get_key_id(),
                 rand_val=self.rand_val
             ),
@@ -195,12 +195,12 @@ class ResourceSession(BasicSafeSession):
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
         if self.resource_server.get_resource_entry(msg.resource):
-            self.send(message.MessageHasResource(msg.resource))
+            self.send(message.HasResource(msg.resource))
             if copies > 0:
                 self.resource_server.get_peers()
                 self.resource_server.add_resource_to_send(msg.resource, copies)
         else:
-            self.send(message.MessageWantsResource(msg.resource))
+            self.send(message.WantsResource(msg.resource))
             self.file_name = msg.resource
             self.conn.stream_mode = True
             self.conn.consumer = tcpnetwork.DecryptFileConsumer(
@@ -227,7 +227,7 @@ class ResourceSession(BasicSafeSession):
         if not has_resource:
             self.resource_server.get_peers()
         self.send(
-            message.MessagePullAnswer(
+            message.PullAnswer(
                 resource=msg.resource,
                 has_resource=has_resource
             )
@@ -245,17 +245,17 @@ class ResourceSession(BasicSafeSession):
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
-            self.disconnect(ResourceSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
         self.send(
-            message.MessageRandVal(rand_val=msg.rand_val),
+            message.RandVal(rand_val=msg.rand_val),
             send_unverified=True
         )
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:
-            self.disconnect(ResourceSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return
         self.verified = True
         self.resource_server.verified_conn(self.conn_id)

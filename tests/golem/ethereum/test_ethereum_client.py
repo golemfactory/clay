@@ -1,4 +1,5 @@
 import logging
+from unittest import mock
 
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
@@ -27,20 +28,17 @@ class EthereumClientTest(TempDirFixture):
         assert type(s) is bool
         addr = b'FakeEthereumAddress!'
         assert len(addr) == 20
-        hex_addr = encode_hex(addr)
+        hex_addr = '0x' + encode_hex(addr)
         c = client.get_transaction_count(hex_addr)
         assert type(c) is int
         assert c == 0
         b = client.get_balance(hex_addr)
         assert b == 0
 
-        # Patch web3.py to throw exception in getBalance.
-        def raise_in_getBalance(addr, block):
-            raise ValueError({'message': 'getBalance error!'})
-
-        client.web3.eth.getBalance = raise_in_getBalance
-        b = client.get_balance(hex_addr)
-        assert b == 0
+        eth = client.web3.eth
+        with mock.patch.object(eth, 'getBalance', side_effect=ValueError):
+            b = client.get_balance(hex_addr)
+        assert b is None
 
     def test_send_raw_transaction(self):
         client = self.client

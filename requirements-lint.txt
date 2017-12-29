@@ -1,3 +1,4 @@
+freezegun
 PyInstaller
 pylint
 mypy

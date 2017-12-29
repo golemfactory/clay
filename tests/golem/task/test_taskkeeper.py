@@ -1,4 +1,5 @@
 from datetime import datetime
+from golem_messages.message import ComputeTaskDef
 from pathlib import Path
 import random
 import time
@@ -11,7 +12,7 @@ from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
-from golem.task.taskbase import TaskHeader, ComputeTaskDef
+from golem.task.taskbase import TaskHeader
 from golem.task.taskkeeper import CompTaskInfo
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
     CompSubtaskInfo, logger
@@ -484,10 +485,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctk.add_request(header, int(random.random() * 100))
 
             ctd = ComputeTaskDef()
-            ctd.task_id = header.task_id
-            ctd.subtask_id = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctd['task_id'] = header.task_id
+            ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
             ctk.receive_subtask(ctd)
-            test_subtasks_ids.append(ctd.subtask_id)
+            test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
         another_ctk = CompTaskKeeper(tasks_dir)
@@ -571,14 +572,17 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         th = get_task_header()
         ctk.add_request(th, 5)
         ctd = ComputeTaskDef()
-        ctd.task_id = "xyz"
-        ctd.subtask_id = "abc"
+        ctd['task_id'] = "xyz"
+        ctd['subtask_id'] = "abc"
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
+        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, "abc")
+        assert not ctk.check_task_owner_by_subtask(th.task_owner_key_id, "!!!")
+        assert not ctk.check_task_owner_by_subtask('???', "abc")
         ctd2 = ComputeTaskDef()
-        ctd2.task_id = "xyz"
-        ctd2.subtask_id = "def"
+        ctd2['task_id'] = "xyz"
+        ctd2['subtask_id'] = "def"
         ctk.receive_subtask(ctd2)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task.get("def") is None

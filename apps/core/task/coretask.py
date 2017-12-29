@@ -1,5 +1,7 @@
 import abc
 import copy
+import decimal
+import golem_messages.message
 import logging
 import os
 import uuid
@@ -20,7 +22,7 @@ from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    ResourceType, ComputeTaskDef, TaskTypeInfo
+    ResourceType, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -322,18 +324,18 @@ class CoreTask(Task):
         }
 
     def _new_compute_task_def(self, hash, extra_data, working_directory=".", perf_index=0):
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = hash
-        ctd.extra_data = extra_data
-        ctd.short_description = self.short_extra_data_repr(extra_data)
-        ctd.src_code = self.src_code
-        ctd.performance = perf_index
-        ctd.working_directory = working_directory
-        ctd.docker_images = self.header.docker_images
-        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
-        ctd.task_owner = self.header.task_owner
-        ctd.environment = self.header.environment
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['task_id'] = self.header.task_id
+        ctd['subtask_id'] = hash
+        ctd['extra_data'] = extra_data
+        ctd['short_description'] = self.short_extra_data_repr(extra_data)
+        ctd['src_code'] = self.src_code
+        ctd['performance'] = perf_index
+        ctd['working_directory'] = working_directory
+        ctd['docker_images'] = self.header.docker_images
+        ctd['deadline'] = timeout_to_deadline(self.header.subtask_timeout)
+        ctd['task_owner'] = self.header.task_owner
+        ctd['environment'] = self.header.environment
 
         return ctd
 
@@ -366,7 +368,7 @@ class CoreTask(Task):
 
     # TODO why is it here and not in the Task?
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
         pass  # Implement in derived methods
 
     def load_task_results(self, task_result, result_type: int, subtask_id):
@@ -570,7 +572,8 @@ class CoreTaskBuilder(TaskBuilder):
     def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
-        definition.max_price = float(dictionary['bid']) * denoms.ether
+        definition.max_price = \
+            int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
         definition.full_task_timeout = string_to_timeout(
             dictionary['timeout'])

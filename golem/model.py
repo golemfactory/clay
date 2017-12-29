@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import pickle
 from enum import Enum
 from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
@@ -8,9 +9,10 @@ from typing import Optional, Type  # pylint: disable=unused-import
 
 
 from ethereum.utils import denoms
+from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
-                    SqliteDatabase, TextField)
+                    SqliteDatabase, TextField, BlobField)
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
@@ -27,7 +29,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 5
+    SCHEMA_VERSION = 6
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -59,6 +61,7 @@ class Database:
             Stats,
             TaskPreset,
             Performance,
+            NetworkMessage
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -404,7 +407,7 @@ class Performance(BaseModel):
         database = db
 
     @classmethod
-    def update_or_create(cl, env_id, performance):
+    def update_or_create(cls, env_id, performance):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             perf.value = performance
@@ -412,3 +415,34 @@ class Performance(BaseModel):
         except Performance.DoesNotExist:
             perf = Performance(environment_id=env_id, value=performance)
             perf.save()
+
+
+##################
+# MESSAGE MODELS #
+##################
+
+
+class Actor(Enum):
+    Concent = "concent"
+    Requestor = "requestor"
+    Provider = "provider"
+
+
+class NetworkMessage(BaseModel):
+    local_role = EnumField(Actor, null=False)
+    remote_role = EnumField(Actor, null=False)
+
+    # The node on the other side of the communication.
+    # It can be a receiver or a sender, depending on local_role,
+    # remote_role and msg_cls.
+    node = CharField(null=False)
+    task = CharField(null=True, index=True)
+    subtask = CharField(null=True, index=True)
+
+    msg_date = DateTimeField(null=False)
+    msg_cls = CharField(null=False)
+    msg_data = BlobField(null=False)
+
+    def as_message(self) -> message.Message:
+        msg = pickle.loads(self.msg_data)
+        return msg

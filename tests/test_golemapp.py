@@ -43,14 +43,11 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
 
-        assert PROTOCOL_CONST.P2P_ID == 15 \
-            and PROTOCOL_CONST.TASK_ID == 16
+        custom_id = 123456
 
         runner.invoke(start,
-                      ['--datadir', self.path]
-                      + ['--protocol_id', 123456],
+                      ['--datadir', self.path, '--protocol_id', custom_id],
                       catch_exceptions=False)
 
         assert node_class.called
-        assert PROTOCOL_CONST.P2P_ID == 123456 \
-            and PROTOCOL_CONST.TASK_ID == 123456
+        assert PROTOCOL_CONST.ID == custom_id

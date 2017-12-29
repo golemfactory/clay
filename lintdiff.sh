@@ -60,6 +60,28 @@ cleanup_artifacts() {
     git checkout "$CURRENT_BRANCH" -- || exit 1
 }
 
+diff-lines() {
+    # Function taken from: https://stackoverflow.com/questions/8259851/using-git-diff-how-can-i-get-added-and-modified-lines-numbers
+    # Adjusted the 'echo' line to not print the line content.
+    local path=
+    local line=
+    while read; do
+        esc=$'\033'
+        if [[ $REPLY =~ ---\ (a/)?.* ]]; then
+            continue
+        elif [[ $REPLY =~ \+\+\+\ (b/)?([^[:blank:]$esc]+).* ]]; then
+            path=${BASH_REMATCH[2]}
+        elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
+            line=${BASH_REMATCH[2]}
+        elif [[ $REPLY =~ ^($esc\[[0-9;]+m)*([\ +-]) ]]; then
+            echo "$path:$line:"
+            if [[ ${BASH_REMATCH[2]} != - ]]; then
+                ((line++))
+            fi
+        fi
+    done
+}
+
 # we checkout the reference branch first in case there are
 # uncommitted changes to be overwritten by the merge
 git checkout "$REF_BRANCH" -- || exit 1
@@ -88,7 +110,19 @@ diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) 
 if [ -n "$diff" ]; then
     echo -e "New findings:\n"
     echo "$diff"
-    exit 1
+
+    # Remove lines from findings based on lines changed
+    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
+    CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
+
+    echo -e "\n\nChanged lines findings:\n"
+    echo "$CHANGED_DIFF"
+
+    # Remove warning lines starting with W
+    CHANGED_ERR=$(echo "$CHANGED_DIFF" | grep -v -e '^W')
+    if [ -n "$CHANGED_ERR" ]; then
+        exit 1
+    fi
 else
     echo "Check OK, no new findings..."
 fi

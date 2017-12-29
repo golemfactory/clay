@@ -1,3 +1,4 @@
+import golem_messages.message
 import logging
 import math
 import pathlib
@@ -13,14 +14,20 @@ from semantic_version import Version
 from golem.core import common
 from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
-from .taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price, computation_time):
-    value = int(math.ceil(price * computation_time / 3600))
-    return value
+def compute_subtask_value(price: int, computation_time: int):
+    """
+    Don't use math.ceil (this is general advice, not specific to the case here)
+    >>> math.ceil(10 ** 18 / 6)
+    166666666666666656
+    >>> (10 ** 18 + 5) // 6
+    166666666666666667
+    """
+    return (price * computation_time + 3599) // 3600
 
 
 class CompTaskInfo:
@@ -44,8 +51,8 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], ComputeTaskDef):
-        task_id = args[1].task_id
+    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+        task_id = args[1]['task_id']
     else:
         task_id = args[1]
     logger.warning("This is not my task {}".format(task_id))
@@ -90,7 +97,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError):
+            except (pickle.UnpicklingError, EOFError, AttributeError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -122,14 +129,15 @@ class CompTaskKeeper:
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
-        task = self.active_tasks[comp_task_def.task_id]
+        task = self.active_tasks[comp_task_def['task_id']]
         if not task.requests > 0:
             return
-        if comp_task_def.subtask_id in task.subtasks:
+        if comp_task_def['subtask_id'] in task.subtasks:
             return
         task.requests -= 1
-        task.subtasks[comp_task_def.subtask_id] = comp_task_def
-        self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
+        self.subtask_to_task[comp_task_def['subtask_id']] =\
+            comp_task_def['task_id']
         self.dump()
         return True
 
@@ -150,6 +158,11 @@ class CompTaskKeeper:
                 " Should be int or long".format(type(price))
             )
         return compute_subtask_value(price, computing_time)
+
+    def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
+        task_id = self.subtask_to_task.get(subtask_id)
+        task = self.active_tasks.get(task_id)
+        return task and task.header.task_owner_key_id == task_owner_key_id
 
     @handle_key_error
     def request_failure(self, task_id):
@@ -469,7 +482,8 @@ class TaskHeaderKeeper:
         for t in list(self.task_headers.values()):
             cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.warning("Task {} dies".format(t.task_id))
+                logger.warning("Task owned by %s dies, task_id: %s",
+                               t.task_owner_key_id, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):
