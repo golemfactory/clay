@@ -47,7 +47,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             node_info=node,
             node_name=node_name,
             port=port,
-            proto_id=PROTOCOL_CONST.P2P_ID,
+            proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
         )
@@ -69,7 +69,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             rand_val=random.random(),
             client_key_id=client_peer_info.key,
             node_info=client_peer_info,
-            proto_id=PROTOCOL_CONST.P2P_ID)
+            proto_id=PROTOCOL_CONST.ID)
         return client_hello
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
@@ -138,7 +138,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             rand_val=random.random(),
             client_key_id=server_peer_info.key,
             node_info=server_peer_info,
-            proto_id=PROTOCOL_CONST.P2P_ID)
+            proto_id=PROTOCOL_CONST.ID)
         expected = message.Hello(
             challenge=None,
             client_key_id=key_id,
@@ -148,7 +148,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             node_info=node,
             node_name=node_name,
             port=port,
-            proto_id=PROTOCOL_CONST.P2P_ID,
+            proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
         )

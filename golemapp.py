@@ -140,8 +140,7 @@ def log_golem_version():
     from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 
     log.info("GOLEM Version: %s", APP_VERSION)
-    log.info("P2P Protocol Version: %s", PROTOCOL_CONST.P2P_ID)
-    log.info("Task Protocol Version: %s", PROTOCOL_CONST.TASK_ID)
+    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
     log.info("golem_messages Version: %s", golem_messages.__version__)
 
 

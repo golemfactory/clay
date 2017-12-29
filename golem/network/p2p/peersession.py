@@ -277,12 +277,12 @@ class PeerSession(BasicSafeSession):
         if (self.address, msg.port) in self.p2p_service.seeds:
             compare_version(msg.client_ver)
 
-        if msg.proto_id != variables.PROTOCOL_CONST.P2P_ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
-                variables.PROTOCOL_CONST.P2P_ID,
+                variables.PROTOCOL_CONST.ID,
                 self.address,
                 self.port
             )
@@ -423,7 +423,7 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.Hello(
-            proto_id=variables.PROTOCOL_CONST.P2P_ID,
+            proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
