@@ -62,11 +62,11 @@ class TaskHeader(object):
                  resource_size=0,
                  estimated_memory=0,
                  min_version=APP_VERSION,
-                 max_price=0.0,
+                 max_price: int=0,
                  docker_images=None,
                  signature=None):
         """
-        :param float max_price: maximum price that this (requestor) node may
+        :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
         :param docker_images: docker image specification
         """
@@ -147,24 +147,6 @@ class TaskBuilder(object):
         all necessary options must be specified in dictionary
         """
         pass
-
-
-class ComputeTaskDef(object):
-    def __init__(self):
-        self.task_id = ""
-        self.subtask_id = ""
-        self.deadline = ""
-        self.src_code = ""
-        self.extra_data = {}
-        self.short_description = ""
-        self.return_address = ""
-        self.return_port = 0
-        self.task_owner = None
-        self.key_id = 0
-        self.working_directory = ""
-        self.performance = 0.0
-        self.environment = ""
-        self.docker_images = None
 
 
 class TaskEventListener(object):

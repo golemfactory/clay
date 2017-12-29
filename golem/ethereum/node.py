@@ -1,23 +1,24 @@
 import atexit
-import random
-
-from golem.core.crypto import privtopub
-from ethereum.keys import privtoaddr
-from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
-from datetime import datetime
-from distutils.version import StrictVersion
 import logging
 import os
+import random
 import re
-import requests
 import subprocess
+import sys
 import tempfile
 import threading
 import time
+from datetime import datetime
+from distutils.version import StrictVersion
+
+import requests
+from ethereum.keys import privtoaddr
+from ethereum.transactions import Transaction
+from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL
+from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import encode_hex, decode_hex
@@ -29,13 +30,14 @@ log = logging.getLogger('golem.ethereum')
 
 NODE_LIST_URL = 'https://rinkeby.golem.network'
 FALLBACK_NODE_LIST = [
-    'https://rinkeby.golem.network:8545',
     'http://188.165.227.180:55555',
+    'http://94.23.17.170:55555',
+    'http://94.23.57.58:55555',
 ]
 
 
-def random_public_nodes():
-    """Returns random geth RPC addresses"""
+def get_public_nodes():
+    """Returns public geth RPC addresses"""
     try:
         return requests.get(NODE_LIST_URL).json()
     except Exception as exc:
@@ -104,7 +106,7 @@ class NodeProcess(object):
         self.datadir = datadir
         self.start_node = start_node
         self.web3 = None  # web3 client interface
-        self.public_nodes = random_public_nodes()
+        self.public_nodes = get_public_nodes()
 
         self.__prog = None  # geth location
         self.__ps = None  # child process
@@ -128,15 +130,20 @@ class NodeProcess(object):
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
 
-        while not self.web3.isConnected():
+        while not self.is_connected():
             if time.time() > deadline:
-                if not self.start_node and self.public_nodes:
-                    return self.start(port)
-                self.public_nodes = random_public_nodes()
-                raise OSError("Cannot connect to geth at {}".format(provider))
+                return self._start_timed_out(provider, port)
             time.sleep(0.1)
 
-        identified_chain = self.identify_chain()
+        genesis_block = self.get_genesis_block()
+
+        while not genesis_block:
+            if time.time() > deadline:
+                return self._start_timed_out(provider, port)
+            time.sleep(0.5)
+            genesis_block = self.get_genesis_block()
+
+        identified_chain = self.identify_chain(genesis_block)
         if identified_chain != self.CHAIN:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
@@ -158,7 +165,13 @@ class NodeProcess(object):
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
 
-    def identify_chain(self):
+    def is_connected(self):
+        try:
+            return self.web3.isConnected()
+        except AssertionError:  # thrown if not all required APIs are available
+            return False
+
+    def identify_chain(self, genesis_block):
         """Check what chain the Ethereum node is running."""
         GENESES = {
         '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3':
@@ -168,10 +181,22 @@ class NodeProcess(object):
         '0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177':
             'rinkeby',  # noqa
         }
-        genesis = self.web3.eth.getBlock(0)['hash']
+        genesis = genesis_block['hash']
         chain = GENESES.get(genesis, 'unknown')
         log.info("{} chain ({})".format(chain, genesis))
         return chain
+
+    def get_genesis_block(self):
+        try:
+            return self.web3.eth.getBlock(0)
+        except Exception:  # pylint:disable=broad-except
+            return None
+
+    def _start_timed_out(self, provider, port):
+        if not self.start_node:
+            self.start_node = not self.public_nodes
+            return self.start(port)
+        raise OSError("Cannot connect to geth: {}".format(provider))
 
     def _create_local_ipc_provider(self, chain, port=None):
         self._find_geth()

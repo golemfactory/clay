@@ -1,12 +1,12 @@
 import os
 from golem.resource.resource import TaskResourceHeader, TaskResource
 from golem.resource.dirmanager import DirManager
-from test_dirmanager import TestDirFixture
+from golem.testutils import TempDirFixture
 
 
-class TestTaskResourceHeader(TestDirFixture):
+class TestTaskResourceHeader(TempDirFixture):
     def setUp(self):
-        TestDirFixture.setUp(self)
+        TempDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path)
         res_path = self.dir_manager.get_task_resource_dir('task2')
@@ -48,7 +48,7 @@ class TestTaskResourceHeader(TestDirFixture):
             TaskResourceHeader.build_header_delta_from_header(None, None, None)
 
 
-class TestTaskResource(TestDirFixture):
+class TestTaskResource(TempDirFixture):
 
     def testInit(self):
         self.assertIsNotNone(TaskResource(self.path))

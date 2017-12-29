@@ -12,6 +12,7 @@ from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
+from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
 from golem.core.common import get_golem_path, timeout_to_deadline
@@ -19,7 +20,6 @@ from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
-from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
@@ -140,7 +140,9 @@ class RenderingTask(CoreTask):
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
-        img_current.save(self.preview_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img_current, self.preview_file_path,
+                                PREVIEW_EXT)
+        img_current.close()
         img.close()
 
     @CoreTask.handle_key_error
@@ -148,7 +150,8 @@ class RenderingTask(CoreTask):
         empty_color = (0, 0, 0)
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        img.save(self.preview_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img, self.preview_file_path, PREVIEW_EXT)
+        img.close()
 
     def _update_task_preview(self):
         sent_color = (0, 255, 0)
@@ -167,7 +170,8 @@ class RenderingTask(CoreTask):
                                  SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(preview_task_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img_task, preview_task_file_path, PREVIEW_EXT)
+        img_task.close()
         self._update_preview_task_file_path(preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
@@ -248,7 +252,7 @@ class RenderingTask(CoreTask):
             img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
                                    int(round(self.res_y * self.scale_factor))))
             logger.debug('Saving new preview: %r', self.preview_file_path)
-            img.save(self.preview_file_path, ext)
+            save_image_or_log_error(img, self.preview_file_path, ext)
             img.close()
 
         return Image.open(self.preview_file_path)

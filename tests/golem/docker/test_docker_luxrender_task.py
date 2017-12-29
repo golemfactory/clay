@@ -94,7 +94,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd.deadline = timeout_to_deadline(timeout)
+        ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -132,7 +132,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
+        result = task_computer.resource_given(ctd['task_id'])
         self.assertTrue(result)
 
         # Thread for task computation should be created by now
@@ -229,7 +229,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.haltspp = 20
         # 1) to make it deterministic,
         # 2) depending on the kernel, small cropwindow can generate darker img,
-        # this is a know issue in lux:
+        # this is a known issue in lux:
         # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
         self._test_luxrender_real_task(task)
@@ -249,29 +249,29 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer.tt.join()
 
         new_flm_file, new_preview_file = self._extract_results(computer, task,
-                                                               ctd.subtask_id)
+                                                               ctd['subtask_id'])  # noqa
 
         task.create_reference_data_for_task_validation()
 
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd.subtask_id,
+        task.computation_finished(ctd['subtask_id'],
                                   [new_flm_file, new_preview_file],
                                   result_type=ResultType.FILES)
 
 
-        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
         self.assertTrue(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 1)
 
         # assert bad results - should fail
         bad_flm_file = path.join(path.dirname(new_flm_file), "badfile.flm")
         ctd = task.query_extra_data(10000).ctd
-        task.computation_finished(ctd.subtask_id,
+        task.computation_finished(ctd['subtask_id'],
                                   [bad_flm_file, new_preview_file],
                                   result_type=ResultType.FILES)
 
-        self.assertFalse(task.verify_subtask(ctd.subtask_id))
+        self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)
 
     def test_run_stats(self):
@@ -305,17 +305,17 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             computer.tt.join()
 
             new_flm_file, new_png_file = self._extract_results(computer, task,
-                                                               ctd.subtask_id)
+                                                               ctd['subtask_id'])  # noqa
 
             task.create_reference_data_for_task_validation()
 
             # assert good results - should pass
             self.assertEqual(task.num_tasks_received, 0)
-            task.computation_finished(ctd.subtask_id,
+            task.computation_finished(ctd['subtask_id'],
                                       [new_flm_file, new_png_file],
                                       result_type=ResultType.FILES)
 
-            result = task.verify_subtask(ctd.subtask_id)
+            result = task.verify_subtask(ctd['subtask_id'])
             # self.assertEqual(task.num_tasks_received, 1)
             # print i, task.num_tasks_received
             results.append(result)

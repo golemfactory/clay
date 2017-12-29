@@ -77,7 +77,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
 
-    @mock.patch('golem.transactions.service.Service.running',
+    @mock.patch('golem.core.service.LoopingCallService.running',
                 new_callable=mock.PropertyMock)
     def test_stop(self, mock_is_service_running):
         pkg = 'golem.ethereum.'

@@ -2,6 +2,7 @@ import unittest
 import uuid
 
 import mock
+from requests import HTTPError
 
 from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions
@@ -52,6 +53,14 @@ class TestHyperdriveClient(unittest.TestCase):
                                return_value=self.response):
             assert client.add(self.response['files']) == self.response['hash']
 
+    def test_restore(self):
+        client = HyperdriveClient()
+
+        with mock.patch.object(HyperdriveClient, '_request',
+                               return_value=self.response):
+            assert client.restore(self.response['files']) == \
+                   self.response['hash']
+
     def test_get_file(self):
         client = HyperdriveClient()
         multihash = str(uuid.uuid4())
@@ -85,6 +94,46 @@ class TestHyperdriveClient(unittest.TestCase):
                                return_value=self.response):
 
             assert client.pin_rm(multihash) == self.response['hash']
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        client._request(key="value")
+        assert json_loads.called
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request_exception(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        exception = Exception()
+        response.raise_for_status.side_effect = exception
+
+        with self.assertRaises(Exception) as exc:
+            client._request(key="value")
+            assert exc is exception
+            assert not json_loads.called
+
+    @mock.patch('json.loads')
+    @mock.patch('requests.post')
+    def test_request_http_error(self, post, json_loads):
+        client = HyperdriveClient()
+        response = mock.Mock()
+        post.return_value = response
+
+        exception = HTTPError()
+        response.raise_for_status.side_effect = exception
+
+        with self.assertRaises(HTTPError) as exc:
+            client._request(key="value")
+            assert exc is not exception
+            assert not json_loads.called
 
 
 class TestHyperdriveClientOptions(unittest.TestCase):
@@ -147,6 +196,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert filtered.options['peers'] == peers
         assert options.filtered('invalid client', version) is None
 
+    @unittest.skip('Private IP filtering is temporarily disabled')
     def test_filter_peers(self):
         peers_local = [
             dict(
@@ -205,7 +255,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('192.168.0.1', 12345),
             uTP=('::1', 12345)
-        )) is None
+        )) is not None
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('::1.2.3.4', -1),

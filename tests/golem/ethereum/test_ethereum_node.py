@@ -6,7 +6,7 @@ import requests
 from mock import patch, Mock
 
 from golem.ethereum.node import log, NodeProcess, tETH_faucet_donate, \
-    FALLBACK_NODE_LIST, random_public_nodes
+    FALLBACK_NODE_LIST, get_public_nodes
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
@@ -93,6 +93,22 @@ class EthereumNodeTest(TempDirFixture, LogTestCase):
         with self.assertRaises(OSError):
             node.start()
 
+    def test_start_timed_out(self):
+        provider = Mock()
+        port = 3000
+
+        np = NodeProcess(self.tempdir)
+        np.start = Mock()
+        np.start_node = True
+
+        with self.assertRaises(OSError):
+            np._start_timed_out(provider, port)
+        assert not np.start.called
+
+        np.start_node = False
+        np._start_timed_out(provider, port)
+        assert np.start.called
+
 
 class TestPublicNodeList(unittest.TestCase):
 
@@ -103,11 +119,11 @@ class TestPublicNodeList(unittest.TestCase):
                 return FALLBACK_NODE_LIST
 
         with patch('requests.get', lambda *_: Wrapper):
-            assert random_public_nodes() is FALLBACK_NODE_LIST
+            assert get_public_nodes() is FALLBACK_NODE_LIST
 
     def test_builtin_public_nodes(self):
         with patch('requests.get', lambda *_: None):
-            public_nodes = random_public_nodes()
+            public_nodes = get_public_nodes()
 
         assert public_nodes is not FALLBACK_NODE_LIST
         assert all(n in FALLBACK_NODE_LIST for n in public_nodes)

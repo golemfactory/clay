@@ -1,9 +1,9 @@
+from golem_messages.message import ComputeTaskDef
+from mock import Mock, patch
 from os import path
 
-from mock import Mock, patch
-
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import Task, ComputeTaskDef
+from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -77,7 +77,7 @@ class TestLocalComputer(TestDirFixture):
 
     def _get_better_task_def(self):
         ctd = ComputeTaskDef()
-        ctd.docker_images = BlenderEnvironment().docker_images
+        ctd['docker_images'] = BlenderEnvironment().docker_images
         return ctd
 
     def _success_callback(self, result, time_spent):

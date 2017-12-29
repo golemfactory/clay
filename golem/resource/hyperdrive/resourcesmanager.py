@@ -35,9 +35,19 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def from_wire(self, resources):
         iterator = filter(lambda x: isinstance(x, Iterable) and len(x) > 1,
                           resources)
-        return list([r[0], [os.path.join(*x) for x in r[1]]] for r in iterator)
+        results = []
 
-    def add_files(self, files, task_id,
+        for entry in iterator:
+            files = [os.path.join(*split) for split in entry[1] if split]
+            if not files:
+                logger.debug("Received an empty file list for hash %r",
+                             entry[0])
+                continue
+            results.append([entry[0], files])
+
+        return results
+
+    def add_files(self, files, task_id, resource_hash=None,
                   absolute_path=False, client=None, client_options=None):
 
         if not files:
@@ -49,6 +59,7 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                  for path in files}
 
         return self._add_files(files, task_id,
+                               resource_hash=resource_hash,
                                client=client,
                                client_options=client_options)
 
@@ -61,22 +72,29 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                client=client,
                                client_options=client_options)
 
-    def _add_files(self, files, task_id,
+    def _add_files(self, files, task_id, resource_hash=None,
                    client=None, client_options=None):
 
-        for f in files.keys():
-            if not os.path.exists(f):
-                logger.error("Resource manager: file '{}' does not exist"
-                             .format(f))
-                return
+        checked = {f: os.path.exists(f) for f in files}
+
+        if not all(checked.values()):
+            missing = [f for f, exists in files.items() if not exists]
+            logger.error("Resource manager: missing files (task: %r):\n%s",
+                         task_id, missing)
+            return
 
         client = client or self.new_client()
-        response = self._handle_retries(client.add,
-                                        self.commands.add,
-                                        files,
+
+        if resource_hash:
+            args = (client.restore, self.commands.restore, resource_hash)
+        else:
+            args = (client.add, self.commands.add, files)
+
+        response = self._handle_retries(*args,
                                         id=task_id,
                                         client_options=client_options,
-                                        obj_id=str(uuid.uuid4()))
+                                        obj_id=str(uuid.uuid4()),
+                                        raise_exc=True)
 
         file_list = list(files.values())
         self._cache_response(file_list, response, task_id)
@@ -95,6 +113,13 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def _cache_response(self, resources, resource_hash, task_id):
         res = self._wrap_resource((resource_hash, resources), task_id)
         self._cache_resource(res)
+
+    def _parse_pull_response(self, response, task_id):
+        # response -> [(path, hash, [file_1, file_2, ...])]
+        relative = self.storage.relative_path
+        if response and len(response[0]) >= 3:
+            return [relative(f, task_id) for f in response[0][2]]
+        return []
 
 
 class HyperDriveMetadataManager(object):

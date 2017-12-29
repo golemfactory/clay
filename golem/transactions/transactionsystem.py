@@ -65,7 +65,7 @@ class TransactionSystem(object):
         incomes = self.incomes_keeper.get_list_of_all_incomes()
 
         def item(o):
-            status = PaymentStatus.confirmed if o.income.transaction \
+            status = PaymentStatus.confirmed if o.transaction \
                 else PaymentStatus.awaiting
 
             return {
@@ -74,8 +74,8 @@ class TransactionSystem(object):
                 "payer": to_unicode(o.sender_node),
                 "value": to_unicode(o.value),
                 "status": to_unicode(status.name),
-                "block_number": to_unicode(o.income.block_number),
-                "transaction": to_unicode(o.income.transaction),
+                "block_number": to_unicode(o.block_number),
+                "transaction": to_unicode(o.transaction),
                 "created": datetime_to_timestamp(o.created_date),
                 "modified": datetime_to_timestamp(o.modified_date)
             }

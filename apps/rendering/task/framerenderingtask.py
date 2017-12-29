@@ -14,6 +14,7 @@ from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
+from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
@@ -198,8 +199,9 @@ class FrameRenderingTask(RenderingTask):
         img = img.resize((int(round(self.scale_factor * img_x)),
                           int(round(self.scale_factor * img_y))),
                          resample=Image.BILINEAR)
-        img.save(self._get_preview_file_path(num), PREVIEW_EXT)
-        img.save(preview_task_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img, self._get_preview_file_path(num),
+                                PREVIEW_EXT)
+        save_image_or_log_error(img, preview_task_file_path, PREVIEW_EXT)
 
         img.close()
         self.last_preview_path = preview_task_file_path
@@ -280,7 +282,8 @@ class FrameRenderingTask(RenderingTask):
         if not os.path.exists(preview_file_path):
             img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
                                     int(round(self.res_y * self.scale_factor))))
-            img.save(preview_file_path, PREVIEW_EXT)
+            save_image_or_log_error(img, preview_file_path, PREVIEW_EXT)
+            img.close()
 
         return Image.open(preview_file_path)
 
@@ -321,7 +324,9 @@ class FrameRenderingTask(RenderingTask):
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-            collector.finalize().save(output_file_name, self.output_format)
+            image = collector.finalize()
+            save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -336,7 +341,9 @@ class FrameRenderingTask(RenderingTask):
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
-            collector.finalize().save(output_file_name, self.output_format)
+            image = collector.finalize()
+            save_image_or_log_error(image, output_file_name, self.output_format)
+            image.close()
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
 
@@ -378,7 +385,8 @@ class FrameRenderingTask(RenderingTask):
         preview_task_file_path = self._get_preview_task_file_path(idx)
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
-        img_task.save(preview_task_file_path, PREVIEW_EXT)
+        save_image_or_log_error(img_task, preview_task_file_path, PREVIEW_EXT)
+        img_task.close()
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:
