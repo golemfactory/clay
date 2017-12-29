@@ -53,7 +53,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
-            ['proto_id', PROTOCOL_CONST.TASK_ID],
+            ['proto_id', PROTOCOL_CONST.ID],
             ['node_name', None],
             ['node_info', None],
             ['port', 0],
@@ -224,7 +224,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)
 
-        msg.proto_id = PROTOCOL_CONST.TASK_ID
+        msg.proto_id = PROTOCOL_CONST.ID
 
         ts._react_to_hello(msg)
         assert ts.send.called
