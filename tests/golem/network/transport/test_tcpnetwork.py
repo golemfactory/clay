@@ -1,9 +1,10 @@
 import logging
 import os
 import struct
+from unittest import mock
 from unittest import TestCase
 
-from mock import MagicMock
+MagicMock = mock.MagicMock
 
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
@@ -197,19 +198,24 @@ class TestBasicProtocol(LogTestCase):
         self.assertIsInstance(protocol, BasicProtocol)
         self.assertFalse(protocol.opened)
 
-    def test_dataReceived(self):
+    @mock.patch('golem_messages.load')
+    def test_dataReceived(self, load_mock):
         data = b"abc"
         protocol = BasicProtocol()
         self.assertIsNone(protocol.dataReceived(data))
         protocol.opened = True
         self.assertIsNone(protocol.dataReceived(data))
-        protocol.session = MagicMock()
+        protocol.session = mock.MagicMock()
+        protocol.session.my_private_key = None
+        protocol.session.theirs_public_key = None
         self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
+        self.assertEqual(load_mock.call_count, 0)
 
         m = message.Disconnect(reason=None)
-        data = m.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
+        data = m.serialize()
         packed_data = struct.pack("!L", len(data)) + data
+        load_mock.return_value = m
         protocol.dataReceived(packed_data)
         self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
 

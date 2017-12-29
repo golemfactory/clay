@@ -121,67 +121,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     # SafeSession methods #
     #######################
 
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection
-        :param str data: data to be encrypted
-        :return str: encrypted data or unchanged message
-                     (if server doesn't exist)
-        """
-        if self.task_server:
-            return self.task_server.encrypt(data, self.key_id)
-        logger.warning("Can't encrypt message - no task server")
-        return data
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str|None: decrypted data
-        """
-        if self.task_server is None:
-            logger.warning("Can't decrypt data - no task server")
-            return data
-        try:
-            data = self.task_server.decrypt(data)
-        except AssertionError:
-            logger.info(
-                "Failed to decrypt message from %r:%r, "
-                "maybe it's not encrypted?",
-                self.address,
-                self.port
-            )
-        except Exception as err:
-            logger.debug("Fail to decrypt message {}".format(err))
-            logger.debug('Failing msg: %r', data)
-            self.dropped()
-            return None
-
-        return data
-
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: bytes to be signed
-        :return Message: signed bytes
-        """
+    @property
+    def my_private_key(self):
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
-
-        return self.task_server.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.task_server.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
+        return self.task_server.keys_auth.ecc.raw_privkey
 
     ###################################
     # IMessageHistoryProvider methods #

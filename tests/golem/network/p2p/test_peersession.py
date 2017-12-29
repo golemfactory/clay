@@ -1,4 +1,5 @@
 from golem_messages import message
+import golem_messages.exceptions
 import ipaddress
 from pydispatch import dispatcher
 import random
@@ -198,27 +199,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             message.RandVal(rand_val=-1))
         self.assertFalse(self.peer_session.verified)
 
-    def test_encrypt_decrypt(self):
-        ps = PeerSession(mock.MagicMock())
-        ps2 = PeerSession(mock.MagicMock())
-
-        ek = EllipticalKeysAuth(self.path, "RANDOMPRIV", "RANDOMPUB")
-        ek2 = EllipticalKeysAuth(self.path, "RANDOMPRIV2", "RANDOMPUB2")
-        ps.p2p_service.encrypt = ek.encrypt
-        ps.p2p_service.decrypt = ek.decrypt
-        ps.key_id = ek2.key_id
-        ps2.p2p_service.encrypt = ek2.encrypt
-        ps2.p2p_service.decrypt = ek2.decrypt
-        ps2.key_id = ek.key_id
-
-        data = b"abcdefghijklm" * 1000
-        self.assertEqual(ps2.decrypt(ps.encrypt(data)), data)
-        self.assertEqual(ps.decrypt(ps2.encrypt(data)), data)
-        with self.assertLogs(logger, level='INFO') as lctx:
-            self.assertEqual(ps2.decrypt(data), data)
-            self.assertTrue(any("not encrypted" in log for log in lctx.output))
-
-    @mock.patch("golem.network.p2p.peersession.PeerSession.verify")
+    @mock.patch("golem_messages.cryptography.ecdsa_verify")
     def test_react_to_hello_new_version(self, m_verify):
         listener = mock.MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
@@ -245,14 +226,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
 
         # Test unverified
         msg = message.Hello(**msg_kwargs)
-        m_verify.return_value = False
+        m_verify.side_effect = golem_messages.exceptions.InvalidSignature
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
 
         # Test verified, not seed
         msg = message.Hello(**msg_kwargs)
-        m_verify.return_value = True
+        m_verify.side_efect = None
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
@@ -326,17 +307,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
         peer_session.key_id = "NEW KEY_ID"
         peer_session._react_to_stop_gossip(message.StopGossip())
-
-    def test_verify(self):
-        conn = mock.MagicMock()
-        peer_session = PeerSession(conn)
-        keys_auth = EllipticalKeysAuth(self.path)
-        peer_session.key_id = keys_auth.get_key_id()
-        peer_session.p2p_service.verify_sig = keys_auth.verify
-        msg = message.StopGossip()
-        assert not peer_session.verify(msg)
-        msg.sig = keys_auth.sign(msg.get_short_hash())
-        assert peer_session.verify(msg)
 
     def test_interpret(self):
         conn = mock.MagicMock()

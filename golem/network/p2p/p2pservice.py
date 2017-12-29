@@ -487,42 +487,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """ Return node public key in a form of an id """
         return self.peer_keeper.key_num
 
-    def encrypt(self, data, public_key):
-        """Encrypt data with given public_key. If no public_key is given,
-           or it's equal to zero
-         return data
-        :param str data: data that should be encrypted
-        :param public_key: public key that should be used to encrypt the data
-        :return str: encrypted data (or data if no public key was given)
-        """
-        if public_key == 0 or public_key is None:
-            return data
-        return self.keys_auth.encrypt(data, public_key)
-
-    def decrypt(self, data):
-        """ Decrypt given data
-        :param str data: encrypted data
-        :return str: data decrypted with private key
-        """
-        return self.keys_auth.decrypt(data)
-
-    def sign(self, data):
-        """ Sign given data with private key
-        :param str data: data to be signed
-        :return str: data signed with private key
-        """
-        return self.keys_auth.sign(data)
-
-    def verify_sig(self, sig, data, public_key):
-        """ Verify the validity of signature
-        :param str sig: signature
-        :param str data: expected data
-        :param public_key: public key that should be used
-                           to verify signed data.
-        :return bool: verification result
-        """
-        return self.keys_auth.verify(sig, data, public_key)
-
     def set_suggested_address(self, client_key_id, addr, port):
         """Set suggested address for peer. This node will be used as first
            for connection attempt
