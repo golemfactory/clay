@@ -7,7 +7,6 @@ import random
 
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
-from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -82,7 +81,6 @@ class PeerSession(BasicSafeSession):
                 message.ChallengeSolution.TYPE
             ]
         )
-        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_not_encrypted.append(message.Hello.TYPE)
 
         self.__set_msg_interpretations()

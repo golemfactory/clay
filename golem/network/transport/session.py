@@ -153,8 +153,6 @@ class BasicSafeSession(BasicSession):
         self.verified = False
         # React to message even if it's self.verified is set to False
         self.can_be_unverified = [message.Disconnect.TYPE]
-        # React to message even if it's not signed.
-        self.can_be_unsigned = [message.Disconnect.TYPE]
         # React to message even if it's not encrypted.
         self.can_be_not_encrypted = [message.Disconnect.TYPE]
 

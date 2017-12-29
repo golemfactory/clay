@@ -46,7 +46,6 @@ class ResourceSession(BasicSafeSession):
         })
 
         self.can_be_not_encrypted.append(message.Hello.TYPE)
-        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
                 message.Hello.TYPE,
