@@ -1,6 +1,8 @@
 from golem_messages.message import ComputeTaskDef
 import os
 from os import path
+from unittest import mock
+from golem_verificator.common.verificationstates import SubtaskVerificationState
 
 import array
 import unittest
@@ -22,7 +24,6 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
-    AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType
@@ -51,7 +52,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.main_scene_file = self.temp_file_name("example.blend")
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
-        task_definition.resolution = [2, 300]
+        task_definition.resolution = [20, 300]
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
             task_definition=task_definition,
@@ -68,8 +69,11 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    def test_computation_failed_or_finished(self):
+    @mock.patch("golem_verificator.blender.validator.Validator.validate")
+    def test_computation_failed_or_finished(self, validate_mock):
         assert self.bt.total_tasks == 6
+
+        validate_mock.return_value = SubtaskVerificationState.VERIFIED.value
 
         # Failed compuation stays failed
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
@@ -479,9 +483,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
     @pytest.mark.slow
     def test_advanced_verification(self):
         bb = BlenderBenchmark()
-        td = bb.task_definition
-        td.verification_options = AdvanceRenderingVerificationOptions()
-        td.verification_options.type = 'forAll'
         dm = DirManager(self.tempdir)
         builder = BlenderRenderTaskBuilder(node_name="ABC",
                                            task_definition=bb.task_definition,

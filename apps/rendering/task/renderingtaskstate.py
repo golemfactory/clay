@@ -57,10 +57,3 @@ class RenderingTaskDefinition(TaskDefinition):
         super(RenderingTaskDefinition, self).load_preset(preset)
         self.resolution = preset["resolution"]
         self.output_format = preset["output_format"]
-
-
-class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
-    def __init__(self):
-        AdvanceVerificationOptions.__init__(self)
-        self.box_size = (5, 5)
-        self.probability = 0.01

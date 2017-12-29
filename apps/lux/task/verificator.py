@@ -109,7 +109,7 @@ class LuxRenderVerificator(RenderingVerificator):
                 reference_stats = \
                     ImgStatistics(cropped_ref_imgs[0], cropped_ref_imgs[1])
 
-                # GG todo render png from flm
+                # golem_verificator todo render png from flm
                 for img, flm_file in zip(tr_preview_files, tr_flm_files):
                     cropped_img = img_verificator.crop_img_relative(
                         img, task.random_crop_window_for_verification)

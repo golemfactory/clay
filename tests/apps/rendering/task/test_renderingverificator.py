@@ -10,25 +10,12 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator, logger, FrameRenderingVerificator
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
-
+from apps.core.task.coretaskstate import AdvanceVerificationOptions
 
 class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/rendering/task/verificator.py',
     ]
-
-    def test_box_start(self):
-        rv = RenderingVerificator()
-
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.verification_options.box_size = (5, 5)
-        sizes = [(24, 12, 44, 20), (0, 0, 800, 600), (10, 150, 12, 152)]
-        for size in sizes:
-            for i in range(20):
-                x, y = rv._get_box_start(*size)
-                assert size[0] <= x <= size[2]
-                assert size[1] <= y <= size[3]
 
     def test_get_part_size(self):
         rv = RenderingVerificator()
@@ -36,6 +23,8 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.res_y = 600
         assert rv._get_part_size(dict()) == (800, 600)
 
+    # golem_verificator todo - obsolete, since RenderingVerificator().verify is overridden
+    # either in LuxVerificator or in BlenderVerificator...
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()
@@ -73,11 +62,9 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
                SubtaskVerificationState.VERIFIED
 
         # ADVANCE VERIFICATION
-
+        # todo golem_verificator enable advanced verification by default?
         rv.advanced_verification = True
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.verification_options.type = "forAll"
-        rv.verification_options.box_size = [5, 5]
+        rv.verification_options = AdvanceVerificationOptions()
         rv.tmp_dir = self.path
         rv.root_path = self.path
 
@@ -124,23 +111,6 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         rv.res_y = 211
         assert rv._get_part_img_size({"start_task": 5}) == (0, 76, 800, 95)
 
-    def test_choose_adv_ver_file(self):
-        rv = RenderingVerificator()
-        rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.advanced_verification = False
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "nodeX"}) is None
-        rv.advanced_verification = True
-        rv.verification_options.type = "forFirst"
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verified_clients.append("NodeX")
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
-        rv.verification_options.type = "forAll"
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verification_options.type = "random"
-        rv.verification_options.probability = 1.0
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
-        rv.verification_options.probability = 0.0
-        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
 
     def test_error_in_change_scope(self):
         rv = RenderingVerificator()

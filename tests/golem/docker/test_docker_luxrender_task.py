@@ -33,6 +33,17 @@ logging.getLogger("peewee").setLevel("INFO")
 # TODO: extract code common to this class and TestDockerBlenderTask
 # to a superclass
 
+def change_file_location(filepath, newfilepath):
+    if os.path.exists(newfilepath):
+        os.remove(newfilepath)
+
+    new_file_dir = os.path.dirname(newfilepath)
+    if not os.path.exists(new_file_dir):
+        os.makedirs(new_file_dir)
+
+    shutil.copy(filepath, newfilepath)
+    return newfilepath
+
 @ci_skip
 class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
@@ -94,7 +105,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd['deadline'] = timeout_to_deadline(timeout)
+        ctd["deadline"] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -144,18 +155,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _change_file_location(self, filepath, newfilepath):
-        if os.path.exists(newfilepath):
-            os.remove(newfilepath)
-
-        new_file_dir = os.path.dirname(newfilepath)
-        if not os.path.exists(new_file_dir):
-            os.makedirs(new_file_dir)
-
-        shutil.copy(filepath, newfilepath)
-        return newfilepath
-
-    def _extract_results(self, computer, task, subtask_id):
+    def _extract_results(self, computer, task: LuxTask, subtask_id):
         """
         Since the local computer use temp dir, you should copy files
         out of there before you use local computer again.
@@ -182,8 +182,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         else:
             assert path.isfile(png)
 
-        ##
-        # self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
 
         test_file = task._LuxTask__get_test_flm()
         shutil.copy(flm, test_file)
@@ -194,14 +192,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # copy to new location
         new_file_dir = path.join(path.dirname(test_file), subtask_id)
 
-        new_flm_file = self._change_file_location(
+        new_flm_file = change_file_location(
             test_file, path.join(new_file_dir, "newflmfile.flm"))
 
         if task.output_format == "exr":
-            new_file = self._change_file_location(
+            new_file = change_file_location(
                 exr, path.join(new_file_dir, "newexrfile.exr"))
         else:
-            new_file = self._change_file_location(
+            new_file = change_file_location(
                 png, path.join(new_file_dir, "newpngfile.png"))
 
         return new_flm_file, new_file
@@ -234,7 +232,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
         self._test_luxrender_real_task(task)
 
-    def _test_luxrender_real_task(self, task):
+    def _test_luxrender_real_task(self, task: LuxTask):
         ctd = task.query_extra_data(10000).ctd
         # act
         computer = LocalComputer(
@@ -261,6 +259,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
 
         is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
+        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 1)
 
@@ -273,59 +272,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)
-
-    def test_run_stats(self):
-        results = []
-        return
-
-        # FIXME Unreachable code
-        for i in range(0, 10):
-            task = self._test_task()
-            task.output_format = "png"
-            task.res_y = 200
-            task.res_x = 200
-            task.haltspp = 20
-            # 1) to make it deterministic,
-            # 2) depending on the kernel, small cropwindow can generate darker
-            # img, this is a know issue in lux:
-            # http://www.luxrender.net/forum/viewtopic.php?f=16&t=13389
-            task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
-            ctd = task.query_extra_data(10000).ctd
-
-            # act
-            computer = LocalComputer(
-                task,
-                self.tempdir,
-                Mock(),
-                Mock(),
-                lambda: ctd,
-            )
-
-            computer.run()
-            computer.tt.join()
-
-            new_flm_file, new_png_file = self._extract_results(computer, task,
-                                                               ctd['subtask_id'])  # noqa
-
-            task.create_reference_data_for_task_validation()
-
-            # assert good results - should pass
-            self.assertEqual(task.num_tasks_received, 0)
-            task.computation_finished(ctd['subtask_id'],
-                                      [new_flm_file, new_png_file],
-                                      result_type=ResultType.FILES)
-
-            result = task.verify_subtask(ctd['subtask_id'])
-            # self.assertEqual(task.num_tasks_received, 1)
-            # print i, task.num_tasks_received
-            results.append(result)
-            print(i, result)
-
-        from collections import Counter
-        stats = Counter(results)
-        print(results)
-        print(stats)
-
 
     def test_luxrender_TaskTester_should_pass(self):
         task = self._test_task()
