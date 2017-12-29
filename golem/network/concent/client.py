@@ -4,7 +4,7 @@ import queue
 import threading
 import time
 from enum import Enum
-from typing import Optional, Hashable, Type
+from typing import Optional, Hashable
 from urllib.parse import urljoin
 
 import requests
@@ -18,7 +18,8 @@ from golem.network.concent import exceptions
 logger = logging.getLogger("golem.network.concent.client")
 
 
-def send_to_concent(msg: message.Message, signing_key, pubkey='????') -> Optional[str]:
+def send_to_concent(msg: message.Message, signing_key, pubkey=b'????') \
+        -> Optional[str]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception

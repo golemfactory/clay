@@ -32,7 +32,10 @@ class TestSendToConcent(TestCase):
         post_mock.return_value = response
 
         client.send_to_concent(msg=self.msg, signing_key=self.key)
-        api_send_url = urllib.parse.urljoin(variables.CONCENT_URL, '/api/send/')
+        api_send_url = urllib.parse.urljoin(
+            variables.CONCENT_URL,
+            '/api/v1/send/'
+        )
         post_mock.assert_called_once_with(
             api_send_url,
             data=mock.ANY,
