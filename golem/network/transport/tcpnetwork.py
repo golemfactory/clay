@@ -527,11 +527,7 @@ class BasicProtocol(SessionProtocol):
 
         while data:
             try:
-                msg = golem_messages.load(
-                    data,
-                    None,
-                    None,
-                )
+                msg = golem_messages.load(data, None, None)
                 logger.debug(
                     'BasicProtocol._data_to_messages(): received %r',
                     msg,
