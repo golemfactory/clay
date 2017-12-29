@@ -259,7 +259,8 @@ class Income(BaseModel):
     sender_node = CharField()
     task = CharField()
     subtask = CharField()
-    transaction = CharField()
+    # trailing underscore to avoid potential conflict with sql keyword
+    transaction_ = CharField()
     block_number = BigIntegerField()
     value = BigIntegerField()
 
@@ -272,7 +273,7 @@ class Income(BaseModel):
             .format(
                 self.subtask,
                 self.value,
-                self.transaction,
+                self.transaction_,
                 self.block_number
             )
 
