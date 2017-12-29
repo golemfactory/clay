@@ -111,7 +111,7 @@ class BlenderVerificator(FrameRenderingVerificator):
             scene_file=scene_file,
             crop_window_size=[min_x, max_x, min_y, max_y],
             number_of_tests=3,
-            resolution=[res_x, res_y],
+            resolution=[task.res_x, task.res_y],
             rendered_scene_path=file_for_verification,
             scene_format=os.path.splitext(file_for_verification)[1]
         )

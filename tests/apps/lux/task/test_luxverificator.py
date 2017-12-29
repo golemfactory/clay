@@ -6,7 +6,6 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.lux.task.verificator import LuxRenderVerificator, logger
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
 

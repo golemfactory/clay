@@ -22,7 +22,6 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
-    AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType
