@@ -25,10 +25,10 @@ class LocalComputer:
                  success_callback: Callable,
                  error_callback: Callable,
                  get_compute_task_def: Callable[[], ComputeTaskDef],
-                 check_mem: bool=False,
-                 comp_failed_warning: str=DEFAULT_WARNING,
-                 comp_success_message: str=DEFAULT_SUCCESS,
-                 use_task_resources: bool=True,
+                 check_mem: bool = False,
+                 comp_failed_warning: str = DEFAULT_WARNING,
+                 comp_success_message: str = DEFAULT_SUCCESS,
+                 use_task_resources: bool = True,
                  additional_resources=None) -> None:
         # TODO remove this isinstance
         if not isinstance(task, Task):
