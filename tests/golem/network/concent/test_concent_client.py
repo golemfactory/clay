@@ -131,10 +131,13 @@ class TestConcentClientService(TestCase):
         )
 
         send_mock.side_effect = exceptions.ConcentRequestException
-        with mock.patch("golem.network.concent.client.ConcentClientService._grace_sleep") as sleep_mock:
+        with mock.patch("golem.network.concent.client.ConcentClientService._grace_sleep") as sleep_mock:  # noqa
             self.concent_service._loop()
             sleep_mock.assert_called_once_with()
-        send_mock.assert_called_once_with(self.msg, self.concent_service.signing_key)
+        send_mock.assert_called_once_with(
+            self.msg,
+            self.concent_service.signing_key
+        )
 
         req = self.concent_service.result('key')
         assert req.status == client.ConcentRequestStatus.Error
@@ -169,7 +172,10 @@ class TestConcentClientService(TestCase):
 
         self.concent_service._loop()
         req = self.concent_service.result('key')
-        send_mock.assert_called_once_with(self.msg, self.concent_service.signing_key)
+        send_mock.assert_called_once_with(
+            self.msg,
+            self.concent_service.signing_key
+        )
         assert req.status == client.ConcentRequestStatus.Success
 
 
