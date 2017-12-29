@@ -15,7 +15,7 @@ class AsyncHTTPRequest:
     timeout = 5
 
     @implementer(IBodyProducer)
-    class StringProducer:
+    class BytesBodyProducer:
 
         def __init__(self, body):
             self.body = body
@@ -41,7 +41,7 @@ class AsyncHTTPRequest:
             cls.agent = Agent(reactor, connectTimeout=cls.timeout)
 
         return cls.agent.request(method, uri, headers,
-                                 cls.StringProducer(body))
+                                 cls.BytesBodyProducer(body))
 
 
 class AsyncRequest(object):
