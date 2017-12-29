@@ -8,7 +8,8 @@ import unittest.mock as mock
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.variables import APP_VERSION
-from golem.environments.environment import Environment, UnsupportReason
+from golem.environments.environment import Environment, UnsupportReason,\
+    SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader
@@ -91,8 +92,9 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert tk.check_version_compatibility('0.4.0-alpha+build')
         assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
 
-    def test_change_config(self):
-        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
+    @mock.patch('golem.task.taskarchiver.TaskArchiver')
+    def test_change_config(self, tar):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0, task_archiver=tar)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
@@ -119,6 +121,16 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.change_config(config_desc)
         self.assertNotIn("xyz", tk.supported_tasks)
         self.assertNotIn("abc", tk.supported_tasks)
+        # Make sure the tasks stats are properly archived
+        tar.reset_mock()
+        config_desc.min_price = 9.5
+        tk.change_config(config_desc)
+        self.assertNotIn("xyz", tk.supported_tasks)
+        self.assertIn("abc", tk.supported_tasks)
+        tar.add_support_status.assert_any_call(
+            "xyz", SupportStatus(False, {UnsupportReason.MAX_PRICE: 9.0}))
+        tar.add_support_status.assert_any_call(
+            "abc", SupportStatus(True, {}))
 
     def test_get_task(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
@@ -203,6 +215,25 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header['task_id'] = "newtaskID"
         task_header['deadline'] = "WRONG DEADLINE"
         assert not tk.add_task_header(task_header)
+
+    @mock.patch('golem.task.taskarchiver.TaskArchiver')
+    def test_task_header_update_stats(self, tar):
+        e = Environment()
+        e.accept_tasks = True
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10, task_archiver=tar)
+        tk.environments_manager.add_environment(e)
+        task_header = get_dict_task_header("good")
+        assert tk.add_task_header(task_header)
+        tar.add_task.assert_called_with(mock.ANY)
+        tar.add_support_status.assert_any_call(
+            "good", SupportStatus(True, {}))
+        tar.reset_mock()
+        task_header['task_id'] = "bad"
+        task_header["max_price"] = 1.0
+        assert tk.add_task_header(task_header)
+        tar.add_task.assert_called_with(mock.ANY)
+        tar.add_support_status.assert_any_call(
+            "bad", SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
 
     def test_is_correct(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
@@ -345,6 +376,57 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn("ta%d" % i, tk.task_headers)
         self.assertIn("tb0", tk.task_headers)
         self.assertEqual(new_limit + 1, len(tk.task_headers))
+
+    def test_get_unsupport_reasons(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        e = Environment()
+        e.accept_tasks = True
+        tk.environments_manager.add_environment(e)
+
+        # Supported task
+        thd = get_dict_task_header("good")
+        tk.add_task_header(thd)
+
+        # Wrong version
+        thd = get_dict_task_header("wrong version")
+        thd["min_version"] = "42.0.17"
+        tk.add_task_header(thd)
+
+        # Wrong environment
+        thd = get_dict_task_header("wrong env")
+        thd["environment"] = "UNKNOWN"
+        tk.add_task_header(thd)
+
+        # Wrong price
+        thd = get_dict_task_header("wrong price")
+        thd["max_price"] = 1
+        tk.add_task_header(thd)
+
+        # Wrong price and version
+        thd = get_dict_task_header("wrong price and version")
+        thd["min_version"] = "42.0.17"
+        thd["max_price"] = 1
+        tk.add_task_header(thd)
+
+        # And one more with wrong version
+        thd = get_dict_task_header("wrong version 2")
+        thd["min_version"] = "42.0.44"
+        tk.add_task_header(thd)
+
+        reasons = tk.get_unsupport_reasons()
+        # 3 tasks with wrong version
+        self.assertIn({'avg': APP_VERSION,
+                       'reason': 'app_version',
+                       'ntasks': 3}, reasons)
+        # 2 tasks with wrong price
+        self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
+        # 1 task with wrong environment
+        self.assertIn({'avg': None,
+                       'reason': 'environment_missing',
+                       'ntasks': 1}, reasons)
+        self.assertIn({'avg': None,
+                       'reason': 'environment_not_accepting_tasks',
+                       'ntasks': 1}, reasons)
 
 
 def get_dict_task_header(task_id="xyz"):
