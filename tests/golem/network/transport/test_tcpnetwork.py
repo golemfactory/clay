@@ -226,7 +226,7 @@ class TestBasicProtocol(LogTestCase):
         protocol.opened = True
         protocol.session = MagicMock()
         self.assertIsNone(protocol.dataReceived(data))
-        protocol.transport.loseConnection.assert_called_once()
+        protocol.transport.loseConnection.assert_called_once_with()
 
 class TestSocketAddress(TestCase):
     def test_zone_index(self):

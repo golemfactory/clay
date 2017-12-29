@@ -67,44 +67,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         msg = send_mock.call_args[0][0]
         self.assertEqual(msg.slots(), expected)
 
-    def test_encrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        ts.key_id = "123"
-        ts.encrypt(data)
-        ts.task_server.encrypt.assert_called_with(data, "123")
-
-        ts.task_server = None
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
-
-    def test_decrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        res = ts.decrypt(data)
-        ts.task_server.decrypt.assert_called_with(data)
-        self.assertIsNotNone(res)
-
-        ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
-        with self.assertLogs(logger, level='INFO') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
-        self.assertFalse(any("Encrypt error" in log for log in l.output))
-        self.assertEqual(res, data)
-
-        ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level='DEBUG') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("Different error" in log for log in l.output))
-        self.assertIsNone(res)
-
-        ts.task_server = None
-        data = "ABC"
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
-
     def test_request_task(self):
         conn = Mock(server=Mock(deny_set=set()))
         ts = TaskSession(conn)
@@ -481,19 +443,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
         assert message.Message.deserialize(db.buffered_data, lambda x: x)
-
-    def test_verify(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        conn = Mock()
-        ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_server.verify_sig = keys_auth.verify
-
-        msg = message.RemoveTask()
-        assert not ts.verify(msg)
-        msg.sig = keys_auth.sign(msg.get_short_hash())
-        ts.key_id = keys_auth.get_key_id()
-        assert ts.verify(msg)
 
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
