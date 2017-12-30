@@ -46,7 +46,6 @@ class ResourceSession(BasicSafeSession):
         })
 
         self.can_be_not_encrypted.append(message.Hello.TYPE)
-        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
                 message.Hello.TYPE,
@@ -67,67 +66,11 @@ class ResourceSession(BasicSafeSession):
     # SafeSession methods #
     #######################
 
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection
-        :param str data: data to be encrypted
-        :return str: encrypted data or unchanged message
-                     (if resource server doesn't exist)
-        """
-        if self.resource_server:
-            return self.resource_server.encrypt(data, self.key_id)
-        logger.warning("Can't encrypt message - no resource_server")
-        return data
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str: decrypted data
-        """
+    @property
+    def my_private_key(self):
         if self.resource_server is None:
-            return data
-        try:
-            data = self.resource_server.decrypt(data)
-        except AssertionError:
-            logger.info(
-                "Failed to decrypt message from %r:%r, "
-                "maybe it's not encrypted?",
-                self.address,
-                self.port
-            )
-        except Exception as err:
-            logger.info(
-                "Failed to decrypt message %s from %r:%r",
-                err,
-                self.address,
-                self.port
-            )
-            raise
-
-        return data
-
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
-        """
-        msg.sig = self.resource_server.sign(msg.get_short_hash())
-        return msg
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from
-                         this connection
-        """
-        verify = self.resource_server.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
-        return verify
+            return None
+        return self.resource_server.keys_auth.ecc.raw_privkey
 
     def send(self, msg, send_unverified=False):
         """Send given message if connection was verified or send_unverified

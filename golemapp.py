@@ -136,10 +136,12 @@ def start_crossbar_worker(module):
 def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
+    import golem_messages
     from golem.core.variables import APP_VERSION, PROTOCOL_CONST
 
-    log.info("GOLEM Version: " + APP_VERSION)
-    log.info("Protocol Version: " + str(PROTOCOL_CONST.ID))
+    log.info("GOLEM Version: %s", APP_VERSION)
+    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
+    log.info("golem_messages Version: %s", golem_messages.__version__)
 
 
 if __name__ == '__main__':
