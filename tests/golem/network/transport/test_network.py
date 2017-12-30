@@ -4,6 +4,7 @@ import os
 import time
 import unittest
 
+from golem_messages import message
 import golem_messages.cryptography
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory, \
@@ -13,7 +14,6 @@ from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
     TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.tools.testwithreactor import TestWithReactor
-from golem_messages import message
 
 
 class ASession(object):
