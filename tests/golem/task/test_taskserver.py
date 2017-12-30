@@ -16,8 +16,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
+from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
-from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -77,13 +77,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
-    def test_request(self):
+    @patch('golem.task.taskarchiver.TaskArchiver')
+    def test_request(self, tar):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
-                        use_docker_machine_manager=False)
+                        use_docker_machine_manager=False, task_archiver=tar)
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
@@ -105,6 +106,56 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
         self.assertIsNone(ts.request_task())
         self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
+        ts.remove_task_header("uvw2")
+
+        # Task can be rejected for 3 reasons at this stage; in all cases
+        # the task should be reported TaskArchiver listed as unsupported:
+        # 1. Requestor's trust level is too low
+        tar.reset_mock()
+        ts.config_desc.requesting_trust = 0.5
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw3"
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw3",
+            SupportStatus(
+                False,
+                {UnsupportReason.REQUESTOR_TRUST: 0.3}))
+        ts.remove_task_header("uvw3")
+
+        # 2. Task's max price is too low
+        tar.reset_mock()
+        ts.config_desc.requesting_trust = 0.0
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw4"
+        task_header["max_price"] = 1
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw4",
+            SupportStatus(
+                False,
+                {UnsupportReason.MAX_PRICE: 1}))
+        ts.remove_task_header("uvw4")
+
+        # 3. Requestor is on a black list.
+        tar.reset_mock()
+        ts.deny_set.add("key")
+        task_header = get_example_task_header()
+        task_header["task_id"] = "uvw5"
+        task_header["task_owner"] = n2
+        ts.add_task_header(task_header)
+        self.assertIsNone(ts.request_task())
+        tar.add_support_status.assert_called_with(
+            "uvw5",
+            SupportStatus(
+                False,
+                {UnsupportReason.DENY_LIST: "key"}))
+        ts.remove_task_header("uvw5")
+        ts.deny_set.remove("key")
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
@@ -585,18 +636,24 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.client.get_requesting_trust = Mock(return_value=0.4)
-        ts.config_desc.rquesting_trust = 0.2
-        assert ts.should_accept_requestor("ABC")
+        ts.config_desc.requesting_trust = 0.2
+        assert ts.should_accept_requestor("ABC").is_ok()
         ts.config_desc.requesting_trust = 0.4
-        assert ts.should_accept_requestor("ABC")
+        assert ts.should_accept_requestor("ABC").is_ok()
         ts.config_desc.requesting_trust = 0.5
-        assert not ts.should_accept_requestor("ABC")
+        ss = ts.should_accept_requestor("ABC")
+        assert not ss.is_ok()
+        assert UnsupportReason.REQUESTOR_TRUST in ss.desc
+        self.assertEqual(ss.desc[UnsupportReason.REQUESTOR_TRUST], 0.4)
 
         ts.config_desc.requesting_trust = 0.2
-        assert ts.should_accept_requestor("ABC")
+        assert ts.should_accept_requestor("ABC").is_ok()
 
         ts.deny_set.add("ABC")
-        assert not ts.should_accept_requestor("ABC")
+        ss = ts.should_accept_requestor("ABC")
+        assert not ss.is_ok()
+        assert UnsupportReason.DENY_LIST in ss.desc
+        self.assertEqual(ss.desc[UnsupportReason.DENY_LIST], "ABC")
 
     @patch('golem.task.taskserver.TaskServer._mark_connected')
     def test_new_session_prepare(self, mark_mock):

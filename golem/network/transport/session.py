@@ -3,32 +3,12 @@ from golem_messages import message
 import logging
 import time
 
+from golem import utils
 from golem.core.keysauth import get_random_float
 from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
 logger = logging.getLogger(__name__)
-
-
-class SafeSession(Session, metaclass=abc.ABCMeta):
-    """ Abstract class that represents session interface with additional opperations for cryptographic
-    operations (signing, veryfing, encrypting and decrypting data). """
-
-    @abc.abstractmethod
-    def sign(self, msg):
-        return
-
-    @abc.abstractmethod
-    def verify(self, msg):
-        return
-
-    @abc.abstractmethod
-    def encrypt(self, data):
-        return
-
-    @abc.abstractmethod
-    def decrypt(self, data):
-        return
 
 
 class FileSession(Session, metaclass=abc.ABCMeta):
@@ -120,8 +100,6 @@ class BasicSession(FileSession):
         """ Send given message.
         :param Message message: message to be sent.
         """
-        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
-
         if not self.conn.send_message(message):
             self.dropped()
             return
@@ -161,37 +139,28 @@ class BasicSession(FileSession):
         self.dropped()
 
 
-class BasicSafeSession(BasicSession, SafeSession):
-    """ Enhance BasicSession with cryptographic operations logic (eg. accepting only encrypted or signed messages)
-    and connection verifications logic.
+class BasicSafeSession(BasicSession):
+    """Enhance BasicSession with cryptographic operations logic (eg. accepting
+    only encrypted or signed messages) and connection verifications logic.
     Cryptographic operation should be implemented in descendant class.
     """
 
     def __init__(self, conn):
-        BasicSession.__init__(self, conn)
+        super().__init__(conn)
         self.key_id = 0
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
         # React to message even if it's self.verified is set to False
         self.can_be_unverified = [message.Disconnect.TYPE]
-        # React to message even if it's not signed.
-        self.can_be_unsigned = [message.Disconnect.TYPE]
         # React to message even if it's not encrypted.
         self.can_be_not_encrypted = [message.Disconnect.TYPE]
 
-    # Simple session with no encryption and no signing
-    def sign(self, msg):
-        return msg
-
-    def verify(self, msg):
-        return True
-
-    def encrypt(self, data):
-        return data
-
-    def decrypt(self, data):
-        return data
+    @property
+    def theirs_public_key(self):
+        if not self.key_id:
+            return None
+        return utils.decode_hex(self.key_id)
 
     def send(self, message, send_unverified=False):
         """ Send given message if connection was verified or send_unverified option is set to True.
@@ -223,12 +192,6 @@ class BasicSafeSession(BasicSession, SafeSession):
 
         if not msg.encrypted and type_ not in self.can_be_not_encrypted:
             self.disconnect(message.Disconnect.REASON.BadProtocol)
-            return False
-
-        if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.info("Failed to verify message signature ({} from {}:{})"
-                         .format(msg, self.address, self.port))
-            self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
         return True

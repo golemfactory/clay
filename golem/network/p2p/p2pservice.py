@@ -41,13 +41,14 @@ SEEDS = [
 
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
+
     def __init__(
             self,
             node,
             config_desc,
             keys_auth,
             connect_to_known_hosts=True
-            ):
+    ):
         """Create new P2P Server. Listen on port for connections and
            connect to other peers. Keeps up-to-date list of peers information
            and optimal number of open connections.
@@ -423,14 +424,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                     and peer.address == self.config_desc.seed_host:
                 return
 
-        try:
-            socket_address = tcpnetwork.SocketAddress(
-                self.config_desc.seed_host,
-                self.config_desc.seed_port
-            )
-            self.connect(socket_address)
-        except ipaddress.AddressValueError as err:
-            logger.error('Invalid seed address: ' + str(err))
+        if self.config_desc.seed_host and self.config_desc.seed_port:
+            try:
+                socket_address = tcpnetwork.SocketAddress(
+                    self.config_desc.seed_host,
+                    self.config_desc.seed_port
+                )
+                self.connect(socket_address)
+            except ipaddress.AddressValueError as err:
+                logger.error('Invalid seed address: ' + str(err))
 
         if self.resource_server:
             self.resource_server.change_config(config_desc)
@@ -468,7 +470,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return str: solution of a challenge
         """
         self.challenge_history.append([key_id, challenge])
-        solution, time_ = simplechallenge.solve_challenge(challenge, difficulty)
+        solution, time_ = simplechallenge.solve_challenge(
+            challenge, difficulty)
         logger.debug(
             "Solved challenge with difficulty %r in %r sec",
             difficulty,
@@ -486,60 +489,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def get_key_id(self):
         """ Return node public key in a form of an id """
         return self.peer_keeper.key_num
-
-    def key_changed(self):
-        """React to the fact that key id has been changed. Drop all
-           connections with peer,
-        restart peer keeper and connect to the network with new key id.
-        """
-        self.peer_keeper.restart(self.keys_auth.get_key_id())
-        for p in list(self.peers.values()):
-            p.dropped()
-
-        try:
-            socket_address = tcpnetwork.SocketAddress(
-                self.config_desc.seed_host,
-                self.config_desc.seed_port
-            )
-            self.connect(socket_address)
-        except ipaddress.AddressValueError as err:
-            logger.error("Invalid seed address: %s", err)
-
-    def encrypt(self, data, public_key):
-        """Encrypt data with given public_key. If no public_key is given,
-           or it's equal to zero
-         return data
-        :param str data: data that should be encrypted
-        :param public_key: public key that should be used to encrypt the data
-        :return str: encrypted data (or data if no public key was given)
-        """
-        if public_key == 0 or public_key is None:
-            return data
-        return self.keys_auth.encrypt(data, public_key)
-
-    def decrypt(self, data):
-        """ Decrypt given data
-        :param str data: encrypted data
-        :return str: data decrypted with private key
-        """
-        return self.keys_auth.decrypt(data)
-
-    def sign(self, data):
-        """ Sign given data with private key
-        :param str data: data to be signed
-        :return str: data signed with private key
-        """
-        return self.keys_auth.sign(data)
-
-    def verify_sig(self, sig, data, public_key):
-        """ Verify the validity of signature
-        :param str sig: signature
-        :param str data: expected data
-        :param public_key: public key that should be used
-                           to verify signed data.
-        :return bool: verification result
-        """
-        return self.keys_auth.verify(sig, data, public_key)
 
     def set_suggested_address(self, client_key_id, addr, port):
         """Set suggested address for peer. This node will be used as first
@@ -733,7 +682,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node_info,
             conn_id,
             super_node_info=None
-            ):
+    ):
         """Inform peer with public key <key_id> that node from node info wants
            to start task session with him. If peer with given id is on a list
            of peers that this message will be send directly. Otherwise all

@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import logging
 import os
 import pickle
@@ -16,9 +17,8 @@ from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
-from golem.network.concent.client import ConcentRequest
 from golem.network import history
-from golem.network.history import IMessageHistoryProvider, provider_history
+from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -52,7 +52,7 @@ def dropped_after():
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
-                  IMessageHistoryProvider):
+                  history.IMessageHistoryProvider):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.FilesProtocol
@@ -121,67 +121,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     # SafeSession methods #
     #######################
 
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection
-        :param str data: data to be encrypted
-        :return str: encrypted data or unchanged message
-                     (if server doesn't exist)
-        """
-        if self.task_server:
-            return self.task_server.encrypt(data, self.key_id)
-        logger.warning("Can't encrypt message - no task server")
-        return data
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str|None: decrypted data
-        """
-        if self.task_server is None:
-            logger.warning("Can't decrypt data - no task server")
-            return data
-        try:
-            data = self.task_server.decrypt(data)
-        except AssertionError:
-            logger.info(
-                "Failed to decrypt message from %r:%r, "
-                "maybe it's not encrypted?",
-                self.address,
-                self.port
-            )
-        except Exception as err:
-            logger.debug("Fail to decrypt message {}".format(err))
-            logger.debug('Failing msg: %r', data)
-            self.dropped()
-            return None
-
-        return data
-
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: bytes to be signed
-        :return Message: signed bytes
-        """
+    @property
+    def my_private_key(self):
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
-
-        return self.task_server.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.task_server.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
+        return self.task_server.keys_auth.ecc.raw_privkey
 
     ###################################
     # IMessageHistoryProvider methods #
@@ -420,10 +365,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        # FIXME: message.ForceReportComputedTask is going to be updated
         msg_cls = message.ForceReportComputedTask
-        msg = msg_cls(task_result.subtask_id)
-        msg_data = pickle.dumps(msg)
+        msg = msg_cls()
+        try:
+            task_to_compute = history.MessageHistoryService.get_sync_as_message(
+                task=task_result.task_id,
+                subtask=task_result.subtask_id,
+                msg_cls='TaskToCompute',
+            )
+        except history.MessageNotFound:
+            logger.warning(
+                '[CONCENT] Cannot create ForceReportComputedTask. '
+                'TaskToCompute message not found for task: %r subtask: %r',
+                task_result.task_id,
+                task_result.subtask_id,
+            )
+            return
+        msg.task_to_compute = task_to_compute
+        # FIXME: Only ResultType.DATA is currently in use #1796
+        assert task_result.result_type == ResultType.DATA
+        msg.result_hash = 'sha1:' + hashlib.sha1(
+            task_result.result.encode('utf-8')
+        ).hexdigest()
+        logger.debug('[CONCENT] ForceReport: %s', msg)
+        msg_data = msg.serialize(self.sign)
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),
@@ -454,7 +419,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.TASK_ID
+                proto_id=PROTOCOL_CONST.ID
             ),
             send_unverified=True
         )
@@ -514,7 +479,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
 
     @handle_attr_error_with_task_computer
-    @provider_history
+    @history.provider_history
     def _react_to_task_to_compute(self, msg):
         if msg.compute_task_def is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
@@ -551,7 +516,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
@@ -576,7 +541,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         else:
             self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_get_task_result(self, msg):
         res = self.task_server.get_waiting_task_result(msg.subtask_id)
         if res is None:
@@ -652,12 +617,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             options=options
         ))
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
+        self.task_server.subtask_accepted(msg.subtask_id)
         self.dropped()
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_result_rejected(self, msg):
         self.task_server.subtask_rejected(msg.subtask_id)
         self.dropped()
@@ -697,16 +662,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if not self.verify(msg):
-            logger.info("Wrong signature for Hello msg")
-            self.disconnect(message.Disconnect.REASON.Unverified)
-            return
-
-        if msg.proto_id != PROTOCOL_CONST.TASK_ID:
+        if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.TASK_ID
+                PROTOCOL_CONST.ID
             )
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
@@ -731,7 +691,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_subtask_payment(self, msg):
         if msg.transaction_id is None:
             logger.debug(
@@ -775,7 +735,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.inform_worker_about_payment(payment)
 
-    @provider_history
+    @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -791,7 +751,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
-    @provider_history
+    @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -1006,7 +966,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         })
 
         # self.can_be_not_encrypted.append(message.Hello.TYPE)
-        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
                 message.Hello.TYPE,

@@ -1,3 +1,4 @@
+import datetime
 import os
 import pathlib
 import pickle
@@ -6,6 +7,7 @@ import unittest
 import uuid
 from unittest.mock import Mock, MagicMock, patch
 
+import golem_messages
 from golem_messages import message
 
 from apps.core.task.coretask import TaskResourceHeader
@@ -17,6 +19,7 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
+from golem.network import history
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -51,7 +54,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
-            ['proto_id', PROTOCOL_CONST.TASK_ID],
+            ['proto_id', PROTOCOL_CONST.ID],
             ['node_name', None],
             ['node_info', None],
             ['port', 0],
@@ -61,47 +64,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['challenge', None],
             ['difficulty', 0],
             ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
         ]
         msg = send_mock.call_args[0][0]
-        self.assertEqual(msg.slots(), expected)
-
-    def test_encrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        ts.key_id = "123"
-        ts.encrypt(data)
-        ts.task_server.encrypt.assert_called_with(data, "123")
-
-        ts.task_server = None
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
-
-    def test_decrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        res = ts.decrypt(data)
-        ts.task_server.decrypt.assert_called_with(data)
-        self.assertIsNotNone(res)
-
-        ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
-        with self.assertLogs(logger, level='INFO') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
-        self.assertFalse(any("Encrypt error" in log for log in l.output))
-        self.assertEqual(res, data)
-
-        ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level='DEBUG') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("Different error" in log for log in l.output))
-        self.assertIsNone(res)
-
-        ts.task_server = None
-        data = "ABC"
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
+        self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
         conn = Mock(server=Mock(deny_set=set()))
@@ -122,7 +88,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
-        ts2.can_be_unsigned.append(mt.TYPE)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
         ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
@@ -147,7 +112,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(message.CannotComputeTask.REASON.WrongCTD))
         assert not ts2.task_manager.task_computation_failure.called
 
-    def test_send_report_computed_task(self):
+    @patch(
+        'golem.network.history.MessageHistoryService.get_sync',
+        return_value=[]
+    )
+    def test_send_report_computed_task(self, get_mock):
         ts = TaskSession(Mock())
         ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
@@ -174,7 +143,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
-        ts2.can_be_unsigned.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
         ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
@@ -196,29 +164,17 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.disconnect = Mock()
         ts.send = Mock()
 
-        def create_verify(value):
-            def verify(*args):
-                return value
-
-            return verify
-
         key_id = 'deadbeef'
         peer_info = MagicMock()
         peer_info.key = key_id
         msg = message.Hello(port=1, node_name='node2', client_key_id=key_id, node_info=peer_info,
                            proto_id=-1)
 
-        ts.verify = create_verify(False)
-        ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.Unverified)
-
-        ts.verify = create_verify(True)
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)
 
-        msg.proto_id = PROTOCOL_CONST.TASK_ID
+        msg.proto_id = PROTOCOL_CONST.ID
 
         ts._react_to_hello(msg)
         assert ts.send.called
@@ -476,19 +432,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         assert message.Message.deserialize(db.buffered_data, lambda x: x)
 
-    def test_verify(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        conn = Mock()
-        ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_server.verify_sig = keys_auth.verify
-
-        msg = message.RemoveTask()
-        assert not ts.verify(msg)
-        msg.sig = keys_auth.sign(msg.get_short_hash())
-        ts.key_id = keys_auth.get_key_id()
-        assert ts.verify(msg)
-
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
@@ -631,6 +574,11 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         super(TestSessionWithDB, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        history.MessageHistoryService.instance = None
+
+    def tearDown(self):
+        super().tearDown()
+        history.MessageHistoryService.instance = None
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
@@ -688,6 +636,44 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
 
+    def test_send_report_computed_task_concent_no_message(self):
+        ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
+        ts.verified = True
+        n = Node()
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        history.MessageHistoryService()
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_not_called()
+
+    def test_send_report_computed_task_concent_success(self):
+        ts = TaskSession(Mock())
+        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
+        ts.verified = True
+        n = Node()
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4())
+        wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        task_to_compute = message.TaskToCompute()
+        nmsg_dict = dict(
+            task=task_id,
+            subtask=subtask_id,
+            node=node_id,
+            msg_date=datetime.datetime.now(),
+            msg_cls='TaskToCompute',
+            msg_data=pickle.dumps(task_to_compute),
+            local_role=model.Actor.Provider,
+            remote_role=model.Actor.Requestor,
+        )
+        service = history.MessageHistoryService()
+        service.add_sync(nmsg_dict)
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        self.assertEqual(ts.concent_service.submit.call_count, 1)
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))

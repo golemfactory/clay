@@ -7,7 +7,6 @@ import random
 
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
-from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -82,8 +81,7 @@ class PeerSession(BasicSafeSession):
                 message.ChallengeSolution.TYPE
             ]
         )
-        self.can_be_unsigned.extend([message.Hello.TYPE])
-        self.can_be_not_encrypted.extend([message.Hello.TYPE])
+        self.can_be_not_encrypted.append(message.Hello.TYPE)
 
         self.__set_msg_interpretations()
 
@@ -132,60 +130,12 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: data to be signed
-        :return Message: signed data
-        """
+    @property
+    def my_private_key(self):
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
-
-        return self.p2p_service.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.p2p_service.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
-
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection.
-        :param str data: serialized message to be encrypted
-        :return str: encrypted message
-        """
-        return self.p2p_service.encrypt(data, self.key_id)
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str msg: decrypted message
-        """
-        if not self.p2p_service:
-            return data
-
-        try:
-            msg = self.p2p_service.decrypt(data)
-        except ECIESDecryptionError as err:
-            logger.info(
-                "Failed to decrypt message from %r:%r,"
-                " maybe it's not encrypted? %r",
-                self.address,
-                self.port,
-                err
-            )
-            msg = data
-
-        return msg
+        return self.p2p_service.keys_auth.ecc.raw_privkey
 
     def start(self):
         """
@@ -327,12 +277,12 @@ class PeerSession(BasicSafeSession):
         if (self.address, msg.port) in self.p2p_service.seeds:
             compare_version(msg.client_ver)
 
-        if msg.proto_id != variables.PROTOCOL_CONST.P2P_ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
-                variables.PROTOCOL_CONST.P2P_ID,
+                variables.PROTOCOL_CONST.ID,
                 self.address,
                 self.port
             )
@@ -473,7 +423,7 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.Hello(
-            proto_id=variables.PROTOCOL_CONST.P2P_ID,
+            proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
