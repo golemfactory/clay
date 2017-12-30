@@ -233,7 +233,10 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(nonce=handshake.nonce, accepted=True)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=handshake.nonce,
+            accepted=True,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called

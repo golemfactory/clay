@@ -126,7 +126,10 @@ class ResourceHandshakeSessionMixin:
         accepted = handshake and handshake.verify_local(msg.nonce)
         nonce = handshake.nonce if handshake else None
 
-        self.send(message.ResourceHandshakeVerdict(nonce=msg.nonce, accepted=accepted))
+        self.send(message.ResourceHandshakeVerdict(
+            nonce=msg.nonce,
+            accepted=accepted,
+        ))
 
         if accepted:
             self._finalize_handshake(key_id)

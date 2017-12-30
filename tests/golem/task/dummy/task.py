@@ -79,7 +79,8 @@ class DummyTask(Task):
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
-        Task.__init__(self, header, src_code, DummyTaskDefinition(DummyTaskDefaults()))
+        task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        Task.__init__(self, header, src_code, task_definition)
 
         self.task_id = task_id
         self.task_params = params

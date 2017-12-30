@@ -1,5 +1,4 @@
 import abc
-import enum
 import logging
 import time
 from typing import List, Tuple, Union, Type
@@ -139,7 +138,8 @@ class TaskBuilder(object):
 
     @classmethod
     @abc.abstractmethod
-    def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False):
+    def build_definition(cls, task_type: TaskTypeInfo, dictionary,
+                         minimal=False):
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task
         :param bool minimal: if this option is set too True, then only minimal
