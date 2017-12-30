@@ -7,6 +7,7 @@ import unittest
 import uuid
 from unittest.mock import Mock, MagicMock, patch
 
+import golem_messages
 from golem_messages import message
 
 from apps.core.task.coretask import TaskResourceHeader
@@ -63,9 +64,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['challenge', None],
             ['difficulty', 0],
             ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
         ]
         msg = send_mock.call_args[0][0]
-        self.assertEqual(msg.slots(), expected)
+        self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
         conn = Mock(server=Mock(deny_set=set()))

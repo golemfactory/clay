@@ -1,3 +1,4 @@
+import golem_messages
 from golem_messages import message
 from golem import testutils
 from golem.resource import resourcesession
@@ -124,6 +125,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             ['challenge', None],
             ['difficulty', 0],
             ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
         ]
 
-        self.assertEqual(msg.slots(), expected)
+        self.assertCountEqual(msg.slots(), expected)
