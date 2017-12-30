@@ -184,12 +184,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                            proto_id=-1)
 
         fill_slots(msg)
-        ts.verify = create_verify(False)
-        ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.Unverified)
-
-        ts.verify = create_verify(True)
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)
