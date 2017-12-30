@@ -641,5 +641,3 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
             f.write(self.content_to_pull)
 
         return success((file_resource.file_name, file_resource.hash))
-
-

@@ -7,6 +7,7 @@ import unittest
 import uuid
 from unittest.mock import Mock, MagicMock, patch
 
+import golem_messages
 from golem_messages import message
 
 from apps.core.task.coretask import TaskResourceHeader
@@ -63,47 +64,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['challenge', None],
             ['difficulty', 0],
             ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
         ]
         msg = send_mock.call_args[0][0]
-        self.assertEqual(msg.slots(), expected)
-
-    def test_encrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        ts.key_id = "123"
-        ts.encrypt(data)
-        ts.task_server.encrypt.assert_called_with(data, "123")
-
-        ts.task_server = None
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
-
-    def test_decrypt(self):
-        ts = TaskSession(Mock())
-        data = "ABC"
-
-        res = ts.decrypt(data)
-        ts.task_server.decrypt.assert_called_with(data)
-        self.assertIsNotNone(res)
-
-        ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
-        with self.assertLogs(logger, level='INFO') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
-        self.assertFalse(any("Encrypt error" in log for log in l.output))
-        self.assertEqual(res, data)
-
-        ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level='DEBUG') as l:
-            res = ts.decrypt(data)
-        self.assertTrue(any("Different error" in log for log in l.output))
-        self.assertIsNone(res)
-
-        ts.task_server = None
-        data = "ABC"
-        with self.assertLogs(logger, level='WARNING'):
-            self.assertEqual(ts.encrypt(data), data)
+        self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
         conn = Mock(server=Mock(deny_set=set()))
@@ -124,7 +88,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
-        ts2.can_be_unsigned.append(mt.TYPE)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
         ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
@@ -180,7 +143,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
-        ts2.can_be_unsigned.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
         ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
@@ -202,24 +164,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.disconnect = Mock()
         ts.send = Mock()
 
-        def create_verify(value):
-            def verify(*args):
-                return value
-
-            return verify
-
         key_id = 'deadbeef'
         peer_info = MagicMock()
         peer_info.key = key_id
         msg = message.Hello(port=1, node_name='node2', client_key_id=key_id, node_info=peer_info,
                            proto_id=-1)
 
-        ts.verify = create_verify(False)
-        ts._react_to_hello(msg)
-        ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.Unverified)
-
-        ts.verify = create_verify(True)
         ts._react_to_hello(msg)
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)
@@ -481,19 +431,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
         assert message.Message.deserialize(db.buffered_data, lambda x: x)
-
-    def test_verify(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        conn = Mock()
-        ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_server.verify_sig = keys_auth.verify
-
-        msg = message.RemoveTask()
-        assert not ts.verify(msg)
-        msg.sig = keys_auth.sign(msg.get_short_hash())
-        ts.key_id = keys_auth.get_key_id()
-        assert ts.verify(msg)
 
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))

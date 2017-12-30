@@ -1,3 +1,4 @@
+import golem_messages
 from golem_messages import message
 from golem import testutils
 from golem.resource import resourcesession
@@ -19,64 +20,6 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             self.instance.dropped()
             m.assert_called_once_with(self.instance)
             resource_server.remove_session.assert_called_once_with(self.instance)
-
-    def test_encryption(self):
-        """.encrypt() method from SafeSession interface."""
-
-        test_data = 'test data: %s' % (time.time(),)
-
-        # without resource_server
-        self.instance.resource_server = None
-        self.assertEqual(test_data, self.instance.encrypt(test_data))
-
-        # with resource server
-        self.instance.resource_server = resource_server = self.connection.server
-        self.instance.encrypt(test_data)
-        resource_server.encrypt.assert_called_once_with(test_data, self.instance.key_id)
-
-    def test_decryption(self):
-        """.decrypt() method from SafeSession interface."""
-
-        test_data = 'test data: %s' % (time.time(),)
-        decrypted_test_data = 'dcr test data: %s' % (time.time(),)
-
-        # without resource_server
-        self.instance.resource_server = None
-        self.assertEqual(test_data, self.instance.decrypt(test_data))
-
-        # with resource server
-        self.instance.resource_server = resource_server = self.connection.server
-        resource_server.decrypt.return_value = decrypted_test_data
-
-        self.assertEqual(self.instance.decrypt(test_data), decrypted_test_data)
-
-        resource_server.decrypt.side_effect = AssertionError('test')
-        self.assertEqual(self.instance.decrypt(test_data), test_data)
-
-        resource_server.decrypt.side_effect = Exception('test')
-        with self.assertRaises(Exception):
-            self.instance.decrypt(test_data)
-
-    def test_signing(self):
-        """.sign() method from SafeSession interface."""
-        test_signature = 'test sig: %s' % (time.time(),)
-        msg = mock.MagicMock()
-        short_hash = object()
-        msg.get_short_hash.return_value = short_hash
-        self.connection.server.sign.return_value = test_signature
-        self.instance.sign(msg)
-        self.assertEqual(msg.sig, test_signature)
-        msg.get_short_hash.assert_called_once_with()
-
-    def test_sign_verification(self):
-        """.verify() method from SafeSession interface."""
-        test_signature = 'test sig: %s' % (time.time(),)
-        msg = mock.MagicMock()
-        msg.sig = test_signature
-        short_hash = object()
-        msg.get_short_hash.return_value = short_hash
-        self.instance.verify(msg)
-        self.connection.server.verify_sig.assert_called_once_with(test_signature, short_hash, self.instance.key_id)
 
     @mock.patch('golem.network.transport.session.BasicSafeSession.send')
     def test_sending(self, super_send_mock):
@@ -182,6 +125,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             ['challenge', None],
             ['difficulty', 0],
             ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
         ]
 
-        self.assertEqual(msg.slots(), expected)
+        self.assertCountEqual(msg.slots(), expected)
