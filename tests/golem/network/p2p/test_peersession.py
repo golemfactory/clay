@@ -18,6 +18,13 @@ from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.core.variables import TASK_HEADERS_LIMIT
 
 
+def fill_slots(msg):
+    for slot in msg.__slots__:
+        if hasattr(msg, slot):
+            continue
+        setattr(msg, slot, None)
+
+
 class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
@@ -41,7 +48,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             challenge=None,
             client_key_id=key_id,
             client_ver=APP_VERSION,
-            difficulty=0,
+            difficulty=None,
             metadata=metadata,
             node_info=node,
             node_name=node_name,
@@ -69,6 +76,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             client_key_id=client_peer_info.key,
             node_info=client_peer_info,
             proto_id=PROTOCOL_CONST.ID)
+        fill_slots(client_hello)
         return client_hello
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
@@ -138,11 +146,12 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             client_key_id=server_peer_info.key,
             node_info=server_peer_info,
             proto_id=PROTOCOL_CONST.ID)
+        fill_slots(server_hello)
         expected = message.Hello(
             challenge=None,
             client_key_id=key_id,
             client_ver=APP_VERSION,
-            difficulty=0,
+            difficulty=None,
             metadata=metadata,
             node_info=node,
             node_name=node_name,
@@ -242,6 +251,10 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             'node_info': peer_info,
             'proto_id': random.randint(0, sys.maxsize),
         }
+        for slot in message.Hello.__slots__:
+            if slot in msg_kwargs:
+                continue
+            msg_kwargs[slot] = None
 
         # Test unverified
         msg = message.Hello(**msg_kwargs)
@@ -262,13 +275,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         msg_kwargs['port'] = chosen_seed[1]
         self.peer_session.address = chosen_seed[0]
 
-        # Test verified, with seed, default version (0)
+        # Test with seed, default version (0)
         msg = message.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
 
-        # Test verified, with seed, newer version
+        # Test with seed, newer version
         version = semantic_version.Version(APP_VERSION).next_patch()
         msg_kwargs['client_ver'] = str(version)
         msg = message.Hello(**msg_kwargs)
