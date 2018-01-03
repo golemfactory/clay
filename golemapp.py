@@ -56,6 +56,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
+@click.option('--node', expose_value=False)
+@click.option('--klass', expose_value=False)
 @click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
