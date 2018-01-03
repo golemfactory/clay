@@ -1,18 +1,18 @@
-import golem_messages.message
 import logging
 import math
 import pathlib
 import pickle
-import random
 import time
-
 from typing import Optional
-import typing
+
+import golem_messages.message
+import random
 from collections import Counter
 from semantic_version import Version
 
 import golem
 from golem.core import common
+from golem.core.async import AsyncRequest, async_run
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -82,6 +82,9 @@ class CompTaskKeeper:
     def dump(self):
         if not self.persist:
             return
+        async_run(AsyncRequest(self._dump_tasks))
+
+    def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
