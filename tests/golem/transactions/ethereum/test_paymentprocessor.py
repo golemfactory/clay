@@ -200,6 +200,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         self.client.get_balance.return_value = 100 * denoms.ether
         self.client.call.return_value = hex(100 * denoms.ether)[:-1]
+        self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
         assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
@@ -353,6 +354,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         balance_gnt = 99 * denoms.ether
         self.client.get_balance.return_value = balance_eth
         self.client.call.return_value = hex(balance_gnt)
+        self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt
@@ -448,6 +450,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.add(p)
 
         self.pp.deadline = int(time.time())
+        self.pp.CLOSURE_TIME_DELAY = 0
         assert self.pp.sendout()
         tx = self.client.send.call_args[0][0]
 
@@ -604,6 +607,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         # Sendout.
         self.pp.deadline = int(time.time())
+        self.pp.CLOSURE_TIME_DELAY = 0
         self.pp._run()
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_available() == b - value
@@ -688,6 +692,7 @@ def make_awaiting_payment(value=None):
     p.payee = urandom(20)
     p.value = value if value else random.randint(1, 10)
     p.subtask = '123'
+    p.processed_ts = None
     return p
 
 
@@ -733,8 +738,57 @@ class InteractionWithTokenTest(DatabaseFixture):
         tx.hash = decode_hex(tx_hash)
         self.client.send.return_value = tx_hash
         self.token.batch_transfer.return_value = tx
+        self.pp.CLOSURE_TIME_DELAY = 0
         self.assertTrue(self.pp.sendout())
         self.client.send.assert_called_with(tx)
+
+    def test_closure_time(self):
+        self.client.get_balance.return_value = denoms.ether
+        self.token.get_balance.return_value = 1000 * denoms.ether
+
+        p1 = make_awaiting_payment()
+        p2 = make_awaiting_payment()
+        p5 = make_awaiting_payment()
+        with freeze_time(timestamp_to_datetime(1)):
+            self.pp.add(p1)
+        with freeze_time(timestamp_to_datetime(2)):
+            self.pp.add(p2)
+        with freeze_time(timestamp_to_datetime(5)):
+            self.pp.add(p5)
+
+        self.pp.deadline = 0
+        tx = mock.Mock()
+        tx_hash = '0xdead'
+        tx.hash = decode_hex(tx_hash)
+        self.client.send.return_value = tx_hash
+        self.token.batch_transfer.return_value = tx
+
+        closure_time = 2
+        time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
+        with freeze_time(timestamp_to_datetime(time_value)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p1, p2],
+                closure_time)
+            self.token.batch_transfer.reset_mock()
+
+        closure_time = 4
+        time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
+        with freeze_time(timestamp_to_datetime(time_value)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_not_called()
+            self.token.batch_transfer.reset_mock()
+
+        closure_time = 6
+        time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
+        with freeze_time(timestamp_to_datetime(time_value)):
+            self.pp.sendout()
+            self.token.batch_transfer.assert_called_with(
+                self.privkey,
+                [p5],
+                closure_time)
+            self.token.batch_transfer.reset_mock()
 
     def test_get_incomes_from_block(self):
         block_number = 1
@@ -790,7 +844,7 @@ class GNTTokenTest(unittest.TestCase):
         encoded_data = 'dada'
         abi.encode_function_call.return_value = encoded_data
 
-        tx = self.token.batch_transfer(self.privkey, [p1, p2, p3])
+        tx = self.token.batch_transfer(self.privkey, [p1, p2, p3], 0)
         self.assertEqual(nonce, tx.nonce)
         self.assertEqual(self.token.TESTGNT_ADDR, tx.to)
         self.assertEqual(0, tx.value)
@@ -953,7 +1007,8 @@ class GNTWTokenTest(unittest.TestCase):
         self.balances['gnt'] = '0x0'
         self.balances['gntw'] = '0xf'
 
-        tx = self.token.batch_transfer(self.privkey, [p1, p2, p3])
+        closure_time = int(time.time())
+        tx = self.token.batch_transfer(self.privkey, [p1, p2, p3], closure_time)
         self.assertEqual(self.nonce, tx.nonce)
         self.assertEqual(self.token.GNTW_ADDRESS, tx.to)
         self.assertEqual(0, tx.value)
@@ -972,20 +1027,21 @@ class GNTWTokenTest(unittest.TestCase):
         self.balances['gntw'] = '0x0'
 
         # Will need to convert GNT to GNTW
-        tx = self.token.batch_transfer(self.privkey, [p1])
+        closure_time = int(time.time())
+        tx = self.token.batch_transfer(self.privkey, [p1], closure_time)
         self.assertEqual(None, tx)
         # Created personal deposit
         self.assertTrue(self.pda_create_called)
         self.pda_create_called = False
         # Waiting for personal deposit tx to be mined
-        tx = self.token.batch_transfer(self.privkey, [p1])
+        tx = self.token.batch_transfer(self.privkey, [p1], closure_time)
         self.assertEqual(None, tx)
         self.assertFalse(self.pda_create_called)
         self.assertFalse(self.transfer_called)
         self.assertFalse(self.process_deposit_called)
         # Personal deposit tx mined, sending and processing deposit
         self.pda = urandom(32)
-        tx = self.token.batch_transfer(self.privkey, [p1])
+        tx = self.token.batch_transfer(self.privkey, [p1], closure_time)
         self.assertEqual(None, tx)
         # 2 transactions to convert GNT to GNTW
         self.assertEqual(3, self.nonce)
