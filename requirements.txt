@@ -1,12 +1,12 @@
 --extra-index-url https://builds.golem.network
-setuptools==34.3.3
+setuptools==36.0.1
 appdirs>=1.4
 click>=4.0
 docker-py==1.7.2
 netifaces==0.10.4
 peewee>=2.8.1
 Pillow==4.2.1
-psutil==5.2.1
+psutil==5.2.2
 pycodestyle
 pyelliptic==1.5.7
 coincurve>=5.0.1
@@ -14,7 +14,7 @@ asn1crypto==0.22.0
 pysha3>=1.0.2
 pytz
 six==1.10.0
-Twisted==17.1.0
+Twisted==17.9.0
 cffi==1.10.0
 web3==3.8.0
 ethereum==1.6.1
@@ -22,7 +22,7 @@ ethereum-abi-utils==0.4.0
 #Newer version contains no code. Only deprecation warning.
 #https://pypi.python.org/pypi/ethereum-utils
 ethereum-utils==0.5.1
-autobahn==0.18.1
+autobahn==17.10.1
 cbor2==3.0.4
 multihash
 base58
@@ -30,19 +30,19 @@ ndg-httpsclient
 certifi
 tabulate
 PyYAML>=3.12
-crossbar==17.3.1
-txaio==2.6.2
+crossbar==17.12.1
+txaio==2.8.2
 pydispatcher
 Crypto
 scrypt
 packaging
 GitPython>=2.1.0
 semantic_version
-pyOpenSSL==16.2.0
+pyOpenSSL==17.1.0
 requests==2.13.0
-Automat==0.5.0
-zope.interface==4.3.3
-incremental==16.10.1
+Automat==0.6.0
+zope.interface==4.4.2
+incremental==17.5.0
 OpenEXR
 pycparser==2.17
 numpy==1.13.1
