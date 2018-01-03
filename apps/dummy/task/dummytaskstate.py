@@ -47,6 +47,7 @@ class DummyTaskDefinition(TaskDefinition):
         TaskDefinition.__init__(self)
 
         self.options = DummyTaskOptions()
+        self.task_type = 'DUMMY'
 
         # subtask data
         self.shared_data_files = []

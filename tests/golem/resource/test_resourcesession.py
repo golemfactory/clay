@@ -115,15 +115,15 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
 
         expected = [
             ['rand_val', self.instance.rand_val],
-            ['proto_id', 0],
+            ['proto_id', None],
             ['node_name', None],
             ['node_info', None],
-            ['port', 0],
-            ['client_ver', 0],
+            ['port', None],
+            ['client_ver', None],
             ['client_key_id', client_key_id],
-            ['solve_challenge', False],
+            ['solve_challenge', None],
             ['challenge', None],
-            ['difficulty', 0],
+            ['difficulty', None],
             ['metadata', None],
             ['golem_messages_version', golem_messages.__version__],
         ]
