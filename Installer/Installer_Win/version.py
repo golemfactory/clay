@@ -36,6 +36,7 @@ def update_ini():
     """
     version_file = join(get_golem_path(), '.version.ini')
     repo_tag = get_tag().split('-')
+    # FIXME
     version = "[version]{0}version = {1}{2}{0}number = {1}{0}".format(linesep, repo_tag[0],
                                                                       ("-" + repo_tag[1]) if len(repo_tag) > 1 else "")
     with open(version_file, 'wb') as f_:

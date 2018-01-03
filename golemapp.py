@@ -5,6 +5,7 @@ from multiprocessing import freeze_support
 import click
 from ethereum import slogging
 
+import golem
 from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
@@ -75,8 +76,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     delete_reactor()
 
     if version:
-        from golem.core.variables import APP_VERSION
-        print("GOLEM version: {}".format(APP_VERSION))
+        print("GOLEM version: {}".format(golem.__version__))
         return 0
 
     # Workarounds for pyinstaller executable
@@ -137,9 +137,9 @@ def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
     import golem_messages
-    from golem.core.variables import APP_VERSION, PROTOCOL_CONST
+    from golem.core.variables import PROTOCOL_CONST
 
-    log.info("GOLEM Version: %s", APP_VERSION)
+    log.info("GOLEM Version: %s", golem.__version__)
     log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
     log.info("golem_messages Version: %s", golem_messages.__version__)
 

@@ -5,7 +5,7 @@ from sys import argv
 from setuptools import setup
 
 from setup_util.setup_commons import (
-    path, parse_requirements, platform, update_variables, get_version,
+    path, parse_requirements, platform, get_version,
     get_long_description, find_required_packages, PyInstaller,
     move_wheel, print_errors)
 from setup_util.taskcollector_builder import TaskCollectorBuilder

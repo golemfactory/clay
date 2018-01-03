@@ -36,7 +36,6 @@ pydispatcher
 Crypto
 scrypt
 packaging
-GitPython>=2.1.0
 semantic_version
 pyOpenSSL==16.2.0
 requests==2.13.0

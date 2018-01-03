@@ -10,12 +10,12 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 
 from requests import HTTPError
 
+import golem
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
 from golem.task import tasksession
@@ -44,7 +44,7 @@ def get_example_task_header():
         "resource_size": 2 * 1024,
         "estimated_memory": 3 * 1024,
         "signature": None,
-        "min_version": APP_VERSION
+        "min_version": golem.__version__,
     }
 
 

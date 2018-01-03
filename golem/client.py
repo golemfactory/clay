@@ -13,6 +13,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
                                     Deferred)
 
+import golem
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL,
                              TASKARCHIVE_MAINTENANCE_INTERVAL)
@@ -27,7 +28,6 @@ from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
-from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
@@ -1007,7 +1007,7 @@ class Client(HardwarePresetsMixin):
             self.get_client_id(),
             self.session_id,
             sys.platform,
-            APP_VERSION,
+            golem.__version__,
             self.config_desc
         )
 
@@ -1069,7 +1069,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def get_golem_version():
-        return APP_VERSION
+        return golem.__version__
 
     @staticmethod
     def get_golem_status():

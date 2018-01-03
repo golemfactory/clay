@@ -214,17 +214,6 @@ def print_errors(*errors):
         if error:
             print(error)
 
-def update_variables():
-    import re
-    file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
-    with open(file_, 'r') as f_:
-        variables = f_.read()
-    version = get_version()
-    variables = re.sub('APP_VERSION = .*',
-                       'APP_VERSION = "{}"'.format(version), variables)
-    with open(file_, 'w') as f_:
-        f_.write(variables)
-
 
 # @todo do we really need it?
 def move_wheel():
@@ -238,6 +227,7 @@ def move_wheel():
 
 
 def get_version():
+    # FIXME
     from git import Repo
     tags = Repo(get_golem_path()).tags
     versions = []
