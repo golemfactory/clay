@@ -1,4 +1,5 @@
 import abc
+import calendar
 import json
 import logging
 import sys
@@ -45,6 +46,11 @@ def encode_payments(payments: List[Payment]):
                 "Incorrect pair length: {}. Should be 32".format(len(pair)))
         args.append(pair)
     return args
+
+
+def get_timestamp() -> int:
+    """This is platform independent timestamp, needed for payments logic"""
+    return calendar.timegm(time.gmtime())
 
 
 class AbstractToken(object, metaclass=abc.ABCMeta):
@@ -108,7 +114,8 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def batch_transfer(self,
                        privkey: bytes,
-                       payments: List[Payment]) -> Transaction:
+                       payments: List[Payment],
+                       closure_time: int) -> Transaction:
         """
         Takes a list of payments to be made and returns prepared transaction
         for the batch payment. The transaction is not sent, but it is signed.
@@ -153,7 +160,8 @@ class GNTToken(AbstractToken):
 
     def batch_transfer(self,
                        privkey: bytes,
-                       payments: List[Payment]) -> Transaction:
+                       payments: List[Payment],
+                       closure_time: int) -> Transaction:
         p = encode_payments(payments)
         data = self.__testGNT.encode_function_call('batchTransfer', [p])
         gas = PaymentProcessor.GAS_BATCH_PAYMENT_BASE + \
@@ -233,7 +241,8 @@ class GNTWToken(AbstractToken):
 
     def batch_transfer(self,
                        privkey: bytes,
-                       payments: List[Payment]) -> Transaction:
+                       payments: List[Payment],
+                       closure_time: int) -> Transaction:
         if self.__process_deposit_tx:
             hstr = '0x' + encode_hex(self.__process_deposit_tx)
             receipt = self._client.get_transaction_receipt(hstr)
@@ -257,9 +266,6 @@ class GNTWToken(AbstractToken):
             return None
 
         p = encode_payments(payments)
-        # TODO: closure time should be the timestamp of the youngest payment
-        # from the batch
-        closure_time = int(time.time())
         data = self.__gntw.encode_function_call('batchTransfer',
                                                 [p, closure_time])
         gas = PaymentProcessor.GAS_BATCH_PAYMENT_BASE + \
@@ -365,6 +371,8 @@ class PaymentProcessor(LoopingCallService):
 
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
+
+    CLOSURE_TIME_DELAY = 10
 
     def __init__(self,
                  client: Client,
@@ -547,7 +555,7 @@ class PaymentProcessor(LoopingCallService):
             return False
 
         with self._awaiting_lock:
-            ts = int(time.time())
+            ts = get_timestamp()
             if not payment.processed_ts:
                 with Payment._meta.database.transaction():
                     payment.processed_ts = ts
@@ -569,15 +577,21 @@ class PaymentProcessor(LoopingCallService):
             if not self._awaiting:
                 return False
 
-            now = int(time.time())
+            now = get_timestamp()
             if self.deadline > now:
                 log.info("Next sendout in {} s".format(self.deadline - now))
                 return False
 
-            payments = self._awaiting
-            self._awaiting = []
+            closure_time = now - self.CLOSURE_TIME_DELAY
 
-        tx = self.__token.batch_transfer(self.__privkey, payments)
+            payments = \
+                [p for p in self._awaiting if p.processed_ts <= closure_time]
+            if not payments:
+                return False
+            self._awaiting = \
+                [p for p in self._awaiting if p.processed_ts > closure_time]
+
+        tx = self.__token.batch_transfer(self.__privkey, payments, closure_time)
         if not tx:
             with self._awaiting_lock:
                 payments.extend(self._awaiting)
