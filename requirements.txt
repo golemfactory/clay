@@ -11,6 +11,7 @@ pycodestyle
 pyelliptic==1.5.7
 coincurve>=5.0.1
 asn1crypto==0.22.0
+pyasn1==0.4.1
 pysha3>=1.0.2
 pytz
 six==1.10.0
