@@ -29,7 +29,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 6
+    SCHEMA_VERSION = 7
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -216,6 +216,7 @@ class Payment(BaseModel):
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
+    processed_ts = IntegerField(null=True)
 
     def __init__(self, *args, **kwargs):
         super(Payment, self).__init__(*args, **kwargs)
@@ -226,13 +227,14 @@ class Payment(BaseModel):
     def __repr__(self) -> str:
         tx = self.details.tx
         bn = self.details.block_number
-        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
+        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r} ts:{!r}>"\
             .format(
                 self.subtask,
                 float(self.value) / denoms.ether,
                 self.status,
                 tx,
-                bn
+                bn,
+                self.processed_ts
             )
 
     def get_sender_node(self) -> Optional[Node]:

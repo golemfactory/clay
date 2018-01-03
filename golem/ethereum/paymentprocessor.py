@@ -547,11 +547,15 @@ class PaymentProcessor(LoopingCallService):
             return False
 
         with self._awaiting_lock:
+            ts = int(time.time())
+            if not payment.processed_ts:
+                with Payment._meta.database.transaction():
+                    payment.processed_ts = ts
+                    payment.save()
+
             self._awaiting.append(payment)
             # TODO: Optimize by checking the time once per service update.
-            new_deadline = int(time.time()) + deadline
-            if new_deadline < self.deadline:
-                self.deadline = new_deadline
+            self.deadline = min(self.deadline, ts + deadline)
 
         self.__gnt_reserved += payment.value
         self.__eth_reserved += self.ETH_PER_PAYMENT
