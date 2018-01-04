@@ -13,15 +13,12 @@ from .network import Session
 logger = logging.getLogger(__name__)
 
 
-class IncompatibleGolemMessages(Exception):
-    pass
-
-
-def check_golem_messages_version_compatible(theirs_gm_version):
+def is_golem_messages_version_compatible(theirs_gm_version):
     try:
         theirs_v = semantic_version.Version(theirs_gm_version)
-    except ValueError as e:
-        raise IncompatibleGolemMessages(str(e))
+    except ValueError:
+        logger.debug("Version parsing error.", exc_info=True)
+        return False
     ours_v = semantic_version.Version(golem_messages.__version__)
     spec_str = '>={major}.{minor}.0,<{next_minor}'.format(
         major=ours_v.major,
@@ -30,12 +27,8 @@ def check_golem_messages_version_compatible(theirs_gm_version):
     )
     spec = semantic_version.Spec(spec_str)
     if theirs_v not in spec:
-        raise IncompatibleGolemMessages(
-            "{ours} (ours) != {theirs} (theirs)".format(
-                ours=ours_v,
-                theirs=theirs_v,
-            )
-        )
+        return False
+    return True
 
 
 class FileSession(Session, metaclass=abc.ABCMeta):
@@ -163,10 +156,12 @@ class BasicSession(FileSession):
 
     def _react_to_hello(self, msg):
         theirs_gm_version = msg.golem_messages_version
-        try:
-            check_golem_messages_version_compatible(theirs_gm_version)
-        except Exception as e:
-            logger.info('Incompatible golem_messages: %s', e)
+        if not is_golem_messages_version_compatible(theirs_gm_version):
+            logger.info(
+                'Incompatible golem_messages: %s (ours) != %s (theirs)',
+                golem_messages.__version__,
+                theirs_gm_version,
+            )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
 
