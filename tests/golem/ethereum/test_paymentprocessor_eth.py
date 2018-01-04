@@ -67,7 +67,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
             payee=payee,
             value=value
         )
-        self.assertTrue(self.payment_processor.add(payment))
+        self.payment_processor.add(payment)
 
         self.payment_processor._awaiting = []
         self.payment_processor.load_from_db()
