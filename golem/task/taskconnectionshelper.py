@@ -17,20 +17,21 @@ class TaskConnectionsHelper(object):
         self.remove_old_interval = REMOVE_OLD_INTERVAL  # How often should be information about old connections cleared
         self.conn_to_start = {}  # information about connection requests with this node
 
-    def is_new_conn_request(self, conn_id, key_id, node_info, super_node_info):
+    def is_new_conn_request(self, key_id, node_info, super_node_info):
         """ Check whether request for start connection with given conn_id has occurred before
         (in a latest remove_old_interval)
-        :param conn_id: connection id
         :param key_id: public key of a node that is asked to start task session with node from node info
         :param Node node_info: node that asks for a task connection to be started with him
         :param Node|None super_node_info: supernode that may help to mediate in a connection
         :return bool: return False if connection with given id is known, True otherwise
         """
-        if conn_id in self.conn_to_set:
+        id_tuple = key_id, node_info.key
+        if id_tuple in self.conn_to_set:
             return False
-        else:
-            self.conn_to_set[conn_id] = (key_id, weakref.ref(node_info), super_node_info, time.time())
-            return True
+
+        self.conn_to_set[id_tuple] = (key_id, weakref.ref(node_info),
+                                      super_node_info, time.time())
+        return True
 
     def want_to_start(self, conn_id, node_info, super_node_info):
         """ Process request to start task session from this node to a node from node_info. If it's a first request
@@ -51,11 +52,11 @@ class TaskConnectionsHelper(object):
             return
         self.last_remove_old = cur_time
         self.conn_to_set = dict([
-            y_z for y_z in list(self.conn_to_set.items())
+            y_z for y_z in self.conn_to_set.items()
             if cur_time - y_z[1][3] < self.remove_old_interval
         ])
         self.conn_to_start = dict([
-            y_z1 for y_z1 in list(self.conn_to_start.items())
+            y_z1 for y_z1 in self.conn_to_start.items()
             if cur_time - y_z1[1][2] < self.remove_old_interval
         ])
 

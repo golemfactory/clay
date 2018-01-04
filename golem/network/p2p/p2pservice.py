@@ -14,7 +14,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.ranking.manager.gossip_manager import GossipManager
-from .peerkeeper import PeerKeeper
+from .peerkeeper import PeerKeeper, key_distance
 
 logger = logging.getLogger(__name__)
 
@@ -746,7 +746,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                                           in message transport
         """
         if not self.task_server.task_connections_helper.is_new_conn_request(
-                conn_id, key_id, node_info, super_node_info):
+                key_id, node_info, super_node_info):
             # fixme
             self.task_server.remove_pending_conn(conn_id)
             self.task_server.remove_responses(conn_id)
@@ -754,8 +754,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         if super_node_info is None and self.node.is_super_node():
             super_node_info = self.node
-
-        logger.debug("Try to start task session {}".format(key_id))
 
         connected_peer = self.peers.get(key_id)
         if connected_peer:
@@ -766,19 +764,26 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 conn_id,
                 super_node_info
             )
+            logger.debug("Starting task session with {}".format(key_id))
             return
 
         msg_snd = False
+        distances = sorted(
+            (key_distance(key_id, peer.key_id), peer)
+            for peer in list(self.peers.values())
+            if peer.key_id != node_info.key
+        )
 
-        for peer in list(self.peers.values()):
-            if peer.key_id != node_info.key:
-                peer.send_set_task_session(
-                    key_id,
-                    node_info,
-                    conn_id,
-                    super_node_info
-                )
-                msg_snd = True
+        for _, peer in distances[:3]:
+            peer.send_set_task_session(
+                key_id,
+                node_info,
+                conn_id,
+                super_node_info
+            )
+            msg_snd = True
+            logger.warning("Forwarding task session request: {} -> {} to {}"
+                           .format(node_info.key, key_id, peer.key_id))
 
         if msg_snd and node_info.key == self.node.key:
             self.task_server.add_forwarded_session_request(key_id, conn_id)
