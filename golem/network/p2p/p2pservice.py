@@ -782,8 +782,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 super_node_info
             )
             msg_snd = True
-            logger.warning("Forwarding task session request: {} -> {} to {}"
-                           .format(node_info.key, key_id, peer.key_id))
+            logger.debug("Forwarding task session request: {} -> {} to {}"
+                         .format(node_info.key, key_id, peer.key_id))
 
         if msg_snd and node_info.key == self.node.key:
             self.task_server.add_forwarded_session_request(key_id, conn_id)
