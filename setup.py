@@ -24,7 +24,7 @@ update_variables()
 
 setup(
     name='golem',
-    version=get_version(),
+    version=get_version(),  # FIXME jvn
     platforms=platform,
     description='Global, open sourced, decentralized supercomputer',
     long_description=get_long_description(directory),

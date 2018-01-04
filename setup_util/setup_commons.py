@@ -227,7 +227,7 @@ def move_wheel():
 
 
 def get_version():
-    # FIXME
+    # FIXME jvn
     from git import Repo
     tags = Repo(get_golem_path()).tags
     versions = []

@@ -6,5 +6,5 @@ if sys.platform == "win32":
     startupinfo = subprocess.STARTUPINFO
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-# FIXME
+# FIXME jvn
 __version__ = '0.0.1'
