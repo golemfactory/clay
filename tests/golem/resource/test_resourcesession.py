@@ -13,7 +13,6 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         self.connection = mock.MagicMock()
         self.instance = resourcesession.ResourceSession(self.connection)
 
-
     @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
     def test_react_to_hello_super(self, super_mock):
         msg = message.Hello(

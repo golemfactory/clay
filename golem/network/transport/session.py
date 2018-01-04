@@ -162,7 +162,7 @@ class BasicSession(FileSession):
         return True
 
     def _react_to_hello(self, msg):
-        theirs_gm_version  = msg.golem_messages_version
+        theirs_gm_version = msg.golem_messages_version
         try:
             check_golem_messages_version_compatible(theirs_gm_version)
         except Exception as e:
