@@ -155,7 +155,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
         session._block_peer(session.key_id)
         session._react_to_resource_handshake_start(msg)
 
@@ -519,7 +519,7 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session._react_to_resource_handshake_nonce(msg_from_local)
 
         local_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(remote_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(nonce=remote_nonce, accepted=True)
         )
 
         remote_session._react_to_resource_handshake_verdict(
