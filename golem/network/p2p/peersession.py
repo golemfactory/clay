@@ -259,6 +259,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return

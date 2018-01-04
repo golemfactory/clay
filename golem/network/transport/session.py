@@ -1,6 +1,8 @@
 import abc
+import golem_messages
 from golem_messages import message
 import logging
+import semantic_version
 import time
 
 from golem import utils
@@ -49,6 +51,7 @@ class BasicSession(FileSession):
         self._disconnect_sent = False
         self._interpretation = {
             message.Disconnect.TYPE: self._react_to_disconnect,
+            message.Hello.TYPE: self._react_to_hello,
         }
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
@@ -132,6 +135,31 @@ class BasicSession(FileSession):
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
         return True
+
+    def _react_to_hello(self, msg):
+        theirs_gm_version  = msg.golem_messages_version
+        try:
+            theirs_v = semantic_version.Version(theirs_gm_version)
+        except ValueError:
+            self._send_disconnect(message.Disconnect.REASON.BadProtocol)
+            self.dropped()
+            return
+        ours_v = semantic_version.Version(golem_messages.__version__)
+        spec_str = '>={major}.{minor}.0,<{next_minor}'.format(
+            major=ours_v.major,
+            minor=ours_v.minor,
+            next_minor=ours_v.next_minor(),
+        )
+        spec = semantic_version.Spec(spec_str)
+        if theirs_v not in spec:
+            logger.info(
+                'Incompatible golem_messages %s (ours) != %s (theirs)',
+                ours_v,
+                theirs_v,
+            )
+            self._send_disconnect(message.Disconnect.REASON.BadProtocol)
+            self.dropped()
+            return
 
     def _react_to_disconnect(self, msg):
         logger.info("Disconnect reason: {}".format(msg.reason))

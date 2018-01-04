@@ -180,16 +180,12 @@ class ResourceSession(BasicSafeSession):
         self.resource_server.pull_answer(msg.resource, msg.has_resource, self)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
         if self.key_id == 0:
             self.key_id = msg.client_key_id
             self.send_hello()
         elif self.key_id != msg.client_key_id:
             self.dropped()
-
-        if not self.verify(msg):
-            logger.error("Wrong signature for Hello msg")
-            self.disconnect(message.Disconnect.REASON.Unverified)
-            return
 
         self.send(
             message.RandVal(rand_val=msg.rand_val),
