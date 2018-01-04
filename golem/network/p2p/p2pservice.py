@@ -25,8 +25,14 @@ REFRESH_PEERS_TIMEOUT = 1200
 RECONNECT_WITH_SEED_THRESHOLD = 30
 # Should nodes that connects with us solve hashcash challenge?
 SOLVE_CHALLENGE = True
+# Number of neighbors to notify of forwarded sessions
+FORWARD_NEIGHBORS_COUNT = 3
+# Forwarded sessions batch size
+FORWARD_BATCH_SIZE = 12
+
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 HISTORY_LEN = 5  # How many entries from challenge history should we remember
+
 TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
@@ -782,7 +788,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             if peer.key_id != node_info.key
         )
 
-        for _, peer in distances[:3]:
+        for _, peer in distances[:FORWARD_NEIGHBORS_COUNT]:
             self.task_server.task_connections_helper.forward_queue_put(
                 peer, key_id, node_info, conn_id, super_node_info
             )
@@ -971,7 +977,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 )
 
     def _sync_forward_requests(self):
-        entries = self.task_server.task_connections_helper.forward_queue_get(12)
+        helper = self.task_server.task_connections_helper
+        entries = helper.forward_queue_get(FORWARD_BATCH_SIZE)
+
         for entry in entries:
             peer, args = entry[0](), entry[1]  # weakref
             if peer:
