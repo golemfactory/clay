@@ -73,7 +73,7 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
 
     def _send_transaction(self,
                           privkey: bytes,
-                          token_address,
+                          token_address: bytes,
                           data,
                           gas: int) -> Transaction:
         tx = self._create_transaction(
@@ -85,10 +85,10 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
         self._client.send(tx)
         return tx
 
-    def _get_balance(self, token_abi, token_address, addr: str) -> int:
-        data = token_abi.encode_function_call('balanceOf', [addr])
+    def _get_balance(self, token_abi, token_address: bytes, addr: str) -> int:
+        data = token_abi.encode_function_call('balanceOf', [decode_hex(addr)])
         r = self._client.call(
-            _from='0x' + encode_hex(addr),
+            _from=addr,
             to='0x' + encode_hex(token_address),
             data='0x' + encode_hex(data),
             block='pending')
@@ -98,7 +98,7 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
 
     def _request_from_faucet(self,
                              token_abi,
-                             token_address,
+                             token_address: bytes,
                              privkey: bytes) -> None:
         data = token_abi.encode_function_call('create', [])
         self._send_transaction(privkey, token_address, data, 90000)
@@ -146,7 +146,7 @@ class GNTToken(AbstractToken):
         balance = self._get_balance(
             self.__testGNT,
             self.TESTGNT_ADDR,
-            decode_hex(addr))
+            addr)
         if balance is not None:
             logger.info("TestGNT: {}".format(balance / denoms.ether))
         return balance
@@ -169,7 +169,7 @@ class GNTToken(AbstractToken):
         tx.sign(privkey)
         return tx
 
-    def get_incomes_from_block(self, block: int, address) -> List[Any]:
+    def get_incomes_from_block(self, block: int, address: str) -> List[Any]:
         logs = self._client.get_logs(block,
                                      block,
                                      '0x' + encode_hex(self.TESTGNT_ADDR),
@@ -218,13 +218,11 @@ class GNTWToken(AbstractToken):
         self.__process_deposit_tx = None
 
     def get_balance(self, addr: str) -> int:
-        gnt_balance = self._get_balance(
-            self.__gnt, self.TESTGNT_ADDRESS, decode_hex(addr))
+        gnt_balance = self._get_balance(self.__gnt, self.TESTGNT_ADDRESS, addr)
         if gnt_balance is None:
             return None
 
-        gntw_balance = self._get_balance(
-            self.__gntw, self.GNTW_ADDRESS, decode_hex(addr))
+        gntw_balance = self._get_balance(self.__gntw, self.GNTW_ADDRESS, addr)
         if gntw_balance is None:
             return None
 
@@ -248,10 +246,8 @@ class GNTWToken(AbstractToken):
                 return None
             self.__process_deposit_tx = None
 
-        gntw_balance = self._get_balance(
-            self.__gntw,
-            self.GNTW_ADDRESS,
-            '0x' + encode_hex(keys.privtoaddr(privkey)))
+        addr = '0x' + encode_hex(keys.privtoaddr(privkey))
+        gntw_balance = self._get_balance(self.__gntw, self.GNTW_ADDRESS, addr)
         if gntw_balance is None:
             return None
         total_value = sum([p.value for p in payments])
@@ -266,9 +262,9 @@ class GNTWToken(AbstractToken):
         data = self.__gntw.encode_function_call('batchTransfer',
                                                 [p, closure_time])
         gas = self.GAS_BATCH_PAYMENT_BASE + len(p) * self.GAS_PER_PAYMENT
-        return self._create_transaction(privkey, self.GNTW_ADDRESS, data, gas)
+        return self._create_transaction(addr, self.GNTW_ADDRESS, data, gas)
 
-    def get_incomes_from_block(self, block: int, address) -> List[Any]:
+    def get_incomes_from_block(self, block: int, address: str) -> List[Any]:
         logs = self._client.get_logs(block,
                                      block,
                                      '0x' + encode_hex(self.GNTW_ADDRESS),
@@ -290,11 +286,11 @@ class GNTWToken(AbstractToken):
 
     def __get_deposit_address(self, privkey: bytes) -> bytes:
         if not self.__deposit_address:
-            addr = keys.privtoaddr(privkey)
+            addr_raw = keys.privtoaddr(privkey)
             data = self.__gntw.encode_function_call(
                 'getPersonalDepositAddress',
-                [addr])
-            res = self._client.call(_from='0x' + encode_hex(addr),
+                [addr_raw])
+            res = self._client.call(_from='0x' + encode_hex(addr_raw),
                                     to='0x' + encode_hex(self.GNTW_ADDRESS),
                                     data='0x' + encode_hex(data),
                                     block='pending')
