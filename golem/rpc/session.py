@@ -1,26 +1,21 @@
 import logging
 
 from autobahn.twisted import ApplicationSession
-from autobahn.twisted.wamp import ApplicationRunner
 from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
+from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet.defer import inlineCallbacks, Deferred
+from twisted.internet.endpoints import TCP4ClientEndpoint
 
 logger = logging.getLogger('golem.rpc')
 
 
-setProtocolOptions = WampWebSocketClientFactory.setProtocolOptions
-
-
-def set_protocol_options(instance, **options):
-    options['autoPingInterval'] = 5.
-    options['autoPingTimeout'] = 15.
-    options['openHandshakeTimeout'] = 30.
-    setProtocolOptions(instance, **options)
-
-# monkey-patch setProtocolOptions and provide custom values
-WampWebSocketClientFactory.setProtocolOptions = set_protocol_options
+OPEN_HANDSHAKE_TIMEOUT = 30.
+CLOSE_HANDSHAKE_TIMEOUT = 10.
+AUTO_PING_INTERVAL = 15.
+AUTO_PING_TIMEOUT = 12.
+BACKOFF_POLICY_FACTOR = 1.2
 
 
 class RPCAddress(object):
@@ -60,28 +55,57 @@ class Session(ApplicationSession):
         self.ready = Deferred()
         self.connected = False
 
+        self._client = None
+        self._reconnect_service = None
+
         self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
 
-    def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True,
-                log_level='info'):
+    def connect(self):
 
-        runner = ApplicationRunner(
-            url=str(self.address),
-            realm=self.address.realm,
-            ssl=ssl,
-            proxy=proxy,
-            headers=headers
+        def init(proto):
+            reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
+            return proto
+
+        def cleanup(proto):
+            session = getattr(proto, '_session', None)
+            if session is None:
+                return
+            if session.is_attached():
+                return session.leave()
+            elif session.is_connected():
+                return session.disconnect()
+
+        from twisted.internet import reactor
+
+        transport_factory = WampWebSocketClientFactory(self, str(self.address))
+        transport_factory.setProtocolOptions(
+            maxFramePayloadSize=1048576,
+            maxMessagePayloadSize=1048576,
+            autoFragmentSize=65536,
+            failByDrop=False,
+            openHandshakeTimeout=OPEN_HANDSHAKE_TIMEOUT,
+            closeHandshakeTimeout=CLOSE_HANDSHAKE_TIMEOUT,
+            tcpNoDelay=True,
+            autoPingInterval=AUTO_PING_INTERVAL,
+            autoPingTimeout=AUTO_PING_TIMEOUT,
+            autoPingSize=4,
         )
 
-        deferred = runner.run(
-            make=self,
-            start_reactor=False,
-            auto_reconnect=auto_reconnect,
-            log_level=log_level
+        self._client = TCP4ClientEndpoint(reactor,
+                                          self.address.host,
+                                          self.address.port)
+        self._reconnect_service = ClientService(
+            endpoint=self._client,
+            factory=transport_factory,
+            retryPolicy=backoffPolicy(factor=BACKOFF_POLICY_FACTOR)
         )
+        self._reconnect_service.startService()
 
+        deferred = self._reconnect_service.whenConnected()
+        deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
+
         return self.ready
 
     @inlineCallbacks
