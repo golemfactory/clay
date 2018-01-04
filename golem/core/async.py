@@ -1,7 +1,47 @@
 import logging
+
 from twisted.internet import threads
+from twisted.internet.defer import succeed
+from twisted.web.client import Agent
+from twisted.web.iweb import IBodyProducer
+from zope.interface import implementer
 
 log = logging.getLogger(__name__)
+
+
+class AsyncHTTPRequest:
+
+    agent = None
+    timeout = 5
+
+    @implementer(IBodyProducer)
+    class BytesBodyProducer:
+
+        def __init__(self, body):
+            self.body = body
+            self.length = len(body)
+
+        def startProducing(self, consumer):
+            consumer.write(self.body)
+            return succeed(None)
+
+        def pauseProducing(self):
+            pass
+
+        def resumeProducing(self):
+            pass
+
+        def stopProducing(self):
+            pass
+
+    @classmethod
+    def run(cls, method, uri, headers, body):
+        if not cls.agent:
+            from twisted.internet import reactor
+            cls.agent = Agent(reactor, connectTimeout=cls.timeout)
+
+        return cls.agent.request(method, uri, headers,
+                                 cls.BytesBodyProducer(body))
 
 
 class AsyncRequest(object):
