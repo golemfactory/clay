@@ -235,13 +235,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         now = time.time()
 
         if now - self.last_peers_request > PEERS_INTERVAL:
-            self.last_peers_request = time.time()
+            self.last_peers_request = now
             self.__sync_free_peers()
             self.__sync_peer_keeper()
             self.__send_get_peers()
 
         if now - self.last_forward_request > FORWARD_INTERVAL:
-            self.last_forward_request = time.time()
+            self.last_forward_request = now
             self._sync_forward_requests()
 
         self.__remove_old_peers()
