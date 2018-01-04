@@ -1,4 +1,6 @@
 import time
+from collections import deque
+
 import weakref
 
 REMOVE_OLD_INTERVAL = 180
@@ -12,7 +14,8 @@ class TaskConnectionsHelper(object):
         that has been passed and processed by a node.
         """
         self.task_server = None
-        self.conn_to_set = {}  # information about connection requests to other nodes
+        self.conn_to_set = {}  # forwarded conn registry of timestamps
+        self.conn_to_set_queue = deque(maxlen=150)  # forwarded conn queue
         self.last_remove_old = time.time()  # when was the last time when old connections were removed
         self.remove_old_interval = REMOVE_OLD_INTERVAL  # How often should be information about old connections cleared
         self.conn_to_start = {}  # information about connection requests with this node
@@ -29,8 +32,7 @@ class TaskConnectionsHelper(object):
         if id_tuple in self.conn_to_set:
             return False
 
-        self.conn_to_set[id_tuple] = (key_id, weakref.ref(node_info),
-                                      super_node_info, time.time())
+        self.conn_to_set[id_tuple] = time.time()
         return True
 
     def want_to_start(self, conn_id, node_info, super_node_info):
@@ -53,7 +55,7 @@ class TaskConnectionsHelper(object):
         self.last_remove_old = cur_time
         self.conn_to_set = dict([
             y_z for y_z in self.conn_to_set.items()
-            if cur_time - y_z[1][3] < self.remove_old_interval
+            if cur_time - y_z[1] < self.remove_old_interval
         ])
         self.conn_to_start = dict([
             y_z1 for y_z1 in self.conn_to_start.items()
@@ -65,3 +67,17 @@ class TaskConnectionsHelper(object):
         :param conn_id: id of a connection that can't be established
         """
         self.task_server.final_conn_failure(conn_id)
+
+    def forward_queue_put(self, peer, *args):
+        entry = weakref.ref(peer), args
+        self.conn_to_set_queue.appendleft(entry)
+
+    def forward_queue_get(self, count=5):
+        entries = []
+        try:
+            for _ in range(count):
+                entry = self.conn_to_set_queue.pop()
+                entries.append(entry)
+        except IndexError:
+            pass
+        return entries

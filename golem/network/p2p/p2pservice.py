@@ -29,6 +29,7 @@ BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 HISTORY_LEN = 5  # How many entries from challenge history should we remember
 TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
+FORWARD_INTERVAL = 2
 
 SEEDS = [
     ('94.23.57.58', 40102),
@@ -111,6 +112,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_peers_request = time.time()
         self.last_tasks_request = time.time()
         self.last_refresh_peers = time.time()
+        self.last_forward_request = time.time()
 
         self.last_messages = []
         random.seed()
@@ -224,11 +226,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if self.task_server:
             self.__send_message_get_tasks()
 
-        if time.time() - self.last_peers_request > PEERS_INTERVAL:
+        now = time.time()
+
+        if now - self.last_peers_request > PEERS_INTERVAL:
             self.last_peers_request = time.time()
             self.__sync_free_peers()
             self.__sync_peer_keeper()
             self.__send_get_peers()
+
+        if now - self.last_forward_request > FORWARD_INTERVAL:
+            self.last_forward_request = time.time()
+            self._sync_forward_requests()
 
         self.__remove_old_peers()
         self._sync_pending()
@@ -775,15 +783,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         )
 
         for _, peer in distances[:3]:
-            peer.send_set_task_session(
-                key_id,
-                node_info,
-                conn_id,
-                super_node_info
+            self.task_server.task_connections_helper.forward_queue_put(
+                peer, key_id, node_info, conn_id, super_node_info
             )
             msg_snd = True
-            logger.debug("Forwarding task session request: {} -> {} to {}"
-                         .format(node_info.key, key_id, peer.key_id))
 
         if msg_snd and node_info.key == self.node.key:
             self.task_server.add_forwarded_session_request(key_id, conn_id)
@@ -966,6 +969,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer.disconnect(
                     message.Disconnect.REASON.Refresh
                 )
+
+    def _sync_forward_requests(self):
+        entries = self.task_server.task_connections_helper.forward_queue_get(12)
+        for entry in entries:
+            peer, args = entry[0](), entry[1]  # weakref
+            if peer:
+                peer.send_set_task_session(*args)
 
     def __sync_free_peers(self):
         while self.free_peers and not self.enough_peers():

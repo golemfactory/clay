@@ -290,6 +290,8 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+        logger.debug('Forwarding session request: %s -> %s to %s',
+                     node_info.key, key_id, self.key_id)
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
