@@ -181,6 +181,8 @@ class ResourceSession(BasicSafeSession):
 
     def _react_to_hello(self, msg):
         super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         if self.key_id == 0:
             self.key_id = msg.client_key_id
             self.send_hello()

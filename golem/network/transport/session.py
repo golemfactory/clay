@@ -13,6 +13,31 @@ from .network import Session
 logger = logging.getLogger(__name__)
 
 
+class IncompatibleGolemMessages(Exception):
+    pass
+
+
+def check_golem_messages_version_compatible(theirs_gm_version):
+    try:
+        theirs_v = semantic_version.Version(theirs_gm_version)
+    except ValueError as e:
+        raise IncompatibleGolemMessages(str(e))
+    ours_v = semantic_version.Version(golem_messages.__version__)
+    spec_str = '>={major}.{minor}.0,<{next_minor}'.format(
+        major=ours_v.major,
+        minor=ours_v.minor,
+        next_minor=ours_v.next_minor(),
+    )
+    spec = semantic_version.Spec(spec_str)
+    if theirs_v not in spec:
+        raise IncompatibleGolemMessages(
+            "{ours} (ours) != {theirs} (theirs)".format(
+                ours=ours_v,
+                theirs=theirs_v,
+            )
+        )
+
+
 class FileSession(Session, metaclass=abc.ABCMeta):
     """ Abstract class that represents session interface with additional operations for
     receiving files """
@@ -139,26 +164,10 @@ class BasicSession(FileSession):
     def _react_to_hello(self, msg):
         theirs_gm_version  = msg.golem_messages_version
         try:
-            theirs_v = semantic_version.Version(theirs_gm_version)
-        except ValueError:
-            self._send_disconnect(message.Disconnect.REASON.BadProtocol)
-            self.dropped()
-            return
-        ours_v = semantic_version.Version(golem_messages.__version__)
-        spec_str = '>={major}.{minor}.0,<{next_minor}'.format(
-            major=ours_v.major,
-            minor=ours_v.minor,
-            next_minor=ours_v.next_minor(),
-        )
-        spec = semantic_version.Spec(spec_str)
-        if theirs_v not in spec:
-            logger.info(
-                'Incompatible golem_messages %s (ours) != %s (theirs)',
-                ours_v,
-                theirs_v,
-            )
-            self._send_disconnect(message.Disconnect.REASON.BadProtocol)
-            self.dropped()
+            check_golem_messages_version_compatible(theirs_gm_version)
+        except Exception as e:
+            logger.info('Incompatible golem_messages: %s', e)
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
 
     def _react_to_disconnect(self, msg):

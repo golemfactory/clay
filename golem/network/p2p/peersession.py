@@ -260,6 +260,8 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_hello(self, msg):
         super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
