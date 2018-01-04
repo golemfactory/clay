@@ -523,7 +523,7 @@ class TestResourceHandshakeShare(TempDirFixture):
         )
 
         remote_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(local_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(nonce=local_nonce, accepted=True)
         )
 
         assert local_session._finalize_handshake.called
