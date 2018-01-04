@@ -86,6 +86,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.token': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'twisted': {
             'level': 'INFO',
             'propagate': True,
