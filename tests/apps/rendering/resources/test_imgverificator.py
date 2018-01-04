@@ -1,6 +1,6 @@
 import os
 
-from apps.rendering.resources.imgverifier import ImgStatistics, \
+from golem_verificator.lux.imgverifier import ImgStatistics, \
     ImgVerifier
 from apps.rendering.resources.imgrepr import PILImgRepr
 from golem_verificator.verifier import SubtaskVerificationState

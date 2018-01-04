@@ -10,13 +10,14 @@ from copy import copy
 
 from PIL import Image, ImageChops, ImageOps
 
+from golem_verificator.lux.verifier import LuxRenderVerifier
+
 import apps.lux.resources.scenefilereader as sfr
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-from apps.lux.task.verifier import LuxRenderVerifier
 from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
 from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task import renderingtask

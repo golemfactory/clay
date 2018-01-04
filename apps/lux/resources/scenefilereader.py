@@ -1,7 +1,9 @@
 import re
 
+from golem_verificator.lux.imgverifier import ImgVerifier
+
 from golem.core.common import to_unicode
-from apps.rendering.resources.imgverifier import ImgVerifier
+
 
 def make_scene_analysis(scene_file_src, return_data):
     resolution = get_resolution(scene_file_src)

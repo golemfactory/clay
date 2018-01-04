@@ -1,19 +1,17 @@
 import os
 from mock import Mock
 
-from golem.testutils import PEP8MixIn, TempDirFixture
-from golem.tools.assertlogs import LogTestCase
+from golem_verificator.lux.verifier  import LuxRenderVerifier, logger
 from golem_verificator.verifier import SubtaskVerificationState
 
-from apps.lux.task.verifier import LuxRenderVerifier, logger
+from golem.testutils import PEP8MixIn, TempDirFixture
+from golem.tools.assertlogs import LogTestCase
+
 from apps.rendering.task.renderingtaskstate import (
     AdvanceRenderingVerificationOptions)
 
 
-class TestLuxRenderVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
-    PEP8_FILES = [
-        'apps/lux/task/verifier.py',
-    ]
+class TestLuxRenderVerifier(TempDirFixture, LogTestCase):
 
     def test_merge_flm_files_failure(self):
         lrv = LuxRenderVerifier(AdvanceRenderingVerificationOptions)
