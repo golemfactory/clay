@@ -8,7 +8,7 @@ from apps.rendering.resources.imgverifier import ImgVerifier, ImgStatistics
 from apps.rendering.task.verifier import RenderingVerifier
 
 from golem.core.fileshelper import common_dir, find_file_with_ext
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 
 logger = logging.getLogger("apps.lux")

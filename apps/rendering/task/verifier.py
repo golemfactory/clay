@@ -4,7 +4,7 @@ import math
 from apps.core.task.verifier import CoreVerifier
 from apps.rendering.resources.imgcompare import check_size
 
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")
 

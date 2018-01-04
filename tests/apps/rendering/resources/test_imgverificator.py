@@ -3,7 +3,7 @@ import os
 from apps.rendering.resources.imgverifier import ImgStatistics, \
     ImgVerifier
 from apps.rendering.resources.imgrepr import PILImgRepr
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 from golem.tools.assertlogs import LogTestCase
 from golem import testutils

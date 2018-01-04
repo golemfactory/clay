@@ -7,6 +7,8 @@ import uuid
 from enum import Enum
 from typing import Type
 
+from golem_verificator.verifier import SubtaskVerificationState
+
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
@@ -26,7 +28,6 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 

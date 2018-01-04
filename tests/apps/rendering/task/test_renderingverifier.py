@@ -3,7 +3,7 @@ from PIL import Image
 
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 from apps.rendering.task.verifier import (RenderingVerifier, logger,
                                           FrameRenderingVerifier)

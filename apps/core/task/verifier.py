@@ -1,8 +1,7 @@
 from datetime import datetime
 import os
 
-from golem.verification.verifier import (StateVerifier,
-                                         SubtaskVerificationState)
+from golem_verificator.verifier import (StateVerifier, SubtaskVerificationState)
 
 
 class CoreVerifier(StateVerifier):
