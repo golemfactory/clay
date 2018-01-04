@@ -6,8 +6,6 @@ from golem.tools.testdirfixture import TestDirFixture
 
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgcompare import (advance_verify_img,
-                                                 compare_pil_imgs)
 from apps.rendering.resources.imgrepr import load_img
 
 
@@ -58,7 +56,6 @@ class TestRenderingTaskCollector(TestDirFixture):
         img2 = self.temp_file_name("img2.png")
         final_img.save(img2)
 
-        assert compare_pil_imgs(img1, img2)
         collector.add_img_file(img2)
         final_img = collector.finalize()
         assert isinstance(final_img, Image.Image)
@@ -66,7 +63,6 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img.save(img3)
 
         assert final_img.size == (10, 20)
-        assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
 
         collector = RenderingTaskCollector(paste=False, width=10, height=10)
         collector.add_img_file(img1)

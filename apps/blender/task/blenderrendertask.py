@@ -7,6 +7,8 @@ from copy import copy
 import time
 from PIL import Image, ImageChops
 
+from golem_verificator.blender.verifier import BlenderVerifier
+
 from apps.core.task import coretask
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
@@ -16,7 +18,6 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector

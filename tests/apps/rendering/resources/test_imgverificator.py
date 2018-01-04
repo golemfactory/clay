@@ -6,7 +6,6 @@ from apps.rendering.resources.imgrepr import PILImgRepr
 from golem_verificator.verifier import SubtaskVerificationState
 
 from golem.tools.assertlogs import LogTestCase
-from golem import testutils
 from golem.core.common import get_golem_path
 
 
@@ -21,8 +20,7 @@ from golem.core.common import get_golem_path
 # myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
 
 
-class TestImgVerifier(LogTestCase, testutils.PEP8MixIn):
-    PEP8_FILES = ['apps/rendering/resources/imgverifier.py']
+class TestImgVerifier(LogTestCase):
 
     def test_get_random_crop_window(self):
         import random
