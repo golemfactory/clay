@@ -78,10 +78,9 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        task_definition = TaskDefinition()
-        task_definition.task_type = "dummy"
-        task_definition.options = params
-
+        from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+        from apps.dummy.task.dummytaskstate import DummyTaskDefaults
+        task_definition = DummyTaskDefinition(DummyTaskDefaults())
         Task.__init__(self, header, src_code, task_definition)
 
         self.task_id = task_id
@@ -97,6 +96,9 @@ class DummyTask(Task):
         self.assigned_nodes = {}
         self.assigned_subtasks = {}
         self._lock = Lock()
+
+    def to_dictionary(self):
+        return {}
 
     def __setstate__(self, state):
         super(DummyTask, self).__setstate__(state)

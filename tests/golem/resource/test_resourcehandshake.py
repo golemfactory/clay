@@ -142,7 +142,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._handshake_error = Mock()
 
         resource = str(uuid.uuid4())
-        msg = message.ResourceHandshakeStart(resource)
+        msg = message.ResourceHandshakeStart(resource=resource)
         session._react_to_resource_handshake_start(msg)
 
         assert session._start_handshake.called
@@ -168,7 +168,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
 
         session._react_to_resource_handshake_start(msg)
 
@@ -180,7 +180,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._start_handshake = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
         handshake = ResourceHandshake(self.key_id)
 
         session._set_handshake(session.key_id, handshake)
@@ -196,7 +196,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
 
         session._set_handshake(session.key_id, handshake)
         session._react_to_resource_handshake_nonce(msg)
@@ -212,14 +212,14 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeNonce(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeNonce(nonce=str(uuid.uuid4()))
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -233,15 +233,20 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=True)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=handshake.nonce,
+            accepted=True,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()),
-                                               accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=str(uuid.uuid4()),
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -255,15 +260,20 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=handshake.nonce,
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()),
-                                               accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=str(uuid.uuid4()),
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called

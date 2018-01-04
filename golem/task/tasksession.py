@@ -388,7 +388,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             task_result.result.encode('utf-8')
         ).hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
-        msg_data = msg.serialize(self.sign)
+        msg_data = msg.serialize()  # Refactored in #1823
 
         self.concent_service.submit(
             ConcentRequest.build_key(task_result.subtask_id, msg_cls),

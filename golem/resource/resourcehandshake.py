@@ -116,7 +116,7 @@ class ResourceHandshakeSessionMixin:
         if not handshake:
             self._start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
-            self.send(message.ResourceHandshakeStart(handshake.hash))
+            self.send(message.ResourceHandshakeStart(resource=handshake.hash))
 
         self._download_handshake_nonce(key_id, msg.resource)
 
@@ -126,7 +126,10 @@ class ResourceHandshakeSessionMixin:
         accepted = handshake and handshake.verify_local(msg.nonce)
         nonce = handshake.nonce if handshake else None
 
-        self.send(message.ResourceHandshakeVerdict(msg.nonce, accepted))
+        self.send(message.ResourceHandshakeVerdict(
+            nonce=msg.nonce,
+            accepted=accepted,
+        ))
 
         if accepted:
             self._finalize_handshake(key_id)
@@ -233,7 +236,7 @@ class ResourceHandshakeSessionMixin:
                      "%r to peer %r", handshake.hash, key_id)
 
         os.remove(handshake.file)
-        self.send(message.ResourceHandshakeStart(handshake.hash))
+        self.send(message.ResourceHandshakeStart(resource=handshake.hash))
 
     # ########################
     #      DOWNLOAD NONCE
@@ -260,7 +263,7 @@ class ResourceHandshakeSessionMixin:
                                   .format(files, err))
         else:
             os.remove(path)
-            self.send(message.ResourceHandshakeNonce(nonce))
+            self.send(message.ResourceHandshakeNonce(nonce=nonce))
 
     # ########################
     #     ERROR HANDLERS

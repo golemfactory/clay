@@ -98,7 +98,7 @@ class ResourceSession(BasicSafeSession):
                                      may be needed
         """
         if self.confirmation:
-            self.send(message.HasResource(self.file_name))
+            self.send(message.HasResource(resource=self.file_name))
             self.confirmation = False
             if self.copies > 0:
                 self.resource_server.add_resource_to_send(
@@ -119,7 +119,7 @@ class ResourceSession(BasicSafeSession):
         """ Send information that given resource is needed.
         :param resource: resource name
         """
-        self.send(message.PullResource(resource))
+        self.send(message.PullResource(resource=resource))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -138,12 +138,12 @@ class ResourceSession(BasicSafeSession):
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
         if self.resource_server.get_resource_entry(msg.resource):
-            self.send(message.HasResource(msg.resource))
+            self.send(message.HasResource(resource=msg.resource))
             if copies > 0:
                 self.resource_server.get_peers()
                 self.resource_server.add_resource_to_send(msg.resource, copies)
         else:
-            self.send(message.WantsResource(msg.resource))
+            self.send(message.WantsResource(resource=msg.resource))
             self.file_name = msg.resource
             self.conn.stream_mode = True
             self.conn.consumer = tcpnetwork.DecryptFileConsumer(

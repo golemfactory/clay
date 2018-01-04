@@ -48,7 +48,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             challenge=None,
             client_key_id=key_id,
             client_ver=APP_VERSION,
-            difficulty=0,
+            difficulty=None,
             metadata=metadata,
             node_info=node,
             node_name=node_name,
@@ -151,7 +151,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             challenge=None,
             client_key_id=key_id,
             client_ver=APP_VERSION,
-            difficulty=0,
+            difficulty=None,
             metadata=metadata,
             node_info=node,
             node_name=node_name,
@@ -235,6 +235,10 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             'challenge': None,
             'difficulty': None,
         }
+        for slot in message.Hello.__slots__:
+            if slot in msg_kwargs:
+                continue
+            msg_kwargs[slot] = None
 
         # Test not seed
         msg = message.Hello(**msg_kwargs)
