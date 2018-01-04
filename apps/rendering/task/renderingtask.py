@@ -6,11 +6,13 @@ from typing import Type
 from PIL import Image, ImageChops
 from pathlib import Path
 
+from golem_verificator.rendering.verifier import RenderingVerifier
+
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.verifier import RenderingVerifier
+
 from golem.core.common import get_golem_path
 from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd

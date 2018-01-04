@@ -7,6 +7,8 @@ from collections import OrderedDict, defaultdict
 from PIL import Image, ImageChops
 from copy import deepcopy
 
+from golem_verificator.rendering.verifier import FrameRenderingVerifier
+
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
@@ -16,7 +18,7 @@ from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
-from apps.rendering.task.verifier import FrameRenderingVerifier
+
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState

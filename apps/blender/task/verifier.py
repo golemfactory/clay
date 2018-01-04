@@ -1,6 +1,7 @@
 import math
 
-from apps.rendering.task.verifier import FrameRenderingVerifier
+from golem_verificator.rendering.verifier import FrameRenderingVerifier
+
 from apps.blender.resources.imgcompare import check_size
 
 

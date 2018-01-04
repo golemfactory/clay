@@ -3,12 +3,13 @@ import logging
 import os
 import shutil
 
+from golem_verificator.rendering.verifier import RenderingVerifier
+from golem_verificator.verifier import SubtaskVerificationState
+
 from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 from apps.rendering.resources.imgverifier import ImgVerifier, ImgStatistics
-from apps.rendering.task.verifier import RenderingVerifier
 
 from golem.core.fileshelper import common_dir, find_file_with_ext
-from golem_verificator.verifier import SubtaskVerificationState
 
 
 logger = logging.getLogger("apps.lux")
