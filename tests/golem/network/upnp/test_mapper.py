@@ -29,7 +29,7 @@ class MockPortMapper(IPortMapper):
     def discover(self):
         self.discover_calls += 1
         if self._discover_raises:
-            raise self._discover_raises
+            raise RuntimeError("Test error")
 
     def create_mapping(self, local_port, external_port=None,
                        protocol='TCP', lease_duration=None):

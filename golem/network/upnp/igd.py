@@ -1,7 +1,8 @@
 import functools
-import miniupnpc as miniupnpc
 from itertools import chain
 from typing import Optional
+
+import miniupnpc
 
 from golem.network.upnp.mapper import IPortMapper
 
