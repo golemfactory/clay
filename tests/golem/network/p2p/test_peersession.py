@@ -100,6 +100,21 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.interpret(client_hello)
         super_mock.assert_called_once_with(client_hello)
 
+    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
+    @mock.patch('golem.network.transport.session.BasicSession.disconnect')
+    def test_react_to_hello_malformed(self, disconnect_mock, super_mock):
+        """Reaction to hello without attributes"""
+
+        malformed_hello = message.Hello()
+        for attr in malformed_hello.__slots__:
+            if attr in message.Message.__slots__:
+                continue
+            delattr(malformed_hello, attr)
+        self.peer_session.interpret(malformed_hello)
+        disconnect_mock.assert_called_once_with(
+            message.Disconnect.REASON.ProtocolVersion,
+        )
+
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_protoid(self, send_mock):
         client_hello = self.__setup_handshake_server_test(send_mock)
