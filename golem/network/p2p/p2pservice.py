@@ -782,13 +782,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             return
 
         msg_snd = False
+
+        peers = list(self.peers.values())  # may change during iteration
         distances = sorted(
-            (key_distance(key_id, peer.key_id), peer)
-            for peer in list(self.peers.values())
-            if peer.key_id != node_info.key and peer.verified
+            (p for p in peers if p.key_id != node_info.key and p.verified),
+            key=lambda p: key_distance(key_id, p.key_id)
         )
 
-        for _, peer in distances[:FORWARD_NEIGHBORS_COUNT]:
+        for peer in distances[:FORWARD_NEIGHBORS_COUNT]:
             self.task_server.task_connections_helper.forward_queue_put(
                 peer, key_id, node_info, conn_id, super_node_info
             )
