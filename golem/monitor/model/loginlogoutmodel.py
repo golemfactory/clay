@@ -9,8 +9,8 @@ class LoginLogoutBaseModel(BasicModel):
         self.metadata = metadata.dict_repr()
         self.protocol_versions = {
             'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-            'p2p': PROTOCOL_CONST.P2P_ID,
-            'task': PROTOCOL_CONST.TASK_ID,
+            'p2p': PROTOCOL_CONST.ID,
+            'task': PROTOCOL_CONST.ID,
         }
 
 class LoginModel(LoginLogoutBaseModel):

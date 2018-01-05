@@ -43,6 +43,14 @@ PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 MAX_SENDING_DELAY = 360
+# How frequently task archive should be saved to disk (in seconds)
+TASKARCHIVE_MAINTENANCE_INTERVAL = 30
+# Filename for task archive disk file
+TASKARCHIVE_FILENAME = "task_archive.pickle"
+# Number of past days task archive will store aggregated information for
+TASKARCHIVE_NUM_INTERVALS = 365
+# Limit of the number  of non-expired tasks stored in task archive at any moment
+TASKARCHIVE_MAX_TASKS = 10000000
 
 P2P_SESSION_TIMEOUT = 240
 TASK_SESSION_TIMEOUT = 900
