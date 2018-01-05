@@ -9,7 +9,7 @@ if sys.platform == "win32":
 
 # PEP-396
 try:
-    with (pathlib.Path(__file__).parent / 'RELEASE-VERSION').open('r') as f:
+    with (pathlib.Path(__file__).parent / 'RELEASE-VERSION').open('r') as f:  # noqa pylint: disable=no-member
         __version__ = f.read()
 except OSError:
     sys.stderr.write('Cannot determine version. Using default.\n')

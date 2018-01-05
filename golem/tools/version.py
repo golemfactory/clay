@@ -58,7 +58,7 @@ def call_git_describe(prefix='', cwd='.'):
 def get_version(prefix='', cwd='.'):
     path = pathlib.Path(cwd) / VERSION_FILE
     try:
-        with path.open("r") as f:
+        with path.open("r") as f:  # pylint: disable=no-member
             release_version = f.read()
     except Exception:
         release_version = None
@@ -71,7 +71,7 @@ def get_version(prefix='', cwd='.'):
         raise ValueError("Cannot find the version number!")
 
     if version != release_version:
-        with path.open("w") as f:
+        with path.open("w") as f:  # pylint: disable=no-member
             f.write(version)
 
     return version
