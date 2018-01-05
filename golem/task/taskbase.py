@@ -4,8 +4,8 @@ import time
 from typing import List, Tuple, Union, Type
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
-from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
@@ -60,7 +60,7 @@ class TaskHeader(object):
                  subtask_timeout=0.0,
                  resource_size=0,
                  estimated_memory=0,
-                 min_version=APP_VERSION,
+                 min_version=golem.__version__,
                  max_price: int=0,
                  docker_images=None,
                  signature=None):

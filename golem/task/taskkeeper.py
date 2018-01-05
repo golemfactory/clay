@@ -11,8 +11,8 @@ import typing
 from collections import Counter
 from semantic_version import Version
 
+import golem
 from golem.core import common
-from golem.core.variables import APP_VERSION
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -195,7 +195,7 @@ class TaskHeaderKeeper:
             self,
             environments_manager,
             min_price=0.0,
-            app_version=APP_VERSION,
+            app_version=golem.__version__,
             remove_task_timeout=180,
             verification_timeout=3600,
             max_tasks_per_requestor=10,

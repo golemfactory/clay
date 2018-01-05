@@ -11,6 +11,7 @@ from freezegun import freeze_time
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -22,7 +23,6 @@ from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
-from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
@@ -1040,7 +1040,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         )
 
     def test_golem_version(self, *_):
-        assert self.client.get_golem_version() == APP_VERSION
+        assert self.client.get_golem_version() == golem.__version__
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
