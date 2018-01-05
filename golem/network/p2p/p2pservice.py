@@ -785,7 +785,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         distances = sorted(
             (key_distance(key_id, peer.key_id), peer)
             for peer in list(self.peers.values())
-            if peer.key_id != node_info.key
+            if peer.key_id != node_info.key and peer.verified
         )
 
         for _, peer in distances[:FORWARD_NEIGHBORS_COUNT]:
