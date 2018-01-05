@@ -50,4 +50,4 @@ numpy==1.13.1
 scipy==0.19.1
 pyssim
 enforce==0.3.4
-Golem-Messages==1.3.1+dev1.ge68e304
+Golem-Messages==1.3.2

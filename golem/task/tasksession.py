@@ -656,6 +656,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                                         client_options=client_options)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         send_hello = False
 
         if self.key_id == 0:

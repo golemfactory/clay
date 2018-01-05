@@ -13,6 +13,14 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         self.connection = mock.MagicMock()
         self.instance = resourcesession.ResourceSession(self.connection)
 
+    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
+    def test_react_to_hello_super(self, super_mock):
+        msg = message.Hello(
+            **dict((key, None) for key in message.Hello.__slots__)
+        )
+        self.instance.interpret(msg)
+        super_mock.assert_called_once_with(msg)
+
     def test_connection_dropped(self):
         """.dropped() method from BasicSession interface."""
         resource_server = self.connection.server

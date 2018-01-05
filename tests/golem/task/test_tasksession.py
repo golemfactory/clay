@@ -164,6 +164,19 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
+    @patch('golem.network.transport.session.BasicSession._react_to_hello')
+    def test_react_to_hello_super(self, super_mock):
+        conn = MagicMock()
+        ts = TaskSession(conn)
+        ts.task_server = Mock()
+        ts.disconnect = Mock()
+        ts.send = Mock()
+
+        msg = message.Hello()
+        fill_slots(msg)
+        ts.interpret(msg)
+        super_mock.assert_called_once_with(msg)
+
     def test_react_to_hello(self):
         conn = MagicMock()
 

@@ -1,3 +1,4 @@
+import golem_messages
 from golem_messages import message
 import ipaddress
 from pydispatch import dispatcher
@@ -92,6 +93,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
             message.RandVal(rand_val=client_hello.rand_val).slots())
+
+    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_react_to_hello_super(self, send_mock, super_mock):
+        client_hello = self.__setup_handshake_server_test(send_mock)
+        self.peer_session.interpret(client_hello)
+        super_mock.assert_called_once_with(client_hello)
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_protoid(self, send_mock):
@@ -235,6 +243,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             'solve_challenge': None,
             'challenge': None,
             'difficulty': None,
+            'golem_messages_version': golem_messages.__version__,
         }
         for slot in message.Hello.__slots__:
             if slot in msg_kwargs:
