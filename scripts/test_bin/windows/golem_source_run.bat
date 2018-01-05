@@ -1,12 +1,15 @@
 
 set PROJECT_DIR="%systemdrive%%homepath%\projects"
 
-echo "Activate golem-env"
-call "%PROJECT_DIR%\golem-env\Scripts\activate.bat"
+echo "Ensure projects directory exists"
+mkdir -p "%PROJECT_DIR%"
 
-echo "Change to source directory"
-cd "%PROJECT_DIR%\golem"
 
-echo "Running golem"
-python golemapp.py
+echo "Setup venv in ~/projects/golem-env"
+python -m venv "%PROJECT_DIR%\golem-env"
+
+echo "Clone into ~/projects/golem"
+git clone https://github.com/golemfactory/golem "%PROJECT_DIR%\golem"
+
+call ".\golem_source_update.bat"
 

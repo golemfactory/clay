@@ -1,5 +1,5 @@
 
-set PROJECT_DIR="%systemdrive%%homepath%\projects"
+set PROJECT_DIR=%systemdrive%%homepath%\projects
 
 
 echo "Activate golem-env"
@@ -14,3 +14,6 @@ pip install -r requirements-win.txt
 
 echo "Run setup.py develop ( no docker )"
 set APPVEYOR=TRUE &&python setup.py develop
+
+pause
+
