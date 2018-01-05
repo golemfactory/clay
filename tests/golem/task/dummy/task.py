@@ -4,6 +4,7 @@ import uuid
 from os import path
 from threading import Lock
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
@@ -254,3 +255,9 @@ class DummyTask(Task):
 
     def get_progress(self):
         return 0
+
+    def to_dictionary(self):
+        return {
+            'task_id': self.task_id,
+            'task_params': self.task_params.__dict__
+        }

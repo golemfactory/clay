@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
-from collections import deque
 import datetime
-from typing import Iterable, Optional
-
-from golem_messages import message
 import itertools
 import logging
 import os
-from pydispatch import dispatcher
 import time
+import weakref
+from collections import deque
+from typing import Iterable, Optional
 
+from golem_messages import message
+from pydispatch import dispatcher
 from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
@@ -24,12 +25,10 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader, ResourceType
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-import weakref
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -85,8 +84,9 @@ class TaskResourcesMixin(object):
         resource_manager = self._get_resource_manager()
 
         try:
-            _, resource_hash = resource_manager.add_task(
-                files, task_id, resource_hash=resource_hash, async=False)
+            resource_hash, _ = resource_manager.add_task(
+                files, task_id, resource_hash=resource_hash, async=False
+            )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
         except HTTPError as exc:

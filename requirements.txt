@@ -26,7 +26,6 @@ ethereum-abi-utils==0.4.0
 ethereum-utils==0.5.1
 autobahn==17.10.1
 cbor2==3.0.4
-multihash
 base58
 ndg-httpsclient
 certifi

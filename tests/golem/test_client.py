@@ -5,9 +5,8 @@ import uuid
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
-from twisted.internet.defer import Deferred
-
 from freezegun import freeze_time
+from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -729,7 +728,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called
 
@@ -777,7 +775,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert isinstance(task, Task)
         assert task.header.task_id
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
