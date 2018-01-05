@@ -1,13 +1,14 @@
+import pathlib
 import sys
 from codecs import open
 from os import listdir, path, walk, makedirs
-from sys import platform
 
-import semantic_version
 from setuptools import find_packages, Command
 from setuptools.command.test import test
 
+import golem
 from golem.core.common import get_golem_path, is_windows, is_osx, is_linux
+from golem.tools.version import get_version as tools_get_version
 
 
 class PyTest(test):
@@ -182,7 +183,7 @@ def get_long_description(my_path):
 
 
 def find_required_packages():
-    if platform.startswith('darwin'):
+    if sys.platform.startswith('darwin'):
         return find_packages(exclude=['examples', 'tests'])
     return find_packages(include=['golem*', 'apps*'])
 
@@ -227,25 +228,10 @@ def move_wheel():
 
 
 def get_version():
-    # FIXME jvn
-    from git import Repo
-    tags = Repo(get_golem_path()).tags
-    versions = []
-
-    for tag in tags:
-        if not tag.is_valid:
-            continue
-        try:
-            semantic_version.Version(tag.name)
-            versions.append(tag.name)
-        except Exception as exc:
-            print("Tag {} is not a valid release version: {}".format(
-                  tag, exc))
-
-    if not versions:
-        raise EnvironmentError("No git version tag found "
-                               "in the repository")
-    return sorted(versions, key=lambda s: list(map(int, s.split('.'))))[-1]
+    cwd = pathlib.Path(golem.__file__).parent
+    v = tools_get_version(prefix='', cwd=str(cwd))
+    sys.stderr.write('Dynamically determined version: {}\n'.format(v))
+    return v
 
 
 def file_name():
@@ -258,18 +244,18 @@ def file_name():
     tag = repo.tags[-2]  # get latest tag
     tag_id = tag.commit.hexsha  # get commit id from tag
     commit_id = repo.head.commit.hexsha  # get last commit id
-    if platform.startswith('linux'):
+    if sys.platform.startswith('linux'):
         from platform import architecture
         if architecture()[0].startswith('64'):
             plat = "linux_x86_64"
         else:
             plat = "linux_i386"
-    elif platform.startswith('win'):
+    elif sys.platform.startswith('win'):
         plat = "win32"
-    elif platform.startswith('darwin'):
+    elif sys.platform.startswith('darwin'):
         plat = "macosx_10_12_x86_64"
     else:
-        raise SystemError("Incorrect platform: {}".format(platform))
+        raise SystemError("Incorrect platform: {}".format(sys.platform))
     if commit_id != tag_id:  # devel package
         return "golem-{}-0x{}{}-cp35-none-{}.whl".format(tag.name,
                                                          commit_id[:4],

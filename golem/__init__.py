@@ -1,3 +1,4 @@
+import pathlib
 import subprocess
 import sys
 
@@ -6,5 +7,10 @@ if sys.platform == "win32":
     startupinfo = subprocess.STARTUPINFO
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-# FIXME jvn
-__version__ = '0.0.1'
+# PEP-396
+try:
+    with (pathlib.Path(__file__).parent / 'RELEASE-VERSION').open('r') as f:
+        __version__ = f.read()
+except OSError:
+    sys.stderr.write('Cannot determine version. Using default.\n')
+    __version__ = '0.0.0'
