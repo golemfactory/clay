@@ -50,7 +50,7 @@ class TestSendToConcent(TestCase):
         with self.assertRaises(exceptions.ConcentRequestException):
             client.send_to_concent(msg=self.msg, signing_key=self.key)
 
-        post_mock.assert_called_once()
+        self.assertEqual(post_mock.call_count, 1)
 
     def test_message_server_error(self, post_mock):
         response = requests.Response()
@@ -60,14 +60,14 @@ class TestSendToConcent(TestCase):
         with self.assertRaises(exceptions.ConcentServiceException):
             client.send_to_concent(msg=self.msg, signing_key=self.key)
 
-        post_mock.assert_called_once()
+        self.assertEqual(post_mock.call_count, 1)
 
     def test_message_exception(self, post_mock):
         post_mock.side_effect = RequestException
         with self.assertRaises(exceptions.ConcentUnavailableException):
             client.send_to_concent(msg=self.msg, signing_key=self.key)
 
-        post_mock.assert_called_once()
+        self.assertEqual(post_mock.call_count, 1)
 
 
 @mock.patch('twisted.internet.reactor', create=True)
