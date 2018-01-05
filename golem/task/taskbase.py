@@ -4,8 +4,8 @@ import time
 from typing import List, Tuple, Union, Type
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
-from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.task.taskstate import TaskState
@@ -53,7 +53,7 @@ class TaskHeader(object):
                  subtask_timeout=0.0,
                  resource_size=0,
                  estimated_memory=0,
-                 min_version=APP_VERSION,
+                 min_version=golem.__version__,
                  max_price: int=0,
                  docker_images=None,
                  signature=None):
@@ -131,7 +131,8 @@ class TaskBuilder(object):
 
     @classmethod
     @abc.abstractmethod
-    def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False) -> 'CoreTaskDefinition':
+    def build_definition(cls, task_type: TaskTypeInfo, dictionary,
+                         minimal=False):
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task
         :param bool minimal: if this option is set too True, then only minimal
@@ -166,7 +167,7 @@ class Task(metaclass=abc.ABCMeta):
             raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition: 'CoreTaskDefinition'):
+    def __init__(self, header: TaskHeader, src_code: str, task_definition):
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition

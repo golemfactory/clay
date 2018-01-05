@@ -13,8 +13,10 @@ from pydispatch import dispatcher
 from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
                                     Deferred)
 
+import golem
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL)
+                             PUBLISH_TASKS_INTERVAL,
+                             TASKARCHIVE_MAINTENANCE_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -26,7 +28,6 @@ from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
-from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
@@ -58,6 +59,7 @@ from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
+from golem.task.taskarchiver import TaskArchiver
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
@@ -97,6 +99,8 @@ class Client(HardwarePresetsMixin):
         self.__lock_datadir()
         self.lock = Lock()
         self.task_tester = None
+
+        self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
         config = AppConfig.load_config(datadir)
@@ -145,6 +149,7 @@ class Client(HardwarePresetsMixin):
             NetworkConnectionPublisherService(
                 self,
                 int(self.config_desc.network_check_interval)),
+            TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
         ]
@@ -284,7 +289,8 @@ class Client(HardwarePresetsMixin):
                 self.config_desc,
                 self.keys_auth, self,
                 use_ipv6=self.config_desc.use_ipv6,
-                use_docker_machine_manager=self.use_docker_machine_manager)
+                use_docker_machine_manager=self.use_docker_machine_manager,
+                task_archiver=self.task_archiver)
 
             monitoring_publisher_service = MonitoringPublisherService(
                     self.task_server,
@@ -460,12 +466,11 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        options = resource_manager.build_client_options()
+
         tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
@@ -474,7 +479,7 @@ class Client(HardwarePresetsMixin):
 
         def add_task(result):
             task_state = task_manager.tasks_states[task_id]
-            task_state.resource_hash = result[1]
+            task_state.resource_hash = result[0]
 
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
@@ -482,7 +487,7 @@ class Client(HardwarePresetsMixin):
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
 
-        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred = self.resource_server.add_task(files, task_id)
         deferred.addCallbacks(add_task, error)
         return task
 
@@ -724,6 +729,14 @@ class Client(HardwarePresetsMixin):
 
     def get_error_task_count(self):
         return self.get_task_computer_stat('tasks_with_errors')
+
+    def get_unsupport_reasons(self, last_days):
+        if last_days < 0:
+            raise ValueError("Incorrect number of days: {}".format(last_days))
+        if last_days > 0:
+            return self.task_archiver.get_unsupport_reasons(last_days)
+        else:
+            return self.task_server.task_keeper.get_unsupport_reasons()
 
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
@@ -997,7 +1010,7 @@ class Client(HardwarePresetsMixin):
             self.get_client_id(),
             self.session_id,
             sys.platform,
-            APP_VERSION,
+            golem.__version__,
             self.config_desc
         )
 
@@ -1059,7 +1072,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def get_golem_version():
-        return APP_VERSION
+        return golem.__version__
 
     @staticmethod
     def get_golem_status():
@@ -1188,7 +1201,20 @@ class TasksPublisherService(LoopingCallService):
                                     self._task_manager.get_tasks_dict())
 
 
+class TaskArchiverService(LoopingCallService):
+    _task_archiver = None  # type: TaskArchiver
+
+    def __init__(self,
+                 task_archiver: TaskArchiver):
+        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
+        self._task_archiver = task_archiver
+
+    def _run(self):
+        self._task_archiver.do_maintenance()
+
+
 class BalancePublisherService(LoopingCallService):
+
     _rpc_publisher = None  # type: Publisher
     _transaction_system = None  # type: EthereumTransactionSystem
 

@@ -5,23 +5,23 @@ import uuid
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
-from twisted.internet.defer import Deferred
-
 from freezegun import freeze_time
+from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService, ResourceCleanerService, TaskCleanerService
+    BalancePublisherService, ResourceCleanerService, TaskArchiverService,\
+    TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
-from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
@@ -430,7 +430,6 @@ class TestDoWorkService(TestWithReactor):
         assert not c.p2pservice.ping_peers.called
         assert not log.exception.called
         assert c.p2pservice.sync_network.called
-        assert c.task_server.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
         assert c.check_payments.called
@@ -505,6 +504,18 @@ class TestTasksPublisherService(TestWithReactor):
 
         assert not log.debug.called
         assert rpc_publisher.publish.call_count == 1
+
+
+class TestTaskArchiverService(TestWithReactor):
+    @patch('golem.client.log')
+    def test_run(self, log):
+        task_archiver = Mock()
+
+        service = TaskArchiverService(task_archiver)
+        service._run()
+
+        assert not log.debug.called
+        assert task_archiver.do_maintenance.call_count == 1
 
 
 class TestBalancePublisherService(TestWithReactor):
@@ -718,7 +729,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with()
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called
 
@@ -766,7 +776,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert isinstance(task, Task)
         assert task.header.task_id
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
@@ -924,6 +933,49 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
 
+    def test_get_unsupport_reasons(self, *_):
+        c = self.client
+        c.task_server.task_keeper.get_unsupport_reasons = Mock()
+        c.task_server.task_keeper.get_unsupport_reasons.return_value = [
+            {'avg': '17.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+        c.task_archiver.get_unsupport_reasons = Mock()
+        c.task_archiver.get_unsupport_reasons.side_effect = lambda days: [
+            {'avg': str(days*21)+'.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+
+        # get_unsupport_reasons(0) is supposed to read current stats from
+        # the task_keeper and should not look into archives
+        reasons = c.get_unsupport_reasons(0)
+        self.assertEqual(reasons[0]["avg"], "17.0.0")
+        c.task_server.task_keeper.get_unsupport_reasons.assert_called_with()
+        c.task_archiver.get_unsupport_reasons.assert_not_called()
+
+        c.task_server.task_keeper.get_unsupport_reasons.reset_mock()
+        c.task_archiver.get_unsupport_reasons.reset_mock()
+
+        # for more days it's the opposite
+        reasons = c.get_unsupport_reasons(2)
+        self.assertEqual(reasons[0]["avg"], "42.0.0")
+        c.task_archiver.get_unsupport_reasons.assert_called_with(2)
+        c.task_server.task_keeper.get_unsupport_reasons.assert_not_called()
+
+        # and for a negative number of days we should get an exception
+        with self.assertRaises(ValueError):
+            reasons = c.get_unsupport_reasons(-1)
+
     def test_task_preview(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
@@ -986,7 +1038,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         )
 
     def test_golem_version(self, *_):
-        assert self.client.get_golem_version() == APP_VERSION
+        assert self.client.get_golem_version() == golem.__version__
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'

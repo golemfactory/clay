@@ -5,9 +5,9 @@ import semantic_version
 import time
 import random
 
+import golem
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
-from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -20,7 +20,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if semantic_version.Version(variables.APP_VERSION) < v_client:
+    if semantic_version.Version(golem.__version__) < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
@@ -82,8 +82,7 @@ class PeerSession(BasicSafeSession):
                 message.ChallengeSolution.TYPE
             ]
         )
-        self.can_be_unsigned.extend([message.Hello.TYPE])
-        self.can_be_not_encrypted.extend([message.Hello.TYPE])
+        self.can_be_not_encrypted.append(message.Hello.TYPE)
 
         self.__set_msg_interpretations()
 
@@ -132,60 +131,12 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: data to be signed
-        :return Message: signed data
-        """
+    @property
+    def my_private_key(self):
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
-
-        return self.p2p_service.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.p2p_service.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
-
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection.
-        :param str data: serialized message to be encrypted
-        :return str: encrypted message
-        """
-        return self.p2p_service.encrypt(data, self.key_id)
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str msg: decrypted message
-        """
-        if not self.p2p_service:
-            return data
-
-        try:
-            msg = self.p2p_service.decrypt(data)
-        except ECIESDecryptionError as err:
-            logger.info(
-                "Failed to decrypt message from %r:%r,"
-                " maybe it's not encrypted? %r",
-                self.address,
-                self.port,
-                err
-            )
-            msg = data
-
-        return msg
+        return self.p2p_service.keys_auth.ecc.raw_privkey
 
     def start(self):
         """
@@ -309,6 +260,9 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
@@ -478,7 +432,7 @@ class PeerSession(BasicSafeSession):
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
-            client_ver=variables.APP_VERSION,
+            client_ver=golem.__version__,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,

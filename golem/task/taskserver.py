@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
-from collections import deque
 import datetime
-from typing import Iterable, Optional
-
-from golem_messages import message
 import itertools
 import logging
 import os
-from pydispatch import dispatcher
 import time
+import weakref
+from collections import deque
+from typing import Iterable, Optional
 
+from golem_messages import message
+from pydispatch import dispatcher
 from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
@@ -29,7 +30,6 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-import weakref
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -88,8 +88,9 @@ class TaskResourcesMixin(object):
         resource_manager = self._get_resource_manager()
 
         try:
-            _, resource_hash = resource_manager.add_task(
-                files, task_id, resource_hash=resource_hash, async=False)
+            resource_hash, _ = resource_manager.add_task(
+                files, task_id, resource_hash=resource_hash, async=False
+            )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
         except HTTPError as exc:
@@ -147,14 +148,18 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                  keys_auth,
                  client,
                  use_ipv6=False,
-                 use_docker_machine_manager=True):
+                 use_docker_machine_manager=True,
+                 task_archiver=None):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
 
         self.node = node
+        self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            client.environments_manager, min_price=config_desc.min_price)
+            client.environments_manager,
+            min_price=config_desc.min_price,
+            task_archiver=task_archiver)
         self.task_manager = TaskManager(
             config_desc.node_name,
             self.node,
@@ -255,10 +260,15 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 performance = env.get_performance()
             else:
                 performance = 0.0
-            is_requestor_accepted = self.should_accept_requestor(
-                theader.task_owner_key_id)
-            is_price_accepted = self.config_desc.min_price <= theader.max_price
-            if is_requestor_accepted and is_price_accepted:
+            supported = self.should_accept_requestor(theader.task_owner_key_id)
+            if self.config_desc.min_price > theader.max_price:
+                supported = supported.join(SupportStatus.err({
+                    UnsupportReason.MAX_PRICE: theader.max_price}))
+            if not supported.is_ok():
+                if self.task_archiver:
+                    self.task_archiver.add_support_status(theader.task_id,
+                                                          supported)
+            else:
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(
                     theader=theader, price=price)
@@ -628,10 +638,14 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
     def should_accept_requestor(self, node_id):
         if node_id in self.deny_set:
-            return False
+            return SupportStatus.err(
+                {UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: {}".format(trust))
-        return trust >= self.config_desc.requesting_trust
+        if trust >= self.config_desc.requesting_trust:
+            return SupportStatus.ok()
+        else:
+            return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
     def _sync_forwarded_session_requests(self):
         now = time.time()

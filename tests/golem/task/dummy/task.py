@@ -4,6 +4,7 @@ import uuid
 from os import path
 from threading import Lock
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
@@ -76,7 +77,10 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        Task.__init__(self, header, src_code, None)
+        from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+        from apps.dummy.task.dummytaskstate import DummyTaskDefaults
+        task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        Task.__init__(self, header, src_code, task_definition)
 
         self.task_id = task_id
         self.task_params = params
@@ -91,6 +95,9 @@ class DummyTask(Task):
         self.assigned_nodes = {}
         self.assigned_subtasks = {}
         self._lock = Lock()
+
+    def to_dictionary(self):
+        return {}
 
     def __setstate__(self, state):
         super(DummyTask, self).__setstate__(state)
@@ -246,3 +253,9 @@ class DummyTask(Task):
 
     def get_progress(self):
         return 0
+
+    def to_dictionary(self):
+        return {
+            'task_id': self.task_id,
+            'task_params': self.task_params.__dict__
+        }
