@@ -68,7 +68,7 @@ class TaskThread(Thread):
             self.__do_work()
         except Exception as exc:
             logger.exception("__do_work failed")
-            self._fail(exc)
+            self._fail(str(exc))
         else:
             self.task_computer.task_computed(self)
 
@@ -77,16 +77,19 @@ class TaskThread(Thread):
         if self.vm:
             self.vm.end_comp()
 
-    def _fail(self, error_obj):
+    def _fail(self, error_msg: str):
         # Preserves the original cause of failure
         if self.error:
             return
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.error("Task computing error: {}".format(error_obj))
+        if "exit code 137" in error_msg:
+            error_msg += " (probably killed by out-of-memory killer)"
+
+        logger.error("Task computing error: %s", error_msg)
         self.error = True
-        self.error_msg = str(error_obj)
+        self.error_msg = error_msg
         self.done = True
         self.task_computer.task_computed(self)
 

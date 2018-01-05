@@ -122,67 +122,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     # SafeSession methods #
     #######################
 
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection
-        :param str data: data to be encrypted
-        :return str: encrypted data or unchanged message
-                     (if server doesn't exist)
-        """
-        if self.task_server:
-            return self.task_server.encrypt(data, self.key_id)
-        logger.warning("Can't encrypt message - no task server")
-        return data
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str|None: decrypted data
-        """
-        if self.task_server is None:
-            logger.warning("Can't decrypt data - no task server")
-            return data
-        try:
-            data = self.task_server.decrypt(data)
-        except AssertionError:
-            logger.info(
-                "Failed to decrypt message from %r:%r, "
-                "maybe it's not encrypted?",
-                self.address,
-                self.port
-            )
-        except Exception as err:
-            logger.debug("Fail to decrypt message {}".format(err))
-            logger.debug('Failing msg: %r', data)
-            self.dropped()
-            return None
-
-        return data
-
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: bytes to be signed
-        :return Message: signed bytes
-        """
+    @property
+    def my_private_key(self):
         if self.task_server is None:
             logger.error("Task Server is None, can't sign a message.")
             return None
-
-        return self.task_server.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.task_server.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
+        return self.task_server.keys_auth.ecc.raw_privkey
 
     ###################################
     # IMessageHistoryProvider methods #
@@ -491,7 +436,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.TASK_ID
+                proto_id=PROTOCOL_CONST.ID
             ),
             send_unverified=True
         )
@@ -691,7 +636,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
+        self.task_server.subtask_accepted(msg.subtask_id)
         self.dropped()
 
     @history.provider_history
@@ -728,22 +673,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                                         client_options=client_options)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         send_hello = False
 
         if self.key_id == 0:
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if not self.verify(msg):
-            logger.info("Wrong signature for Hello msg")
-            self.disconnect(message.Disconnect.REASON.Unverified)
-            return
-
-        if msg.proto_id != PROTOCOL_CONST.TASK_ID:
+        if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.TASK_ID
+                PROTOCOL_CONST.ID
             )
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
@@ -1044,7 +987,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         })
 
         # self.can_be_not_encrypted.append(message.Hello.TYPE)
-        self.can_be_unsigned.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
                 message.Hello.TYPE,

@@ -282,8 +282,6 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
     def __init__(self, dir_manager, resource_dir_method=None):
 
-        self.download_queue = deque()
-        self.current_downloads = 0
         self.storage = ResourceStorage(dir_manager, resource_dir_method
                                        or dir_manager.get_task_resource_dir)
         self.index_resources(self.storage.get_root())
@@ -438,7 +436,6 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             return
 
         def success_wrapper(response, **_):
-            self.__dec_downloads()
             self._clear_retry(self.commands.get, resource.hash)
 
             if pin:
@@ -450,11 +447,8 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
             files = self._parse_pull_response(response, task_id)
             success(entry, files, task_id)
-            self.__process_queue()
 
         def error_wrapper(exception, **_):
-            self.__dec_downloads()
-
             if self._can_retry(exception, self.commands.get, resource.hash):
                 self.pull_resource(entry, task_id,
                                    client_options=client_options,
@@ -467,14 +461,12 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
                              resource.path, resource.hash, exception)
 
                 error(exception, entry, task_id)
-                self.__process_queue()
 
         make_path_dirs(self.storage.get_path(resource.path, task_id))
         local = self.storage.cache.get_by_hash(resource.hash)
 
         if local:
 
-            self.__inc_downloads()
             try:
                 self.storage.copy(local.path, resource.path, task_id)
             except Exception as exc:
@@ -484,18 +476,12 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
 
         else:
 
-            if self.__can_download():
-                self.__inc_downloads()
-                self.__pull(resource, task_id,
-                            success=success_wrapper,
-                            error=error_wrapper,
-                            client=client,
-                            client_options=client_options,
-                            async=async)
-            else:
-                self.__push_to_queue(entry, task_id,
-                                     success, error,
-                                     client, client_options, async, pin)
+            self.__pull(resource, task_id,
+                        success=success_wrapper,
+                        error=error_wrapper,
+                        client=client,
+                        client_options=client_options,
+                        async=async)
 
     def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("Resource manager: Error executing command '{}': {}"
@@ -574,33 +560,6 @@ class AbstractResourceManager(IClientHandler, metaclass=abc.ABCMeta):
             if isinstance(entry, dict) and 'Name' in entry:
                 files.append(entry['Name'])
         return files
-
-    def __can_download(self):
-        max_dl = self.config.max_concurrent_downloads
-        with self.lock:
-            return max_dl < 1 or self.current_downloads < max_dl
-
-    def __inc_downloads(self):
-        with self.lock:
-            self.current_downloads += 1
-
-    def __dec_downloads(self):
-        with self.lock:
-            self.current_downloads -= 1
-
-    def __push_to_queue(self, *params):
-        with self.queue_lock:
-            self.download_queue.append(params)
-
-    def __process_queue(self):
-        params = None
-
-        with self.queue_lock:
-            if self.download_queue:
-                params = self.download_queue.popleft()
-
-        if params:
-            self.pull_resource(*params)
 
 
 class TestResourceManager(AbstractResourceManager, ClientHandler):

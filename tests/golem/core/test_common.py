@@ -30,7 +30,7 @@ class TestCommon(TestCase):
 
         source = "test string"
         result = to_unicode(source)
-        assert type(result) is str
+        assert isinstance(result, str)
         assert result == source
 
         source = None
