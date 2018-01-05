@@ -752,55 +752,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             pc.status = PenConnStatus.WaitingAlt
             pc.time = time.time()
 
-    def __connection_for_resource_request_established(self, session, conn_id, key_id, subtask_id, resource_header):
-
-        session.key_id = key_id
-        session.task_id = subtask_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
-        session.send_hello()
-        session.request_resource(subtask_id, resource_header)
-
-    def __connection_for_resource_request_failure(self, conn_id, key_id, subtask_id, resource_header):
-
-        response = lambda session: self.__connection_for_resource_request_established(session, conn_id, key_id,
-                                                                                      subtask_id, resource_header)
-        if key_id in self.response_list:
-            self.response_list[conn_id].append(response)
-        else:
-            self.response_list[conn_id] = deque([response])
-
-        self.client.want_to_start_task_session(key_id, self.node, conn_id)
-
-        pc = self.pending_connections.get(conn_id)
-        if pc:
-            pc.status = PenConnStatus.WaitingAlt
-            pc.time = time.time()
-
-    def __connection_for_result_rejected_established(self, session, conn_id, key_id, subtask_id):
-        self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        session.send_hello()
-        session.send_result_rejected(subtask_id)
-
-    def __connection_for_result_rejected_failure(self, conn_id, key_id, subtask_id):
-
-        response = lambda session: self.__connection_for_result_rejected_established(session, conn_id, key_id,
-                                                                                     subtask_id)
-        if key_id in self.response_list:
-            self.response_list[conn_id].append(response)
-        else:
-            self.response_list[conn_id] = deque([response])
-
-        self.client.want_to_start_task_session(key_id, self.node, conn_id)
-        pc = self.pending_connections.get(conn_id)
-        if pc:
-            pc.status = PenConnStatus.WaitingAlt
-            pc.time = time.time()
-
     def __connection_for_start_session_established(self, session, conn_id, key_id, node_info, super_node_info,
                                                    ans_conn_id):
         self.remove_forwarded_session_request(key_id)
@@ -827,25 +778,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_computer.task_request_rejected(task_id, "Connection failed")
         self.task_keeper.request_failure(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
-        self.remove_pending_conn(conn_id)
-        self.remove_responses(conn_id)
-
-    def __connection_for_resource_request_final_failure(self, conn_id, key_id,
-                                                        subtask_id,
-                                                        resource_header):
-        logger.info("Cannot connect to task {} owner".format(subtask_id))
-        logger.info("Removing task {} from task list".format(subtask_id))
-
-        self.task_computer.resource_request_rejected(subtask_id,
-                                                     "Connection failed")
-        self.remove_task_header(subtask_id)
-        self.remove_pending_conn(conn_id)
-        self.remove_responses(conn_id)
-
-    def __connection_for_result_rejected_final_failure(self, conn_id, key_id,
-                                                       subtask_id):
-        logger.info("Cannot connect to deliver information about rejected "
-                    "result for task {}".format(subtask_id))
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 

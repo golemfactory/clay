@@ -481,17 +481,11 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.final_conn_failure = Mock()
         ts.task_computer = Mock()
 
-        method = ts._TaskServer__connection_for_resource_request_final_failure
-        method('conn_id', 'key_id', 'subtask_id', Mock())
-
         ts.task_computer.resource_request_rejected.assert_called_once_with(
             'subtask_id', ANY)
 
         ts.remove_pending_conn = Mock()
         ts.remove_responses = Mock()
-
-        method = ts._TaskServer__connection_for_result_rejected_final_failure
-        method('conn_id', 'key_id', 'subtask_id')
 
         self.assertTrue(ts.remove_pending_conn.called)
         self.assertTrue(ts.remove_responses.called_)
