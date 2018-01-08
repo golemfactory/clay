@@ -432,7 +432,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         task_manager.listen_port = 40103
 
         some_file_path = self.new_path / "foo"
-        some_file_path.touch()
+        # pylint thinks it's PurePath, but it's a concrete path
+        some_file_path.touch()  # pylint: disable=no-member
 
         task_dict = {
             'bid': 5.0,
