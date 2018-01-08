@@ -260,12 +260,34 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
-        super()._react_to_hello(msg)
-        if not self.conn.opened:
-            return
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
+
+        # Check if sender is a seed/bootstrap node
+        port = getattr(msg, 'port', None)
+        if (self.address, port) in self.p2p_service.seeds:
+            compare_version(getattr(msg, 'client_ver', None))
+
+        # We want to compare_version() before calling
+        # super()._react_to_hello() and potentially returning
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
+
+        proto_id = getattr(msg, 'proto_id', None)
+        if proto_id != variables.PROTOCOL_CONST.ID:
+            logger.info(
+                "P2P protocol version mismatch %r vs %r (local)"
+                " for node %r:%r",
+                proto_id,
+                variables.PROTOCOL_CONST.ID,
+                self.address,
+                self.port
+            )
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            return
+
         self.node_name = msg.node_name
         self.node_info = msg.node_info
         self.client_ver = msg.client_ver
@@ -276,22 +298,6 @@ class PeerSession(BasicSafeSession):
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
-
-        # Check if sender is a seed/bootstrap node
-        if (self.address, msg.port) in self.p2p_service.seeds:
-            compare_version(msg.client_ver)
-
-        if msg.proto_id != variables.PROTOCOL_CONST.ID:
-            logger.info(
-                "P2P protocol version mismatch %r vs %r (local)"
-                " for node %r:%r",
-                msg.proto_id,
-                variables.PROTOCOL_CONST.ID,
-                self.address,
-                self.port
-            )
-            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
-            return
 
         if not self.__should_init_handshake():
             self.__send_hello()
