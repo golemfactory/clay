@@ -231,8 +231,7 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError,
-                        ModuleNotFoundError):
+                except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
                     broken_paths.append(path)
 
