@@ -45,16 +45,21 @@ class HyperdriveDaemonManager(object):
             '--logfile', os.path.join(logsdir, "hyperg.log"),
         ]
 
-    @report_calls(Component.hyperdrive, 'instance.connect')
     def addresses(self):
+        try:
+            return self._get_addresses()
+        except ConnectionError as e:
+            logger.warning('Cannot connect to Hyperdrive daemon')
+            return dict()
+
+    @report_calls(Component.hyperdrive, 'instance.connect')
+    def _get_addresses(self):
         try:
             if not self._addresses:
                 self._addresses = HyperdriveClient(**self._config).addresses()
             return self._addresses
         except ConnectionError:
             raise
-            logger.warning('Cannot connect to Hyperdrive daemon')
-            return dict()
 
     def public_addresses(self, ip, addresses=None):
         if addresses is None:
