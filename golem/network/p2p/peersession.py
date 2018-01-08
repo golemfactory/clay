@@ -269,8 +269,8 @@ class PeerSession(BasicSafeSession):
         if (self.address, port) in self.p2p_service.seeds:
             compare_version(getattr(msg, 'client_ver', None))
 
-        # super()._react_to_hello() could disconnect
-        # and we don't want this before compare_version()
+        # We want to compare_version() before calling
+        # super()._react_to_hello() and potentially returning
         super()._react_to_hello(msg)
         if not self.conn.opened:
             return
