@@ -128,7 +128,7 @@ class TaskHeader(object):
         return sorted(dictionary.items())
 
 
-class TaskBuilder(object):
+class TaskBuilder(abc.ABC):
     def __init__(self):
         pass
 
@@ -157,7 +157,7 @@ class TaskEventListener(object):
         pass
 
 
-class Task(metaclass=abc.ABCMeta):
+class Task(abc.ABC):
 
     class ExtraData(object):
         def __init__(self, should_wait=False, ctd=None, **kwargs):
