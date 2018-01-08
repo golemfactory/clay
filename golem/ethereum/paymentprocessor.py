@@ -28,9 +28,6 @@ class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 
-    # Time required to reset the current balance when errors occur
-    BALANCE_RESET_TIMEOUT = 30
-
     SYNC_CHECK_INTERVAL = 10
 
     # Minimal number of confirmations before we treat transactions as done
@@ -141,38 +138,22 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            self._update_eth_balance(self.__client.get_balance(addr))
-            log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
+            balance = self.__client.get_balance(addr)
+            if balance is not None:
+                self.__eth_balance = balance
+                log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
+            else:
+                log.warning("Failed to retrieve ETH balance")
         return self.__eth_balance
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
             gnt_balance = self.__token.get_balance(self.eth_address(zpad=False))
-            self._update_gnt_balance(gnt_balance)
+            if gnt_balance is not None:
+                self.__gnt_balance = gnt_balance
+            else:
+                log.warning("Failed to retrieve GNT balance")
         return self.__gnt_balance
-
-    def _update_eth_balance(self, eth_balance):
-        eth_balance = self._balance_value(eth_balance, self.__eth_update_ts)
-        if eth_balance is None:
-            return
-        self.__eth_update_ts = time.time()
-        self.__eth_balance = eth_balance
-
-    def _update_gnt_balance(self, gnt_balance):
-        gnt_balance = self._balance_value(gnt_balance, self.__gnt_update_ts)
-        if gnt_balance is None:
-            return
-        self.__gnt_update_ts = time.time()
-        self.__gnt_balance = gnt_balance
-
-    @classmethod
-    def _balance_value(cls, balance, last_update_ts):
-        if balance is not None:
-            return balance
-
-        dt = time.time() - last_update_ts
-        if dt >= cls.BALANCE_RESET_TIMEOUT:
-            return 0
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE

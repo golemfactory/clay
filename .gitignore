@@ -42,6 +42,7 @@ sdist/
 # Golem files
 *.db
 .version.ini
+golem/RELEASE-VERSION
 
 golem/monitorconfig_local.py
 

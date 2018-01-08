@@ -7,7 +7,7 @@ import uuid
 from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient
-from golem.resource.base.resourcesmanager import ResourceStorage
+from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
@@ -495,7 +495,6 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session.send.reset_mock()
 
         # Download nonces on both sides
-
         local_session._download_handshake_nonce(local_session.key_id,
                                                 remote_hash)
         assert not local_session._handshake_error.called
@@ -549,7 +548,8 @@ class TestResourceHandshakeShare(TempDirFixture):
         msg = session.send.call_args[0][0]
         assert isinstance(msg, message.ResourceHandshakeStart)
 
-    def __create_task_server(self, session):
+    @staticmethod
+    def __create_task_server(session):
         from golem.clientconfigdescriptor import ClientConfigDescriptor
         from golem.task.taskserver import TaskServer
 
@@ -600,7 +600,7 @@ class TestResourceHandshakeShare(TempDirFixture):
 class MockTaskSession(ResourceHandshakeSessionMixin):
 
     def __init__(self, data_dir,
-                 successful_downloads=True, successful_uploads=True, **kwargs):
+                 successful_downloads=True, successful_uploads=True, **_kwargs):
 
         ResourceHandshakeSessionMixin.__init__(self)
 
@@ -633,14 +633,13 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
             )
         )
 
-    def __add_file(self, path, task_id, absolute_path=False, client=None,
-                   client_options=None):
+    def __add_file(self, path, *_args, **_kwargs):
 
         if not self.successful_uploads:
             raise RuntimeError('Test exception')
         return path, str(uuid.uuid4())
 
-    def __pull_resource(self, entry, task_id, success, error, **kwargs):
+    def __pull_resource(self, entry, task_id, success, error, **_kwargs):
         file_resource = entry[0]
 
         if not self.successful_downloads:

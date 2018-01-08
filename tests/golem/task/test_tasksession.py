@@ -252,7 +252,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_react_to_task_result_hash(self):
 
         def create_pull_package(result):
-            def pull_package(multihash, task_id, subtask_id,
+            def pull_package(content_hash, task_id, subtask_id,
                              secret, success, error, *args, **kwargs):
                 if result:
                     success(Mock())
@@ -268,12 +268,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         subtask_id = 'xxyyzz'
         secret = 'pass'
-        multihash = 'multihash'
+        content_hash = 'multihash'
 
         ts.task_manager.subtask2task_mapping[subtask_id] = 'xyz'
 
-        msg = message.TaskResultHash(subtask_id=subtask_id, secret=secret, multihash=multihash,
-                                    options=Mock())
+        msg = message.TaskResultHash(subtask_id=subtask_id, secret=secret,
+                                     multihash=content_hash, options=Mock())
 
         ts.task_manager.task_result_manager.pull_package = create_pull_package(True)
         ts._react_to_task_result_hash(msg)

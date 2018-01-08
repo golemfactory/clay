@@ -5,6 +5,7 @@ import semantic_version
 import time
 import random
 
+import golem
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.network.transport.session import BasicSafeSession
@@ -19,7 +20,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if semantic_version.Version(variables.APP_VERSION) < v_client:
+    if semantic_version.Version(golem.__version__) < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
@@ -434,7 +435,7 @@ class PeerSession(BasicSafeSession):
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
-            client_ver=variables.APP_VERSION,
+            client_ver=golem.__version__,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,

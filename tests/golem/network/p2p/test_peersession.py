@@ -8,9 +8,10 @@ import sys
 import unittest
 import unittest.mock as mock
 
+import golem
 from golem import testutils
 from golem.core.keysauth import KeysAuth
-from golem.core.variables import APP_VERSION, PROTOCOL_CONST
+from golem.core.variables import PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, PeerSessionInfo)
@@ -48,7 +49,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         expected = message.Hello(
             challenge=None,
             client_key_id=key_id,
-            client_ver=APP_VERSION,
+            client_ver=golem.__version__,
             difficulty=None,
             metadata=metadata,
             node_info=node,
@@ -173,7 +174,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         expected = message.Hello(
             challenge=None,
             client_key_id=key_id,
-            client_ver=APP_VERSION,
+            client_ver=golem.__version__,
             difficulty=None,
             metadata=metadata,
             node_info=node,
@@ -282,7 +283,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         listener.reset_mock()
 
         # Test with seed, newer version
-        version = semantic_version.Version(APP_VERSION).next_patch()
+        version = semantic_version.Version(golem.__version__).next_patch()
         msg_kwargs['client_ver'] = str(version)
         msg = message.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)

@@ -58,15 +58,15 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
-    def restore(self, multihash, **kwargs):
+    def restore(self, content_hash, **kwargs):
         response = self._request(
             command='upload',
             id=kwargs.get('id'),
-            hash=multihash
+            hash=content_hash
         )
         return response['hash']
 
-    def get_file(self, multihash, client_options=None, **kwargs):
+    def get(self, content_hash, client_options=None, **kwargs):
         filepath = kwargs.pop('filepath')
         peers = None
 
@@ -78,24 +78,16 @@ class HyperdriveClient(IClient):
 
         response = self._request(
             command='download',
-            hash=multihash,
+            hash=content_hash,
             dest=filepath,
             peers=peers
         )
-        return [(filepath, multihash, response['files'])]
+        return [(filepath, content_hash, response['files'])]
 
-    def pin_add(self, file_path, multihash):
-        response = self._request(
-            command='upload',
-            files=[file_path],
-            hash=multihash
-        )
-        return response['hash']
-
-    def pin_rm(self, multihash):
+    def cancel(self, content_hash):
         response = self._request(
             command='cancel',
-            hash=multihash
+            hash=content_hash
         )
         return response['hash']
 

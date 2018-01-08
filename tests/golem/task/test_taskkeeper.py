@@ -6,8 +6,8 @@ import time
 from unittest import TestCase
 import unittest.mock as mock
 
+import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -43,7 +43,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         supported = tk.check_support(task)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
-        task["min_version"] = APP_VERSION
+        task["min_version"] = golem.__version__
         self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
         self.assertTrue(tk.check_support(task))
@@ -415,7 +415,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         reasons = tk.get_unsupport_reasons()
         # 3 tasks with wrong version
-        self.assertIn({'avg': APP_VERSION,
+        self.assertIn({'avg': golem.__version__,
                        'reason': 'app_version',
                        'ntasks': 3}, reasons)
         # 2 tasks with wrong price
@@ -442,7 +442,7 @@ def get_dict_task_header(task_id="xyz"):
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 10,
-        "min_version": APP_VERSION
+        "min_version": golem.__version__
     }
 
 
