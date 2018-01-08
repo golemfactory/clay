@@ -211,6 +211,7 @@ class TaskManager(TaskEventListener):
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
+        broken_paths = []
         for path in self.tasks_dir.iterdir():
             if not path.suffix == '.pickle':
                 continue
@@ -230,9 +231,10 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError):
+                except (pickle.UnpicklingError, EOFError, ImportError,
+                        ModuleNotFoundError):
                     logger.exception('Problem restoring task from: %s', path)
-                    path.unlink()
+                    broken_paths.append(path)
 
             if task_id is not None:
                 dispatcher.send(
@@ -240,6 +242,8 @@ class TaskManager(TaskEventListener):
                     event='task_status_updated',
                     task_id=task_id
                 )
+        for path in broken_paths:
+            path.unlink()
 
     @handle_task_key_error
     def resources_send(self, task_id):
