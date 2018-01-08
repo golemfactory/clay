@@ -308,7 +308,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param force: add or overwrite existing data
         """
         key_id = peer_info["node"].key
-        if force or self.__is_new_peer(key_id):
+        if ((force or self.__is_new_peer(key_id)) and
+                (peer_info["address"] is str and peer_info["address"] != '')):
             logger.info(
                 "add peer to incoming %r %r %r (%r)",
                 peer_info["node_name"],
@@ -316,7 +317,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer_info["port"],
                 key_id
             )
-
             self.incoming_peers[key_id] = {"address": peer_info["address"],
                                            "port": peer_info["port"],
                                            "node": peer_info["node"],
