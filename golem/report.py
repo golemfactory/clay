@@ -22,6 +22,7 @@ class Component(object):
     docker = 'docker'
     hypervisor = 'hypervisor'
     ethereum = 'ethereum'
+    hyperdrive = 'hyperdrive'
 
 
 class StatusPublisher(object):

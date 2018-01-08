@@ -242,6 +242,7 @@ class DockerManager(DockerConfigManager):
             return [i.strip() for i in output.split("\n") if i]
         return []
 
+    @report_calls(Component.docker, 'instance.check')
     def docker_machine_running(self, name=None):
         if not self.docker_machine:
             raise EnvironmentError("No Docker VM available")
@@ -397,6 +398,7 @@ class DockerManager(DockerConfigManager):
         self._set_docker_machine_env()
         cb()
 
+    @report_calls(Component.docker, 'instance.env')
     def _set_docker_machine_env(self, retried=False):
         try:
             output = self.command('env', self.docker_machine,
