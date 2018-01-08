@@ -36,9 +36,7 @@ class HyperdriveClient(IClient):
 
         # default POST request headers
         self._url = 'http://{}:{}/api'.format(self.host, self.port)
-        self._url_bytes = self._url.encode('utf-8')
         self._headers = {'content-type': 'application/json'}
-        self._headers_obj = Headers({'Content-Type': ['application/json']})
 
     @classmethod
     def build_options(cls, peers=None, **kwargs):
@@ -83,39 +81,6 @@ class HyperdriveClient(IClient):
         response = self._request(**params)
         return [(path, content_hash, response['files'])]
 
-    def get_async(self, content_hash, client_options=None, **kwargs):
-        path = kwargs['filepath']
-        wrapper = Deferred()
-
-        def on_response(response):
-            readBody(response).addCallbacks(on_body, on_error)
-
-        def on_body(body):
-            try:
-                decoded = body.decode('utf-8')
-                deserialized = json.loads(decoded)
-                files = deserialized['files']
-            except Exception as exc:
-                on_error(exc)
-            else:
-                wrapper.callback([(path, content_hash, files)])
-
-        def on_error(err):
-            wrapper.errback(HTTPError(err))
-
-        params = self._download_params(content_hash, client_options, **kwargs)
-        encoded_params = json.dumps(params).encode('utf-8')
-
-        deferred = AsyncHTTPRequest.run(
-            b'POST',
-            self._url_bytes,
-            self._headers_obj,
-            encoded_params
-        )
-        deferred.addCallbacks(on_response, on_error)
-
-        return wrapper
-
     @classmethod
     def _download_params(cls, content_hash, client_options, **kwargs):
         path = kwargs['filepath']
@@ -156,6 +121,73 @@ class HyperdriveClient(IClient):
 
         if response.content:
             return json.loads(response.content.decode('utf-8'))
+
+
+class HyperdriveAsyncClient(HyperdriveClient):
+
+    def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT, host='localhost',
+                 timeout=None):
+
+        super().__init__(port, host, timeout)
+
+        # default POST request headers
+        self._url_bytes = self._url.encode('utf-8')
+        self._headers_obj = Headers({'Content-Type': ['application/json']})
+
+    def diagnostics(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def add_async(self, files, **kwargs):
+        params = dict(
+            command='upload',
+            id=kwargs.get('id'),
+            files=files
+        )
+
+        return self._async_request(
+            params,
+            lambda response: response['hash']
+        )
+
+    def get_async(self, multihash, client_options=None, **kwargs):
+        params = self._download_params(multihash, client_options, **kwargs)
+        path = kwargs['filepath']
+
+        return self._async_request(
+            params,
+            lambda response: [(path, multihash, response['files'])]
+        )
+
+    def _async_request(self, params, response_parser):
+        serialized_params = json.dumps(params)
+        encoded_params = serialized_params.encode('utf-8')
+        result = Deferred()
+
+        def on_response(response):
+            readBody(response).addCallbacks(on_body, on_error)
+
+        def on_body(body):
+            try:
+                decoded = body.decode('utf-8')
+                deserialized = json.loads(decoded)
+                parsed = response_parser(deserialized)
+            except Exception as exc:
+                on_error(exc)
+            else:
+                result.callback(parsed)
+
+        def on_error(err):
+            result.errback(HTTPError(err))
+
+        deferred = AsyncHTTPRequest.run(
+            b'POST',
+            self._url_bytes,
+            self._headers_obj,
+            encoded_params
+        )
+        deferred.addCallbacks(on_response, on_error)
+
+        return result
 
 
 class HyperdriveClientOptions(ClientOptions):
