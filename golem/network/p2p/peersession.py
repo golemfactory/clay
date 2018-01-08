@@ -260,9 +260,6 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
-        super()._react_to_hello(msg)
-        if not self.conn.opened:
-            return
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
@@ -271,6 +268,12 @@ class PeerSession(BasicSafeSession):
         port = getattr(msg, 'port', None)
         if (self.address, port) in self.p2p_service.seeds:
             compare_version(getattr(msg, 'client_ver', None))
+
+        # super()._react_to_hello() could disconnect
+        # and we don't want this before compare_version()
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
 
         proto_id = getattr(msg, 'proto_id', None)
         if proto_id != variables.PROTOCOL_CONST.ID:
