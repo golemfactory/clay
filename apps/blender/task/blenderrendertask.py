@@ -1,11 +1,9 @@
-
 import logging
 import math
 import os
 import random
 from collections import OrderedDict
-
-
+from copy import copy
 import time
 from PIL import Image, ImageChops
 
@@ -18,8 +16,8 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.blender.task.verificator import BlenderVerificator
-from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
+from apps.blender.task.verifier import BlenderVerifier
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.resources.utils import save_image_or_log_error
@@ -321,7 +319,7 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
-    VERIFICATOR_CLASS = BlenderVerificator
+    VERIFIER_CLASS = BlenderVerifier
 
     BLENDER_MIN_BOX = [8, 8]
 
@@ -335,13 +333,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         FrameRenderingTask.__init__(self, task_definition=task_definition,
                                     **kwargs)
-
-        definition = self.task_definition
-        self.verificator.compositing = self.compositing
-        self.verificator.output_format = self.output_format
-        self.verificator.src_code = self.src_code
-        self.verificator.docker_images = definition.docker_images
-        self.verificator.verification_timeout = definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -418,11 +409,16 @@ class BlenderRenderTask(FrameRenderingTask):
                       }
 
         hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[hash] = extra_data
+        self.subtasks_given[hash] = copy(extra_data)
+        self.subtasks_given[hash]['subtask_id'] = hash
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
+        self.subtasks_given[hash]['res_x'] = self.res_x
+        self.subtasks_given[hash]['res_y'] = self.res_y
+        self.subtasks_given[hash]['use_frames'] = self.use_frames
+        self.subtasks_given[hash]['all_frames'] = self.frames
 
         part = self._count_part(start_task, parts)
 

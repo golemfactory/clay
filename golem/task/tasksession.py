@@ -3,7 +3,6 @@ import hashlib
 import logging
 import os
 import pickle
-import struct
 import threading
 import time
 
@@ -23,7 +22,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ResultType, ResourceType
+from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -827,43 +826,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         reasons = message.CannotComputeTask.REASON
         self.err_msg = reasons.WrongDockerImages
         return False
-
-    def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.ZIP
-        )
-
-        if not res_file_path:
-            logger.error("Task {} has no resource".format(msg.task_id))
-            self.conn.transport.write(struct.pack("!L", 0))
-            self.dropped()
-            return
-
-        self.conn.producer = tcpnetwork.EncryptFileProducer(
-            [res_file_path],
-            self
-        )
-
-    def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.PARTS
-        )
-        if res is None:
-            return
-        delta_header, parts_list = res
-
-        self.send(message.DeltaParts(
-            task_id=self.task_id,
-            delta_header=delta_header,
-            parts=parts_list,
-            node_name=self.task_server.get_node_name(),
-            node_info=self.task_server.node,
-            address=self.task_server.get_resource_addr(),
-            port=self.task_server.get_resource_port()))
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager

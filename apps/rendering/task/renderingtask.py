@@ -1,10 +1,6 @@
-
-
 import logging
 import math
 import os
-from abc import abstractproperty, abstractmethod
-from copy import deepcopy
 from typing import Type
 
 from PIL import Image, ImageChops
@@ -14,8 +10,8 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.verificator import RenderingVerificator
-from golem.core.common import get_golem_path, timeout_to_deadline
+from apps.rendering.task.verifier import RenderingVerifier
+from golem.core.common import get_golem_path
 from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
@@ -32,7 +28,7 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingTask(CoreTask):
 
-    VERIFICATOR_CLASS = RenderingVerificator
+    VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
 
     @classmethod
@@ -91,11 +87,6 @@ class RenderingTask(CoreTask):
             self.scale_factor = 1.0
 
         self.test_task_res_path = None
-
-        self.verificator.res_x = self.res_x
-        self.verificator.res_y = self.res_y
-        self.verificator.total_tasks = self.total_tasks
-        self.verificator.root_path = self.root_path
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
@@ -289,10 +280,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
                            .format(total, defaults.default_subtasks))
             return defaults.default_subtasks
 
-    def _set_verification_options(self, new_task):
-        new_task.verificator.set_verification_options(
-            self.task_definition.verification_options)
-
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
@@ -311,7 +298,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     def build(self):
         task = super(RenderingTaskBuilder, self).build()
-        self._set_verification_options(task)
         return task
 
     @classmethod

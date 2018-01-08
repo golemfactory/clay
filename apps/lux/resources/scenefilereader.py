@@ -1,7 +1,7 @@
 import re
 
 from golem.core.common import to_unicode
-from apps.rendering.resources.ImgVerificator import ImgVerificator
+from apps.rendering.resources.imgverifier import ImgVerifier
 
 def make_scene_analysis(scene_file_src, return_data):
     resolution = get_resolution(scene_file_src)
@@ -59,10 +59,10 @@ def get_random_crop_window_for_verification(source_lux_config_file_lxs):
 
         # make smaller_window from window for verification
         crop_window = \
-            ImgVerificator().get_random_crop_window(
+            ImgVerifier().get_random_crop_window(
                 coverage=0.5,
                 window=window)
         return crop_window
 
-    crop_window = ImgVerificator().get_random_crop_window()
+    crop_window = ImgVerifier().get_random_crop_window()
     return crop_window

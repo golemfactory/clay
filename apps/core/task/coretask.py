@@ -1,5 +1,4 @@
 import abc
-import copy
 import decimal
 import golem_messages.message
 import logging
@@ -11,7 +10,7 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.core.task.verifier import CoreVerifier
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -20,11 +19,12 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.task.localcomputer import ComputerAdapter
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    ResourceType, TaskTypeInfo
+    TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -84,7 +84,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 
 class CoreTask(Task):
-    VERIFICATOR_CLASS = CoreVerificator  # type: Type[CoreVerificator]
+    VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -175,7 +175,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verificator = self.VERIFICATOR_CLASS()
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
@@ -184,8 +183,8 @@ class CoreTask(Task):
                and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager):
-        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
-        self.verificator.tmp_dir = self.tmp_dir
+        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id,
+                                                          create=True)
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
@@ -196,16 +195,27 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
-                                            result_files, self)
-        if ver_state == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result_files)
+        verifier = self.VERIFIER_CLASS(self.verification_finished)
+        verifier.computer = ComputerAdapter()
+        verifier.start_verification(
+            subtask_info=self.subtasks_given[subtask_id],
+            results=result_files,
+            resources=[],
+            reference_data=self.get_reference_data())
+
+    def get_reference_data(self):
+        return []
+
+    def verification_finished(self, subtask_id, verdict, result):
+        if verdict == SubtaskVerificationState.VERIFIED:
+            self.accept_results(subtask_id, result['extra_data']['results'])
         # TODO Add support for different verification states
         else:
             self.computation_failed(subtask_id)
@@ -276,24 +286,6 @@ class CoreTask(Task):
             return 0.0
         return self.num_tasks_received / self.total_tasks
 
-    def get_resources(self, resource_header, resource_type=ResourceType.ZIP, tmp_dir=None):
-
-        dir_name = self._get_resources_root_dir()
-        if tmp_dir is None:
-            tmp_dir = self.tmp_dir
-
-        if os.path.exists(dir_name):
-            if resource_type == ResourceType.ZIP:
-                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
-
-            elif resource_type == ResourceType.PARTS:
-                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
-                                                                               dir_name,
-                                                                               self.res_files)
-            elif resource_type == ResourceType.HASHES:
-                return copy.copy(self.task_resources)
-
-        return None
 
     def update_task_state(self, task_state):
         pass
@@ -460,6 +452,9 @@ class CoreTask(Task):
         with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
         return os.path.join(output_dir, tr[0])
+
+    def get_resources(self):
+        return self.task_resources
 
     def _get_resources_root_dir(self):
         task_resources = list(self.task_resources)
