@@ -315,7 +315,7 @@ class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
-        self.compositing = True
+        self.compositing = False
 
 
 class BlenderRenderTask(FrameRenderingTask):
