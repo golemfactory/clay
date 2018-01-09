@@ -61,7 +61,7 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
 
-    def connect(self):
+    def connect(self, auto_reconnect=True):
 
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
@@ -95,14 +95,17 @@ class Session(ApplicationSession):
         self._client = TCP4ClientEndpoint(reactor,
                                           self.address.host,
                                           self.address.port)
-        self._reconnect_service = ClientService(
-            endpoint=self._client,
-            factory=transport_factory,
-            retryPolicy=backoffPolicy(factor=BACKOFF_POLICY_FACTOR)
-        )
-        self._reconnect_service.startService()
+        if auto_reconnect:
+            self._reconnect_service = ClientService(
+                endpoint=self._client,
+                factory=transport_factory,
+                retryPolicy=backoffPolicy(factor=BACKOFF_POLICY_FACTOR)
+            )
+            self._reconnect_service.startService()
+            deferred = self._reconnect_service.whenConnected()
+        else:
+            deferred = self._client.connect(transport_factory)
 
-        deferred = self._reconnect_service.whenConnected()
         deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
 
