@@ -6,7 +6,6 @@ from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
-from golem.core.simpleenv import SimpleEnv
 
 from golem.ranking.helper.trust_const import \
     REQUESTING_TRUST, \
@@ -22,15 +21,13 @@ DEFAULT_HARDWARE_PRESET_NAME = "default"
 CUSTOM_HARDWARE_PRESET_NAME = "custom"
 
 CONFIG_FILENAME = "app_cfg.ini"
-ESTM_FILENAME = "minilight.ini"
 
 START_PORT = 40102
 END_PORT = 60102
 RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
-
-ESTIMATED_DEFAULT = 2220.0
+SEND_PEERS_NUM = 10
 
 USE_IP6 = 0
 ACCEPT_TASKS = 1
@@ -45,6 +42,14 @@ PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 MAX_SENDING_DELAY = 360
+# How frequently task archive should be saved to disk (in seconds)
+TASKARCHIVE_MAINTENANCE_INTERVAL = 30
+# Filename for task archive disk file
+TASKARCHIVE_FILENAME = "task_archive.pickle"
+# Number of past days task archive will store aggregated information for
+TASKARCHIVE_NUM_INTERVALS = 365
+# Limit of the number  of non-expired tasks stored in task archive at any moment
+TASKARCHIVE_MAX_TASKS = 10000000
 
 P2P_SESSION_TIMEOUT = 240
 TASK_SESSION_TIMEOUT = 900
@@ -53,6 +58,8 @@ USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
 WAITING_FOR_TASK_TIMEOUT = 720  # 36000
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 
 # Default max price per hour -- 5.0 GNT ~ 0.05 USD
 MAX_PRICE = int(5.0 * denoms.ether)
@@ -60,48 +67,10 @@ MAX_PRICE = int(5.0 * denoms.ether)
 MIN_PRICE = MAX_PRICE // 10
 
 
-# FIXME: deprecated
-class CommonConfig:
-    def __init__(self, section="Common", **kwargs):
-        self._section = section
-
-        for k, v in list(kwargs.items()):
-            ConfigEntry.create_property(
-                section,
-                k.replace("_", " "),
-                v,
-                self,
-                k
-            )
-
-        self.prop_names = list(kwargs.keys())
-
-    def section(self):
-        return self._section
-
-
 class NodeConfig:
-    @classmethod
-    def read_estimated_performance(cls):
-        estm_file = SimpleEnv.env_file_name(ESTM_FILENAME)
-        res = 0
-        try:
-            with open(estm_file, 'r') as file_:
-                val = file_.read()
-                res = "{0:.1f}".format(float(val))
-        except IOError as err:
-            logger.warning("Can't open file {}: {}".format(estm_file, str(err)))
-        except ValueError as err:
-            logger.warning("Can't change {} to float: {}".format(val, str(err)))
-        return res
 
     def __init__(self, **kwargs):
         self._section = "Node"
-
-        estimated_performance = NodeConfig.read_estimated_performance()
-        if estimated_performance == 0:
-            estimated_performance = ESTIMATED_DEFAULT
-        kwargs["estimated_performance"] = estimated_performance
 
         for k, v in list(kwargs.items()):
             ConfigEntry.create_property(
@@ -143,6 +112,7 @@ class AppConfig:
             # peers
             seed_host="",
             seed_port=START_PORT,
+            seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
             # flags
             accept_tasks=ACCEPT_TASKS,
@@ -154,9 +124,6 @@ class AppConfig:
             max_price=MAX_PRICE,
             requesting_trust=REQUESTING_TRUST,
             computing_trust=COMPUTING_TRUST,
-            # benchmarks
-            estimated_lux_performance="0",
-            estimated_blender_performance="0",
             # intervals
             pings_interval=PINGS_INTERVALS,
             getting_peers_interval=GETTING_PEERS_INTERVAL,
@@ -172,7 +139,9 @@ class AppConfig:
             use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
-            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT)
+            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
+            clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
+            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS)
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)

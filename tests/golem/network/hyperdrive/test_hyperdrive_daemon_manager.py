@@ -1,106 +1,121 @@
-from mock import patch, Mock, call
+from unittest.mock import patch, Mock
+
 from requests import ConnectionError
 
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
 
 
+@patch('atexit.register')
 class TestHyperdriveDaemonManager(TempDirFixture):
 
-    @patch('golem.core.processmonitor.ProcessMonitor.start')
-    @patch('golem.core.processmonitor.ProcessMonitor.add_callbacks')
-    @patch('golem.core.processmonitor.ProcessMonitor.add_child_processes')
-    @patch('atexit.register')
-    def test_start(self, register, *_):
+    @patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')
+    def setUp(self, *_):
+        super().setUp()
 
-        def ports(*_):
-            return dict(
-                UTP=dict(
-                    address='0.0.0.0',
-                    port=3282
-                ),
-                TCP=dict(
-                    address='0.0.0.0',
-                    port=3282
-                )
-            )
+        self.dm = HyperdriveDaemonManager(self.path)
+        self.monitor = self.dm._monitor
 
-        def none(*_):
-            pass
-
+    @patch('golem.network.hyperdrive.daemon_manager.'
+           'HyperdriveDaemonManager._wait')
+    def test_start_not_running(self, *_):
+        dm, monitor = self.dm, self.monitor
         process = Mock()
+
         process.poll.return_value = None
+        monitor.add_child_processes.called = False
 
-        daemon_manager = HyperdriveDaemonManager(self.path)
-        daemon_manager._monitor.add_callbacks.assert_called_with(daemon_manager._start)
+        with patch.object(dm, 'addresses', return_value=None), \
+            patch('subprocess.Popen', return_value=process), \
+            patch('os.makedirs') as makedirs:
 
-        assert register.call_count == 2
-        register.assert_has_calls(
-            [call()(daemon_manager._monitor.exit)],
-            [call()(daemon_manager.stop)]
+            dm.start()
+
+            assert monitor.start.called
+            monitor.add_child_processes.assert_called_with(process)
+            assert makedirs.called
+
+    def test_start_running(self, *_):
+        dm, monitor = self.dm, self.monitor
+        process = Mock()
+
+        addresses = dict(
+            uTP=('0.0.0.0', 3282),
+            TCP=('0.0.0.0', 3282)
         )
 
-        # hyperdrive not running
         process.poll.return_value = True
-        daemon_manager._monitor.add_child_processes.called = False
+        monitor.add_child_processes.called = False
 
-        with patch.object(daemon_manager, 'addresses', side_effect=none), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+        with patch.object(dm, 'addresses', return_value=addresses), \
+            patch('subprocess.Popen', return_value=process), \
+            patch('os.makedirs') as makedirs:
+
+            dm.start()
+            assert monitor.start.called
+            assert not monitor.add_child_processes.called
+            assert not makedirs.called
+
+    def test_start_invalid_response(self, *_):
+        dm, monitor = self.dm, self.monitor
+        process = Mock()
+
+        process.poll.return_value = True
+        monitor.add_child_processes.called = False
+
+        with patch.object(dm, 'addresses', return_value=None), \
+            patch('subprocess.Popen', return_value=process), \
+            patch('os.makedirs') as makedirs:
 
             with self.assertRaises(RuntimeError):
-                daemon_manager.start()
+                dm.start()
 
-            register.assert_called_with(daemon_manager.stop)
-
-            assert register.call_count == 2
-            assert daemon_manager._monitor.start.called
+            assert monitor.start.called
+            assert not monitor.add_child_processes.called
             assert makedirs.called
-            assert not daemon_manager._monitor.add_child_processes.called
 
-        process.poll.return_value = None
-        daemon_manager._monitor.add_child_processes.called = False
+    @patch('golem.network.hyperdrive.client.HyperdriveClient.addresses')
+    def test_addresses_and_ports(self, client_addresses, *_):
+        dm = self.dm
+        public_ip = '1.2.3.4'
 
-        with patch.object(daemon_manager, 'addresses', side_effect=none), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+        addresses = {
+            'TCP': ('0.0.0.0', 3282),
+            'uTP': ('0.0.0.0', 3283)
+        }
+        expected_public = {
+            'TCP': (public_ip, 3282),
+            'uTP': (public_ip, 3283)
+        }
 
-            daemon_manager.start()
+        client_addresses.return_value = addresses
+        assert dm.addresses() == addresses
 
-            register.assert_called_with(daemon_manager.stop)
-            assert register.call_count == 2
-            assert daemon_manager._monitor.start.called
-            assert makedirs.called
-            daemon_manager._monitor.add_child_processes.assert_called_with(process)
+        assert dm.public_addresses(public_ip) == expected_public
+        assert dm.public_addresses(public_ip, addresses) == expected_public
+        assert dm.public_addresses(public_ip, dict()) == dict()
 
-        # hyperdrive is running
-        process.poll.return_value = True
-        daemon_manager._monitor.add_child_processes.called = False
+        assert dm.ports() == {3282, 3283}
+        assert dm.ports(addresses) == {3282, 3283}
+        assert dm.ports(dict()) == set()
 
-        with patch.object(daemon_manager, 'addresses', side_effect=ports), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
+    @patch('golem.network.hyperdrive.client.HyperdriveClient.addresses')
+    def test_addresses_error(self, client_addresses, *_):
+        dm = self.dm
+        client_addresses.side_effect = ConnectionError
+        assert not dm.addresses()
 
-            daemon_manager.start()
+    def test_wait(self, *_):
+        dm = self.dm
+        dm.addresses = Mock()
+        dm._critical_error = Mock()
 
-            register.assert_called_with(daemon_manager.stop)
-            assert register.call_count == 2
-            assert daemon_manager._monitor.start.called
-            assert not makedirs.called
-            assert not daemon_manager._monitor.add_child_processes.called
+        dm.addresses.return_value = {'TCP': ('0.0.0.0', 3282)}
+        dm._wait(timeout=1)
+        assert not dm._critical_error.called
 
-    def test_daemon_running(self):
+        dm.addresses.return_value = None
+        dm._wait(timeout=1)
+        assert dm._critical_error.called
 
-        daemon_manager = HyperdriveDaemonManager(self.path)
-
-        def raise_exc():
-            raise ConnectionError()
-
-        with patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
-                   side_effect=raise_exc):
-            assert not daemon_manager.addresses()
-
-        with patch('golem.network.hyperdrive.client.HyperdriveClient.addresses',
-                   side_effect=lambda *_: {'TCP': {'port': 1234}}):
-            assert daemon_manager.addresses()
 

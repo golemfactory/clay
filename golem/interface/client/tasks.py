@@ -25,12 +25,11 @@ class CommandAppLogic(AppLogic):
 
     @staticmethod
     def instantiate(client, datadir):
-        args = (None, None)
         logic = CommandAppLogic(client, datadir)
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info(*args))
+            logic.register_new_task_type(app.task_type_info())
         return logic
 
 
@@ -41,6 +40,8 @@ class Tasks:
 
     task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
+    unsupport_reasons_table_headers = ['reason', 'no of tasks',
+                                       'avg for all tasks']
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
@@ -71,6 +72,8 @@ class Tasks:
         default=False,
         help="Skip task testing phase"
     )
+    last_days = Argument('last_days', optional=True, default="0",
+                         help="Number of last days to compute statistics on")
 
     application_logic = None
 
@@ -135,16 +138,6 @@ class Tasks:
         deferred = Tasks.client.delete_task(id)
         return sync_wait(deferred)
 
-    @command(argument=id_req, help="Pause a task")
-    def pause(self, id):
-        deferred = Tasks.client.pause_task(id)
-        return sync_wait(deferred)
-
-    @command(argument=id_req, help="Resume a task")
-    def resume(self, id):
-        deferred = Tasks.client.resume_task(id)
-        return sync_wait(deferred)
-
     @command(argument=file_name, help="""
         Create a task from file.
         Note: no client-side validation is performed yet.
@@ -152,7 +145,7 @@ class Tasks:
     """)
     def create(self, file_name: str) -> Any:
         with open(file_name) as f:
-            self.create_from_json(f.read())
+            self.__create_from_json(f.read())
 
     @command(arguments=(id_req, outfile), help="Dump an existing task")
     def dump(self, id: str, outfile: Optional[str]) -> None:
@@ -168,6 +161,14 @@ class Tasks:
     def stats(self):
         deferred = Tasks.client.get_task_stats()
         return sync_wait(deferred)
+
+    @command(argument=last_days, help="Show statistics for unsupported tasks")
+    def unsupport(self, last_days):
+        deferred = Tasks.client.get_unsupport_reasons(int(last_days))
+        result = sync_wait(deferred)
+        values = [[r['reason'], r['ntasks'], r['avg']] for r in result]
+        return CommandResult.to_tabular(Tasks.unsupport_reasons_table_headers,
+                                        values)
 
     @staticmethod
     def __dump_dict(dictionary: dict, outfile: Optional[str]) -> None:
@@ -186,9 +187,11 @@ class Tasks:
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 
-    def create_from_json(self, jsondata: str) -> Any:
+    def __create_from_json(self, jsondata: str) -> Any:
         dictionary = json.loads(jsondata)
         # FIXME CHANGE TASKI ID
+        if 'id' in dictionary:
+            print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)

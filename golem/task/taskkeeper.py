@@ -1,27 +1,37 @@
+import golem_messages.message
 import logging
 import math
+import pathlib
 import pickle
 import random
 import time
 
 from typing import Optional
-
+import typing
+from collections import Counter
 from semantic_version import Version
 
-from golem.core.common import HandleKeyError, get_timestamp_utc
-from golem.core.variables import APP_VERSION
+import golem
+from golem.core import common
 from golem.environments.environment import SupportStatus, UnsupportReason
-from .taskbase import TaskHeader, ComputeTaskDef
+from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price, computation_time):
-    return int(math.ceil(price * computation_time / 3600))
+def compute_subtask_value(price: int, computation_time: int):
+    """
+    Don't use math.ceil (this is general advice, not specific to the case here)
+    >>> math.ceil(10 ** 18 / 6)
+    166666666666666656
+    >>> (10 ** 18 + 5) // 6
+    166666666666666667
+    """
+    return (price * computation_time + 3599) // 3600
 
 
-class CompTaskInfo(object):
-    def __init__(self, header, price):
+class CompTaskInfo:
+    def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
         self.requests = 1
@@ -35,34 +45,36 @@ class CompTaskInfo(object):
         )
 
 
-class CompSubtaskInfo(object):
+class CompSubtaskInfo:
     def __init__(self, subtask_id):
         self.subtask_id = subtask_id
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], ComputeTaskDef):
-        task_id = args[1].task_id
+    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+        task_id = args[1]['task_id']
     else:
         task_id = args[1]
     logger.warning("This is not my task {}".format(task_id))
     return None
 
 
-class CompTaskKeeper(object):
+class CompTaskKeeper:
     """Keeps information about subtasks that should be computed by this node.
     """
 
-    handle_key_error = HandleKeyError(log_key_error)
+    handle_key_error = common.HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path, persist=True):
+    def __init__(self, tasks_path: pathlib.Path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
 
-        tasks_path: pathlib.Path to tasks directory
+        tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
         self.active_tasks = {}
         self.subtask_to_task = {}  # maps subtasks id to tasks id
+        if not tasks_path.is_dir():
+            tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
         self.persist = persist
         self.restore()
@@ -73,9 +85,6 @@ class CompTaskKeeper(object):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
-            from pprint import pformat
-            for task in list(self.active_tasks.values()):
-                logger.debug('dump_data: %s', pformat(task))
             pickle.dump(dump_data, f)
 
     def restore(self):
@@ -88,7 +97,7 @@ class CompTaskKeeper(object):
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError):
+            except (pickle.UnpicklingError, EOFError, AttributeError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -97,7 +106,7 @@ class CompTaskKeeper(object):
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
 
-    def add_request(self, theader, price):
+    def add_request(self, theader: TaskHeader, price: int):
         logger.debug('CT.add_request()')
         if not isinstance(price, int):
             raise TypeError(
@@ -114,24 +123,21 @@ class CompTaskKeeper(object):
         self.dump()
 
     @handle_key_error
-    def get_subtask_ttl(self, task_id):
-        return self.active_tasks[task_id].header.subtask_timeout
-
-    @handle_key_error
     def get_task_env(self, task_id):
         return self.active_tasks[task_id].header.environment
 
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
-        task = self.active_tasks[comp_task_def.task_id]
+        task = self.active_tasks[comp_task_def['task_id']]
         if not task.requests > 0:
             return
-        if comp_task_def.subtask_id in task.subtasks:
+        if comp_task_def['subtask_id'] in task.subtasks:
             return
         task.requests -= 1
-        task.subtasks[comp_task_def.subtask_id] = comp_task_def
-        self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
+        self.subtask_to_task[comp_task_def['subtask_id']] =\
+            comp_task_def['task_id']
         self.dump()
         return True
 
@@ -145,6 +151,7 @@ class CompTaskKeeper(object):
     @handle_key_error
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
+
         if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
@@ -152,26 +159,47 @@ class CompTaskKeeper(object):
             )
         return compute_subtask_value(price, computing_time)
 
+    def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
+        task_id = self.subtask_to_task.get(subtask_id)
+        task = self.active_tasks.get(task_id)
+        return task and task.header.task_owner_key_id == task_owner_key_id
+
     @handle_key_error
     def request_failure(self, task_id):
         logger.debug('CT.request_failure(%r)', task_id)
         self.active_tasks[task_id].requests -= 1
         self.dump()
 
+    def remove_old_tasks(self):
+        for task_id in frozenset(self.active_tasks):
+            deadline = self.active_tasks[task_id].header.deadline
+            delta = deadline - common.get_timestamp_utc()
+            if delta > 0:
+                continue
+            logger.info("Removing comp_task after deadline: %s", task_id)
+            for subtask_id in self.active_tasks[task_id].subtasks:
+                del self.subtask_to_task[subtask_id]
+            del self.active_tasks[task_id]
 
-class TaskHeaderKeeper(object):
+        self.dump()
+
+
+class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
        to other nodes.
+       Provider uses Taskkeeper to find tasks for itself
     """
 
     def __init__(
             self,
             environments_manager,
             min_price=0.0,
-            app_version=APP_VERSION,
+            app_version=golem.__version__,
             remove_task_timeout=180,
-            verification_timeout=3600):
+            verification_timeout=3600,
+            max_tasks_per_requestor=10,
+            task_archiver=None):
         # all computing tasks that this node knows about
         self.task_headers = {}
         # ids of tasks that this node may try to compute
@@ -181,12 +209,16 @@ class TaskHeaderKeeper(object):
         # tasks that were removed from network recently, so they won't
         # be added again to task_headers
         self.removed_tasks = {}
+        # task ids by owner
+        self.tasks_by_owner = {}
 
         self.min_price = min_price
         self.app_version = app_version
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
+        self.max_tasks_per_requestor = max_tasks_per_requestor
+        self.task_archiver = task_archiver
 
     def check_support(self, th_dict_repr) -> SupportStatus:
         """Checks if task described with given task header dict
@@ -217,12 +249,27 @@ class TaskHeaderKeeper(object):
         """
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             return False, "Deadline is not a timestamp"
-        if th_dict_repr['deadline'] < get_timestamp_utc():
-            return False, "Deadline already passed"
+        if th_dict_repr['deadline'] < common.get_timestamp_utc():
+            msg = "Deadline already passed \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         if not isinstance(th_dict_repr['subtask_timeout'], int):
-            return False, "Subtask timeout is not a number"
+            msg = "Subtask timeout is not a number \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         if th_dict_repr['subtask_timeout'] < 0:
-            return False, "Subtask timeout is less than 0"
+            msg = "Subtask timeout is less than 0 \n " \
+                  "task_id = %s \n " \
+                  "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            return False, msg
         return True, None
 
     def check_environment(self, th_dict_repr) -> SupportStatus:
@@ -317,6 +364,8 @@ class TaskHeaderKeeper(object):
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
+            if self.task_archiver:
+                self.task_archiver.add_support_status(id_, supported)
 
     def add_task_header(self, th_dict_repr):
         """This function will try to add to or update a task header
@@ -330,43 +379,96 @@ class TaskHeaderKeeper(object):
         try:
             id_ = th_dict_repr["task_id"]
             update = id_ in list(self.task_headers.keys())
-            is_correct, err = self.is_correct(th_dict_repr)
-            if not is_correct:
-                raise TypeError(err)
 
-            if id_ not in list(self.removed_tasks.keys()):  # not recent
-                self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
-                support = self.check_support(th_dict_repr)
-                self.support_status[id_] = support
+            self.check_correct(th_dict_repr)
 
-                if update:
-                    if not support and id_ in self.supported_tasks:
-                        self.supported_tasks.remove(id_)
-                elif support:
-                    logger.info(
-                        "Adding task %r support=%r",
-                        id_,
-                        support
-                    )
-                    self.supported_tasks.append(id_)
+            if id_ in list(self.removed_tasks.keys()):  # recent
+                logger.info("Received a task which has been already "
+                            "cancelled/removed/timeout/banned/etc "
+                            "Task id %s .", id_)
+                return True
+
+            th = TaskHeader.from_dict(th_dict_repr)
+            self.task_headers[id_] = th
+
+            self._get_tasks_by_owner_set(th.task_owner_key_id).add(id_)
+
+            self.update_supported_set(th_dict_repr, update)
+
+            self.check_max_tasks_per_owner(th.task_owner_key_id)
+
+            if self.task_archiver and id_ in self.task_headers:
+                self.task_archiver.add_task(th)
+                self.task_archiver.add_support_status(id_,
+                                                      self.support_status[id_])
 
             return True
         except (KeyError, TypeError) as err:
-            logger.warning("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received: {}".format(err))
             return False
+
+    def update_supported_set(self, th_dict_repr, update_header):
+        id_ = th_dict_repr["task_id"]
+
+        support = self.check_support(th_dict_repr)
+        self.support_status[id_] = support
+
+        if update_header:
+            if not support and id_ in self.supported_tasks:
+                self.supported_tasks.remove(id_)
+        elif support:
+            logger.info(
+                "Adding task %r support=%r",
+                id_,
+                support
+            )
+            self.supported_tasks.append(id_)
+
+    def check_correct(self, th_dict_repr):
+        is_correct, err = self.is_correct(th_dict_repr)
+        if not is_correct:
+            raise TypeError(err)
+
+    def _get_tasks_by_owner_set(self, owner_key_id):
+        if owner_key_id not in self.tasks_by_owner:
+            self.tasks_by_owner[owner_key_id] = set()
+
+        return self.tasks_by_owner[owner_key_id]
+
+    def check_max_tasks_per_owner(self, owner_key_id):
+        owner_task_set = self._get_tasks_by_owner_set(owner_key_id)
+
+        if len(owner_task_set) <= self.max_tasks_per_requestor:
+            return
+
+        by_age = sorted(owner_task_set,
+                        key=lambda tid: self.task_headers[tid].last_checking)
+
+        # leave alone the first (oldest) max_tasks_per_requestor
+        # headers, remove the rest
+        to_remove = by_age[self.max_tasks_per_requestor:]
+
+        logger.warning("Too many tasks from %s, dropping %d tasks",
+                       owner_key_id, len(to_remove))
+
+        for tid in to_remove:
+            self.remove_task_header(tid)
 
     def remove_task_header(self, task_id):
         """ Removes task with given id from a list of known task headers.
         """
         if task_id in self.task_headers:
+            owner_key_id = self.task_headers[task_id].task_owner_key_id
             del self.task_headers[task_id]
+            if owner_key_id in self.tasks_by_owner:
+                self.tasks_by_owner[owner_key_id].discard(task_id)
         if task_id in self.supported_tasks:
             self.supported_tasks.remove(task_id)
         if task_id in self.support_status:
             del self.support_status[task_id]
         self.removed_tasks[task_id] = time.time()
 
-    def get_task(self):
+    def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed
         :return TaskHeader|None: returns either None if there are no tasks
                                  that this node may want to compute
@@ -378,9 +480,10 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):
-            cur_time = get_timestamp_utc()
+            cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.warning("Task {} dies".format(t.task_id))
+                logger.warning("Task owned by %s dies, task_id: %s",
+                               t.task_owner_key_id, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):
@@ -390,3 +493,34 @@ class TaskHeaderKeeper(object):
 
     def request_failure(self, task_id):
         self.remove_task_header(task_id)
+
+    def get_unsupport_reasons(self):
+        """
+        :return: list of dictionaries of the form {'reason': reason_type,
+         'ntasks': task_count, 'avg': avg} where reason_type is one of
+         unsupport reason types, task_count is the number of tasks currently
+         affected with that reason, and avg (if available) is the current most
+         typical corresponding value.  For unsupport reason
+         MAX_PRICE avg is the average price of all tasks currently observed in
+         the network. For unsupport reason APP_VERSION avg is
+         the most popular app version of all tasks currently observed in the
+         network.
+        """
+        c_reasons = Counter({r: 0 for r in UnsupportReason})
+        for st in self.support_status.values():
+            c_reasons.update(st.desc.keys())
+        c_versions = Counter()
+        c_price = 0
+        for th in self.task_headers.values():
+            c_versions[th.min_version] += 1
+            c_price += th.max_price
+        ret = []
+        for (reason, count) in c_reasons.most_common():
+            if reason == UnsupportReason.MAX_PRICE and self.task_headers:
+                avg = int(c_price / len(self.task_headers))
+            elif reason == UnsupportReason.APP_VERSION and c_versions:
+                avg = c_versions.most_common(1)[0][0]
+            else:
+                avg = None
+            ret.append({'reason': reason.value, 'ntasks': count, 'avg': avg})
+        return ret

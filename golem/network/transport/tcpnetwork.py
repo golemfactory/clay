@@ -6,10 +6,11 @@ import time
 from copy import copy
 from threading import Lock
 
+import golem_messages
 from golem.core.hostaddress import get_host_addresses
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
-    TCP6ClientEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
+    TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
 from zope.interface import implements, implementer
@@ -18,10 +19,12 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem.network.transport.message import Message
-from .network import Network, SessionProtocol
+from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
+    OutgoingProtocolFactoryWrapper
 
 logger = logging.getLogger(__name__)
+
+MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 ##########################
 # Network helper classes #
@@ -227,7 +230,10 @@ class TCPNetwork(Network):
         """
         from twisted.internet import reactor
         self.reactor = reactor
-        self.protocol_factory = protocol_factory
+        self.incoming_protocol_factory = IncomingProtocolFactoryWrapper(
+            protocol_factory)
+        self.outgoing_protocol_factory = OutgoingProtocolFactoryWrapper(
+            protocol_factory)
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
         self.active_listeners = {}
@@ -323,7 +329,7 @@ class TCPNetwork(Network):
         else:
             endpoint = TCP4ClientEndpoint(self.reactor, address, port, self.timeout)
 
-        defer = endpoint.connect(self.protocol_factory)
+        defer = endpoint.connect(self.outgoing_protocol_factory)
 
         defer.addCallback(self.__connection_established, established_callback, **kwargs)
         defer.addErrback(self.__connection_failure, failure_callback, **kwargs)
@@ -358,7 +364,7 @@ class TCPNetwork(Network):
         else:
             ep = TCP4ServerEndpoint(self.reactor, port)
 
-        defer = ep.listen(self.protocol_factory)
+        defer = ep.listen(self.incoming_protocol_factory)
 
         defer.addCallback(self.__listening_established, established_callback, **kwargs)
         defer.addErrback(self.__listening_failure, port, max_port, established_callback, failure_callback, **kwargs)
@@ -470,11 +476,11 @@ class BasicProtocol(SessionProtocol):
     def dataReceived(self, data):
         """Called when additional chunk of data is received from another peer"""
         if not self._can_receive():
-            return None
+            return
 
         if not self.session:
             logger.warning("No session argument in connection state")
-            return None
+            return
 
         self._interpret(data)
 
@@ -491,7 +497,7 @@ class BasicProtocol(SessionProtocol):
         ser_msg = msg.serialize()
 
         db = DataBuffer()
-        db.append_len_prefixed_string(ser_msg)
+        db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
     def _can_receive(self):
@@ -499,19 +505,47 @@ class BasicProtocol(SessionProtocol):
 
     def _interpret(self, data):
         with self.lock:
-            self.db.append_string(data)
+            self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        # Interpret messages
-        if mess:
-            for m in mess:
-                self.session.interpret(m)
-        elif data:
-            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+        if mess is None:
+            logger.warning("Too long pending message, closing connection")
+            self.close()
+            return
+
+        for m in mess:
+            self.session.interpret(m)
 
     def _data_to_messages(self):
-        return Message.deserialize(self.db)
+        messages = []
+        def valid_len():
+            msg_len = self.db.peek_ulong()
+            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
+        if not valid_len():
+            return None
+        data = self.db.read_len_prefixed_bytes()
+
+        while data:
+            try:
+                msg = golem_messages.load(data, None, None)
+                logger.debug(
+                    'BasicProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
+
+            if msg:
+                messages.append(msg)
+            else:
+                logger.error("Failed to deserialize message %r", data)
+
+            if not valid_len():
+                return None
+            data = self.db.read_len_prefixed_bytes()
+
+        return messages
 
 
 class ServerProtocol(BasicProtocol):
@@ -549,40 +583,40 @@ class SafeProtocol(ServerProtocol):
     messages """
 
     def _prepare_msg_to_send(self, msg):
+        logger.debug('SafeProtocol._prepare_msg_to_send(%r)', msg)
         if self.session is None:
             logger.error("Wrong session, not sending message")
             return None
 
-        msg = self.session.sign(msg)
-        if not msg:
-            logger.error("Wrong session, not sending message")
-            return None
-        ser_msg = msg.serialize()
-        enc_msg = self.session.encrypt(ser_msg)
-
-        db = DataBuffer()
-        db.append_len_prefixed_string(enc_msg)
-        return db.read_all()
+        serialized = golem_messages.dump(
+            msg,
+            self.session.my_private_key,
+            self.session.theirs_public_key,
+        )
+        length = struct.pack("!L", len(serialized))
+        return length + serialized
 
     def _data_to_messages(self):
-        if not isinstance(self.db, DataBuffer):
-            raise TypeError("incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
         messages = []
-
-        for msg in self.db.get_len_prefixed_string():
-            dec_msg = self.session.decrypt(msg)
-            if not dec_msg:
-                logger.warning("Decryption of message failed")
-                break
-
-            m = Message.deserialize_message(dec_msg)
-            if not m:
-                logger.warning("Deserialization of message failed")
-                break
-
-            m.encrypted = dec_msg != msg
-            messages.append(m)
-
+        for buf in self.db.get_len_prefixed_bytes():
+            try:
+                msg = golem_messages.load(
+                    buf,
+                    self.session.my_private_key,
+                    self.session.theirs_public_key,
+                )
+                logger.debug(
+                    'SafeProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
+            except golem_messages.exceptions.InvalidSignature:
+                logger.info("Failed to verify message signature %r", buf)
+                msg = None
+            if msg:
+                messages.append(msg)
         return messages
 
 
@@ -639,27 +673,6 @@ class FilesProtocol(SafeProtocol):
     def _check_stream(self, data):
         return len(data) >= LONG_STANDARD_SIZE
 
-
-class MidAndFilesProtocol(FilesProtocol):
-    """ Connection-oriented protocol for twisted. In the Middleman mode pass message to session without
-    decrypting or deserializing it. In normal mode allows to send messages (support for message serialization)
-    encryption, decryption and signing), files or stream data."""
-    def _interpret(self, data):
-        if self.session.is_middleman:
-            self.session.last_message_time = time.time()
-            with self.lock:
-                self.db.append_string(data, check_size=False)
-                messages = self.db.read_all()
-            self.session.interpret(messages)
-        else:
-            FilesProtocol._interpret(self, data)
-
-    ############################
-    def _prepare_msg_to_send(self, msg):
-        if self.session.is_middleman:
-            return msg
-        else:
-            return FilesProtocol._prepare_msg_to_send(self, msg)
 
 #############
 # Producers #

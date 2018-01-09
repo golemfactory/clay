@@ -6,6 +6,7 @@ from unittest import TestCase
 
 from mock import patch, ANY
 
+from golem.core.common import to_unicode
 from golem.core.common import HandleKeyError, HandleAttributeError, \
     config_logging, get_timestamp_utc, timestamp_to_datetime, \
     datetime_to_timestamp, timeout_to_deadline, deadline_to_timeout
@@ -15,6 +16,26 @@ from golem.testutils import TempDirFixture
 
 def handle_error(*args, **kwargs):
     return 6
+
+
+class TestCommon(TestCase):
+    def test_unicode(self):
+        source = str("test string")
+        result = to_unicode(source)
+        assert result is source
+
+        source = "\xd0\xd1\xd2\xd3"
+        result = to_unicode(source)
+        assert result is source
+
+        source = "test string"
+        result = to_unicode(source)
+        assert isinstance(result, str)
+        assert result == source
+
+        source = None
+        result = to_unicode(source)
+        assert result is None
 
 
 class TestHandleKeyError(TestCase):
@@ -58,6 +79,22 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
         with patch('logging.config.dictConfig') as m_dconfig:
             config_logging(suffix, datadir=datadir)
             m_dconfig.assert_called_once_with(ANY)
+
+            # test with a level
+            m_dconfig.reset_mock()
+            t_lvl = 'WARNING'
+            config_logging(suffix, datadir=datadir,
+                           loglevel=t_lvl)
+            self.assertEqual(m_dconfig.call_args[0][0]['root']['level'], t_lvl)
+
+            # test with wrong level
+            m_dconfig.reset_mock()
+            t_lvl = 'BANANAS'
+            config_logging(suffix, datadir=datadir,
+                           loglevel=t_lvl)
+            self.assertNotEqual(m_dconfig.call_args[0][0]['root']['level'],
+                                t_lvl)
+
         self.assertTrue(os.path.exists(logsdir))
 
 

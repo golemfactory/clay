@@ -1,5 +1,3 @@
-import collections
-
 from golem.core.common import to_unicode
 
 
@@ -15,6 +13,7 @@ class TaskState(object):
         self.outputs = []
         self.total_subtasks = 0
         self.subtask_states = {}
+        self.resource_hash = None
 
         self.extra_data = {}
 
@@ -72,7 +71,8 @@ class SubtaskState(object):
             'time_remaining': self.subtask_rem_time,
             'results': [to_unicode(r) for r in self.results],
             'stderr': to_unicode(self.stderr),
-            'stdout': to_unicode(self.stdout)
+            'stdout': to_unicode(self.stdout),
+            'description': self.subtask_definition,
         }
 
 
@@ -85,7 +85,6 @@ class TaskStatus(object):
     finished = "Finished"
     aborted = "Aborted"
     timeout = "Timeout"
-    paused = "Paused"
     restarted = "Restart"
 
 

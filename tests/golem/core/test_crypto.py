@@ -28,8 +28,7 @@
 import random
 from unittest import TestCase
 
-from devp2p import crypto
-
+from golem.core import crypto
 from golem.utils import decode_hex
 
 

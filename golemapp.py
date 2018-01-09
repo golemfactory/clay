@@ -1,28 +1,46 @@
 #!/usr/bin/env python
 import sys
-import click
-from multiprocessing import freeze_support
 import logging
+from multiprocessing import freeze_support
+import click
 from ethereum import slogging
-#Monkey patch for ethereum.slogging.
-#SLogger aggressively mess up with python looger.
-#This patch is to settle down this.
-#It should be done before any SLogger is created.
+
+import golem
+from golem.core.variables import PROTOCOL_CONST
+from golem.node import OptNode
+
+
+# Monkey patch for ethereum.slogging.
+# SLogger aggressively mess up with python looger.
+# This patch is to settle down this.
+# It should be done before any SLogger is created.
 orig_getLogger = slogging.SManager.getLogger
+
+
 def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
+
 slogging.SManager.getLogger = monkey_patched_getLogger
-from golem.node import OptNode
 
 
 @click.command()
-@click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--datadir', '-d', type=click.Path())
+@click.option('--datadir', '-d', type=click.Path(
+    file_okay=False,
+    writable=True
+))
+@click.option('--protocol_id', type=click.INT,
+              callback=PROTOCOL_CONST.patch_protocol_id,
+              is_eager=True,
+              expose_value=False,
+              help="Golem nodes will connect "
+                   "only inside sub-network with "
+                   "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
               help="Network address to use for this node")
@@ -33,12 +51,14 @@ from golem.node import OptNode
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or "
                    "[<ipv6_addr>]:<port>")
-@click.option('--qt', is_flag=True, default=False,
-              help="Spawn Qt GUI only")
+@click.option('--start-geth', is_flag=True, default=False,
+              help="Start geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
+@click.option('--node', expose_value=False)
+@click.option('--klass', expose_value=False)
 @click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
@@ -48,16 +68,17 @@ from golem.node import OptNode
 @click.option('--worker', expose_value=False)
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
-@click.option('--loglevel', expose_value=False)
+@click.option('--loglevel', default=None,
+              help="Change level for all loggers and handlers, "
+              "possible values are WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
-def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
-          qt, version, m, geth_port):
+def start(payments, monitor, datadir, node_address, rpc_address, peer,
+          start_geth, version, m, geth_port, loglevel):
     freeze_support()
     delete_reactor()
 
     if version:
-        from golem.core.variables import APP_VERSION
-        print("GOLEM version: {}".format(APP_VERSION))
+        print("GOLEM version: {}".format(golem.__version__))
         return 0
 
     # Workarounds for pyinstaller executable
@@ -73,25 +94,16 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
-    # Qt GUI
-    elif qt:
-        from gui.startgui import start_gui, check_rpc_address
-        address = '{}:{}'.format(rpc_address.address, rpc_address.port)
-        start_gui(check_rpc_address(ctx=None, param=None,
-                                    address=address))
-    # Golem
-    elif gui:
-        from gui.startapp import start_app
-        start_app(rendering=True, use_monitor=monitor, geth_port=geth_port,
-                  **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir)
+        config_logging(datadir=datadir, loglevel=loglevel)
         install_reactor()
+        log_golem_version()
 
         node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, geth_port=geth_port, **config)
+                       use_monitor=monitor, start_geth=start_geth,
+                       geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
@@ -121,6 +133,17 @@ def start_crossbar_worker(module):
     import importlib
     module = importlib.import_module(module)
     module.run()
+
+
+def log_golem_version():
+    log = logging.getLogger('golem.version')
+    # initial version info
+    import golem_messages
+    from golem.core.variables import PROTOCOL_CONST
+
+    log.info("GOLEM Version: %s", golem.__version__)
+    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
+    log.info("golem_messages Version: %s", golem_messages.__version__)
 
 
 if __name__ == '__main__':

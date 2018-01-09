@@ -1,5 +1,6 @@
+import golem_messages
+from golem_messages import message
 from golem import testutils
-from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
@@ -12,6 +13,14 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         self.connection = mock.MagicMock()
         self.instance = resourcesession.ResourceSession(self.connection)
 
+    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
+    def test_react_to_hello_super(self, super_mock):
+        msg = message.Hello(
+            **dict((key, None) for key in message.Hello.__slots__)
+        )
+        self.instance.interpret(msg)
+        super_mock.assert_called_once_with(msg)
+
     def test_connection_dropped(self):
         """.dropped() method from BasicSession interface."""
         resource_server = self.connection.server
@@ -19,64 +28,6 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             self.instance.dropped()
             m.assert_called_once_with(self.instance)
             resource_server.remove_session.assert_called_once_with(self.instance)
-
-    def test_encryption(self):
-        """.encrypt() method from SafeSession interface."""
-
-        test_data = 'test data: %s' % (time.time(),)
-
-        # without resource_server
-        self.instance.resource_server = None
-        self.assertEqual(test_data, self.instance.encrypt(test_data))
-
-        # with resource server
-        self.instance.resource_server = resource_server = self.connection.server
-        self.instance.encrypt(test_data)
-        resource_server.encrypt.assert_called_once_with(test_data, self.instance.key_id)
-
-    def test_decryption(self):
-        """.decrypt() method from SafeSession interface."""
-
-        test_data = 'test data: %s' % (time.time(),)
-        decrypted_test_data = 'dcr test data: %s' % (time.time(),)
-
-        # without resource_server
-        self.instance.resource_server = None
-        self.assertEqual(test_data, self.instance.decrypt(test_data))
-
-        # with resource server
-        self.instance.resource_server = resource_server = self.connection.server
-        resource_server.decrypt.return_value = decrypted_test_data
-
-        self.assertEqual(self.instance.decrypt(test_data), decrypted_test_data)
-
-        resource_server.decrypt.side_effect = AssertionError('test')
-        self.assertEqual(self.instance.decrypt(test_data), test_data)
-
-        resource_server.decrypt.side_effect = Exception('test')
-        with self.assertRaises(Exception):
-            self.instance.decrypt(test_data)
-
-    def test_signing(self):
-        """.sign() method from SafeSession interface."""
-        test_signature = 'test sig: %s' % (time.time(),)
-        msg = mock.MagicMock()
-        short_hash = object()
-        msg.get_short_hash.return_value = short_hash
-        self.connection.server.sign.return_value = test_signature
-        self.instance.sign(msg)
-        self.assertEqual(msg.sig, test_signature)
-        msg.get_short_hash.assert_called_once_with()
-
-    def test_sign_verification(self):
-        """.verify() method from SafeSession interface."""
-        test_signature = 'test sig: %s' % (time.time(),)
-        msg = mock.MagicMock()
-        msg.sig = test_signature
-        short_hash = object()
-        msg.get_short_hash.return_value = short_hash
-        self.instance.verify(msg)
-        self.connection.server.verify_sig.assert_called_once_with(test_signature, short_hash, self.instance.key_id)
 
     @mock.patch('golem.network.transport.session.BasicSafeSession.send')
     def test_sending(self, super_send_mock):
@@ -94,7 +45,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         super_send_mock.reset_mock()
 
         # connection verified
-        msg = message.MessageRandVal(rand_val=self.instance.rand_val)
+        msg = message.RandVal(rand_val=self.instance.rand_val)
         msg.encrypted = True
         self.instance.interpret(msg)
         self.assertTrue(self.instance.verified)
@@ -132,7 +83,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             self.instance.send.assert_called_once_with(mock.ANY)
             mock_args, mock_kwargs = self.instance.send.call_args
             msg = mock_args[0]
-            self.assertIsInstance(msg, message.MessageHasResource)
+            self.assertIsInstance(msg, message.HasResource)
             self.assertEqual(msg.resource, file_name)
             self.assertFalse(self.instance.confirmation)
             self.assertEqual(self.instance.copies, 0)
@@ -155,7 +106,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         self.instance.send.assert_called_once_with(mock.ANY)
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
-        self.assertIsInstance(msg, message.MessagePullResource)
+        self.assertIsInstance(msg, message.PullResource)
         self.assertEqual(msg.resource, resource)
         self.instance.send.reset_mock()
 
@@ -170,18 +121,19 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
 
-        expected = {
-            'CHALLENGE': None,
-            'CLIENT_KEY_ID': client_key_id,
-            'CLI_VER': 0,
-            'DIFFICULTY': 0,
-            'METADATA': None,
-            'NODE_INFO': None,
-            'NODE_NAME': None,
-            'PORT': 0,
-            'PROTO_ID': 0,
-            'RAND_VAL': self.instance.rand_val,
-            'SOLVE_CHALLENGE': False,
-        }
+        expected = [
+            ['rand_val', self.instance.rand_val],
+            ['proto_id', None],
+            ['node_name', None],
+            ['node_info', None],
+            ['port', None],
+            ['client_ver', None],
+            ['client_key_id', client_key_id],
+            ['solve_challenge', None],
+            ['challenge', None],
+            ['difficulty', None],
+            ['metadata', None],
+            ['golem_messages_version', golem_messages.__version__],
+        ]
 
-        self.assertEqual(msg.dict_repr(), expected)
+        self.assertCountEqual(msg.slots(), expected)

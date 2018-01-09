@@ -8,8 +8,6 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
-from apps.dummy.task.verificator import DummyTaskVerificator
-from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -24,27 +22,13 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt = DummyTask(5, "node", td, "root/path", "", "", "")
         return dt, td
 
-    def get_test_dummy_task(self):
-        defaults = DummyTaskDefaults()
-        td = DummyTaskDefinition(defaults)
-        dm = DirManager(self.path)
-        db = DummyTaskBuilder("MyNodeName", td, self.path, dm)
-        return db.build()
-
     def test_constants(self):
-        assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
         assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):
         dt, td = self._get_new_dummy()
-        assert isinstance(dt.verificator, DummyTaskVerificator)
-
-        ver_opts = dt.verificator.verification_options
-        assert ver_opts["difficulty"] == td.options.difficulty
-        assert ver_opts["shared_data_files"] == td.shared_data_files
-        assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
+        assert isinstance(dt, DummyTask)
 
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
@@ -64,17 +48,17 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()
-        data1.deadline = data2.deadline = 0
-        self.assertEqual(data1.extra_data["subtask_data"],
+        data1['deadline'] = data2['deadline'] = 0
+        self.assertEqual(data1['extra_data']["subtask_data"],
                          DummyTask.TESTING_CHAR * td.options.subtask_data_size)
-        data1.extra_data["subtask_data"] = data2.extra_data["subtask_data"] = ""
-        assert data1.__dict__ == data2.__dict__
+        data1['extra_data']["subtask_data"] = data2['extra_data']["subtask_data"] = ""
+        assert data1 == data2
 
     def test_extra_data(self):
         dt, td = self._get_new_dummy()
         data = dt.query_extra_data(0.0)
         subtask_data_size = td.options.subtask_data_size
-        exd = data.ctd.extra_data
+        exd = data.ctd['extra_data']
         assert exd["subtask_data_size"] == subtask_data_size
         assert len(exd["subtask_data"]) == subtask_data_size
         assert all(os.path.basename(f) for f in exd["data_files"])
@@ -85,7 +69,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         node_id = "Node"
         data = dt.query_extra_data(0.0, node_id=node_id)
 
-        subtask_id = data.ctd.subtask_id
+        subtask_id = data.ctd['subtask_id']
         dt.accept_results(subtask_id, [])
 
         assert dt.num_tasks_received == 1
@@ -131,7 +115,7 @@ class TestDummyTaskBuilder(TestCase):
                                           "difficulty": difficulty})
 
             return DummyTaskBuilder.build_full_definition(
-                DummyTaskTypeInfo(None, None), dictionary)  # noqa
+                DummyTaskTypeInfo(), dictionary)  # noqa
 
         difficulty = "0xf"
         sbs = 10
@@ -165,7 +149,7 @@ class TestDummyTaskBuilder(TestCase):
 
 class TestDummyTaskTypeInfo(TestCase):
     def test_init(self):
-        tti = DummyTaskTypeInfo(None, None)
+        tti = DummyTaskTypeInfo()
         assert tti.name == "Dummy"
         assert tti.options == DummyTaskOptions
         assert isinstance(tti.defaults, DummyTaskDefaults)

@@ -1,13 +1,12 @@
-import time
+from golem_messages import message
 from os import path
 from random import random, randint
+import time
 
-from devp2p.crypto import ECCx
-
+from golem.core.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
-from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
 
@@ -232,7 +231,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.key_id = ek.cnt_key_id(ek.public_key)
         ek.ecc = ECCx(None, ek._private_key)
 
-        msg = MessageWantToComputeTask(node_name='node_name',
+        msg = message.WantToComputeTask(node_name='node_name',
                                        task_id='task_id',
                                        perf_index=2200,
                                        price=5 * 10 ** 18,
@@ -260,20 +259,11 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
 
-        src = [1000, signature, time.time(), msg.dict_repr()]
-        dumped_l = CBORSerializer.dumps(src)
-        loaded_l = CBORSerializer.loads(dumped_l)
+        dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
+        loaded_l = message.Message.deserialize(dumped_l, ek.decrypt)
 
-        self.assertEqual(src, loaded_l)
-        self.assertEqual(signature, loaded_l[1])
-
-        msg_2 = MessageWantToComputeTask(dict_repr=loaded_l[3])
-
-        self.assertEqual(msg.get_short_hash(), msg_2.get_short_hash())
-        self.assertTrue(ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id))
-
-        self.assertEqual(type(loaded_l[1]), type(expected_result))
-        self.assertEqual(loaded_l[1], decode_hex(expected_result))
+        self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
+        self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), ek.key_id))
 
     def test_encrypt_decrypt_elliptical(self):
         """ Test encryption and decryption with EllipticalKeysAuth """

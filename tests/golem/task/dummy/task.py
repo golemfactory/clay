@@ -1,13 +1,15 @@
+from golem_messages.message import ComputeTaskDef
 import random
 import uuid
 from os import path
 from threading import Lock
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, ResourceType, ResultType
+from golem.task.taskbase import Task, TaskHeader, ResultType
 
 
 class DummyTaskParameters(object):
@@ -66,7 +68,7 @@ class DummyTask(Task):
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=MIN_PRICE)
+            max_price=MIN_PRICE, docker_images=None)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -75,7 +77,10 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        Task.__init__(self, header, src_code)
+        from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+        from apps.dummy.task.dummytaskstate import DummyTaskDefaults
+        task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        Task.__init__(self, header, src_code, task_definition)
 
         self.task_id = task_id
         self.task_params = params
@@ -90,6 +95,9 @@ class DummyTask(Task):
         self.assigned_nodes = {}
         self.assigned_subtasks = {}
         self._lock = Lock()
+
+    def to_dictionary(self):
+        return {}
 
     def __setstate__(self, state):
         super(DummyTask, self).__setstate__(state)
@@ -136,7 +144,8 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
+    def query_extra_data(self, perf_index, num_cores=1, node_id=None,
+                         node_name=None):
         """Returns data for the next subtask.
         :param int perf_index:
         :param int num_cores:
@@ -161,15 +170,15 @@ class DummyTask(Task):
         self.subtask_data[subtask_id] = '%x' % data
 
         subtask_def = ComputeTaskDef()
-        subtask_def.task_id = self.task_id
-        subtask_def.subtask_id = subtask_id
-        subtask_def.src_code = self.src_code
-        subtask_def.task_owner = self.header.task_owner
-        subtask_def.environment = self.header.environment
-        subtask_def.return_address = self.header.task_owner_address
-        subtask_def.return_port = self.header.task_owner_port
-        subtask_def.deadline = timeout_to_deadline(5 * 60)
-        subtask_def.extra_data = {
+        subtask_def['task_id'] = self.task_id
+        subtask_def['subtask_id'] = subtask_id
+        subtask_def['src_code'] = self.src_code
+        subtask_def['task_owner'] = self.header.task_owner
+        subtask_def['environment'] = self.header.environment
+        subtask_def['return_address'] = self.header.task_owner_address
+        subtask_def['return_port'] = self.header.task_owner_port
+        subtask_def['deadline'] = timeout_to_deadline(5 * 60)
+        subtask_def['extra_data'] = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
             'difficulty': self.task_params.difficulty,
@@ -203,7 +212,8 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
@@ -213,7 +223,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, resource_header, resource_type=ResourceType.ZIP, tmp_dir=None):
+    def get_resources(self):
         return self.task_resources
 
     def add_resources(self, resource_parts):
@@ -221,3 +231,31 @@ class DummyTask(Task):
         :param map[str, list[str]] resource_parts:
         """
         self.resource_parts = resource_parts
+
+    def computation_failed(self, subtask_id):
+        print('DummyTask.computation_failed called')
+        self.computation_finished(subtask_id, None)
+
+    def restart(self):
+        print('DummyTask.restart called')
+
+    def restart_subtask(self, subtask_id):
+        print('DummyTask.restart_subtask called')
+
+    def abort(self):
+        print('DummyTask.abort called')
+
+    def update_task_state(self, task_state):
+        print('DummyTask.update_task_state called')
+
+    def get_active_tasks(self):
+        return self.assigned_subtasks
+
+    def get_progress(self):
+        return 0
+
+    def to_dictionary(self):
+        return {
+            'task_id': self.task_id,
+            'task_params': self.task_params.__dict__
+        }

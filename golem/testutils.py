@@ -1,14 +1,13 @@
 import logging
 import os
+import os.path
+import pycodestyle
 import shutil
 import tempfile
 import unittest
-from os import path
 from pathlib import Path
 from time import sleep
-
-import pycodestyle
-from mock import MagicMock
+from unittest.mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
@@ -66,7 +65,7 @@ class TempDirFixture(unittest.TestCase):
             self.__remove_files()
 
     def temp_file_name(self, name: str) -> str:
-        return path.join(self.tempdir, name)
+        return os.path.join(self.tempdir, name)
 
     def additional_dir_content(self, file_num_list, dir_=None, results=None,
                                sub_dir=None):
@@ -103,7 +102,7 @@ class TempDirFixture(unittest.TestCase):
         return results
 
     def __remove_files(self):
-        if path.isdir(self.tempdir):
+        if os.path.isdir(self.tempdir):
             shutil.rmtree(self.tempdir)
 
 
@@ -119,22 +118,6 @@ class DatabaseFixture(TempDirFixture):
         super(DatabaseFixture, self).tearDown()
 
 
-class TestGui(TempDirFixture):
-
-    def setUp(self):
-        super(TestGui, self).setUp()
-        from gui.application import Gui
-        from gui.view.appmainwindow import AppMainWindow
-
-        self.logic = MagicMock()
-        self.gui = Gui(self.logic, AppMainWindow)
-
-    def tearDown(self):
-        super(TestGui, self).tearDown()
-        self.gui.app.exit(0)
-        self.gui.app.deleteLater()
-
-
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.
     To use it in your TestCase just add it to inheritance list like so:
@@ -147,6 +130,7 @@ class PEP8MixIn(object):
     Afterwards your test case will perform conformance test on files mentioned
     in this attribute.
     """
+
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""

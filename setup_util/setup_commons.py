@@ -1,14 +1,14 @@
+import pathlib
 import sys
 from codecs import open
 from os import listdir, path, walk, makedirs
-from sys import platform
 
-import semantic_version
 from setuptools import find_packages, Command
 from setuptools.command.test import test
 
+import golem
 from golem.core.common import get_golem_path, is_windows, is_osx, is_linux
-from gui.view.generateui import generate_ui_files
+from golem.tools.version import get_version as tools_get_version
 
 
 class PyTest(test):
@@ -73,14 +73,10 @@ class PyInstaller(Command):
         print("> Copying examples")
         self.copy_examples(dist_dir)
 
-        print("> Copying chain")
-        self.copy_chain(dist_dir)
-
-        if not is_windows():
-            print("> Compressing distribution")
-            tar_dir = self.move(dist_dir)
-            tar_file = self.compress(tar_dir, dist_dir)
-            print("> Archive saved: '{}'".format(tar_file))
+        print("> Compressing distribution")
+        archive_dir = self.move(dist_dir)
+        archive_file = self.compress(archive_dir, dist_dir)
+        print("> Archive saved: '{}'".format(archive_file))
 
     def banner(self, msg):
         print("\n> --------------------------------")
@@ -100,15 +96,6 @@ class PyInstaller(Command):
         )
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
-
-    def copy_chain(self, dist_dir):
-        from shutil import copy
-        from os import makedirs
-
-        chain_files = path.join('golem', 'ethereum', 'rinkeby.json')
-        dist_dir = path.join(dist_dir, 'golem', 'ethereum')
-        makedirs(dist_dir)
-        copy(chain_files, dist_dir)
 
     def copy_examples(self, dist_dir):
         import shutil
@@ -138,34 +125,51 @@ class PyInstaller(Command):
 
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golem'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
-        shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
+
+        if is_windows():
+            shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
+        else:
+            shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
+            shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
         return ver_dir
 
     def compress(self, src_dir, dist_dir):
-        import tarfile
+        archive_file = self.get_archive_path(dist_dir)
+        if not is_windows():
+            import tarfile
 
-        tar_file = self.get_tarball_path(dist_dir)
-        with tarfile.open(tar_file, "w:gz") as tar:
-            tar.add(src_dir, arcname=path.basename(src_dir))
-        return tar_file
+            with tarfile.open(archive_file, "w:gz") as tar:
+                tar.add(src_dir, arcname=path.basename(src_dir))
+        else:
+            import zipfile
+            zf = zipfile.ZipFile(archive_file, "w")
+            for dirname, _, files in walk(src_dir):
+                zf.write(dirname)
+                for filename in files:
+                    zf.write(path.join(dirname, filename))
+            zf.close()
+        return archive_file
 
-    def get_tarball_path(self, dist_dir):
+    def get_archive_path(self, dist_dir):
         if self.package_path:
             return self.package_path
 
+        extension = 'tar.gz'
         if is_osx():
             sys_name = 'macos'
         elif is_linux():
             sys_name = 'linux_x64'
+        elif is_windows():
+            sys_name = 'win32'
+            extension = 'zip'
         else:
             raise EnvironmentError("Unsupported OS: {}".format(sys.platform))
 
         version = get_version()
         return path.join(dist_dir,
-                         'golem-{}-{}.tar.gz'.format(sys_name, version))
+                         'golem-{}-{}.{}'.format(sys_name, version, extension))
 
 
 def get_long_description(my_path):
@@ -179,9 +183,9 @@ def get_long_description(my_path):
 
 
 def find_required_packages():
-    if platform.startswith('darwin'):
+    if sys.platform.startswith('darwin'):
         return find_packages(exclude=['examples', 'tests'])
-    return find_packages(include=['golem*', 'apps*', 'gui*'])
+    return find_packages(include=['golem*', 'apps*'])
 
 
 def parse_requirements(my_path):
@@ -212,32 +216,6 @@ def print_errors(*errors):
             print(error)
 
 
-def generate_ui():
-    try:
-        generate_ui_files()
-    except EnvironmentError as err:
-        return \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
-
-def update_variables():
-    import re
-    file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
-    with open(file_, 'r') as f_:
-        variables = f_.read()
-    version = get_version()
-    variables = re.sub('APP_VERSION = .*',
-                       'APP_VERSION = "{}"'.format(version), variables)
-    with open(file_, 'w') as f_:
-        f_.write(variables)
-
-
 # @todo do we really need it?
 def move_wheel():
     from shutil import move
@@ -250,24 +228,10 @@ def move_wheel():
 
 
 def get_version():
-    from git import Repo
-    tags = Repo(get_golem_path()).tags
-    versions = []
-
-    for tag in tags:
-        if not tag.is_valid:
-            continue
-        try:
-            semantic_version.Version(tag.name)
-            versions.append(tag.name)
-        except Exception as exc:
-            print("Tag {} is not a valid release version: {}".format(
-                  tag, exc))
-
-    if not versions:
-        raise EnvironmentError("No git version tag found "
-                               "in the repository")
-    return sorted(versions)[-1]
+    cwd = pathlib.Path(golem.__file__).parent
+    v = tools_get_version(prefix='', cwd=str(cwd))
+    sys.stderr.write('Dynamically determined version: {}\n'.format(v))
+    return v
 
 
 def file_name():
@@ -280,18 +244,18 @@ def file_name():
     tag = repo.tags[-2]  # get latest tag
     tag_id = tag.commit.hexsha  # get commit id from tag
     commit_id = repo.head.commit.hexsha  # get last commit id
-    if platform.startswith('linux'):
+    if sys.platform.startswith('linux'):
         from platform import architecture
         if architecture()[0].startswith('64'):
             plat = "linux_x86_64"
         else:
             plat = "linux_i386"
-    elif platform.startswith('win'):
+    elif sys.platform.startswith('win'):
         plat = "win32"
-    elif platform.startswith('darwin'):
+    elif sys.platform.startswith('darwin'):
         plat = "macosx_10_12_x86_64"
     else:
-        raise SystemError("Incorrect platform: {}".format(platform))
+        raise SystemError("Incorrect platform: {}".format(sys.platform))
     if commit_id != tag_id:  # devel package
         return "golem-{}-0x{}{}-cp35-none-{}.whl".format(tag.name,
                                                          commit_id[:4],

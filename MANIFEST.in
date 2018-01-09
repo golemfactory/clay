@@ -5,7 +5,5 @@ include LICENSE.txt
 include loggingconfig.py
 include golem/ethereum/genesis_golem.json
 include golem/ethereum/mine_pending_transactions.js
-include gui/view/nopreview.png
-include gui/view/img/*
 include apps/rendering/resources/taskcollector/Release/*
 recursive-include apps *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
