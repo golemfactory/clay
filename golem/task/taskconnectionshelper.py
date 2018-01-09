@@ -1,9 +1,12 @@
 import time
-from collections import deque
 
 import weakref
 
+from golem.core.collections import SizedOrderedDict
+from golem.network.p2p.p2pservice import FORWARD_BATCH_SIZE
+
 REMOVE_OLD_INTERVAL = 180
+FORWARD_QUEUE_LEN = FORWARD_BATCH_SIZE * 10
 
 
 class TaskConnectionsHelper(object):
@@ -14,8 +17,10 @@ class TaskConnectionsHelper(object):
         that has been passed and processed by a node.
         """
         self.task_server = None
-        self.conn_to_set = {}  # forwarded conn registry of timestamps
-        self.conn_to_set_queue = deque(maxlen=150)  # forwarded conn queue
+        # forwarded conn registry of timestamps
+        self.conn_to_set = {}
+        # forwarded conn queue (FIFO)
+        self.conn_to_set_queue = SizedOrderedDict(FORWARD_QUEUE_LEN)
         self.last_remove_old = time.time()  # when was the last time when old connections were removed
         self.remove_old_interval = REMOVE_OLD_INTERVAL  # How often should be information about old connections cleared
         self.conn_to_start = {}  # information about connection requests with this node
@@ -68,16 +73,38 @@ class TaskConnectionsHelper(object):
         """
         self.task_server.final_conn_failure(conn_id)
 
-    def forward_queue_put(self, peer, *args):
-        entry = weakref.ref(peer), args
-        self.conn_to_set_queue.appendleft(entry)
+    def forward_queue_put(self, peer, key_id, node_info, conn_id,
+                          super_node_info):
+        """
+        Append a forwarded request to the queue. Any existing request issued by
+        this particular sender (node_info.key) will be removed.
+
+        :param peer: peer session to send the message to
+        :param key_id: key id of a node that should open a task session
+        :param node_info: information about node that requested session
+        :param conn_id: connection id for reference
+        :param super_node_info: information about node with public ip that took
+        part in message transport
+        :return: None
+        """
+
+        sender = node_info.key
+        args = key_id, node_info, conn_id, super_node_info
+        self.conn_to_set_queue.pop(sender, None)
+        self.conn_to_set_queue[sender] = weakref.ref(peer), args
 
     def forward_queue_get(self, count=5):
+        """
+        Get <count> forward requests from the queue.
+
+        :param count: number of requests to retrieve
+        :return: list of min(len(queue), count) queued requests
+        """
         entries = []
         try:
             for _ in range(count):
-                entry = self.conn_to_set_queue.pop()
+                sender, entry = self.conn_to_set_queue.popitem(last=False)
                 entries.append(entry)
-        except IndexError:
+        except KeyError:
             pass
         return entries
