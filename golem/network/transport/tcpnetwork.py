@@ -1,27 +1,28 @@
-from golem_messages import message
 import logging
 import os
 import re
 import struct
 import time
 from copy import copy
+from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 from threading import Lock
 
-from golem.core.hostaddress import get_host_addresses
+from golem_messages import message
+from golem_messages.message import Message
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
     TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
-from zope.interface import implements, implementer
-
-from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
+from zope.interface import implementer
 
 from golem.core.databuffer import DataBuffer
-from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem_messages.message import Message
+from golem.core.hostaddress import get_host_addresses
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, \
+    MAX_PORT
 from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
     OutgoingProtocolFactoryWrapper
+from .spamprotector import SpamProtector
 
 logger = logging.getLogger(__name__)
 
@@ -431,6 +432,7 @@ class BasicProtocol(SessionProtocol):
         self.db = DataBuffer()
         self.lock = Lock()
         SessionProtocol.__init__(self)
+        self.spam_protector = SpamProtector()
 
     def send_message(self, msg):
         """
@@ -524,19 +526,21 @@ class BasicProtocol(SessionProtocol):
             return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
         if not valid_len():
             return None
-        data = self.db.read_len_prefixed_bytes()
 
-        while data:
-            message = Message.deserialize(data, lambda x: x)
+        for buf in self.db.read_len_prefixed_bytes():
+
+            if not valid_len():
+                return None
+
+            if not self.spam_protector.check_msg(buf):
+                return None
+
+            message = Message.deserialize(buf, lambda x: x)
 
             if message:
                 messages.append(message)
             else:
-                logger.error("Failed to deserialize message {}".format(data))
-
-            if not valid_len():
-                return None
-            data = self.db.read_len_prefixed_bytes()
+                logger.error("Failed to deserialize message {}".format(buf))
 
         return messages
 
@@ -587,6 +591,8 @@ class SafeProtocol(ServerProtocol):
     def _data_to_messages(self):
         messages = []
         for buf in self.db.get_len_prefixed_bytes():
+            if not self.spam_protector.check_msg(buf):
+                continue
             msg = Message.deserialize(buf, self.session.decrypt)
             if msg:
                 messages.append(msg)
