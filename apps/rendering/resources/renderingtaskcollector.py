@@ -1,11 +1,9 @@
-
 import logging
 import math
-import os
 
 from PIL import Image, ImageChops
 
-from apps.rendering.resources.imgrepr import EXRImgRepr, load_img
+from golem_verificator.rendering.imgrepr import EXRImgRepr, load_img
 
 logger = logging.getLogger("apps.rendering")
 

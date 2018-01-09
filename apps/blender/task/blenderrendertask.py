@@ -8,6 +8,7 @@ import time
 from PIL import Image, ImageChops
 
 from golem_verificator.blender.verifier import BlenderVerifier
+from golem_verificator.rendering.imgrepr import load_as_pil
 
 from apps.core.task import coretask
 from golem.core.common import to_unicode
@@ -19,7 +20,6 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions

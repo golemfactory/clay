@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
+from golem_verificator.rendering.imgrepr import load_img, EXRImgRepr
 from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
                                                     FrameRenderingTaskBuilder,
                                                     FrameRendererOptions, logger)

@@ -7,11 +7,11 @@ from collections import OrderedDict, defaultdict
 from PIL import Image, ImageChops
 from copy import deepcopy
 
+from golem_verificator.rendering.imgrepr import load_as_pil
 from golem_verificator.rendering.verifier import FrameRenderingVerifier
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
-from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
 from apps.rendering.resources.utils import save_image_or_log_error

@@ -51,4 +51,4 @@ pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
 Golem-Messages==1.4.0
--e git://github.com/golemfactory/golem-verificator.git@30801290ebcf06eead1a80162e25760b6264063f#egg=golem_verificator
+-e git://github.com/golemfactory/golem-verificator.git@e5e62027954c072f08deffbb523ee98787fed8cf#egg=golem_verificator

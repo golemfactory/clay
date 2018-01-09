@@ -5,12 +5,12 @@ from os import path
 import array
 import unittest
 from random import randrange, shuffle
-import pytest
 
 import OpenEXR
 from PIL import Image
 
-from apps.blender.benchmark.benchmark import BlenderBenchmark
+from golem_verificator.rendering.imgrepr import load_img
+
 from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderRenderTask,
                                                  BlenderRenderTaskBuilder,
@@ -19,17 +19,14 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
-    AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.ci import ci_skip
 from apps.core.task.coretask import logger as logger_core
 
 class TestBlenderDefaults(unittest.TestCase):

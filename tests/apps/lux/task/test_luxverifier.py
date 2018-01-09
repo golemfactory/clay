@@ -1,7 +1,7 @@
 import os
 from mock import Mock
 
-from golem_verificator.lux.verifier  import LuxRenderVerifier, logger
+from golem_verificator.lux.verifier import LuxRenderVerifier, logger
 from golem_verificator.verifier import SubtaskVerificationState
 
 from golem.testutils import PEP8MixIn, TempDirFixture

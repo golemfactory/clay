@@ -1,14 +1,16 @@
 import os
 from os.path import join
 
+from golem_verificator.verifier import SubtaskVerificationState
+
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
 from apps.dummy.task.verifier import DummyTaskVerifier
+
 from golem.core.common import get_golem_path
-from golem_verificator.verifier import SubtaskVerificationState
 
 APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 

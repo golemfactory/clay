@@ -2,7 +2,7 @@ import os
 
 from golem_verificator.lux.imgverifier import ImgStatistics, \
     ImgVerifier
-from apps.rendering.resources.imgrepr import PILImgRepr
+from golem_verificator.rendering.imgrepr import PILImgRepr
 from golem_verificator.verifier import SubtaskVerificationState
 
 from golem.tools.assertlogs import LogTestCase

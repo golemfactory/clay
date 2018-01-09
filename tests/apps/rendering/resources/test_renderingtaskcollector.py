@@ -6,7 +6,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgrepr import load_img
+from golem_verificator.rendering.imgrepr import load_img
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
