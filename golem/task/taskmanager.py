@@ -211,7 +211,7 @@ class TaskManager(TaskEventListener):
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
-        broken_paths = []
+        broken_paths = set()
         for path in self.tasks_dir.iterdir():
             if not path.suffix == '.pickle':
                 continue
@@ -233,7 +233,10 @@ class TaskManager(TaskEventListener):
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
-                    broken_paths.append(path)
+                    # On Windows, attempting to remove a file that is in use
+                    # causes an exception to be raised, therefore
+                    # we'll remove broken files later
+                    broken_paths.add(path)
 
             if task_id is not None:
                 dispatcher.send(
