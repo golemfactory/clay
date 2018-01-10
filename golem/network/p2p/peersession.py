@@ -189,7 +189,7 @@ class PeerSession(BasicSafeSession):
         """ Send message with gossip
          :param list gossip: gossip to be send
         """
-        self.send(message.Gossip(gossip))
+        self.send(message.Gossip(gossip=gossip))
 
     def send_stop_gossip(self):
         """ Send stop gossip message """
@@ -333,9 +333,9 @@ class PeerSession(BasicSafeSession):
             return
         if len(tasks) > variables.TASK_HEADERS_LIMIT:
             tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
-            self.send(message.Tasks(tasks_to_send))
+            self.send(message.Tasks(tasks=tasks_to_send))
         else:
-            self.send(message.Tasks(tasks))
+            self.send(message.Tasks(tasks=tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -452,7 +452,7 @@ class PeerSession(BasicSafeSession):
     def _send_peers(self, node_key_id=None):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
                                                 alpha=SEND_PEERS_NUM)
-        self.send(message.Peers(nodes_info))
+        self.send(message.Peers(peers=nodes_info))
 
     def __set_verified_conn(self):
         self.verified = True
