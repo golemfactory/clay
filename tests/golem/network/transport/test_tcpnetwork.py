@@ -22,6 +22,8 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
+from freezegun import freeze_time
+import datetime
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -218,6 +220,27 @@ class TestBasicProtocol(LogTestCase):
         load_mock.return_value = m
         protocol.dataReceived(packed_data)
         self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
+
+    @mock.patch('golem_messages.load')
+    def test_drop_set_task(self, load_mock):
+        protocol = BasicProtocol()
+        protocol.opened = True
+        protocol.session = mock.MagicMock()
+        protocol.session.my_private_key = None
+        protocol.session.theirs_public_key = None
+        protocol.session.interpret = mock.MagicMock()
+        msg = message.SetTaskSession(**dict((key, None) for key in message.SetTaskSession.__slots__))
+        data = msg.serialize()
+        packed_data = struct.pack("!L", len(data)) + data
+        load_mock.return_value = msg
+        with freeze_time("2012-01-14 10:30:20") as frozen_datetime:
+            for i in range (0, 100):
+                protocol.dataReceived(packed_data)
+            protocol.session.interpret.assert_called_once_with(msg)
+            frozen_datetime.move_to("2014-02-12 11:30:45")
+            protocol.dataReceived(packed_data)
+            assert protocol.session.interpret.call_count == 2
+
 
     def test_dataReceived_long(self):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))

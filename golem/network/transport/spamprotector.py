@@ -1,17 +1,15 @@
 import time
 import logging
 from golem_messages.message import Message
-from golem_messages.message import P2P_MESSAGE_BASE
+from golem_messages.message import SetTaskSession
 
 logger = logging.getLogger(__name__)
 
-
 class SpamProtector:
 
-    SetTaskSessionFrq = 20
-    SetTaskSessionType = P2P_MESSAGE_BASE + 16
+    SetTaskSessionInterval = 20
 
-    FeqDict = { SetTaskSessionType: SetTaskSessionFrq}
+    INTERVALS = { SetTaskSession.TYPE: SetTaskSessionInterval}
 
     def __init__(self):
 
@@ -23,21 +21,16 @@ class SpamProtector:
 
         msg_type, timestamp, is_encoded = Message.deserialize_header(
             msg[:Message.HDR_LEN])
-        return self._check_msg_type(msg_type)
 
-    def _check_msg_type(self, msg_type):
-        if msg_type == __class__.SetTaskSessionType:
-            return not self.is_spamming(msg_type)
-        else:
+        if msg_type not in self.INTERVALS:
             return True
 
-    def is_spamming(self, msg_type):
-        if msg_type in self.last_msg_map:
-            if self.last_msg_map[msg_type] - int(time.time()) < __class__.FeqDict[msg_type]:
-                logger.debug("DROPING SPAM message")
-                return True
+        now = int(time.time())
+        last_received = self.last_msg_map.get(msg_type, 0)
+        delta = now - last_received
+        if delta > self.INTERVALS[msg_type]:
+            self.last_msg_map[msg_type] = now
+            return True
 
-        self.last_msg_map[msg_type] = int(time.time())
+        logger.debug("DROPING SPAM message")
         return False
-
-
