@@ -1,6 +1,6 @@
 import os
 
-from apps.core.task.verifier import CoreVerifier
+from golem_verificator.core.verifier import CoreVerifier
 from apps.dummy.resources.code_dir import computing
 
 

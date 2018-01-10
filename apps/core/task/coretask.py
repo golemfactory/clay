@@ -7,10 +7,12 @@ import uuid
 from enum import Enum
 from typing import Type
 
+from golem_verificator.verifier import SubtaskVerificationState
+from golem_verificator.core.verifier import CoreVerifier
+
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verifier import CoreVerifier
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -26,7 +28,6 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 

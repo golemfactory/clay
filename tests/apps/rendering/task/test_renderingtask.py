@@ -4,10 +4,11 @@ from os import makedirs, path, remove
 
 from unittest.mock import Mock, patch, ANY
 
+from golem_verificator.rendering.imgrepr import load_img
+
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT, PREVIEW_Y,

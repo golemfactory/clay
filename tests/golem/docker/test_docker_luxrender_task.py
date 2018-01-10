@@ -206,7 +206,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return new_flm_file, new_file
 
-    # @pytest.mark.slow
+    @pytest.mark.slow
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"

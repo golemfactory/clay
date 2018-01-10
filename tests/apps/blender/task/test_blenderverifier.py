@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from apps.blender.task.verifier import BlenderVerifier
+from golem_verificator.blender.verifier import BlenderVerifier
 
 
 class TestBlenderVerifier(TestCase):

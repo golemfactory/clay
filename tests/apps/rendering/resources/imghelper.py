@@ -2,7 +2,7 @@ import os
 
 from PIL import Image
 
-from apps.rendering.resources.imgrepr import EXRImgRepr, PILImgRepr
+from golem_verificator.rendering.imgrepr import EXRImgRepr, PILImgRepr
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):

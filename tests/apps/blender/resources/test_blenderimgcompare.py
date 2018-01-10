@@ -2,7 +2,7 @@ import os
 
 from PIL import Image
 
-from apps.blender.resources.imgcompare import check_size
+from golem_verificator.blender.imgcompare import check_size
 
 from golem.testutils import TempDirFixture
 

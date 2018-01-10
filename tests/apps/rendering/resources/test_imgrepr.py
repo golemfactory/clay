@@ -3,11 +3,13 @@ import unittest
 
 from PIL import Image
 
-from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_as_pil, load_img, load_as_PILImgRepr,
-                                              logger, PILImgRepr)
+from golem_verificator.rendering.imgrepr import (blend, EXRImgRepr, ImgRepr,
+                                                 load_as_pil,
+                                                 load_as_PILImgRepr, load_img,
+                                                 logger, PILImgRepr)
 
-from golem.testutils import TempDirFixture, PEP8MixIn
+
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import (LogTestCase)
 
 from tests.apps.rendering.resources.imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
@@ -32,10 +34,7 @@ class TImgRepr(ImgRepr):
         super(TImgRepr, self).to_pil()
 
 
-class TestImgRepr(unittest.TestCase, PEP8MixIn):
-    PEP8_FILES = [
-        'apps/rendering/resources/imgrepr.py',
-    ]
+class TestImgRepr(unittest.TestCase):
 
     def test_functions(self):
         t = TImgRepr()
@@ -47,10 +46,7 @@ class TestImgRepr(unittest.TestCase, PEP8MixIn):
         t.set_pixel((0, 0), (0, 0, 0))
 
 
-class TestPILImgRepr(TempDirFixture, PEP8MixIn):
-    PEP8_FILES = [
-        'apps/rendering/resources/imgrepr.py',
-    ]
+class TestPILImgRepr(TempDirFixture):
 
     def test_init(self):
         p = PILImgRepr()
@@ -99,10 +95,8 @@ def almost_equal_pixels(pix1, pix2):
         almost_equal(c1, c2)
 
 
-class TestExrImgRepr(TempDirFixture, PEP8MixIn):
-    PEP8_FILES = [
-        'apps/rendering/resources/imgrepr.py',
-    ]
+class TestExrImgRepr(TempDirFixture):
+
     def test_init(self):
         img = EXRImgRepr()
         assert isinstance(img, ImgRepr)
