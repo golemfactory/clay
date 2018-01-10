@@ -990,7 +990,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:
             return [self.task_sessions[subtask]]
-        for s in self.task_sessions_incoming:
+        for s in set(self.task_sessions_incoming):
             logger.debug('Checking session: %r', s)
             if s.subtask_id == subtask:
                 return [s]
