@@ -4,7 +4,6 @@ import logging
 import os
 import pathlib
 import pickle
-import struct
 import threading
 import time
 
@@ -24,7 +23,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ResultType, ResourceType
+from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -569,7 +568,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_task_result_hash(self, msg):
         secret = msg.secret
-        multihash = msg.multihash
+        content_hash = msg.multihash
         subtask_id = msg.subtask_id
         client_options = self.task_server.get_download_options(self.key_id)
 
@@ -586,7 +585,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
-            multihash,
+            content_hash,
             self.address,
             self.port,
             client_options
@@ -611,7 +610,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
-            multihash,
+            content_hash,
             task_id,
             subtask_id,
             secret,
@@ -845,43 +844,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.err_msg = reasons.WrongDockerImages
         return False
 
-    def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.ZIP
-        )
-
-        if not res_file_path:
-            logger.error("Task {} has no resource".format(msg.task_id))
-            self.conn.transport.write(struct.pack("!L", 0))
-            self.dropped()
-            return
-
-        self.conn.producer = tcpnetwork.EncryptFileProducer(
-            [res_file_path],
-            self
-        )
-
-    def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.PARTS
-        )
-        if res is None:
-            return
-        delta_header, parts_list = res
-
-        self.send(message.DeltaParts(
-            task_id=self.task_id,
-            delta_header=delta_header,
-            parts=parts_list,
-            node_name=self.task_server.get_node_name(),
-            node_info=self.task_server.node,
-            address=self.task_server.get_resource_addr(),
-            port=self.task_server.get_resource_port()))
-
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
         resource_manager = task_result_manager.resource_manager
@@ -891,11 +853,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         secret = task_result_manager.gen_secret()
 
         def success(result):
-            result_path, result_hash = result
+            result_hash, result_path = result
             logger.debug(
                 "Task session: sending task result hash: %r (%r)",
-                result_path,
-                result_hash
+                result_hash, result_path
             )
 
             self.send(

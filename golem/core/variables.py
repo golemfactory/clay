@@ -8,7 +8,6 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.10.1"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
@@ -44,7 +43,7 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules #noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules #noqa
     """
-    ID = 19
+    ID = 20
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):

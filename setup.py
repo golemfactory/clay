@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from sys import argv
+import sys
 
 from setuptools import setup
 
 from setup_util.setup_commons import (
-    path, parse_requirements, platform, update_variables, get_version,
+    path, parse_requirements, get_version,
     get_long_description, find_required_packages, PyInstaller,
     move_wheel, print_errors)
 from setup_util.taskcollector_builder import TaskCollectorBuilder
@@ -13,19 +13,17 @@ from setup_util.taskcollector_builder import TaskCollectorBuilder
 from golem.docker.manager import DockerManager
 from golem.tools.ci import in_appveyor, in_travis
 
-building_wheel = 'bdist_wheel' in argv
-building_binary = 'pyinstaller' in argv
+building_wheel = 'bdist_wheel' in sys.argv
+building_binary = 'pyinstaller' in sys.argv
 
 directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
 task_collector_err = TaskCollectorBuilder().build()
 
-update_variables()
-
 setup(
     name='golem',
     version=get_version(),
-    platforms=platform,
+    platforms=sys.platform,
     description='Global, open sourced, decentralized supercomputer',
     long_description=get_long_description(directory),
     url='https://golem.network',

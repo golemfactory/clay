@@ -11,7 +11,6 @@ from unittest.mock import Mock, MagicMock, patch
 import golem_messages
 from golem_messages import message
 
-from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
@@ -25,6 +24,7 @@ from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
@@ -254,7 +254,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_react_to_task_result_hash(self):
 
         def create_pull_package(result):
-            def pull_package(multihash, task_id, subtask_id,
+            def pull_package(content_hash, task_id, subtask_id,
                              secret, success, error, *args, **kwargs):
                 if result:
                     success(Mock())
@@ -270,12 +270,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         subtask_id = 'xxyyzz'
         secret = 'pass'
-        multihash = 'multihash'
+        content_hash = 'multihash'
 
         ts.task_manager.subtask2task_mapping[subtask_id] = 'xyz'
 
-        msg = message.TaskResultHash(subtask_id=subtask_id, secret=secret, multihash=multihash,
-                                    options=Mock())
+        msg = message.TaskResultHash(subtask_id=subtask_id, secret=secret,
+                                     multihash=content_hash, options=Mock())
 
         ts.task_manager.task_result_manager.pull_package = create_pull_package(True)
         ts._react_to_task_result_hash(msg)
