@@ -51,11 +51,11 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
     Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import ResourceType
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
@@ -485,17 +485,20 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        options = resource_manager.build_client_options()
-        files = task.get_resources(None, ResourceType.HASHES)
+
+        tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+        files = get_resources_for_task(resource_header=None,
+                                       resource_type=ResourceType.HASHES,
+                                       tmp_dir=tmp_dir,
+                                       resources=task.get_resources())
 
         def add_task(result):
             task_state = task_manager.tasks_states[task_id]
-            task_state.resource_hash = result[1]
+            task_state.resource_hash = result[0]
 
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
@@ -503,7 +506,7 @@ class Client(HardwarePresetsMixin):
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
 
-        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred = self.resource_server.add_task(files, task_id)
         deferred.addCallbacks(add_task, error)
         return task
 

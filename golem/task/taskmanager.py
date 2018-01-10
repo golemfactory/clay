@@ -12,10 +12,9 @@ from golem.core.common import HandleKeyError, get_timestamp_utc, \
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, \
-    ResourceType
+from golem.task.taskbase import TaskEventListener, Task
 
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 
@@ -149,9 +148,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
-
-        self.dir_manager.clear_temporary(task_id)
-        self.dir_manager.get_task_temporary_dir(task_id, create=True)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -533,12 +529,6 @@ class TaskManager(TaskEventListener):
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses
-
-    @handle_task_key_error
-    def get_resources(
-            self, task_id, resource_header, resource_type=ResourceType.ZIP):
-        task = self.tasks[task_id]
-        return task.get_resources(resource_header, resource_type)
 
     @handle_task_key_error
     def restart_task(self, task_id):

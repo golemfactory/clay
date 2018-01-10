@@ -1,11 +1,9 @@
 import os
 
-from apps.rendering.resources.ImgVerificator import ImgStatistics, \
-    ImgVerificator
-
-from apps.core.task.verificator import \
-    SubtaskVerificationState as VerificationState
+from apps.rendering.resources.imgverifier import ImgStatistics, \
+    ImgVerifier
 from apps.rendering.resources.imgrepr import PILImgRepr
+from golem.verification.verifier import SubtaskVerificationState
 
 from golem.tools.assertlogs import LogTestCase
 from golem import testutils
@@ -23,15 +21,15 @@ from golem.core.common import get_golem_path
 # myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
 
 
-class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
-    PEP8_FILES = ['apps/rendering/resources/ImgVerificator.py']
+class TestImgVerifier(LogTestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['apps/rendering/resources/imgverifier.py']
 
     def test_get_random_crop_window(self):
         import random
         random.seed(0)
 
         random_crop_window_for_verification = \
-            ImgVerificator().get_random_crop_window(coverage=0.1,
+            ImgVerifier().get_random_crop_window(coverage=0.1,
                                                     window=(0, 1, 0, 1))
 
         assert random_crop_window_for_verification == (
@@ -74,20 +72,20 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
             os.path.join(folder_path,
                          'answer 0.211 0.511 0.711 0.911.png'))
 
-        img_verificator = ImgVerificator()
+        img_verifier = ImgVerifier()
 
         # act
-        cropped_img0 = img_verificator.crop_img_relative(
+        cropped_img0 = img_verifier.crop_img_relative(
             img0, cropping_window0)
         cropped_img0.img.save(
             os.path.join(folder_path, 'cropped' + cropped_img0.get_name()))
 
-        cropped_img1 = img_verificator.crop_img_relative(
+        cropped_img1 = img_verifier.crop_img_relative(
             img1, cropping_window1)
         cropped_img1.img.save(
             os.path.join(folder_path, 'cropped' + cropped_img1.get_name()))
 
-        cropped_img2 = img_verificator.crop_img_relative(
+        cropped_img2 = img_verifier.crop_img_relative(
             img2, cropping_window2)
         cropped_img2.img.save(os.path.join(folder_path,
                                            'cropped' + cropped_img2.get_name()))
@@ -123,11 +121,11 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
                          'reference_300x400spp50_run1.png'))
 
         cropping_window = (0.55, 0.75, 0.6, 0.8)
-        img_verificator = ImgVerificator()
+        img_verifier = ImgVerifier()
 
         # act
-        ref_img0 = img_verificator.crop_img_relative(ref_img0, cropping_window)
-        ref_img1 = img_verificator.crop_img_relative(ref_img1, cropping_window)
+        ref_img0 = img_verifier.crop_img_relative(ref_img0, cropping_window)
+        ref_img1 = img_verifier.crop_img_relative(ref_img1, cropping_window)
 
         # these are img rendered by requestor
         reference_stats = ImgStatistics(ref_img0, ref_img1)
@@ -161,11 +159,11 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
                 images.append(p)
 
         cropping_window = (0.55, 0.75, 0.6, 0.8)
-        img_verificator = ImgVerificator()
+        img_verifier = ImgVerifier()
 
         # act
-        ref_img0 = img_verificator.crop_img_relative(ref_img0, cropping_window)
-        ref_img1 = img_verificator.crop_img_relative(ref_img1, cropping_window)
+        ref_img0 = img_verifier.crop_img_relative(ref_img0, cropping_window)
+        ref_img1 = img_verifier.crop_img_relative(ref_img1, cropping_window)
 
         # these are img rendered by requestor
         reference_stats = ImgStatistics(ref_img0, ref_img1)
@@ -179,10 +177,10 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
         validation_results = {}
 
         for img in images:
-            croped_img = img_verificator.crop_img_relative(img, cropping_window)
+            croped_img = img_verifier.crop_img_relative(img, cropping_window)
             # croped_img.img.save('aaa'+croped_img.get_name())
             imgstat = ImgStatistics(ref_img0, croped_img)
-            validation_result = img_verificator.is_valid_against_reference(
+            validation_result = img_verifier.is_valid_against_reference(
                 imgstat, reference_stats)
 
             imgstats.append(imgstat)
@@ -195,11 +193,11 @@ class TestImgVerificator(LogTestCase, testutils.PEP8MixIn):
                               if 'malicious' in key.lower()]
 
         for w in should_be_rejected:
-            assert w == VerificationState.WRONG_ANSWER
+            assert w == SubtaskVerificationState.WRONG_ANSWER
 
         should_be_verified = [value for key, value
                               in validation_results.items()
                               if 'malicious' not in key.lower()]
 
         for w in should_be_verified:
-            assert w == VerificationState.VERIFIED
+            assert w == SubtaskVerificationState.VERIFIED

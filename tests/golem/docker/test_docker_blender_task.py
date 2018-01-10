@@ -154,8 +154,10 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(
-            render_task, self.tempdir, Mock(), Mock(),
-            render_task.query_extra_data_for_test_task)
+            root_path=self.tempdir, success_callback=Mock(),
+            error_callback=Mock(),
+            get_compute_task_def=render_task.query_extra_data_for_test_task,
+            resources=render_task.task_resources)
         local_computer.run()
         local_computer.tt.join(60)
         return local_computer.tt
@@ -234,7 +236,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.results == {}
         assert task.res_files == {}
         assert path.isdir(task.tmp_dir)
-        assert task.verificator.verification_options is None
 
     @pytest.mark.slow
     def test_blender_render_subtask(self):

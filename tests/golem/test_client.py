@@ -5,9 +5,8 @@ import uuid
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
-from twisted.internet.defer import Deferred
-
 from freezegun import freeze_time
+from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -31,7 +30,7 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
-from golem.task.taskbase import Task, ResourceType
+from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
@@ -725,11 +724,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock()
         task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
+        task.get_resources.return_value = []
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, ResourceType.HASHES)
+        task.get_resources.assert_called_with()
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called
 
@@ -777,7 +776,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert isinstance(task, Task)
         assert task.header.task_id
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
