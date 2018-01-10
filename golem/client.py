@@ -43,6 +43,7 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
@@ -142,6 +143,7 @@ class Client(HardwarePresetsMixin):
         self.concent_service = ConcentClientService(enabled=False)
 
         self.task_server = None
+        self.port_mapper = None
 
         self.nodes_manager_client = None
 
@@ -273,6 +275,7 @@ class Client(HardwarePresetsMixin):
         log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
+
         log.debug("Is super node? %s", self.node.is_super_node())
 
         if not self.p2pservice:
@@ -339,11 +342,16 @@ class Client(HardwarePresetsMixin):
 
         def connect(ports):
             p2p_port, task_port = ports
+            all_ports = ports + list(hyperdrive_ports)
+
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
+            if self.config_desc.use_upnp:
+                self.start_upnp(all_ports)
+
             dispatcher.send(signal='golem.p2p', event='listening',
-                            port=[p2p_port, task_port] + list(hyperdrive_ports))
+                            port=all_ports)
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
@@ -381,6 +389,15 @@ class Client(HardwarePresetsMixin):
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
 
+    def start_upnp(self, ports):
+        self.port_mapper = PortMapperManager()
+        self.port_mapper.discover()
+
+        if self.port_mapper.available:
+            for port in ports:
+                self.port_mapper.create_mapping(port)
+            self.port_mapper.update_node(self.node)
+
     def stop_network(self):
         if self.p2pservice:
             self.p2pservice.stop_accepting()
@@ -388,6 +405,8 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             self.task_server.stop_accepting()
             self.task_server.disconnect()
+        if self.port_mapper:
+            self.port_mapper.quit()
 
     def pause(self):
         for service in self._services:
