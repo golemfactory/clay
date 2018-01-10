@@ -125,7 +125,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select().where(KnownHosts.is_seed == False):  # noqa
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
+            # noqa
+
             ip_address = host.ip_address
             port = host.port
 
@@ -308,8 +310,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param force: add or overwrite existing data
         """
         key_id = peer_info["node"].key
+        socket_address = tcpnetwork.SocketAddress(
+            peer_info["address"],
+            peer_info["port"]
+        )
         if ((force or self.__is_new_peer(key_id)) and
-                (peer_info["address"] is str and peer_info["address"] != '')):
+            (SocketAddress.is_proper_address(
+                peer_info["address"],
+                peer_info["port"]))):
             logger.info(
                 "add peer to incoming %r %r %r (%r)",
                 peer_info["node_name"],
@@ -420,8 +428,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in list(self.peers.values()):
-            if peer.port == self.config_desc.seed_port\
-                    and peer.address == self.config_desc.seed_host:
+            if (peer.port == self.config_desc.seed_port
+                    and peer.address == self.config_desc.seed_host):
                 return
 
         if self.config_desc.seed_host and self.config_desc.seed_port:
@@ -460,7 +468,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return boolean: true if challenge has been correctly solved,
                          false otherwise
         """
-        return simplechallenge.accept_challenge(challenge, solution, difficulty)
+        return simplechallenge.accept_challenge(
+            challenge,
+            solution,
+            difficulty)
 
     def solve_challenge(self, key_id, challenge, difficulty):
         """ Solve challenge with given difficulty for a node with key_id
@@ -514,7 +525,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param key_id: node's public key
         :return:
         """
-        socket_addresses = tcpserver.PendingConnectionsServer\
+        socket_addresses = tcpserver \
+            .PendingConnectionsServer \
             .get_socket_addresses(
                 self,
                 node_info,

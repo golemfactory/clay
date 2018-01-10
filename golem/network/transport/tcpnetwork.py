@@ -9,8 +9,8 @@ from threading import Lock
 import golem_messages
 from golem.core.hostaddress import get_host_addresses
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
-    TCP6ServerEndpoint, TCP6ClientEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, \
+    TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
 from zope.interface import implements, implementer
@@ -18,9 +18,10 @@ from zope.interface import implements, implementer
 from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
 from golem.core.databuffer import DataBuffer
-from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
-    OutgoingProtocolFactoryWrapper
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, \
+    MIN_PORT, MAX_PORT
+from .network import Network, SessionProtocol, \
+    IncomingProtocolFactoryWrapper, OutgoingProtocolFactoryWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -62,14 +63,14 @@ class SocketAddress(object):
             raise AddressValueError(err)
 
     def __validate(self):
-        if type(self.address) is str:
+        if isinstance(self.address, str):
             self.address = self.address
-        if type(self.address) is not str:
+        if not isinstance(self.address, str):
             raise TypeError('Address must be a string, not a ' +
-                            type(self.address).__name__)
-        if type(self.port) is not int:
+                            isinstance(self.address).__name__)
+        if not isinstance(self.port, int):
             raise TypeError('Port must be an int, not a ' +
-                            type(self.port).__name__)
+                            isinstance(self.port).__name__)
 
         if self.address.find(':') != -1:
             # IPv6 address
@@ -108,9 +109,9 @@ class SocketAddress(object):
         :param str hostname:
         :returns None
         """
-        if type(hostname) is not str:
+        if not isinstance(hostname, str):
             raise TypeError('Expected string argument, not ' +
-                            type(hostname).__name__)
+                            isinstance(hostname).__name__)
 
         if hostname == '':
             raise ValueError('Empty host name')
@@ -135,9 +136,9 @@ class SocketAddress(object):
         :rtype SocketAddress
         """
 
-        if type(string) is not str:
+        if not isinstance(string, str):
             raise TypeError('Expected string argument, not ' +
-                            type(string).__name__)
+                            isinstance(string).__name__)
 
         try:
             if string.startswith('['):
@@ -157,14 +158,21 @@ class SocketAddress(object):
 
 class TCPListenInfo(object):
 
-    def __init__(self, port_start, port_end=None, established_callback=None, failure_callback=None):
+    def __init__(self, port_start, port_end=None,
+                 established_callback=None,
+                 failure_callback=None):
         """
-        Information needed for listen function. Network will try to start listening on port_start, then iterate
-         by 1 to port_end. If port_end is None, than network will only try to listen on port_start.
+        Information needed for listen function. 
+        Network will try to start listening on port_start, then iterate
+        by 1 to port_end. If port_end is None, 
+        than network will only try to listen on port_start.
         :param int port_start: try to start listening from that port
-        :param int port_end: *Default: None* highest port that network will try to listen on
-        :param fun|None established_callback: *Default: None* deferred callback after listening established
-        :param fun|None failure_callback: *Default: None* deferred callback after listening failure
+        :param int port_end: *Default: None* highest port that 
+            network will try to listen on
+        :param fun|None established_callback: *Default: None* deferred 
+            callback after listening established
+        :param fun|None failure_callback: *Default: None* deferred 
+            callback after listening failure
         :return:
         """
         self.port_start = port_start
@@ -176,9 +184,10 @@ class TCPListenInfo(object):
         self.failure_callback = failure_callback
 
     def __str__(self):
-        return "TCP listen info: ports [{}:{}], callback: {}, errback: {}".format(self.port_start, self.port_end,
-                                                                                  self.established_callback,
-                                                                                  self.failure_callback)
+        return "TCP listen info: ports [{}:{}], callback: {}, errback: {}" \
+            .format(self.port_start, self.port_end,
+                    self.established_callback,
+                    self.failure_callback)
 
 
 class TCPListeningInfo(object):
@@ -187,8 +196,10 @@ class TCPListeningInfo(object):
         """
         TCP listening port information
         :param int port: port opened for listening
-        :param fun|None stopped_callback: *Default: None* deferred callback after listening on this port is stopped
-        :param fun|None stopped_errback: *Default: None* deferred callback after stop listening is failure
+        :param fun|None stopped_callback: *Default: None* deferred 
+            callback after listening on this port is stopped
+        :param fun|None stopped_errback: *Default: None* deferred 
+            callback after stop listening is failure
         :return:
         """
         self.port = port
@@ -201,7 +212,9 @@ class TCPListeningInfo(object):
 
 class TCPConnectInfo(object):
 
-    def __init__(self, socket_addresses,  established_callback=None, failure_callback=None):
+    def __init__(self, socket_addresses,
+                 established_callback=None,
+                 failure_callback=None):
         """
         Information for TCP connect function
         :param list socket_addresses: list of SocketAddresses
@@ -214,9 +227,11 @@ class TCPConnectInfo(object):
         self.failure_callback = failure_callback
 
     def __str__(self):
-        return "TCP connection information: addresses {}, callback {}, errback {}".format(self.socket_addresses,
-                                                                                          self.established_callback,
-                                                                                          self.failure_callback)
+        return "TCP connection information:" \
+            "addresses {}, callback {}, errback {}" \
+            .format(self.socket_addresses,
+                    self.established_callback,
+                    self.failure_callback)
 
 ###############
 # TCP Network #
@@ -228,8 +243,10 @@ class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
         TCP network information
-        :param ProtocolFactory protocol_factory: Protocols should be at least ServerProtocol implementation
-        :param bool use_ipv6: *Default: False* should network use IPv6 server endpoint?
+        :param ProtocolFactory protocol_factory: Protocols should be 
+            at least ServerProtocol implementation
+        :param bool use_ipv6: *Default: False* should network use 
+            IPv6 server endpoint?
         :param int timeout: *Default: 5*
         :return None:
         """
@@ -251,18 +268,24 @@ class TCPNetwork(Network):
         :param kwargs: any additional parameters
         :return None:
         """
-        self.__try_to_connect_to_addresses(connect_info.socket_addresses, connect_info.established_callback,
-                                           connect_info.failure_callback, **kwargs)
+        self.__try_to_connect_to_addresses(
+            connect_info.socket_addresses,
+            connect_info.established_callback,
+            connect_info.failure_callback, **kwargs)
 
     def listen(self, listen_info, **kwargs):
         """
-        Listen with network protocol factory on a TCP socket specified by listen_info
+        Listen with network protocol factory on 
+            a TCP socket specified by listen_info
         :param TCPListenInfo listen_info:
         :param kwargs: any additional parameters
         :return None:
         """
-        self.__try_to_listen_on_port(listen_info.port_start, listen_info.port_end, listen_info.established_callback,
-                                     listen_info.failure_callback, **kwargs)
+        self.__try_to_listen_on_port(
+            listen_info.port_start,
+            listen_info.port_end,
+            listen_info.established_callback,
+            listen_info.failure_callback, **kwargs)
 
     def stop_listening(self, listening_info, **kwargs):
         """
@@ -285,7 +308,8 @@ class TCPNetwork(Network):
             return defer
         else:
             logger.warning(
-                "Can't stop listening on port {}, wasn't listening.".format(port))
+                "Can't stop listening on port {}, wasn't listening."
+                .format(port))
             TCPNetwork.__stop_listening_failure(
                 None, listening_info.stopped_errback, **kwargs)
 
@@ -304,7 +328,12 @@ class TCPNetwork(Network):
             result.append(sa)
         return result
 
-    def __try_to_connect_to_addresses(self, addresses, established_callback, failure_callback, **kwargs):
+    def __try_to_connect_to_addresses(
+            self,
+            addresses,
+            established_callback,
+            failure_callback,
+            **kwargs):
         addresses = self.__filter_host_addresses(addresses)
         logger.debug('__try_to_connect_to_addresses(%r) filtered', addresses)
 
@@ -316,15 +345,23 @@ class TCPNetwork(Network):
         address = addresses[0].address
         port = addresses[0].port
 
-        self.__try_to_connect_to_address(address, port,
-                                         self.__connection_to_address_established,
-                                         self.__connection_to_address_failure,
-                                         addresses_to_arg=addresses,
-                                         established_callback_to_arg=established_callback,
-                                         failure_callback_to_arg=failure_callback,
-                                         **kwargs)
+        self.__try_to_connect_to_address(
+            address,
+            port,
+            self.__connection_to_address_established,
+            self.__connection_to_address_failure,
+            addresses_to_arg=addresses,
+            established_callback_to_arg=established_callback,
+            failure_callback_to_arg=failure_callback,
+            **kwargs)
 
-    def __try_to_connect_to_address(self, address, port, established_callback, failure_callback, **kwargs):
+    def __try_to_connect_to_address(
+            self,
+            address,
+            port,
+            established_callback,
+            failure_callback,
+            **kwargs):
         logger.debug("Connection to host {}: {}".format(address, port))
 
         use_ipv6 = False
@@ -373,7 +410,13 @@ class TCPNetwork(Network):
         else:
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
-    def __try_to_listen_on_port(self, port, max_port, established_callback, failure_callback, **kwargs):
+    def __try_to_listen_on_port(
+            self,
+            port,
+            max_port,
+            established_callback,
+            failure_callback,
+            **kwargs):
         if self.use_ipv6:
             ep = TCP6ServerEndpoint(self.reactor, port)
         else:
@@ -386,18 +429,33 @@ class TCPNetwork(Network):
         defer.addErrback(self.__listening_failure, port, max_port,
                          established_callback, failure_callback, **kwargs)
 
-    def __listening_established(self, listening_port, established_callback, **kwargs):
+    def __listening_established(
+            self,
+            listening_port,
+            established_callback,
+            **kwargs):
         port = listening_port.getHost().port
         self.active_listeners[port] = listening_port
         TCPNetwork.__call_established_callback(
             established_callback, port, **kwargs)
 
-    def __listening_failure(self, err_desc, port, max_port, established_callback, failure_callback, **kwargs):
+    def __listening_failure(
+            self,
+            err_desc,
+            port,
+            max_port,
+            established_callback,
+            failure_callback,
+            **kwargs):
         err = str(err_desc.value)
         if port < max_port:
             port += 1
             self.__try_to_listen_on_port(
-                port, max_port, established_callback, failure_callback, **kwargs)
+                port,
+                max_port,
+                established_callback,
+                failure_callback,
+                **kwargs)
         else:
             logger.debug("Can't listen on port {}: {}".format(port, err))
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
@@ -443,7 +501,8 @@ class TCPNetwork(Network):
 
 class BasicProtocol(SessionProtocol):
 
-    """ Connection-oriented basic protocol for twisted, support message serialization"""
+    """ Connection-oriented basic protocol for twisted, 
+    support message serialization"""
 
     def __init__(self):
         self.opened = False
@@ -474,14 +533,16 @@ class BasicProtocol(SessionProtocol):
 
     def close(self):
         """
-        Close connection, after writing all pending  (flush the write buffer and wait for producer to finish).
+        Close connection, after writing all pending  
+        (flush the write buffer and wait for producer to finish).
         :return None:
         """
         self.transport.loseConnection()
 
     def close_now(self):
         """
-        Close connection ASAP, doesn't flush the write buffer or wait for the producer to finish
+        Close connection ASAP, doesn't flush the write buffer 
+            or wait for the producer to finish
         :return:
         """
         self.opened = False
@@ -494,7 +555,8 @@ class BasicProtocol(SessionProtocol):
         self.opened = True
 
     def dataReceived(self, data):
-        """Called when additional chunk of data is received from another peer"""
+        """Called when additional chunk of data 
+            is received from another peer"""
         if not self._can_receive():
             return
 
@@ -592,7 +654,8 @@ class ServerProtocol(BasicProtocol):
             raise IOError("Protocol is closed")
         if not isinstance(self.db, DataBuffer):
             raise TypeError(
-                "incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
+                "incorrect db type: {}. Should be: DataBuffer"
+                .format(isinstance(self.db)))
 
         if not self.session and self.server:
             self.opened = False
@@ -602,8 +665,8 @@ class ServerProtocol(BasicProtocol):
 
 
 class SafeProtocol(ServerProtocol):
-    """More advanced version of server protocol, support for serialization, encryption, decryption and signing
-    messages """
+    """More advanced version of server protocol, support for serialization,
+        encryption, decryption and signing messages """
 
     def _prepare_msg_to_send(self, msg):
         logger.debug('SafeProtocol._prepare_msg_to_send(%r)', msg)
@@ -644,7 +707,8 @@ class SafeProtocol(ServerProtocol):
 
 
 class FilesProtocol(SafeProtocol):
-    """ Connection-oriented protocol for twisted. Allows to send messages (support for message serialization)
+    """ Connection-oriented protocol for twisted. Allows to send messages 
+        (support for message serialization)
     encryption, decryption and signing), files or stream data."""
 
     def __init__(self, server=None):
@@ -663,14 +727,16 @@ class FilesProtocol(SafeProtocol):
             self.producer.close()
 
     def close(self):
-        """ Close connection, after writing all pending  (flush the write buffer and wait for producer to finish).
+        """ Close connection, after writing all pending  
+        (flush the write buffer and wait for producer to finish).
         Close file consumer, data consumer or file producer if they are active.
         :return None: """
         self.clean()
         SafeProtocol.close(self)
 
     def close_now(self):
-        """ Close connection ASAP, doesn't flush the write buffer or wait for the producer to finish.
+        """ Close connection ASAP, doesn't flush the write buffer 
+            or wait for the producer to finish.
         Close file consumer, data consumer or file producer if they are active. """
         self.opened = False
         self.clean()
@@ -704,14 +770,21 @@ class FilesProtocol(SafeProtocol):
 
 @implementer(IPullProducer)
 class FileProducer(object):
-    """ Files producer that helps to send list of files to consumer in chunks"""
+    """ Files producer that helps to send 
+        list of files to consumer in chunks"""
 
-    def __init__(self, file_list, session, buff_size=BUFF_SIZE, extra_data=None):
+    def __init__(
+            self,
+            file_list,
+            session,
+            buff_size=BUFF_SIZE,
+            extra_data=None):
         """ Create file producer
         :param list file_list: list of files that should be sent
         :param FileSession session:  session that uses this file producer
         :param int buff_size: size of the buffer
-        :param dict extra_data: additional information that should be return to the session
+        :param dict extra_data: additional information that 
+        should be return to the session
         """
         self.file_list = copy(file_list)
         self.session = session
@@ -734,7 +807,8 @@ class FileProducer(object):
 
     # IPullProducer methods
     def resumeProducing(self):
-        """ Produce data for the consumer a single time. Send a chunk of file, open new file or finish productions.
+        """ Produce data for the consumer a single time. 
+        Send a chunk of file, open new file or finish productions.
         """
 
         if self.data:
@@ -757,7 +831,8 @@ class FileProducer(object):
             self.session.conn.transport.unregisterProducer()
 
     def stopProducing(self):
-        """ Stop producing data. This tells a producer that its consumer has died, so it must stop producing data
+        """ Stop producing data. This tells a producer that 
+        its consumer has died, so it must stop producing data
         for good. """
         self.close()
         self.session.production_failed(self.extra_data)
@@ -823,9 +898,11 @@ class FileConsumer(object):
         """
         Create file consumer
         :param list file_list: names of files to received
-        :param str output_dir: name of the directory where received files should be saved
+        :param str output_dir: name of the directory 
+            where received files should be saved
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that should be return to the session
+        :param dict extra_data: additional information that 
+            should be return to the session
         :return:
         """
         self.file_list = copy(file_list)
@@ -927,9 +1004,11 @@ class DecryptFileConsumer(FileConsumer):
         """
         Create file consumer
         :param list file_list: names of files to received
-        :param str output_dir: name of the directory where received files should be saved
+        :param str output_dir: name of the directory 
+            where received files should be saved
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that should be return to the session
+        :param dict extra_data: additional information that 
+            should be return to the session
         :return:
         """
         FileConsumer.__init__(self, file_list, output_dir, session, extra_data)
@@ -974,7 +1053,9 @@ class DecryptFileConsumer(FileConsumer):
             if self.recv_size >= self.file_size:
                 self._end_receiving_file()
                 receive_next = True
-        if len(self.file_list) > 0 and len(self.last_data) >= 2 * LONG_STANDARD_SIZE and self.chunk_size == 0:
+        if (len(self.file_list) > 0 and
+            len(self.last_data) >= 2 * LONG_STANDARD_SIZE and
+                self.chunk_size == 0):
             self.dataReceived("")
 
     def _end_receiving_file(self):
@@ -987,12 +1068,18 @@ class DecryptFileConsumer(FileConsumer):
 class DataProducer(object):
     """ Data producer that helps to receive stream of data in chunks"""
 
-    def __init__(self, data_to_send, session, buff_size=BUFF_SIZE, extra_data=None):
+    def __init__(
+            self,
+            data_to_send,
+            session,
+            buff_size=BUFF_SIZE,
+            extra_data=None):
         """ Create data producer
         :param str data_to_send: data that should be send
         :param FileSession session:  session that uses this file producer
         :param int buff_size: size of the buffer
-        :param dict extra_data: additional information that should be return to the session
+        :param dict extra_data: additional information that 
+            should be return to the session
         """
         self.data_to_send = data_to_send
         self.session = session
@@ -1018,7 +1105,8 @@ class DataProducer(object):
         self.session.conn.transport.registerProducer(self, False)
 
     def end_producing(self):
-        """ Inform session about finished production and unregister producer """
+        """ Inform session about finished production 
+            and unregister producer """
         self.session.data_sent(self.extra_data)
         self.session.conn.transport.unregisterProducer()
 
@@ -1028,7 +1116,8 @@ class DataProducer(object):
 
     # IPullProducer methods
     def resumeProducing(self):
-        """ Produce data for the consumer a single time. Send a chunk of data or finish productions. """
+        """ Produce data for the consumer a single time. 
+        Send a chunk of data or finish productions. """
         if self.data:
             self.session.conn.transport.write(self.data)
             self.num_send += len(self.data)
@@ -1044,7 +1133,8 @@ class DataProducer(object):
             self.end_producing()
 
     def stopProducing(self):
-        """ Stop producing data. This tells a producer that its consumer has died, so it must stop producing data
+        """ Stop producing data. This tells a producer that 
+        its consumer has died, so it must stop producing data
         for good. """
         self.close()
         self.session.production_failed(self.extra_data)
@@ -1074,7 +1164,8 @@ class DataConsumer(object):
     def __init__(self, session, extra_data):
         """ Create data consumer
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that should be return to the session
+        :param dict extra_data: additional information that 
+            should be return to the session
         :return:
         """
         self.loc_data = []  # received data chunks

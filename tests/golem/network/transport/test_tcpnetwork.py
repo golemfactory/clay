@@ -71,7 +71,8 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         min_num = len(data) // buff_size
 
         split = out.getvalue().strip().split("\r")
-        self.assertGreaterEqual(session.conn.transport.write.call_count, min_num)
+        self.assertGreaterEqual(
+            session.conn.transport.write.call_count, min_num)
         self.assertEqual(split[-1], producer_progress_value)
         self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
@@ -101,7 +102,8 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
 
     def setUp(self):
         TestWithKeysAuth.setUp(self)
-        self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])
+        self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([
+                                                                                     1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
         with open(self.tmp_file1, 'w') as f:
@@ -115,8 +117,10 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         self.__producer_consumer_test([], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
+        self.__producer_consumer_test(
+            [self.tmp_file1, self.tmp_file3], session=MagicMock())
+        self.__producer_consumer_test(
+            [self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
         self.ek = EllipticalKeysAuth(self.path)
         self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
                                       session=self.__make_encrypted_session_mock())
@@ -145,7 +149,6 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         consumer_progress_value = "File data receiving 100 %"
         consumer_list = ["consumer{}".format(i + 1) for i in
                          range(len(file_list))]
-
 
         if buff_size:
             p = file_producer_cls(file_list, session, buff_size)
@@ -193,6 +196,7 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
 
 
 class TestBasicProtocol(LogTestCase):
+
     def test_init(self):
         protocol = BasicProtocol()
         self.assertIsInstance(protocol, BasicProtocol)
@@ -217,7 +221,8 @@ class TestBasicProtocol(LogTestCase):
         packed_data = struct.pack("!L", len(data)) + data
         load_mock.return_value = m
         protocol.dataReceived(packed_data)
-        self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
+        self.assertEqual(protocol.session.interpret.call_args[
+                         0][0].TYPE, m.TYPE)
 
     def test_dataReceived_long(self):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
@@ -228,7 +233,9 @@ class TestBasicProtocol(LogTestCase):
         self.assertIsNone(protocol.dataReceived(data))
         protocol.transport.loseConnection.assert_called_once_with()
 
+
 class TestSocketAddress(TestCase):
+
     def test_zone_index(self):
         base_address = "fe80::3"
         address = "fe80::3%eth0"
