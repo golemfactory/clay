@@ -98,8 +98,11 @@ class Client(HardwarePresetsMixin):
         self.datadir = datadir
         self.__lock_datadir()
         self.lock = Lock()
-        self.task_tester = None
 
+        # Initialize database
+        self.db = Database(datadir)
+
+        self.task_tester = None
         self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
@@ -121,9 +124,6 @@ class Client(HardwarePresetsMixin):
             self.config_desc.node_name,
             datadir
         )
-
-        # Initialize database
-        self.db = Database(datadir)
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)

@@ -730,8 +730,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
         try:
-            with db.atomic():
-                payment = Payment.get(Payment.subtask == msg.subtask_id)
+            payment = Payment.get(Payment.subtask == msg.subtask_id)
         except Payment.DoesNotExist:
             logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
             return

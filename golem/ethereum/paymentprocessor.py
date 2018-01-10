@@ -169,18 +169,17 @@ class PaymentProcessor(LoopingCallService):
         return self.gnt_balance() - self.__gnt_reserved
 
     def load_from_db(self):
-        with db.atomic():
-            for sent_payment in Payment \
-                    .select() \
-                    .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = decode_hex(sent_payment.details.tx)
-                if transaction_hash not in self._inprogress:
-                    self._inprogress[transaction_hash] = []
-                self._inprogress[transaction_hash].append(sent_payment)
-            for awaiting_payment in Payment \
-                    .select() \
-                    .where(Payment.status == PaymentStatus.awaiting):
-                self.add(awaiting_payment)
+        for sent_payment in Payment \
+                .select() \
+                .where(Payment.status == PaymentStatus.sent):
+            transaction_hash = decode_hex(sent_payment.details.tx)
+            if transaction_hash not in self._inprogress:
+                self._inprogress[transaction_hash] = []
+            self._inprogress[transaction_hash].append(sent_payment)
+        for awaiting_payment in Payment \
+                .select() \
+                .where(Payment.status == PaymentStatus.awaiting):
+            self.add(awaiting_payment)
 
     def add(self, payment, deadline=DEFAULT_DEADLINE):
         if payment.status is not PaymentStatus.awaiting:

@@ -44,10 +44,9 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             p2p_node=Node(),
             value=value
         )
-        with db.atomic():
-            expected_income = ExpectedIncome.get(sender_node=sender_node_id,
-                                                 task=task_id,
-                                                 subtask=subtask_id)
+        expected_income = ExpectedIncome.get(sender_node=sender_node_id,
+                                             task=task_id,
+                                             subtask=subtask_id)
         self.assertEqual(expected_income.value, value)
 
     def test_received(self):
@@ -79,9 +78,8 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert type(income) is Income
         self.assertIsNotNone(income)
 
-        with db.atomic():
-            income = Income.get(sender_node=sender_node_id, task=task_id,
-                                subtask=subtask_id)
+        income = Income.get(sender_node=sender_node_id, task=task_id,
+                            subtask=subtask_id)
         self.assertEqual(income.value, value)
         self.assertEqual(income.transaction, transaction_id)
         self.assertEqual(income.block_number, block_number)
@@ -119,11 +117,10 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.assertEqual(ExpectedIncome.select().count(), 1)
 
         # Time is right but no matching payment received
-        with db.atomic():
-            expected_income.modified_date \
-                = datetime.datetime.now() \
-                - datetime.timedelta(hours=1)
-            expected_income.save()
+        expected_income.modified_date \
+            = datetime.datetime.now() \
+            - datetime.timedelta(hours=1)
+        expected_income.save()
 
         self.incomes_keeper.run_once()
         self.assertEqual(ExpectedIncome.select().count(), 1)
@@ -137,23 +134,20 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             block_number=random.randint(0, sys.maxsize),
             value=value)
 
-        with db.atomic():
-            self.assertEqual(ExpectedIncome.select().count(), 1)
-            expected_income.modified_date \
-                = datetime.datetime.now() \
-                + datetime.timedelta(hours=1)
-            expected_income.save()
+        self.assertEqual(ExpectedIncome.select().count(), 1)
+        expected_income.modified_date \
+            = datetime.datetime.now() \
+            + datetime.timedelta(hours=1)
+        expected_income.save()
 
         self.incomes_keeper.run_once()
         self.assertEqual(ExpectedIncome.select().count(), 1)
 
         # Match
-        with db.atomic():
-            expected_income.modified_date = \
-                datetime.datetime.now() \
-                - datetime.timedelta(hours=1)
-            expected_income.save()
+        expected_income.modified_date = \
+            datetime.datetime.now() \
+            - datetime.timedelta(hours=1)
+        expected_income.save()
 
         self.incomes_keeper.run_once()
-        with db.atomic():
-            self.assertEqual(ExpectedIncome.select().count(), 0)
+        self.assertEqual(ExpectedIncome.select().count(), 0)

@@ -51,10 +51,9 @@ class EthereumIncomesKeeper(IncomesKeeper):
 
         # Prevent using the same payment for another subtask
         try:
-            with db.transaction():
-                spent_tokens = \
-                    model.Income.select().where(
-                        model.Income.transaction == transaction_id).get().value
+            spent_tokens = model.Income.select()\
+                .where(model.Income.transaction == transaction_id)\
+                .get().value
         except Income.DoesNotExist:
             spent_tokens = 0
 

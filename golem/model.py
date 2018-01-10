@@ -7,12 +7,12 @@ from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
 
-
 from ethereum.utils import denoms
 from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
-                    SqliteDatabase, TextField, BlobField)
+                    TextField, BlobField, IntegrityError)
+from playhouse.sqliteq import SqliteQueueDatabase
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
@@ -23,8 +23,14 @@ log = logging.getLogger('golem.db')
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = SqliteQueueDatabase(
+    None,
+    autostart=False,
+    pragmas=(
+        ('foreign_keys', True),
+        ('busy_timeout', 30000)
+    )
+)
 
 
 class Database:
@@ -35,7 +41,7 @@ class Database:
         # TODO: Global database is bad idea. Check peewee for other solutions.
         self.db = db
         db.init(path.join(datadir, 'golem.db'))
-        db.connect()
+        db.start()
         self.create_database()
 
     @staticmethod
@@ -82,6 +88,43 @@ class BaseModel(Model):
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
+
+    @classmethod
+    def get_or_create(cls, **kwargs):
+        if isinstance(db, SqliteQueueDatabase):
+            return cls.__get_or_create(**kwargs)
+        return super().get_or_create(**kwargs)
+
+    @classmethod
+    def __get_or_create(cls, **kwargs):
+        """
+        This is a copy of the get_or_create method without initiating
+        a transaction.
+        Meant for use with SqliteQueueDatabase, which does not support database
+        transactions.
+        :return:
+        """
+        defaults = kwargs.pop('defaults', {})
+        query = cls.select()
+        for field, value in kwargs.items():
+            if '__' in field:
+                query = query.filter(**{field: value})
+            else:
+                query = query.where(getattr(cls, field) == value)
+
+        try:
+            return query.get(), False
+        except cls.DoesNotExist:
+            try:
+                params = dict((k, v) for k, v in kwargs.items()
+                              if '__' not in k)
+                params.update(defaults)
+                return cls.create(**params), True
+            except IntegrityError as exc:
+                try:
+                    return query.get(), False
+                except cls.DoesNotExist:
+                    raise exc
 
 
 ##################

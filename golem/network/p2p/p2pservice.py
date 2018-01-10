@@ -187,18 +187,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         is_seed = node.is_super_node() if node else False
 
         try:
-            with db.transaction():
-                KnownHosts.delete().where(
-                    (KnownHosts.ip_address == ip_address)
-                    & (KnownHosts.port == port)
-                ).execute()
+            KnownHosts.delete().where(
+                (KnownHosts.ip_address == ip_address)
+                & (KnownHosts.port == port)
+            ).execute()
 
-                KnownHosts.insert(
-                    ip_address=ip_address,
-                    port=port,
-                    last_connected=time.time(),
-                    is_seed=is_seed
-                ).execute()
+            KnownHosts.insert(
+                ip_address=ip_address,
+                port=port,
+                last_connected=time.time(),
+                is_seed=is_seed
+            ).execute()
 
             self.__remove_redundant_hosts_from_db()
             self.__sync_seeds()
