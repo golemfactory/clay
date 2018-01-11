@@ -179,9 +179,9 @@ class TestConcentClientService(TestCase):
         with freeze_time(datetime.datetime.now() + delta):
 
             self.concent_service._loop()
-        req = self.concent_service.result('key')
-        self.assertEqual(send_mock.call_count, 0)
-        assert req.status == client.ConcentRequestStatus.TimedOut
+            self.assertEqual(send_mock.call_count, 0)
+            req = self.concent_service.result('key')
+            assert req.status == client.ConcentRequestStatus.TimedOut
 
     def test_loop(self, send_mock, *_):
         self.concent_service.submit(
