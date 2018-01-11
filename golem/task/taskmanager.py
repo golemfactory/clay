@@ -542,6 +542,10 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def put_task_in_restarted_state(self, task_id):
+        """
+        When restarting task, it's put in a final state 'restarted' and
+        a new one is created.
+        """
         self.dir_manager.clear_temporary(task_id)
 
         self.tasks_states[task_id].status = TaskStatus.restarted
