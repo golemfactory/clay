@@ -2,7 +2,7 @@ import time
 
 import weakref
 
-from golem.core.collections import SizedOrderedDict
+from golem.core.ordereddict import SizedOrderedDict
 from golem.network.p2p.p2pservice import FORWARD_BATCH_SIZE
 
 REMOVE_OLD_INTERVAL = 180
@@ -25,13 +25,15 @@ class TaskConnectionsHelper(object):
         self.remove_old_interval = REMOVE_OLD_INTERVAL  # How often should be information about old connections cleared
         self.conn_to_start = {}  # information about connection requests with this node
 
-    def is_new_conn_request(self, key_id, node_info, super_node_info):
-        """ Check whether request for start connection with given conn_id has occurred before
-        (in a latest remove_old_interval)
-        :param key_id: public key of a node that is asked to start task session with node from node info
-        :param Node node_info: node that asks for a task connection to be started with him
-        :param Node|None super_node_info: supernode that may help to mediate in a connection
-        :return bool: return False if connection with given id is known, True otherwise
+    def is_new_conn_request(self, key_id, node_info):
+        """ Check whether request for start connection with given conn_id has
+        occurred before (in a latest remove_old_interval)
+        :param key_id: public key of a node that is asked to start task session
+        with node from node info
+        :param Node node_info: node that asks for a task connection to be
+        started with him
+        :return bool: return False if connection with given id is known,
+        True otherwise
         """
         id_tuple = key_id, node_info.key
         if id_tuple in self.conn_to_set:
@@ -103,7 +105,7 @@ class TaskConnectionsHelper(object):
         entries = []
         try:
             for _ in range(count):
-                sender, entry = self.conn_to_set_queue.popitem(last=False)
+                _, entry = self.conn_to_set_queue.popitem(last=False)
                 entries.append(entry)
         except KeyError:
             pass

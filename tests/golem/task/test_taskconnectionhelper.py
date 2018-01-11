@@ -24,22 +24,18 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         nodeinfo3 = MockNodeInfo()
         tch = TaskConnectionsHelper()
 
-        self.assertTrue(tch.is_new_conn_request("ABC", nodeinfo,
-                                                "supernodeinfo"))
-        self.assertFalse(tch.is_new_conn_request("ABC", nodeinfo,
-                                                 "supernodeinfo"))
+        self.assertTrue(tch.is_new_conn_request("ABC", nodeinfo))
+        self.assertFalse(tch.is_new_conn_request("ABC", nodeinfo))
 
         timestamp = tch.conn_to_set.get(("ABC", nodeinfo.key))
         self.assertLessEqual(timestamp, time.time())
 
-        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo1,
-                                                "supernodeinfo2"))
+        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo1))
 
         timestamp = tch.conn_to_set.get(("ABC", nodeinfo.key))
         self.assertLessEqual(timestamp, time.time())
 
-        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo3,
-                                                "supernodeinfo3"))
+        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo3))
 
     def test_want_to_start(self):
         nodeinfo = MockNodeInfo()
@@ -70,11 +66,11 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         self.assertEqual(len(tch.conn_to_start), 0)
         tch.want_to_start("abc", nodeinfo, "supernodeinfo")
         tch.want_to_start("def", nodeinfo1, "supernodeinfo1")
-        tch.is_new_conn_request("ABCK", nodeinfo, "supernodeinfo")
-        tch.is_new_conn_request("DEFK", nodeinfo1, "supernodeinfo1")
+        tch.is_new_conn_request("ABCK", nodeinfo)
+        tch.is_new_conn_request("DEFK", nodeinfo1)
         time.sleep(2)
         tch.want_to_start("ghi", nodeinfo1, "supernodeinfo1")
-        tch.is_new_conn_request("GHIK", nodeinfo2, "supernodeinfo2")
+        tch.is_new_conn_request("GHIK", nodeinfo2)
         self.assertEqual(len(tch.conn_to_start), 3)
         self.assertEqual(len(tch.conn_to_set), 3)
         tch.sync()

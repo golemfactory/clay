@@ -709,7 +709,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                                           in message transport
         """
         if not self.task_server.task_connections_helper.is_new_conn_request(
-                key_id, node_info, super_node_info):
+                key_id, node_info):
             # fixme
             self.task_server.remove_pending_conn(conn_id)
             self.task_server.remove_responses(conn_id)

@@ -1,15 +1,15 @@
 import time
 import logging
-from golem_messages.message import Message
-from golem_messages.message import SetTaskSession
+from golem_messages.message import Message, SetTaskSession
 
 logger = logging.getLogger(__name__)
+
 
 class SpamProtector:
 
     SetTaskSessionInterval = 20
 
-    INTERVALS = { SetTaskSession.TYPE: SetTaskSessionInterval}
+    INTERVALS = {SetTaskSession.TYPE: SetTaskSessionInterval}
 
     def __init__(self):
 
@@ -19,8 +19,7 @@ class SpamProtector:
         if msg is None:
             return False
 
-        msg_type, timestamp, is_encoded = Message.deserialize_header(
-            msg[:Message.HDR_LEN])
+        msg_type, _, _ = Message.deserialize_header(msg[:Message.HDR_LEN])
 
         if msg_type not in self.INTERVALS:
             return True
