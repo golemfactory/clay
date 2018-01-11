@@ -84,6 +84,7 @@ class DockerManager(DockerConfigManager):
             return XhyveHypervisor.instance(self)
         return None
 
+    @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
 
         if is_windows():
