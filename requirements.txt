@@ -50,5 +50,4 @@ scipy==0.19.1
 pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
-# TODO: Merge PR and update this to new golem-messages version
-git+git://github.com/maaktweluit/golem-messages.git@mwu/path-reduce#egg=Golem-Messages
+Golem-Messages==1.4.1
