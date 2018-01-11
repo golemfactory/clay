@@ -141,7 +141,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice = None
         self.diag_service = None
         self.concent_service = ConcentClientService(
-            enabled=True,
+            enabled=False,
             signing_key=self.keys_auth._private_key,
             public_key=self.keys_auth.public_key,
         )
