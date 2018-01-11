@@ -116,7 +116,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         ctd = luxtask.query_extra_data_for_final_flm()
         self.assertIsInstance(ctd, ComputeTaskDef)
         assert ctd['src_code'] is not None
-        assert ctd['extra_data']['output_flm'] == luxtask.output_file
+        assert ctd['extra_data']['output_flm'] == \
+               Path(luxtask.output_file).as_posix()
         assert set(ctd['extra_data']['flm_files']) == {"xxyyzzfile", "abcdfile"}
 
     def test_remove_from_preview(self):

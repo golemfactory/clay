@@ -19,7 +19,9 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
+from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import ComputerAdapter
+
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
@@ -182,7 +184,8 @@ class CoreTask(Task):
                and self.header.docker_images \
                and len(self.header.docker_images) > 0
 
-    def initialize(self, dir_manager):
+    def initialize(self, dir_manager: DirManager) -> None:
+        dir_manager.clear_temporary(self.header.task_id)
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id,
                                                           create=True)
 
