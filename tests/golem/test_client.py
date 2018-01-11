@@ -32,7 +32,7 @@ from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task, ResourceType
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskState, TaskStatus
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -457,6 +457,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[task_id].status == TaskStatus.restarted
+        assert all(
+            ss.subtask_status == SubtaskStatus.restarted
+            for ss
+            in task_manager.tasks_states[task_id].subtask_states.values())
         assert task_manager.tasks_states[new_task_id].status \
             == TaskStatus.notStarted
 
