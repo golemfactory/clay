@@ -526,21 +526,22 @@ class BasicProtocol(SessionProtocol):
             return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
         if not valid_len():
             return None
+        data = self.db.read_len_prefixed_bytes()
 
-        for buf in self.db.read_len_prefixed_bytes():
+        while data:
+            if not self.spam_protector.check_msg(data):
+                return messages
+
+            msg = Message.deserialize(data, lambda x: x)
+
+            if msg:
+                messages.append(msg)
+            else:
+                logger.error("Failed to deserialize message {}".format(data))
 
             if not valid_len():
                 return None
-
-            if not self.spam_protector.check_msg(buf):
-                return None
-
-            message = Message.deserialize(buf, lambda x: x)
-
-            if message:
-                messages.append(message)
-            else:
-                logger.error("Failed to deserialize message {}".format(buf))
+            data = self.db.read_len_prefixed_bytes()
 
         return messages
 
