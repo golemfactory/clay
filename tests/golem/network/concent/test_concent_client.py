@@ -174,7 +174,8 @@ class TestConcentClientService(TestCase):
         delta = datetime.timedelta(seconds=constants.MSG_LIFETIMES.get(
             self.msg.__class__,
             constants.DEFAULT_MSG_LIFETIME,
-        ) + 1)
+        ))
+        self.assertEqual(send_mock.call_count, 0)
         with freeze_time(datetime.datetime.now() + delta):
 
             self.concent_service._loop()
