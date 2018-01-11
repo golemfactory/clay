@@ -327,12 +327,15 @@ class BlenderRenderTask(FrameRenderingTask):
     # Task methods #
     ################
     def __init__(self, task_definition, **kwargs):
-        self.compositing = task_definition.options.compositing
         self.preview_updater = None
         self.preview_updaters = None
 
         FrameRenderingTask.__init__(self, task_definition=task_definition,
                                     **kwargs)
+
+        self.compositing = task_definition.options.compositing\
+            and self.use_frames\
+            and (len(self.frames) > len(self.frames_subtasks))
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
