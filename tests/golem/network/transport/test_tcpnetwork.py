@@ -43,9 +43,11 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
 
         self.ek = EllipticalKeysAuth(self.path)
         for args in datas:
-            self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
-                                          data_consumer_cls=DecryptDataConsumer,
-                                          session=self.__make_encrypted_session_mock())
+            self.__producer_consumer_test(
+                *args,
+                data_producer_cls=EncryptDataProducer,
+                data_consumer_cls=DecryptDataConsumer,
+                session=self.__make_encrypted_session_mock())
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
@@ -102,8 +104,10 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
 
     def setUp(self):
         TestWithKeysAuth.setUp(self)
-        self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([
-                                                                                     1, [2]])
+        self.tmp_file1, \
+            self.tmp_file2, \
+            self.tmp_file3 = self.additional_dir_content([
+                1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
         with open(self.tmp_file1, 'w') as f:
@@ -120,22 +124,39 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         self.__producer_consumer_test(
             [self.tmp_file1, self.tmp_file3], session=MagicMock())
         self.__producer_consumer_test(
-            [self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
+            [self.tmp_file1, self.tmp_file2, self.tmp_file3],
+            32,
+            session=MagicMock())
         self.ek = EllipticalKeysAuth(self.path)
-        self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file2], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32,
-                                      file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file2],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1,
+             self.tmp_file3],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1,
+             self.tmp_file2,
+             self.tmp_file3],
+            32,
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
@@ -143,8 +164,13 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         session.decrypt.side_effect = self.ek.decrypt
         return session
 
-    def __producer_consumer_test(self, file_list, buff_size=None, file_producer_cls=FileProducer,
-                                 file_consumer_cls=FileConsumer, session=MagicMock()):
+    def __producer_consumer_test(
+            self,
+            file_list,
+            buff_size=None,
+            file_producer_cls=FileProducer,
+            file_consumer_cls=FileConsumer,
+            session=MagicMock()):
         producer_progress_value = "Sending progress 100 %"
         consumer_progress_value = "File data receiving 100 %"
         consumer_list = ["consumer{}".format(i + 1) for i in

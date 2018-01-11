@@ -121,7 +121,8 @@ class SocketAddress(object):
         if hostname.endswith('.'):
             hostname = hostname[:-1]
         segments = hostname.split('.')
-        if not all(SocketAddress._dns_label_pattern.match(s) for s in segments):
+        if not all(SocketAddress._dns_label_pattern.match(s)
+                   for s in segments):
             raise ValueError('Invalid host name: ' + hostname)
 
     @staticmethod
@@ -162,16 +163,16 @@ class TCPListenInfo(object):
                  established_callback=None,
                  failure_callback=None):
         """
-        Information needed for listen function. 
+        Information needed for listen function.
         Network will try to start listening on port_start, then iterate
-        by 1 to port_end. If port_end is None, 
+        by 1 to port_end. If port_end is None,
         than network will only try to listen on port_start.
         :param int port_start: try to start listening from that port
-        :param int port_end: *Default: None* highest port that 
+        :param int port_end: *Default: None* highest port that
             network will try to listen on
-        :param fun|None established_callback: *Default: None* deferred 
+        :param fun|None established_callback: *Default: None* deferred
             callback after listening established
-        :param fun|None failure_callback: *Default: None* deferred 
+        :param fun|None failure_callback: *Default: None* deferred
             callback after listening failure
         :return:
         """
@@ -196,9 +197,9 @@ class TCPListeningInfo(object):
         """
         TCP listening port information
         :param int port: port opened for listening
-        :param fun|None stopped_callback: *Default: None* deferred 
+        :param fun|None stopped_callback: *Default: None* deferred
             callback after listening on this port is stopped
-        :param fun|None stopped_errback: *Default: None* deferred 
+        :param fun|None stopped_errback: *Default: None* deferred
             callback after stop listening is failure
         :return:
         """
@@ -243,9 +244,9 @@ class TCPNetwork(Network):
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
         TCP network information
-        :param ProtocolFactory protocol_factory: Protocols should be 
+        :param ProtocolFactory protocol_factory: Protocols should be
             at least ServerProtocol implementation
-        :param bool use_ipv6: *Default: False* should network use 
+        :param bool use_ipv6: *Default: False* should network use
             IPv6 server endpoint?
         :param int timeout: *Default: 5*
         :return None:
@@ -275,7 +276,7 @@ class TCPNetwork(Network):
 
     def listen(self, listen_info, **kwargs):
         """
-        Listen with network protocol factory on 
+        Listen with network protocol factory on
             a TCP socket specified by listen_info
         :param TCPListenInfo listen_info:
         :param kwargs: any additional parameters
@@ -406,7 +407,11 @@ class TCPNetwork(Network):
         addresses = kwargs.pop("addresses_to_arg", [])
         if len(addresses) > 1:
             self.__try_to_connect_to_addresses(
-                addresses[1:], established_callback, failure_callback, **kwargs)
+                addresses[
+                    1:],
+                established_callback,
+                failure_callback,
+                **kwargs)
         else:
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
@@ -501,7 +506,7 @@ class TCPNetwork(Network):
 
 class BasicProtocol(SessionProtocol):
 
-    """ Connection-oriented basic protocol for twisted, 
+    """ Connection-oriented basic protocol for twisted,
     support message serialization"""
 
     def __init__(self):
@@ -533,7 +538,7 @@ class BasicProtocol(SessionProtocol):
 
     def close(self):
         """
-        Close connection, after writing all pending  
+        Close connection, after writing all pending
         (flush the write buffer and wait for producer to finish).
         :return None:
         """
@@ -541,7 +546,7 @@ class BasicProtocol(SessionProtocol):
 
     def close_now(self):
         """
-        Close connection ASAP, doesn't flush the write buffer 
+        Close connection ASAP, doesn't flush the write buffer
             or wait for the producer to finish
         :return:
         """
@@ -555,7 +560,7 @@ class BasicProtocol(SessionProtocol):
         self.opened = True
 
     def dataReceived(self, data):
-        """Called when additional chunk of data 
+        """Called when additional chunk of data
             is received from another peer"""
         if not self._can_receive():
             return
@@ -707,7 +712,7 @@ class SafeProtocol(ServerProtocol):
 
 
 class FilesProtocol(SafeProtocol):
-    """ Connection-oriented protocol for twisted. Allows to send messages 
+    """ Connection-oriented protocol for twisted. Allows to send messages
         (support for message serialization)
     encryption, decryption and signing), files or stream data."""
 
@@ -727,7 +732,7 @@ class FilesProtocol(SafeProtocol):
             self.producer.close()
 
     def close(self):
-        """ Close connection, after writing all pending  
+        """ Close connection, after writing all pending
         (flush the write buffer and wait for producer to finish).
         Close file consumer, data consumer or file producer if they are active.
         :return None: """
@@ -735,7 +740,7 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol.close(self)
 
     def close_now(self):
-        """ Close connection ASAP, doesn't flush the write buffer 
+        """ Close connection ASAP, doesn't flush the write buffer
             or wait for the producer to finish.
         Close file consumer, data consumer or file producer if they are active. """
         self.opened = False
@@ -770,7 +775,7 @@ class FilesProtocol(SafeProtocol):
 
 @implementer(IPullProducer)
 class FileProducer(object):
-    """ Files producer that helps to send 
+    """ Files producer that helps to send
         list of files to consumer in chunks"""
 
     def __init__(
@@ -783,7 +788,7 @@ class FileProducer(object):
         :param list file_list: list of files that should be sent
         :param FileSession session:  session that uses this file producer
         :param int buff_size: size of the buffer
-        :param dict extra_data: additional information that 
+        :param dict extra_data: additional information that
         should be return to the session
         """
         self.file_list = copy(file_list)
@@ -807,7 +812,7 @@ class FileProducer(object):
 
     # IPullProducer methods
     def resumeProducing(self):
-        """ Produce data for the consumer a single time. 
+        """ Produce data for the consumer a single time.
         Send a chunk of file, open new file or finish productions.
         """
 
@@ -831,7 +836,7 @@ class FileProducer(object):
             self.session.conn.transport.unregisterProducer()
 
     def stopProducing(self):
-        """ Stop producing data. This tells a producer that 
+        """ Stop producing data. This tells a producer that
         its consumer has died, so it must stop producing data
         for good. """
         self.close()
@@ -898,10 +903,10 @@ class FileConsumer(object):
         """
         Create file consumer
         :param list file_list: names of files to received
-        :param str output_dir: name of the directory 
+        :param str output_dir: name of the directory
             where received files should be saved
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that 
+        :param dict extra_data: additional information that
             should be return to the session
         :return:
         """
@@ -1004,10 +1009,10 @@ class DecryptFileConsumer(FileConsumer):
         """
         Create file consumer
         :param list file_list: names of files to received
-        :param str output_dir: name of the directory 
+        :param str output_dir: name of the directory
             where received files should be saved
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that 
+        :param dict extra_data: additional information that
             should be return to the session
         :return:
         """
@@ -1078,7 +1083,7 @@ class DataProducer(object):
         :param str data_to_send: data that should be send
         :param FileSession session:  session that uses this file producer
         :param int buff_size: size of the buffer
-        :param dict extra_data: additional information that 
+        :param dict extra_data: additional information that
             should be return to the session
         """
         self.data_to_send = data_to_send
@@ -1105,7 +1110,7 @@ class DataProducer(object):
         self.session.conn.transport.registerProducer(self, False)
 
     def end_producing(self):
-        """ Inform session about finished production 
+        """ Inform session about finished production
             and unregister producer """
         self.session.data_sent(self.extra_data)
         self.session.conn.transport.unregisterProducer()
@@ -1116,7 +1121,7 @@ class DataProducer(object):
 
     # IPullProducer methods
     def resumeProducing(self):
-        """ Produce data for the consumer a single time. 
+        """ Produce data for the consumer a single time.
         Send a chunk of data or finish productions. """
         if self.data:
             self.session.conn.transport.write(self.data)
@@ -1133,7 +1138,7 @@ class DataProducer(object):
             self.end_producing()
 
     def stopProducing(self):
-        """ Stop producing data. This tells a producer that 
+        """ Stop producing data. This tells a producer that
         its consumer has died, so it must stop producing data
         for good. """
         self.close()
@@ -1164,7 +1169,7 @@ class DataConsumer(object):
     def __init__(self, session, extra_data):
         """ Create data consumer
         :param FileSession session: session that uses this file consumer
-        :param dict extra_data: additional information that 
+        :param dict extra_data: additional information that
             should be return to the session
         :return:
         """
