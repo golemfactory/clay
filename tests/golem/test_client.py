@@ -30,7 +30,7 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
-from golem.task.taskbase import Task, ResourceType
+from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -776,9 +776,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock()
         task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
+        task.get_resources.return_value = []
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, ResourceType.HASHES)
+        task.get_resources.assert_called_with()
 
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called

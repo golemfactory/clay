@@ -8,8 +8,6 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
-from apps.dummy.task.verificator import DummyTaskVerificator
-from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -25,19 +23,12 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         return dt, td
 
     def test_constants(self):
-        assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
         assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):
         dt, td = self._get_new_dummy()
-        assert isinstance(dt.verificator, DummyTaskVerificator)
-
-        ver_opts = dt.verificator.verification_options
-        assert ver_opts["difficulty"] == td.options.difficulty
-        assert ver_opts["shared_data_files"] == td.shared_data_files
-        assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
+        assert isinstance(dt, DummyTask)
 
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()

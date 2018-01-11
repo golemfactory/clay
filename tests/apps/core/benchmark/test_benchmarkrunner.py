@@ -31,7 +31,7 @@ class BenchmarkRunnerTest(TempDirFixture):
 
     def test_task_thread_getter(self):
         """When docker_images is empty."""
-        ctd = mock.MagicMock()
+        ctd = {}
         ctd['docker_images'] = []
         with self.assertRaises(Exception):
             self.instance._get_task_thread(ctd)
