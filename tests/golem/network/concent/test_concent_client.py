@@ -24,14 +24,19 @@ class TestSendToConcent(TestCase):
         self.msg = message.ForceReportComputedTask()
         self.msg.task_to_compute = message.TaskToCompute()
         node_keys = golem_messages.cryptography.ECCx(None)
-        self.key = node_keys.raw_privkey
+        self.private_key = node_keys.raw_privkey
+        self.public_key = node_keys.raw_pubkey
 
     def test_message(self, post_mock):
         response = requests.Response()
         response.status_code = 200
         post_mock.return_value = response
 
-        client.send_to_concent(msg=self.msg, signing_key=self.key)
+        client.send_to_concent(
+            msg=self.msg,
+            signing_key=self.private_key,
+            public_key=self.public_key,
+        )
         api_send_url = urllib.parse.urljoin(
             variables.CONCENT_URL,
             '/api/v1/send/'
@@ -48,7 +53,11 @@ class TestSendToConcent(TestCase):
         post_mock.return_value = response
 
         with self.assertRaises(exceptions.ConcentRequestException):
-            client.send_to_concent(msg=self.msg, signing_key=self.key)
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
 
         self.assertEqual(post_mock.call_count, 1)
 
@@ -58,14 +67,22 @@ class TestSendToConcent(TestCase):
         post_mock.return_value = response
 
         with self.assertRaises(exceptions.ConcentServiceException):
-            client.send_to_concent(msg=self.msg, signing_key=self.key)
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
 
         self.assertEqual(post_mock.call_count, 1)
 
     def test_message_exception(self, post_mock):
         post_mock.side_effect = RequestException
         with self.assertRaises(exceptions.ConcentUnavailableException):
-            client.send_to_concent(msg=self.msg, signing_key=self.key)
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
 
         self.assertEqual(post_mock.call_count, 1)
 
@@ -78,6 +95,7 @@ class TestConcentClientService(TestCase):
         node_keys = golem_messages.cryptography.ECCx(None)
         self.concent_service = client.ConcentClientService(
             signing_key=node_keys.raw_privkey,
+            public_key=node_keys.raw_pubkey,
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()
@@ -136,7 +154,8 @@ class TestConcentClientService(TestCase):
             sleep_mock.assert_called_once_with()
         send_mock.assert_called_once_with(
             self.msg,
-            self.concent_service.signing_key
+            self.concent_service.signing_key,
+            self.concent_service.public_key,
         )
 
         req = self.concent_service.result('key')
@@ -174,7 +193,8 @@ class TestConcentClientService(TestCase):
         req = self.concent_service.result('key')
         send_mock.assert_called_once_with(
             self.msg,
-            self.concent_service.signing_key
+            self.concent_service.signing_key,
+            self.concent_service.public_key,
         )
         assert req.status == client.ConcentRequestStatus.Success
 

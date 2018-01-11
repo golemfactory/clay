@@ -18,7 +18,7 @@ from golem.network.concent import exceptions
 logger = logging.getLogger("golem.network.concent.client")
 
 
-def send_to_concent(msg: message.Message, signing_key, pubkey=b'????') \
+def send_to_concent(msg: message.Message, signing_key, public_key) \
         -> Optional[str]:
     """Sends a message to the concent server
 
@@ -32,7 +32,7 @@ def send_to_concent(msg: message.Message, signing_key, pubkey=b'????') \
     concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
     headers = {
         'Content-Type': 'application/octet-stream',
-        'Concent-Client-Public-Key': base64.standard_b64encode(pubkey),
+        'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
         'X-Golem-Messages': golem_messages.__version__,
     }
     try:
@@ -146,10 +146,11 @@ class ConcentClientService(threading.Thread):
 
     QUEUE_TIMEOUT = 5  # s
 
-    def __init__(self, signing_key, enabled=True):
+    def __init__(self, signing_key, public_key, enabled=True):
         super().__init__(daemon=True)
 
         self.signing_key = signing_key
+        self.public_key = public_key
         self._enabled = enabled  # FIXME: remove
         self._stop_event = threading.Event()
 
@@ -247,7 +248,7 @@ class ConcentClientService(threading.Thread):
 
         try:
             req.sent_ts = now
-            res = send_to_concent(req.msg, self.signing_key)
+            res = send_to_concent(req.msg, self.signing_key, self.public_key)
         except Exception as exc:
             logger.exception('send_to_concent(%r) failed', req.msg)
             req.content = exc
