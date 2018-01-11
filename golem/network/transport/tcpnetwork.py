@@ -7,8 +7,8 @@ from copy import copy
 from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 from threading import Lock
 
-from golem_messages import message
-from golem_messages.message import Message
+import golem_messages
+from golem.core.hostaddress import get_host_addresses
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
     TCP6ServerEndpoint, TCP6ClientEndpoint
@@ -17,9 +17,8 @@ from twisted.internet.protocol import connectionDone
 from zope.interface import implementer
 
 from golem.core.databuffer import DataBuffer
-from golem.core.hostaddress import get_host_addresses
-from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, \
-    MAX_PORT
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
+
 from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
     OutgoingProtocolFactoryWrapper
 from .spamprotector import SpamProtector
@@ -497,7 +496,7 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
+        ser_msg = msg.serialize()
 
         db = DataBuffer()
         db.append_len_prefixed_bytes(ser_msg)
@@ -532,12 +531,20 @@ class BasicProtocol(SessionProtocol):
             if not self.spam_protector.check_msg(data):
                 return messages
 
-            msg = Message.deserialize(data, lambda x: x)
+            try:
+                msg = golem_messages.load(data, None, None)
+                logger.debug(
+                    'BasicProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
 
             if msg:
                 messages.append(msg)
             else:
-                logger.error("Failed to deserialize message {}".format(data))
+                logger.error("Failed to deserialize message %r", data)
 
             if not valid_len():
                 return None
@@ -581,11 +588,16 @@ class SafeProtocol(ServerProtocol):
     messages """
 
     def _prepare_msg_to_send(self, msg):
+        logger.debug('SafeProtocol._prepare_msg_to_send(%r)', msg)
         if self.session is None:
             logger.error("Wrong session, not sending message")
             return None
 
-        serialized = msg.serialize(self.session.sign, self.session.encrypt)
+        serialized = golem_messages.dump(
+            msg,
+            self.session.my_private_key,
+            self.session.theirs_public_key,
+        )
         length = struct.pack("!L", len(serialized))
         return length + serialized
 
@@ -594,7 +606,23 @@ class SafeProtocol(ServerProtocol):
         for buf in self.db.get_len_prefixed_bytes():
             if not self.spam_protector.check_msg(buf):
                 continue
-            msg = Message.deserialize(buf, self.session.decrypt)
+
+            try:
+                msg = golem_messages.load(
+                    buf,
+                    self.session.my_private_key,
+                    self.session.theirs_public_key,
+                )
+                logger.debug(
+                    'SafeProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
+            except golem_messages.exceptions.InvalidSignature:
+                logger.info("Failed to verify message signature %r", buf)
+                msg = None
             if msg:
                 messages.append(msg)
         return messages

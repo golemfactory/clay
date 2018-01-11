@@ -206,7 +206,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return new_flm_file, new_file
 
-    @pytest.mark.slow
+    # @pytest.mark.slow
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
@@ -238,11 +238,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(10000).ctd
         # act
         computer = LocalComputer(
-            task,
-            self.tempdir,
-            Mock(),
-            Mock(),
-            lambda: ctd,
+            root_path=self.tempdir,
+            success_callback=Mock(),
+            error_callback=Mock(),
+            compute_task_def=ctd,
+            resources=task.task_resources
         )
 
         computer.run()
@@ -294,11 +294,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
             # act
             computer = LocalComputer(
-                task,
-                self.tempdir,
-                Mock(),
-                Mock(),
-                lambda: ctd,
+                root_path=self.tempdir,
+                success_callback=Mock(),
+                error_callback=Mock(),
+                compute_task_def=ctd,
+                resources=task.task_resources
             )
 
             computer.run()

@@ -356,9 +356,6 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.ping_peers(1)
         assert p.ping.called
 
-        self.service.key_changed()
-        assert p.dropped.called
-
         degrees = self.service.get_peers_degree()
         assert len(degrees) == 2
         assert p.key_id in degrees

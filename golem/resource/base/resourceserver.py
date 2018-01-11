@@ -56,9 +56,8 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, files, task_id, client_options=None):
-        result = self.resource_manager.add_task(files, task_id,
-                                                client_options=client_options)
+    def add_task(self, files, task_id):
+        result = self.resource_manager.add_task(files, task_id)
         result.addErrback(self._add_task_error)
         return result
 
@@ -66,8 +65,8 @@ class BaseResourceServer(object):
     def _add_task_error(error):
         logger.error("Resource server: add_task error: {}".format(error))
 
-    def remove_task(self, task_id, client_options=None):
-        self.resource_manager.remove_task(task_id, client_options=client_options)
+    def remove_task(self, task_id):
+        self.resource_manager.remove_task(task_id)
 
     def download_resources(self, resources, task_id, client_options=None):
         with self._lock:

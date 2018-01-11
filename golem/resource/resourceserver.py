@@ -240,20 +240,6 @@ class ResourceServer(PendingConnectionsServer):
             socket_addresses = [SocketAddress(addr, port)] + socket_addresses
         return socket_addresses
 
-    def encrypt(self, message, public_key):
-        if public_key == 0:
-            return message
-        return self.keys_auth.encrypt(message, public_key)
-
-    def decrypt(self, message):
-        return self.keys_auth.decrypt(message)
-
-    def sign(self, data):
-        return self.keys_auth.sign(data)
-
-    def verify_sig(self, sig, data, public_key):
-        return self.keys_auth.verify(sig, data, public_key)
-
     def change_config(self, config_desc):
         self.last_message_time_threshold = config_desc.resource_session_timeout
 

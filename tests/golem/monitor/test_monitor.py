@@ -51,8 +51,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                     'type': msg_type,
                     'protocol_versions': {
                         'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-                        'p2p': PROTOCOL_CONST.P2P_ID,
-                        'task': PROTOCOL_CONST.TASK_ID,
+                        'p2p': PROTOCOL_CONST.ID,
+                        'task': PROTOCOL_CONST.ID,
                     },
                 }
 
