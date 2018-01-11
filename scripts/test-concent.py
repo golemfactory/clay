@@ -13,6 +13,9 @@ def main():
     task_to_compute.compute_task_def = message.ComputeTaskDef({
         'task_id': 'a1',
         'subtask_id': 'a1/1',
+        'task_id': 31337,
+        'subtask_id': 0,
+        'deadline': int(common.timeout_to_deadline(10)),
     })
     msg = message.ForceReportComputedTask()
     msg.task_to_compute = task_to_compute
