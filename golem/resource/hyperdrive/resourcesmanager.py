@@ -217,8 +217,8 @@ class HyperdriveResourceManager(ClientHandler):
         )
 
         if async:
-            request = AsyncRequest(self._retry, client.get, **kwargs)
-            async_run(request, success, error)
+            client.get_async(**kwargs) \
+                .addCallbacks(success, error)
         else:
             try:
                 success(self._retry(client.get, **kwargs))
