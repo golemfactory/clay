@@ -149,7 +149,9 @@ class TestConcentClientService(TestCase):
         )
 
         send_mock.side_effect = exceptions.ConcentRequestException
-        with mock.patch("golem.network.concent.client.ConcentClientService._grace_sleep") as sleep_mock:  # noqa
+        mock_path = ("golem.network.concent.client.ConcentClientService"
+                     "._grace_sleep")
+        with mock.patch(mock_path) as sleep_mock:
             self.concent_service._loop()
             sleep_mock.assert_called_once_with()
         send_mock.assert_called_once_with(
