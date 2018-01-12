@@ -144,8 +144,9 @@ class TestHyperdriveClientAsync(unittest.TestCase):
         d.errback(Exception())
         return d
 
+    @staticmethod
     @mock.patch('golem.core.async.AsyncHTTPRequest.run')
-    def test_get_async_run(self, request_run):
+    def test_get_async_run(request_run):
         client = HyperdriveAsyncClient()
         result = client.get_async('resource_hash',
                                   client_options=None,

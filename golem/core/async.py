@@ -37,11 +37,14 @@ class AsyncHTTPRequest:
     @classmethod
     def run(cls, method, uri, headers, body):
         if not cls.agent:
-            from twisted.internet import reactor
-            cls.agent = Agent(reactor, connectTimeout=cls.timeout)
-
+            cls.agent = cls.create_agent()
         return cls.agent.request(method, uri, headers,
                                  cls.BytesBodyProducer(body))
+
+    @classmethod
+    def create_agent(cls):
+        from twisted.internet import reactor
+        return Agent(reactor, connectTimeout=cls.timeout)
 
 
 class AsyncRequest(object):

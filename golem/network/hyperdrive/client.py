@@ -171,7 +171,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
                 decoded = body.decode('utf-8')
                 deserialized = json.loads(decoded)
                 parsed = response_parser(deserialized)
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 on_error(exc)
             else:
                 result.callback(parsed)

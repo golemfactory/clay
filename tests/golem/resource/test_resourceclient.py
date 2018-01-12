@@ -19,6 +19,13 @@ class TestClientHandler(TestCase):
             self.counter = 0
             self.failure = None
 
+        def verify(self, test_case):
+            if self.failure:
+                test_case.fail(self.failure)
+
+        def increment(self):
+            self.counter += 1
+
     def setUp(self):
         config = ClientConfig(max_retries=3)
         self.handler = ClientHandler(config)
@@ -30,7 +37,7 @@ class TestClientHandler(TestCase):
         value_exc = list(valid_exceptions)[0]()
 
         def func(e):
-            self.state.counter += 1
+            self.state.increment()
             raise e
 
         for exc_class in valid_exceptions:
@@ -44,7 +51,7 @@ class TestClientHandler(TestCase):
 
         with self.assertRaises(ArithmeticError):
             def func():
-                self.state.counter += 1
+                self.state.increment()
                 raise ArithmeticError()
 
             self.handler._retry(func, raise_exc=False)
@@ -55,7 +62,7 @@ class TestClientHandler(TestCase):
     def test_retry_async(self):
 
         def func():
-            self.state.counter += 1
+            self.state.increment()
             deferred = Deferred()
             deferred.callback(42)
             return deferred
@@ -71,7 +78,7 @@ class TestClientHandler(TestCase):
     def test_retry_async_unsupported_exception(self):
 
         def func():
-            self.state.counter += 1
+            self.state.increment()
             deferred = Deferred()
             deferred.errback(ArithmeticError())
             return deferred
@@ -89,7 +96,7 @@ class TestClientHandler(TestCase):
     def test_retry_async_unwrap_failure(self):
 
         def func():
-            self.state.counter += 1
+            self.state.increment()
 
             deferred = Deferred()
             timeout = requests.exceptions.Timeout()
@@ -112,7 +119,7 @@ class TestClientHandler(TestCase):
     def test_retry_async_max_retries(self):
 
         def func():
-            self.state.counter += 1
+            self.state.increment()
 
             deferred = Deferred()
             deferred.errback(requests.exceptions.Timeout())
@@ -130,9 +137,7 @@ class TestClientHandler(TestCase):
     def _run_and_verify_state(self, func, success, error):
         self.handler._retry_async(func) \
             .addCallbacks(success, error)
-
-        if self.state.failure:
-            self.fail(self.state.failure)
+        self.state.verify(self)
 
 
 class TestClientOptions(TestCase):
@@ -185,7 +190,8 @@ class TestClientOptions(TestCase):
 
 class TestAsyncRequest(TestWithReactor):
 
-    def test_initialization(self):
+    @staticmethod
+    def test_initialization():
         request = AsyncRequest(lambda x: x)
         assert request.args == []
         assert request.kwargs == {}
