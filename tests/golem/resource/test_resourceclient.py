@@ -1,7 +1,7 @@
 import time
 
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from golem.core.async import AsyncRequest, async_run
 from golem.resource.client import ClientHandler, ClientError, \
@@ -96,7 +96,25 @@ class TestClientOptions(TestCase):
         assert isinstance(filtered, ClientOptions)
 
 
-class TestAsyncRequest(TestWithReactor):
+@patch('twisted.internet.reactor', create=True)
+class TestAsyncRequest(TestCase):
+
+    def test_initialization(self, reactor):
+        AsyncRequest.initialized = False
+        request = AsyncRequest(lambda x: x)
+        assert AsyncRequest.initialized
+
+        assert request.args == []
+        assert request.kwargs == {}
+        assert reactor.suggestThreadPoolSize.call_count == 1
+
+        request = AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
+        assert request.args == ("arg",)
+        assert request.kwargs == {"kwarg": "kwarg"}
+        assert reactor.suggestThreadPoolSize.call_count == 1
+
+
+class TestAsyncRun(TestWithReactor):
 
     def test_callbacks(self):
         method = Mock()

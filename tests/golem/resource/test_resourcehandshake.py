@@ -616,6 +616,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.successful_uploads = successful_uploads
 
         self.key_id = str(uuid.uuid4())
+        self.address = '1.2.3.4'
         self.data_dir = data_dir
         self.task_server = Mock(
             client=Mock(datadir=data_dir),

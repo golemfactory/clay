@@ -176,6 +176,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 # check some task's properties...
                 assert restored_task.header.task_id == task.header.task_id
 
+    def test_remove_wrong_task_during_restore(self):
+        broken_pickle_file = self.tm.tasks_dir / "broken.pickle"
+        with broken_pickle_file.open('w') as f:
+            f.write("notapickle")
+        assert broken_pickle_file.is_file()
+        self.tm.restore_tasks()
+        assert not broken_pickle_file.is_file()
 
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
