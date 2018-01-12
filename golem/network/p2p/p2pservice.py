@@ -15,6 +15,7 @@ from golem.network.transport import tcpserver
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper, key_distance
+from golem.model import DBwriter
 
 logger = logging.getLogger(__name__)
 
@@ -195,18 +196,26 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         is_seed = node.is_super_node() if node else False
 
         try:
-            with db.transaction():
-                KnownHosts.delete().where(
-                    (KnownHosts.ip_address == ip_address)
-                    & (KnownHosts.port == port)
-                ).execute()
+            def sql():
+                with db.transaction():
+                    KnownHosts.delete().where(
+                        (KnownHosts.ip_address == ip_address)
+                        & (KnownHosts.port == port)
+                    ).execute()
 
-                KnownHosts.insert(
-                    ip_address=ip_address,
-                    port=port,
-                    last_connected=time.time(),
-                    is_seed=is_seed
-                ).execute()
+                    KnownHosts.insert(
+                        ip_address=ip_address,
+                        port=port,
+                        last_connected=time.time(),
+                        is_seed=is_seed
+                    ).execute()
+            def success():
+                print("success")
+
+            def error(exc):
+                print("error ", exc)
+
+            DBwriter.put_sql(sql, success, error)
 
             self.__remove_redundant_hosts_from_db()
             self.__sync_seeds()

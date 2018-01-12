@@ -21,11 +21,49 @@ from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
+import threading
+import queue
+
+class AsyncSQL:
+
+    def __init__(self, sql, success, error):
+        self.succes = success
+        self.error = error
+        self.sql = sql
+
+class DatabaseWriter:
+
+    def __init__(self, db):
+        self.writer = threading.Thread(target=self.run)
+        self.db = db
+        self.writer_queue = queue.Queue()
+
+    def start(self):
+        self.writer.start()
+
+    def run(self):
+        self.db.connect()
+
+        while True:
+            obj = self.writer_queue.get()
+            from twisted.internet import reactor
+            try:
+                obj.sql()
+            except Exception as exc:
+                reactor.callFromThread(obj.error, exc)
+            else:
+                reactor.callFromThread(obj.succes)
+
+    def put_sql(self, asyncSQL, success, error):
+        self.writer_queue.put(AsyncSQL(asyncSQL, success, error))
+
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 db = SqliteDatabase(None, threadlocals=True,
                     pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
+
+DBwriter = DatabaseWriter(db)
 
 class Database:
     # Database user schema version, bump to recreate the database
@@ -37,6 +75,7 @@ class Database:
         db.init(path.join(datadir, 'golem.db'))
         db.connect()
         self.create_database()
+        DBwriter.start()
 
     @staticmethod
     def _get_user_version() -> int:
