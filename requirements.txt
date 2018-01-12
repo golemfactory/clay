@@ -1,4 +1,6 @@
 --extra-index-url https://builds.golem.network
+# Dependency of ethereum, fails to install on some machines when using binary
+--no-binary secp256k1
 setuptools==36.0.1
 appdirs>=1.4
 click>=4.0
