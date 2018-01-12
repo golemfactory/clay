@@ -315,9 +315,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             peer_info["port"]
         )
         if ((force or self.__is_new_peer(key_id)) and
-            (SocketAddress.is_proper_address(
-                peer_info["address"],
-                peer_info["port"]))):
+            (SocketAddress
+                .is_proper_address(peer_info["address"], peer_info["port"]))):
             logger.info(
                 "add peer to incoming %r %r %r (%r)",
                 peer_info["node_name"],

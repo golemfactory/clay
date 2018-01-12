@@ -247,8 +247,11 @@ class TestBasicProtocol(LogTestCase):
         packed_data = struct.pack("!L", len(data)) + data
         load_mock.return_value = m
         protocol.dataReceived(packed_data)
-        self.assertEqual(protocol.session.interpret.call_args[
-                         0][0].TYPE, m.TYPE)
+        self.assertEqual(
+            protocol
+            .session
+            .interpret
+            .call_args[0][0].TYPE, m.TYPE)
 
     def test_dataReceived_long(self):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
