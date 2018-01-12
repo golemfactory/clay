@@ -2,6 +2,10 @@ import time
 from unittest import TestCase
 from unittest.mock import Mock
 
+import requests
+from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
+
 from golem.core.async import AsyncRequest, async_run
 from golem.resource.client import ClientHandler, ClientError, \
     ClientOptions, ClientConfig
@@ -10,41 +14,125 @@ from golem.tools.testwithreactor import TestWithReactor
 
 class TestClientHandler(TestCase):
 
+    class State:
+        def __init__(self):
+            self.counter = 0
+            self.failure = None
+
     def setUp(self):
         config = ClientConfig(max_retries=3)
         self.handler = ClientHandler(config)
+        self.state = self.State()
 
     def test_retry(self):
-        valid_exceptions = ClientHandler.retry_exceptions
-        value_exc = valid_exceptions[0]()
-        counter = 0
+        valid_exceptions = filter(lambda t: t is not Failure,
+                                  ClientHandler.retry_exceptions)
+        value_exc = list(valid_exceptions)[0]()
 
         def func(e):
-            nonlocal counter
-            counter += 1
+            self.state.counter += 1
             raise e
 
         for exc_class in valid_exceptions:
-            counter = 0
+            self.state.counter = 0
             self.handler._retry(func, exc_class(value_exc), raise_exc=False)
 
             # All retries spent
-            assert counter == self.handler.config.max_retries
+            assert self.state.counter == self.handler.config.max_retries
 
     def test_retry_unsupported_exception(self):
-        counter = 0
 
         with self.assertRaises(ArithmeticError):
-
             def func():
-                nonlocal counter
-                counter += 1
-                raise ArithmeticError
+                self.state.counter += 1
+                raise ArithmeticError()
 
             self.handler._retry(func, raise_exc=False)
 
         # Exception was raised on first retry
-        assert counter == 1
+        assert self.state.counter == 1
+
+    def test_retry_async(self):
+
+        def func():
+            self.state.counter += 1
+            deferred = Deferred()
+            deferred.callback(42)
+            return deferred
+
+        def success(*_a, **_k):
+            pass
+
+        def error(err):
+            self.state.failure = "Error encountered: " + str(err)
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_unsupported_exception(self):
+
+        def func():
+            self.state.counter += 1
+            deferred = Deferred()
+            deferred.errback(ArithmeticError())
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(*_a):
+            if self.state.counter != 1:
+                self.state.failure = "Counter error: {} != 1".format(
+                    self.state.counter)
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_unwrap_failure(self):
+
+        def func():
+            self.state.counter += 1
+
+            deferred = Deferred()
+            timeout = requests.exceptions.Timeout()
+            deferred.errback(Failure(timeout))
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(err):
+            if isinstance(err, Failure) and \
+               isinstance(err.value, requests.exceptions.Timeout):
+                return
+
+            instance = str(type(err))
+            self.state.failure = "Invalid error instance: " + instance
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_max_retries(self):
+
+        def func():
+            self.state.counter += 1
+
+            deferred = Deferred()
+            deferred.errback(requests.exceptions.Timeout())
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(*_a):
+            if self.state.counter != self.handler.config.max_retries:
+                self.state.failure = "Invalid retry counter"
+
+        self._run_and_verify_state(func, success, error)
+
+    def _run_and_verify_state(self, func, success, error):
+        self.handler._retry_async(func) \
+            .addCallbacks(success, error)
+
+        if self.state.failure:
+            self.fail(self.state.failure)
 
 
 class TestClientOptions(TestCase):

@@ -4,6 +4,8 @@ import os
 import socket
 import uuid
 from copy import deepcopy
+from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 from types import MethodType
 from typing import Optional
 
@@ -97,7 +99,8 @@ class ClientHandler(metaclass=abc.ABCMeta):
         requests.exceptions.RetryError,
         requests.exceptions.ConnectionError,
         socket.timeout,
-        socket.error
+        socket.error,
+        Failure
     )
 
     def __init__(self, config: Optional[ClientConfig]):
@@ -129,6 +132,32 @@ class ClientHandler(metaclass=abc.ABCMeta):
 
                 return None
             return result
+
+    def _retry_async(self, method: MethodType, *args, **kwargs):
+        retries = 0
+        result = Deferred()
+
+        def _run():
+            nonlocal retries
+            retries += 1
+
+            deferred = method(*args, **kwargs)
+            deferred.addCallbacks(result.callback, _error)
+            return deferred
+
+        def _error(exc):
+            if isinstance(exc, Failure):
+                exc = exc.value
+
+            if exc.__class__ not in self.retry_exceptions:
+                result.errback(exc)
+            elif retries < self.config.max_retries:
+                _run()
+            else:
+                result.errback(exc)
+
+        _run()
+        return result
 
 
 class DummyClient(IClient):
