@@ -15,10 +15,10 @@ class SocketAddress():
     """TCP socket address (host and port)"""
 
     _dns_label_pattern = re.compile(
-        '(?!-)[a-z\d-]{1,63}(?<!-)\Z',
+        r'(?!-)[a-z\d-]{1,63}(?<!-)\Z',
         re.IGNORECASE,
     )
-    _all_numeric_pattern = re.compile('[0-9\.]+\Z')
+    _all_numeric_pattern = re.compile(r'[0-9\.]+\Z')
 
     @classmethod
     def is_proper_address(cls, address, port):
@@ -68,7 +68,7 @@ class SocketAddress():
             else:
                 SocketAddress.validate_hostname(self.address)
 
-        if not (variables.MIN_PORT <= self.port <= variables.MAX_PORT):
+        if not variables.MIN_PORT <= self.port <= variables.MAX_PORT:
             raise ValueError('Port out of range ({} .. {}): {}'.format(
                 variables.MIN_PORT, variables.MAX_PORT, self.port))
 
@@ -90,7 +90,7 @@ class SocketAddress():
         :param str hostname:
         :returns None
         """
-        if type(hostname) is not str:
+        if not isinstance(hostname, str):
             raise TypeError('Expected string argument, not ' +
                             type(hostname).__name__)
 
@@ -117,7 +117,7 @@ class SocketAddress():
         :rtype SocketAddress
         """
 
-        if type(string) is not str:
+        if not isinstance(string, str):
             raise TypeError('Expected string argument, not ' +
                             type(string).__name__)
 
@@ -170,8 +170,7 @@ class TCPListenInfo(object):
                     self.port_start,
                     self.port_end,
                     self.established_callback,
-                    self.failure_callback,
-               )
+                    self.failure_callback, )
 
 
 class TCPListeningInfo(object):
@@ -195,7 +194,7 @@ class TCPListeningInfo(object):
 
 
 class TCPConnectInfo(object):
-    def __init__(self, socket_addresses,  established_callback=None,
+    def __init__(self, socket_addresses, established_callback=None,
                  failure_callback=None):
         """
         Information for TCP connect function
@@ -213,5 +212,4 @@ class TCPConnectInfo(object):
                 "callback {}, errback {}").format(
                     self.socket_addresses,
                     self.established_callback,
-                    self.failure_callback,
-               )
+                    self.failure_callback, )

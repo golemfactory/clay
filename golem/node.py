@@ -1,7 +1,8 @@
 """Compute Node"""
 
-import click
 import ipaddress
+
+import click
 
 from apps.appsmanager import AppsManager
 from golem.client import Client

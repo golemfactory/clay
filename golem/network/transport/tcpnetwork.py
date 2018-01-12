@@ -22,8 +22,8 @@ from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
 from .spamprotector import SpamProtector
 
 # Import helpers to this namespace
-from .tcpnetwork_helpers import SocketAddress, TCPListenInfo  # noqa
-from .tcpnetwork_helpers import TCPListeningInfo, TCPConnectInfo  # noqa
+from .tcpnetwork_helpers import SocketAddress, TCPListenInfo  # noqa pylint: disable=unused-import
+from .tcpnetwork_helpers import TCPListeningInfo, TCPConnectInfo  # noqa pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 
