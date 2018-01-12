@@ -149,13 +149,13 @@ class HyperdriveAsyncClient(HyperdriveClient):
             lambda response: response['hash']
         )
 
-    def get_async(self, multihash, client_options=None, **kwargs):
-        params = self._download_params(multihash, client_options, **kwargs)
+    def get_async(self, content_hash, client_options=None, **kwargs):
+        params = self._download_params(content_hash, client_options, **kwargs)
         path = kwargs['filepath']
 
         return self._async_request(
             params,
-            lambda response: [(path, multihash, response['files'])]
+            lambda response: [(path, content_hash, response['files'])]
         )
 
     def _async_request(self, params, response_parser):
