@@ -2,10 +2,11 @@
 
 import hashlib
 
-from golem.core import common
-from golem.network.concent import client
 from golem_messages import cryptography
 from golem_messages import message
+
+from golem.core import common
+from golem.network.concent import client
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     print('Prepared message:', msg)
     print('Sending to concent...')
     content = client.send_to_concent(msg, keys.raw_privkey, keys.raw_pubkey)
-    print('-'*80)
+    print('-' * 80)
     print(content)
 
 
