@@ -24,7 +24,7 @@ log = logging.getLogger('golem.db')
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 db = SqliteQueueDatabase(
-    None,
+    database=None,
     autostart=False,
     pragmas=(
         ('foreign_keys', True),
@@ -39,9 +39,12 @@ class Database:
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
-        self.db = db
+
         db.init(path.join(datadir, 'golem.db'))
         db.start()
+        db.connect()
+
+        self.db = db
         self.create_database()
 
     @staticmethod
@@ -78,6 +81,7 @@ class Database:
         db.create_tables(tables, safe=True)
 
     def close(self):
+        self.db.stop()
         if not self.db.is_closed():
             self.db.close()
 
@@ -98,8 +102,8 @@ class BaseModel(Model):
     @classmethod
     def __get_or_create(cls, **kwargs):
         """
-        This is a copy of the get_or_create method without initiating
-        a transaction.
+        This is a copy of the get_or_create method, without transaction
+        starting.
         Meant for use with SqliteQueueDatabase, which does not support database
         transactions.
         :return:

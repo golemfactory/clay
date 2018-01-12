@@ -15,6 +15,7 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (PeerSession, PeerSessionInfo)
+from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.core.variables import TASK_HEADERS_LIMIT
@@ -27,7 +28,8 @@ def fill_slots(msg):
         setattr(msg, slot, None)
 
 
-class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
+class TestPeerSession(DatabaseFixture, TestWithKeysAuth, LogTestCase,
+                      testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     def setUp(self):

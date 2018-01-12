@@ -75,9 +75,12 @@ class TestCreateClient(TestDirFixture):
         """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
+
         self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
+        client = Client.__new__(Client)
+
         with self.assertRaises(AttributeError):
-            Client(
+            client.__init__(
                 datadir=self.path,
                 node_colour='magenta',
                 transaction_system=False,
@@ -86,10 +89,12 @@ class TestCreateClient(TestDirFixture):
                 use_monitor=False
             )
 
+        client.db.close()
+
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase, TestWithReactor):
+class TestClient(TestDirFixture, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break
     # pylint: disable=attribute-defined-outside-init
@@ -309,7 +314,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     def test_quit(self, *_):
         self.client = Client(datadir=self.path)
-        self.client.db = None
         self.client.quit()
 
     def test_collect_gossip(self, *_):
@@ -361,10 +365,22 @@ class TestClient(TestWithDatabase, TestWithReactor):
             assert_called_with('tid', 10)
 
     def test_presets(self, *_):
-        Client.save_task_preset("Preset1", "TaskType1", "data1")
-        Client.save_task_preset("Preset2", "TaskType1", "data2")
-        Client.save_task_preset("Preset1", "TaskType2", "data3")
-        Client.save_task_preset("Preset3", "TaskType2", "data4")
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False,
+            use_monitor=False
+        )
+
+        self.client.save_task_preset("Preset1", "TaskType1", "data1")
+        self.client.save_task_preset("Preset2", "TaskType1", "data2")
+        self.client.save_task_preset("Preset1", "TaskType2", "data3")
+        self.client.save_task_preset("Preset3", "TaskType2", "data4")
+
+        # presets are saved in a separate thread, wait
+        time.sleep(1)
+
         presets = Client.get_task_presets("TaskType1")
         assert len(presets) == 2
         assert presets["Preset1"] == "data1"

@@ -194,9 +194,8 @@ class PaymentProcessor(LoopingCallService):
         with self._awaiting_lock:
             ts = get_timestamp()
             if not payment.processed_ts:
-                with Payment._meta.database.transaction():
-                    payment.processed_ts = ts
-                    payment.save()
+                payment.processed_ts = ts
+                payment.save()
 
             self._awaiting.append(payment)
             # TODO: Optimize by checking the time once per service update.
@@ -275,23 +274,22 @@ class PaymentProcessor(LoopingCallService):
         # remembered before sending the transaction to the Ethereum node in
         # case communication with the node is interrupted and it will be not
         # known if the transaction has been sent or not.
-        with Payment._meta.database.transaction():
-            for payment in payments:
-                payment.status = PaymentStatus.sent
-                payment.details.tx = encode_hex(h)
-                payment.save()
-                log.debug("- {} send to {} ({:.6f})".format(
-                    payment.subtask,
-                    encode_hex(payment.payee),
-                    payment.value / denoms.ether))
+        for payment in payments:
+            payment.status = PaymentStatus.sent
+            payment.details.tx = encode_hex(h)
+            payment.save()
+            log.debug("- {} send to {} ({:.6f})".format(
+                payment.subtask,
+                encode_hex(payment.payee),
+                payment.value / denoms.ether))
 
-            tx_hash = self.__client.send(tx)
-            tx_hex = decode_hex(tx_hash)
-            if tx_hex != h:  # FIXME: Improve Client.
-                raise RuntimeError("Incorrect tx hash: {}, should be: {}"
-                                   .format(tx_hex, h))
+        tx_hash = self.__client.send(tx)
+        tx_hex = decode_hex(tx_hash)
+        if tx_hex != h:  # FIXME: Improve Client.
+            raise RuntimeError("Incorrect tx hash: {}, should be: {}"
+                               .format(tx_hex, h))
 
-            self._inprogress[h] = payments
+        self._inprogress[h] = payments
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
@@ -326,10 +324,9 @@ class PaymentProcessor(LoopingCallService):
 
             # if the transaction failed for whatever reason we need to retry
             if receipt['status'] != '0x1':
-                with Payment._meta.database.transaction():
-                    for p in payments:
-                        p.status = PaymentStatus.awaiting
-                        p.save()
+                for p in payments:
+                    p.status = PaymentStatus.awaiting
+                    p.save()
                 failed[h] = payments
                 log.warning("Failed transaction: {}".format(receipt))
                 continue
@@ -339,29 +336,30 @@ class PaymentProcessor(LoopingCallService):
             fee = total_fee // len(payments)
             log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
                      .format(hstr, block_hash, block_number, gas_used, fee))
-            with Payment._meta.database.transaction():
-                for p in payments:
-                    p.status = PaymentStatus.confirmed
-                    p.details.block_number = block_number
-                    p.details.block_hash = block_hash
-                    p.details.fee = fee
-                    p.save()
-                    dispatcher.send(
-                        signal='golem.monitor',
-                        event='payment',
-                        addr=encode_hex(p.payee),
-                        value=p.value
-                    )
-                    dispatcher.send(
-                        signal='golem.paymentprocessor',
-                        event='payment.confirmed',
-                        payment=p
-                    )
-                    log.debug(
-                        "- %.6f confirmed fee %.6f",
-                        p.subtask,
-                        fee / denoms.ether
-                    )
+
+            for p in payments:
+                p.status = PaymentStatus.confirmed
+                p.details.block_number = block_number
+                p.details.block_hash = block_hash
+                p.details.fee = fee
+                p.save()
+                dispatcher.send(
+                    signal='golem.monitor',
+                    event='payment',
+                    addr=encode_hex(p.payee),
+                    value=p.value
+                )
+                dispatcher.send(
+                    signal='golem.paymentprocessor',
+                    event='payment.confirmed',
+                    payment=p
+                )
+                log.debug(
+                    "- %.6f confirmed fee %.6f",
+                    p.subtask,
+                    fee / denoms.ether
+                )
+
             confirmed.append(h)
 
         for h in confirmed:

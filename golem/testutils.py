@@ -114,7 +114,7 @@ class DatabaseFixture(TempDirFixture):
         self.database = Database(self.tempdir)
 
     def tearDown(self):
-        self.database.db.close()
+        self.database.close()
         super(DatabaseFixture, self).tearDown()
 
 
