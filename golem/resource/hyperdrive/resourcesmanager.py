@@ -66,6 +66,13 @@ def default_argument_value(func, name):
         return None
 
 
+def log_error(msg, exc):
+    logger.error(msg, exc)
+    # If this function is an error handler for a Deferred instance,
+    # we need to return the exception for other handlers.
+    return exc
+
+
 class HyperdriveResourceManager(ClientHandler):
 
     def __init__(self, dir_manager, daemon_address=None, config=None,
@@ -108,12 +115,12 @@ class HyperdriveResourceManager(ClientHandler):
             raise ResourceError("Resource manager: no resources to remove in "
                                 "task '{}'".format(task_id))
 
-        on_error = partial(logger.error, "Error removing task: %r")
+        on_error = partial(log_error, "Error removing task: %r")
         for resource in resources:
             self.client.cancel_async(resource.hash) \
                 .addErrback(on_error)
 
-    @handle_async(on_error=partial(logger.error, "Error adding task: %r"))
+    @handle_async(on_error=partial(log_error, "Error adding task: %r"))
     def add_task(self, files, task_id, resource_hash=None, async=True):
 
         prefix = self.storage.cache.get_prefix(task_id)
@@ -135,11 +142,11 @@ class HyperdriveResourceManager(ClientHandler):
                                resource_hash=resource_hash,
                                async=async)
 
-    @handle_async(on_error=partial(logger.error, "Error adding file: %r"))
+    @handle_async(on_error=partial(log_error, "Error adding file: %r"))
     def add_file(self, path, task_id, async=False):
         return self._add_files([path], task_id, async=async)
 
-    @handle_async(on_error=partial(logger.error, "Error adding files: %r"))
+    @handle_async(on_error=partial(log_error, "Error adding files: %r"))
     def add_files(self, files, task_id, resource_hash=None, async=False):
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
