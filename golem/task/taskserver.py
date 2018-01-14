@@ -363,7 +363,16 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def get_tasks_headers(self):
         ths_tk = self.task_keeper.get_all_tasks()
         ths_tm = self.task_manager.get_tasks_headers()
-        ret = [th.to_dict() for th in ths_tk + ths_tm]
+        return [th.to_dict() for th in ths_tk], [th.to_dict() for th in ths_tm]
+
+    def get_other_tasks(self):
+        ths_tk = self.task_keeper.get_all_tasks()
+        ret = [th.to_dict() for th in ths_tk]
+        return ret
+
+    def get_my_tasks(self):
+        ths_tm = self.task_manager.get_tasks_headers()
+        ret = [th.to_dict() for th in ths_tm]
         return ret
 
     def add_task_header(self, th_dict_repr):

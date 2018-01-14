@@ -330,14 +330,29 @@ class PeerSession(BasicSafeSession):
             self.p2p_service.try_to_add_peer(pi)
 
     def _react_to_get_tasks(self, msg):
-        tasks = self.p2p_service.get_tasks_headers()
-        if not tasks:
+        my_tasks, other_tasks = self.p2p_service.get_tasks_headers()
+        if not my_tasks and not other_tasks:
             return
-        if len(tasks) > variables.TASK_HEADERS_LIMIT:
-            tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
-            self.send(message.Tasks(tasks=tasks_to_send))
-        else:
-            self.send(message.Tasks(tasks=tasks))
+
+        tasks_to_send = []
+
+        try:
+            tasks_to_send = random.sample(
+                my_tasks, int(variables.TASK_HEADERS_LIMIT / 2))
+        except ValueError as exc:
+            tasks_to_send.extend(my_tasks)
+        except TypeError as exc:
+            logger.debug("Unexected format of my task list %r", my_tasks)
+
+        reminder = variables.TASK_HEADERS_LIMIT - len(tasks_to_send)
+        try:
+            tasks_to_send.extend(random.sample(other_tasks, reminder))
+        except ValueError as exc:
+            tasks_to_send.extend(other_tasks)
+        except TypeError as exc:
+            logger.debug("Unexected format of other task list %r", other_tasks)
+
+        self.send(message.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
