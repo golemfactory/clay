@@ -6,10 +6,11 @@ from unittest import skipIf
 from unittest.mock import patch, Mock
 
 from requests import ConnectionError
+from twisted.python.failure import Failure
 
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resource import Resource
+from golem.resource.hyperdrive.resource import Resource, ResourceError
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager, DummyResourceManager
 from golem.testutils import TempDirFixture
@@ -208,41 +209,30 @@ class TestHyperdriveResourceManager(TempDirFixture):
 
     def test_add_files_invalid_paths(self, add, restore):
         files = {str(uuid.uuid4()): 'does_not_exist'}
-        self.resource_manager._add_files(files, self.task_id,
-                                         resource_hash=None)
+        with self.assertRaises(ResourceError):
+            self.resource_manager.add_files(files, self.task_id,
+                                            resource_hash=None)
         assert not add.called
         assert not restore.called
 
     def test_add_files_empty_resource_hash(self, add, restore):
-        self.resource_manager._add_files(self.files, self.task_id,
-                                         resource_hash=None)
+        self.resource_manager.add_files(self.files, self.task_id,
+                                        resource_hash=None)
         assert not restore.called
         assert add.called
 
     def test_add_files_with_resource_hash(self, add, restore):
-        self.resource_manager._add_files(self.files, self.task_id,
-                                         resource_hash=str(uuid.uuid4()))
+        self.resource_manager.add_files(self.files, self.task_id,
+                                        resource_hash=str(uuid.uuid4()))
         assert restore.called
         assert not add.called
 
-    @patch('golem.resource.hyperdrive.resourcesmanager.async_run')
-    def test_add_task_failure(self, async_run, *_):
-
-        def mock_async_run(request, _success=None, error=None):
-            try:
-                request.method(*request.args,
-                               **request.kwargs)
-            except Exception as exc:
-                error(exc)
-
-        self.resource_manager._add_task = Mock(side_effect=Exception)
-        self.resource_manager._add_task_error = Mock()
-        async_run.side_effect = mock_async_run
-
-        self.resource_manager.add_task(self.files, self.task_id,
-                                       resource_hash=str(uuid.uuid4()))
-
-        assert self.resource_manager._add_task_error.called
+    def test_add_task_failure(self, _add, _restore):
+        exc = Exception('Test exception')
+        self.resource_manager._add_files = Mock(side_effect=exc)
+        deferred = self.resource_manager.add_task(self.files, self.task_id)
+        assert deferred.called
+        assert deferred.result is None
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")

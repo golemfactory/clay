@@ -29,12 +29,6 @@ class TestHyperdriveClient(unittest.TestCase):
         assert options.version == HyperdriveClient.VERSION
         assert options.options['peers'] is None
 
-    def test_diagnostics(self):
-        client = HyperdriveClient()
-
-        with self.assertRaises(NotImplementedError):
-            client.diagnostics()
-
     def test_id(self):
         client = HyperdriveClient()
 
