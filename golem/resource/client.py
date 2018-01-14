@@ -167,6 +167,14 @@ class DummyClient(IClient):
     _id = "test"
 
     def add(self, files: dict, **_):
+        return self._add(files)
+
+    def add_async(self, files: dict, **_):
+        deferred = Deferred()
+        deferred.callback(self._add(files))
+        return deferred
+
+    def _add(self, files: dict):
         from golem.core.fileshelper import common_dir
 
         resource_hash = str(uuid.uuid4())
@@ -198,8 +206,13 @@ class DummyClient(IClient):
         return self._id
 
     def cancel(self, content_hash: str):
-
         return content_hash
+
+    @staticmethod
+    def cancel_async(content_hash: str):
+        deferred = Deferred()
+        deferred.callback(content_hash)
+        return deferred
 
     @classmethod
     def build_options(cls, **kwargs):
