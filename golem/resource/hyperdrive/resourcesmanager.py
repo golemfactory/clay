@@ -2,19 +2,68 @@ import logging
 
 import os
 from collections import Iterable, Sized
+from functools import partial
+from twisted.internet.defer import Deferred
 
-from golem.core.async import AsyncRequest, async_run
 from golem.core.fileshelper import common_dir
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.resource.client import ClientHandler, DummyClient
 from golem.resource.hyperdrive.peermanager import HyperdrivePeerManager
-from golem.resource.hyperdrive.resource import Resource, ResourceStorage
+from golem.resource.hyperdrive.resource import Resource, ResourceStorage, \
+    ResourceError
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.resources')
 
 
 def is_collection(obj):
     return isinstance(obj, Iterable) and isinstance(obj, Sized)
+
+
+def handle_async(on_error, async_param='async'):
+    def decorator(func):
+        default = default_argument_value(func, async_param)
+
+        def wrapper(*args, **kwargs):
+            if kwargs.get(async_param, default):
+                return _handle_async(func, on_error, *args, **kwargs)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def _handle_async(func, on_error, *args, **kwargs):
+    deferred = Deferred()
+    deferred.addErrback(on_error)
+
+    try:
+        result = func(*args, **kwargs)
+        if isinstance(result, Deferred):
+            result.chainDeferred(deferred)
+        else:
+            deferred.callback(result)
+    except Exception as exc:  # pylint: disable=broad-except
+        deferred.errback(exc)
+    return deferred
+
+
+def default_argument_value(func, name):
+    """
+    Get function's default argument value
+    :param func: Function to inspect
+    :param name: Argument name
+    :return: Default value or None if does not exist
+    """
+    import inspect
+    signature = inspect.signature(func)
+
+    try:
+        return next(
+            val.default
+            for key, val in signature.parameters.items()
+            if key == name and val.default is not inspect.Parameter.empty
+        )
+    except StopIteration:
+        return None
 
 
 class HyperdriveResourceManager(ClientHandler):
@@ -24,10 +73,9 @@ class HyperdriveResourceManager(ClientHandler):
 
         super().__init__(config)
 
-        self.dir_manager = dir_manager
         self.client = HyperdriveAsyncClient(**self.config.client)
         self.peer_manager = HyperdrivePeerManager(daemon_address)
-        self.storage = ResourceStorage(self.dir_manager, resource_dir_method or
+        self.storage = ResourceStorage(dir_manager, resource_dir_method or
                                        dir_manager.get_task_resource_dir)
 
     @staticmethod
@@ -41,8 +89,8 @@ class HyperdriveResourceManager(ClientHandler):
 
     @staticmethod
     def from_wire(serialized):
-        iterator = filter(lambda x: is_collection(x)
-                          and len(x) > 1, serialized)
+        iterator = filter(lambda x: is_collection(x) and len(x) > 1,
+                          serialized)
         results = [Resource.deserialize(entry) for entry in iterator
                    if is_collection(entry) and len(entry) > 1]
 
@@ -54,98 +102,139 @@ class HyperdriveResourceManager(ClientHandler):
     def get_resources(self, task_id):
         return self.storage.get_resources(task_id)
 
-    def add_task(self, files, task_id, resource_hash=None, async=True):
-        args = (files, task_id, resource_hash)
-        if async:
-            return async_run(AsyncRequest(self._add_task, *args),
-                             error=self._add_task_error)
-        return self._add_task(*args)
-
     def remove_task(self, task_id):
         resources = self.storage.cache.remove(task_id)
         if not resources:
-            return
+            raise ResourceError("Resource manager: no resources to remove in "
+                                "task '{}'".format(task_id))
 
+        on_error = partial(logger.error, "Error removing task: %r")
         for resource in resources:
-            self.client.cancel(resource.hash)
+            self.client.cancel_async(resource.hash) \
+                .addErrback(on_error)
 
-    def _add_task(self, files, task_id, resource_hash=None):
+    @handle_async(on_error=partial(logger.error, "Error adding task: %r"))
+    def add_task(self, files, task_id, resource_hash=None, async=True):
+
         prefix = self.storage.cache.get_prefix(task_id)
         resources = self.storage.get_resources(task_id)
 
         if prefix and resources:
-            logger.warning("Resource manager: Task {} already exists"
-                           .format(task_id))
-            resource = resources[0]
-            return resource.files, resource.hash
+            logger.warning("Resource manager: Task '%s' exists", task_id)
+            return resources[0].hash, resources[0].files
 
         if not files:
-            raise RuntimeError("Empty input task resources")
-        elif len(files) == 1:
+            raise ResourceError("Empty files for task {}".format(task_id))
+        if len(files) == 1:
             prefix = os.path.dirname(next(iter(files)))
         else:
             prefix = common_dir(files)
 
         self.storage.cache.set_prefix(task_id, prefix)
-        return self.add_files(files, task_id, resource_hash=resource_hash)
+        return self._add_files(files, task_id,
+                               resource_hash=resource_hash,
+                               async=async)
 
-    @staticmethod
-    def _add_task_error(error):
-        logger.error("Error adding task: %r", error)
+    @handle_async(on_error=partial(logger.error, "Error adding file: %r"))
+    def add_file(self, path, task_id, async=False):
+        return self._add_files([path], task_id, async=async)
 
-    def add_file(self, path, task_id):
+    @handle_async(on_error=partial(logger.error, "Error adding files: %r"))
+    def add_files(self, files, task_id, resource_hash=None, async=False):
+        return self._add_files(files, task_id,
+                               resource_hash=resource_hash,
+                               async=async)
 
-        if not path:
-            logger.warning("Resource manager: trying to add an empty file "
-                           "path for task '%s'", task_id)
-            return None, None
+    def _add_files(self, files, task_id, resource_hash=None, async=False):
+        """
+        Adds files to hyperdrive.
+        :param files: File collection
+        :param task_id: Task's id
+        :param resource_hash: If set, a 'restore' method is called; 'add'
+        otherwise
+        :param async: Use asynchronous methods of HyperdriveAsyncClient
+        :return: Deferred if async; (hash, file list) otherwise
+        """
+        if not all(os.path.isabs(f) for f in files):
+            raise ResourceError("Resource manager: trying to add relative file "
+                                "paths for task '{}':\n{}".format(task_id,
+                                                                  files))
 
-        files = {path: os.path.basename(path)}
-        return self._add_files(files, task_id)
-
-    def add_files(self, files, task_id, resource_hash=None):
-
-        if not files:
-            logger.warning("Resource manager: trying to add an empty file "
-                           "collection for task '%s'", task_id)
-        elif not all(os.path.isabs(f) for f in files):
-            logger.error("Resource manager: trying to add relative file paths "
-                         "for task '%s'", task_id)
+        if len(files) == 1:
+            files = {path: os.path.basename(path)
+                     for path in files}
         else:
             files = {path: self.storage.relative_path(path, task_id)
                      for path in files}
-            return self._add_files(files, task_id, resource_hash)
 
-        return None, None
+        missing = [f for f in files if not os.path.exists(f)]
+        if missing:
+            raise ResourceError("Resource manager: missing files (task: '{}'):"
+                                "\n{}".format(task_id, missing))
 
-    def _add_files(self, files, task_id, resource_hash=None):
+        if async:
+            return self._add_files_async(resource_hash, files, task_id)
+        return self._add_files_sync(resource_hash, files, task_id)
 
-        checked = {f: os.path.exists(f) for f in files}
+    def _add_files_async(self, resource_hash: str, files: dict, task_id: str):
+        """
+        Adds files to hyperdrive using the asynchronous HyperdriveAsyncClient
+        method.
+        :param resource_hash: If set, the 'restore_async' method is called;
+        'add_async' otherwise
+        :param files: Dictionary of {full_path: relative_path} of files
+        :param task_id: Task's id
+        :return: Deferred object
+        """
+        resource_files = list(files.values())
+        result = Deferred()
 
-        if not all(checked.values()):
-            missing = [f for f, exists in files.items() if not exists]
-            logger.error("Resource manager: missing files (task: %r):\n%s",
-                         task_id, missing)
-            return None, None
+        def success(hyperdrive_hash):
+            self._cache_files(hyperdrive_hash, resource_files, task_id)
+            result.callback((hyperdrive_hash, resource_files))
 
         if resource_hash:
-            method, arg = self.client.restore, resource_hash
+            client_result = self.client.restore_async(resource_hash)
         else:
-            method, arg = self.client.add, files
+            client_result = self.client.add_async(files)
+
+        client_result.addCallbacks(success, result.errback)
+        return result
+
+    def _add_files_sync(self, resource_hash: str, files: dict, task_id: str):
+        """
+        Adds files to hyperdrive using the synchronous HyperdriveClient method.
+        :param resource_hash: If set, the 'restore' method is called; 'add'
+        otherwise
+        :param files: Dictionary of {full_path: relative_path} of files
+        :param task_id: Task's id
+        :return: hash, file list
+        """
+        resource_files = list(files.values())
 
         try:
-            resource_hash = method(arg)
+            if resource_hash:
+                self.client.restore(resource_hash)
+            else:
+                resource_hash = self.client.add(files)
         except Exception as exc:
-            logger.error("Resource manager: Error occurred while adding files"
-                         ": %r", exc)
-            raise
+            raise ResourceError("Resource manager: error adding files: {}"
+                                .format(exc))
 
-        resource_files = list(files.values())
+        self._cache_files(resource_hash, resource_files, task_id)
+        return resource_hash, resource_files
+
+    def _cache_files(self, resource_hash: str, files: Iterable, task_id: str):
+        """
+        Put the files in storage cache.
+        :param resource_hash: Hash that files are identified by
+        :param files: Collection of files
+        :param task_id: Task id that files are associated with
+        """
         resource_path = self.storage.get_path('', task_id)
         resource = Resource(resource_hash, task_id=task_id,
-                            files=resource_files, path=resource_path)
+                            files=list(files), path=resource_path)
         self._cache_resource(resource)
-        return resource_hash, resource_files
 
     def _cache_resource(self, resource: Resource) -> None:
         """
@@ -157,8 +246,8 @@ class HyperdriveResourceManager(ClientHandler):
             logger.debug("Resource manager: Resource cached: %r", resource)
         else:
             if os.path.isabs(resource.path):
-                raise Exception("Resource manager: File not found {} ({})"
-                                .format(resource.path, resource.hash))
+                raise ResourceError("Resource manager: File not found {} ({})"
+                                    .format(resource.path, resource.hash))
             logger.warning("Resource does not exist: %r", resource.path)
 
     def pull_resource(self, entry, task_id,
