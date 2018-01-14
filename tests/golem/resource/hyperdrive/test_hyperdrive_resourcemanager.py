@@ -2,17 +2,19 @@ import os
 import uuid
 
 from pathlib import Path
-from unittest import skipIf
+from unittest import skipIf, TestCase
 from unittest.mock import patch, Mock
 
 from requests import ConnectionError
+from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import Resource, ResourceError
 from golem.resource.hyperdrive.resourcesmanager import \
-    HyperdriveResourceManager, DummyResourceManager
+    HyperdriveResourceManager, DummyResourceManager, handle_async, \
+    default_argument_value
 from golem.testutils import TempDirFixture
 from tests.golem.resource.base.common import AddGetResources
 
@@ -232,7 +234,159 @@ class TestHyperdriveResourceManager(TempDirFixture):
         self.resource_manager._add_files = Mock(side_effect=exc)
         deferred = self.resource_manager.add_task(self.files, self.task_id)
         assert deferred.called
-        assert deferred.result is None
+        assert isinstance(deferred.result, Failure)
+
+
+class TestHandleAsync(TestCase):
+
+    def test_async_result(self):
+        success_result = True
+        error_result = None
+        calls = 0
+
+        from twisted.internet import defer
+        defer.setDebugging(True)
+
+        def success(result):
+            nonlocal success_result
+            success_result = success_result and isinstance(result,
+                                                           (str, int, tuple))
+
+        def error(err):
+            nonlocal error_result
+            error_result = "Error called"
+            return err
+
+        @handle_async(error, async_param='_async')
+        def func_1(data, _async=True):
+            nonlocal calls
+            calls += 1
+            return data
+
+        func_1("Function 1").addCallback(success)
+        assert calls == 1
+        assert not error_result
+        assert success_result
+
+        func_1("Function 1").addCallbacks(success, error)
+        assert calls == 2
+        assert not error_result
+        assert success_result
+
+        @handle_async(error, async_param='_async')
+        def func_2(data, _async=True):
+            nonlocal calls
+            calls += 1
+            d = Deferred()
+            d.callback(data)
+            return d
+
+        func_2("Function 2").addCallback(success)
+        assert calls == 3
+        assert not error_result
+        assert success_result
+
+        func_2("Function 2").addCallbacks(success, error)
+        assert calls == 4
+        assert not error_result
+        assert success_result
+
+    def test_async_deferred_error(self):
+        success_result = None
+        error_result = None
+        calls = 0
+
+        def success(result):
+            nonlocal success_result
+            success_result = "Success called: {}".format(result)
+
+        def error(err):
+            nonlocal error_result
+            error_result = True
+            return err
+
+        @handle_async(error, async_param='_async')
+        def func_1(data, _async=True):
+            nonlocal calls
+            calls += 1
+            raise RuntimeError(data)
+
+        @handle_async(error, async_param='_async')
+        def func_2(data, _async=True):
+            nonlocal calls
+            calls += 1
+            d = Deferred()
+            d.errback(RuntimeError(data))
+            return d
+
+        func_1("Function 1").addCallback(success)
+        assert calls == 1
+        assert error_result
+        assert not success_result
+
+        func_1("Function 1").addCallbacks(success, error)
+        assert calls == 2
+        assert error_result
+        assert not success_result
+
+        func_2("Function 2").addCallback(success)
+        assert calls == 3
+        assert error_result
+        assert not success_result
+
+        func_2("Function 2").addCallbacks(success, error)
+        assert calls == 4
+        assert error_result
+        assert not success_result
+
+    def test_sync(self):
+        error_result = None
+
+        def error(*_):
+            nonlocal error_result
+            error_result = "Should not have been called"
+
+        @handle_async(error)
+        def func(data):
+            return data
+
+        for func_data in [1, "Str", ("tup", "le")]:
+            assert func(func_data) == func_data
+        assert not error_result
+
+    def test_sync_exception(self):
+        error_result = None
+
+        def error(*_):
+            nonlocal error_result
+            error_result = "Should not have been called"
+
+        @handle_async(error)
+        def func(data):
+            raise RuntimeError(data)
+
+        for func_data in [1, "Str", ("tup", "le")]:
+            with self.assertRaises(RuntimeError):
+                func(func_data)
+        assert not error_result
+
+
+class TestDefaultArgumentValue(TestCase):
+
+    def test_existing(self):
+        def func(_a=0, _b=None, _c="test"):
+            pass
+
+        assert default_argument_value(func, '_a') == 0
+        assert default_argument_value(func, '_b') is None
+        assert default_argument_value(func, '_c') == 'test'
+
+    def test_missing(self):
+        def func(_a, _b=1, _c="test"):
+            pass
+
+        assert default_argument_value(func, '_a') is None
+        assert default_argument_value(func, '_d') is None
 
 
 @skipIf(not running(), "Hyperdrive daemon isn't running")
