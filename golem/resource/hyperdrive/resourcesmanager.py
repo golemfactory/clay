@@ -12,7 +12,7 @@ from golem.resource.hyperdrive.peermanager import HyperdrivePeerManager
 from golem.resource.hyperdrive.resource import Resource, ResourceStorage, \
     ResourceError
 
-logger = logging.getLogger('golem.resources')
+logger = logging.getLogger(__name__)
 
 
 def is_collection(obj):
