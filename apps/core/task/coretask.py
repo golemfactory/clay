@@ -210,7 +210,7 @@ class CoreTask(Task):
         verifier.start_verification(
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
-            resources=[],
+            resources=self.task_resources,
             reference_data=self.get_reference_data())
 
     def get_reference_data(self):

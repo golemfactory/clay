@@ -419,6 +419,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['res_y'] = self.res_y
         self.subtasks_given[hash]['use_frames'] = self.use_frames
         self.subtasks_given[hash]['all_frames'] = self.frames
+        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir
 
         part = self._count_part(start_task, parts)
 
@@ -437,6 +438,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
         ctd = self._new_compute_task_def(hash, extra_data, perf_index=perf_index)
+        self.subtasks_given[hash]['ctd'] = ctd  #FIXME
         return self.ExtraData(ctd=ctd)
 
     def restart(self):
