@@ -239,7 +239,8 @@ class TestHyperdriveResourceManager(TempDirFixture):
 
 class TestHandleAsync(TestCase):
 
-    def test_async_result(self):
+    @staticmethod
+    def test_async_result():
         success_result = True
         error_result = None
         calls = 0
@@ -263,12 +264,13 @@ class TestHandleAsync(TestCase):
             calls += 1
             return data
 
-        func_1("Function 1").addCallback(success)
+        func_1("Function 1").addCallback(success)  # pylint: disable=no-member
         assert calls == 1
         assert not error_result
         assert success_result
 
-        func_1("Function 1").addCallbacks(success, error)
+        func_1("Function 1").addCallbacks(success,  # pylint: disable=no-member
+                                          error)
         assert calls == 2
         assert not error_result
         assert success_result
@@ -291,7 +293,8 @@ class TestHandleAsync(TestCase):
         assert not error_result
         assert success_result
 
-    def test_async_deferred_error(self):
+    @staticmethod
+    def test_async_deferred_error():
         success_result = None
         error_result = None
         calls = 0
@@ -339,7 +342,8 @@ class TestHandleAsync(TestCase):
         assert error_result
         assert not success_result
 
-    def test_sync(self):
+    @staticmethod
+    def test_sync():
         error_result = None
 
         def error(*_):
@@ -373,7 +377,8 @@ class TestHandleAsync(TestCase):
 
 class TestDefaultArgumentValue(TestCase):
 
-    def test_existing(self):
+    @staticmethod
+    def test_existing():
         def func(_a=0, _b=None, _c="test"):
             pass
 
@@ -381,7 +386,8 @@ class TestDefaultArgumentValue(TestCase):
         assert default_argument_value(func, '_b') is None
         assert default_argument_value(func, '_c') == 'test'
 
-    def test_missing(self):
+    @staticmethod
+    def test_missing():
         def func(_a, _b=1, _c="test"):
             pass
 
