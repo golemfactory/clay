@@ -17,6 +17,7 @@ def has_no_previous_success_check(step):
 
     cur_build = step.build
     cur_rev = cur_build.getProperty("revision")
+    cur_slow = cur_build.getProperty("runslow")
     if cur_rev is None or cur_rev == "":
         cur_rev = cur_build.getProperty("got_revision")
     # never skip if this is a forced run
@@ -46,10 +47,15 @@ def has_no_previous_success_check(step):
         yield reporters_utils.getDetailsForBuild(step.build.master,
                                                  prev_build,
                                                  wantProperties=True)
+        # print("Previous build: {}".format(dict_build))
         prev_rev = extract_rev(prev_build['properties'])
+        prev_slow = prev_build['properties']['runslow'][0] \
+            if 'runslow' in prev_build['properties'] else None
+        # print("Properties prev build: {}".format(prev_build['properties']))
 
         if prev_build['results'] == results.SUCCESS \
-                and prev_rev == cur_rev:
+                and prev_rev == cur_rev \
+                and prev_slow == cur_slow:
             print("Found previous succes, skipping build")
             defer.returnValue(False)
             return False
@@ -170,6 +176,10 @@ class StepsFactory(object):
                     command=self.pip_command + ['install', '--upgrade',
                                                 gitpy_repo],
                     haltOnFailure=True),
+                util.ShellArg(
+                    logfile='setup.py develop',
+                    command=self.python_command + ['setup.py', 'develop'],
+                    haltOnFailure=True),
             ],
             env={
                 'LANG': 'en_US.UTF-8',  # required for readline
@@ -250,11 +260,19 @@ class StepsFactory(object):
 
         test_slow_command = test_command + ['--runslow']
 
+        @defer.inlineCallbacks
         def is_fast(step):
-            return step.build.getProperty('runslow') == ''
+            has_no_success = yield has_no_previous_success(step)
+            if not has_no_success:
+                defer.returnValue(False)
+            defer.returnValue(step.build.getProperty('runslow') == '')
 
+        @defer.inlineCallbacks
         def is_slow(step):
-            return step.build.getProperty('runslow') != ''
+            has_no_success = yield has_no_previous_success(step)
+            if not has_no_success:
+                defer.returnValue(False)
+            defer.returnValue(step.build.getProperty('runslow') != '')
 
         # Since test-daemons are running commands should not halt on failure.
         return [
@@ -271,10 +289,6 @@ class StepsFactory(object):
                         command=self.pip_command + ['install', 'pyasn1==0.2.3',
                                                     'codecov', 'pytest-cov'],
                         flunkOnFailure=True),
-                    util.ShellArg(
-                        logfile='prepare for test',
-                        command=self.python_command + ['setup.py', 'develop'],
-                        flunkOnFailure=True),
                     # TODO: add xml results
                     # TODO 2: add run slow
                     util.ShellArg(
@@ -286,7 +300,7 @@ class StepsFactory(object):
                     'LANG': 'en_US.UTF-8',  # required for test with 'click'
                 },
                 flunkOnFailure=True,
-                doStepIf=has_no_previous_success and is_fast),
+                doStepIf=is_fast),
             steps.ShellSequence(
                 name='run slow tests',
                 commands=[
@@ -300,10 +314,6 @@ class StepsFactory(object):
                         command=self.pip_command + ['install', 'pyasn1==0.2.3',
                                                     'codecov', 'pytest-cov'],
                         flunkOnFailure=True),
-                    util.ShellArg(
-                        logfile='prepare for test',
-                        command=self.python_command + ['setup.py', 'develop'],
-                        flunkOnFailure=True),
                     # TODO: add xml results
                     # TODO 2: add run slow
                     util.ShellArg(
@@ -315,7 +325,7 @@ class StepsFactory(object):
                     'LANG': 'en_US.UTF-8',  # required for test with 'click'
                 },
                 flunkOnFailure=True,
-                doStepIf=has_no_previous_success and is_slow),
+                doStepIf=is_slow),
             ]
 
     def coverage_step(self):

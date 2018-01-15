@@ -55,5 +55,8 @@ builders = [
                        factory=LinuxStepsFactory().build_factory()),
     util.BuilderConfig(name="buildpackage_windows",
                        workernames=windows_workers,
-                       factory=WindowsStepsFactory().build_factory()),
+                       factory=WindowsStepsFactory().build_factory(),
+                       env={
+                           'APPVEYOR': 'TRUE',
+                       }),
 ]

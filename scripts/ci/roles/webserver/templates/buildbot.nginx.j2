@@ -12,8 +12,8 @@ server {
 
     {% if tls_enabled %}
         ssl on;
-        ssl_certificate /etc/letsencrypt/live/buildbot.golem.network/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/buildbot.golem.network/privkey.pem;
+        ssl_certificate /etc/ssl/certs/buildbot.golem.network.crt;
+        ssl_certificate_key /etc/ssl/private/buildbot.golem.network.key;
 
         # put a one day session timeout for websockets to stay longer
         ssl_session_cache      shared:SSL:10m;

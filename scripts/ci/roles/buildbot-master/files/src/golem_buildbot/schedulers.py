@@ -28,9 +28,11 @@ schedulers = [
     # Receiving updates and triggering the control jobs
     schedulers.AnyBranchScheduler(name='hook_pr',
                                   builderNames=['hook_pr'],
+                                  treeStableTimer=30,
                                   change_filter=pr_filter),
     schedulers.AnyBranchScheduler(name='hook_push',
                                   builderNames=['hook_push'],
+                                  treeStableTimer=60,
                                   change_filter=branch_filter),
     schedulers.Nightly(name='hook_nightly',
                        branch='develop',
