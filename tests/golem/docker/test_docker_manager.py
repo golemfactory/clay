@@ -331,8 +331,9 @@ class TestDockerManager(unittest.TestCase):
         assert diff(old, new) == expected
 
         old = dmm.defaults
-        new = dict(cpu_count=dmm.defaults[
-                   'cpu_count'] + 1, unknown_key='value')
+        new = dict(
+            cpu_count=dmm.defaults['cpu_count'] + 1, unknown_key='value'
+        )
         expected = dict(cpu_count=dmm.defaults['cpu_count'] + 1)
         assert diff(old, new) == expected
 
