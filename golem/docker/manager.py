@@ -257,6 +257,7 @@ class DockerManager(DockerConfigManager):
             logger.debug("DockerMachine_output: %s", e.output)
         return False
 
+    @report_calls(Component.docker, 'instance.start')
     def start_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: starting {}".format(name))
@@ -266,7 +267,9 @@ class DockerManager(DockerConfigManager):
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to start the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
+            raise
 
+    @report_calls(Component.docker, 'instance.stop')
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: stopping '{}'".format(name))
@@ -420,7 +423,6 @@ Ensure that you try the following before reporting an issue:
     docker-machine.exe create --driver virtualbox golem
  4. Restart Windows machine"""
             logger.error(typical_solution_s)
-
             raise
 
         if output:

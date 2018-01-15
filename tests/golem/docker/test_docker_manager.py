@@ -7,8 +7,8 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError
 
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, \
-                                 VirtualBoxHypervisor, XhyveHypervisor, \
-                                 Hypervisor, logger
+    VirtualBoxHypervisor, XhyveHypervisor, \
+    Hypervisor, logger
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -16,6 +16,7 @@ MACHINE_NAME = FALLBACK_DOCKER_MACHINE_NAME
 
 
 class MockConfig(object):
+
     def __init__(self, num_cores, max_memory_size, max_resource_size):
         self.num_cores = num_cores
         self.max_memory_size = max_memory_size
@@ -30,6 +31,7 @@ class MockConfig(object):
 
 
 class MockVirtualBox(mock.MagicMock):
+
     def __init__(self, *args, **kw):
         super(MockVirtualBox, self).__init__(*args, **kw)
         self.version = "1.0"
@@ -42,11 +44,13 @@ class MockVirtualBox(mock.MagicMock):
 
 
 class MockConsole(mock.MagicMock):
+
     def __init__(self, *args, **kw):
         super(MockConsole, self).__init__(*args, **kw)
 
 
 class MockSession(mock.MagicMock):
+
     def __init__(self, *args, **kw):
         super(MockSession, self).__init__(*args, **kw)
         self.console = MockConsole()
@@ -76,6 +80,7 @@ class MockLockType(mock.MagicMock):
 
 
 class MockMachine(mock.MagicMock):
+
     def __init__(self, *args, **kw):
         super(MockMachine, self).__init__(*args, **kw)
         self.state = MockState()
@@ -149,7 +154,8 @@ class MockDockerManager(DockerManager):
                 'SET GOLEM_TEST=1',
                 '',
                 'INVALID DOCKER=2',
-                'SET DOCKER_CERT_PATH="{}"'.format(os.path.join('tmp', 'golem'))
+                'SET DOCKER_CERT_PATH="{}"'.format(
+                    os.path.join('tmp', 'golem'))
             ])
         elif key == 'list':
             return MACHINE_NAME
@@ -180,6 +186,7 @@ def raise_process_exception(msg, *args, **kwargs):
 
 
 class Erroneous(mock.Mock):
+
     @property
     def cpu_count(self):
         raise_exception("Read")
@@ -206,7 +213,7 @@ class TestDockerManager(unittest.TestCase):
         assert ['start', MACHINE_NAME, None, False] in dmm.command_calls
 
         with mock.patch.object(dmm, 'command', raise_process_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertRaises(CalledProcessError):
                 dmm.start_docker_machine(MACHINE_NAME)
 
     def test_stop(self):
@@ -324,7 +331,8 @@ class TestDockerManager(unittest.TestCase):
         assert diff(old, new) == expected
 
         old = dmm.defaults
-        new = dict(cpu_count=dmm.defaults['cpu_count'] + 1, unknown_key='value')
+        new = dict(cpu_count=dmm.defaults[
+                   'cpu_count'] + 1, unknown_key='value')
         expected = dict(cpu_count=dmm.defaults['cpu_count'] + 1)
         assert diff(old, new) == expected
 
