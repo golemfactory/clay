@@ -15,7 +15,6 @@ from golem.network.transport import tcpserver
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper, key_distance
-from golem.model import DBwriter
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node,
             config_desc,
             keys_auth,
-            connect_to_known_hosts=True
+            database,
+            connect_to_known_hosts=True,
     ):
         """Create new P2P Server. Listen on port for connections and
            connect to other peers. Keeps up-to-date list of peers information
@@ -64,6 +64,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param ClientConfigDescriptor config_desc: configuration options
         :param KeysAuth keys_auth: authorization manager
         """
+
+        self.database = database
+
         network = tcpnetwork.TCPNetwork(
             ProtocolFactory(
                 tcpnetwork.SafeProtocol,
@@ -110,11 +113,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self._peer_lock = Lock()
 
-        try:
+        def sql():
             self.__remove_redundant_hosts_from_db()
             self.__sync_seeds()
-        except Exception as exc:
+
+        def error(exc):
             logger.error("Error reading seed addresses: {}".format(exc))
+
+        self.database.db_writer.put_sql(sql, error)
 
         # Timers
         self.last_peers_request = time.time()
@@ -195,38 +201,33 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False
 
-        try:
-            def sql():
-                with db.transaction():
-                    KnownHosts.delete().where(
-                        (KnownHosts.ip_address == ip_address)
-                        & (KnownHosts.port == port)
-                    ).execute()
+        def sql():
+            with db.transaction():
+                KnownHosts.delete().where(
+                    (KnownHosts.ip_address == ip_address)
+                    & (KnownHosts.port == port)
+                ).execute()
 
-                    KnownHosts.insert(
-                        ip_address=ip_address,
-                        port=port,
-                        last_connected=time.time(),
-                        is_seed=is_seed
-                    ).execute()
-            def success():
-                print("success")
-
-            def error(exc):
-                print("error ", exc)
-
-            DBwriter.put_sql(sql, success, error)
+                KnownHosts.insert(
+                    ip_address=ip_address,
+                    port=port,
+                    last_connected=time.time(),
+                    is_seed=is_seed
+                ).execute()
 
             self.__remove_redundant_hosts_from_db()
             self.__sync_seeds()
 
-        except Exception as err:
+        def error(exc):
             logger.error(
                 "Couldn't add known peer %r:%r : %s",
                 ip_address,
                 port,
-                err
+                exc
             )
+
+        self.database.db_writer.put_sql(sql, error)
+
 
     def set_metadata_manager(self, metadata_manager):
         self.metadata_manager = metadata_manager

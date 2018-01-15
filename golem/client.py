@@ -152,7 +152,7 @@ class Client(HardwarePresetsMixin):
                 self,
                 int(self.config_desc.network_check_interval)),
             TaskArchiverService(self.task_archiver),
-            MessageHistoryService(),
+            MessageHistoryService(self.db),
             DoWorkService(self),
         ]
 
@@ -177,6 +177,7 @@ class Client(HardwarePresetsMixin):
             self.transaction_system = EthereumTransactionSystem(
                 datadir,
                 self.keys_auth._private_key,
+                self.db,
                 geth_port,
                 start_geth=start_geth
             )
@@ -283,6 +284,7 @@ class Client(HardwarePresetsMixin):
                 self.node,
                 self.config_desc,
                 self.keys_auth,
+                self.db,
                 connect_to_known_hosts=self.connect_to_known_hosts
             )
 

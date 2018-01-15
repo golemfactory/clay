@@ -7,6 +7,7 @@ from pydispatch import dispatcher
 from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
+from golem.model import Database
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
 
@@ -14,6 +15,9 @@ logger = logging.getLogger("golem.transactions.incomeskeeper")
 class IncomesKeeper(object):
     """Keeps information about payments received from other nodes
     """
+
+    def __init__(self, database):
+        self.database = database
 
     def start(self):
         pass
@@ -56,7 +60,7 @@ class IncomesKeeper(object):
                  block_number,
                  value):
 
-        try:
+        def sql():
             with db.transaction():
                 expected_income = \
                     ExpectedIncome.get(sender_node=sender_node_id,
@@ -64,13 +68,15 @@ class IncomesKeeper(object):
                                        subtask=subtask_id)
                 expected_income.delete_instance()
 
-        except ExpectedIncome.DoesNotExist:
+        def error(exc):
             logger.info("ExpectedIncome.DoesNotExist "
                         "(sender_node_id %r task_id %r, "
                         "subtask_id %r, value %r) ",
                         sender_node_id, task_id, subtask_id, value)
 
-        try:
+        self.database.db_writer.put_sql(sql, error=error)
+
+        def create_income():
             with db.transaction():
                 income = Income.create(
                     sender_node=sender_node_id,
@@ -81,7 +87,7 @@ class IncomesKeeper(object):
                     value=value)
                 return income
 
-        except peewee.IntegrityError:
+        def income_error():
             db_income = Income.get(
                 sender_node=sender_node_id,
                 subtask=subtask_id
@@ -93,6 +99,8 @@ class IncomesKeeper(object):
                 transaction_id,
                 db_income.transaction
             )
+
+        self.database.db_writer.put_sql(create_income, error=income_error)
 
     def expect(self, sender_node_id, p2p_node, task_id, subtask_id, value):
         logger.debug(

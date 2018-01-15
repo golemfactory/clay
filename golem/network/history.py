@@ -12,7 +12,7 @@ from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field, IntegrityError)
 
 from golem.core.service import IService
-from golem.model import NetworkMessage, Actor
+from golem.model import NetworkMessage, Actor, Database
 
 logger = logging.getLogger('golem.network.history')
 
@@ -46,7 +46,7 @@ class MessageHistoryService(IService):
     # of MessageHistoryService
     instance = None
 
-    def __init__(self):
+    def __init__(self, database):
         IService.__init__(self)
 
         if self.__class__.instance is None:
@@ -58,6 +58,8 @@ class MessageHistoryService(IService):
         self._save_queue = queue.Queue()
         self._remove_queue = queue.Queue()
         self._sweep_ts = datetime.datetime.now()
+        self.notify_queue = queue.Queue()
+        self.database = database
 
     def run(self) -> None:
         """
@@ -134,18 +136,24 @@ class MessageHistoryService(IService):
         Saves a message in the database.
         :param msg_dict: Message to save
         """
-        try:
+        def sql():
             msg = NetworkMessage(**msg_dict)
             msg.save()
-        except (DataError, ProgrammingError, NotSupportedError,
-                TypeError, IntegrityError) as exc:
-            # Unrecoverable error
-            logger.error("Cannot save message '%s' to database: %r",
-                         msg_dict.get('msg_cls'), exc)
-        except PeeweeException:
-            # Temporary error
-            logger.warning("Message '%s' save queued", msg_dict.get('msg_cls'))
-            self._save_queue.put(msg_dict)
+
+        def error(exc):
+            try:
+                raise exc
+            except (DataError, ProgrammingError, NotSupportedError,
+                    TypeError, IntegrityError) as exc:
+                # Unrecoverable error
+                logger.error("Cannot save message '%s' to database: %r",
+                             msg_dict.get('msg_cls'), exc)
+            except PeeweeException:
+                # Temporary error
+                logger.warning("Message '%s' save queued", msg_dict.get('msg_cls'))
+                self._save_queue.put(msg_dict)
+
+        self.database.db_writer.put_sql_from_thread(sql, error=error, notify_queue=self.notify_queue)
 
     def remove(self, task: str, **properties) -> None:
         """
@@ -165,21 +173,27 @@ class MessageHistoryService(IService):
         """
         clauses = self.build_clauses(task=task, **properties)
 
-        try:
+        def sql():
             NetworkMessage.delete() \
                 .where(reduce(operator.and_, clauses)) \
                 .execute()
-        except (DataError, ProgrammingError, NotSupportedError,
-                TypeError, IntegrityError) as exc:
-            # Unrecoverable error
-            logger.error("Cannot remove task messages from the database: "
-                         "(task: '%s', parameters: %r): %r",
-                         task, properties, exc)
-        except PeeweeException:
-            # Temporary error
-            logger.warning("Task %s (%r) message removal queued",
-                           task, properties)
-            self._remove_queue.put((task, properties))
+
+        def error(exc):
+            try:
+                raise exc
+            except (DataError, ProgrammingError, NotSupportedError,
+                    TypeError, IntegrityError) as exc:
+                # Unrecoverable error
+                logger.error("Cannot remove task messages from the database: "
+                             "(task: '%s', parameters: %r): %r",
+                             task, properties, exc)
+            except PeeweeException:
+                # Temporary error
+                logger.warning("Task %s (%r) message removal queued",
+                               task, properties)
+                self._remove_queue.put((task, properties))
+
+        self.database.db_writer.put_sql_from_thread(sql, error=error, notify_queue=self.notify_queue)
 
     @staticmethod
     def build_clauses(**properties) -> List[bool]:
@@ -230,20 +244,31 @@ class MessageHistoryService(IService):
         else:
             self.add_sync(msg_dict)
 
+        try:
+            result = self.notify_queue.get()
+            result()
+        except queue.Empty:
+            pass
+
     def _sweep(self) -> None:
         """
         Removes messages older than MESSAGE_LIFETIME.
         """
-        logger.info("Sweeping messages")
-        oldest = datetime.datetime.now() - self.MESSAGE_LIFETIME
 
-        try:
+        def sql():
+            logger.info("Sweeping messages")
+            oldest = datetime.datetime.now() - self.MESSAGE_LIFETIME
             NetworkMessage.delete() \
                 .where(NetworkMessage.msg_date <= oldest) \
                 .execute()
-        except PeeweeException as exc:
-            logger.error("Message sweep failed: %r", exc)
 
+        def error(exc):
+            try:
+                raise exc
+            except PeeweeException as exc:
+                logger.error("Message sweep failed: %r", exc)
+
+        self.database.db_writer.put_sql_from_thread(sql, error=error, notify_queue=self.notify_queue)
 
 ##############
 # INTERFACES #

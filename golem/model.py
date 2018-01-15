@@ -23,47 +23,79 @@ log = logging.getLogger('golem.db')
 
 import threading
 import queue
+from functools import partial
 
 class AsyncSQL:
 
-    def __init__(self, sql, success, error):
+    def __init__(self, sql, success, error, from_thread=False, queue=None):
         self.succes = success
         self.error = error
         self.sql = sql
+        self.from_thread = from_thread
+        self.notify_queue = queue
 
 class DatabaseWriter:
 
     def __init__(self, db):
+        self._stop_event = threading.Event()
         self.writer = threading.Thread(target=self.run)
         self.db = db
         self.writer_queue = queue.Queue()
 
     def start(self):
+        import pdb
+        pdb.set_trace()
+        self._stop_event.clear()
         self.writer.start()
+
+    def stop(self):
+        self._stop_event.set()
+        self.writer.join()
 
     def run(self):
         self.db.connect()
 
-        while True:
-            obj = self.writer_queue.get()
-            from twisted.internet import reactor
+        while not self._stop_event.is_set():
             try:
-                obj.sql()
-            except Exception as exc:
-                reactor.callFromThread(obj.error, exc)
-            else:
-                reactor.callFromThread(obj.succes)
+                print("Is stop event set ", self._stop_event.is_set())
+                obj = self.writer_queue.get(self._stop_event.is_set())
 
-    def put_sql(self, asyncSQL, success, error):
+                if not obj.from_thread:
+                    from twisted.internet import reactor
+                    try:
+                        obj.sql()
+                    except Exception as exc:
+                        if obj.error:
+                            reactor.callFromThread(obj.error, exc)
+                    else:
+                        if obj.success:
+                            reactor.callFromThread(obj.succes)
+                else:
+                    try:
+                        obj.sql()
+                    except Exception as exc:
+                        if obj.error:
+                            onerror = partial(obj.error, exc)
+                            obj.notify_queue.put(onerror)
+                    else:
+                        if obj.success:
+                            obj.notify_queue.put(obj.succes)
+
+            except queue.Empty:
+                log.warning("Closing DB writer thread")
+                return
+
+    def put_sql(self, asyncSQL, success=None, error=None):
         self.writer_queue.put(AsyncSQL(asyncSQL, success, error))
+
+    def put_sql_from_thread(self, asyncSQL, success, error, notify_queue):
+        self.writer_queue.put(AsyncSQL(asyncSQL, success, error, True, notify_queue))
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 db = SqliteDatabase(None, threadlocals=True,
                     pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
 
-
-DBwriter = DatabaseWriter(db)
 
 class Database:
     # Database user schema version, bump to recreate the database
@@ -75,7 +107,11 @@ class Database:
         db.init(path.join(datadir, 'golem.db'))
         db.connect()
         self.create_database()
-        DBwriter.start()
+        self.db_writer = DatabaseWriter(db)
+        self.db_writer.start()
+
+    def get_writer(self):
+        return self.db_writer
 
     @staticmethod
     def _get_user_version() -> int:
@@ -113,11 +149,32 @@ class Database:
     def close(self):
         if not self.db.is_closed():
             self.db.close()
+        self.db_writer.stop()
 
 
 class BaseModel(Model):
     class Meta:
         database = db
+
+    def save(self):
+        def sql(self):
+            super(Model, self).save()
+
+        #DBwriter.put_sql(sql)
+
+    @classmethod
+    def create(cls, **query):
+        def sql(cls):
+            super(Model, cls).create(**query)
+
+        #DBwriter.put_sql(sql)
+
+    @classmethod
+    def update(cls, __data=None, **update):
+        def sql(cls):
+            super(Model, cls).update( __data, **update)
+
+        #DBwriter.put_sql(sql)
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)

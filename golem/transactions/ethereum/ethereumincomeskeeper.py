@@ -15,8 +15,9 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 class EthereumIncomesKeeper(IncomesKeeper):
 
-    def __init__(self, processor: PaymentProcessor) -> None:
+    def __init__(self, database, processor: PaymentProcessor) -> None:
         self.processor = processor
+        super(EthereumIncomesKeeper, self).__init__(database)
 
     def start(self):
         self.processor.start()

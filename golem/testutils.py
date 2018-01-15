@@ -110,11 +110,15 @@ class DatabaseFixture(TempDirFixture):
     """ Setups temporary database for tests."""
 
     def setUp(self):
+        import pdb
+        pdb.set_trace()
         super(DatabaseFixture, self).setUp()
         self.database = Database(self.tempdir)
 
     def tearDown(self):
-        self.database.db.close()
+        import pdb
+        pdb.set_trace()
+        self.database.close()
         super(DatabaseFixture, self).tearDown()
 
 
