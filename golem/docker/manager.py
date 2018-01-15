@@ -149,7 +149,11 @@ class DockerManager(DockerConfigManager):
         self._env_checked = True
         return bool(self.docker_machine)
 
-    def update_config(self, status_callback, done_callback, in_background=True):
+    def update_config(
+            self,
+            status_callback,
+            done_callback,
+            in_background=True):
         if not self._env_checked:
             self.check_environment()
 
@@ -206,8 +210,9 @@ class DockerManager(DockerConfigManager):
                 with self.hypervisor.restart_ctx(name) as vm:
                     self.hypervisor.constrain(vm, **diff)
             except Exception as e:
-                logger.error("DockerMachine: error setting '{}' VM's constraints: {}"
-                             .format(name, e))
+                logger.error(
+                    "DockerMachine: error setting '{}' VM's constraints: {}" .format(
+                        name, e))
             self._set_docker_machine_env()
 
         else:
@@ -266,6 +271,7 @@ class DockerManager(DockerConfigManager):
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to start the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
+            raise
 
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
@@ -277,6 +283,7 @@ class DockerManager(DockerConfigManager):
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine: failed to stop the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
+            raise
         return False
 
     @classmethod
@@ -734,7 +741,8 @@ class VirtualBoxHypervisor(Hypervisor):
             from virtualbox.library import ISession, LockType
         except ImportError:
             return None
-        return VirtualBoxHypervisor(docker_manager, VirtualBox(), ISession, LockType)
+        return VirtualBoxHypervisor(
+            docker_manager, VirtualBox(), ISession, LockType)
 
 
 class XhyveHypervisor(Hypervisor):
