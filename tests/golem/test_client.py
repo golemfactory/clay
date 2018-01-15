@@ -903,6 +903,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
 
+    def test_run_benchmark_fail(self, *_):
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+
+        def raise_exc(*_args, **_kwargs):
+            raise Exception('Test exception')
+
+        with patch("golem.docker.image.DockerImage.is_available",
+                   return_value=True), \
+                patch("golem.docker.job.DockerJob.__init__",
+                      side_effect=raise_exc), \
+                self.assertRaises(Exception):
+            sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
+
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
         benchmark_manager = self.client.task_server.benchmark_manager
