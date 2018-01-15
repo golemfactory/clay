@@ -16,13 +16,13 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
 
     def test_init(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY, self.database)
         self.assertIsInstance(e, EthereumTransactionSystem)
         assert type(e.get_payment_address()) is str
 
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
-            EthereumTransactionSystem(self.tempdir, "not a private key")
+            EthereumTransactionSystem(self.tempdir, "not a private key", self.database)
 
     @mock.patch(
         'golem.transactions.ethereum.ethereumtransactionsystem.'
@@ -33,7 +33,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         with self.assertRaisesRegexp(ValueError,
                                      "Invalid Ethereum address constructed"):
-            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            EthereumTransactionSystem(self.tempdir, PRIV_KEY, self.database)
 
     @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
@@ -50,7 +50,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         def error(*_):
             raise Exception
 
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY, self.database)
 
         sleep.call_count = 0
         with patch(
@@ -74,7 +74,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             assert sleep.call_count == 0
 
     def test_get_balance(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY, self.database)
         assert e.get_balance() == (None, None, None)
 
     @mock.patch('golem.core.service.LoopingCallService.running',
@@ -95,7 +95,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
-            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY, self.database)
             assert e.incomes_keeper.processor. \
                 _loopingCall.start.called
             assert e.incomes_keeper.processor \

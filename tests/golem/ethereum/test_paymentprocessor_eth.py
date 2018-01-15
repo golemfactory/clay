@@ -27,7 +27,8 @@ class TestPaymentProcessor(unittest.TestCase):
             self.payment_processor = paymentprocessor.PaymentProcessor(
                 client=mock.MagicMock(),
                 privkey=privkey,
-                token=mock_token()
+                token=mock_token(),
+                database=mock.Mock()
             )
 
     def test_eth_address(self):
@@ -51,7 +52,8 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         self.payment_processor = paymentprocessor.PaymentProcessor(
             client=client,
             privkey=privkey,
-            token=mock_token()
+            token=mock_token(),
+            database=self.database
         )
 
     @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance", return_value=2**100)  # noqa

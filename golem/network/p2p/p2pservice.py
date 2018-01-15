@@ -8,7 +8,7 @@ from threading import Lock
 
 from golem.core import simplechallenge
 from golem.diag.service import DiagnosticsProvider
-from golem.model import KnownHosts, MAX_STORED_HOSTS, db
+from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
@@ -54,6 +54,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node,
             config_desc,
             keys_auth,
+            database,
             connect_to_known_hosts=True
     ):
         """Create new P2P Server. Listen on port for connections and
@@ -75,6 +76,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.node = node
         self.keys_auth = keys_auth
+        self.database = database
         self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
         self.task_server = None
         self.resource_server = None
@@ -195,7 +197,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         is_seed = node.is_super_node() if node else False
 
         try:
-            with db.transaction():
+            with self.database.db.transaction():
                 KnownHosts.delete().where(
                     (KnownHosts.ip_address == ip_address)
                     & (KnownHosts.port == port)

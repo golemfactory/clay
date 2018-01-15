@@ -72,7 +72,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp = PaymentProcessor(
             self.client,
             self.privkey,
-            GNTToken(self.client))
+            GNTToken(self.client),
+            self.database)
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
 
     def test_eth_balance(self):
@@ -162,6 +163,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.client,
             self.privkey,
             GNTToken(self.client),
+            self.database,
             faucet=True)
         pp.get_ether_from_faucet()
         assert get.call_count == 1
@@ -173,6 +175,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.client,
             self.privkey,
             GNTToken(self.client),
+            self.database,
             faucet=True)
         pp.get_gnt_from_faucet()
         assert self.client.send.call_count == 1
@@ -265,6 +268,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.client,
             self.privkey,
             GNTToken(self.client),
+            self.database,
             faucet=False)
 
         self.client.get_peer_count.return_value = 4
@@ -278,6 +282,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.client,
             self.privkey,
             GNTToken(self.client),
+            self.database,
             faucet=False)
         syncing_status = {'startingBlock': '0x384',
                           'currentBlock': '0x386',
@@ -314,6 +319,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.client,
             self.privkey,
             GNTToken(self.client),
+            self.database,
             faucet=False)
         syncing_status = {'startingBlock': '0x0',
                           'currentBlock': '0x1',
@@ -557,7 +563,8 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.pp = PaymentProcessor(
             self.client,
             self.privkey,
-            GNTToken(self.client))
+            GNTToken(self.client),
+            self.database)
         self.clock = Clock()
         self.pp._loopingCall.clock = self.clock
 
@@ -691,7 +698,8 @@ class InteractionWithTokenTest(DatabaseFixture):
         self.client.send.return_value = tx_hash
         self.token.batch_transfer.return_value = self.tx
 
-        self.pp = PaymentProcessor(self.client, self.privkey, self.token)
+        self.pp = PaymentProcessor(self.client, self.privkey,
+                                   self.token, self.database)
 
     def test_faucet(self):
         self.pp._PaymentProcessor__faucet = True

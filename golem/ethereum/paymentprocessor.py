@@ -12,7 +12,8 @@ from pydispatch import dispatcher
 
 from golem.core.service import LoopingCallService
 from golem.ethereum import Client
-from golem.model import db, Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
 from .node import tETH_faucet_donate
 
@@ -39,6 +40,7 @@ class PaymentProcessor(LoopingCallService):
                  client: Client,
                  privkey,
                  token,
+                 database,
                  faucet=False) -> None:
         self.__token = token
         self.ETH_PER_PAYMENT = token.GAS_PRICE * token.GAS_PER_PAYMENT
@@ -61,6 +63,7 @@ class PaymentProcessor(LoopingCallService):
         self.__faucet = faucet
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
+        self.database = database
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
@@ -169,7 +172,7 @@ class PaymentProcessor(LoopingCallService):
         return self.gnt_balance() - self.__gnt_reserved
 
     def load_from_db(self):
-        with db.atomic():
+        with self.database.db.atomic():
             for sent_payment in Payment \
                     .select() \
                     .where(Payment.status == PaymentStatus.sent):

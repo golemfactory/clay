@@ -29,6 +29,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.model import Payment
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -155,12 +156,14 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                  node,
                  config_desc: ClientConfigDescriptor(),
                  keys_auth,
+                 database,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True,
                  task_archiver=None):
         self.client = client
         self.keys_auth = keys_auth
+        self.database = database
         self.config_desc = config_desc
 
         self.node = node
@@ -218,6 +221,19 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             self.paymentprocessor_listener, signal="golem.paymentprocessor")
         dispatcher.connect(
             self.transactions_listener, signal="golem.transactions")
+
+    def get_payment_for_subtask(self, subtask_id):
+        try:
+            with self.database.db.atomic():
+                payment = Payment.get(Payment.subtask == subtask_id)
+        except Payment.DoesNotExist:
+            logger.info('PAYMENT DOES NOT EXIST YET %r', subtask_id)
+            return
+
+        logger.debug('get_payment_for_subtask(%r)', payment)
+        if payment.details:
+            logger.debug('payment.details: %r', payment.details)
+        self.task_sessions[subtask_id].send_payment(payment)
 
     def paymentprocessor_listener(self,
                                   sender,
@@ -953,7 +969,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             conn_id=conn_id)
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
-        session.inform_worker_about_payment(obj)
+        session.send_payment(obj)
 
     def connection_for_payment_request_established(self, session, conn_id,
                                                    obj):

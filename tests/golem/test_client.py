@@ -647,6 +647,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             Node(),
             ClientConfigDescriptor(),
             Mock(),
+            self.database,
             client,
             use_docker_machine_manager=False
         )

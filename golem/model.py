@@ -23,8 +23,18 @@ log = logging.getLogger('golem.db')
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+# Peewee force one to declare database in global namespace.
+# Some workaround for this is to pass None as database name, to constructor,
+# and initialize it later. However this variable is still accessible for anyone,
+# but it shouldn't be used, instead use Database class.
+_deferred_db = SqliteDatabase(
+    None,
+    threadlocals=True,
+    pragmas=(
+        ('foreign_keys', True),
+        ('busy_timeout', 30000)
+    )
+)
 
 
 class Database:
@@ -32,22 +42,18 @@ class Database:
     SCHEMA_VERSION = 7
 
     def __init__(self, datadir):
-        # TODO: Global database is bad idea. Check peewee for other solutions.
-        self.db = db
-        db.init(path.join(datadir, 'golem.db'))
-        db.connect()
+        self.db = _deferred_db
+        self.db.init(path.join(datadir, 'golem.db'))
+        self.db.connect()
         self.create_database()
 
-    @staticmethod
-    def _get_user_version() -> int:
-        return int(db.execute_sql('PRAGMA user_version').fetchone()[0])
+    def _get_user_version(self) -> int:
+        return int(self.db.execute_sql('PRAGMA user_version').fetchone()[0])
 
-    @staticmethod
-    def _set_user_version(version: int) -> None:
-        db.execute_sql('PRAGMA user_version = {}'.format(version))
+    def _set_user_version(self, version: int) -> None:
+        self.db.execute_sql('PRAGMA user_version = {}'.format(version))
 
-    @staticmethod
-    def create_database() -> None:
+    def create_database(self) -> None:
         tables = [
             Account,
             ExpectedIncome,
@@ -63,13 +69,13 @@ class Database:
             Performance,
             NetworkMessage
         ]
-        version = Database._get_user_version()
+        version = self._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(
                 Database.SCHEMA_VERSION, version))
-            db.drop_tables(tables, safe=True)
-            Database._set_user_version(Database.SCHEMA_VERSION)
-        db.create_tables(tables, safe=True)
+            self.db.drop_tables(tables, safe=True)
+            self._set_user_version(Database.SCHEMA_VERSION)
+        self.db.create_tables(tables, safe=True)
 
     def close(self):
         if not self.db.is_closed():
@@ -78,7 +84,7 @@ class Database:
 
 class BaseModel(Model):
     class Meta:
-        database = db
+        database = _deferred_db
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
@@ -266,7 +272,6 @@ class Income(BaseModel):
     value = BigIntegerField()
 
     class Meta:
-        database = db
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
@@ -319,7 +324,6 @@ class NeighbourLocRank(BaseModel):
     computing_trust_value = FloatField(default=NEUTRAL_TRUST)
 
     class Meta:
-        database = db
         primary_key = CompositeKey('node_id', 'about_node_id')
 
 
@@ -335,7 +339,6 @@ class KnownHosts(BaseModel):
     is_seed = BooleanField(default=False)
 
     class Meta:
-        database = db
         indexes = (
             (('ip_address', 'port'), True),  # unique index
         )
@@ -349,16 +352,10 @@ class KnownHosts(BaseModel):
 class Account(BaseModel):
     node_id = CharField(unique=True)
 
-    class Meta:
-        database = db
-
 
 class Stats(BaseModel):
     name = CharField()
     value = CharField()
-
-    class Meta:
-        database = db
 
 
 class HardwarePreset(BaseModel):
@@ -381,9 +378,6 @@ class HardwarePreset(BaseModel):
         self.memory = dictionary['memory']
         self.disk = dictionary['disk']
 
-    class Meta:
-        database = db
-
 
 ##############
 # APP MODELS #
@@ -396,7 +390,6 @@ class TaskPreset(BaseModel):
     data = JsonField(null=False)
 
     class Meta:
-        database = db
         primary_key = CompositeKey('task_type', 'name')
 
 
@@ -404,9 +397,6 @@ class Performance(BaseModel):
     """ Keeps information about benchmark performance """
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
-
-    class Meta:
-        database = db
 
     @classmethod
     def update_or_create(cls, env_id, performance):

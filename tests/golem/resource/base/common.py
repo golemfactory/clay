@@ -83,7 +83,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                                                     dir_manager,
                                                     mock.Mock(), client)
         client.task_server = TaskServer(mock.Mock(), mock.Mock(),
-                                        client.keys_auth, client,
+                                        client.keys_auth, client.db, client,
                                         use_docker_machine_manager=False)
 
         client.start = mock.Mock()

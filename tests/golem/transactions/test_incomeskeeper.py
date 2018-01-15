@@ -3,7 +3,6 @@ import random
 import sys
 import time
 
-from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
 from golem.network.p2p.node import Node
@@ -34,7 +33,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
     def setUp(self):
         super(TestIncomesKeeper, self).setUp()
         random.seed()
-        self.incomes_keeper = IncomesKeeper()
+        self.incomes_keeper = IncomesKeeper(self.database)
 
     def _test_expect_income(self, sender_node_id, task_id, subtask_id, value):
         self.incomes_keeper.expect(
@@ -44,7 +43,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             p2p_node=Node(),
             value=value
         )
-        with db.atomic():
+        with self.database.db.atomic():
             expected_income = ExpectedIncome.get(sender_node=sender_node_id,
                                                  task=task_id,
                                                  subtask=subtask_id)
@@ -79,7 +78,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert type(income) is Income
         self.assertIsNotNone(income)
 
-        with db.atomic():
+        with self.database.db.atomic():
             income = Income.get(sender_node=sender_node_id, task=task_id,
                                 subtask=subtask_id)
         self.assertEqual(income.value, value)
@@ -119,7 +118,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.assertEqual(ExpectedIncome.select().count(), 1)
 
         # Time is right but no matching payment received
-        with db.atomic():
+        with self.database.db.atomic():
             expected_income.modified_date \
                 = datetime.datetime.now() \
                 - datetime.timedelta(hours=1)
@@ -137,7 +136,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             block_number=random.randint(0, sys.maxsize),
             value=value)
 
-        with db.atomic():
+        with self.database.db.atomic():
             self.assertEqual(ExpectedIncome.select().count(), 1)
             expected_income.modified_date \
                 = datetime.datetime.now() \
@@ -148,12 +147,12 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.assertEqual(ExpectedIncome.select().count(), 1)
 
         # Match
-        with db.atomic():
+        with self.database.db.atomic():
             expected_income.modified_date = \
                 datetime.datetime.now() \
                 - datetime.timedelta(hours=1)
             expected_income.save()
 
         self.incomes_keeper.run_once()
-        with db.atomic():
+        with self.database.db.atomic():
             self.assertEqual(ExpectedIncome.select().count(), 0)

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import peewee
 
-from time import sleep
-from golem.model import db
 from golem import model
 from golem.model import Income
 from golem.transactions.incomeskeeper import IncomesKeeper
@@ -15,8 +12,9 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 class EthereumIncomesKeeper(IncomesKeeper):
 
-    def __init__(self, processor: PaymentProcessor) -> None:
+    def __init__(self, database, processor: PaymentProcessor) -> None:
         self.processor = processor
+        super(EthereumIncomesKeeper, self).__init__(database)
 
     def start(self):
         self.processor.start()
@@ -51,7 +49,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
 
         # Prevent using the same payment for another subtask
         try:
-            with db.transaction():
+            with self.database.db.transaction():
                 spent_tokens = \
                     model.Income.select().where(
                         model.Income.transaction == transaction_id).get().value
