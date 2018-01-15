@@ -5,9 +5,9 @@ import pickle
 import time
 from typing import Optional
 
-import golem_messages.message
 import random
 from collections import Counter
+from golem_messages import message
 from semantic_version import Version
 
 import golem
@@ -51,7 +51,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+    if isinstance(args[1], message.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
