@@ -27,6 +27,8 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         if additional_images:
             self.docker_images += additional_images
 
+        self.short_description = self.SHORT_DESCRIPTION
+
     def check_docker_images(self) -> SupportStatus:
         if any(img.is_available() for img in self.docker_images):
             return SupportStatus.ok()
