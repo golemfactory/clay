@@ -1,15 +1,13 @@
 import abc
-import enum
 import logging
 import time
 from typing import List, Tuple, Union, Type
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
-from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
-from golem.resource.resource import TaskResourceHeader
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -39,12 +37,6 @@ class ResultType(object): # class ResultType(Enum):
     FILES = 1
 
 
-class ResourceType(object): # class ResourceType(Enum):
-    ZIP = 0
-    PARTS = 1
-    HASHES = 2
-
-
 class TaskHeader(object):
     """ Task header describe general information about task as an request and is propagated in the
         network as an offer for computing nodes
@@ -61,7 +53,7 @@ class TaskHeader(object):
                  subtask_timeout=0.0,
                  resource_size=0,
                  estimated_memory=0,
-                 min_version=APP_VERSION,
+                 min_version=golem.__version__,
                  max_price: int=0,
                  docker_images=None,
                  signature=None):
@@ -139,7 +131,8 @@ class TaskBuilder(object):
 
     @classmethod
     @abc.abstractmethod
-    def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False) -> 'CoreTaskDefinition':
+    def build_definition(cls, task_type: TaskTypeInfo, dictionary,
+                         minimal=False):
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task
         :param bool minimal: if this option is set too True, then only minimal
@@ -174,7 +167,7 @@ class Task(metaclass=abc.ABCMeta):
             raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition: 'CoreTaskDefinition'):
+    def __init__(self, header: TaskHeader, src_code: str, task_definition):
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition
@@ -328,19 +321,9 @@ class Task(metaclass=abc.ABCMeta):
         """
         pass  # Implement in derived class
 
-    @abc.abstractmethod
-    def get_resources(self,
-                      resource_header: TaskResourceHeader,
-                      resource_type: ResourceType=ResourceType.ZIP,
-                      tmp_dir: str=None) -> Union[None, str, Tuple[TaskResourceHeader, List]]:
-        """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
-        preparing resources depends from declared resource_type
-        :param ResourceHeader resource_header: description of resources that computing node already have for this task
-        :param ResourceType resource_type: resource type from resources_types (0 for zip, 1 for hash list)
-        :param str tmp_dir: additional directory that can be used during file transfer
-        :return None | str | (TaskResourceHeader, list): result depends on return on resource_type
-        """
-        return None
+    # TODO: Add description
+    def get_resources(self) -> list:
+        return []
 
     @abc.abstractmethod
     def update_task_state(self, task_state: TaskState):

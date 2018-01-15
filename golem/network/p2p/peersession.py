@@ -5,9 +5,9 @@ import semantic_version
 import time
 import random
 
+import golem
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
-from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -20,7 +20,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if semantic_version.Version(variables.APP_VERSION) < v_client:
+    if semantic_version.Version(golem.__version__) < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
@@ -82,8 +82,7 @@ class PeerSession(BasicSafeSession):
                 message.ChallengeSolution.TYPE
             ]
         )
-        self.can_be_unsigned.extend([message.Hello.TYPE])
-        self.can_be_not_encrypted.extend([message.Hello.TYPE])
+        self.can_be_not_encrypted.append(message.Hello.TYPE)
 
         self.__set_msg_interpretations()
 
@@ -132,60 +131,12 @@ class PeerSession(BasicSafeSession):
             self.port
         )
 
-    def sign(self, data):
-        """ Sign given bytes
-        :param Message data: data to be signed
-        :return Message: signed data
-        """
+    @property
+    def my_private_key(self):
         if self.p2p_service is None:
             logger.error("P2PService is None, can't sign a message.")
             return None
-
-        return self.p2p_service.sign(data)
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from this
-                         connection
-        """
-        return self.p2p_service.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
-
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection.
-        :param str data: serialized message to be encrypted
-        :return str: encrypted message
-        """
-        return self.p2p_service.encrypt(data, self.key_id)
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str msg: decrypted message
-        """
-        if not self.p2p_service:
-            return data
-
-        try:
-            msg = self.p2p_service.decrypt(data)
-        except ECIESDecryptionError as err:
-            logger.info(
-                "Failed to decrypt message from %r:%r,"
-                " maybe it's not encrypted? %r",
-                self.address,
-                self.port,
-                err
-            )
-            msg = data
-
-        return msg
+        return self.p2p_service.keys_auth.ecc.raw_privkey
 
     def start(self):
         """
@@ -238,7 +189,7 @@ class PeerSession(BasicSafeSession):
         """ Send message with gossip
          :param list gossip: gossip to be send
         """
-        self.send(message.Gossip(gossip))
+        self.send(message.Gossip(gossip=gossip))
 
     def send_stop_gossip(self):
         """ Send stop gossip message """
@@ -290,6 +241,8 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+        logger.debug('Forwarding session request: %s -> %s to %s',
+                     node_info.key, key_id, self.key_id)
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
@@ -312,6 +265,31 @@ class PeerSession(BasicSafeSession):
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
+
+        # Check if sender is a seed/bootstrap node
+        port = getattr(msg, 'port', None)
+        if (self.address, port) in self.p2p_service.seeds:
+            compare_version(getattr(msg, 'client_ver', None))
+
+        # We want to compare_version() before calling
+        # super()._react_to_hello() and potentially returning
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
+
+        proto_id = getattr(msg, 'proto_id', None)
+        if proto_id != variables.PROTOCOL_CONST.ID:
+            logger.info(
+                "P2P protocol version mismatch %r vs %r (local)"
+                " for node %r:%r",
+                proto_id,
+                variables.PROTOCOL_CONST.ID,
+                self.address,
+                self.port
+            )
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            return
+
         self.node_name = msg.node_name
         self.node_info = msg.node_info
         self.client_ver = msg.client_ver
@@ -322,22 +300,6 @@ class PeerSession(BasicSafeSession):
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
-
-        # Check if sender is a seed/bootstrap node
-        if (self.address, msg.port) in self.p2p_service.seeds:
-            compare_version(msg.client_ver)
-
-        if msg.proto_id != variables.PROTOCOL_CONST.P2P_ID:
-            logger.info(
-                "P2P protocol version mismatch %r vs %r (local)"
-                " for node %r:%r",
-                msg.proto_id,
-                variables.PROTOCOL_CONST.P2P_ID,
-                self.address,
-                self.port
-            )
-            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
-            return
 
         if not self.__should_init_handshake():
             self.__send_hello()
@@ -373,9 +335,9 @@ class PeerSession(BasicSafeSession):
             return
         if len(tasks) > variables.TASK_HEADERS_LIMIT:
             tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
-            self.send(message.Tasks(tasks_to_send))
+            self.send(message.Tasks(tasks=tasks_to_send))
         else:
-            self.send(message.Tasks(tasks))
+            self.send(message.Tasks(tasks=tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -473,12 +435,12 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.Hello(
-            proto_id=variables.PROTOCOL_CONST.P2P_ID,
+            proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
-            client_ver=variables.APP_VERSION,
+            client_ver=golem.__version__,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,
@@ -492,7 +454,7 @@ class PeerSession(BasicSafeSession):
     def _send_peers(self, node_key_id=None):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
                                                 alpha=SEND_PEERS_NUM)
-        self.send(message.Peers(nodes_info))
+        self.send(message.Peers(peers=nodes_info))
 
     def __set_verified_conn(self):
         self.verified = True

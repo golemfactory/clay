@@ -1,10 +1,11 @@
 import datetime
 import queue
 import uuid
+import unittest.mock as mock
 from unittest.mock import Mock, patch
 
 from golem_messages import message
-from peewee import DataError, PeeweeException
+from peewee import DataError, PeeweeException, IntegrityError
 
 from golem.model import NetworkMessage, Actor
 from golem.network.history import MessageHistoryService, record_history, \
@@ -59,21 +60,26 @@ class TestMessageHistoryService(DatabaseFixture):
         with self.assertRaises(queue.Empty):
             self.service._save_queue.get(block=False)
 
-    def test_add_sync(self):
+    @mock.patch('golem.model.NetworkMessage.save')
+    def test_add_sync_fail(self, save):
         self.service._save_queue = Mock()
-        msg = self._build_msg()
+        msg_dict = self._build_dict(None, None)
 
-        with patch.object(msg, 'save', side_effect=DataError):
-            self.service.add_sync(msg)
-            assert not self.service._save_queue.put.called
-            assert message_count() == 0
+        save.side_effect = DataError
 
-        with patch.object(msg, 'save', side_effect=PeeweeException):
-            self.service.add_sync(msg)
-            assert self.service._save_queue.put.called
-            assert message_count() == 0
+        self.service.add_sync(msg_dict)
+        assert not self.service._save_queue.put.called
+        assert message_count() == 0
 
-        self.service.add_sync(msg)
+        save.side_effect = PeeweeException
+
+        self.service.add_sync(msg_dict)
+        assert self.service._save_queue.put.called
+        assert message_count() == 0
+
+    def test_add_sync_success(self):
+        msg_dict = self._build_dict(None, None)
+        self.service.add_sync(msg_dict)
         assert message_count() == 1
 
     def test_remove(self):
@@ -88,7 +94,7 @@ class TestMessageHistoryService(DatabaseFixture):
             self.service._remove_queue.get(block=False)
 
     def test_remove_sync(self):
-        msg = self._build_msg()
+        msg = self._build_dict(None, None)
 
         self.service.add_sync(msg)
         self.service._remove_queue = Mock()
@@ -96,25 +102,25 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=DataError):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
         with patch('peewee.DeleteQuery.execute', side_effect=PeeweeException):
-            self.service.remove_sync(msg.task)
+            self.service.remove_sync(msg['task'])
             assert self.service._remove_queue.put.called
             assert message_count() == 1
 
-        self.service.remove_sync(msg.task, subtask=str(uuid.uuid4()))
+        self.service.remove_sync(msg['task'], subtask=str(uuid.uuid4()))
         assert message_count() == 1
-        self.service.remove_sync(msg.task, subtask=msg.subtask)
+        self.service.remove_sync(msg['task'], subtask=msg['subtask'])
         assert message_count() == 0
 
     def test_get_sync(self):
         msgs = [
-            self._build_msg(task="task"),
-            self._build_msg(task="task"),
-            self._build_msg(task="task")
+            self._build_dict("task", None),
+            self._build_dict("task", None),
+            self._build_dict("task", None)
         ]
 
         for msg in msgs:
@@ -127,7 +133,7 @@ class TestMessageHistoryService(DatabaseFixture):
         result = self.service.get_sync(task="task")
         assert len(result) == 3
 
-        result = self.service.get_sync(task="task", subtask=msgs[0].subtask)
+        result = self.service.get_sync(task="task", subtask=msgs[0]['subtask'])
         assert len(result) == 1
 
     def test_build_clauses(self):
@@ -143,17 +149,27 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.running
         self.service.start()
         assert self.service.running
-        self.service.join(1.)
+        self.service._thread.join(1.)
         self.service.stop()
         assert not self.service.running
 
         assert self.service._loop.called
 
+    @patch('threading.Thread')
+    def test_multiple_starts(self, *_):
+        self.service.start()
+        assert self.service._thread.start.called
+
+        self.service._thread.reset_mock()
+        self.service._thread.is_alive.return_value = True
+        self.service.start()
+        assert not self.service._thread.start.called
+
     def test_sweep(self):
         msgs = [
-            self._build_msg(),
-            self._build_msg(),
-            self._build_msg()
+            self._build_dict(),
+            self._build_dict(),
+            self._build_dict()
         ]
 
         for msg in msgs:
@@ -164,7 +180,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 3
 
         result = NetworkMessage.select() \
-            .where(NetworkMessage.task == msgs[0].task) \
+            .where(NetworkMessage.task == msgs[0]['task']) \
             .execute()
 
         msg = list(result)[0]
@@ -178,7 +194,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._sweep()
         assert message_count() == 2
 
-    def test_loop_sweep(self, *_):
+    def test_loop_sweep(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
 
@@ -189,7 +205,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service._sweep.called
 
-    def test_loop_add_sync(self, *_):
+    def test_loop_add_sync(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
         self.service.add_sync = Mock()
@@ -211,7 +227,7 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service._loop()
         assert not self.service.add_sync.called
 
-    def test_loop_remove_sync(self, *_):
+    def test_loop_remove_sync(self):
         self.service._sweep = Mock()
         self.service._queue_timeout = 0.1
         self.service.remove_sync = Mock()
@@ -299,3 +315,71 @@ class TestMessageHistoryProvider(DatabaseFixture):
         provider.message_to_model = Mock(return_value=None)
         provider.react_to_task_to_compute(msg_hello)
         assert service._save_queue.qsize() == 0
+
+
+class TestNetworkMessage(DatabaseFixture):
+
+    def setUp(self):
+        super().setUp()
+        self.param_kwargs = dict(node='node', task=None, subtask=None)
+
+    def test_save(self):
+        NetworkMessage(
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+
+            msg_date=datetime.time(),
+            msg_cls='cls',
+            msg_data=b'bytes',
+
+            **self.param_kwargs
+        ).save()
+
+    def test_save_failing_role_constraints(self):
+        msg_kwargs = dict(msg_date=datetime.time(),
+                          msg_cls='cls',
+                          msg_data=b'bytes')
+        self.param_kwargs.update(msg_kwargs)
+
+        with self.assertRaises(TypeError):
+            NetworkMessage(
+                local_role=None,
+                remote_role=Actor.Requestor,
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(TypeError):
+            NetworkMessage(
+                local_role=Actor.Provider,
+                remote_role=None,
+                **self.param_kwargs
+            ).save()
+
+    def test_save_failing_msg_constraints(self):
+        role_kwargs = dict(local_role=Actor.Provider,
+                           remote_role=Actor.Requestor)
+        self.param_kwargs.update(role_kwargs)
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=None,
+                msg_cls='cls',
+                msg_data=b'bytes',
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=datetime.time(),
+                msg_cls=None,
+                msg_data=b'bytes',
+                **self.param_kwargs
+            ).save()
+
+        with self.assertRaises(IntegrityError):
+            NetworkMessage(
+                msg_date=datetime.time(),
+                msg_cls='cls',
+                msg_data=None,
+                **self.param_kwargs
+            ).save()

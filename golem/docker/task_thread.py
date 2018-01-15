@@ -102,9 +102,9 @@ class DockerTaskThread(TaskThread):
                 self._fail("Task timed out after {:.1f}s".
                            format(self.time_to_compute))
             else:
-                self._fail(exc)
+                self._fail(str(exc))
         except Exception as exc:
-            self._fail(exc)
+            self._fail(str(exc))
         finally:
             self._cleanup()
 

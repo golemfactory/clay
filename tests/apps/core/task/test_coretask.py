@@ -1,19 +1,16 @@
 import os
 import shutil
 import unittest
-import zipfile
 import zlib
-from copy import copy, deepcopy
+from copy import copy
 
 from mock import MagicMock, Mock
 
-from golem.core.common import is_linux, timeout_to_deadline
+from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader
-from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType
+from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -410,41 +407,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
-    def test_get_resources(self):
-        c = self._get_core_task()
-        th = TaskResourceHeader(self.path)
-        assert c.get_resources(th) is None
-
-        files = self.additional_dir_content([[1], [[1], [2, [3]]]])
-        c.task_resources = files[1:]
-        resource = c.get_resources(th)
-        assert os.path.isfile(resource)
-        assert zipfile.is_zipfile(resource)
-        z = zipfile.ZipFile(resource)
-        in_z = z.namelist()
-        assert len(in_z) == 6
-
-        assert c.get_resources(th, ResourceType.HASHES) == files[1:]
-
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert p == []
-        assert th2.files_data == []
-        assert th2.sub_dir_headers == []
-
-        with open(files[0], 'w') as f:
-            f.write("ABCD")
-
-        drm = DistributedResourceManager(os.path.dirname(files[0]))
-        res_files = drm.split_file(files[0])
-        c.add_resources({files[0]: res_files})
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert len(p) == 1
-        assert len(th2.files_data) == 1
-        assert th2.sub_dir_headers == []
-
-        assert c.get_resources(th, 3) is None
-        assert c.get_resources(th, "aaa") is None
-        assert c.get_resources(th, None) is None
 
     def test_result_incoming(self):
         c = self._get_core_task()

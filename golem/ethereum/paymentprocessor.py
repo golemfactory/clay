@@ -1,11 +1,12 @@
-import json
+import calendar
 import logging
 import sys
 import time
+from threading import Lock
 from time import sleep
+from typing import Any, List
 
-from ethereum import abi, utils, keys
-from ethereum.transactions import Transaction
+from ethereum import utils, keys
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
@@ -13,74 +14,51 @@ from golem.core.service import LoopingCallService
 from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
-from .contracts import TestGNT
 from .node import tETH_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
-gnt_contract = abi.ContractTranslator(json.loads(TestGNT.ABI))
 
-
-def _encode_payments(payments):
-    paymap = {}
-    for p in payments:
-        if p.payee in paymap:
-            paymap[p.payee] += p.value
-        else:
-            paymap[p.payee] = p.value
-
-    args = []
-    value = 0
-    for to, v in paymap.items():
-        max_value = 2 ** 96
-        if v >= max_value:
-            raise ValueError("v should be less than {}".format(max_value))
-        value += v
-        v = utils.zpad(utils.int_to_big_endian(v), 12)
-        pair = v + to
-        if len(pair) != 32:
-            raise ValueError(
-                "Incorrect pair length: {}. Should be 32".format(len(pair)))
-        args.append(pair)
-    return args, value
+def get_timestamp() -> int:
+    """This is platform independent timestamp, needed for payments logic"""
+    return calendar.timegm(time.gmtime())
 
 
 class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
 
-    # Gas price: 20 shannons, Homestead suggested gas price.
-    GAS_PRICE = 20 * 10 ** 9
-
-    # Max gas cost for a single payment. Estimated in tests.
-    SINGLE_PAYMENT_GAS_COST = 60000
-
-    SINGLE_PAYMENT_ETH_COST = GAS_PRICE * SINGLE_PAYMENT_GAS_COST
-
-    # Gas reservation for performing single batch payment.
-    # TODO: Adjust this value later and add MAX_PAYMENTS limit.
-    GAS_RESERVATION = 21000 + 1000 * 50000
-
-    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
-
     SYNC_CHECK_INTERVAL = 10
 
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
-    def __init__(self, client: Client, privkey, faucet=False) -> None:
+    CLOSURE_TIME_DELAY = 10
+
+    def __init__(self,
+                 client: Client,
+                 privkey,
+                 token,
+                 faucet=False) -> None:
+        self.__token = token
+        self.ETH_PER_PAYMENT = token.GAS_PRICE * token.GAS_PER_PAYMENT
+        self.ETH_BATCH_PAYMENT_BASE = \
+            token.GAS_PRICE * token.GAS_BATCH_PAYMENT_BASE
         self.__client = client
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
+        self.__eth_reserved = 0
         self.__gnt_reserved = 0
+        self.__eth_update_ts = 0
+        self.__gnt_update_ts = 0
+        self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
@@ -103,7 +81,6 @@ class PaymentProcessor(LoopingCallService):
 
     def is_synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
-
         if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
             # When checking again within 10 s return previous status.
             # This also handles geth issue where synchronization starts after
@@ -161,32 +138,25 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            self.__eth_balance = self.__client.get_balance(addr)
-            log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
+            balance = self.__client.get_balance(addr)
+            if balance is not None:
+                self.__eth_balance = balance
+                log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
+            else:
+                log.warning("Failed to retrieve ETH balance")
         return self.__eth_balance
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            addr = keys.privtoaddr(self.__privkey)
-            data = self.__testGNT.encode('balanceOf', (addr,))
-            r = self.__client.call(_from='0x' + encode_hex(addr),
-                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
-                                   data='0x' + encode_hex(data),
-                                   block='pending')
-            if r is None or r == '0x':
-                self.__gnt_balance = 0
+            gnt_balance = self.__token.get_balance(self.eth_address(zpad=False))
+            if gnt_balance is not None:
+                self.__gnt_balance = gnt_balance
             else:
-                self.__gnt_balance = int(r, 16)
-            log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
+                log.warning("Failed to retrieve GNT balance")
         return self.__gnt_balance
 
     def _eth_reserved(self):
-        # Here we keep the same simple estimation by number of atomic payments.
-        # FIXME: This is different than estimation in sendout(). Create
-        #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in
-                                                 self._inprogress.values())
-        return num_payments * self.SINGLE_PAYMENT_ETH_COST
+        return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
 
     def _eth_available(self):
         """ Returns available ETH balance for new payments fees."""
@@ -222,52 +192,85 @@ class PaymentProcessor(LoopingCallService):
             encode_hex(payment.payee),
             payment.value / denoms.ether))
 
-        # Check if enough ETH available to pay the gas cost.
-        if self._eth_available() < self.SINGLE_PAYMENT_ETH_COST:
-            log.warning("Low ETH: {} available".format(self._eth_available()))
-            return False
+        with self._awaiting_lock:
+            ts = get_timestamp()
+            if not payment.processed_ts:
+                with Payment._meta.database.transaction():
+                    payment.processed_ts = ts
+                    payment.save()
 
-        av_gnt = self._gnt_available()
-        if av_gnt < payment.value:
-            log.warning("Low GNT: {:.6f}".format(av_gnt / denoms.ether))
-            return False
+            self._awaiting.append(payment)
+            # TODO: Optimize by checking the time once per service update.
+            self.deadline = min(self.deadline, ts + deadline)
 
-        self._awaiting.append(payment)
         self.__gnt_reserved += payment.value
-
-        # Set new deadline if not set already or shorter than the current one.
-        # TODO: Optimize by checking the time once per service update.
-        new_deadline = int(time.time()) + deadline
-        if new_deadline < self.deadline:
-            self.deadline = new_deadline
+        self.__eth_reserved += self.ETH_PER_PAYMENT
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
-            av_gnt / denoms.ether, self.__gnt_reserved / denoms.ether))
-        return True
+            self._gnt_available() / denoms.ether,
+            self.__gnt_reserved / denoms.ether))
+
+    def __get_next_batch(self,
+                         payments: List[Payment],
+                         closure_time: int) -> (List[Payment], List[Payment]):
+        payments.sort(key=lambda p: p.processed_ts)
+        gnt_balance = self.gnt_balance()
+        eth_balance = self.eth_balance() - self.ETH_BATCH_PAYMENT_BASE
+        ind = 0
+        for p in payments:
+            if p.processed_ts > closure_time:
+                break
+            gnt_balance -= p.value
+            eth_balance -= self.ETH_PER_PAYMENT
+            if gnt_balance < 0 or eth_balance < 0:
+                break
+            ind += 1
+
+        # we need to take either all payments with given processed_ts or none
+        if ind < len(payments):
+            while ind > 0 and payments[ind-1].processed_ts == payments[ind].processed_ts:  # noqa
+                ind -= 1
+
+        return payments[:ind], payments[ind:]
 
     def sendout(self):
-        if not self._awaiting:
+        with self._awaiting_lock:
+            if not self._awaiting:
+                return False
+
+            now = get_timestamp()
+            if self.deadline > now:
+                log.info("Next sendout in {} s".format(self.deadline - now))
+                return False
+
+            closure_time = now - self.CLOSURE_TIME_DELAY
+
+            payments, rest = self.__get_next_batch(
+                self._awaiting.copy(),
+                closure_time)
+            if not payments:
+                return False
+            self._awaiting = rest
+
+        tx = self.__token.batch_transfer(self.__privkey, payments, closure_time)
+        if not tx:
+            with self._awaiting_lock:
+                payments.extend(self._awaiting)
+                self._awaiting = payments
             return False
 
-        now = int(time.time())
-        if self.deadline > now:
-            log.info("Next sendout in {} s".format(self.deadline - now))
-            return False
-
-        payments = self._awaiting  # FIXME: Should this list be synchronized?
-        self._awaiting = []
-        self.deadline = sys.maxsize
-        addr = self.eth_address(zpad=False)
-        nonce = self.__client.get_transaction_count(addr)
-        p, value = _encode_payments(payments)
-        data = gnt_contract.encode('batchTransfer', [p])
-        gas = 21000 + 800 + 5000 + len(p) * 30000
-        tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
-                         value=0, data=data)
         tx.sign(self.__privkey)
+        value = sum([p.value for p in payments])
         h = tx.hash
         log.info("Batch payments: {:.6}, value: {:.6f}"
                  .format(encode_hex(h), value / denoms.ether))
+
+        # If awaiting payments are not empty it means a new payment has been
+        # added between clearing the awaiting list and here. In that case
+        # we shouldn't update the deadline to sys.maxsize.
+        with self._awaiting_lock:
+            if not self._awaiting:
+                self.deadline = sys.maxsize
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -294,6 +297,7 @@ class PaymentProcessor(LoopingCallService):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
         self.__gnt_reserved -= value
+        self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
 
     def monitor_progress(self):
@@ -301,55 +305,76 @@ class PaymentProcessor(LoopingCallService):
             return
 
         confirmed = []
+        failed = {}
         current_block = self.__client.get_block_number()
+
         for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
-            if receipt:
-                block_hash = receipt['blockHash'][2:]
-                if len(block_hash) != 64:
-                    raise ValueError(
-                        "block hash length should be 64, but is: {}".format(
-                            len(block_hash)))
-                block_number = receipt['blockNumber']
-                if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
-                    continue
-                gas_used = receipt['gasUsed']
-                total_fee = gas_used * self.GAS_PRICE
-                fee = total_fee // len(payments)
-                log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
-                         .format(hstr, block_hash, block_number, gas_used, fee))
+            if not receipt:
+                continue
+
+            block_hash = receipt['blockHash'][2:]
+            if len(block_hash) != 64:
+                raise ValueError(
+                    "block hash length should be 64, but is: {}".format(
+                        len(block_hash)))
+
+            block_number = receipt['blockNumber']
+            if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
+                continue
+
+            # if the transaction failed for whatever reason we need to retry
+            if receipt['status'] != '0x1':
                 with Payment._meta.database.transaction():
                     for p in payments:
-                        p.status = PaymentStatus.confirmed
-                        p.details.block_number = block_number
-                        p.details.block_hash = block_hash
-                        p.details.fee = fee
+                        p.status = PaymentStatus.awaiting
                         p.save()
-                        dispatcher.send(
-                            signal='golem.monitor',
-                            event='payment',
-                            addr=encode_hex(p.payee),
-                            value=p.value
-                        )
-                        dispatcher.send(
-                            signal='golem.paymentprocessor',
-                            event='payment.confirmed',
-                            payment=p
-                        )
-                        log.debug(
-                            "- %.6f confirmed fee %.6f",
-                            p.subtask,
-                            fee / denoms.ether
-                        )
-                confirmed.append(h)
+                failed[h] = payments
+                log.warning("Failed transaction: {}".format(receipt))
+                continue
+
+            gas_used = receipt['gasUsed']
+            total_fee = gas_used * self.__token.GAS_PRICE
+            fee = total_fee // len(payments)
+            log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
+                     .format(hstr, block_hash, block_number, gas_used, fee))
+            with Payment._meta.database.transaction():
+                for p in payments:
+                    p.status = PaymentStatus.confirmed
+                    p.details.block_number = block_number
+                    p.details.block_hash = block_hash
+                    p.details.fee = fee
+                    p.save()
+                    dispatcher.send(
+                        signal='golem.monitor',
+                        event='payment',
+                        addr=encode_hex(p.payee),
+                        value=p.value
+                    )
+                    dispatcher.send(
+                        signal='golem.paymentprocessor',
+                        event='payment.confirmed',
+                        payment=p
+                    )
+                    log.debug(
+                        "- %.6f confirmed fee %.6f",
+                        p.subtask,
+                        fee / denoms.ether
+                    )
+            confirmed.append(h)
+
         for h in confirmed:
-            # Delete in progress entry.
             del self._inprogress[h]
 
+        for h, payments in failed.items():
+            del self._inprogress[h]
+            for p in payments:
+                self.add(p)
+
     def get_ether_from_faucet(self):
-        if self.__faucet and self.eth_balance(True) < 10 ** 15:
+        if self.__faucet and self.eth_balance(True) < 0.01 * denoms.ether:
             log.info("Requesting tETH")
             addr = keys.privtoaddr(self.__privkey)
             tETH_faucet_donate(addr)
@@ -358,16 +383,13 @@ class PaymentProcessor(LoopingCallService):
 
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
-            log.info("Requesting tGNT")
-            addr = self.eth_address(zpad=False)
-            nonce = self.__client.get_transaction_count(addr)
-            data = self.__testGNT.encode_function_call('create', ())
-            tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
-                             value=0, data=data)
-            tx.sign(self.__privkey)
-            self.__client.send(tx)
+            log.info("Requesting GNT from faucet")
+            self.__token.request_from_faucet(self.__privkey)
             return False
         return True
+
+    def get_incomes_from_block(self, block, address):
+        return self.__token.get_incomes_from_block(block, address)
 
     def get_logs(self,
                  from_block=None,
