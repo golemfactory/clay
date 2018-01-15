@@ -60,7 +60,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\dist\golem-{#MyAppVersion}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#BuildResources}\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#BuildResources}\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#BuildResources}\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
