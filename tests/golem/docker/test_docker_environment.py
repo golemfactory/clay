@@ -28,8 +28,7 @@ class TestDockerEnvironment(DockerTestCase):
         de = DockerEnvironmentMock(additional_images=[
             DockerImage("golemfactory/blender", tag="1.3")])
         self.assertTrue(de.check_support())
-        self.assertTrue(
-            de.description().startswith('Default environment for generic tasks without any additional requirements.'))
+        self.assertIn('Blender (www.blender.org)', de.description())
         self.assertTrue(de.check_docker_images())
 
     def test_blender_docker_env(self):
