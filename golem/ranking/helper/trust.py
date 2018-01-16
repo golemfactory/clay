@@ -32,14 +32,14 @@ class Trust(Enum):
         self.val = val
         self.lock = Lock()
 
-    def increase(self, node_id, database, mod=1.0):
+    def increase(self, node_id, mod=1.0):
         with self.lock:
             try:
-                self.val['increase'](node_id, mod, database)
+                self.val['increase'](node_id, mod)
             except KeyError:
                 logger.error("Wrong key for stat type {}".format(self.val))
                 raise
 
-    def decrease(self, node_id, database, mod=1.0):
+    def decrease(self, node_id, mod=1.0):
         with self.lock:
-            self.val['decrease'](node_id, mod, database)
+            self.val['decrease'](node_id, mod)
