@@ -5,7 +5,7 @@ import pickle
 from enum import Enum
 from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
-from typing import Optional, Type  # pylint: disable=unused-import
+from typing import Optional, Type, Any  # pylint: disable=unused-import
 
 from ethereum.utils import denoms
 from golem_messages import message
@@ -25,39 +25,58 @@ log = logging.getLogger('golem.db')
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 
-db = SqliteDatabase(
-    database=None,
-    pragmas=(
-        ('foreign_keys', True),
-        ('busy_timeout', 30000),
-        ('journal_mode', 'WAL')
-    )
-)
+
+class ObjectProxy:
+
+    instance = None
+
+    def __getattribute__(self, name: str) -> Any:
+        if name in ['instance']:
+            return super().__getattribute__(name)
+        return self.instance.__getattribute__(name)
+
+    def __setattr__(self, key, value):
+        if key in ['instance']:
+            return super().__setattr__(key, value)
+        return self.instance.__setattr__(key, value)
 
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 7
+    SCHEMA_VERSION = 8
+
+    # SqliteDatabase object proxy allows to keep a constant reference to the db
+    # while the underlying instance can change.
+    db = ObjectProxy()
 
     def __init__(self, datadir):
-        self.db = db
-        self.db_service = DatabaseService(db)
+        Database.db.instance = SqliteDatabase(
+            database=None,
+            autocommit=False,
+            pragmas=(
+                ('foreign_keys', True),
+                ('busy_timeout', 3000),
+                ('journal_mode', 'WAL')
+            )
+        )
 
-        db.init(path.join(datadir, 'golem.db'))
-        db.connect()
-        self.db_service.start()
+        Database.db.init(path.join(datadir, 'golem.db'))
+        Database.db.connect()
         self.create_database()
 
-    @staticmethod
-    def _get_user_version() -> int:
-        return int(db.execute_sql('PRAGMA user_version').fetchone()[0])
+        self.db_service = DatabaseService(Database.db)
+        self.db_service.start()
 
-    @staticmethod
-    def _set_user_version(version: int) -> None:
-        db.execute_sql('PRAGMA user_version = {}'.format(version))
+    @classmethod
+    def _get_user_version(cls) -> int:
+        return int(cls.db.execute_sql('PRAGMA user_version').fetchone()[0])
 
-    @staticmethod
-    def create_database() -> None:
+    @classmethod
+    def _set_user_version(cls, version: int) -> None:
+        cls.db.execute_sql('PRAGMA user_version = {}'.format(version))
+
+    @classmethod
+    def create_database(cls) -> None:
         tables = [
             Account,
             ExpectedIncome,
@@ -77,19 +96,23 @@ class Database:
         if version != Database.SCHEMA_VERSION:
             log.info("New database version %r, previous %r",
                      Database.SCHEMA_VERSION, version)
-            db.drop_tables(tables, safe=True)
+            cls.db.drop_tables(tables, safe=True)
             Database._set_user_version(Database.SCHEMA_VERSION)
-        db.create_tables(tables, safe=True)
+        cls.db.create_tables(tables, safe=True)
+
+    @classmethod
+    def is_closed(cls):
+        return cls.db.is_closed()
 
     def close(self):
         self.db_service.stop()
-        if not self.db.is_closed():
-            self.db.close()
+        if not Database.db.is_closed():
+            Database.db.close()
 
 
 class BaseModel(DelegateModel):
     class Meta:
-        database = db
+        database = Database.db
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
@@ -134,7 +157,8 @@ class EnumField(IntegerField):
 
     def db_value(self, value):
         if not isinstance(value, self.enum_type):
-            raise TypeError("Expected {} type".format(self.enum_type.__name__))
+            raise TypeError("Expected {} type, got {} {}".format(
+                self.enum_type.__name__, type(value), value))
         return value.value  # Get the integer value of an enum.
 
     def python_value(self, value):
@@ -277,7 +301,7 @@ class Income(BaseModel):
     value = BigIntegerField()
 
     class Meta:
-        database = db
+        database = Database.db
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
@@ -330,7 +354,7 @@ class NeighbourLocRank(BaseModel):
     computing_trust_value = FloatField(default=NEUTRAL_TRUST)
 
     class Meta:
-        database = db
+        database = Database.db
         primary_key = CompositeKey('node_id', 'about_node_id')
 
 
@@ -346,7 +370,7 @@ class KnownHosts(BaseModel):
     is_seed = BooleanField(default=False)
 
     class Meta:
-        database = db
+        database = Database.db
         indexes = (
             (('ip_address', 'port'), True),  # unique index
         )
@@ -361,7 +385,7 @@ class Account(BaseModel):
     node_id = CharField(unique=True)
 
     class Meta:
-        database = db
+        database = Database.db
 
 
 class Stats(BaseModel):
@@ -369,7 +393,7 @@ class Stats(BaseModel):
     value = CharField()
 
     class Meta:
-        database = db
+        database = Database.db
 
 
 class HardwarePreset(BaseModel):
@@ -393,7 +417,7 @@ class HardwarePreset(BaseModel):
         self.disk = dictionary['disk']
 
     class Meta:
-        database = db
+        database = Database.db
 
 
 ##############
@@ -407,7 +431,7 @@ class TaskPreset(BaseModel):
     data = JsonField(null=False)
 
     class Meta:
-        database = db
+        database = Database.db
         primary_key = CompositeKey('task_type', 'name')
 
 
@@ -417,17 +441,17 @@ class Performance(BaseModel):
     value = FloatField(default=0.0)
 
     class Meta:
-        database = db
+        database = Database.db
 
     @classmethod
     def update_or_create(cls, env_id, performance):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             perf.value = performance
-            perf.save()
+            return perf.save()
         except Performance.DoesNotExist:
             perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            return perf.save(force_insert=True)
 
 
 ##################

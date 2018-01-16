@@ -1,41 +1,106 @@
 import abc
 import datetime
 import logging
+from functools import partial
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from peewee import RawQuery, UpdateQuery, InsertQuery, DeleteQuery, DataError, \
-    ProgrammingError, NotSupportedError, \
-    IntegrityError, PeeweeException, Model
+from peewee import RawQuery, UpdateQuery, InsertQuery, DeleteQuery, Model
+from twisted.internet.defer import Deferred
 
 log = logging.getLogger('golem.db')
 
 
+class DeferredEvent(Event):
+
+    def __init__(self):
+        super().__init__()
+        self._deferred = Deferred()
+
+    def wait(self, timeout=None):
+        super().wait(timeout)
+        return self
+
+    @property
+    def result(self):
+        return self._deferred.result
+
+    def callback(self, *args, **kwargs):
+        self._deferred.callback(*args, **kwargs)
+        self.set()
+
+    def errback(self, *args, **kwargs):
+        self._deferred.errback(*args, **kwargs)
+        self.set()
+
+    def addCallback(self, *args, **kwargs):
+        self._deferred.addCallback(*args, **kwargs)
+
+    def addErrback(self, *args, **kwargs):
+        self._deferred.addErrback(*args, **kwargs)
+
+    def addCallbacks(self, *args, **kwargs):
+        self._deferred.addCallbacks(*args, **kwargs)
+
+    def addBoth(self, *args, **kwargs):
+        self._deferred.addBoth(*args, **kwargs)
+
+    def chainDeferred(self, deferred):
+        self._deferred.chainDeferred(deferred)
+
+
 class DelegateQuery(abc.ABC):
 
-    def execute(self):
+    def __init__(self) -> None:
+        self.evt = DeferredEvent()
+
+    def execute(self) -> DeferredEvent:
         DatabaseService.submit(self)
+        return self.evt
+
+    @abc.abstractmethod
+    def do_execute(self):
+        pass
 
 
-class RawDelegateQuery(RawQuery, DelegateQuery):
+class RawDelegateQuery(DelegateQuery, RawQuery):
+
+    def __init__(self, model, query, *params):
+        DelegateQuery.__init__(self)
+        RawQuery.__init__(self, model, query, *params)
 
     def do_execute(self):
         return RawQuery.execute(self)
 
 
-class UpdateDelegateQuery(UpdateQuery, DelegateQuery):
+class UpdateDelegateQuery(DelegateQuery, UpdateQuery):
+
+    def __init__(self, model_class, update=None):
+        DelegateQuery.__init__(self)
+        UpdateQuery.__init__(self, model_class, update)
 
     def do_execute(self):
         return UpdateQuery.execute(self)
 
 
-class InsertDelegateQuery(InsertQuery, DelegateQuery):
+class InsertDelegateQuery(DelegateQuery, InsertQuery):
+
+    def __init__(self, model_class, field_dict=None, rows=None, fields=None,
+                 query=None, validate_fields=False):
+
+        DelegateQuery.__init__(self)
+        InsertQuery.__init__(self, model_class, field_dict, rows,
+                             fields, query, validate_fields)
 
     def do_execute(self):
         return InsertQuery.execute(self)
 
 
-class DeleteDelegateQuery(DeleteQuery, DelegateQuery):
+class DeleteDelegateQuery(DelegateQuery, DeleteQuery):
+
+    def __init__(self, model_class):
+        DelegateQuery.__init__(self)
+        DeleteQuery.__init__(self, model_class)
 
     def do_execute(self):
         return DeleteQuery.execute(self)
@@ -43,16 +108,34 @@ class DeleteDelegateQuery(DeleteQuery, DelegateQuery):
 
 class SaveDelegatePseudoQuery(DelegateQuery):
 
-    def __init__(self, instance):
+    def __init__(self, instance, force_insert, only=None,
+                 prepare_instance=False):
+
+        super(SaveDelegatePseudoQuery, self).__init__()
+
         self.instance = instance
-        self.ready = Event()
+        self.force_insert = force_insert
+        self.only = only
+        self.prepare_instance = prepare_instance
 
     def do_execute(self):
-        try:
-            self.instance.save(force_insert=True, do_save=True)
+        result = self.instance.save(force_insert=self.force_insert,
+                                    only=self.only,
+                                    __do_save__=True)
+        if self.prepare_instance:
             self.instance._prepare_instance()
-        finally:
-            self.ready.set()
+        return result
+
+    @property
+    def database(self):
+        return self.instance._meta.database
+
+    @database.setter
+    def database(self, db):
+        self.instance._meta.database = db
+
+    def clone(self):
+        return self
 
 
 class DelegateModel(Model):
@@ -72,7 +155,8 @@ class DelegateModel(Model):
 
     @classmethod
     def insert_many(cls, rows, validate_fields=True):
-        return InsertDelegateQuery(cls, rows=rows,
+        return InsertDelegateQuery(cls,
+                                   rows=rows,
                                    validate_fields=validate_fields)
 
     @classmethod
@@ -88,36 +172,36 @@ class DelegateModel(Model):
         return RawDelegateQuery(cls, sql, *params)
 
     @classmethod
-    def create(cls, **query) -> Event:
-        instance = cls(**query)
-
-        query = SaveDelegatePseudoQuery(instance)
-        query.execute()
-        return query.ready
+    def create(cls, **query) -> DeferredEvent:
+        return SaveDelegatePseudoQuery(cls(**query),
+                                       force_insert=True,
+                                       prepare_instance=True).execute()
 
     @classmethod
-    def get_or_create(cls, _wait=False, **kwargs):
+    def get_or_create(cls, __wait__=False, **kwargs):
         result, created = super().get_or_create(**kwargs)
-        if created and _wait:
+        if __wait__:
             result.wait()
         return result, created
 
-    def save(self, force_insert=False, only=None, do_save=False) -> Event:
-        if do_save:
-            return super().save(force_insert, only)
+    def save(self,
+             force_insert=False,
+             only=None,
+             __do_save__=None) -> DeferredEvent:
 
-        query = SaveDelegatePseudoQuery(self)
-        query.execute()
-        return query.ready
+        if __do_save__:
+            return super().save(force_insert, only)
+        return SaveDelegatePseudoQuery(self, force_insert, only).execute()
 
 
 class DatabaseService:
 
-    QUEUE_TIMEOUT = datetime.timedelta(seconds=2).total_seconds()
+    QUEUE_TIMEOUT = datetime.timedelta(seconds=1).total_seconds()
     queue = Queue()
 
     def __init__(self, db):
         self._db = db
+        self._db_conn = None
         self._thread = None
         self._queue_timeout = None
         self._stop_event = Event()
@@ -140,11 +224,19 @@ class DatabaseService:
         """
         self._stop_event.set()
         self._queue_timeout = 0
+
         while not self.queue.empty():
             self._loop()
 
+        if self._thread.is_alive():
+            self._thread.join()
+
     @classmethod
-    def submit(cls, query: DelegateQuery):
+    def submit(cls, query: DelegateQuery) -> None:
+        """
+        Insert a query into the queue
+        :param query: Query to execute
+        """
         cls.queue.put(query)
 
     @property
@@ -162,29 +254,35 @@ class DatabaseService:
         """
         Thread activity method.
         """
+        self._db.connect()
+
         while not self._stop_event.is_set():
             self._loop()
 
+        if not self._db.is_closed():
+            self._db.close()
+
     def _loop(self) -> None:
+
         try:
             query = self.queue.get(True, self._queue_timeout)
         except Empty:
             return
 
         try:
-
+            #query = query.clone()
             query.database = self._db
-            query.do_execute()
+            with self._db.transaction(transaction_type='immediate'):
+                result = query.do_execute()
+        except Exception as exc:
+            handler = partial(self._log_error, query)
+            query.evt.addErrback(handler)
+            query.evt.errback(exc)
+        else:
+            query.evt.callback(result)
 
-        except (DataError, ProgrammingError, NotSupportedError,
-                TypeError, IntegrityError) as exc:
-
-            log.error("Cannot execute query %r: %r",
-                      query, exc)
-        except PeeweeException as exc:
-
-            log.warning("Temporary error while executing query %r: %r",
-                        query, exc)
-            self.queue.put(query)
-
+    @staticmethod
+    def _log_error(query, error):
+        log.error("Cannot execute %r: %r", query, error)
+        return error
 
