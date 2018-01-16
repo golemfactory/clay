@@ -1,18 +1,15 @@
-import unittest.mock as mock
 import random
-import sys
+import unittest.mock as mock
 import uuid
 
-from golem.model import db
 from golem import model
 from golem import testutils
+from golem.model import ExpectedIncome, Income, BigIntegerField
+from golem.network.p2p.node import Node
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
-
 from tests.golem.transactions.test_incomeskeeper import generate_some_id, \
     MAX_INT
-from golem.network.p2p.node import Node
-from golem.model import ExpectedIncome, Income, BigIntegerField
 
 
 def get_some_id():

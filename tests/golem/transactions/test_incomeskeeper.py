@@ -3,7 +3,6 @@ import random
 import sys
 import time
 
-from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
 from golem.network.p2p.node import Node

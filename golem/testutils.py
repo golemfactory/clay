@@ -112,6 +112,7 @@ class DatabaseFixture(TempDirFixture):
     def setUp(self):
         super(DatabaseFixture, self).setUp()
         self.database = Database(self.tempdir)
+        self.database.db_service.QUEUE_TIMEOUT = 0.1
 
     def tearDown(self):
         self.database.close()

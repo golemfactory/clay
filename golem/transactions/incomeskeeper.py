@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import datetime
 import logging
+
 import peewee
 from pydispatch import dispatcher
 
-from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
 

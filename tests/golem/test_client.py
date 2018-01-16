@@ -170,7 +170,7 @@ class TestClient(TestDirFixture, TestWithReactor):
         ]
 
         for income in incomes:
-            income.save()
+            income.save().wait(10)
 
         received_incomes = self.client.get_incomes_list()
         self.assertEqual(len(received_incomes), len(incomes))
@@ -642,7 +642,7 @@ class TestTaskCleanerService(TestWithReactor):
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+class TestClientRPCMethods(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 

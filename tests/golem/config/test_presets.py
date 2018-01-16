@@ -1,6 +1,7 @@
 import uuid
 
 from peewee import DoesNotExist, IntegrityError
+from twisted.python.failure import Failure
 
 from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, CUSTOM_HARDWARE_PRESET_NAME
 from golem.config.presets import HardwarePresetsMixin
@@ -40,30 +41,35 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset_disk = 1000 * 1024
         preset_dict = dict()
 
+        def assert_integrity_error(_evt):
+            _evt.wait(10)
+            assert isinstance(_evt.result, Failure)
+            assert isinstance(_evt.result.value, IntegrityError)
+
         # try to persist a preset with null values
-        with self.assertRaises(IntegrityError):
-            HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_integrity_error(evt)
 
         preset_dict['name'] = preset_name
-        with self.assertRaises(IntegrityError):
-            HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_integrity_error(evt)
 
         preset_dict['cpu_cores'] = preset_cpu_cores
-        with self.assertRaises(IntegrityError):
-            HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_integrity_error(evt)
 
         preset_dict['memory'] = preset_memory
-        with self.assertRaises(IntegrityError):
-            HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_integrity_error(evt)
 
         # persist a preset with all values set
         preset_dict['disk'] = preset_disk
-        assert HardwarePresetsMixin.create_hw_preset(preset_dict)
+        HardwarePresetsMixin.create_hw_preset(preset_dict).wait(10)
         preset = HardwarePresetsMixin.get_hw_preset(preset_name)
 
         # try to insert a preset with the same name
-        with self.assertRaises(IntegrityError):
-            HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_integrity_error(evt)
 
         assert preset
         assert preset['name'] == preset_name
@@ -73,23 +79,30 @@ class TestHardwarePresetsMixin(TestWithDatabase):
 
         # use upsert to create a preset from dict
         preset_dict['name'] = str(uuid.uuid4())
-        print(preset_dict)
-        assert HardwarePresetsMixin.upsert_hw_preset(preset_dict)
+        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait(10)
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
         # use upsert to create a preset from object
         preset_dict['name'] = str(uuid.uuid4())
         preset = HardwarePreset(**preset_dict)
-        assert HardwarePresetsMixin.upsert_hw_preset(preset)
+        HardwarePresetsMixin.upsert_hw_preset(preset).wait(10)
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
     def test_update_hw_preset(self):
+
+        def assert_success(_evt):
+            _evt.wait(10)
+            assert _evt.result
+            assert not isinstance(_evt.result, Failure)
+
         preset_dict = HardwarePresetsMixin.get_hw_caps()
         preset_dict['name'] = str(uuid.uuid4())
-        assert HardwarePresetsMixin.create_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict)
+        assert_success(evt)
 
         preset_dict['cpu_cores'] += 1
-        assert HardwarePresetsMixin.update_hw_preset(preset_dict)
+        evt = HardwarePresetsMixin.update_hw_preset(preset_dict)
+        assert_success(evt)
 
         preset = HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
         assert preset['cpu_cores'] == preset_dict['cpu_cores']
@@ -97,7 +110,8 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset_dict['cpu_cores'] += 1
 
         # use upsert to update the preset
-        preset = HardwarePresetsMixin.upsert_hw_preset(preset_dict)
+        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait(10)
+        preset = HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
         assert preset['cpu_cores'] == preset_dict['cpu_cores']
 
     def test_delete_hw_preset(self):
@@ -107,17 +121,24 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         with self.assertRaises(ValueError):
             HardwarePresetsMixin.delete_hw_preset(CUSTOM_HARDWARE_PRESET_NAME)
         # test removal of a non-existing preset
-        assert not HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4()))
+        evt = HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4())).wait(10)
+        assert evt.result == 0
 
         preset_dict = HardwarePresetsMixin.get_hw_caps()
         preset_dict['name'] = str(uuid.uuid4())
 
         # create and remove a preset
-        assert HardwarePresetsMixin.create_hw_preset(preset_dict)
-        assert HardwarePresetsMixin.delete_hw_preset(preset_dict['name'])
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict).wait(10)
+        assert evt.result
+
+        evt = HardwarePresetsMixin.delete_hw_preset(
+            preset_dict['name']).wait(10)
+        assert evt.result
 
         # make sure that preset does not exist
-        assert not HardwarePresetsMixin.delete_hw_preset(preset_dict['name'])
+        evt = HardwarePresetsMixin.delete_hw_preset(
+            preset_dict['name']).wait(10)
+        assert evt.result == 0
 
     def test_sanitize_preset_name(self):
         sanitize = HardwarePresetsMixin._HardwarePresetsMixin__sanitize_preset_name

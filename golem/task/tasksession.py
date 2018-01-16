@@ -15,7 +15,6 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
-from golem.model import db
 from golem.network import history
 from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork

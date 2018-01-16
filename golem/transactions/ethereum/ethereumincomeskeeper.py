@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import peewee
 
-from time import sleep
-from golem.model import db
 from golem import model
+from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.model import Income
 from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.ethereum.paymentprocessor import PaymentProcessor
 
 logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from peewee import IntegrityError
+from twisted.python.failure import Failure
 
 import golem.model as m
 
@@ -13,8 +14,8 @@ class TestDatabase(TempDirFixture, PEP8MixIn):
 
     def test_init(self) -> None:
         db = m.Database(self.path)
-        self.assertFalse(db.db.is_closed())
-        db.db.close()
+        self.assertFalse(db.is_closed())
+        db.close()
 
     def test_schema_version(self):
         db = m.Database(self.path)
@@ -25,7 +26,7 @@ class TestDatabase(TempDirFixture, PEP8MixIn):
         self.assertEqual(db._get_user_version(), 0)
         db = m.Database(self.path)
         self.assertEqual(db._get_user_version(), db.SCHEMA_VERSION)
-        db.db.close()
+        db.close()
 
 
 class TestPayment(DatabaseFixture):
@@ -36,30 +37,43 @@ class TestPayment(DatabaseFixture):
 
     def test_create(self):
         p = m.Payment(payee="DEF", subtask="xyz", value=5,
-                    status=m.PaymentStatus.awaiting)
-        self.assertEqual(p.save(force_insert=True), 1)
+                      status=m.PaymentStatus.awaiting)
+        evt = p.save(force_insert=True)
+        evt.wait(10)
+        assert p._get_pk_value()
 
-        with self.assertRaises(IntegrityError):
-            m.Payment.create(payee="DEF", subtask="xyz", value=5,
-                             status=m.PaymentStatus.awaiting)
+        evt = m.Payment.create(payee="DEF", subtask="xyz", value=5,
+                               status=m.PaymentStatus.awaiting)
+        evt.wait(10)
+
+        assert isinstance(evt.result, Failure)
+        assert isinstance(evt.result.value, IntegrityError)
+
         m.Payment.create(payee="DEF", subtask="xyz2", value=4,
-                         status=m.PaymentStatus.confirmed)
+                         status=m.PaymentStatus.confirmed).wait(10)
         m.Payment.create(payee="DEF2", subtask="xyz4", value=5,
-                         status=m.PaymentStatus.sent)
+                         status=m.PaymentStatus.sent).wait(10)
 
         self.assertEqual(3, len([payment for payment in m.Payment.select()]))
 
     def test_invalid_status(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee="XX", subtask="zz", value=5, status=1)
+        evt = m.Payment.create(payee="XX", subtask="zz", value=5, status=1)
+        evt.wait(10)
+        # result is an instance of from twisted.python.failure import Failure
+        assert isinstance(evt.result.value, TypeError)
 
     def test_invalid_value_type(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee="XX", subtask="float", value=5.5,
-                             status=m.PaymentStatus.sent)
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee="XX", subtask="str", value="500",
-                             status=m.PaymentStatus.sent)
+        # result is an instance of from twisted.python.failure import Failure
+
+        evt = m.Payment.create(payee="XX", subtask="float", value=5.5,
+                               status=m.PaymentStatus.sent)
+        evt.wait(10)
+        assert isinstance(evt.result.value, TypeError)
+
+        m.Payment.create(payee="XX", subtask="str", value="500",
+                         status=m.PaymentStatus.sent)
+        evt.wait(10)
+        assert isinstance(evt.result.value, TypeError)
 
     def test_payment_details(self):
         p1 = m.Payment(payee="me", subtask="T1000", value=123456)
@@ -142,16 +156,25 @@ class TestPerformance(DatabaseFixture):
         assert perf.value == 0.0
 
     def test_constraints(self):
-        perf = m.Performance()
+        import threading
+        print('>> self thread', threading.current_thread().ident)
         # environment_id can't be null
-        with self.assertRaises(IntegrityError):
-            perf.save()
+        perf = m.Performance()
+        evt = perf.save()
+        evt.wait(10)
+        # result is an instance of from twisted.python.failure import Failure
+        assert isinstance(evt.result.value, IntegrityError)
 
         perf.environment_id = "ENV1"
-        perf.save()
+        perf.save().wait(10)
+
+        print([x.__dict__ for x in m.Performance.select().execute()])
+        print(self.database.db_service.queue.qsize())
 
         perf = m.Performance(environment_id="ENV2", value=138.18)
-        perf.save()
+        perf.save().wait(10)
+
+        print([x.__dict__ for x in m.Performance.select().execute()])
 
         env1 = m.Performance.get(m.Performance.environment_id == "ENV1")
         assert env1.value == 0.0
@@ -160,21 +183,25 @@ class TestPerformance(DatabaseFixture):
 
         # environment_id must be unique
         perf3 = m.Performance(environment_id="ENV1", value=1472.11)
-        with self.assertRaises(IntegrityError):
-            perf3.save()
+        evt = perf3.save()
+        evt.wait(10)
+        # result is an instance of from twisted.python.failure import Failure
+        assert isinstance(evt.result.value, IntegrityError)
 
         # value doesn't have to be unique
         perf3 = m.Performance(environment_id="ENV3", value=138.18)
-        perf3.save()
+        evt = perf3.save()
+        evt.wait(10)
+        assert not isinstance(evt.result, Failure)
 
     def test_update_or_create(self):
-        m.Performance.update_or_create("ENVX", 100)
-        env =  m.Performance.get(m.Performance.environment_id == "ENVX")
+        m.Performance.update_or_create("ENVX", 100).wait(10)
+        env = m.Performance.get(m.Performance.environment_id == "ENVX")
         assert env.value == 100
-        m.Performance.update_or_create("ENVX", 200)
+        m.Performance.update_or_create("ENVX", 200).wait(10)
         env = m.Performance.get(m.Performance.environment_id == "ENVX")
         assert env.value == 200
-        m.Performance.update_or_create("ENVXXX", 300)
+        m.Performance.update_or_create("ENVXXX", 300).wait(10)
         env = m.Performance.get(m.Performance.environment_id == "ENVXXX")
         assert env.value == 300
         env = m.Performance.get(m.Performance.environment_id == "ENVX")

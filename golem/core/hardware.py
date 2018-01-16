@@ -59,10 +59,10 @@ class HardwarePresets(object):
 
         HardwarePreset.get_or_create(name=cls.DEFAULT_NAME,
                                      defaults=cls.default_values,
-                                     _wait=True)
+                                     __wait__=True)
         HardwarePreset.get_or_create(name=cls.CUSTOM_NAME,
                                      defaults=cls.CUSTOM_VALUES,
-                                     _wait=True)
+                                     __wait__=True)
 
     @classmethod
     def update_config(cls, preset_or_name, config):

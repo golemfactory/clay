@@ -21,6 +21,6 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         assert b.benchmarks_needed()
 
         for b_id in b.benchmarks:
-            Performance.update_or_create(b_id, 100)
+            Performance.update_or_create(b_id, 100).wait(10)
 
         assert not b.benchmarks_needed()
