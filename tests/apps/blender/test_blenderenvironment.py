@@ -26,7 +26,7 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
         fake_performance = 2345.2
         p = Performance(environment_id=BlenderEnvironment.get_id(),
                         value=fake_performance)
-        p.save()
+        p.save().wait()
         result = env.get_performance()
         self.assertEquals(result, fake_performance)
 

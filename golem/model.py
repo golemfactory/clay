@@ -10,25 +10,27 @@ from typing import Optional, Type  # pylint: disable=unused-import
 from ethereum.utils import denoms
 from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
-                    FloatField, IntegerField, Model, SmallIntegerField,
-                    TextField, BlobField, IntegrityError)
-from playhouse.sqliteq import SqliteQueueDatabase
+                    FloatField, IntegerField, SmallIntegerField,
+                    TextField, BlobField, SqliteDatabase)
 
 from golem.core.simpleserializer import DictSerializable
+from golem.database import DelegateModel, DatabaseService
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
+
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteQueueDatabase(
+
+db = SqliteDatabase(
     database=None,
-    autostart=False,
     pragmas=(
         ('foreign_keys', True),
-        ('busy_timeout', 30000)
+        ('busy_timeout', 30000),
+        ('journal_mode', 'WAL')
     )
 )
 
@@ -38,13 +40,12 @@ class Database:
     SCHEMA_VERSION = 7
 
     def __init__(self, datadir):
-        # TODO: Global database is bad idea. Check peewee for other solutions.
+        self.db = db
+        self.db_service = DatabaseService(db)
 
         db.init(path.join(datadir, 'golem.db'))
-        db.start()
         db.connect()
-
-        self.db = db
+        self.db_service.start()
         self.create_database()
 
     @staticmethod
@@ -74,61 +75,24 @@ class Database:
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
-            log.info("New database version {}, previous {}".format(
-                Database.SCHEMA_VERSION, version))
+            log.info("New database version %r, previous %r",
+                     Database.SCHEMA_VERSION, version)
             db.drop_tables(tables, safe=True)
             Database._set_user_version(Database.SCHEMA_VERSION)
         db.create_tables(tables, safe=True)
 
     def close(self):
-        self.db.stop()
+        self.db_service.stop()
         if not self.db.is_closed():
             self.db.close()
 
 
-class BaseModel(Model):
+class BaseModel(DelegateModel):
     class Meta:
         database = db
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
-
-    @classmethod
-    def get_or_create(cls, **kwargs):
-        if isinstance(db, SqliteQueueDatabase):
-            return cls.__get_or_create(**kwargs)
-        return super().get_or_create(**kwargs)
-
-    @classmethod
-    def __get_or_create(cls, **kwargs):
-        """
-        This is a copy of the get_or_create method, without transaction
-        starting.
-        Meant for use with SqliteQueueDatabase, which does not support database
-        transactions.
-        :return:
-        """
-        defaults = kwargs.pop('defaults', {})
-        query = cls.select()
-        for field, value in kwargs.items():
-            if '__' in field:
-                query = query.filter(**{field: value})
-            else:
-                query = query.where(getattr(cls, field) == value)
-
-        try:
-            return query.get(), False
-        except cls.DoesNotExist:
-            try:
-                params = dict((k, v) for k, v in kwargs.items()
-                              if '__' not in k)
-                params.update(defaults)
-                return cls.create(**params), True
-            except IntegrityError as exc:
-                try:
-                    return query.get(), False
-                except cls.DoesNotExist:
-                    raise exc
 
 
 ##################

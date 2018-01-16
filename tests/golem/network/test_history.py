@@ -8,7 +8,7 @@ from golem_messages import message
 from peewee import DataError, PeeweeException, IntegrityError
 
 from golem.model import NetworkMessage, Actor
-from golem.network.history import MessageHistoryService, record_history, \
+from golem.network.history import record_history, \
     IMessageHistoryProvider, requestor_history, provider_history
 from golem.testutils import DatabaseFixture
 

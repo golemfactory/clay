@@ -20,7 +20,7 @@ class TestDummyEnvironment(DatabaseFixture):
         perf = 1234.5
         p = Performance(environment_id=DummyTaskEnvironment.get_id(),
                         value=perf)
-        p.save()
+        p.save().wait()
         result = env.get_performance()
         self.assertTrue(result == perf)
 
