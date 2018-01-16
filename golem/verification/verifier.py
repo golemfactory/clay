@@ -59,7 +59,7 @@ class StateVerifier(Verifier):
         if self.state in self.active_status:
             self.state = SubtaskVerificationState.NOT_SURE
         self.message = "Verification was stopped"
-        answer = self._get_anwser()
+        answer = self._get_answer()
         self.callback(subtask_id=self.subtask_info['subtask_id'],
                       verdict=self.state,
                       results=answer)
@@ -75,7 +75,7 @@ class StateVerifier(Verifier):
         self.time_ended = None
         self.extra_data = {}
 
-    def _get_anwser(self):
+    def _get_answer(self):
         return {'reference_data': self.reference_data,
                 'message': self.message,
                 'time_started': self.time_started,
