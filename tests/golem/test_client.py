@@ -32,7 +32,7 @@ from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -411,6 +411,58 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
+
+    @patch('golem.client.SystemMonitor')
+    @patch('golem.client.P2PService.connect_to_network')
+    def test_restart_task(self, connect_to_network, *_):
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False
+        )
+        deferred = Deferred()
+        connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.start()
+        sync_wait(deferred)
+
+        task_manager = self.client.task_server.task_manager
+
+        task_manager.listen_address = '127.0.0.1'
+        task_manager.listen_port = 40103
+
+        some_file_path = self.new_path / "foo"
+        # pylint thinks it's PurePath, but it's a concrete path
+        some_file_path.touch()  # pylint: disable=no-member
+
+        task_dict = {
+            'bid': 5.0,
+            'name': 'test task',
+            'options': {
+                'difficulty': 1337,
+                'output_path': '',
+            },
+            'resources': [str(some_file_path)],
+            'subtask_timeout': timeout_to_string(3),
+            'subtasks': 1,
+            'timeout': timeout_to_string(3),
+            'type': 'Dummy',
+        }
+
+        task_id = self.client.create_task(task_dict)
+
+        assert task_id is not None
+
+        new_task_id = self.client.restart_task(task_id)
+
+        assert task_id != new_task_id
+        assert task_manager.tasks_states[task_id].status == TaskStatus.restarted
+        assert all(
+            ss.subtask_status == SubtaskStatus.restarted
+            for ss
+            in task_manager.tasks_states[task_id].subtask_states.values())
+        assert task_manager.tasks_states[new_task_id].status \
+            == TaskStatus.notStarted
 
 
 class TestDoWorkService(TestWithReactor):

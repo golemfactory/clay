@@ -4,7 +4,7 @@ import sys
 import time
 import uuid
 from collections import Iterable
-from copy import copy
+from copy import copy, deepcopy
 from os import path, makedirs
 from threading import Lock, Thread
 from typing import Dict
@@ -585,7 +585,20 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.abort_task(task_id)
 
     def restart_task(self, task_id):
-        self.task_server.task_manager.restart_task(task_id)
+        task_manager = self.task_server.task_manager
+
+        # Task state is changed to restarted and stays this way until it's
+        # deleted from task manager.
+        task_manager.put_task_in_restarted_state(task_id)
+
+        # Create new task that is a copy of the definition of the old one.
+        # It has a new deadline and a new task id.
+        task_dict = deepcopy(
+            task_manager.get_task_definition_dict(
+                task_manager.tasks[task_id]))
+        del task_dict['id']
+
+        return self.create_task(task_dict)
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
