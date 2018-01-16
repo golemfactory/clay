@@ -3,7 +3,7 @@ import logging
 
 from peewee import IntegrityError
 
-from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
+from golem.model import LocalRank, GlobalRank, NeighbourLocRank
 
 logger = logging.getLogger(__name__)
 

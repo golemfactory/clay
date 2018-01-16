@@ -8,7 +8,7 @@ from threading import Lock
 
 from golem.core import simplechallenge
 from golem.diag.service import DiagnosticsProvider
-from golem.model import KnownHosts, MAX_STORED_HOSTS, db
+from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
