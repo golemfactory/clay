@@ -79,7 +79,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd.deadline = timeout_to_deadline(timeout)
+        ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -120,7 +120,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
+        result = task_computer.resource_given(ctd['task_id'])
         assert result
 
         # Thread for task computation should be created by now
@@ -154,8 +154,10 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(
-            render_task, self.tempdir, Mock(), Mock(),
-            render_task.query_extra_data_for_test_task)
+            root_path=self.tempdir, success_callback=Mock(),
+            error_callback=Mock(),
+            get_compute_task_def=render_task.query_extra_data_for_test_task,
+            resources=render_task.task_resources)
         local_computer.run()
         local_computer.tt.join(60)
         return local_computer.tt
@@ -234,7 +236,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.results == {}
         assert task.res_files == {}
         assert path.isdir(task.tmp_dir)
-        assert task.verificator.verification_options is None
 
     @pytest.mark.slow
     def test_blender_render_subtask(self):
@@ -282,6 +283,20 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert isinstance(task_thread, DockerTaskThread)
         assert isinstance(error_msg, str)
         assert error_msg.startswith("Subtask computation failed")
+
+    def test_subtask_killed(self):
+        task = self._create_test_task()
+        # Replace the main script source with another script that will
+        # kill itself
+        task.src_code = \
+            'import os; import signal; os.kill(os.getpid(), signal.SIGKILL)'
+        task.main_program_file = path.join(
+            path.join(get_golem_path(), "golem"), "node.py")
+        task.task_resources = {task.main_program_file, task.main_scene_file}
+        task_thread, error_msg, out_dir = self._run_docker_task(task)
+        assert isinstance(task_thread, DockerTaskThread)
+        assert isinstance(error_msg, str)
+        assert "out-of-memory" in error_msg
 
     def test_blender_scene_file_error(self):
         task = self._create_test_task()

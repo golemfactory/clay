@@ -1,218 +1,34 @@
-from golem_messages import message
 import logging
 import os
-import re
 import struct
 import time
 from copy import copy
+from ipaddress import ip_address
 from threading import Lock
 
-from golem.core.hostaddress import get_host_addresses
+import golem_messages
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
-    TCP6ClientEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
+    TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
-from zope.interface import implements, implementer
-
-from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
+from zope.interface import implementer
 
 from golem.core.databuffer import DataBuffer
-from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
-from golem_messages.message import Message
-from .network import Network, SessionProtocol
+from golem.core.hostaddress import get_host_addresses
+from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
+from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
+    OutgoingProtocolFactoryWrapper
+from .spamprotector import SpamProtector
+
+# Import helpers to this namespace
+from .tcpnetwork_helpers import SocketAddress, TCPListenInfo  # noqa pylint: disable=unused-import
+from .tcpnetwork_helpers import TCPListeningInfo, TCPConnectInfo  # noqa pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 
 MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
-##########################
-# Network helper classes #
-##########################
-
-
-class SocketAddress(object):
-    """TCP socket address (host and port)"""
-
-    _dns_label_pattern = re.compile('(?!-)[a-z\d-]{1,63}(?<!-)\Z', re.IGNORECASE)
-    _all_numeric_pattern = re.compile('[0-9\.]+\Z')
-
-    @classmethod
-    def is_proper_address(cls, address, port):
-        try:
-            SocketAddress(address, port)
-        except (AddressValueError, TypeError) as err:
-            logger.info("Wrong address {}".format(err))
-            return False
-        return True
-
-    def __init__(self, address, port):
-        """Creates and validates SocketAddress. Raises
-        AddressValueError if 'address' or 'port' is invalid.
-        :param str address: IPv4/IPv6 address or hostname
-        :param int port:
-        """
-        self.address = address
-        self.port = port
-        self.ipv6 = False
-        try:
-            self.__validate()
-        except ValueError as err:
-            raise AddressValueError(err)
-
-    def __validate(self):
-        if type(self.address) is str:
-            self.address = self.address
-        if type(self.address) is not str:
-            raise TypeError('Address must be a string, not a ' +
-                            type(self.address).__name__)
-        if type(self.port) is not int:
-            raise TypeError('Port must be an int, not a ' +
-                            type(self.port).__name__)
-
-        if self.address.find(':') != -1:
-            # IPv6 address
-            if self.address.find("%") != -1:
-                # Address with zone index
-                self.address = self.address[:self.address.find("%")]
-
-            IPv6Address(self.address)
-            self.ipv6 = True
-        else:
-            # If it's all digits then guess it's an IPv4 address
-            if self._all_numeric_pattern.match(self.address):
-                IPv4Address(self.address)
-            else:
-                SocketAddress.validate_hostname(self.address)
-
-        if not (MIN_PORT <= self.port <= MAX_PORT):
-            raise ValueError('Port out of range ({} .. {}): {}'.format(
-                MIN_PORT, MAX_PORT, self.port))
-
-    def __eq__(self, other):
-        return self.address == other.address and self.port == other.port
-
-    def __repr__(self):
-        return "SocketAddress(%r, %r)" % (self.address, self.port)
-
-    def __str__(self):
-        return self.address + ":" + str(self.port)
-
-    @staticmethod
-    def validate_hostname(hostname):
-        """Checks that the given string is a valid hostname.
-        See RFC 1123, page 13, and here:
-        http://stackoverflow.com/questions/2532053/validate-a-hostname-string.
-        Raises ValueError if the argument is not a valid hostname.
-        :param str hostname:
-        :returns None
-        """
-        if type(hostname) is not str:
-            raise TypeError('Expected string argument, not ' +
-                            type(hostname).__name__)
-
-        if hostname == '':
-            raise ValueError('Empty host name')
-        if len(hostname) > 255:
-            raise ValueError('Host name exceeds 255 chars: ' + hostname)
-        # Trailing '.' is allowed!
-        if hostname.endswith('.'):
-            hostname = hostname[:-1]
-        segments = hostname.split('.')
-        if not all(SocketAddress._dns_label_pattern.match(s) for s in segments):
-            raise ValueError('Invalid host name: ' + hostname)
-
-    @staticmethod
-    def parse(string):
-        """Parses a string representation of a socket address.
-        IPv4 syntax: <IPv4 address> ':' <port>
-        IPv6 syntax: '[' <IPv6 address> ']' ':' <port>
-        DNS syntax:  <hostname> ':' <port>
-        Raises AddressValueError if the input cannot be parsed.
-        :param str string:
-        :returns parsed SocketAddress
-        :rtype SocketAddress
-        """
-
-        if type(string) is not str:
-            raise TypeError('Expected string argument, not ' +
-                            type(string).__name__)
-
-        try:
-            if string.startswith('['):
-                # We expect '[<ip6 addr>]:<portnum>',
-                # use ipaddress to parse IPv6 address:
-                addr_str, port_str = string.split(']:')
-                addr_str = addr_str[1:]
-            else:
-                # We expect '<ip4 addr or hostname>:<port>'.
-                addr_str, port_str = string.split(':')
-            port = int(port_str)
-        except ValueError:
-            raise AddressValueError('Invalid address "{}"'.format(string))
-
-        return SocketAddress(addr_str, port)
-
-
-class TCPListenInfo(object):
-    def __init__(self, port_start, port_end=None, established_callback=None, failure_callback=None):
-        """
-        Information needed for listen function. Network will try to start listening on port_start, then iterate
-         by 1 to port_end. If port_end is None, than network will only try to listen on port_start.
-        :param int port_start: try to start listening from that port
-        :param int port_end: *Default: None* highest port that network will try to listen on
-        :param fun|None established_callback: *Default: None* deferred callback after listening established
-        :param fun|None failure_callback: *Default: None* deferred callback after listening failure
-        :return:
-        """
-        self.port_start = port_start
-        if port_end:
-            self.port_end = port_end
-        else:
-            self.port_end = port_start
-        self.established_callback = established_callback
-        self.failure_callback = failure_callback
-
-    def __str__(self):
-        return "TCP listen info: ports [{}:{}], callback: {}, errback: {}".format(self.port_start, self.port_end,
-                                                                                  self.established_callback,
-                                                                                  self.failure_callback)
-
-
-class TCPListeningInfo(object):
-    def __init__(self, port, stopped_callback=None, stopped_errback=None):
-        """
-        TCP listening port information
-        :param int port: port opened for listening
-        :param fun|None stopped_callback: *Default: None* deferred callback after listening on this port is stopped
-        :param fun|None stopped_errback: *Default: None* deferred callback after stop listening is failure
-        :return:
-        """
-        self.port = port
-        self.stopped_callback = stopped_callback
-        self.stopped_errback = stopped_errback
-
-    def __str__(self):
-        return "A listening port {} information".format(self.port)
-
-
-class TCPConnectInfo(object):
-    def __init__(self, socket_addresses,  established_callback=None, failure_callback=None):
-        """
-        Information for TCP connect function
-        :param list socket_addresses: list of SocketAddresses
-        :param fun|None established_callback:
-        :param fun|None failure_callback:
-        :return None:
-        """
-        self.socket_addresses = socket_addresses
-        self.established_callback = established_callback
-        self.failure_callback = failure_callback
-
-    def __str__(self):
-        return "TCP connection information: addresses {}, callback {}, errback {}".format(self.socket_addresses,
-                                                                                          self.established_callback,
-                                                                                          self.failure_callback)
 
 ###############
 # TCP Network #
@@ -230,7 +46,10 @@ class TCPNetwork(Network):
         """
         from twisted.internet import reactor
         self.reactor = reactor
-        self.protocol_factory = protocol_factory
+        self.incoming_protocol_factory = IncomingProtocolFactoryWrapper(
+            protocol_factory)
+        self.outgoing_protocol_factory = OutgoingProtocolFactoryWrapper(
+            protocol_factory)
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
         self.active_listeners = {}
@@ -326,7 +145,7 @@ class TCPNetwork(Network):
         else:
             endpoint = TCP4ClientEndpoint(self.reactor, address, port, self.timeout)
 
-        defer = endpoint.connect(self.protocol_factory)
+        defer = endpoint.connect(self.outgoing_protocol_factory)
 
         defer.addCallback(self.__connection_established, established_callback, **kwargs)
         defer.addErrback(self.__connection_failure, failure_callback, **kwargs)
@@ -361,7 +180,7 @@ class TCPNetwork(Network):
         else:
             ep = TCP4ServerEndpoint(self.reactor, port)
 
-        defer = ep.listen(self.protocol_factory)
+        defer = ep.listen(self.incoming_protocol_factory)
 
         defer.addCallback(self.__listening_established, established_callback, **kwargs)
         defer.addErrback(self.__listening_failure, port, max_port, established_callback, failure_callback, **kwargs)
@@ -427,6 +246,7 @@ class BasicProtocol(SessionProtocol):
         self.db = DataBuffer()
         self.lock = Lock()
         SessionProtocol.__init__(self)
+        self.spam_protector = SpamProtector()
 
     def send_message(self, msg):
         """
@@ -473,11 +293,11 @@ class BasicProtocol(SessionProtocol):
     def dataReceived(self, data):
         """Called when additional chunk of data is received from another peer"""
         if not self._can_receive():
-            return None
+            return
 
         if not self.session:
             logger.warning("No session argument in connection state")
-            return None
+            return
 
         self._interpret(data)
 
@@ -491,7 +311,7 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize(lambda x: b'\000'*message.Message.SIG_LEN)
+        ser_msg = msg.serialize()
 
         db = DataBuffer()
         db.append_len_prefixed_bytes(ser_msg)
@@ -523,12 +343,23 @@ class BasicProtocol(SessionProtocol):
         data = self.db.read_len_prefixed_bytes()
 
         while data:
-            message = Message.deserialize(data, lambda x: x)
+            if not self.spam_protector.check_msg(data):
+                return messages
 
-            if message:
-                messages.append(message)
+            try:
+                msg = golem_messages.load(data, None, None)
+                logger.debug(
+                    'BasicProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
+
+            if msg:
+                messages.append(msg)
             else:
-                logger.error("Failed to deserialize message {}".format(data))
+                logger.error("Failed to deserialize message %r", data)
 
             if not valid_len():
                 return None
@@ -572,18 +403,41 @@ class SafeProtocol(ServerProtocol):
     messages """
 
     def _prepare_msg_to_send(self, msg):
+        logger.debug('SafeProtocol._prepare_msg_to_send(%r)', msg)
         if self.session is None:
             logger.error("Wrong session, not sending message")
             return None
 
-        serialized = msg.serialize(self.session.sign, self.session.encrypt)
+        serialized = golem_messages.dump(
+            msg,
+            self.session.my_private_key,
+            self.session.theirs_public_key,
+        )
         length = struct.pack("!L", len(serialized))
         return length + serialized
 
     def _data_to_messages(self):
         messages = []
         for buf in self.db.get_len_prefixed_bytes():
-            msg = Message.deserialize(buf, self.session.decrypt)
+            if not self.spam_protector.check_msg(buf):
+                continue
+
+            try:
+                msg = golem_messages.load(
+                    buf,
+                    self.session.my_private_key,
+                    self.session.theirs_public_key,
+                )
+                logger.debug(
+                    'SafeProtocol._data_to_messages(): received %r',
+                    msg,
+                )
+            except AssertionError:
+                # Decryption error
+                msg = None
+            except golem_messages.exceptions.InvalidSignature:
+                logger.info("Failed to verify message signature %r", buf)
+                msg = None
             if msg:
                 messages.append(msg)
         return messages
@@ -642,27 +496,6 @@ class FilesProtocol(SafeProtocol):
     def _check_stream(self, data):
         return len(data) >= LONG_STANDARD_SIZE
 
-
-class MidAndFilesProtocol(FilesProtocol):
-    """ Connection-oriented protocol for twisted. In the Middleman mode pass message to session without
-    decrypting or deserializing it. In normal mode allows to send messages (support for message serialization)
-    encryption, decryption and signing), files or stream data."""
-    def _interpret(self, data):
-        if self.session.is_middleman:
-            self.session.last_message_time = time.time()
-            with self.lock:
-                self.db.append_bytes(data)
-                messages = self.db.read_all()
-            self.session.interpret(messages)
-        else:
-            FilesProtocol._interpret(self, data)
-
-    ############################
-    def _prepare_msg_to_send(self, msg):
-        if self.session.is_middleman:
-            return msg
-        else:
-            return FilesProtocol._prepare_msg_to_send(self, msg)
 
 #############
 # Producers #

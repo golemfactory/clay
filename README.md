@@ -49,11 +49,11 @@ Golem communicates with external technologies some of them may be downloaded and
 * [Docker](https://www.docker.com/)
 * [FreeImage](http://freeimage.sourceforge.net/)
 * [Geth](https://github.com/ethereum/go-ethereum/wiki/geth)
-* [IPFS](https://ipfs.io/)
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)
 * [SQLite3](https://sqlite.org/index.html)
+* [Pyvmmonitor](http://pyvmmonitor.com)
 
 Benchmarks:
 * General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.

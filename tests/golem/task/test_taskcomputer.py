@@ -1,3 +1,4 @@
+from golem_messages.message import ComputeTaskDef
 import os
 import random
 from threading import Lock
@@ -8,7 +9,7 @@ import uuid
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.task.taskbase import ComputeTaskDef, ResultType
+from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture, TempDirFixture
 from golem.tools.ci import ci_skip
@@ -89,7 +90,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert not task_server.send_task_failed.called
 
         tc.task_to_subtask_mapping[task_id] = subtask_id
-        tc.assigned_subtasks[subtask_id] = mock.Mock()
+        tc.assigned_subtasks[subtask_id] = ComputeTaskDef()
 
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
@@ -98,28 +99,28 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_computation(self):
         ctd = ComputeTaskDef()
-        ctd.task_id = "xyz"
-        ctd.subtask_id = "xxyyzz"
-        ctd.return_address = "10.10.10.10"
-        ctd.return_port = 10203
-        ctd.key_id = "key"
-        ctd.task_owner = "owner"
-        ctd.src_code = \
+        ctd['task_id'] = "xyz"
+        ctd['subtask_id'] = "xxyyzz"
+        ctd['return_address'] = "10.10.10.10"
+        ctd['return_port'] = 10203
+        ctd['key_id'] = "key"
+        ctd['task_owner'] = "owner"
+        ctd['src_code'] = \
             "cnt=0\n" \
             "for i in range(10000):\n" \
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
-        ctd.extra_data = {}
-        ctd.short_description = "add cnt"
-        ctd.deadline = timeout_to_deadline(10)
+        ctd['extra_data'] = {}
+        ctd['short_description'] = "add cnt"
+        ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server
         task_server.task_keeper.task_headers = {
-            ctd.subtask_id: mock.Mock(
+            ctd['subtask_id']: mock.Mock(
                 subtask_timeout=5,
                 deadline=timeout_to_deadline(5)
             ),
-            ctd.task_id: mock.Mock(
+            ctd['task_id']: mock.Mock(
                 subtask_timeout=5,
                 deadline=timeout_to_deadline(20)
             )
@@ -130,7 +131,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline,
+        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"]['deadline'],
                              timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with(
@@ -173,12 +174,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[7], "owner")
         self.assertEqual(args[8], "ABC")
 
-        ctd.subtask_id = "aabbcc"
-        ctd.src_code = "raise Exception('some exception')"
-        ctd.deadline = timeout_to_deadline(5)
+        ctd['subtask_id'] = "aabbcc"
+        ctd['src_code'] = "raise Exception('some exception')"
+        ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline,
+        self.assertLessEqual(tc.assigned_subtasks["aabbcc"]['deadline'],
                              timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with(
@@ -194,9 +195,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "aabbcc", "xyz", 'some exception', "10.10.10.10",
             10203, "key", "owner", "ABC")
 
-        ctd.subtask_id = "aabbcc2"
-        ctd.src_code = "print('Hello world')"
-        ctd.timeout = timeout_to_deadline(5)
+        ctd['subtask_id'] = "aabbcc2"
+        ctd['src_code'] = "print('Hello world')"
+        ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
@@ -207,9 +208,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         task_server.task_keeper.task_headers["xyz"].deadline = \
             timeout_to_deadline(20)
-        ctd.subtask_id = "aabbcc3"
-        ctd.src_code = "output={'data': 0, 'result_type': 0}"
-        ctd.deadline = timeout_to_deadline(40)
+        ctd['subtask_id'] = "aabbcc3"
+        ctd['src_code'] = "output={'data': 0, 'result_type': 0}"
+        ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.assertIsNotNone(tc.counting_thread)
@@ -217,8 +218,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
         self.__wait_for_tasks(tc)
 
-        ctd.subtask_id = "xxyyzz2"
-        ctd.timeout = timeout_to_deadline(1)
+        ctd['subtask_id'] = "xxyyzz2"
+        ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         tt = tc.counting_thread
@@ -287,7 +288,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.dir_lock = Lock()
 
         task_computer.assigned_subtasks = {
-            subtask_id: mock.Mock(task_id=task_id)
+            subtask_id: ComputeTaskDef(task_id=task_id)
         }
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None

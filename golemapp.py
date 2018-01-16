@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import sys
-import click
-from multiprocessing import freeze_support
 import logging
+from multiprocessing import freeze_support
+import click
 from ethereum import slogging
 
+import golem
 from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
@@ -56,6 +57,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
+@click.option('--node', expose_value=False)
+@click.option('--klass', expose_value=False)
 @click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
@@ -65,16 +68,17 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--worker', expose_value=False)
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
-@click.option('--loglevel', expose_value=False)
+@click.option('--loglevel', default=None,
+              help="Change level for all loggers and handlers, "
+              "possible values are WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, version, m, geth_port):
+          start_geth, version, m, geth_port, loglevel):
     freeze_support()
     delete_reactor()
 
     if version:
-        from golem.core.variables import APP_VERSION
-        print("GOLEM version: {}".format(APP_VERSION))
+        print("GOLEM version: {}".format(golem.__version__))
         return 0
 
     # Workarounds for pyinstaller executable
@@ -93,7 +97,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir)
+        config_logging(datadir=datadir, loglevel=loglevel)
         install_reactor()
         log_golem_version()
 
@@ -134,11 +138,12 @@ def start_crossbar_worker(module):
 def log_golem_version():
     log = logging.getLogger('golem.version')
     # initial version info
-    from golem.core.variables import APP_VERSION, PROTOCOL_CONST
+    import golem_messages
+    from golem.core.variables import PROTOCOL_CONST
 
-    log.info("GOLEM Version: " + APP_VERSION)
-    log.info("P2P Protocol Version: " + str(PROTOCOL_CONST.P2P_ID))
-    log.info("Task Protocol Version: " + str(PROTOCOL_CONST.TASK_ID))
+    log.info("GOLEM Version: %s", golem.__version__)
+    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
+    log.info("golem_messages Version: %s", golem_messages.__version__)
 
 
 if __name__ == '__main__':

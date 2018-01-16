@@ -4,7 +4,6 @@ set -e
 
 cd golem
 git stash && git pull --rebase
-source scripts/pyinstaller/docker/patch.sh
 
 pip install -r requirements.txt
 python setup.py pyinstaller

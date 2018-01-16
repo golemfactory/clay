@@ -285,16 +285,19 @@ class TestP2PService(testutils.DatabaseFixture):
         def true_method(*args) -> bool:
             return True
 
-        key_id = str(uuid.uuid4())
-        conn_id = str(uuid.uuid4())
-        peer_id = str(uuid.uuid4())
+        def gen_uuid():
+            return str(uuid.uuid4()).replace('-', '')
+
+        key_id = gen_uuid()
+        conn_id = gen_uuid()
+        peer_id = gen_uuid()
 
         node_info = mock.MagicMock()
         node_info.key = key_id
         node_info.is_super_node = true_method
 
         peer = mock.MagicMock()
-        peer.key_id = str(uuid.uuid4())
+        peer.key_id = gen_uuid()
 
         self.service.peers[peer_id] = peer
         self.service.node = node_info
@@ -353,9 +356,6 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.ping_peers(1)
         assert p.ping.called
 
-        self.service.key_changed()
-        assert p.dropped.called
-
         degrees = self.service.get_peers_degree()
         assert len(degrees) == 2
         assert p.key_id in degrees
@@ -368,25 +368,6 @@ class TestP2PService(testutils.DatabaseFixture):
 
         self.service.remove_task('task_id')
         assert p.send_remove_task.called
-
-        self.service.inform_about_nat_traverse_failure(
-            str(uuid.uuid4()), 'res_key_id', 'conn_id')
-        assert not p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id',
-                                                       'conn_id')
-        assert p.send_inform_about_nat_traverse_failure.called
-
-        self.service.inform_about_task_nat_hole(
-            str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert not p.send_task_nat_hole.called
-
-        self.service.inform_about_task_nat_hole(
-            p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
-        assert p.send_task_nat_hole.called
-
-        self.service.send_nat_traverse_failure(p.key_id, 'conn_id')
-        assert p.send_nat_traverse_failure.called
 
         self.service.send_stop_gossip()
         assert p.send_stop_gossip.called
@@ -421,30 +402,18 @@ class TestP2PService(testutils.DatabaseFixture):
         self.service.change_config(ccd)
         assert self.service.node_name == "test name change"
 
-    def test_broadcast_on_name_change(self):
-        conn = mock.MagicMock()
-        peer = PeerSession(conn)
-        peer.hello_called = False
-
-        def fake_hello(self):
-            self.hello_called = True
-
-        import types
-        peer.hello = types.MethodType(fake_hello, peer)
-        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
-                                       "PUBTESTPATH2")
-        peer.key_id = keys_auth.key_id
-        self.service.add_peer(keys_auth.key_id, peer)
-        ccd = ClientConfigDescriptor()
-        assert not peer.hello_called
-        self.service.change_config(ccd)
-        assert not peer.hello_called  # negative test
-        ccd = ClientConfigDescriptor()
-        ccd.node_name = "test sending hello on name change"
-        self.service.change_config(ccd)
-        assert peer.hello_called  # positive test
-
     def test_disconnect(self):
         self.service.peers = {'peer_id': mock.Mock()}
         self.service.disconnect()
         assert self.service.peers['peer_id'].dropped.called
+
+    def test_round_robin_seeds(self):
+        SEEDS_NUM = 10
+        seeds = set()
+        for i in range(SEEDS_NUM):
+            seeds.add(('127.0.0.1', i+1))
+        self.service.seeds = seeds.copy()
+        for i in range(SEEDS_NUM):
+            seed = self.service._get_next_random_seed()
+            seeds.remove(seed)
+        assert not seeds
