@@ -303,13 +303,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         with self.assertRaises(Exception) as raised:
             ts.add_task_header(task_header)
             self.assertEqual(raised.exception.message, "Invalid signature")
-            self.assertEqual(len(ts.get_tasks_headers()[0]), 0)
+            self.assertEqual(len(ts.get_tasks_headers()[1]), 0)
 
         task_header["task_owner_key_id"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()[0]), 1)
+        self.assertEqual(len(ts.get_tasks_headers()[1]), 1)
 
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz_2"
@@ -317,18 +317,19 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()[0]), 2)
+        self.assertEqual(len(ts.get_tasks_headers()[1]), 2)
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()[0]), 2)
+        self.assertEqual(len(ts.get_tasks_headers()[1]), 2)
 
         new_header = dict(task_header)
         new_header["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
 
         self.assertIsNotNone(ts.add_task_header(new_header))
-        self.assertEqual(len(ts.get_tasks_headers()[0]), 2)
-        saved_task = next(th for th in ts.get_tasks_headers()[0] if th["task_id"] == "xyz_2")
+        self.assertEqual(len(ts.get_tasks_headers()[1]), 2)
+        saved_task = next(th for th in ts.get_tasks_headers()[1]
+                          if th["task_id"] == "xyz_2")
         self.assertEqual(saved_task["signature"], new_header["signature"])
 
     def test_sync(self):

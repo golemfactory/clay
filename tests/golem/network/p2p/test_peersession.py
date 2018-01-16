@@ -368,7 +368,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert len(sent_tasks) == len(set(sent_tasks))
 
         peer_session.p2p_service.get_tasks_headers.return_value = list(
-            range(0, TASK_HEADERS_LIMIT - 1)), list(range(0, TASK_HEADERS_LIMIT - 1))
+            range(0, TASK_HEADERS_LIMIT - 1)),\
+            list(range(0, TASK_HEADERS_LIMIT - 1))
         peer_session._react_to_get_tasks(mock.Mock())
         sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
@@ -385,6 +386,19 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             list(range(0, 10)), None
         peer_session._react_to_get_tasks(mock.Mock())
         sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
+        assert len(sent_tasks) <= TASK_HEADERS_LIMIT
+        assert len(sent_tasks) == len(set(sent_tasks))
+
+        peer_session.p2p_service.get_tasks_headers.return_value =\
+            list(range(0, 50)), list(range(51, 100))
+        peer_session._react_to_get_tasks(mock.Mock())
+        sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
+
+        my_tasks = list(filter(lambda x: x in (0, 50), sent_tasks))
+        other_tasks = list(filter(lambda x: x in (50, 100), sent_tasks))
+
+        assert len(my_tasks) <= int(TASK_HEADERS_LIMIT / 2)
+        assert len(other_tasks) <= int(TASK_HEADERS_LIMIT / 2)
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
 

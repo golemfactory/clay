@@ -7,7 +7,6 @@ import random
 import time
 
 from typing import Optional
-import typing
 from collections import Counter
 from semantic_version import Version
 
