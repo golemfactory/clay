@@ -166,6 +166,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.database = database
         self.config_desc = config_desc
 
+        Trust.set_database(self.database)
+
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(

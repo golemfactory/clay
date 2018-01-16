@@ -167,7 +167,8 @@ class Client(HardwarePresetsMixin):
 
         self.cfg = config
 
-        self.ranking = Ranking(self)
+        self.ranking = Ranking(self.db, self)
+        Trust.set_database(self.db)
 
         if transaction_system:
             # Bootstrap transaction system if enabled.
