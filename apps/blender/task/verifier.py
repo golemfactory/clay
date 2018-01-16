@@ -3,9 +3,13 @@ import logging
 import math
 import os
 
+import golem_messages.message
+
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
 
+from golem.core.common import get_golem_path
+from golem.docker.image import DockerImage
 from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.blender")
@@ -66,10 +70,9 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.message ="No reference data produced in verification"
             return False
         self.extra_data['results'] = copy(self.computer.get_result()['data'])
-        print(self.extra_data['results'])
         images = [res for res in self.extra_data['results']
                   if res.upper().endswith(subtask_info['output_format'])]
-        self._verify_results(results, images)
+        self._verify_results(subtask_info, results, images)
         return True
 
     def _render_full_subtask(self, subtask_info, results, reference_data,
@@ -109,5 +112,37 @@ class BlenderVerifier(FrameRenderingVerifier):
             error))
         self.verification_error = True
 
-    def _verify_results(self, results, images):
-        pass  #FIXME Fill me
+    def _verify_results(self, subtask_info, results, images):
+        print("VERIFY RESUTLS")
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['docker_images'] = [DockerImage(repository="golemfactor/img_stats",
+                                            tag="1.0")]
+        ctd['subtask_id'] = subtask_info['subtask_id']
+
+        runner_script = os.path.join(get_golem_path(), "apps", "blender",
+                                     "resources", "scripts", "runner.py")
+        with open(runner_script) as f:
+            src_code = f.read()
+        ctd['src_code'] = src_code
+        print(runner_script)
+        print(src_code)
+
+        self.computer.start_computation(
+            root_path=os.path.join(subtask_info["tmp_dir"],
+                                   subtask_info['subtask_id'],
+                                   "compare"),
+            success_callback=self._images_compared,
+            error_callback=self._images_failure,
+            compute_task_def=ctd,
+            resources=results + images,
+            additional_resources=[runner_script],
+        )
+
+    def _images_compared(self, results, time_spend):
+        logger.info("Images comparison finished")
+        self.verification_error = False
+
+    def _images_failure(self, error):
+        logger.info("Subtask for image comparison failure {}".format(
+            error))
+        self.verification_error = True

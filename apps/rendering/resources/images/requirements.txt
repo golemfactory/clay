@@ -1,0 +1,5 @@
+--extra-index-url https://builds.golem.network
+opencv-python
+OpenEXR
+scikit-image
+scipy

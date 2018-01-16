@@ -114,7 +114,9 @@ class LocalComputer(object):
             logger.error("Cannot measure execution time")
 
     def __prepare_resources(self, resources):
-
+        print("PREPARING RESOURCES")
+        print(resources)
+        print(self.additional_resources)
         self.test_task_res_path = self.dir_manager.get_task_test_dir("")
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
@@ -131,6 +133,7 @@ class LocalComputer(object):
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
         for res in self.additional_resources:
+            print()
             shutil.copy(res, self.test_task_res_path)
 
         return True

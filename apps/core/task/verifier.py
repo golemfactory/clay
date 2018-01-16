@@ -16,7 +16,7 @@ class CoreVerifier(StateVerifier):
         self._check_files(subtask_info, results, reference_data, resources)
         self.time_ended = datetime.utcnow()
         self.extra_data['results'] = self.results
-        self.callback(subtask_id=self.subtask_info['subtask_id'],
+        self.callback(subtask_id=subtask_info['subtask_id'],
                       verdict=self.state,
                       result=self._get_answer())
         self._clear_state()
