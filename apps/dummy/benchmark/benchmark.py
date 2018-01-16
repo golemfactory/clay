@@ -29,7 +29,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
-        self.verifier = DummyTaskVerifier(lambda: None)
+        self.verifier = DummyTaskVerifier(lambda **kwargs: None)
         self.verification_options = {"difficulty": td.options.difficulty,
                                      "shared_data_files": td.shared_data_files,
                                      "result_size": td.result_size,
@@ -50,6 +50,7 @@ class DummyTaskBenchmark(CoreBenchmark):
             ext = ext.lower()
             sd = self.verification_options.copy()
             sd["subtask_data"] = self.subtask_data
+            sd["subtask_id"] = "DummyBenchmark"
             if ext != '.result':
                 return False
             self.verifier.start_verification(sd, filepath, [], [])

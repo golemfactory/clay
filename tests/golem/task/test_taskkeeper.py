@@ -21,6 +21,17 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
+def async_run(request, success=None, error=None):
+    try:
+        result = request.method(*request.args, **request.kwargs)
+    except Exception as exc:
+        if error:
+            error(exc)
+    else:
+        if success:
+            success(result)
+
+
 class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
@@ -496,11 +507,13 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             self.assertIn(subtask_id, another_ctk.subtask_to_task)
             self.assertIn(header.task_id, another_ctk.active_tasks)
 
-    def test_persistance(self):
+    @mock.patch('golem.task.taskkeeper.async_run', async_run)
+    def test_persistence(self):
         """Tests whether tasks are persistent between restarts."""
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
+    @mock.patch('golem.task.taskkeeper.async_run', async_run)
     def test_remove_old_tasks(self):
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
@@ -514,7 +527,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.remove_old_tasks()
         self.assertTrue(not any(ctk.active_tasks))
         self.assertTrue(not any(ctk.subtask_to_task))
-
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):
