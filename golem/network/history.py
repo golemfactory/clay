@@ -283,10 +283,11 @@ def record_history(local_role, remote_role):
 
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
+            service = MessageHistoryService.instance
             model = self.message_to_model(msg, local_role, remote_role)
 
-            if model:
-                NetworkMessage(**model).save()
+            if model and service:
+                service.add(model)
             else:
                 logger.error("Cannot log message: %r", msg)
             return func(self, msg, *args, **kwargs)
