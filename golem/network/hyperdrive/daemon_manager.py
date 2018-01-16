@@ -52,7 +52,6 @@ class HyperdriveDaemonManager(object):
             logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 
-    @report_calls(Component.hyperdrive, 'instance.connect')
     def _get_addresses(self):
         if not self._addresses:
             self._addresses = HyperdriveClient(**self._config).addresses()
@@ -81,6 +80,7 @@ class HyperdriveDaemonManager(object):
     def stop(self, *_):
         self._monitor.exit()
 
+    @report_calls(Component.hyperdrive, 'instance.connect')
     def _start(self, *_):
         # do not supervise already running processes
         addresses = self.addresses()
