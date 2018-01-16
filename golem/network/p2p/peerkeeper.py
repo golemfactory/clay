@@ -231,6 +231,10 @@ def node_id_distance(node_info, key_num):
     return int(node_info.key, 16) ^ key_num
 
 
+def key_distance(key, second_key):
+    return int(key, 16) ^ int(second_key, 16)
+
+
 class KBucket(object):
     """
     K-bucket for keeping information about peers from a given distance range

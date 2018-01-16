@@ -18,6 +18,7 @@ class ClientConfigDescriptor(object):
         self.send_pings = 0
         self.pings_interval = 0.0
         self.use_ipv6 = 0
+        self.use_upnp = 0
 
         self.seed_host = ""
         self.seed_port = 0
@@ -80,7 +81,8 @@ class ConfigApprover(object):
     dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                        'use_distributed_resource_management',
                        'use_waiting_for_task_timeout', 'send_pings',
-                       'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
+                       'use_ipv6', 'use_upnp', 'eth_account', 'accept_tasks',
+                       'node_name']
     to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
                   'waiting_for_task_timeout', 'p2p_session_timeout',
                   'task_session_timeout', 'pings_interval',

@@ -30,6 +30,7 @@ OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
 
 USE_IP6 = 0
+USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
 
@@ -42,6 +43,14 @@ PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 MAX_SENDING_DELAY = 360
+# How frequently task archive should be saved to disk (in seconds)
+TASKARCHIVE_MAINTENANCE_INTERVAL = 30
+# Filename for task archive disk file
+TASKARCHIVE_FILENAME = "task_archive.pickle"
+# Number of past days task archive will store aggregated information for
+TASKARCHIVE_NUM_INTERVALS = 365
+# Limit of the number  of non-expired tasks stored in task archive at any moment
+TASKARCHIVE_MAX_TASKS = 10000000
 
 P2P_SESSION_TIMEOUT = 240
 TASK_SESSION_TIMEOUT = 900
@@ -97,6 +106,7 @@ class AppConfig:
             public_address="",
             eth_account="",
             use_ipv6=USE_IP6,
+            use_upnp=USE_UPNP,
             start_port=START_PORT,
             end_port=END_PORT,
             rpc_address=RPC_ADDRESS,

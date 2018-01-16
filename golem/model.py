@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import pickle
 from enum import Enum
 from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
@@ -8,6 +9,7 @@ from typing import Optional, Type  # pylint: disable=unused-import
 
 
 from ethereum.utils import denoms
+from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     SqliteDatabase, TextField, BlobField)
@@ -27,7 +29,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 6
+    SCHEMA_VERSION = 7
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -214,6 +216,7 @@ class Payment(BaseModel):
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
+    processed_ts = IntegerField(null=True)
 
     def __init__(self, *args, **kwargs):
         super(Payment, self).__init__(*args, **kwargs)
@@ -224,13 +227,14 @@ class Payment(BaseModel):
     def __repr__(self) -> str:
         tx = self.details.tx
         bn = self.details.block_number
-        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
+        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r} ts:{!r}>"\
             .format(
                 self.subtask,
                 float(self.value) / denoms.ether,
                 self.status,
                 tx,
-                bn
+                bn,
+                self.processed_ts
             )
 
     def get_sender_node(self) -> Optional[Node]:
@@ -440,3 +444,7 @@ class NetworkMessage(BaseModel):
     msg_date = DateTimeField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+
+    def as_message(self) -> message.Message:
+        msg = pickle.loads(self.msg_data)
+        return msg

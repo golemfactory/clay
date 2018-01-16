@@ -1,8 +1,8 @@
 import os
 import uuid
 
-from golem.resource.base import resourcesmanager
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
 from golem.task.taskbase import ResultType
@@ -76,7 +76,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path)
-        self.resource_manager = resourcesmanager.TestResourceManager(
+        self.resource_manager = DummyResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_output_dir
         )
@@ -96,7 +96,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         data, secret = self.TestPackageCreator.create(manager,
                                                       self.node_name,
                                                       self.task_id)
-        path, multihash = data
+        content_hash, path = data
 
         self.assertIsInstance(path, str)
         self.assertTrue(os.path.isfile(path))
@@ -106,23 +106,23 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         data, secret = self.TestPackageCreator.create(manager,
                                                       self.node_name,
                                                       self.task_id)
-        path, multihash = data
+        content_hash, path = data
 
         extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)
 
         for f in extracted.files:
-            self.assertTrue(os.path.exists(os.path.join(extracted.files_dir, f)))
+            assert os.path.exists(os.path.join(extracted.files_dir, f))
 
     def testPullPackage(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
         data, secret = self.TestPackageCreator.create(manager,
                                                       self.node_name,
                                                       self.task_id)
-        path, multihash = data
+        content_hash, path = data
 
         assert os.path.exists(path)
-        assert multihash
+        assert content_hash
 
         def success(*args, **kwargs):
             pass
@@ -131,13 +131,13 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             self.fail("Error downloading package: {}".format(exc))
 
         dir_manager = DirManager(self.path)
-        resource_manager = resourcesmanager.TestResourceManager(
+        resource_manager = DummyResourceManager(
             dir_manager,
             resource_dir_method=dir_manager.get_task_temporary_dir
         )
 
         new_manager = EncryptedResultPackageManager(resource_manager)
-        new_manager.pull_package(multihash, self.task_id, self.task_id,
+        new_manager.pull_package(content_hash, self.task_id, self.task_id,
                                  secret,
                                  success=success,
                                  error=error,

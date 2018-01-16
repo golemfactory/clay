@@ -285,16 +285,19 @@ class TestP2PService(testutils.DatabaseFixture):
         def true_method(*args) -> bool:
             return True
 
-        key_id = str(uuid.uuid4())
-        conn_id = str(uuid.uuid4())
-        peer_id = str(uuid.uuid4())
+        def gen_uuid():
+            return str(uuid.uuid4()).replace('-', '')
+
+        key_id = gen_uuid()
+        conn_id = gen_uuid()
+        peer_id = gen_uuid()
 
         node_info = mock.MagicMock()
         node_info.key = key_id
         node_info.is_super_node = true_method
 
         peer = mock.MagicMock()
-        peer.key_id = str(uuid.uuid4())
+        peer.key_id = gen_uuid()
 
         self.service.peers[peer_id] = peer
         self.service.node = node_info
@@ -352,9 +355,6 @@ class TestP2PService(testutils.DatabaseFixture):
 
         self.service.ping_peers(1)
         assert p.ping.called
-
-        self.service.key_changed()
-        assert p.dropped.called
 
         degrees = self.service.get_peers_degree()
         assert len(degrees) == 2

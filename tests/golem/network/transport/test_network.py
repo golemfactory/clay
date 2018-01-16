@@ -1,12 +1,15 @@
 from contextlib import contextmanager
-from golem_messages import message
 import logging
 import os
 import time
 import unittest
 
+from golem_messages import message
+import golem_messages.cryptography
+
 from golem.network.transport.network import ProtocolFactory, SessionFactory, \
     SessionProtocol
+from golem.network.transport import session
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
     TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
@@ -20,25 +23,16 @@ class ASession(object):
         self.conn = conn
         self.dropped_called = False
         self.msgs = []
+        my_keys = golem_messages.cryptography.ECCx(None)
+        their_keys = my_keys  # speedup
+        self.my_private_key = my_keys.raw_privkey
+        self.theirs_public_key = their_keys.raw_pubkey
 
     def dropped(self):
         self.dropped_called = True
 
     def interpret(self, msg):
         self.msgs.append(msg)
-
-    def sign(self, msg):
-        return b'1' * message.Message.SIG_LEN
-
-    def encrypt(self, msg):
-        return b"ASessionEncrypt" + bytes(msg)
-
-    def decrypt(self, msg):
-        args = [msg, b"ASessionEncrypt"]
-        if os.path.commonprefix(args) != b"ASessionEncrypt":
-            return None
-        else:
-            return msg[len(b"ASessionEncrypt"):]
 
 
 class AProtocol(SessionProtocol):
@@ -400,7 +394,5 @@ class TestSaferProtocol(unittest.TestCase):
         self.assertEqual(len(p.transport.buff), 1)
         p.dataReceived(p.transport.buff[0])
         self.assertIsInstance(p.session.msgs[0], message.Hello)
-        self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
-        self.assertEqual(msg.sig, b'1' * message.Message.SIG_LEN)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

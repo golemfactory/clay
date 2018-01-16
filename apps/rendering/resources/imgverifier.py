@@ -3,8 +3,8 @@ import logging
 import math
 
 from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
-from apps.core.task.verificator \
-    import SubtaskVerificationState as VerificationState
+
+from golem.verification.verifier import SubtaskVerificationState
 
 from ssim import compute_ssim
 
@@ -91,7 +91,7 @@ class ImgStatistics(object):
         return self.ssim, self.mse, self.norm_mse, self.mse_bw, self.psnr
 
 
-class ImgVerificator(object):
+class ImgVerifier(object):
     def __init__(self):
         pass
 
@@ -148,18 +148,10 @@ class ImgVerificator(object):
                 and not isinstance(reference_imgStat, ImgStatistics):
             raise TypeError("imgStatistics be instance of ImgStatistics")
 
-        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim: \
-                # and acceptance_ratio * imgStat.mse_bw
-            #  < reference_imgStat.mse_bw
-            # and imgStat.psnr > acceptance_ratio
-            #  * reference_imgStat.psnr:
-            return VerificationState.VERIFIED
+        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim:
+            return SubtaskVerificationState.VERIFIED
 
-        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim: \
-                # and acceptance_ratio * imgStat.mse_bw
-            # < reference_imgStat.mse_bw:
-            # and imgStat.psnr > acceptance_ratio
-            #  * reference_imgStat.psnr:
-            return VerificationState.UNKNOWN
+        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim:
+            return SubtaskVerificationState.UNKNOWN
 
-        return VerificationState.WRONG_ANSWER
+        return SubtaskVerificationState.WRONG_ANSWER

@@ -1,12 +1,14 @@
 """Compute Node"""
 
+import ipaddress
+
 import click
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
 from golem.core.common import to_unicode
-from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
 
@@ -125,7 +127,7 @@ class OptNode(Node):
             try:
                 SocketAddress(value, 1)
                 return value
-            except AddressValueError as e:
+            except ipaddress.AddressValueError as e:
                 raise click.BadParameter(
                     "Invalid network address specified: {}".format(e))
         return ''
@@ -137,7 +139,7 @@ class OptNode(Node):
         if value:
             try:
                 return SocketAddress.parse(value)
-            except AddressValueError as e:
+            except ipaddress.AddressValueError as e:
                 raise click.BadParameter(
                     "Invalid RPC address specified: {}".format(e))
 
@@ -148,7 +150,7 @@ class OptNode(Node):
         for arg in value:
             try:
                 addresses.append(SocketAddress.parse(arg))
-            except AddressValueError as e:
+            except ipaddress.AddressValueError as e:
                 raise click.BadParameter(
                     "Invalid peer address specified: {}".format(e))
         return addresses
