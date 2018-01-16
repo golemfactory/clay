@@ -22,7 +22,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
-            EthereumTransactionSystem(self.tempdir, "not a private key", self.database)
+            EthereumTransactionSystem(self.tempdir, "not a private key",
+                                      self.database)
 
     @mock.patch(
         'golem.transactions.ethereum.ethereumtransactionsystem.'

@@ -684,13 +684,15 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
     @patch('golem.task.taskserver.TaskServer.get_payment_for_subtask')
-    def test_react_to_subtask_payment_request(self, get_payment_for_subtask_mock) -> None:
+    def test_react_to_subtask_payment_request(self,
+                                              get_payment_for_subtask_mock) -> None:
         ts = TaskSession(Mock())
         subtask_id = str(uuid.uuid4())
         msg = message.SubtaskPaymentRequest(subtask_id=subtask_id)
         ts.task_server = MagicMock()
         ts._react_to_subtask_payment_request(msg)
-        self.assertEqual(ts.task_server.get_payment_for_subtask.call_args[0][0], subtask_id)
+        self.assertEqual(
+            ts.task_server.get_payment_for_subtask.call_args[0][0], subtask_id)
 
     def test_send_report_computed_task_concent_no_message(self):
         ts = TaskSession(Mock())

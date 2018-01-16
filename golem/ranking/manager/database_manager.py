@@ -102,7 +102,8 @@ def get_global_rank(node_id):
     return GlobalRank.select().where(GlobalRank.node_id == node_id).first()
 
 
-def upsert_global_rank(node_id, comp_trust, req_trust, comp_weight, req_weight, database):
+def upsert_global_rank(node_id, comp_trust, req_trust, comp_weight, req_weight,
+                       database):
     try:
         with database.db.transaction():
             GlobalRank.create(node_id=node_id, requesting_trust_value=req_trust, computing_trust_value=comp_trust,

@@ -250,7 +250,8 @@ class TestDatabaseManager(DatabaseFixture):
                 case['fun_ref'](case['node_name'], case['value'])
             else:
                 case['fun_ref'](case['node_name'], case['value'], self.database)
-            self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']), case['attribute']), case['total'],
+            self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']),
+                                           case['attribute']), case['total'],
                                    7, "Test no. " + case['test_no'] + " failed.")
 
     def test_should_throw_exception(self):

@@ -85,7 +85,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         session = tasksession.TaskSession(conn=MagicMock())
         session.address = '127.0.0.1'
         session.port = 10
-        conn_id = str(uuid.uuid4())
         node = Node()
         subtask_id = str(uuid.uuid4())
 
@@ -369,7 +368,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
     def test_sync(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.database,
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path),
+                        self.database,
                         self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -377,7 +377,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
     def test_forwarded_session_requests(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.database,
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path),
+                        self.database,
                         self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -410,7 +411,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
     def test_retry_sending_task_result(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.database,
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path),
+                        self.database,
                         self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -833,7 +835,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
-        self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path), self.database,
+        self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
+                             self.database,
                              self.client, use_docker_machine_manager=False)
         self.ts.task_computer = MagicMock()
 

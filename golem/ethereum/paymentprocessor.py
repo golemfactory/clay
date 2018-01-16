@@ -13,7 +13,6 @@ from pydispatch import dispatcher
 from golem.core.service import LoopingCallService
 from golem.ethereum import Client
 from golem.model import Payment, PaymentStatus
-from golem.model import Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
 from .node import tETH_faucet_donate
 
