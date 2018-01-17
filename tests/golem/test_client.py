@@ -412,6 +412,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
+    @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):

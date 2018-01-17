@@ -140,7 +140,11 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
-        self.concent_service = ConcentClientService(enabled=False)
+        self.concent_service = ConcentClientService(
+            enabled=False,
+            signing_key=self.keys_auth._private_key,
+            public_key=self.keys_auth.public_key,
+        )
 
         self.task_server = None
         self.port_mapper = None
@@ -263,8 +267,7 @@ class Client(HardwarePresetsMixin):
         for service in self._services:
             if service.running:
                 service.stop()
-        if self.concent_service:
-            self.concent_service.stop()
+        self.concent_service.stop()
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:

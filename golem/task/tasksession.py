@@ -2,11 +2,15 @@ import functools
 import hashlib
 import logging
 import os
+import pathlib
 import pickle
 import threading
 import time
 
 from golem_messages import message
+from twisted.internet import defer
+from twisted.internet import reactor
+from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
@@ -48,6 +52,39 @@ def dropped_after():
             return result
         return curry
     return inner
+
+
+def compute_result_hash(task_result):
+    result_hash = hashlib.sha1()
+    if task_result.result_type == ResultType.FILES:
+        # task_result.result is an array of filenames
+        for filename in task_result.result:
+            p = pathlib.Path(filename)
+            logger.info(
+                'Computing checksum (%.3fMB) of %s',
+                p.stat().st_size / 2**20,
+                p
+            )
+            with open(filename, 'rb') as f:
+                while True:
+                    chunk = f.read(2**20)  # 1MB
+                    if not chunk:
+                        break
+                    result_hash.update(chunk)
+
+    else:
+        logger.info('Computing checksum of single result')
+        result_hash.update(task_result.result.encode('utf-8'))
+    return result_hash
+
+
+def deferred_compute_result_hash(task_result):
+    if reactor.running:
+        execute = threads.deferToThread
+    else:
+        logger.debug('Reactor not running. Switching to blocking call')
+        execute = defer.execute
+    return execute(compute_result_hash, task_result)
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
@@ -310,6 +347,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all)
+    @defer.inlineCallbacks
     def send_report_computed_task(
             self,
             task_result,
@@ -364,8 +402,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        msg_cls = message.ForceReportComputedTask
-        msg = msg_cls()
+        msg = message.ForceReportComputedTask()
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
@@ -381,17 +418,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         msg.task_to_compute = task_to_compute
-        # FIXME: Only ResultType.DATA is currently in use #1796
-        assert task_result.result_type == ResultType.DATA
-        msg.result_hash = 'sha1:' + hashlib.sha1(
-            task_result.result.encode('utf-8')
-        ).hexdigest()
+        result_hash = yield deferred_compute_result_hash(task_result)
+        msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
-        msg_data = msg.serialize()  # Refactored in #1823
 
         self.concent_service.submit(
-            ConcentRequest.build_key(task_result.subtask_id, msg_cls),
-            msg_data, msg_cls
+            ConcentRequest.build_key(
+                task_result.subtask_id,
+                msg.__class__.__name__,
+            ),
+            msg,
         )
 
     def send_task_failure(self, subtask_id, err_msg):
@@ -745,7 +781,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
             self.concent_service.cancel(
                 ConcentRequest.build_key(msg.subtask_id,
-                                         message.ForceReportComputedTask)
+                                         'ForceReportComputedTask')
             )
         else:
             logger.warning("Requestor '%r' acknowledged a computed task report "
@@ -761,7 +797,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
             self.concent_service.cancel(
                 ConcentRequest.build_key(msg.subtask_id,
-                                         message.ForceReportComputedTask)
+                                         'ForceReportComputedTask')
             )
         else:
             logger.warning("Requestor '%r' rejected a computed task report of"
