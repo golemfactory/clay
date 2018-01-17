@@ -1,29 +1,20 @@
-from golem_messages import message
+import uuid
+from unittest.mock import Mock, patch, ANY
+
 import os
 import types
-from unittest.mock import Mock, patch, ANY
-import uuid
+from twisted.internet.defer import Deferred
+from golem_messages import message
 
 from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient
-from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
 from golem.testutils import TempDirFixture
-
-
-def mock_async_run(async_request, success, error):
-    m, a, k = async_request.method, async_request.args, async_request.kwargs
-
-    try:
-        result = m(*a, **k)
-    except Exception as exc:
-        error(exc)
-    else:
-        success(result)
 
 
 class TestResourceHandshake(TempDirFixture):
@@ -75,7 +66,6 @@ class TestResourceHandshake(TempDirFixture):
         assert handshake.finished()
 
 
-@patch('golem.resource.resourcehandshake.async_run', side_effect=mock_async_run)
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
 class TestResourceHandshakeSessionMixin(TempDirFixture):
@@ -444,7 +434,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert session._is_peer_blocked(key_id)
 
 
-@patch('golem.resource.resourcehandshake.async_run', side_effect=mock_async_run)
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
 class TestResourceHandshakeShare(TempDirFixture):
@@ -554,10 +543,18 @@ class TestResourceHandshakeShare(TempDirFixture):
         from golem.task.taskserver import TaskServer
 
         client = Mock(datadir=session.data_dir)
+        dir_manager = DirManager(session.data_dir)
 
-        resource_manager = HyperdriveResourceManager(
-            dir_manager=DirManager(session.data_dir)
-        )
+        resource_manager = HyperdriveResourceManager(dir_manager=dir_manager)
+        resource_manager.successful_uploads = True
+        resource_manager.successful_downloads = True
+
+        resource_manager.add_file_org = resource_manager.add_file
+        resource_manager.add_file = types.MethodType(_add_file,
+                                                     resource_manager)
+        resource_manager.pull_resource_org = resource_manager.pull_resource
+        resource_manager.pull_resource = types.MethodType(_pull_resource,
+                                                          resource_manager)
 
         task_server = TaskServer(
             node=Mock(client=client, key=str(uuid.uuid4())),
@@ -566,7 +563,6 @@ class TestResourceHandshakeShare(TempDirFixture):
             client=client,
             use_docker_machine_manager=False
         )
-
         task_server.task_manager = Mock(
             task_result_manager=Mock(
                 resource_manager=resource_manager
@@ -586,14 +582,6 @@ class TestResourceHandshakeShare(TempDirFixture):
         task_server.get_share_options = Mock(return_value=client_options)
         task_server.get_download_options = Mock(return_value=client_options)
 
-        original_pull = resource_manager.pull_resource
-
-        def pull_resource(*args, **kwargs):
-            kwargs['async'] = False
-            original_pull(*args[1:], **kwargs)
-
-        resource_manager.pull_resource = types.MethodType(pull_resource,
-                                                          resource_manager)
         session.task_server = task_server
 
 
@@ -604,20 +592,36 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
 
         ResourceHandshakeSessionMixin.__init__(self)
 
-        dir_manager = DirManager(data_dir)
-        get_dir = dir_manager.get_task_resource_dir
-
         self.send = Mock()
         self.disconnect = Mock()
         self.dropped = Mock()
 
-        self.content_to_pull = str(uuid.uuid4())
-        self.successful_downloads = successful_downloads
-        self.successful_uploads = successful_uploads
-
         self.key_id = str(uuid.uuid4())
         self.address = '1.2.3.4'
         self.data_dir = data_dir
+
+        dir_manager = DirManager(data_dir)
+        storage = ResourceStorage(dir_manager,
+                                  dir_manager.get_task_resource_dir)
+        resource_manager = Mock(
+            storage=storage,
+            content_to_pull=str(uuid.uuid4()).replace('-', ''),
+            successful_uploads=successful_uploads,
+            successful_downloads=successful_downloads,
+        )
+        resource_manager.add_file = types.MethodType(_add_file,
+                                                     resource_manager)
+        resource_manager.add_file_org = types.MethodType(
+            HyperdriveResourceManager.add_file,
+            resource_manager
+        )
+        resource_manager.pull_resource = types.MethodType(_pull_resource,
+                                                          resource_manager)
+        resource_manager.pull_resource_org = types.MethodType(
+            HyperdriveResourceManager.pull_resource,
+            resource_manager
+        )
+
         self.task_server = Mock(
             client=Mock(datadir=data_dir),
             node=Mock(key=str(uuid.uuid4())),
@@ -625,31 +629,28 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
             resource_handshakes=dict(),
             task_manager=Mock(
                 task_result_manager=Mock(
-                    resource_manager=Mock(
-                        storage=ResourceStorage(dir_manager, get_dir),
-                        add_file=self.__add_file,
-                        pull_resource=self.__pull_resource
-                    )
+                    resource_manager=resource_manager
                 )
             )
         )
 
-    def __add_file(self, path, *_args, **_kwargs):
 
-        if not self.successful_uploads:
-            raise RuntimeError('Test exception')
-        return path, str(uuid.uuid4())
+def _pull_resource(self, entry, task_id, success, error, **kwargs):
+    if not self.successful_downloads:
+        return error(RuntimeError('Test exception'))
 
-    def __pull_resource(self, entry, task_id, success, error, **_kwargs):
-        file_resource = entry[0]
+    kwargs['async'] = False
+    return self.pull_resource_org(entry, task_id, success, error, **kwargs)
 
-        if not self.successful_downloads:
-            return error(RuntimeError('Test exception'))
 
-        directory = self.resource_manager.storage.get_dir(task_id)
-        path = os.path.join(directory, file_resource.file_name)
+def _add_file(self, path, task_id, **kwargs):
+    deferred = Deferred()
+    kwargs['async'] = False
 
-        with open(path, 'w') as f:
-            f.write(self.content_to_pull)
+    if self.successful_uploads:
+        result = self.add_file_org(path, task_id, **kwargs)
+        deferred.callback(result)
+    else:
+        deferred.errback(RuntimeError('Test exception'))
 
-        return success((file_resource.file_name, file_resource.hash))
+    return deferred
