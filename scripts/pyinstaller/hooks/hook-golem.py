@@ -22,4 +22,5 @@ datas = [
      'apps/dummy/resources/code_dir/'),
     ('apps/dummy/test_data/in.data',
      'apps/dummy/test_data/'),
+    ('golem/RELEASE-VERSION', 'golem/'),
 ]
