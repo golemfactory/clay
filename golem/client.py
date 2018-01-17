@@ -246,7 +246,7 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
         self.environments_manager.load_config(self.datadir)
-        self.concent_service.start()
+        #self.concent_service.start()
 
         if self.use_monitor and not self.monitor:
             self.init_monitor()

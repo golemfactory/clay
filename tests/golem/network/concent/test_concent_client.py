@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, no-self-use
 import datetime
 import logging
 import time
@@ -99,6 +100,9 @@ class TestConcentClientService(TestCase):
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()
+
+    def tarDown(self):
+        self.assertFalse(self.concent_service.isAlive())
 
     @mock.patch('golem.network.concent.client.ConcentClientService._loop')
     def test_start_stop(self, loop_mock, *_):
