@@ -156,8 +156,6 @@ class TestPerformance(DatabaseFixture):
         assert perf.value == 0.0
 
     def test_constraints(self):
-        import threading
-        print('>> self thread', threading.current_thread().ident)
         # environment_id can't be null
         perf = m.Performance()
         evt = perf.save()
@@ -168,13 +166,8 @@ class TestPerformance(DatabaseFixture):
         perf.environment_id = "ENV1"
         perf.save().wait()
 
-        print([x.__dict__ for x in m.Performance.select().execute()])
-        print(self.database.db_service.queue.qsize())
-
         perf = m.Performance(environment_id="ENV2", value=138.18)
         perf.save().wait()
-
-        print([x.__dict__ for x in m.Performance.select().execute()])
 
         env1 = m.Performance.get(m.Performance.environment_id == "ENV1")
         assert env1.value == 0.0
