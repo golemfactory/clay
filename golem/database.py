@@ -35,18 +35,23 @@ class DeferredEvent(Event):
 
     def addCallback(self, *args, **kwargs):
         self._deferred.addCallback(*args, **kwargs)
+        return self
 
     def addErrback(self, *args, **kwargs):
         self._deferred.addErrback(*args, **kwargs)
+        return self
 
     def addCallbacks(self, *args, **kwargs):
         self._deferred.addCallbacks(*args, **kwargs)
+        return self
 
     def addBoth(self, *args, **kwargs):
         self._deferred.addBoth(*args, **kwargs)
+        return self
 
     def chainDeferred(self, deferred):
         self._deferred.chainDeferred(deferred)
+        return self
 
 
 class DelegateQuery(abc.ABC):
@@ -180,8 +185,8 @@ class DelegateModel(Model):
     @classmethod
     def get_or_create(cls, __wait__=False, **kwargs):
         result, created = super().get_or_create(**kwargs)
-        if __wait__:
-            result.wait()
+        # if __wait__:
+        #     result.wait()
         return result, created
 
     def save(self,
