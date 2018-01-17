@@ -172,10 +172,10 @@ class TestConcentClientService(TestCase):
 
     def test_loop_request_timeout(self, send_mock, *_):
         self.assertFalse(self.concent_service.isAlive())
-        delta = datetime.timedelta(seconds=constants.MSG_LIFETIMES.get(
+        delta = constants.MSG_LIFETIMES.get(
             self.msg.__class__,
             constants.DEFAULT_MSG_LIFETIME,
-        ))
+        )
         with freeze_time(datetime.datetime.now()) as frozen_time:
             self.concent_service.submit(
                 'key',
@@ -185,6 +185,7 @@ class TestConcentClientService(TestCase):
 
             self.assertEqual(send_mock.call_count, 0)
             frozen_time.tick(delta=delta)
+            frozen_time.tick()  # on second more
             self.concent_service._loop()
             self.assertEqual(send_mock.call_count, 0)
 

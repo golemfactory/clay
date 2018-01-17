@@ -1,4 +1,5 @@
 import base64
+import datetime
 import logging
 import queue
 import threading
@@ -100,12 +101,12 @@ class ConcentRequestStatus(Enum):
 class ConcentRequest:
 
     __slots__ = ('key', 'msg', 'status', 'content',
-                 'sent_ts', 'deadline_ts')
+                 'sent_at', 'deadline_at')
 
     def __init__(self,
                  key: Hashable,
                  msg: message.Message,
-                 lifetime: float) -> None:
+                 lifetime: datetime.timedelta) -> None:
 
         self.key = key
         self.msg = msg
@@ -113,8 +114,8 @@ class ConcentRequest:
         self.status = ConcentRequestStatus.Initial
         self.content = None
 
-        self.sent_ts = None
-        self.deadline_ts = time.time() + lifetime
+        self.sent_at = None
+        self.deadline_at = datetime.datetime.now() + lifetime
 
     @staticmethod
     def build_key(*args) -> str:
@@ -128,12 +129,12 @@ class ConcentRequest:
 
     def __repr__(self):
         return (
-            "<ConcentRequest({}, {}, {}, sent_ts={}, deadline_ts={})>".format(
+            "<ConcentRequest({}, {}, {}, sent_at={}, deadline_at={})>".format(
                 self.key,
                 self.msg,
                 self.status.name,
-                self.sent_ts,
-                self.deadline_ts
+                self.sent_at,
+                self.deadline_at
             )
         )
 
@@ -237,15 +238,15 @@ class ConcentClientService(threading.Thread):
             self._history.pop(req.key, None)
             return
 
-        now = time.time()
+        now = datetime.datetime.now()
 
-        if req.deadline_ts < now:
+        if req.deadline_at < now:
             logger.debug('Concent request lifetime has ended: %r', req)
             req.status = ConcentRequestStatus.TimedOut
             return
 
         try:
-            req.sent_ts = now
+            req.sent_at = now
             res = send_to_concent(req.msg, self.signing_key, self.public_key)
         except Exception as exc:
             logger.exception('send_to_concent(%r) failed', req.msg)
