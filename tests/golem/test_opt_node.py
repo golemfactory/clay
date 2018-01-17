@@ -9,6 +9,7 @@ from golemapp import start, OptNode
 
 @ci_skip
 @patch('twisted.internet.iocpreactor', create=True)
+@patch('twisted.internet.kqreactor', create=True)
 @patch('golem.core.common.config_logging')
 class TestNode(TestWithDatabase):
     def setUp(self):
