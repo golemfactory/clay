@@ -95,8 +95,6 @@ class TestDummyTaskBuilder(TestCase):
         assert opts['difficulty'] == int(td.options.difficulty)
 
     def test_build_full_definition(self):
-        td = DummyTaskDefinition(DummyTaskDefaults())
-
         def get_dict():
             dictionary = {}
             dictionary['resources'] = {"aa"}
@@ -109,19 +107,19 @@ class TestDummyTaskBuilder(TestCase):
             dictionary["options"] = {"output_path": ""}
             return dictionary
 
-        def get_def(difficulty, sbs):
+        def get_def(difficulty: int, sbs):
             dictionary = get_dict()
             dictionary["options"].update({"subtask_data_size": sbs,
-                                          "difficulty": difficulty})
+                                          "difficulty": hex(difficulty)})
 
             return DummyTaskBuilder.build_full_definition(
-                DummyTaskTypeInfo(), dictionary)  # noqa
+                DummyTaskTypeInfo(), dictionary)
 
-        difficulty = "0xf"
+        difficulty = 15
         sbs = 10
         def_ = get_def(difficulty, sbs)
 
-        assert def_.options.difficulty == int(difficulty, 16)
+        assert def_.options.difficulty == difficulty
         assert def_.options.subtask_data_size == sbs
 
         with self.assertRaises(Exception):
@@ -130,12 +128,7 @@ class TestDummyTaskBuilder(TestCase):
             get_def(10, 0)
         with self.assertRaises(Exception):
             get_def(10, -1)
-        with self.assertRaises(Exception):
-            get_def(16 ** 8 + 1, 10)
-        with self.assertRaises(Exception):
-            get_def(16 ** 8, 10)
 
-        pass
         # TODO uncomment that when GUI will be fixed
         # with self.assertRaises(TypeError):
         #     get_def("aa", .1)
