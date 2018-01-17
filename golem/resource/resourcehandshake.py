@@ -3,8 +3,6 @@ import logging
 import os
 import uuid
 
-from golem.core.async import AsyncRequest, async_run
-
 logger = logging.getLogger('golem.resources')
 
 
@@ -221,12 +219,13 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        async_req = AsyncRequest(self.resource_manager.add_file,
-                                 handshake.file,
-                                 self.NONCE_TASK)
-        async_run(async_req,
-                  success=lambda res: self._nonce_shared(key_id, res),
-                  error=lambda exc: self._handshake_error(key_id, exc))
+        deferred = self.resource_manager.add_file(handshake.file,
+                                                  self.NONCE_TASK,
+                                                  async=True)
+        deferred.addCallbacks(
+            lambda res: self._nonce_shared(key_id, res),
+            lambda exc: self._handshake_error(key_id, exc)
+        )
 
     def _nonce_shared(self, key_id, result):
         handshake = self._get_handshake(key_id)

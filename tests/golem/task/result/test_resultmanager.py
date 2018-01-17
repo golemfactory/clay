@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import os
 import uuid
 
@@ -7,15 +9,6 @@ from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
 from golem.task.taskbase import ResultType
 from golem.tools.testdirfixture import TestDirFixture
-
-
-class MockNode:
-    def __init__(self, name, key=None):
-        if not key:
-            key = uuid.uuid4()
-
-        self.node_name = name
-        self.key = key
 
 
 class MockTaskResult:
@@ -42,34 +35,39 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     node_name = 'test_suite'
 
     class TestPackageCreator(object):
+
         @staticmethod
         def create(result_manager, node_name, task_id):
             rm = result_manager.resource_manager
-            res_dir = rm.storage.get_dir(task_id)
 
-            out_file = os.path.join(res_dir, 'out_file')
+            res_dir = rm.storage.get_dir(task_id)
             out_dir = os.path.join(res_dir, 'out_dir')
             out_dir_file = os.path.join(out_dir, 'dir_file')
-            files = [out_file, out_dir_file]
+            out_file = os.path.join(res_dir, 'out_file')
 
+            os.makedirs(out_dir, exist_ok=True)
             with open(out_file, 'w') as f:
                 f.write("File contents")
-
-            if not os.path.isdir(out_dir):
-                os.makedirs(out_dir)
-
             with open(out_dir_file, 'w') as f:
                 f.write("Dir file contents")
 
+            files = [out_file, out_dir_file]
             rm.add_files(files, task_id)
 
             secret = result_manager.gen_secret()
-            mock_node = MockNode(node_name)
-            mock_task_result = MockTaskResult(task_id, files)
+            result = result_manager.create(
+                node=Mock(
+                    node_name=node_name,
+                    key=str(uuid.uuid4())
+                ),
+                task_result=MockTaskResult(
+                    task_id,
+                    [rm.storage.relative_path(f, task_id) for f in files]
+                ),
+                key_or_secret=secret
+            )
 
-            return result_manager.create(mock_node,
-                                         mock_task_result,
-                                         key_or_secret=secret), secret
+            return result, secret
 
     def setUp(self):
         TestDirFixture.setUp(self)
