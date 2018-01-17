@@ -90,7 +90,8 @@ class Client(HardwarePresetsMixin):
             use_docker_machine_manager=True,
             use_monitor=True,
             start_geth=False,
-            geth_port=None,
+            start_geth_port=None,
+            geth_address=None,
             **config_overrides):
 
         if not datadir:
@@ -181,8 +182,9 @@ class Client(HardwarePresetsMixin):
             self.transaction_system = EthereumTransactionSystem(
                 datadir,
                 self.keys_auth._private_key,
-                geth_port,
-                start_geth=start_geth
+                start_geth=start_geth,
+                start_port=start_geth_port,
+                address=geth_address,
             )
         else:
             self.transaction_system = None

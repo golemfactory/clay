@@ -17,11 +17,12 @@ class Client(object):
 
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, datadir, port=None, start_node=False):
+    def __init__(self, datadir, start_node=False, start_port=None,
+                 address=None):
         if not Client.node:
-            Client.node = NodeProcess(datadir, start_node)
+            Client.node = NodeProcess(datadir, address, start_node)
         if not Client.node.is_running():
-            Client.node.start(port)
+            Client.node.start(start_port)
         self.web3 = Client.node.web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
