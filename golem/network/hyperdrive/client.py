@@ -43,9 +43,6 @@ class HyperdriveClient(IClient):
         return HyperdriveClientOptions(cls.CLIENT_ID, cls.VERSION,
                                        options=dict(peers=peers))
 
-    def diagnostics(self, *args, **kwargs):
-        raise NotImplementedError()
-
     def id(self, client_options=None, *args, **kwargs):
         response = self._request(command='id')
         return response['id']
@@ -134,14 +131,23 @@ class HyperdriveAsyncClient(HyperdriveClient):
         self._url_bytes = self._url.encode('utf-8')
         self._headers_obj = Headers({'Content-Type': ['application/json']})
 
-    def diagnostics(self, *args, **kwargs):
-        raise NotImplementedError()
-
     def add_async(self, files, **kwargs):
         params = dict(
             command='upload',
             id=kwargs.get('id'),
             files=files
+        )
+
+        return self._async_request(
+            params,
+            lambda response: response['hash']
+        )
+
+    def restore_async(self, content_hash, **kwargs):
+        params = dict(
+            command='upload',
+            id=kwargs.get('id'),
+            hash=content_hash
         )
 
         return self._async_request(
@@ -156,6 +162,17 @@ class HyperdriveAsyncClient(HyperdriveClient):
         return self._async_request(
             params,
             lambda response: [(path, content_hash, response['files'])]
+        )
+
+    def cancel_async(self, content_hash):
+        params = dict(
+            command='cancel',
+            hash=content_hash
+        )
+
+        return self._async_request(
+            params,
+            lambda response: response['hash']
         )
 
     def _async_request(self, params, response_parser):
