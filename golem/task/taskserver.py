@@ -14,7 +14,10 @@ from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+
 from golem.environments.environment import SupportStatus, UnsupportReason
+
+from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
@@ -106,10 +109,16 @@ class TaskResourcesMixin(object):
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def get_download_options(self, key_id):
+    def get_download_options(self, key_id, address=None):
         resource_manager = self._get_resource_manager()
-        peer = self.get_resource_peer(key_id)
-        peers = [peer] if peer else []
+        peers = []
+
+        if address:
+            peers.append({'TCP': [address, DEFAULT_HYPERDRIVE_PORT]})
+        else:
+            peer = self.get_resource_peer(key_id)
+            if peer:
+                peers.append(peer)
         return resource_manager.build_client_options(peers=peers)
 
     def get_share_options(self, task_id, key_id):
@@ -990,7 +999,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:
             return [self.task_sessions[subtask]]
-        for s in self.task_sessions_incoming:
+        for s in set(self.task_sessions_incoming):
             logger.debug('Checking session: %r', s)
             if s.subtask_id == subtask:
                 return [s]

@@ -95,7 +95,7 @@ class TaskManager(TaskEventListener):
         )
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting, TaskStatus.restarted]
+                             TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
@@ -148,9 +148,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
-
-        self.dir_manager.clear_temporary(task_id)
-        self.dir_manager.get_task_temporary_dir(task_id, create=True)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -211,6 +208,7 @@ class TaskManager(TaskEventListener):
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
+        broken_paths = set()
         for path in self.tasks_dir.iterdir():
             if not path.suffix == '.pickle':
                 continue
@@ -232,7 +230,10 @@ class TaskManager(TaskEventListener):
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
-                    path.unlink()
+                    # On Windows, attempting to remove a file that is in use
+                    # causes an exception to be raised, therefore
+                    # we'll remove broken files later
+                    broken_paths.add(path)
 
             if task_id is not None:
                 dispatcher.send(
@@ -240,6 +241,8 @@ class TaskManager(TaskEventListener):
                     event='task_status_updated',
                     task_id=task_id
                 )
+        for path in broken_paths:
+            path.unlink()
 
     @handle_task_key_error
     def resources_send(self, task_id):
@@ -534,23 +537,19 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
-    def restart_task(self, task_id):
+    def put_task_in_restarted_state(self, task_id):
+        """
+        When restarting task, it's put in a final state 'restarted' and
+        a new one is created.
+        """
         self.dir_manager.clear_temporary(task_id)
-        task = self.tasks[task_id]
 
-        task.restart()
         self.tasks_states[task_id].status = TaskStatus.restarted
-        task.header.deadline = timeout_to_deadline(
-            task.task_definition.full_task_timeout)
-        self.tasks_states[task_id].time_started = time.time()
-
-        for ss in list(self.tasks_states[task_id].subtask_states.values()):
+        for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
-        task.header.signature = self.sign_task_header(task.header)
-
-        logger.info("Task %s restarted", task_id)
+        logger.info("Task %s put into restarted state", task_id)
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error

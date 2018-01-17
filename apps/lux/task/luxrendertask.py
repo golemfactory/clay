@@ -2,6 +2,7 @@ import glob
 import logging
 import math
 import os
+from pathlib import Path
 import random
 import shutil
 from collections import OrderedDict
@@ -449,7 +450,8 @@ class LuxTask(renderingtask.RenderingTask):
         with open(script_file) as f:
             src_code = f.read()
 
-        extra_data = {'output_flm': self.output_file, 'flm_files': files}
+        extra_data = {'output_flm': Path(self.output_file).as_posix(),
+                      'flm_files': files}
         ctd = self._new_compute_task_def(hash=self.header.task_id,
                                          extra_data=extra_data,
                                          perf_index=0)

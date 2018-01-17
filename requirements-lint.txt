@@ -2,4 +2,4 @@ freezegun
 PyInstaller
 pylint
 mypy
-pycodestyle
+flake8

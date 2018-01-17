@@ -3,3 +3,4 @@ mock
 pytest==3.3.1
 pytest-cov
 codecov
+flake8

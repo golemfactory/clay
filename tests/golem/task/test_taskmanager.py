@@ -176,6 +176,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 # check some task's properties...
                 assert restored_task.header.task_id == task.header.task_id
 
+    def test_remove_wrong_task_during_restore(self):
+        broken_pickle_file = self.tm.tasks_dir / "broken.pickle"
+        with broken_pickle_file.open('w') as f:
+            f.write("notapickle")
+        assert broken_pickle_file.is_file()
+        self.tm.restore_tasks()
+        assert not broken_pickle_file.is_file()
 
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
@@ -550,29 +557,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             ts = self.tm.query_task_state("xyz")
         assert ts is not None
         assert ts.progress == 0.3
-
-    def test_restart_task(self):
-        with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.restart_task("xyz") is None
-        t = self._get_task_mock()
-        self.tm.add_new_task(t)
-        with self.assertNoLogs(logger, level="WARNING"):
-            self.tm.restart_task("xyz")
-
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
-
-        with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
-            self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
-            t.query_extra_data_return_value.ctd['subtask_id'] = "xxyyzz2"
-            self.tm.get_next_subtask("NODEID2", "NODENAME2", "xyz", 1000, 100, 10000, 10000)
-            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
-            with self.assertNoLogs(logger, level="WARNING"):
-                self.tm.restart_task("xyz")
-
-            assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
-            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
-            for ss in list(self.tm.tasks_states["xyz"].subtask_states.values()):
-                self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
 
     def test_abort_task(self):
         with self.assertLogs(logger, level="WARNING"):

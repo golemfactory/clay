@@ -92,7 +92,12 @@ class AddGetResources(TempDirFixture, LogTestCase):
         client.task_server.start_accepting = mock.Mock()
         client.task_server.task_computer = mock.Mock()
 
-        task_session = TaskSession(mock.Mock(server=client.task_server))
+        get_peer = mock.Mock(return_value=mock.Mock(host='127.0.0.1',
+                                                    port='3282'))
+        transport = mock.Mock(getPeer=get_peer)
+
+        task_session = TaskSession(mock.Mock(server=client.task_server,
+                                             transport=transport))
         task_session.task_id = task_id
 
         resource_dir = resource_manager.storage.get_dir(task_id)

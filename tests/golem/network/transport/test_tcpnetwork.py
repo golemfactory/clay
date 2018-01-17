@@ -1,15 +1,15 @@
 import logging
 import os
 import struct
-from unittest import mock
-from unittest import TestCase
+from unittest import mock, TestCase
 
-MagicMock = mock.MagicMock
+from freezegun import freeze_time
+from golem_messages import message
 
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem_messages import message
+from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
                                                 EncryptFileProducer,
@@ -17,11 +17,14 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 EncryptDataProducer,
                                                 DecryptDataConsumer,
                                                 BasicProtocol,
-                                                logger, SocketAddress,
+                                                SafeProtocol,
+                                                SocketAddress,
                                                 MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
+
+MagicMock = mock.MagicMock
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -218,6 +221,39 @@ class TestBasicProtocol(LogTestCase):
         load_mock.return_value = m
         protocol.dataReceived(packed_data)
         self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
+
+    @mock.patch('golem_messages.load')
+    def test_drop_set_task(self, load_mock):
+        protocol = SafeProtocol(MagicMock())
+        protocol.opened = True
+        protocol.session = mock.MagicMock()
+        protocol.session.my_private_key = None
+        protocol.session.theirs_public_key = None
+
+        with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
+            node = Node(
+                node_name='super_node',
+                key=str("key"),
+                pub_addr='1.2.3.4',
+                prv_addr='1.2.3.4',
+                pub_port=10000,
+                prv_port=10000)
+
+            msg = message.SetTaskSession(
+                key_id=None,
+                node_info=node,
+                conn_id=None,
+                super_node_info=None)
+            data = msg.serialize()
+            packed_data = struct.pack("!L", len(data)) + data
+            load_mock.return_value = msg
+            for _ in range(0, 100):
+                protocol.dataReceived(packed_data)
+            protocol.session.interpret.assert_called_once_with(msg)
+            frozen_datetime.move_to("2017-01-14 10:30:45")
+            protocol.session.interpret.reset_mock()
+            protocol.dataReceived(packed_data)
+            protocol.session.interpret.assert_called_once_with(msg)
 
     def test_dataReceived_long(self):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))

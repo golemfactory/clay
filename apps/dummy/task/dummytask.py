@@ -166,7 +166,8 @@ class DummyTaskBuilder(CoreTaskBuilder):
         #     raise TypeError("Subtask data size should be int")
         sbs = int(sbs)
         # difficulty comes in hex string from GUI
-        difficulty = int(difficulty, 16)
+        if isinstance(difficulty, str):
+            difficulty = int(difficulty, 16)
 
         if sbs <= 0:
             raise Exception("Subtask data size should be greater than 0")

@@ -552,7 +552,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         secret = msg.secret
         content_hash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = self.task_server.get_download_options(self.key_id)
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -644,10 +645,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
 
-        # Prefer known client options to ones provided in the message
-        client_options = self.task_server.get_download_options(self.key_id)
-        if not (client_options.options and client_options.options.get('peers')):
-            client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
