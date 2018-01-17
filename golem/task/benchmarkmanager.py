@@ -1,6 +1,7 @@
 from copy import copy
 import logging
 import os
+from typing import Union
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
@@ -35,11 +36,10 @@ class BenchmarkManager(object):
             if success:
                 success(performance)
 
-        def error_callback(err_msg):
-            logger.error("Unable to run {} benchmark: {}".format(env_id,
-                                                                 err_msg))
+        def error_callback(err: Union[str, Exception]):
+            logger.error("Unable to run %s benchmark: %s", env_id, str(err))
             if error:
-                error(err_msg)
+                error(err)
 
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted

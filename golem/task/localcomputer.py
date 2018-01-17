@@ -68,8 +68,8 @@ class LocalComputer(object):
             self.tt.start()
 
         except Exception as exc:
-            logger.warning("{}: {}".format(self.comp_failed_warning, exc))
-            self.error_callback(to_unicode(exc))
+            logger.warning("%s: %s", self.comp_failed_warning, exc)
+            self.error_callback(exc)
 
     def end_comp(self):
         if self.tt:
