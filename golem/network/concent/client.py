@@ -144,8 +144,6 @@ class ConcentClientService(threading.Thread):
     MAX_GRACE_TIME = 5 * 60  # s
     GRACE_FACTOR = 2  # n times on each failure
 
-    QUEUE_TIMEOUT = 5  # s
-
     def __init__(self, signing_key, public_key, enabled=True):
         super().__init__(daemon=True)
 
@@ -229,7 +227,7 @@ class ConcentClientService(threading.Thread):
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get(True, self.QUEUE_TIMEOUT)
+            req = self._queue.get_nowait()
         except queue.Empty:
             return
 
