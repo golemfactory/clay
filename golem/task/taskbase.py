@@ -8,7 +8,6 @@ import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
-from golem.resource.resource import TaskResourceHeader
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -36,12 +35,6 @@ class TaskTypeInfo(object):
 class ResultType(object): # class ResultType(Enum):
     DATA = 0
     FILES = 1
-
-
-class ResourceType(object): # class ResourceType(Enum):
-    ZIP = 0
-    PARTS = 1
-    HASHES = 2
 
 
 class TaskHeader(object):
@@ -128,7 +121,7 @@ class TaskHeader(object):
         return sorted(dictionary.items())
 
 
-class TaskBuilder(object):
+class TaskBuilder(abc.ABC):
     def __init__(self):
         pass
 
@@ -157,7 +150,7 @@ class TaskEventListener(object):
         pass
 
 
-class Task(metaclass=abc.ABCMeta):
+class Task(abc.ABC):
 
     class ExtraData(object):
         def __init__(self, should_wait=False, ctd=None, **kwargs):
@@ -328,19 +321,9 @@ class Task(metaclass=abc.ABCMeta):
         """
         pass  # Implement in derived class
 
-    @abc.abstractmethod
-    def get_resources(self,
-                      resource_header: TaskResourceHeader,
-                      resource_type: ResourceType=ResourceType.ZIP,
-                      tmp_dir: str=None) -> Union[None, str, Tuple[TaskResourceHeader, List]]:
-        """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
-        preparing resources depends from declared resource_type
-        :param ResourceHeader resource_header: description of resources that computing node already have for this task
-        :param ResourceType resource_type: resource type from resources_types (0 for zip, 1 for hash list)
-        :param str tmp_dir: additional directory that can be used during file transfer
-        :return None | str | (TaskResourceHeader, list): result depends on return on resource_type
-        """
-        return None
+    # TODO: Add description
+    def get_resources(self) -> list:
+        return []
 
     @abc.abstractmethod
     def update_task_state(self, task_state: TaskState):

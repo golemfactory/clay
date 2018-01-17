@@ -189,7 +189,7 @@ class PeerSession(BasicSafeSession):
         """ Send message with gossip
          :param list gossip: gossip to be send
         """
-        self.send(message.Gossip(gossip))
+        self.send(message.Gossip(gossip=gossip))
 
     def send_stop_gossip(self):
         """ Send stop gossip message """
@@ -241,6 +241,8 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+        logger.debug('Forwarding session request: %s -> %s to %s',
+                     node_info.key, key_id, self.key_id)
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
@@ -260,12 +262,34 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.pong_received(self.key_id)
 
     def _react_to_hello(self, msg):
-        super()._react_to_hello(msg)
-        if not self.conn.opened:
-            return
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
+
+        # Check if sender is a seed/bootstrap node
+        port = getattr(msg, 'port', None)
+        if (self.address, port) in self.p2p_service.seeds:
+            compare_version(getattr(msg, 'client_ver', None))
+
+        # We want to compare_version() before calling
+        # super()._react_to_hello() and potentially returning
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
+
+        proto_id = getattr(msg, 'proto_id', None)
+        if proto_id != variables.PROTOCOL_CONST.ID:
+            logger.info(
+                "P2P protocol version mismatch %r vs %r (local)"
+                " for node %r:%r",
+                proto_id,
+                variables.PROTOCOL_CONST.ID,
+                self.address,
+                self.port
+            )
+            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            return
+
         self.node_name = msg.node_name
         self.node_info = msg.node_info
         self.client_ver = msg.client_ver
@@ -276,22 +300,6 @@ class PeerSession(BasicSafeSession):
         solve_challenge = msg.solve_challenge
         challenge = msg.challenge
         difficulty = msg.difficulty
-
-        # Check if sender is a seed/bootstrap node
-        if (self.address, msg.port) in self.p2p_service.seeds:
-            compare_version(msg.client_ver)
-
-        if msg.proto_id != variables.PROTOCOL_CONST.ID:
-            logger.info(
-                "P2P protocol version mismatch %r vs %r (local)"
-                " for node %r:%r",
-                msg.proto_id,
-                variables.PROTOCOL_CONST.ID,
-                self.address,
-                self.port
-            )
-            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
-            return
 
         if not self.__should_init_handshake():
             self.__send_hello()
@@ -327,9 +335,9 @@ class PeerSession(BasicSafeSession):
             return
         if len(tasks) > variables.TASK_HEADERS_LIMIT:
             tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
-            self.send(message.Tasks(tasks_to_send))
+            self.send(message.Tasks(tasks=tasks_to_send))
         else:
-            self.send(message.Tasks(tasks))
+            self.send(message.Tasks(tasks=tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -446,7 +454,7 @@ class PeerSession(BasicSafeSession):
     def _send_peers(self, node_key_id=None):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
                                                 alpha=SEND_PEERS_NUM)
-        self.send(message.Peers(nodes_info))
+        self.send(message.Peers(peers=nodes_info))
 
     def __set_verified_conn(self):
         self.verified = True

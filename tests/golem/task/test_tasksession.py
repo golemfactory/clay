@@ -10,7 +10,6 @@ from unittest.mock import Mock, MagicMock, patch
 import golem_messages
 from golem_messages import message
 
-from apps.core.task.coretask import TaskResourceHeader
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
@@ -23,6 +22,7 @@ from golem.network import history
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
@@ -581,9 +581,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert task_server.pull_resources.called
         assert isinstance(call_options['client_options'], Mock)
 
-        # Use remote options when local ones are not available
-        task_server.get_download_options.return_value = ClientOptions(client,
-                                                                      version)
+        # Use download options built by TaskServer
+        task_server.get_download_options.return_value = client_options
+
         self.task_session.task_server.pull_resources.reset_mock()
         self.task_session._react_to_resource_list(msg)
         call_options = task_server.pull_resources.call_args[1]

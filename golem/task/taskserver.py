@@ -14,16 +14,20 @@ from requests import HTTPError
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+
 from golem.environments.environment import SupportStatus, UnsupportReason
+
+from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
+from golem.resource.resource import ResourceType, get_resources_for_task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
-from golem.task.taskbase import TaskHeader, ResourceType
+from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
@@ -71,7 +75,10 @@ class TaskResourcesMixin(object):
 
         for task_id, task_state in states.items():
             task = self.task_manager.tasks[task_id]
-            files = task.get_resources(None, ResourceType.HASHES)
+            files = get_resources_for_task(None,
+                                           resources=task.get_resources(),
+                                           tmp_dir=task.tmp_dir,
+                                           resource_type=ResourceType.HASHES)
 
             logger.info("Restoring task '%s' resources", task_id)
             self._restore_resources(files, task_id, task_state.resource_hash)
@@ -102,10 +109,16 @@ class TaskResourcesMixin(object):
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def get_download_options(self, key_id):
+    def get_download_options(self, key_id, address=None):
         resource_manager = self._get_resource_manager()
-        peer = self.get_resource_peer(key_id)
-        peers = [peer] if peer else []
+        peers = []
+
+        if address:
+            peers.append({'TCP': [address, DEFAULT_HYPERDRIVE_PORT]})
+        else:
+            peer = self.get_resource_peer(key_id)
+            if peer:
+                peers.append(peer)
         return resource_manager.build_client_options(peers=peers)
 
     def get_share_options(self, task_id, key_id):
@@ -986,7 +999,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def _find_sessions(self, subtask):
         if subtask in self.task_sessions:
             return [self.task_sessions[subtask]]
-        for s in self.task_sessions_incoming:
+        for s in set(self.task_sessions_incoming):
             logger.debug('Checking session: %r', s)
             if s.subtask_id == subtask:
                 return [s]

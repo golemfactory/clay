@@ -1,7 +1,8 @@
 from unittest import TestCase
 
-from golem.core.keysauth import mk_privkey, privtopub
 from golem.utils import encode_hex
+
+from golem_messages.cryptography import privtopub, mk_privkey
 
 
 def key_in_hex(key):

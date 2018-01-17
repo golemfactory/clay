@@ -4,6 +4,8 @@ import os
 import socket
 import uuid
 from copy import deepcopy
+from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 from types import MethodType
 from typing import Optional
 
@@ -97,7 +99,8 @@ class ClientHandler(metaclass=abc.ABCMeta):
         requests.exceptions.RetryError,
         requests.exceptions.ConnectionError,
         socket.timeout,
-        socket.error
+        socket.error,
+        Failure
     )
 
     def __init__(self, config: Optional[ClientConfig]):
@@ -130,6 +133,32 @@ class ClientHandler(metaclass=abc.ABCMeta):
                 return None
             return result
 
+    def _retry_async(self, method: MethodType, *args, **kwargs):
+        retries = 0
+        result = Deferred()
+
+        def _run():
+            nonlocal retries
+            retries += 1
+
+            deferred = method(*args, **kwargs)
+            deferred.addCallbacks(result.callback, _error)
+            return deferred
+
+        def _error(exc):
+            if isinstance(exc, Failure):
+                exc = exc.value
+
+            if exc.__class__ not in self.retry_exceptions:
+                result.errback(exc)
+            elif retries < self.config.max_retries:
+                _run()
+            else:
+                result.errback(exc)
+
+        _run()
+        return result
+
 
 class DummyClient(IClient):
 
@@ -138,6 +167,14 @@ class DummyClient(IClient):
     _id = "test"
 
     def add(self, files: dict, **_):
+        return self._add(files)
+
+    def add_async(self, files: dict, **_):
+        deferred = Deferred()
+        deferred.callback(self._add(files))
+        return deferred
+
+    def _add(self, files: dict):
         from golem.core.fileshelper import common_dir
 
         resource_hash = str(uuid.uuid4())
@@ -169,8 +206,13 @@ class DummyClient(IClient):
         return self._id
 
     def cancel(self, content_hash: str):
-
         return content_hash
+
+    @staticmethod
+    def cancel_async(content_hash: str):
+        deferred = Deferred()
+        deferred.callback(content_hash)
+        return deferred
 
     @classmethod
     def build_options(cls, **kwargs):

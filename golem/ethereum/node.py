@@ -18,12 +18,12 @@ from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL
-from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import encode_hex, decode_hex
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
+from golem_messages.cryptography import privtopub
 
 log = logging.getLogger('golem.ethereum')
 

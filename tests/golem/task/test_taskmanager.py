@@ -14,25 +14,19 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
-from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, \
     TaskEventListener, ResultType
 from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager, logger, subtask_priority
+from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, ComputerState
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
-from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
-    DummyTaskBuilder,
-    DummyTaskTypeInfo, DummyTask)
-from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
-    DummyTaskOptions
-from apps.dummy.task.verificator import DummyTaskVerificator
+    DummyTaskBuilder)
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.resource.dirmanager import DirManager
 
 class PickableMock(Mock):
@@ -46,6 +40,7 @@ class TaskMock(Task):
         super().__init__(*args, **kwargs)
         self.task_definition = Mock()
         self.task_definition.full_task_timeout = 10
+        self.tmp_dir = None
 
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
@@ -106,6 +101,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                        subtask_timeout=120.0):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='', task_definition=Mock())
+        task_mock.tmp_dir = self.path
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -180,6 +176,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 # check some task's properties...
                 assert restored_task.header.task_id == task.header.task_id
 
+    def test_remove_wrong_task_during_restore(self):
+        broken_pickle_file = self.tm.tasks_dir / "broken.pickle"
+        with broken_pickle_file.open('w') as f:
+            f.write("notapickle")
+        assert broken_pickle_file.is_file()
+        self.tm.restore_tasks()
+        assert not broken_pickle_file.is_file()
 
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
@@ -317,21 +320,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.assertTrue(self.tm.use_distributed_resources)
         self.tm.change_config(self.path, False)
         self.assertFalse(self.tm.use_distributed_resources)
-
-    def test_get_resources(self):
-        task_id = "xyz"
-
-        resources = ['first', 'second']
-
-        task_mock = self._get_task_mock()
-        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources):
-            self.tm.add_new_task(task_mock)
-            assert self.tm.get_resources(task_id, task_mock.header) is resources
-
-        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'", Mock())
-        self.tm.tasks["xyz"] = task
-        self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
-
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, dump_mock):
@@ -569,29 +557,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             ts = self.tm.query_task_state("xyz")
         assert ts is not None
         assert ts.progress == 0.3
-
-    def test_restart_task(self):
-        with self.assertLogs(logger, level="WARNING"):
-            assert self.tm.restart_task("xyz") is None
-        t = self._get_task_mock()
-        self.tm.add_new_task(t)
-        with self.assertNoLogs(logger, level="WARNING"):
-            self.tm.restart_task("xyz")
-
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
-
-        with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
-            self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
-            t.query_extra_data_return_value.ctd['subtask_id'] = "xxyyzz2"
-            self.tm.get_next_subtask("NODEID2", "NODENAME2", "xyz", 1000, 100, 10000, 10000)
-            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
-            with self.assertNoLogs(logger, level="WARNING"):
-                self.tm.restart_task("xyz")
-
-            assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
-            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
-            for ss in list(self.tm.tasks_states["xyz"].subtask_states.values()):
-                self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
 
     def test_abort_task(self):
         with self.assertLogs(logger, level="WARNING"):

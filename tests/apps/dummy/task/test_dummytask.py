@@ -8,8 +8,6 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
-from apps.dummy.task.verificator import DummyTaskVerificator
-from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -25,19 +23,12 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         return dt, td
 
     def test_constants(self):
-        assert DummyTask.VERIFICATOR_CLASS == DummyTaskVerificator
         assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
         assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):
         dt, td = self._get_new_dummy()
-        assert isinstance(dt.verificator, DummyTaskVerificator)
-
-        ver_opts = dt.verificator.verification_options
-        assert ver_opts["difficulty"] == td.options.difficulty
-        assert ver_opts["shared_data_files"] == td.shared_data_files
-        assert ver_opts["result_size"] == td.result_size
-        assert ver_opts["result_extension"] == DummyTask.RESULT_EXT
+        assert isinstance(dt, DummyTask)
 
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
@@ -104,8 +95,6 @@ class TestDummyTaskBuilder(TestCase):
         assert opts['difficulty'] == int(td.options.difficulty)
 
     def test_build_full_definition(self):
-        td = DummyTaskDefinition(DummyTaskDefaults())
-
         def get_dict():
             dictionary = {}
             dictionary['resources'] = {"aa"}
@@ -118,19 +107,19 @@ class TestDummyTaskBuilder(TestCase):
             dictionary["options"] = {"output_path": ""}
             return dictionary
 
-        def get_def(difficulty, sbs):
+        def get_def(difficulty: int, sbs):
             dictionary = get_dict()
             dictionary["options"].update({"subtask_data_size": sbs,
-                                          "difficulty": difficulty})
+                                          "difficulty": hex(difficulty)})
 
             return DummyTaskBuilder.build_full_definition(
-                DummyTaskTypeInfo(), dictionary)  # noqa
+                DummyTaskTypeInfo(), dictionary)
 
-        difficulty = "0xf"
+        difficulty = 15
         sbs = 10
         def_ = get_def(difficulty, sbs)
 
-        assert def_.options.difficulty == int(difficulty, 16)
+        assert def_.options.difficulty == difficulty
         assert def_.options.subtask_data_size == sbs
 
         with self.assertRaises(Exception):
@@ -139,12 +128,7 @@ class TestDummyTaskBuilder(TestCase):
             get_def(10, 0)
         with self.assertRaises(Exception):
             get_def(10, -1)
-        with self.assertRaises(Exception):
-            get_def(16 ** 8 + 1, 10)
-        with self.assertRaises(Exception):
-            get_def(16 ** 8, 10)
 
-        pass
         # TODO uncomment that when GUI will be fixed
         # with self.assertRaises(TypeError):
         #     get_def("aa", .1)

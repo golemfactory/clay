@@ -3,7 +3,6 @@ import hashlib
 import logging
 import os
 import pickle
-import struct
 import threading
 import time
 
@@ -23,7 +22,7 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.taskbase import ResultType, ResourceType
+from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -554,7 +553,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         secret = msg.secret
         content_hash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = self.task_server.get_download_options(self.key_id)
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -646,10 +646,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
 
-        # Prefer known client options to ones provided in the message
-        client_options = self.task_server.get_download_options(self.key_id)
-        if not (client_options.options and client_options.options.get('peers')):
-            client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
@@ -828,47 +826,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.err_msg = reasons.WrongDockerImages
         return False
 
-    def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.ZIP
-        )
-
-        if not res_file_path:
-            logger.error("Task {} has no resource".format(msg.task_id))
-            self.conn.transport.write(struct.pack("!L", 0))
-            self.dropped()
-            return
-
-        self.conn.producer = tcpnetwork.EncryptFileProducer(
-            [res_file_path],
-            self
-        )
-
-    def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(
-            msg.task_id,
-            CBORSerializer.loads(msg.resource_header),
-            ResourceType.PARTS
-        )
-        if res is None:
-            return
-        delta_header, parts_list = res
-
-        self.send(message.DeltaParts(
-            task_id=self.task_id,
-            delta_header=delta_header,
-            parts=parts_list,
-            node_name=self.task_server.get_node_name(),
-            node_info=self.task_server.node,
-            address=self.task_server.get_resource_addr(),
-            port=self.task_server.get_resource_port()))
-
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
-        resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options()
+        client_options = self.task_server.get_share_options(res.task_id,
+                                                            self.key_id)
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -906,7 +867,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         request = AsyncRequest(task_result_manager.create,
                                self.task_server.node, res,
-                               client_options=client_options,
                                key_or_secret=secret)
 
         return async_run(request, success=success, error=error)

@@ -4,7 +4,7 @@ import sys
 import time
 import uuid
 from collections import Iterable
-from copy import copy
+from copy import copy, deepcopy
 from os import path, makedirs
 from threading import Lock, Thread
 from typing import Dict
@@ -43,6 +43,7 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
@@ -50,11 +51,11 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
     Payments
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskbase import ResourceType
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
@@ -142,6 +143,7 @@ class Client(HardwarePresetsMixin):
         self.concent_service = ConcentClientService(enabled=False)
 
         self.task_server = None
+        self.port_mapper = None
 
         self.nodes_manager_client = None
 
@@ -273,6 +275,7 @@ class Client(HardwarePresetsMixin):
         log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
+
         log.debug("Is super node? %s", self.node.is_super_node())
 
         if not self.p2pservice:
@@ -339,11 +342,16 @@ class Client(HardwarePresetsMixin):
 
         def connect(ports):
             p2p_port, task_port = ports
+            all_ports = ports + list(hyperdrive_ports)
+
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
+            if self.config_desc.use_upnp:
+                self.start_upnp(all_ports)
+
             dispatcher.send(signal='golem.p2p', event='listening',
-                            port=[p2p_port, task_port] + list(hyperdrive_ports))
+                            port=all_ports)
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
@@ -381,6 +389,15 @@ class Client(HardwarePresetsMixin):
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
 
+    def start_upnp(self, ports):
+        self.port_mapper = PortMapperManager()
+        self.port_mapper.discover()
+
+        if self.port_mapper.available:
+            for port in ports:
+                self.port_mapper.create_mapping(port)
+            self.port_mapper.update_node(self.node)
+
     def stop_network(self):
         if self.p2pservice:
             self.p2pservice.stop_accepting()
@@ -388,6 +405,8 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             self.task_server.stop_accepting()
             self.task_server.disconnect()
+        if self.port_mapper:
+            self.port_mapper.quit()
 
     def pause(self):
         for service in self._services:
@@ -470,7 +489,12 @@ class Client(HardwarePresetsMixin):
         task_manager.add_new_task(task)
 
         task_id = task.header.task_id
-        files = task.get_resources(None, ResourceType.HASHES)
+
+        tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+        files = get_resources_for_task(resource_header=None,
+                                       resource_type=ResourceType.HASHES,
+                                       tmp_dir=tmp_dir,
+                                       resources=task.get_resources())
 
         def add_task(result):
             task_state = task_manager.tasks_states[task_id]
@@ -561,7 +585,20 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.abort_task(task_id)
 
     def restart_task(self, task_id):
-        self.task_server.task_manager.restart_task(task_id)
+        task_manager = self.task_server.task_manager
+
+        # Task state is changed to restarted and stays this way until it's
+        # deleted from task manager.
+        task_manager.put_task_in_restarted_state(task_id)
+
+        # Create new task that is a copy of the definition of the old one.
+        # It has a new deadline and a new task id.
+        task_dict = deepcopy(
+            task_manager.get_task_definition_dict(
+                task_manager.tasks[task_id]))
+        del task_dict['id']
+
+        return self.create_task(task_dict)
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)

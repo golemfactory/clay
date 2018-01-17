@@ -62,5 +62,4 @@ class RenderingTaskDefinition(TaskDefinition):
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
     def __init__(self):
         AdvanceVerificationOptions.__init__(self)
-        self.box_size = (5, 5)
         self.probability = 0.01
