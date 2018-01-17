@@ -39,26 +39,26 @@ class TestPayment(DatabaseFixture):
         p = m.Payment(payee="DEF", subtask="xyz", value=5,
                       status=m.PaymentStatus.awaiting)
         evt = p.save(force_insert=True)
-        evt.wait(10)
+        evt.wait()
         assert p._get_pk_value()
 
         evt = m.Payment.create(payee="DEF", subtask="xyz", value=5,
                                status=m.PaymentStatus.awaiting)
-        evt.wait(10)
+        evt.wait()
 
         assert isinstance(evt.result, Failure)
         assert isinstance(evt.result.value, IntegrityError)
 
         m.Payment.create(payee="DEF", subtask="xyz2", value=4,
-                         status=m.PaymentStatus.confirmed).wait(10)
+                         status=m.PaymentStatus.confirmed).wait()
         m.Payment.create(payee="DEF2", subtask="xyz4", value=5,
-                         status=m.PaymentStatus.sent).wait(10)
+                         status=m.PaymentStatus.sent).wait()
 
         self.assertEqual(3, len([payment for payment in m.Payment.select()]))
 
     def test_invalid_status(self):
         evt = m.Payment.create(payee="XX", subtask="zz", value=5, status=1)
-        evt.wait(10)
+        evt.wait()
         # result is an instance of from twisted.python.failure import Failure
         assert isinstance(evt.result.value, TypeError)
 
@@ -67,12 +67,12 @@ class TestPayment(DatabaseFixture):
 
         evt = m.Payment.create(payee="XX", subtask="float", value=5.5,
                                status=m.PaymentStatus.sent)
-        evt.wait(10)
+        evt.wait()
         assert isinstance(evt.result.value, TypeError)
 
         m.Payment.create(payee="XX", subtask="str", value="500",
                          status=m.PaymentStatus.sent)
-        evt.wait(10)
+        evt.wait()
         assert isinstance(evt.result.value, TypeError)
 
     def test_payment_details(self):
@@ -161,18 +161,18 @@ class TestPerformance(DatabaseFixture):
         # environment_id can't be null
         perf = m.Performance()
         evt = perf.save()
-        evt.wait(10)
+        evt.wait()
         # result is an instance of from twisted.python.failure import Failure
         assert isinstance(evt.result.value, IntegrityError)
 
         perf.environment_id = "ENV1"
-        perf.save().wait(10)
+        perf.save().wait()
 
         print([x.__dict__ for x in m.Performance.select().execute()])
         print(self.database.db_service.queue.qsize())
 
         perf = m.Performance(environment_id="ENV2", value=138.18)
-        perf.save().wait(10)
+        perf.save().wait()
 
         print([x.__dict__ for x in m.Performance.select().execute()])
 
@@ -184,25 +184,32 @@ class TestPerformance(DatabaseFixture):
         # environment_id must be unique
         perf3 = m.Performance(environment_id="ENV1", value=1472.11)
         evt = perf3.save()
-        evt.wait(10)
+        evt.wait()
         # result is an instance of from twisted.python.failure import Failure
         assert isinstance(evt.result.value, IntegrityError)
 
         # value doesn't have to be unique
         perf3 = m.Performance(environment_id="ENV3", value=138.18)
         evt = perf3.save()
-        evt.wait(10)
+        evt.wait()
         assert not isinstance(evt.result, Failure)
 
     def test_update_or_create(self):
-        m.Performance.update_or_create("ENVX", 100).wait(10)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
+        m.Performance.update_or_create("ENVX", 100).wait()
+        env = m.Performance.get_async(m.Performance.environment_id == "ENVX") \
+            .wait().result
         assert env.value == 100
-        m.Performance.update_or_create("ENVX", 200).wait(10)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
+
+        m.Performance.update_or_create("ENVX", 200).wait()
+        env = m.Performance.get_async(m.Performance.environment_id == "ENVX") \
+            .wait().result
         assert env.value == 200
-        m.Performance.update_or_create("ENVXXX", 300).wait(10)
-        env = m.Performance.get(m.Performance.environment_id == "ENVXXX")
+
+        m.Performance.update_or_create("ENVXXX", 300).wait()
+        env = m.Performance.get_async(m.Performance.environment_id == "ENVXXX")\
+            .wait().result
         assert env.value == 300
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
+
+        env = m.Performance.get_async(m.Performance.environment_id == "ENVX") \
+            .wait().result
         assert env.value == 200

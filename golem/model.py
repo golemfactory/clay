@@ -56,7 +56,6 @@ class Database:
             pragmas=(
                 ('foreign_keys', True),
                 ('busy_timeout', 3000),
-                ('journal_mode', 'WAL')
             )
         )
 
@@ -92,12 +91,12 @@ class Database:
             Performance,
             NetworkMessage
         ]
-        version = Database._get_user_version()
-        if version != Database.SCHEMA_VERSION:
+        version = cls._get_user_version()
+        if version != cls.SCHEMA_VERSION:
             log.info("New database version %r, previous %r",
-                     Database.SCHEMA_VERSION, version)
+                     cls.SCHEMA_VERSION, version)
             cls.db.drop_tables(tables, safe=True)
-            Database._set_user_version(Database.SCHEMA_VERSION)
+            cls._set_user_version(cls.SCHEMA_VERSION)
         cls.db.create_tables(tables, safe=True)
 
     @classmethod

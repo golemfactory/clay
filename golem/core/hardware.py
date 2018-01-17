@@ -58,11 +58,9 @@ class HardwarePresets(object):
         cls.default_values['disk'] = free_partition_space(cls.working_dir)
 
         HardwarePreset.get_or_create(name=cls.DEFAULT_NAME,
-                                     defaults=cls.default_values,
-                                     __wait__=True)
+                                     defaults=cls.default_values).wait()
         HardwarePreset.get_or_create(name=cls.CUSTOM_NAME,
-                                     defaults=cls.CUSTOM_VALUES,
-                                     __wait__=True)
+                                     defaults=cls.CUSTOM_VALUES).wait()
 
     @classmethod
     def update_config(cls, preset_or_name, config):

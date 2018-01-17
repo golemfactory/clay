@@ -5,7 +5,8 @@ from functools import partial
 from queue import Queue, Empty
 from threading import Thread, Event
 
-from peewee import RawQuery, UpdateQuery, InsertQuery, DeleteQuery, Model
+from peewee import RawQuery, UpdateQuery, InsertQuery, DeleteQuery, Model, \
+    SelectQuery
 from twisted.internet.defer import Deferred
 
 log = logging.getLogger('golem.db')
@@ -17,8 +18,8 @@ class DeferredEvent(Event):
         super().__init__()
         self._deferred = Deferred()
 
-    def wait(self, timeout=None):
-        super().wait(timeout)
+    def wait(self, timeout=3):
+        super().wait(timeout or None)
         return self
 
     @property
@@ -66,6 +67,30 @@ class DelegateQuery(abc.ABC):
     @abc.abstractmethod
     def do_execute(self):
         pass
+
+
+class SelectDelegateQuery(DelegateQuery, SelectQuery):
+
+    def __init__(self, model_class, *selection) -> None:
+        DelegateQuery.__init__(self)
+        SelectQuery.__init__(self, model_class, *selection)
+        self._get = False
+
+    def do_execute(self):
+        if not self._get:
+            return SelectQuery.execute(self)
+
+        clone = self.paginate(1, 1)
+        try:
+            return next(clone.do_execute())
+        except StopIteration:
+            raise self.model_class.DoesNotExist(
+                'Instance matching query does not exist:'
+                '\nSQL: %s\nPARAMS: %s' % self.sql())
+
+    def get(self):
+        self._get = True
+        return super().execute()
 
 
 class RawDelegateQuery(DelegateQuery, RawQuery):
@@ -139,11 +164,17 @@ class SaveDelegatePseudoQuery(DelegateQuery):
     def database(self, db):
         self.instance._meta.database = db
 
-    def clone(self):
-        return self
-
 
 class DelegateModel(Model):
+
+    @classmethod
+    def select(cls, *selection, __async__=False):
+        if __async__:
+            query = SelectDelegateQuery(cls, *selection)
+            if cls._meta.order_by:
+                query = query.order_by(*cls._meta.order_by)
+            return query
+        return super().select(*selection)
 
     @classmethod
     def update(cls, __data=None, **update):
@@ -183,11 +214,13 @@ class DelegateModel(Model):
                                        prepare_instance=True).execute()
 
     @classmethod
-    def get_or_create(cls, __wait__=False, **kwargs):
-        result, created = super().get_or_create(**kwargs)
-        # if __wait__:
-        #     result.wait()
-        return result, created
+    def get_async(cls, *query, **kwargs):
+        sq = cls.select(__async__=True).naive()
+        if query:
+            sq = sq.where(*query)
+        if kwargs:
+            sq = sq.filter(**kwargs)
+        return sq.get()
 
     def save(self,
              force_insert=False,
@@ -275,10 +308,11 @@ class DatabaseService:
             return
 
         try:
-            #query = query.clone()
+
             query.database = self._db
             with self._db.transaction(transaction_type='immediate'):
                 result = query.do_execute()
+
         except Exception as exc:
             handler = partial(self._log_error, query)
             query.evt.addErrback(handler)

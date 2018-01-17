@@ -42,7 +42,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset_dict = dict()
 
         def assert_integrity_error(_evt):
-            _evt.wait(10)
+            _evt.wait()
             assert isinstance(_evt.result, Failure)
             assert isinstance(_evt.result.value, IntegrityError)
 
@@ -64,7 +64,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
 
         # persist a preset with all values set
         preset_dict['disk'] = preset_disk
-        HardwarePresetsMixin.create_hw_preset(preset_dict).wait(10)
+        HardwarePresetsMixin.create_hw_preset(preset_dict).wait()
         preset = HardwarePresetsMixin.get_hw_preset(preset_name)
 
         # try to insert a preset with the same name
@@ -79,19 +79,19 @@ class TestHardwarePresetsMixin(TestWithDatabase):
 
         # use upsert to create a preset from dict
         preset_dict['name'] = str(uuid.uuid4())
-        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait(10)
+        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait()
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
         # use upsert to create a preset from object
         preset_dict['name'] = str(uuid.uuid4())
         preset = HardwarePreset(**preset_dict)
-        HardwarePresetsMixin.upsert_hw_preset(preset).wait(10)
+        HardwarePresetsMixin.upsert_hw_preset(preset).wait()
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
     def test_update_hw_preset(self):
 
         def assert_success(_evt):
-            _evt.wait(10)
+            _evt.wait()
             assert _evt.result
             assert not isinstance(_evt.result, Failure)
 
@@ -110,7 +110,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset_dict['cpu_cores'] += 1
 
         # use upsert to update the preset
-        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait(10)
+        HardwarePresetsMixin.upsert_hw_preset(preset_dict).wait()
         preset = HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
         assert preset['cpu_cores'] == preset_dict['cpu_cores']
 
@@ -121,23 +121,23 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         with self.assertRaises(ValueError):
             HardwarePresetsMixin.delete_hw_preset(CUSTOM_HARDWARE_PRESET_NAME)
         # test removal of a non-existing preset
-        evt = HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4())).wait(10)
+        evt = HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4())).wait()
         assert evt.result == 0
 
         preset_dict = HardwarePresetsMixin.get_hw_caps()
         preset_dict['name'] = str(uuid.uuid4())
 
         # create and remove a preset
-        evt = HardwarePresetsMixin.create_hw_preset(preset_dict).wait(10)
+        evt = HardwarePresetsMixin.create_hw_preset(preset_dict).wait()
         assert evt.result
 
         evt = HardwarePresetsMixin.delete_hw_preset(
-            preset_dict['name']).wait(10)
+            preset_dict['name']).wait()
         assert evt.result
 
         # make sure that preset does not exist
         evt = HardwarePresetsMixin.delete_hw_preset(
-            preset_dict['name']).wait(10)
+            preset_dict['name']).wait()
         assert evt.result == 0
 
     def test_sanitize_preset_name(self):

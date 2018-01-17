@@ -170,7 +170,7 @@ class TestClient(TestDirFixture, TestWithReactor):
         ]
 
         for income in incomes:
-            income.save().wait(10)
+            income.save().wait()
 
         received_incomes = self.client.get_incomes_list()
         self.assertEqual(len(received_incomes), len(incomes))
