@@ -115,7 +115,8 @@ class CoreTask(Task):
         deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
-        self.task_resources = list(set(filter(os.path.isfile, task_definition.resources)))
+        self.task_resources = list(
+            set(filter(os.path.isfile, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -181,8 +182,8 @@ class CoreTask(Task):
 
     def is_docker_task(self):
         return hasattr(self.header, 'docker_images') \
-               and self.header.docker_images \
-               and len(self.header.docker_images) > 0
+            and self.header.docker_images \
+            and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager: DirManager) -> None:
         dir_manager.clear_temporary(self.header.task_id)
@@ -351,14 +352,17 @@ class CoreTask(Task):
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        tr_files = self.load_task_results(task_results, result_type, subtask_id)
-        self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+        tr_files = self.load_task_results(
+            task_results, result_type, subtask_id)
+        self.results[subtask_id] = self.filter_task_results(
+            tr_files, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
+        self.counting_nodes[self.subtasks_given[
+            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     # TODO why is it here and not in the Task?
@@ -383,8 +387,10 @@ class CoreTask(Task):
         elif result_type == ResultType.FILES:
             return task_result
         else:
-            logger.error("Task result type not supported {}".format(result_type))
-            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(result_type)
+            logger.error(
+                "Task result type not supported {}".format(result_type))
+            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(
+                result_type)
             return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
@@ -447,7 +453,8 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
+        self.counting_nodes[self.subtasks_given[
+            subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
@@ -472,7 +479,7 @@ class CoreTask(Task):
         if client.rejected():
             return AcceptClientVerdict.REJECTED
         elif finishing >= max_finishing or \
-                                client.started() - finishing >= max_finishing:
+                client.started() - finishing >= max_finishing:
             return AcceptClientVerdict.SHOULD_WAIT
 
         client.start()
@@ -596,4 +603,50 @@ class CoreTaskBuilder(TaskBuilder):
         if definition.legacy:
             return options['output_path']
 
-        return os.path.join(options['output_path'], definition.task_name)
+        absolute_path = cls.get_nonexistant_path(
+            options['output_path'],
+            definition.task_name,
+            options.get('format', ''))
+
+        return absolute_path
+
+    @classmethod
+    def get_nonexistant_path(cls, path, name, extension=""):
+        """
+        Prevent overwriting with incremental filename
+        @ref https://stackoverflow.com/a/43167607/1763249
+
+        Example
+        --------
+
+        >>> get_nonexistant_path('/documents/golem/', 'task1', 'png')
+
+        # if path is not exist
+        '/documents/golem/task1' 
+
+        # or if exist 
+        '/documents/golem/task 1(1)' 
+
+        # or even if still exist
+        '/documents/golem/task 1(2)' 
+
+        ...
+        """
+        fname_path = os.path.join(path, name)
+
+        if extension:
+            extension = "." + extension
+
+        path_with_ext = os.path.join(path, name + extension)
+
+        if not os.path.exists(path_with_ext):
+            return fname_path
+
+        i = 1
+        new_fname = "{}({})".format(fname_path, i)
+
+        while os.path.exists(new_fname + extension):
+            i += 1
+            new_fname = "{}({})".format(fname_path, i)
+
+        return new_fname
