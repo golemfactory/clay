@@ -330,7 +330,8 @@ class PeerSession(BasicSafeSession):
             self.p2p_service.try_to_add_peer(pi)
 
     def _react_to_get_tasks(self, msg):
-        my_tasks, other_tasks = self.p2p_service.get_tasks_headers()
+        my_tasks = self.p2p_service.get_own_tasks_headers()
+        other_tasks = self.p2p_service.get_others_tasks_headers()
         if not my_tasks and not other_tasks:
             return
 
