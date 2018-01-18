@@ -4,7 +4,6 @@ import uuid
 from os import path
 from threading import Lock
 
-from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
@@ -96,9 +95,6 @@ class DummyTask(Task):
         self.assigned_subtasks = {}
         self._lock = Lock()
 
-    def to_dictionary(self):
-        return {}
-
     def __setstate__(self, state):
         super(DummyTask, self).__setstate__(state)
         self._lock = Lock()
@@ -173,7 +169,7 @@ class DummyTask(Task):
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
         subtask_def['src_code'] = self.src_code
-        subtask_def['task_owner'] = self.header.task_owner
+        subtask_def['task_owner'] = self.header.task_owner.to_dict()
         subtask_def['environment'] = self.header.environment
         subtask_def['return_address'] = self.header.task_owner_address
         subtask_def['return_port'] = self.header.task_owner_port

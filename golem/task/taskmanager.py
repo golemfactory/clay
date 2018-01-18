@@ -341,7 +341,7 @@ class TaskManager(TaskEventListener):
         ctd['key_id'] = task.header.task_owner_key_id
         ctd['return_address'] = task.header.task_owner_address
         ctd['return_port'] = task.header.task_owner_port
-        ctd['task_owner'] = task.header.task_owner
+        ctd['task_owner'] = task.header.task_owner.to_dict()
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
