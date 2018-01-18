@@ -132,7 +132,7 @@ class TestConcentClientService(TestCase):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=60
+            delay=datetime.timedelta(seconds=60)
         )
 
         assert 'key' in self.concent_service._delayed
@@ -246,3 +246,22 @@ class TestConcentRequestStatus(TestCase):
         assert status.completed()
         assert not status.success()
         assert status.error()
+
+
+class ConcentCallLaterTestCase(TestCase):
+    def setUp(self):
+        node_keys = golem_messages.cryptography.ECCx(None)
+        self.concent_service = client.ConcentClientService(
+            signing_key=node_keys.raw_privkey,
+            public_key=node_keys.raw_pubkey,
+            enabled=True,
+        )
+        self.msg = message.ForceReportComputedTask()
+
+    def test_submit(self):
+        # Shouldn't fail
+        self.concent_service.submit(
+            'key',
+            self.msg,
+            datetime.timedelta(seconds=1)
+        )

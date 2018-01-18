@@ -170,7 +170,7 @@ class ConcentClientService(threading.Thread):
     def submit(self,
                key: Hashable,
                msg: message.Message,
-               delay: Optional[float] = None) -> None:
+               delay: Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
@@ -192,7 +192,11 @@ class ConcentClientService(threading.Thread):
         req.status = ConcentRequestStatus.Waiting
 
         if delay:
-            self._delayed[key] = reactor.callLater(delay, self._enqueue, req)
+            self._delayed[key] = reactor.callLater(
+                delay.total_seconds(),
+                self._enqueue,
+                req,
+            )
         else:
             self._enqueue(req)
 
@@ -248,7 +252,7 @@ class ConcentClientService(threading.Thread):
         try:
             req.sent_at = now
             res = send_to_concent(req.msg, self.signing_key, self.public_key)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.exception('send_to_concent(%r) failed', req.msg)
             req.content = exc
             req.status = ConcentRequestStatus.Error
