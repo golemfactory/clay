@@ -18,13 +18,24 @@ from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
+from playhouse.shortcuts import RetryOperationalError
 
 log = logging.getLogger('golem.db')
 
+
+class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
+
+    def sequence_exists(self, seq):
+        raise NotImplementedError()
+
+
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = GolemSqliteDatabase(None, threadlocals=True,
+                         pragmas=(
+                             ('foreign_keys', True),
+                             ('busy_timeout', 1000),
+                             ('journal_mode', 'WAL')))
 
 
 class Database:
