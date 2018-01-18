@@ -6,13 +6,17 @@ import os
 import golem_messages.message
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
+from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.blender")
+
+NUM_CROPS = 3
 
 
 class BlenderVerifier(FrameRenderingVerifier):
@@ -61,8 +65,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                                                          resources):
             return False
 
-        if not self._render_full_subtask(subtask_info, results, reference_data,
-                                         resources):
+        if not self._render_crops(subtask_info, results, reference_data,resources):
             return False
         comp_results = self.computer.get_result()
         if not comp_results or 'data' not in comp_results:
@@ -75,20 +78,43 @@ class BlenderVerifier(FrameRenderingVerifier):
         self._verify_results(subtask_info, results, images)
         return True
 
-    def _render_full_subtask(self, subtask_info, results, reference_data,
-                             resource):
-        print("RENDER FULL SUBTASK")
+    def _render_crops(self, subtask_info, results, reference_data, resource,
+                      num_crops=NUM_CROPS):
         if not self.computer:
             self.state = SubtaskVerificationState.NOT_SURE
             self.message = "No computer available to verify data"
             return False
 
+        crops_info = generate_crops((subtask_info['res_x'],
+                                     subtask_info['res_y']),
+                                    subtask_info['crop_window'], num_crops)
+
+        for num in range(num_crops):
+            self._render_one_crop(crops_info[0][num], subtask_info, num)
+            print(self.computer.get_result()['data'])
+
+    def _render_one_crop(self, crop, subtask_info, num):
+        minx, maxx, miny, maxy = crop
+
+        script_src = generate_blender_crop_file(
+            resolution=(subtask_info['res_x'], subtask_info['res_y']),
+            borders_x=(minx, maxx),
+            borders_y=(miny, maxy),
+            use_compositing=False
+        )
+
+        ctd = copy(subtask_info['ctd'])
+        ctd["extra_data"]["script_src"] = script_src
+        ctd['extra_data']['outfilebasename'] = \
+            "ref_" + ctd['extra_data']["outfilebasename"]
+
         self.computer.start_computation(
             root_path=os.path.join(subtask_info["tmp_dir"],
-                                   subtask_info['subtask_id']),
+                                   subtask_info['subtask_id'],
+                                   str(num)),
             success_callback=self._subtask_rendered,
             error_callback=self._subtask_render_failure,
-            compute_task_def=subtask_info['ctd'],
+            compute_task_def=ctd,
             resources=self.resources,
             additional_resources=[],
         )
@@ -119,13 +145,20 @@ class BlenderVerifier(FrameRenderingVerifier):
                                             tag="1.0")]
         ctd['subtask_id'] = subtask_info['subtask_id']
 
+        _, _, x, y = self._get_part_img_size(subtask_info)
+        ctd['extra_data'] = {
+            'cropped_img_path': "/golem/resources/" +
+                                os.path.basename(images[0]),
+            'rendered_scene_path': "/golem/resources/" +
+                                   os.path.basename(results[0]),
+            'xres': x,
+            'yres': y}
+
         runner_script = os.path.join(get_golem_path(), "apps", "blender",
                                      "resources", "scripts", "runner.py")
         with open(runner_script) as f:
             src_code = f.read()
         ctd['src_code'] = src_code
-        print(runner_script)
-        print(src_code)
 
         self.computer.start_computation(
             root_path=os.path.join(subtask_info["tmp_dir"],
@@ -134,8 +167,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             success_callback=self._images_compared,
             error_callback=self._images_failure,
             compute_task_def=ctd,
-            resources=results + images,
-            additional_resources=[runner_script],
+            resources=[],
+            additional_resources=results + images,
         )
 
     def _images_compared(self, results, time_spend):

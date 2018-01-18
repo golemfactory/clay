@@ -390,9 +390,12 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
+
+        min_x = 0.0
+        max_x = 1.0
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
+            borders_x=(min_x, max_x),
             borders_y=(min_y, max_y),
             use_compositing=self.compositing
         )
@@ -420,6 +423,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['use_frames'] = self.use_frames
         self.subtasks_given[hash]['all_frames'] = self.frames
         self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir
+        self.subtasks_given[hash]['crop_window'] = (min_x, max_x, min_y, max_y)
 
         part = self._count_part(start_task, parts)
 
