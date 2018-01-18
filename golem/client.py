@@ -486,10 +486,11 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        task_id = task.header.task_id
+
         task_manager = self.task_server.task_manager
         task_manager.add_new_task(task)
-
-        task_id = task.header.task_id
+        task_state = task_manager.tasks_states[task_id]
 
         tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
@@ -498,9 +499,7 @@ class Client(HardwarePresetsMixin):
                                        resources=task.get_resources())
 
         def add_task(result):
-            task_state = task_manager.tasks_states[task_id]
             task_state.resource_hash = result[0]
-
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 

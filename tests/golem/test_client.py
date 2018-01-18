@@ -2,6 +2,7 @@ import datetime
 import os
 import time
 import uuid
+from types import MethodType
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
@@ -871,19 +872,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             }
         }
 
+        def add_new_task(instance, task, *_args, **_kwargs):
+            instance.tasks_states[task.header.task_id] = TaskState()
+
         c = self.client
         c.resource_server = Mock()
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-        c.task_server.task_manager.add_new_task = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.add_new_task = MethodType(
+            add_new_task, c.task_server.task_manager)
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
         assert task.header.task_id
 
         assert c.resource_server.add_task.called
-        assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
 
         task_id = task.header.task_id
