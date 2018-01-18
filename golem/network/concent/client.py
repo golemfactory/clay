@@ -55,8 +55,15 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
         raise exceptions.ConcentUnavailableException()
 
     elif response.status_code % 500 < 100:
-        logger.warning('Concent failed with status %d and body: %r',
-                       response.status_code, response.text)
+        logger.warning(
+            'Concent failed with:\n'
+            'status %d\n'
+            'headers: %r\n'
+            'body: %r',
+            response.status_code,
+            response.headers,
+            response.text,
+        )
 
         raise exceptions.ConcentServiceException(
             "Concent service exception ({}): {}".format(
