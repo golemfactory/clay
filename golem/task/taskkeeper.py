@@ -5,6 +5,7 @@ import pickle
 import time
 from typing import Optional
 
+
 import random
 from collections import Counter
 from golem_messages import message
