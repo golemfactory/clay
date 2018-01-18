@@ -465,7 +465,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
-            self.send(message.TaskToCompute(compute_task_def=ctd))
+            msg = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                requestor_id=ctd['task_owner']['key'],
+                provider_id=self.key_id,
+            )
+            self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
         else:

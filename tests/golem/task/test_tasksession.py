@@ -13,7 +13,7 @@ from golem_messages import message
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -97,7 +97,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.can_be_not_encrypted.append(mt.TYPE)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
+
+        ctd = message.tasks.ComputeTaskDef()
+        ctd['task_owner'] = Node().to_dict()
+
+        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
@@ -106,7 +110,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", True, False)
+        ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
@@ -469,7 +473,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         de.main_program_file = file_name
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
@@ -739,6 +742,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         service.add_sync(nmsg_dict)
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         self.assertEqual(ts.concent_service.submit.call_count, 1)
+
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))
