@@ -160,7 +160,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             ExpectedIncome(
                 sender_node=random_hex_str(),
                 sender_node_details=Node(),
-                task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),

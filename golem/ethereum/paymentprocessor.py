@@ -310,11 +310,6 @@ class PaymentProcessor(LoopingCallService):
                         addr=encode_hex(p.payee),
                         value=p.value
                     )
-                    dispatcher.send(
-                        signal='golem.paymentprocessor',
-                        event='payment.confirmed',
-                        payment=p
-                    )
                     log.debug(
                         "- %.6f confirmed fee %.6f",
                         p.subtask,
