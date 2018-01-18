@@ -1,9 +1,7 @@
 import unittest.mock as mock
 import random
-import sys
 import uuid
 
-from golem.model import db
 from golem import model
 from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper \
@@ -34,7 +32,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         payment_processor = mock.MagicMock()
         payment_processor.eth_address.return_value = get_receiver_id()
         payment_processor.is_synchronized.return_value = True
-        self.instance = EthereumIncomesKeeper(payment_processor)
+        self.instance = EthereumIncomesKeeper(self.database, payment_processor)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
@@ -116,7 +114,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.received(**received_kwargs)
 
         # check the the income is in db
-        with db.atomic():
+        with self.database.db.atomic():
             self.assertEqual(
                 1,
                 model.Income.select().where(

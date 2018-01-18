@@ -21,7 +21,7 @@ LOC_RANK_PUSH_DELTA = 0.1
 
 
 class Ranking(object):
-    def __init__(self, client, max_steps=MAX_STEPS, epsilon=EPSILON,
+    def __init__(self, database, client, max_steps=MAX_STEPS, epsilon=EPSILON,
                  loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
         self.client = client
         self.round_oracle = TimeManager()
@@ -43,6 +43,7 @@ class Ranking(object):
         self.prev_loc_rank = {}
         self.loc_rank_push_delta = loc_rank_push_delta
         self.lock = Lock()
+        self.database = database
 
     def run(self, reactor):
         self.reactor = reactor
@@ -184,7 +185,8 @@ class Ranking(object):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
         for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
             with self.lock:
-                dm.upsert_neighbour_loc_rank(neighbour_id, about_id, loc_rank)
+                dm.upsert_neighbour_loc_rank(neighbour_id, about_id, loc_rank,
+                                             self.database)
 
     def __push_local_ranks(self):
         for loc_rank in dm.get_local_rank_for_all():
@@ -277,7 +279,8 @@ class Ranking(object):
                                   comp_trust,
                                   req_trust,
                                   computing[1],
-                                  requesting[1])
+                                  requesting[1],
+                                  self.database)
 
     def __prepare_gossip(self):
         gossip_vec = []

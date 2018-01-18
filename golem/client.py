@@ -171,7 +171,8 @@ class Client(HardwarePresetsMixin):
 
         self.cfg = config
 
-        self.ranking = Ranking(self)
+        self.ranking = Ranking(self.db, self)
+        Trust.set_database(self.db)
 
         if transaction_system:
             # Bootstrap transaction system if enabled.
@@ -181,6 +182,7 @@ class Client(HardwarePresetsMixin):
             self.transaction_system = EthereumTransactionSystem(
                 datadir,
                 self.keys_auth._private_key,
+                self.db,
                 geth_port,
                 start_geth=start_geth
             )
@@ -286,6 +288,7 @@ class Client(HardwarePresetsMixin):
                 self.node,
                 self.config_desc,
                 self.keys_auth,
+                self.db,
                 connect_to_known_hosts=self.connect_to_known_hosts
             )
 
@@ -293,7 +296,9 @@ class Client(HardwarePresetsMixin):
             self.task_server = TaskServer(
                 self.node,
                 self.config_desc,
-                self.keys_auth, self,
+                self.keys_auth,
+                self.db,
+                self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
                 task_archiver=self.task_archiver)

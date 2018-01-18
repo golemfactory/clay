@@ -1,0 +1,3 @@
+[submodule "src/golem-messages"]
+	path = src/golem-messages
+	url = https://github.com/golemfactory/golem-messages

@@ -12,34 +12,38 @@ from golem.testutils import PEP8MixIn
 
 
 class TestRankingDatabase(TestWithDatabase):
+    def setUp(self):
+        super(TestRankingDatabase, self).setUp()
+        Trust.set_database(self.database)
+
     def test_local_rank(self):
         self.assertIsNone(dm.get_local_rank("ABC"))
-        dm.increase_positive_computed("ABC", 2)
+        dm.increase_positive_computed("ABC", 2, self.database)
         lr = dm.get_local_rank("ABC")
         self.assertIsNotNone(lr)
         self.assertEqual(lr.positive_computed, 2)
-        dm.increase_positive_computed("ABC", 3.5)
-        dm.increase_negative_computed("DEF", 1.1)
-        dm.increase_negative_computed("DEF", 1.2)
+        dm.increase_positive_computed("ABC", 3.5, self.database)
+        dm.increase_negative_computed("DEF", 1.1, self.database)
+        dm.increase_negative_computed("DEF", 1.2, self.database)
         lr = dm.get_local_rank("ABC")
         self.assertEqual(lr.positive_computed, 5.5)
         self.assertEqual(lr.negative_computed, 0.0)
         lr = dm.get_local_rank("DEF")
         self.assertEqual(lr.positive_computed, 0)
         self.assertEqual(lr.negative_computed, 2.3)
-        dm.increase_wrong_computed("DEF", 10.0)
-        dm.increase_wrong_computed("ABC", 3.0)
-        dm.increase_wrong_computed("ABC", 0.2)
-        dm.increase_positive_requested("ABC", 3.0)
-        dm.increase_positive_requested("ABC", 1.1)
-        dm.increase_negative_requested("ABC", 1.9)
-        dm.increase_negative_requested("ABC", 0.1)
-        dm.increase_positive_payment("DEF", 1)
-        dm.increase_negative_payment("DEF", 2)
-        dm.increase_positive_payment("DEF", 3)
-        dm.increase_negative_payment("DEF", 5)
-        dm.increase_positive_resource("XYZ", 7)
-        dm.increase_negative_resource("XYZ", 0.4)
+        dm.increase_wrong_computed("DEF", 10.0, self.database)
+        dm.increase_wrong_computed("ABC", 3.0, self.database)
+        dm.increase_wrong_computed("ABC", 0.2, self.database)
+        dm.increase_positive_requested("ABC", 3.0, self.database)
+        dm.increase_positive_requested("ABC", 1.1, self.database)
+        dm.increase_negative_requested("ABC", 1.9, self.database)
+        dm.increase_negative_requested("ABC", 0.1, self.database)
+        dm.increase_positive_payment("DEF", 1, self.database)
+        dm.increase_negative_payment("DEF", 2, self.database)
+        dm.increase_positive_payment("DEF", 3, self.database)
+        dm.increase_negative_payment("DEF", 5, self.database)
+        dm.increase_positive_resource("XYZ", 7, self.database)
+        dm.increase_negative_resource("XYZ", 0.4, self.database)
 
         lr = dm.get_local_rank("DEF")
         self.assertEqual(lr.wrong_computed, 10.0)
@@ -61,9 +65,9 @@ class TestRankingDatabase(TestWithDatabase):
 
     def test_global_rank(self):
         self.assertIsNone(dm.get_global_rank("ABC"))
-        dm.upsert_global_rank("ABC", 0.3, 0.2, 1.0, 1.0)
-        dm.upsert_global_rank("DEF", -0.1, -0.2, 0.9, 0.8)
-        dm.upsert_global_rank("ABC", 0.4, 0.1, 0.8, 0.7)
+        dm.upsert_global_rank("ABC", 0.3, 0.2, 1.0, 1.0, self.database)
+        dm.upsert_global_rank("DEF", -0.1, -0.2, 0.9, 0.8, self.database)
+        dm.upsert_global_rank("ABC", 0.4, 0.1, 0.8, 0.7, self.database)
         gr = dm.get_global_rank("ABC")
         self.assertEqual(gr.computing_trust_value, 0.4)
         self.assertEqual(gr.requesting_trust_value, 0.1)
@@ -77,14 +81,14 @@ class TestRankingDatabase(TestWithDatabase):
 
     def test_neighbour_rank(self):
         self.assertIsNone(dm.get_neighbour_loc_rank("ABC", "DEF"))
-        dm.upsert_neighbour_loc_rank("ABC", "DEF", (0.2, 0.3))
+        dm.upsert_neighbour_loc_rank("ABC", "DEF", (0.2, 0.3), self.database)
         nr = dm.get_neighbour_loc_rank("ABC", "DEF")
         self.assertEqual(nr.node_id, "ABC")
         self.assertEqual(nr.about_node_id, "DEF")
         self.assertEqual(nr.computing_trust_value, 0.2)
         self.assertEqual(nr.requesting_trust_value, 0.3)
-        dm.upsert_neighbour_loc_rank("DEF", "ABC", (0.5, -0.2))
-        dm.upsert_neighbour_loc_rank("ABC", "DEF", (-0.3, 0.9))
+        dm.upsert_neighbour_loc_rank("DEF", "ABC", (0.5, -0.2), self.database)
+        dm.upsert_neighbour_loc_rank("ABC", "DEF", (-0.3, 0.9), self.database)
         nr = dm.get_neighbour_loc_rank("ABC", "DEF")
         self.assertEqual(nr.node_id, "ABC")
         self.assertEqual(nr.about_node_id, "DEF")
@@ -103,6 +107,10 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         'golem/ranking/manager/trust_manager.py',
     ]
 
+    def setUp(self):
+        super(TestRanking, self).setUp()
+        Trust.set_database(self.database)
+
     def test_count_trust(self):
         from golem.ranking.helper import min_max_utility
 
@@ -117,7 +125,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
 
     def test_increase_trust_thread_safety(self):
         c = MagicMock(spec=Client)
-        r = Ranking(c)
+        r = Ranking(self.database, c)
 
         def run():
             for x in range(0, 10):
@@ -146,7 +154,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
 
     def test_requesting_trust_thread_safety(self):
         c = MagicMock(spec=Client)
-        r = Ranking(c)
+        r = Ranking(self.database, c)
 
         def run():
             for x in range(0, 10):
@@ -174,7 +182,7 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         self.assertEqual(result, expected)
 
     def test_without_reactor(self):
-        r = Ranking(MagicMock(spec=Client))
+        r = Ranking(self.database, MagicMock(spec=Client))
         r.client.get_neighbours_degree.return_value = \
             {'ABC': 4, 'JKL': 2, 'MNO': 5}
         r.client.collect_stopped_peers.return_value = \

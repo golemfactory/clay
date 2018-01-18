@@ -13,6 +13,8 @@ class TestDatabaseManager(DatabaseFixture):
         and RESOURCE increase, decrease
         using database_manager methods as well as Trust enums.
         """
+        Trust.set_database(self.database)
+
         cases = (
             # COMPUTED increase
             {'test_no': '01',
@@ -243,8 +245,13 @@ class TestDatabaseManager(DatabaseFixture):
         )
 
         for case in cases:
-            case['fun_ref'](case['node_name'], case['value'])
-            self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']), case['attribute']), case['total'],
+            if case['fun_ref'].__name__.endswith('increase') or \
+                case['fun_ref'].__name__.endswith('decrease'):
+                case['fun_ref'](case['node_name'], case['value'])
+            else:
+                case['fun_ref'](case['node_name'], case['value'], self.database)
+            self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']),
+                                           case['attribute']), case['total'],
                                    7, "Test no. " + case['test_no'] + " failed.")
 
     def test_should_throw_exception(self):

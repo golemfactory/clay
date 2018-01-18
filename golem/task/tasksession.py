@@ -18,8 +18,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment, Actor
-from golem.model import db
+from golem.model import Actor
 from golem.network import history
 from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
@@ -303,12 +302,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(message.SubtaskResultAccepted(subtask_id=subtask_id))
 
     @log_error()
-    def inform_worker_about_payment(self, payment):
-        logger.debug('inform_worker_about_payment(%r)', payment)
-        if payment.details:
-            logger.debug('payment.details: %r', payment.details)
+    def send_payment(self, payment):
         transaction_id = payment.details.tx
         block_number = payment.details.block_number
+
         msg = message.SubtaskPayment(
             subtask_id=payment.subtask,
             reward=payment.value,
@@ -764,13 +761,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_subtask_payment_request(self, msg):
         logger.debug('_react_to_subtask_payment_request: %r', msg)
-        try:
-            with db.atomic():
-                payment = Payment.get(Payment.subtask == msg.subtask_id)
-        except Payment.DoesNotExist:
-            logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
-            return
-        self.inform_worker_about_payment(payment)
+        self.task_server.get_payment_for_subtask(msg.subtask_id)
 
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):

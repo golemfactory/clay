@@ -29,7 +29,6 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.model import Payment
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -156,17 +155,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                  node,
                  config_desc: ClientConfigDescriptor(),
                  keys_auth,
-                 database,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True,
                  task_archiver=None):
         self.client = client
         self.keys_auth = keys_auth
-        self.database = database
         self.config_desc = config_desc
-
-        Trust.set_database(self.database)
 
         self.node = node
         self.task_archiver = task_archiver
@@ -223,19 +218,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             self.paymentprocessor_listener, signal="golem.paymentprocessor")
         dispatcher.connect(
             self.transactions_listener, signal="golem.transactions")
-
-    def get_payment_for_subtask(self, subtask_id):
-        try:
-            with self.database.db.atomic():
-                payment = Payment.get(Payment.subtask == subtask_id)
-        except Payment.DoesNotExist:
-            logger.info('PAYMENT DOES NOT EXIST YET %r', subtask_id)
-            return
-
-        logger.debug('get_payment_for_subtask(%r)', payment)
-        if payment.details:
-            logger.debug('payment.details: %r', payment.details)
-        self.task_sessions[subtask_id].send_payment(payment)
 
     def paymentprocessor_listener(self,
                                   sender,
@@ -821,6 +803,10 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             pc.status = PenConnStatus.WaitingAlt
             pc.time = time.time()
 
+<<<<<<< HEAD
+    def __connection_for_start_session_established(self, session, conn_id, key_id, node_info, super_node_info,
+                                                   ans_conn_id):
+=======
     def __connection_for_resource_request_established(
             self, session, conn_id, key_id, subtask_id, resource_header):
 
@@ -879,6 +865,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
     def __connection_for_start_session_established(
             self, session, conn_id, key_id, node_info, super_node_info,
             ans_conn_id):
+>>>>>>> develop
         self.remove_forwarded_session_request(key_id)
         session.key_id = key_id
         session.conn_id = conn_id
@@ -907,6 +894,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
+<<<<<<< HEAD
+=======
     def __connection_for_resource_request_final_failure(
             self, conn_id, key_id, subtask_id, resource_header):
         logger.info("Cannot connect to task {} owner".format(subtask_id))
@@ -925,6 +914,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
+>>>>>>> develop
     def __connection_for_task_result_final_failure(self, conn_id,
                                                    waiting_task_result):
         logger.info("Cannot connect to task {} owner".format(
@@ -971,7 +961,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             conn_id=conn_id)
         self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
-        session.send_payment(obj)
+        session.inform_worker_about_payment(obj)
 
     def connection_for_payment_request_established(self, session, conn_id,
                                                    obj):

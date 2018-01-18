@@ -10,7 +10,7 @@ class TransactionSystem(object):
     Keeps information about budget, expected payments, etc. """
 
     def __init__(self, payments_keeper=PaymentsKeeper(),
-                 incomes_keeper=IncomesKeeper()):
+                 incomes_keeper=IncomesKeeper(None)):
         """ Create new transaction system instance.
         :param payments_keeper:
         default PaymentsKeeper, payment keeper class,

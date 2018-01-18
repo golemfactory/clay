@@ -643,7 +643,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session = TaskSession(Mock())
 
     @patch('golem.task.tasksession.TaskSession.send')
-    def test_inform_worker_about_payment(self, send_mock):
+    def test_send_payment(self, send_mock):
         transaction_id = str(uuid.uuid4())
         block_number = random.randint(1, 2 ** 8)
         payment = model.Payment.create(
@@ -655,7 +655,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
                 block_number=block_number,
             )
         )
-        self.task_session.inform_worker_about_payment(payment)
+        self.task_session.send_payment(payment)
         expected = [
             ['subtask_id', payment.subtask],
             ['reward', payment.value],
@@ -680,23 +680,16 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         ]
         self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
-    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
-    def test_react_to_subtask_payment_request(self, inform_mock) -> None:
+    @patch('golem.task.taskserver.TaskServer.get_payment_for_subtask')
+    def test_react_to_subtask_payment_request(self,
+                                              get_payment_for_subtask_mock) -> None:
+        ts = TaskSession(Mock())
         subtask_id = str(uuid.uuid4())
         msg = message.SubtaskPaymentRequest(subtask_id=subtask_id)
-        # Payment does not exist
-        self.task_session._react_to_subtask_payment_request(msg)
-        inform_mock.assert_not_called()
-
-        # Payment exists
-        payment = model.Payment.create(
-            subtask=subtask_id,
-            payee=str(uuid.uuid4()),
-            value=random.randint(1, 10),
-            details=model.PaymentDetails()
-        )
-        self.task_session._react_to_subtask_payment_request(msg)
-        inform_mock.assert_called_once_with(payment)
+        ts.task_server = MagicMock()
+        ts._react_to_subtask_payment_request(msg)
+        self.assertEqual(
+            ts.task_server.get_payment_for_subtask.call_args[0][0], subtask_id)
 
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,

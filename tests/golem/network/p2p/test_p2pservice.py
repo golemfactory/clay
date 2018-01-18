@@ -26,6 +26,7 @@ class TestP2PService(testutils.DatabaseFixture):
             None,
             ClientConfigDescriptor(),
             self.keys_auth,
+            self.database,
             connect_to_known_hosts=False)
 
     def test_find_node(self):

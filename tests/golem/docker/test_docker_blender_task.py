@@ -18,19 +18,19 @@ from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
-from golem.testutils import TempDirFixture
+from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from .test_docker_image import DockerTestCase
 
 
 @ci_skip
-class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
+class TestDockerBlenderTask(DatabaseFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
 
     def setUp(self):
-        TempDirFixture.setUp(self)
+        DatabaseFixture.setUp(self)
         DockerTestCase.setUp(self)
 
         self.error_msg = None
@@ -48,7 +48,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         TaskServer.send_task_failed = self._send_task_failed
 
         DockerTestCase.tearDown(self)
-        TempDirFixture.tearDown(self)
+        DatabaseFixture.tearDown(self)
 
     def _load_test_task_definition(self, task_file):
         task_file = path.join(path.dirname(__file__), task_file)
@@ -75,7 +75,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=60):
+    def _run_docker_task(self, render_task, timeout=80):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
@@ -90,7 +90,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
+        task_server = TaskServer(Mock(), ccd, Mock(), self.database,
+                                 self.node.client,
                                  use_docker_machine_manager=False)
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer

@@ -4,7 +4,6 @@ import logging
 import peewee
 from pydispatch import dispatcher
 
-from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
 
@@ -15,6 +14,9 @@ class IncomesKeeper(object):
     """Keeps information about payments received from other nodes
     """
 
+    def __init__(self, database):
+        self.database = database
+
     def start(self):
         pass
 
@@ -23,7 +25,7 @@ class IncomesKeeper(object):
 
     def run_once(self):
         delta = datetime.datetime.now() - datetime.timedelta(minutes=10)
-        with db.atomic():
+        with self.database.db.atomic():
             expected_incomes = ExpectedIncome\
                     .select()\
                     .where(ExpectedIncome.modified_date < delta)\
@@ -57,7 +59,7 @@ class IncomesKeeper(object):
                  value):
 
         try:
-            with db.transaction():
+            with self.database.db.transaction():
                 expected_income = \
                     ExpectedIncome.get(sender_node=sender_node_id,
                                        task=task_id,
@@ -71,7 +73,7 @@ class IncomesKeeper(object):
                         sender_node_id, task_id, subtask_id, value)
 
         try:
-            with db.transaction():
+            with self.database.db.transaction():
                 income = Income.create(
                     sender_node=sender_node_id,
                     task=task_id,
