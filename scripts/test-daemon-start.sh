@@ -15,7 +15,7 @@ find_and_kill_pid () {
 }
 
 kill_running_hyperg () {
-  RUNNING_PID=`pidof hyperg`
+  RUNNING_PID=`pgrep hyperg`
   let res=$?
   [ $res -eq 1 ] && exit 0
   kill -9 $RUNNING_PID
