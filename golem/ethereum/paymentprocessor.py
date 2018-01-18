@@ -3,7 +3,6 @@ import logging
 import sys
 import time
 from threading import Lock
-from time import sleep
 from typing import Any, List
 
 from ethereum import utils, keys
@@ -27,8 +26,6 @@ def get_timestamp() -> int:
 class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
-
-    SYNC_CHECK_INTERVAL = 10
 
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
@@ -55,74 +52,17 @@ class PaymentProcessor(LoopingCallService):
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
-        self.__last_sync_check = time.time()
-        self.__sync = False
-        self.__temp_sync = False
         self.__faucet = faucet
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
-    def wait_until_synchronized(self):
-        is_synchronized = False
-        while not is_synchronized:
-            try:
-                is_synchronized = self.is_synchronized()
-            except Exception as e:
-                log.error("Error "
-                          "while syncing with eth blockchain: "
-                          "{}".format(e))
-                is_synchronized = False
-            else:
-                sleep(self.SYNC_CHECK_INTERVAL)
+    def wait_until_synchronized(self) -> bool:
+        return self.__client.wait_until_synchronized()
 
-        return True
-
-    def is_synchronized(self):
-        """ Checks if the Ethereum node is in sync with the network."""
-        if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
-            # When checking again within 10 s return previous status.
-            # This also handles geth issue where synchronization starts after
-            # 10 s since the node was started.
-            return self.__sync
-        self.__last_sync_check = time.time()
-
-        def check():
-            peers = self.__client.get_peer_count()
-            log.info("Peer count: {}".format(peers))
-            if peers == 0:
-                return False
-            if self.__client.is_syncing():
-                log.info("Node is syncing...")
-                syncing = self.__client.web3.eth.syncing
-                if syncing:
-                    log.info("currentBlock: " + str(syncing['currentBlock']) +
-                             "\t highestBlock:" + str(syncing['highestBlock']))
-                return False
-            return True
-
-        # TODO: This can be improved now because we use Ethereum Ropsten.
-        # Normally we should check the time of latest block, but Golem testnet
-        # does not produce block regularly. The workaround is to wait for 2
-        # confirmations.
-        if not check():
-            # Reset both sync flags. We have to start over.
-            self.__temp_sync = False
-            self.__sync = False
-            return False
-
-        if not self.__temp_sync:
-            # Set the first flag. We will check again in SYNC_CHECK_INTERVAL s.
-            self.__temp_sync = True
-            return False
-
-        if not self.__sync:
-            # Second confirmation of being in sync. We are sure.
-            self.__sync = True
-            log.info("Synchronized!")
-
-        return True
+    def is_synchronized(self) -> bool:
+        return self.__client.is_synchronized()
 
     def eth_address(self, zpad=True):
         raw = keys.privtoaddr(self.__privkey)

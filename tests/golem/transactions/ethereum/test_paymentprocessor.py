@@ -25,7 +25,6 @@ from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex, decode_hex
 
-SYNC_TEST_INTERVAL = 0.01
 TEST_GNT_ABI = json.loads(TestGNT.ABI)
 
 # FIXME: upgrade to pyethereum 2.x
@@ -259,99 +258,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert not self.pp.sendout()
         assert check_deadline(self.pp.deadline, now + 1111)
 
-    def test_wait_until_synchronized(self):
-        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        pp = PaymentProcessor(
-            self.client,
-            self.privkey,
-            GNTToken(self.client),
-            faucet=False)
-
-        self.client.get_peer_count.return_value = 4
-        self.client.is_syncing.return_value = False
-        self.assertTrue( pp.wait_until_synchronized())
-
-    def test_synchronized(self):
-        I = PaymentProcessor.SYNC_CHECK_INTERVAL
-        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        pp = PaymentProcessor(
-            self.client,
-            self.privkey,
-            GNTToken(self.client),
-            faucet=False)
-        syncing_status = {'startingBlock': '0x384',
-                          'currentBlock': '0x386',
-                          'highestBlock': '0x454'}
-        combinations = ((0, False),
-                        (0, syncing_status),
-                        (1, False),
-                        (1, syncing_status),
-                        (65, syncing_status),
-                        (65, False))
-
-        self.client.web3.eth.syncing.return_value=\
-            {'currentBlock': 123, 'highestBlock': 1234}
-
-        for c in combinations:
-            print("Subtest {}".format(c))
-            # Allow reseting the status.
-            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-            self.client.get_peer_count.return_value = 0
-            self.client.is_syncing.return_value = False
-            assert not pp.is_synchronized()
-            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-            self.client.get_peer_count.return_value = c[0]
-            self.client.is_syncing.return_value = c[1]
-            assert not pp.is_synchronized()  # First time is always no.
-            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-            assert pp.is_synchronized() == (c[0] and not c[1])
-        PaymentProcessor.SYNC_CHECK_INTERVAL = I
-
-    def test_synchronized_unstable(self):
-        I = PaymentProcessor.SYNC_CHECK_INTERVAL
-        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        pp = PaymentProcessor(
-            self.client,
-            self.privkey,
-            GNTToken(self.client),
-            faucet=False)
-        syncing_status = {'startingBlock': '0x0',
-                          'currentBlock': '0x1',
-                          'highestBlock': '0x4096'}
-
-        self.client.get_peer_count.return_value = 1
-        self.client.is_syncing.return_value = False
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        self.client.get_peer_count.return_value = 1
-        self.client.is_syncing.return_value = syncing_status
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert not pp.is_synchronized()
-
-        self.client.get_peer_count.return_value = 1
-        self.client.is_syncing.return_value = False
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        self.client.get_peer_count.return_value = 0
-        self.client.is_syncing.return_value = False
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        self.client.get_peer_count.return_value = 2
-        self.client.is_syncing.return_value = False
-        assert not pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        self.client.get_peer_count.return_value = 2
-        self.client.is_syncing.return_value = syncing_status
-        assert not pp.is_synchronized()
-        PaymentProcessor.SYNC_CHECK_INTERVAL = I
-
     def test_monitor_progress(self):
         inprogress = self.pp._inprogress
 
@@ -566,39 +472,10 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         # ethereum.tester assigns this amount to predefined accounts.
         assert self.pp.eth_balance() == 1000000000000000000000000
 
-    def check_synchronized(self):
-        assert not self.pp.is_synchronized()
-        self.client.get_peer_count.return_value = 1
-        assert not self.pp.is_synchronized()
-        I = PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
-        assert self.pp.SYNC_CHECK_INTERVAL == SYNC_TEST_INTERVAL
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert not self.pp.is_synchronized()
-        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
-        assert self.pp.is_synchronized()
-        PaymentProcessor.SYNC_CHECK_INTERVAL = I
-
-    def test_synchronized(self):
-        self.pp.start()
-        self.check_synchronized()
-        self.pp.stop()
-
-    def test_gnt_faucet(self, *_):
-        self.pp._PaymentProcessor__faucet = True
-        self.pp._run()
-        assert self.pp.eth_balance() > 0
-        assert self.pp.gnt_balance() == 0
-        self.check_synchronized()
-        self.state.mine()
-        self.clock.advance(60)
-        self.pp._run()
-        assert self.pp.gnt_balance(True) == 1000 * denoms.ether
-
     def test_single_payment(self, *_):
         self.pp._run()
         self.gnt.create(sender=self.privkey)
         self.state.mine()
-        self.check_synchronized()
         assert self.pp.gnt_balance() == 1000 * denoms.ether
 
         payee = urandom(20)
