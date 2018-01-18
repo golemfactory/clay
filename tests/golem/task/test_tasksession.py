@@ -329,12 +329,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd = message.ComputeTaskDef()
         ctd['key_id'] = "KEY_ID"
         ctd['subtask_id'] = "SUBTASKID"
-        ctd['task_owner'] = Node()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner'] = Node().to_dict()
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 1112
         ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
-        msg = message.TaskToCompute(compute_task_def=ctd, raw=b'\0')
+        msg = message.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -364,7 +364,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Wrong task owner key id -> failure
         __reset_mocks()
         ctd['key_id'] = "KEY_ID"
-        ctd['task_owner'].key = "KEY_ID2"
+        ctd['task_owner']['key'] = "KEY_ID2"
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
             raw=b'\0',
@@ -375,7 +375,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Wrong return port -> failure
         __reset_mocks()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_port'] = 0
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -387,7 +387,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Proper port and key -> proper execution
         __reset_mocks()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_port'] = 1319
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,

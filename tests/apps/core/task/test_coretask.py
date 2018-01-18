@@ -469,7 +469,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['performance'] == perf_index
         assert ctd['working_directory'] == working_directory
         assert ctd['docker_images'] == c.header.docker_images
-        assert ctd['task_owner'] == c.header.task_owner
+        assert ctd['task_owner'] == c.header.task_owner.to_dict()
         assert ctd['environment'] == c.header.environment
 
 
