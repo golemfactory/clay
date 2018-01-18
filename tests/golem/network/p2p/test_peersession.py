@@ -375,6 +375,12 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
 
+    def test_react_to_get_tasks_none_list(self):
+        conn = mock.MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service.get_tasks_headers = mock.Mock()
+        peer_session.send = mock.MagicMock()
+
         peer_session.p2p_service.get_tasks_headers.return_value = None,\
             list(range(0, 10))
         peer_session._react_to_get_tasks(mock.Mock())
@@ -388,6 +394,12 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         sent_tasks = peer_session.send.call_args_list[0][0][0].tasks
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
+
+    def test_react_to_get_tasks_ratio(self):
+        conn = mock.MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service.get_tasks_headers = mock.Mock()
+        peer_session.send = mock.MagicMock()
 
         peer_session.p2p_service.get_tasks_headers.return_value =\
             list(range(0, 50)), list(range(51, 100))
