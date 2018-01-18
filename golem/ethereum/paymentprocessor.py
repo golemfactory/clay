@@ -58,12 +58,6 @@ class PaymentProcessor(LoopingCallService):
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
-    def wait_until_synchronized(self) -> bool:
-        return self.__client.wait_until_synchronized()
-
-    def is_synchronized(self) -> bool:
-        return self.__client.is_synchronized()
-
     def eth_address(self, zpad=True):
         raw = keys.privtoaddr(self.__privkey)
         # TODO: Hack RPC client to allow using raw address.
@@ -328,20 +322,6 @@ class PaymentProcessor(LoopingCallService):
             return False
         return True
 
-    def get_incomes_from_block(self, block, address):
-        return self.__token.get_incomes_from_block(block, address)
-
-    def get_logs(self,
-                 from_block=None,
-                 to_block=None,
-                 address=None,
-                 topics=None):
-
-        return self.__client.get_logs(from_block=from_block,
-                                      to_block=to_block,
-                                      address=address,
-                                      topics=topics)
-
     def _run(self):
         if self._waiting_for_faucet:
             return
@@ -349,7 +329,7 @@ class PaymentProcessor(LoopingCallService):
         self._waiting_for_faucet = True
 
         try:
-            if self.is_synchronized() and \
+            if self.__token.is_synchronized() and \
                     self.get_ether_from_faucet() and \
                     self.get_gnt_from_faucet():
                 self.monitor_progress()
@@ -359,4 +339,3 @@ class PaymentProcessor(LoopingCallService):
 
     def stop(self):
         super(PaymentProcessor, self).stop()
-        self.__client._kill_node()

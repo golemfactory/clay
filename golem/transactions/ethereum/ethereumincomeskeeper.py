@@ -1,29 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import peewee
 
-from time import sleep
 from golem.model import db
 from golem import model
 from golem.model import Income
 from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.ethereum.paymentprocessor import PaymentProcessor
 
 logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
 
-    def __init__(self, processor: PaymentProcessor) -> None:
-        self.processor = processor
-
-    def start(self):
-        self.processor.start()
-
-    def stop(self):
-        if self.processor.running:
-            self.processor.stop()
+    def __init__(self, eth_address: str, token) -> None:
+        self.__eth_address = eth_address
+        self.__token = token
 
     def received(self,
                  sender_node_id,
@@ -33,17 +24,17 @@ class EthereumIncomesKeeper(IncomesKeeper):
                  block_number,
                  value):
 
-        my_address = self.processor.eth_address()
-        logger.debug('MY ADDRESS: %r', my_address)
+        logger.debug('MY ADDRESS: %r', self.__eth_address)
 
-        if not self.processor.is_synchronized():
-            logger.warning("payment processor must be synchronized with "
+        if not self.__token.is_synchronized():
+            logger.warning("token must be synchronized with "
                            "blockchain, otherwise income may not be found."
                            "Please wait until synchronized")
-            self.processor.wait_until_synchronized()
+            self.__token.wait_until_synchronized()
 
-        incomes = self.processor.get_incomes_from_block(block_number,
-                                                        my_address)
+        incomes = self.__token.get_incomes_from_block(
+            block_number,
+            self.__eth_address)
         if not incomes:
             logger.error('Transaction not present in blockchain: %r',
                          transaction_id)
@@ -87,7 +78,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
             )
             return
         logger.debug('received_tokens: %r', received_tokens)
-        return super(EthereumIncomesKeeper, self).received(
+        return super().received(
             sender_node_id=sender_node_id,
             task_id=task_id,
             subtask_id=subtask_id,

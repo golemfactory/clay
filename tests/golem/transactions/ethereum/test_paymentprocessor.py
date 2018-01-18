@@ -732,14 +732,3 @@ class InteractionWithTokenTest(DatabaseFixture):
                 [p5],
                 10)
             self.token.batch_transfer.reset_mock()
-
-
-    def test_get_incomes_from_block(self):
-        block_number = 1
-        receiver_address = '0xbadcode'
-        some_address = '0xdeadbeef'
-
-        expected_incomes = [{'sender': some_address, 'value': 1}]
-        self.token.get_incomes_from_block.return_value = expected_incomes
-        incomes = self.pp.get_incomes_from_block(block_number, receiver_address)
-        self.assertEqual(expected_incomes, incomes)
