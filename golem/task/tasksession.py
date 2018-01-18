@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -364,6 +364,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
+        # FIXME: Replace with changes introduced in develop post 0.11.0 release
+        if task_result.result_type != ResultType.DATA:
+            logger.debug('Result type %r is not supported by the '
+                         'Concent client', task_result.result_type)
+            return
+
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls()
         try:
@@ -380,9 +386,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 task_result.subtask_id,
             )
             return
+
         msg.task_to_compute = task_to_compute
-        # FIXME: Only ResultType.DATA is currently in use #1796
-        assert task_result.result_type == ResultType.DATA
         msg.result_hash = 'sha1:' + hashlib.sha1(
             task_result.result.encode('utf-8')
         ).hexdigest()
@@ -465,7 +470,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
-            self.send(message.TaskToCompute(compute_task_def=ctd))
+            msg = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                requestor_id=ctd['task_owner']['key'],
+                provider_id=self.key_id,
+            )
+            self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
         else:
@@ -784,7 +794,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON
         if ctd['key_id'] != self.key_id\
-                or ctd['task_owner'].key != self.key_id:
+                or ctd['task_owner']['key'] != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(

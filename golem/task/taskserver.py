@@ -360,11 +360,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             except Exception as exc:
                 logger.error("Error closing incoming session: %s", exc)
 
-    def get_tasks_headers(self):
-        ths_tk = self.task_keeper.get_all_tasks()
+    def get_own_tasks_headers(self):
         ths_tm = self.task_manager.get_tasks_headers()
-        ret = [th.to_dict() for th in ths_tk + ths_tm]
-        return ret
+        return [th.to_dict() for th in ths_tm]
+
+    def get_others_tasks_headers(self):
+        ths_tk = self.task_keeper.get_all_tasks()
+        return [th.to_dict() for th in ths_tk]
 
     def add_task_header(self, th_dict_repr):
         try:
