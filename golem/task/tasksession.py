@@ -364,6 +364,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
+        # FIXME: Replace with changes introduced in develop post 0.11.0 release
+        if task_result.result_type != ResultType.DATA:
+            logger.debug('Result type %r is not supported by the '
+                         'Concent client', task_result.result_type)
+            return
+
         msg_cls = message.ForceReportComputedTask
         msg = msg_cls()
         try:
@@ -380,9 +386,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 task_result.subtask_id,
             )
             return
+
         msg.task_to_compute = task_to_compute
-        # FIXME: Only ResultType.DATA is currently in use #1796
-        assert task_result.result_type == ResultType.DATA
         msg.result_hash = 'sha1:' + hashlib.sha1(
             task_result.result.encode('utf-8')
         ).hexdigest()
