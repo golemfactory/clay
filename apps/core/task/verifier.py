@@ -32,7 +32,8 @@ class CoreVerifier(StateVerifier):
         self.message = "No proper task result found"
 
     # pylint: disable=unused-argument
-    def _verify_result(self, subtask_info, result, reference_data, resources):
+    def _verify_result(self, subtask_info: dict, result: str,
+                       reference_data: list, resources: list):
         """ Override this to change verification method
         """
         return True
