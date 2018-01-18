@@ -1,4 +1,5 @@
 import logging
+import time
 
 import rlp
 from ethereum.utils import zpad
@@ -14,6 +15,8 @@ class Client(object):
 
     node = None
 
+    SYNC_CHECK_INTERVAL = 10
+
     def __init__(self, datadir, port=None, start_node=False):
         if not Client.node:
             Client.node = NodeProcess(datadir, start_node)
@@ -22,6 +25,9 @@ class Client(object):
         self.web3 = Client.node.web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
+        self._last_sync_check = time.time()
+        self._sync = False
+        self._temp_sync = False
 
     @staticmethod
     def _kill_node():
@@ -215,6 +221,66 @@ class Client(object):
             topics[i] = Client.__add_padding(topics[i])
         filter_id = self.new_filter(from_block, to_block, address, topics)
         return self.web3.eth.getFilterLogs(filter_id)
+
+    def wait_until_synchronized(self) -> bool:
+        is_synchronized = False
+        while not is_synchronized:
+            try:
+                is_synchronized = self.is_synchronized()
+            except Exception as e:
+                log.error("Error "
+                          "while syncing with eth blockchain: "
+                          "{}".format(e))
+                is_synchronized = False
+            else:
+                time.sleep(self.SYNC_CHECK_INTERVAL)
+
+        return True
+
+    def is_synchronized(self):
+        """ Checks if the Ethereum node is in sync with the network."""
+        if time.time() - self._last_sync_check <= self.SYNC_CHECK_INTERVAL:
+            # When checking again within 10 s return previous status.
+            # This also handles geth issue where synchronization starts after
+            # 10 s since the node was started.
+            return self._sync
+        self._last_sync_check = time.time()
+
+        def check():
+            peers = self.get_peer_count()
+            log.info("Peer count: {}".format(peers))
+            if peers == 0:
+                return False
+            if self.is_syncing():
+                log.info("Node is syncing...")
+                syncing = self.web3.eth.syncing
+                if syncing:
+                    log.info("currentBlock: " + str(syncing['currentBlock']) +
+                             "\t highestBlock:" + str(syncing['highestBlock']))
+                return False
+            return True
+
+        # TODO: This can be improved now because we use Ethereum Ropsten.
+        # Normally we should check the time of latest block, but Golem testnet
+        # does not produce block regularly. The workaround is to wait for 2
+        # confirmations.
+        if not check():
+            # Reset both sync flags. We have to start over.
+            self._temp_sync = False
+            self._sync = False
+            return False
+
+        if not self._temp_sync:
+            # Set the first flag. We will check again in SYNC_CHECK_INTERVAL s.
+            self._temp_sync = True
+            return False
+
+        if not self._sync:
+            # Second confirmation of being in sync. We are sure.
+            self._sync = True
+            log.info("Synchronized!")
+
+        return True
 
     @staticmethod
     def __add_padding(address):
