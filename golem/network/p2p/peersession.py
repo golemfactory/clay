@@ -338,11 +338,11 @@ class PeerSession(BasicSafeSession):
 
         try:
             tasks_to_send = random.sample(
-                my_tasks, int(variables.TASK_HEADERS_LIMIT / 2))
+                my_tasks, variables.TASK_HEADERS_LIMIT // 2)
         except ValueError as exc:
             tasks_to_send.extend(my_tasks)
         except TypeError as exc:
-            logger.debug("Unexected format of my task list %r", my_tasks)
+            logger.debug("Unexpected format of my task list %r", my_tasks)
 
         reminder = variables.TASK_HEADERS_LIMIT - len(tasks_to_send)
         try:
@@ -350,7 +350,7 @@ class PeerSession(BasicSafeSession):
         except ValueError as exc:
             tasks_to_send.extend(other_tasks)
         except TypeError as exc:
-            logger.debug("Unexected format of other task list %r", other_tasks)
+            logger.debug("Unexpected format of other task list %r", other_tasks)
 
         self.send(message.Tasks(tasks=tasks_to_send))
 
