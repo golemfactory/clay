@@ -419,6 +419,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['res_y'] = self.res_y
         self.subtasks_given[hash]['use_frames'] = self.use_frames
         self.subtasks_given[hash]['all_frames'] = self.frames
+        self.subtasks_given[hash]['crop_window'] = (0.0, 1.0, min_y, max_y)
 
         part = self._count_part(start_task, parts)
 
