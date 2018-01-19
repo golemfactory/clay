@@ -1,5 +1,6 @@
 import logging
 import os
+import traceback
 
 import requests
 from golem.docker.job import DockerJob
@@ -103,8 +104,9 @@ class DockerTaskThread(TaskThread):
                            format(self.time_to_compute))
             else:
                 self._fail(str(exc))
-        except Exception as exc:
-            self._fail(str(exc))
+        except Exception:
+            tb = ''.join(traceback.format_exc(limit=None))
+            self._fail(tb)
         finally:
             self._cleanup()
 

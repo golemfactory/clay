@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+import traceback
 from threading import Thread, Lock
 
 
@@ -66,9 +67,10 @@ class TaskThread(Thread):
         logger.info("RUNNING ")
         try:
             self.__do_work()
-        except Exception as exc:
+        except Exception:
             logger.exception("__do_work failed")
-            self._fail(str(exc))
+            tb = ''.join(traceback.format_exc(limit=None))
+            self._fail(tb)
         else:
             self.task_computer.task_computed(self)
 
