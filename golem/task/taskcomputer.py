@@ -12,6 +12,7 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.network.p2p.node import Node as P2PNode
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 
@@ -85,11 +86,18 @@ class TaskComputer(object):
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
+        p2p_node = P2PNode.from_dict(ctd['task_owner'])
         self.wait(ttl=self.waiting_for_task_timeout)
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
-        self.__request_resource(ctd['task_id'], self.resource_manager.get_resource_header(ctd['task_id']),
-                                ctd['return_address'], ctd['return_port'], ctd['key_id'], ctd['task_owner'])
+        self.__request_resource(
+            ctd['task_id'],
+            self.resource_manager.get_resource_header(ctd['task_id']),
+            ctd['return_address'],
+            ctd['return_port'],
+            ctd['key_id'],
+            p2p_node,
+        )
         return True
 
     def resource_given(self, task_id):
@@ -127,15 +135,22 @@ class TaskComputer(object):
             return False
 
     def task_resource_failure(self, task_id, reason):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping.pop(task_id)
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks.pop(subtask_id)
-                self.task_server.send_task_failed(subtask_id, subtask['task_id'],
-                                                  'Error downloading resources: {}'.format(reason),
-                                                  subtask['return_address'], subtask['return_port'], subtask['key_id'],
-                                                  subtask['task_owner'], self.node_name)
-            self.session_closed()
+        if task_id not in self.task_to_subtask_mapping:
+            return
+        subtask_id = self.task_to_subtask_mapping.pop(task_id)
+        if subtask_id in self.assigned_subtasks:
+            subtask = self.assigned_subtasks.pop(subtask_id)
+            p2p_node = P2PNode.from_dict(subtask['task_owner'])
+            self.task_server.send_task_failed(
+                subtask_id, subtask['task_id'],
+                'Error downloading resources: {}'.format(reason),
+                subtask['return_address'],
+                subtask['return_port'],
+                subtask['key_id'],
+                p2p_node,
+                self.node_name,
+            )
+        self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
         if task_id in self.task_to_subtask_mapping:
@@ -175,14 +190,22 @@ class TaskComputer(object):
             logger.error("No subtask with id %r", subtask_id)
             return
 
+        p2p_node = P2PNode.from_dict(subtask['task_owner'])
         if task_thread.error or task_thread.error_msg:
             if "Task timed out" in task_thread.error_msg:
                 self.stats.increase_stat('tasks_with_timeout')
             else:
                 self.stats.increase_stat('tasks_with_errors')
-            self.task_server.send_task_failed(subtask_id, subtask['task_id'], task_thread.error_msg,
-                                              subtask['return_address'], subtask['return_port'], subtask['key_id'],
-                                              subtask['task_owner'], self.node_name)
+            self.task_server.send_task_failed(
+                subtask_id,
+                subtask['task_id'],
+                task_thread.error_msg,
+                subtask['return_address'],
+                subtask['return_port'],
+                subtask['key_id'],
+                p2p_node,
+                self.node_name,
+            )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
 
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
@@ -190,16 +213,31 @@ class TaskComputer(object):
                         subtask_id,
                         str(work_wall_clock_time))
             self.stats.increase_stat('computed_tasks')
-            self.task_server.send_results(subtask_id, subtask['task_id'], task_thread.result, work_time_to_be_paid,
-                                          subtask['return_address'], subtask['return_port'], subtask['key_id'],
-                                          subtask['task_owner'], self.node_name)
+            self.task_server.send_results(
+                subtask_id,
+                subtask['task_id'],
+                task_thread.result,
+                work_time_to_be_paid,
+                subtask['return_address'],
+                subtask['return_port'],
+                subtask['key_id'],
+                p2p_node,
+                self.node_name,
+            )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
 
         else:
             self.stats.increase_stat('tasks_with_errors')
-            self.task_server.send_task_failed(subtask_id, subtask['task_id'], "Wrong result format",
-                                              subtask['return_address'], subtask['return_port'], subtask['key_id'],
-                                              subtask['task_owner'], self.node_name)
+            self.task_server.send_task_failed(
+                subtask_id,
+                subtask['task_id'],
+                "Wrong result format",
+                subtask['return_address'],
+                subtask['return_port'],
+                subtask['key_id'],
+                p2p_node,
+                self.node_name,
+            )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
         self.counting_task = None
 
@@ -366,13 +404,17 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtasks.pop(subtask_id)
-            self.task_server.send_task_failed(subtask_id, subtask['task_id'],
-                                              "Host direct task not supported",
-                                              subtask['return_address'],
-                                              subtask['return_port'],
-                                              subtask['key_id'],
-                                              subtask['task_owner'],
-                                              self.node_name)
+            p2p_node = P2PNode.from_dict(subtask['task_owner'])
+            self.task_server.send_task_failed(
+                subtask_id,
+                subtask['task_id'],
+                "Host direct task not supported",
+                subtask['return_address'],
+                subtask['return_port'],
+                subtask['key_id'],
+                p2p_node,
+                self.node_name,
+            )
             self.counting_task = None
             return
 
