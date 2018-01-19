@@ -56,7 +56,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
 
     logger.debug('Headers received from Concent: %s', response.headers)
     if response.status_code % 500 < 100:
-        logger.warning('Concent failed with: status %d and body: %r',
+        logger.warning('Concent failed with status %d and body: %r',
                        response.status_code, response.text)
 
         raise exceptions.ConcentServiceException(
