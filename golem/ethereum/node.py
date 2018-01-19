@@ -34,6 +34,7 @@ FALLBACK_NODE_LIST = [
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
 ]
+DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
 
 
 def get_public_nodes():
@@ -43,15 +44,14 @@ def get_public_nodes():
     except Exception as exc:
         log.error("Error downloading node list: %s", exc)
 
-    nodes = FALLBACK_NODE_LIST[:]
-    random.shuffle(nodes)
-    return nodes
+    addr_list = FALLBACK_NODE_LIST[:]
+    random.shuffle(addr_list)
+    return addr_list
 
 
 def tETH_faucet_donate(addr):
     addr = normalize_address(addr)
-    URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
-    request = URL_TEMPLATE.format(addr.hex())
+    request = DONATE_URL_TEMPLATE.format(addr.hex())
     response = requests.get(request)
     if response.status_code != 200:
         log.error("tETH Faucet error code {}".format(response.status_code))
@@ -98,15 +98,16 @@ class NodeProcess(object):
         stdin=DEVNULL
     )
 
-    def __init__(self, datadir, start_node=False):
+    def __init__(self, datadir, addr=None, start_node=False):
         """
         :param datadir: working directory
+        :param addr: address of a geth instance to connect with
         :param start_node: start a new geth node
         """
         self.datadir = datadir
         self.start_node = start_node
         self.web3 = None  # web3 client interface
-        self.public_nodes = get_public_nodes()
+        self.addr_list = [addr] if addr else get_public_nodes()
 
         self.__prog = None  # geth location
         self.__ps = None  # child process
@@ -115,12 +116,12 @@ class NodeProcess(object):
         return self.__ps is not None
 
     @report_calls(Component.ethereum, 'node.start')
-    def start(self, port=None):
+    def start(self, start_port=None):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
         if self.start_node:
-            provider = self._create_local_ipc_provider(self.CHAIN, port)
+            provider = self._create_local_ipc_provider(self.CHAIN, start_port)
         else:
             provider = self._create_remote_rpc_provider()
 
@@ -132,14 +133,14 @@ class NodeProcess(object):
 
         while not self.is_connected():
             if time.time() > deadline:
-                return self._start_timed_out(provider, port)
+                return self._start_timed_out(provider, start_port)
             time.sleep(0.1)
 
         genesis_block = self.get_genesis_block()
 
         while not genesis_block:
             if time.time() > deadline:
-                return self._start_timed_out(provider, port)
+                return self._start_timed_out(provider, start_port)
             time.sleep(0.5)
             genesis_block = self.get_genesis_block()
 
@@ -148,6 +149,8 @@ class NodeProcess(object):
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
         log.info("Connected to node in %ss", time.time() - started)
+
+        return None
 
     @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
@@ -192,13 +195,13 @@ class NodeProcess(object):
         except Exception:  # pylint:disable=broad-except
             return None
 
-    def _start_timed_out(self, provider, port):
+    def _start_timed_out(self, provider, start_port):
         if not self.start_node:
-            self.start_node = not self.public_nodes
-            return self.start(port)
+            self.start_node = not self.addr_list
+            return self.start(start_port)
         raise OSError("Cannot connect to geth: {}".format(provider))
 
-    def _create_local_ipc_provider(self, chain, port=None):
+    def _create_local_ipc_provider(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
         self._find_geth()
 
         # Init geth datadir
@@ -208,13 +211,13 @@ class NodeProcess(object):
 
         os.makedirs(geth_log_dir, exist_ok=True)
 
-        if port is None:
-            port = find_free_net_port()
+        if start_port is None:
+            start_port = find_free_net_port()
 
         # Build unique IPC/socket path. We have to use system temp dir to
         # make sure the path has length shorter that ~100 chars.
         tempdir = tempfile.gettempdir()
-        ipc_file = '{}-{}'.format(chain, port)
+        ipc_file = '{}-{}'.format(chain, start_port)
         ipc_path = os.path.join(tempdir, ipc_file)
 
         if is_windows():
@@ -227,7 +230,7 @@ class NodeProcess(object):
             '--cache=32',
             '--syncmode=light',
             '--rinkeby',
-            '--port={}'.format(port),
+            '--port={}'.format(start_port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
             '--verbosity', '3',
@@ -258,9 +261,9 @@ class NodeProcess(object):
         return IPCProvider(ipc_path)
 
     def _create_remote_rpc_provider(self):
-        node = self.public_nodes.pop()
-        log.info('GETH: connecting to remote RPC interface at %s', node)
-        return HTTPProvider(node)
+        addr = self.addr_list.pop()
+        log.info('GETH: connecting to remote RPC interface at %s', addr)
+        return HTTPProvider(addr)
 
     def _find_geth(self):
         geth = find_program('geth')
