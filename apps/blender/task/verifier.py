@@ -4,6 +4,9 @@ from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
 
 
+NUM_CROPS = 3
+
+
 class BlenderVerifier(FrameRenderingVerifier):
 
     def _get_part_img_size(self, subtask_info):
@@ -43,3 +46,24 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)
+
+
+    def _verify_imgs(self, subtask_info, results, reference_data, resources):
+        if not super(BlenderVerifier, self)._verify_imgs(subtask_info, results,
+                                                         reference_data,
+                                                         resources):
+            return False
+
+        if not self._render_crops(subtask_info, results, reference_data,
+                                  resources):
+            return False
+        return True
+
+    def _render_crops(self, subtask_info, results, reference_data, resources,
+                      num_crops=NUM_CROPS):
+        if not self._check_computer():
+            return False
+
+        # TODO generate crops
+        # TODO render crops
+        return True
