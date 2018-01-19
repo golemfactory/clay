@@ -186,7 +186,7 @@ class ConcentClientService(threading.Thread):
             constants.DEFAULT_MSG_LIFETIME
         )
         if delay is None:
-            delay = constants.MSG_DELAYS.get(msg_cls, 0)
+            delay = constants.MSG_DELAYS[msg_cls]
 
         req = ConcentRequest(key, msg, lifetime=lifetime)
         req.status = ConcentRequestStatus.Waiting
