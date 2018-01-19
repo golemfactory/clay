@@ -1,9 +1,14 @@
+from copy import copy
 import logging
 import math
+import os
+
+from golem.core.common import timeout_to_deadline
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 
 
 logger = logging.getLogger("apps.blender")
@@ -61,8 +66,6 @@ class BlenderVerifier(FrameRenderingVerifier):
             return False
         return True
 
-    # FIXME remove pylint-disable
-    # pylint: disable=unused-argument
     def _render_crops(self, subtask_info, resources, num_crops=NUM_CROPS,
                       crop_size=None):
         if not self._check_computer():
@@ -72,5 +75,42 @@ class BlenderVerifier(FrameRenderingVerifier):
                                      subtask_info['res_y']),
                                     subtask_info['crop_window'], num_crops,
                                     crop_size)
-        logger.info(crops_info)
+        for num in range(num_crops):
+            self._render_one_crop(crops_info[0][num], subtask_info, num)
         return True
+
+    def _render_one_crop(self, crop, subtask_info, num):
+        minx, maxx, miny, maxy = crop
+
+        script_src = generate_blender_crop_file(
+            resolution=(subtask_info['res_x'], subtask_info['res_y']),
+            borders_x=(minx, maxx),
+            borders_y=(miny, maxy),
+            use_compositing=False
+        )
+        ctd = self._generate_ctd(subtask_info, script_src)
+        # FIXME (root path)
+        self.computer.start_computation(
+            root_path=os.path.join(subtask_info['tmp_dir'],
+                                   subtask_info['subtask_id'], str(num)),
+            success_callback=self._crop_rendered,
+            error_callback=self._crop_render_failure,
+            compute_task_def=ctd,
+            resources=self.resources,
+            additional_resources=[]
+        )
+
+    def _generate_ctd(self, subtask_info, script_src):
+        ctd = copy(subtask_info['ctd'])
+
+        ctd['extra_data']['outfilebasename'] = \
+            "ref_" + subtask_info['outfilebasename']
+        ctd['extra_data']['script_src'] = script_src
+        ctd['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
+        return ctd
+
+    def _crop_rendered(self, results, time_spend):
+        logger.info("Crop for verification rendered")
+
+    def _crop_render_failure(self, error):
+        logger.info("Crop for verification render failure {}".format(error))
