@@ -5,5 +5,5 @@
   become_method: runas
   roles:
     - role: buildbot-worker-windows
-      worker_master_hostname: {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}
+      worker_master_hostname: "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
       worker_name: "windows_0{{ play_hosts.index(inventory_hostname) + 1 }}"
