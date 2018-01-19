@@ -14,7 +14,7 @@ class ImgMetrics:
         self.SSIM_normal = None
         self.MSE_normal = None
         self.SSIM_canny = None
-        self.MSE_canny =None
+        self.MSE_canny = None
         self.SSIM_wavelet = None
         self.MSE_wavelet = None
         self.crop_resolution = None
@@ -41,7 +41,6 @@ class ImgMetrics:
                           separators=(',', ': '),
                           ensure_ascii=False)
         return str_
-
 
     def write_to_file(self, file_name='img_metrics.txt'):
         dir_path = os.path.dirname(os.path.realpath(__file__))

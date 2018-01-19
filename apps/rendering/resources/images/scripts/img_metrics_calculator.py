@@ -151,7 +151,6 @@ def mean_squared_error(image_a, image_b):
 
 # MSE and SSIM metric for crop windows without any transform
 def compare_mse_ssim(image_a, image_b):
-    structualSimilarity = 0
     meanSquaredError = mean_squared_error(
         cv2.cvtColor(image_a, cv2.COLOR_BGR2GRAY),
         cv2.cvtColor(image_b, cv2.COLOR_BGR2GRAY))

@@ -13,9 +13,8 @@ else:
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 
-def run_img_compare_task(cropped_img_path,
-                        rendered_scene_path,
-                        xres, yres):
+
+def run_img_compare_task(cropped_img_path, rendered_scene_path, xres, yres):
     """
     This script is run as an entry point for docker.
     It follows the flow of running docker in golem_core.
@@ -53,9 +52,9 @@ def run_img_compare_task(cropped_img_path,
 
     results_path = img_metrics_calculator.\
         compare_crop_window(cropped_img_path,
-                           rendered_scene_path,
-                           xres, yres,
-                          output_filename_path=file_path)
+                            rendered_scene_path,
+                            xres, yres,
+                            output_filename_path=file_path)
 
     # print(results_path)
     with open(results_path, 'r') as f:
