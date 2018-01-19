@@ -482,7 +482,7 @@ class TestDockerManager(unittest.TestCase):
             dmm = MockDockerManager()
             dmm.pull_images()
 
-        assert pulls[0] == 3
+        assert pulls[0] == 4
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -505,9 +505,9 @@ class TestDockerManager(unittest.TestCase):
             dmm = MockDockerManager()
             dmm.build_images()
 
-        assert builds[0] == 3
-        assert tags[0] == 3
-        assert len(os_chdir.mock_calls) == 6
+        assert builds[0] == 4
+        assert tags[0] == 4
+        assert len(os_chdir.mock_calls) == 8
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()
