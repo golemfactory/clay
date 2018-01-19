@@ -1,4 +1,3 @@
-from golem_messages.message import ComputeTaskDef
 import os
 import random
 from threading import Lock
@@ -6,12 +5,15 @@ import time
 import unittest.mock as mock
 import uuid
 
+from golem_messages.message import ComputeTaskDef
+
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
+from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
-from golem.testutils import DatabaseFixture, TempDirFixture
+from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 
@@ -98,13 +100,14 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.resource_request_rejected(subtask_id, 'reason')
 
     def test_computation(self):
+        p2p_node = P2PNode()
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 10203
         ctd['key_id'] = "key"
-        ctd['task_owner'] = "owner"
+        ctd['task_owner'] = p2p_node.to_dict()
         ctd['src_code'] = \
             "cnt=0\n" \
             "for i in range(10000):\n" \
@@ -135,8 +138,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
                              timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with(
-            "xyz",  tc.resource_manager.get_resource_header("xyz"),
-            "10.10.10.10", 10203, "key", "owner")
+            "xyz", tc.resource_manager.get_resource_header("xyz"),
+            "10.10.10.10", 10203, "key", p2p_node)
 
         assert tc.task_resource_collected("xyz")
         tc.task_server.unpack_delta.assert_called_with(
@@ -145,7 +148,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported",
-            "10.10.10.10", 10203, "key", "owner", "ABC")
+            "10.10.10.10", 10203, "key", p2p_node, "ABC")
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -171,7 +174,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[4], "10.10.10.10")
         self.assertEqual(args[5], 10203)
         self.assertEqual(args[6], "key")
-        self.assertEqual(args[7], "owner")
+        self.assertEqual(args[7], p2p_node)
         self.assertEqual(args[8], "ABC")
 
         ctd['subtask_id'] = "aabbcc"
@@ -184,7 +187,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with(
             "xyz",  tc.resource_manager.get_resource_header("xyz"),
-            "10.10.10.10", 10203, "key", "owner")
+            "10.10.10.10", 10203, "key", p2p_node)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
@@ -193,7 +196,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception', "10.10.10.10",
-            10203, "key", "owner", "ABC")
+            10203, "key", p2p_node, "ABC")
 
         ctd['subtask_id'] = "aabbcc2"
         ctd['src_code'] = "print('Hello world')"
@@ -204,7 +207,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         task_server.send_task_failed.assert_called_with(
             "aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-            "key", "owner", "ABC")
+            "key", p2p_node, "ABC")
 
         task_server.task_keeper.task_headers["xyz"].deadline = \
             timeout_to_deadline(20)
@@ -227,7 +230,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.counting_thread)
         task_server.send_task_failed.assert_called_with(
             "xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-            "key", "owner", "ABC")
+            "key", p2p_node, "ABC")
         tt.end_comp()
         time.sleep(0.5)
         if tt.is_alive():
@@ -385,7 +388,8 @@ class TestTaskMonitor(DatabaseFixture):
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
-        monitor = SystemMonitor(
+        #  hold reference to avoid GC of monitor
+        monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
             NodeMetadataModel(
                 "CLIID", "SESSID", "hackix", "3.1337",
                 ClientConfigDescriptor()),
@@ -403,7 +407,8 @@ class TestTaskMonitor(DatabaseFixture):
         def prepare():
             subtask = mock.MagicMock()
             subtask_id = random.randint(3000, 4000)
-            task_server.task_keeper.task_headers[subtask_id].subtask_timeout = duration
+            task_server\
+                .task_keeper.task_headers[subtask_id].subtask_timeout = duration
 
             task.assigned_subtasks[subtask_id] = subtask
             task_thread.subtask_id = subtask_id
