@@ -7,14 +7,12 @@ CROP_STEP = 0.01
 
 
 def generate_crops(resolution, crop_scene_window, num_crops,
-                   crop_size_x=None, crop_size_y=None):
-    res_x, res_y = resolution
+                   crop_size=None):
     xmin, xmax, ymin, ymax = crop_scene_window
 
-    if crop_size_x is None:
-        crop_size_x = find_crop_size(res_x)
-    if crop_size_y is None:
-        crop_size_y = find_crop_size(res_y)
+    if crop_size is None:
+        crop_size = (find_crop_size(resolution[0]),
+                     find_crop_size(resolution[1]))
 
     blender_crops = []
     blender_crops_pixel = []
@@ -22,12 +20,12 @@ def generate_crops(resolution, crop_scene_window, num_crops,
     # Randomisation cX and Y coordinate to render crop window
     # Blender cropping window from bottom left. Cropped window pixels
     # 0,0 are in top left
-    for crop in range(num_crops):
-        crop_x_min, crop_x_max = random_crop(xmin, xmax, crop_size_x)
-        crop_y_min, crop_y_max = random_crop(ymin, ymax, crop_size_y)
-        blender_crops.append((crop_x_min, crop_x_max, crop_y_min, crop_y_max))
-        blender_crops_pixel.append(pixel(res_x, res_y, crop_x_min, crop_y_max,
-                                         xmin, ymax))
+    for _ in range(num_crops):
+        crop_x = random_crop(xmin, xmax, crop_size[0])
+        crop_y = random_crop(ymin, ymax, crop_size[1])
+        blender_crops.append((crop_x[0], crop_x[1], crop_y[0], crop_y[1]))
+        blender_crops_pixel.append(pixel(resolution[0], resolution[1],
+                                         crop_x[0], crop_y[1], xmin, ymax))
     return blender_crops, blender_crops_pixel
 
 

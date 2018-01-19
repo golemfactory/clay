@@ -7,6 +7,7 @@ from apps.blender.resources.cropgenerator import (find_crop_size,
 
 from golem.testutils import PEP8MixIn
 
+
 class TestGenerateCrops(TestCase, PEP8MixIn):
     PEP8_FILES = ["apps/blender/resources/cropgenerator.py"]
 
@@ -20,8 +21,8 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
     def test_random_crop(self):
         def _test_crop(min_, max_, step):
             crop_min, crop_max = random_crop(min_, max_, step)
-            assert crop_min >= min_
-            assert crop_max <= max_
+            assert round(crop_min, 2) >= round(min_, 2)
+            assert round(crop_max, 2) <= round(max_, 2)
             assert abs(crop_max - crop_min - step) <= 0.01
 
         _test_crop(0.0, 0.1, 0.01)
@@ -40,14 +41,14 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
                 crops_info = generate_crops(resolution, crop, num)
             else:
                 crops_info = generate_crops(resolution, crop, num,
-                                            ncrop_size[0], ncrop_size[1])
+                                            ncrop_size)
             assert len(crops_info) == 2
             crops, pixels = crops_info
             assert len(crops) == num
             assert len(pixels) == num
-            for pixel in pixels:
-                assert 0 <= pixel[0] <= resolution[0]
-                assert 0 <= pixel[1] <= resolution[1]
+            for pixel_ in pixels:
+                assert 0 <= pixel_[0] <= resolution[0]
+                assert 0 <= pixel_[1] <= resolution[1]
             for ncrop in crops:
                 assert crop[0] <= ncrop[0] <= crop[1]
                 assert crop[0] <= ncrop[1] <= crop[1]
