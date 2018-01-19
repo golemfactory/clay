@@ -31,9 +31,9 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
         _test_crop(0.032, 0.42, 0.01)
 
     def test_pixel(self):
-        assert pixel(800, 600, 0.0, 1.0, 0.0, 1.0) == (0, 0)
-        assert pixel(800, 600, 0.6, 0.9, 0.5, 1.0) == (80, 60)
-        assert pixel(799, 600, 0.6, 0.9, 0.5, 1.0) == (80, 60)
+        assert pixel((800, 600), 0.0, 1.0, 0.0, 1.0) == (0, 0)
+        assert pixel((800, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
+        assert pixel((799, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
 
     def test_generate_crop(self):
         def _test_crop(resolution, crop, num, ncrop_size=None):
