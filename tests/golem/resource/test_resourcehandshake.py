@@ -1,5 +1,6 @@
 from golem_messages import message
 import os
+from pathlib import Path
 import types
 from unittest.mock import Mock, patch, ANY
 import uuid
@@ -12,6 +13,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
+from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture
 
 
@@ -621,7 +623,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.task_server = Mock(
             client=Mock(datadir=data_dir),
             node=Mock(key=str(uuid.uuid4())),
-            deny_set=set(),
+            acl=get_acl(Path(data_dir)),
             resource_handshakes=dict(),
             task_manager=Mock(
                 task_result_manager=Mock(

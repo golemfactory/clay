@@ -79,7 +79,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
-        conn = Mock(server=Mock(deny_set=set()))
+        conn = Mock(server=Mock())
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
         ts.verified = True
