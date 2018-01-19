@@ -39,6 +39,8 @@ class BenchmarkManager(object):
         def error_callback(err: Union[str, Exception]):
             logger.error("Unable to run %s benchmark: %s", env_id, str(err))
             if error:
+                if isinstance(err, str):
+                    err = Exception(err)
                 error(err)
 
         task_state = TaskDesc()
