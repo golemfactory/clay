@@ -4,5 +4,5 @@ $HyperdriveProcess = Get-Content $filePath -Raw
 
 # Get-Process
 
-Stop-Process -Id $HyperdriveProcess
+Stop-Process -Id $HyperdriveProcess.Id
 
