@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+import traceback
 from threading import Lock, Thread
 
 import copy
@@ -96,7 +97,7 @@ class TaskThread(Thread):
         self.end_comp()
 
         logger.error("Task computing error: %s", exception)
-        logger.error("%r", exception.__traceback__)
+        logger.error("%r", traceback.format_tb(exception.__traceback__))
 
         self.error = True
         self.error_msg = str(exception)
