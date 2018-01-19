@@ -520,9 +520,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if type(result) is Income:
             Trust.PAYMENT.increase(expected_income.sender_node, self.max_trust)
 
-    def subtask_accepted(self, subtask_id):
+    def subtask_accepted(self, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
+        self.client.transaction_system.incomes_keeper.update_awaiting(
+            subtask_id,
+            accepted_ts,
+        )
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(
@@ -561,6 +565,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             task_id, subtask_id, value, account_info)
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
+        return payment
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(

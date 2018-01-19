@@ -29,7 +29,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 7
+    SCHEMA_VERSION = 8
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -247,6 +247,7 @@ class ExpectedIncome(BaseModel):
     task = CharField()
     subtask = CharField()
     value = BigIntegerField()
+    accepted_ts = IntegerField(null=True)
 
     def __repr__(self):
         return "<ExpectedIncome: {!r} v:{:.3f}>"\
