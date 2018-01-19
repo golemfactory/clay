@@ -1,3 +1,4 @@
+import collections
 import datetime
 
 from golem_messages import message
@@ -16,15 +17,17 @@ mtd = datetime.timedelta(minutes=0, seconds=10)
 mat = datetime.timedelta(minutes=2, seconds=15)
 
 
-# FIXME: value
 DEFAULT_MSG_LIFETIME = (3 * mmtt + 3 * mat)
 
 # Time to wait before sending a message
-MSG_DELAYS = {  # FIXME: values
-    message.ForceReportComputedTask: (2 * mmtt + mat)
-}
+MSG_DELAYS = collections.defaultdict(
+    lambda: datetime.timedelta(0),
+    {
+        message.ForceReportComputedTask: (2 * mmtt + mat)
+    },
+)
 
 # A valid period of time for sending a message
-MSG_LIFETIMES = {  # FIXME: values
+MSG_LIFETIMES = {
 
 }
