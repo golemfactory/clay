@@ -17,7 +17,7 @@ find_and_kill_pid () {
 kill_running_hyperg () {
   RUNNING_PID=`pgrep hyperg`
   let res=$?
-  [ $res -eq 1 ] && exit 0
+  [ $res -eq 1 ] && return
   kill -9 $RUNNING_PID
   let res=$?
   [ $res -eq 1 ] && echo "Unable to kill pid $RUNNING_PID" >&2 && exit 1
