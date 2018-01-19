@@ -1,17 +1,22 @@
 import logging
 import os
-import traceback
 
 import requests
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ResultType
-from golem.task.taskthread import TaskThread
+from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
 logger = logging.getLogger(__name__)
 
 
-class TimeoutException(Exception):
+EXIT_CODE_MESSAGE = "Subtask computation failed with exit code {}"
+EXIT_CODE_PROBABLE_CAUSES = {
+    137: "probably killed by out-of-memory killer"
+}
+
+
+class ImageException(RuntimeError):
     pass
 
 
@@ -36,7 +41,7 @@ class DockerTaskThread(TaskThread):
 
         # Find available image
         self.image = None
-        logger.debug("Chechking docker images %s", docker_images)
+        logger.debug("Checking docker images %s", docker_images)
         for img in docker_images:
             if img.is_available():
                 self.image = img
@@ -48,7 +53,8 @@ class DockerTaskThread(TaskThread):
 
     def run(self):
         if not self.image:
-            self._fail("None of the Docker images is available")
+            failure = JobException("None of the Docker images are available")
+            self._fail(failure)
             self._cleanup()
             return
         try:
@@ -96,17 +102,22 @@ class DockerTaskThread(TaskThread):
                 else:
                     with open(stderr_file, 'r') as f:
                         logger.warning('Task stderr:\n%s', f.read())
-                    self._fail("Subtask computation failed " +
-                               "with exit code {}".format(exit_code))
+
+                    msg = self._exit_code_message(exit_code)
+                    self._fail(JobException(msg))
+
         except (requests.exceptions.ReadTimeout, TimeoutException) as exc:
-            if self.use_timeout:
-                self._fail("Task timed out after {:.1f}s".
-                           format(self.time_to_compute))
-            else:
-                self._fail(str(exc))
-        except Exception:
-            tb = ''.join(traceback.format_exc(limit=None))
-            self._fail(tb)
+            if not self.use_timeout:
+                return self._fail(exc)
+
+            failure = TimeoutException("Task timed out after {:.1f}s"
+                                       .format(self.time_to_compute))
+            failure.with_traceback(exc.__traceback__)
+            self._fail(failure)
+
+        except Exception as exc:  # pylint: disable=broad-except
+            self._fail(exc)
+
         finally:
             self._cleanup()
 
@@ -126,3 +137,11 @@ class DockerTaskThread(TaskThread):
     def _cleanup(self):
         if self.mc:
             self.mc.stop()
+
+    @staticmethod
+    def _exit_code_message(exit_code):
+        msg = EXIT_CODE_MESSAGE.format(exit_code)
+        cause = EXIT_CODE_PROBABLE_CAUSES.get(exit_code)
+        if not cause:
+            return msg
+        return "{} ({})".format(msg, cause)
