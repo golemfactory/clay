@@ -2,10 +2,12 @@
 
 import os
 import sys
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
 if __name__ == '__main__':
     # https://stackoverflow.com/questions/16981921/relative-imports-in-python-3
+    # pylint: disable:no-name-in-module
     from scripts import img_metrics_calculator
 else:
     from .scripts import img_metrics_calculator

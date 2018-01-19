@@ -1,9 +1,11 @@
-import OpenEXR
+# pylint: disable=import-error
+
 import os
 import sys
 
-import cv2
 import numpy as np
+import cv2
+import OpenEXR
 import pywt
 from skimage.measure import compare_ssim as ssim
 
@@ -75,9 +77,7 @@ def _load_and_prepare_img_for_comparison(cropped_img_path,
     cropped_img = cv2.imread(cropped_img_path)
     (crop_height, crop_width) = cropped_img.shape[:2]
 
-    scene_crop = rendered_scene[
-                 yres:yres + crop_height,
-                 xres:xres + crop_width]
+    scene_crop = rendered_scene[yres:yres + crop_height, xres:xres + crop_width]
 
     # print("x, x + crop_width, y, y + crop_height:",
     #       xres, xres + crop_width, yres,
@@ -94,38 +94,32 @@ def compare_images(image_a, image_b) -> ImgMetrics:
     :return: ImgMetrics
     """
 
-    """imageA/B are images read by: cv2.imread(img.png)"""
+    # ImageA/B are images read by: cv2.imread(img.png)
     (crop_height, crop_width) = image_a.shape[:2]
-    crop_resolution = str(crop_height) + "x" + str(crop_width)
-
-    imageA_canny = cv2.Canny(image_a, 0, 0)
-    imageB_canny = cv2.Canny(image_b, 0, 0)
 
     imageA_wavelet, imageB_wavelet = images_to_wavelet_transform(
         image_a, image_b, mode='db1')
 
-    imgCorr = compare_histograms(image_a, image_b)
     SSIM_normal, MSE_normal = compare_mse_ssim(image_a, image_b)
 
     SSIM_canny, MSE_canny = compare_images_transformed(
-        imageA_canny, imageB_canny)
+        cv2.Canny(image_a, 0, 0), cv2.Canny(image_b, 0, 0))
 
     SSIM_wavelet, MSE_wavelet = compare_images_transformed(
         imageA_wavelet, imageB_wavelet)
 
     data = {
-        "imgCorr": imgCorr,
+        "imgCorr": compare_histograms(image_a, image_b),
         "SSIM_normal": SSIM_normal,
         "MSE_normal": MSE_normal,
         "SSIM_canny": SSIM_canny,
         "MSE_canny": MSE_canny,
         "MSE_wavelet": MSE_wavelet,
         "SSIM_wavelet": SSIM_wavelet,
-        "crop_resolution": crop_resolution,
+        "crop_resolution": str(crop_height) + "x" + str(crop_width),
     }
 
-    imgmetrics = ImgMetrics(data)
-    return imgmetrics
+    return ImgMetrics(data)
 
 
 # converting crop windows to histogram transfrom
@@ -133,7 +127,7 @@ def compare_histograms(image_a, image_b):
     color = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
     hist_item = 0
     hist_item1 = 0
-    for ch, col in enumerate(color):
+    for ch in range(len(color)):
         hist_item = cv2.calcHist([image_a], [ch], None, [256], [0, 255])
         hist_item1 = cv2.calcHist([image_b], [ch], None, [256], [0, 255])
         cv2.normalize(hist_item, hist_item, 0, 255, cv2.NORM_MINMAX)
