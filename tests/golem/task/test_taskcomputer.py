@@ -347,20 +347,20 @@ class TestTaskThread(DatabaseFixture):
         self.assertTrue(tc.counting_task)
 
     def test_fail(self):
-        first_error_msg = "First error message"
-        second_error_msg = "Second error message"
+        first_error = Exception("First error message")
+        second_error = Exception("Second error message")
 
         tt = self._new_task_thread(mock.Mock())
-        tt._fail(first_error_msg)
+        tt._fail(first_error)
 
         assert tt.error is True
         assert tt.done is True
-        assert tt.error_msg == first_error_msg
+        assert tt.error_msg == str(first_error)
 
-        tt._fail(second_error_msg)
+        tt._fail(second_error)
         assert tt.error is True
         assert tt.done is True
-        assert tt.error_msg == first_error_msg
+        assert tt.error_msg == str(first_error)
 
     def _new_task_thread(self, task_computer):
         files = self.additional_dir_content([0, [1], [1], [1], [1]])

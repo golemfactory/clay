@@ -1,12 +1,21 @@
-import copy
 import logging
-import os
 import threading
 import time
-from threading import Thread, Lock
+import traceback
+from threading import Lock, Thread
 
+import copy
+import os
 
 logger = logging.getLogger("golem.task.taskthread")
+
+
+class JobException(RuntimeError):
+    pass
+
+
+class TimeoutException(JobException):
+    pass
 
 
 class TaskThread(Thread):
@@ -40,13 +49,16 @@ class TaskThread(Thread):
 
     def check_timeout(self):
         if not self._parent_thread.is_alive():
-            self._fail("Task terminated")
+            failure = JobException("Task terminated")
+            self._fail(failure)
         elif self.use_timeout:
             time_ = time.time()
             self.task_timeout -= time_ - self.last_time_checking
             self.last_time_checking = time_
             if self.task_timeout < 0:
-                self._fail("Task timed out {:.1f}s".format(self.time_to_compute))
+                failure = TimeoutException("Task timed out {:.1f}s"
+                                           .format(self.time_to_compute))
+                self._fail(failure)
 
     def get_subtask_id(self):
         return self.subtask_id
@@ -66,9 +78,9 @@ class TaskThread(Thread):
         logger.info("RUNNING ")
         try:
             self.__do_work()
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.exception("__do_work failed")
-            self._fail(str(exc))
+            self._fail(exc)
         else:
             self.task_computer.task_computed(self)
 
@@ -77,19 +89,18 @@ class TaskThread(Thread):
         if self.vm:
             self.vm.end_comp()
 
-    def _fail(self, error_msg: str):
+    def _fail(self, exception: Exception):
         # Preserves the original cause of failure
         if self.error:
             return
         # Terminate computation (if any)
         self.end_comp()
 
-        if "exit code 137" in error_msg:
-            error_msg += " (probably killed by out-of-memory killer)"
+        logger.error("Task computing error: %s", exception)
+        logger.error("%r", traceback.format_tb(exception.__traceback__))
 
-        logger.error("Task computing error: %s", error_msg)
         self.error = True
-        self.error_msg = error_msg
+        self.error_msg = str(exception)
         self.done = True
         self.task_computer.task_computed(self)
 
