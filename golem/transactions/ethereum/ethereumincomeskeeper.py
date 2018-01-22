@@ -12,9 +12,9 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 class EthereumIncomesKeeper(IncomesKeeper):
 
-    def __init__(self, eth_address: str, token) -> None:
+    def __init__(self, eth_address: str, sci) -> None:
         self.__eth_address = eth_address
-        self.__token = token
+        self.__sci = sci
 
     def received(self,
                  sender_node_id,
@@ -26,13 +26,13 @@ class EthereumIncomesKeeper(IncomesKeeper):
 
         logger.debug('MY ADDRESS: %r', self.__eth_address)
 
-        if not self.__token.is_synchronized():
+        if not self.__sci.is_synchronized():
             logger.warning("token must be synchronized with "
                            "blockchain, otherwise income may not be found."
                            "Please wait until synchronized")
-            self.__token.wait_until_synchronized()
+            self.__sci.wait_until_synchronized()
 
-        incomes = self.__token.get_incomes_from_block(
+        incomes = self.__sci.get_incomes_from_block(
             block_number,
             self.__eth_address)
         if not incomes:

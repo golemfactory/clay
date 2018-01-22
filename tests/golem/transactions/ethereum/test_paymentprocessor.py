@@ -20,6 +20,7 @@ from golem.ethereum import Client
 from golem.ethereum.contracts import TestGNT
 from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.smartcontractinterface import SmartContractInterface
 from golem.ethereum.token import GNTToken
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
@@ -69,9 +70,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_transaction_count.return_value = self.nonce
         # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(
-            self.client,
             self.privkey,
-            GNTToken(self.client))
+            SmartContractInterface(self.client, GNTToken(self.client)))
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
 
     def test_eth_balance(self):
@@ -158,9 +158,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         response = Mock(spec=requests.Response)
         response.status_code = 200
         pp = PaymentProcessor(
-            self.client,
             self.privkey,
-            GNTToken(self.client),
+            SmartContractInterface(self.client, GNTToken(self.client)),
             faucet=True)
         pp.get_ether_from_faucet()
         assert get.call_count == 1
@@ -169,9 +168,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_gnt_faucet(self):
         self.client.call.return_value = '0x00'
         pp = PaymentProcessor(
-            self.client,
             self.privkey,
-            GNTToken(self.client),
+            SmartContractInterface(self.client, GNTToken(self.client)),
             faucet=True)
         pp.get_gnt_from_faucet()
         assert self.client.send.call_count == 1
@@ -461,9 +459,8 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.client.call.side_effect = call
         self.client.send.side_effect = send
         self.pp = PaymentProcessor(
-            self.client,
             self.privkey,
-            GNTToken(self.client))
+            SmartContractInterface(self.client, GNTToken(self.client)))
         self.clock = Clock()
         self.pp._loopingCall.clock = self.clock
 
@@ -551,35 +548,36 @@ def make_awaiting_payment(value=None, ts=None):
     return p
 
 
-class InteractionWithTokenTest(DatabaseFixture):
+class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
     def setUp(self):
         DatabaseFixture.setUp(self)
-        self.token = mock.Mock()
-        self.token.GAS_BATCH_PAYMENT_BASE = 10
-        self.token.GAS_PER_PAYMENT = 1
-        self.token.GAS_PRICE = 20
+        self.sci = mock.Mock()
+        self.sci.GAS_BATCH_PAYMENT_BASE = 10
+        self.sci.GAS_PER_PAYMENT = 1
+        self.sci.GAS_PRICE = 20
         self.privkey = urandom(32)
-        self.client = mock.Mock()
 
         self.tx = mock.Mock()
         tx_hash = '0xdead'
         self.tx.hash = decode_hex(tx_hash)
-        self.client.send.return_value = tx_hash
-        self.token.batch_transfer.return_value = self.tx
+        self.sci.send_transaction.return_value = tx_hash
+        self.sci.prepare_batch_transfer.return_value = self.tx
 
-        self.pp = PaymentProcessor(self.client, self.privkey, self.token)
+        self.pp = PaymentProcessor(self.privkey, self.sci)
 
     def test_faucet(self):
         self.pp._PaymentProcessor__faucet = True
 
-        self.token.get_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gnt_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
         self.assertTrue(self.pp.get_gnt_from_faucet())
-        self.token.request_from_faucet.assert_not_called()
+        self.sci.request_from_faucet.assert_not_called()
 
-        self.token.get_balance.return_value = 0
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntw_balance.return_value = 0
         self.assertFalse(self.pp.get_gnt_from_faucet())
-        self.token.request_from_faucet.assert_called_with(self.privkey)
+        self.sci.request_gnt_from_faucet.assert_called_with(self.privkey)
 
     @freeze_time(timestamp_to_datetime(0))
     def test_batch_transfer(self):
@@ -589,16 +587,18 @@ class InteractionWithTokenTest(DatabaseFixture):
 
         p1 = make_awaiting_payment()
         p2 = make_awaiting_payment()
-        self.client.get_balance.return_value = denoms.ether
-        self.token.get_balance.return_value = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gnt_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
         self.pp.add(p1)
         self.pp.add(p2)
         self.assertTrue(self.pp.sendout())
-        self.client.send.assert_called_with(self.tx)
+        self.sci.send_transaction.assert_called_with(self.tx)
 
     def test_closure_time(self):
-        self.client.get_balance.return_value = denoms.ether
-        self.token.get_balance.return_value = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gnt_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
 
         p1 = make_awaiting_payment()
         p2 = make_awaiting_payment()
@@ -616,32 +616,33 @@ class InteractionWithTokenTest(DatabaseFixture):
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p1, p2],
                 closure_time)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
         closure_time = 4
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_not_called()
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.assert_not_called()
+            self.sci.prepare_batch_transfer.reset_mock()
 
         closure_time = 6
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p5],
                 closure_time)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
     def test_short_on_gnt(self):
-        self.client.get_balance.return_value = denoms.ether
-        self.token.get_balance.return_value = 4 * denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntw_balance.return_value = 4 * denoms.ether
         self.pp.deadline = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
@@ -654,25 +655,26 @@ class InteractionWithTokenTest(DatabaseFixture):
 
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p1, p2],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
-        self.token.get_balance.return_value = 5 * denoms.ether
+        self.sci.get_gntw_balance.return_value = 5 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p5],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
     def test_short_on_gnt_closure_time(self):
-        self.client.get_balance.return_value = denoms.ether
-        self.token.get_balance.return_value = 4 * denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntw_balance.return_value = 4 * denoms.ether
         self.pp.deadline = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
@@ -685,26 +687,27 @@ class InteractionWithTokenTest(DatabaseFixture):
 
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p1],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
-        self.token.get_balance.return_value = 10 * denoms.ether
+        self.sci.get_gntw_balance.return_value = 10 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p2, p5],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
     def test_short_on_eth(self):
-        self.client.get_balance.return_value = self.token.GAS_PRICE * \
-            (self.token.GAS_BATCH_PAYMENT_BASE + 2 * self.token.GAS_PER_PAYMENT)
-        self.token.get_balance.return_value = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = self.sci.GAS_PRICE * \
+            (self.sci.GAS_BATCH_PAYMENT_BASE + 2 * self.sci.GAS_PER_PAYMENT)
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
         self.pp.deadline = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
@@ -717,18 +720,18 @@ class InteractionWithTokenTest(DatabaseFixture):
 
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p1, p2],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()
 
-        self.client.get_balance.return_value = denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
         self.pp.eth_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
-            self.token.batch_transfer.assert_called_with(
+            self.sci.prepare_batch_transfer.assert_called_with(
                 self.privkey,
                 [p5],
                 10)
-            self.token.batch_transfer.reset_mock()
+            self.sci.prepare_batch_transfer.reset_mock()

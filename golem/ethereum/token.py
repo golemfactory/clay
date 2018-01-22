@@ -1,7 +1,7 @@
 import abc
 import json
 import logging
-from typing import List, Any
+from typing import List, Any, Optional
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
@@ -103,12 +103,6 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
         data = token_abi.encode_function_call('create', [])
         self._send_transaction(privkey, token_address, data, 90000)
 
-    def wait_until_synchronized(self) -> bool:
-        return self._client.wait_until_synchronized()
-
-    def is_synchronized(self) -> bool:
-        return self._client.is_synchronized()
-
     @abc.abstractmethod
     def get_balance(self, addr: str) -> int:
         pass
@@ -147,6 +141,12 @@ class GNTToken(AbstractToken):
     def __init__(self, client: Client):
         super().__init__(client)
         self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))
+
+    def get_gnt_balance(self, addr: str) -> int:
+        return self.get_balance(addr)
+
+    def get_gntw_balance(self, addr: str) -> int:
+        return 0
 
     def get_balance(self, addr: str) -> int:
         balance = self._get_balance(
@@ -223,18 +223,21 @@ class GNTWToken(AbstractToken):
         self.__deposit_address_created = False
         self.__process_deposit_tx = None
 
+    def get_gnt_balance(self, addr: str) -> Optional[int]:
+        return self._get_balance(self.__gnt, self.TESTGNT_ADDRESS, addr)
+
+    def get_gntw_balance(self, addr: str) -> Optional[int]:
+        return self._get_balance(self.__gntw, self.GNTW_ADDRESS, addr)
+
     def get_balance(self, addr: str) -> int:
-        gnt_balance = self._get_balance(self.__gnt, self.TESTGNT_ADDRESS, addr)
+        gnt_balance = self.get_gnt_balance(addr)
         if gnt_balance is None:
             return None
 
-        gntw_balance = self._get_balance(self.__gntw, self.GNTW_ADDRESS, addr)
+        gntw_balance = self.get_gntw_balance(addr)
         if gntw_balance is None:
             return None
 
-        logger.info("TestGNT: {} GNTW: {}".format(
-            gnt_balance / denoms.ether,
-            gntw_balance / denoms.ether))
         return gnt_balance + gntw_balance
 
     def request_from_faucet(self, privkey: bytes) -> None:

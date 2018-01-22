@@ -10,7 +10,6 @@ from ethereum.utils import denoms
 from pydispatch import dispatcher
 
 from golem.core.service import LoopingCallService
-from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
 from .node import tETH_faucet_donate
@@ -33,15 +32,13 @@ class PaymentProcessor(LoopingCallService):
     CLOSURE_TIME_DELAY = 10
 
     def __init__(self,
-                 client: Client,
                  privkey,
-                 token,
+                 sci,
                  faucet=False) -> None:
-        self.__token = token
-        self.ETH_PER_PAYMENT = token.GAS_PRICE * token.GAS_PER_PAYMENT
+        self.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         self.ETH_BATCH_PAYMENT_BASE = \
-            token.GAS_PRICE * token.GAS_BATCH_PAYMENT_BASE
-        self.__client = client
+            sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
+        self._sci = sci
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
@@ -72,7 +69,7 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            balance = self.__client.get_balance(addr)
+            balance = self._sci.get_eth_balance(addr)
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
@@ -82,11 +79,16 @@ class PaymentProcessor(LoopingCallService):
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            gnt_balance = self.__token.get_balance(self.eth_address(zpad=False))
-            if gnt_balance is not None:
-                self.__gnt_balance = gnt_balance
+            gnt_balance = self._sci.get_gnt_balance(
+                self.eth_address(zpad=False))
+            gntw_balance = self._sci.get_gntw_balance(
+                self.eth_address(zpad=False))
+            if gnt_balance is not None and gntw_balance is not None:
+                log.info("GNT: {} GNTW: {}".format(
+                    gnt_balance / denoms.ether, gntw_balance / denoms.ether))
+                self.__gnt_balance = gnt_balance + gntw_balance
             else:
-                log.warning("Failed to retrieve GNT balance")
+                log.warning("Failed to retrieve GNT/GNTW balance")
         return self.__gnt_balance
 
     def _eth_reserved(self):
@@ -186,7 +188,10 @@ class PaymentProcessor(LoopingCallService):
                 return False
             self._awaiting = rest
 
-        tx = self.__token.batch_transfer(self.__privkey, payments, closure_time)
+        tx = self._sci.prepare_batch_transfer(
+            self.__privkey,
+            payments,
+            closure_time)
         if not tx:
             with self._awaiting_lock:
                 payments.extend(self._awaiting)
@@ -220,7 +225,7 @@ class PaymentProcessor(LoopingCallService):
                     encode_hex(payment.payee),
                     payment.value / denoms.ether))
 
-            tx_hash = self.__client.send(tx)
+            tx_hash = self._sci.send_transaction(tx)
             tx_hex = decode_hex(tx_hash)
             if tx_hex != h:  # FIXME: Improve Client.
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
@@ -240,12 +245,12 @@ class PaymentProcessor(LoopingCallService):
 
         confirmed = []
         failed = {}
-        current_block = self.__client.get_block_number()
+        current_block = self._sci.get_block_number()
 
         for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
-            receipt = self.__client.get_transaction_receipt(hstr)
+            receipt = self._sci.get_transaction_receipt(hstr)
             if not receipt:
                 continue
 
@@ -270,7 +275,7 @@ class PaymentProcessor(LoopingCallService):
                 continue
 
             gas_used = receipt['gasUsed']
-            total_fee = gas_used * self.__token.GAS_PRICE
+            total_fee = gas_used * self._sci.GAS_PRICE
             fee = total_fee // len(payments)
             log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
                      .format(hstr, block_hash, block_number, gas_used, fee))
@@ -318,7 +323,7 @@ class PaymentProcessor(LoopingCallService):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting GNT from faucet")
-            self.__token.request_from_faucet(self.__privkey)
+            self._sci.request_gnt_from_faucet(self.__privkey)
             return False
         return True
 
@@ -329,7 +334,7 @@ class PaymentProcessor(LoopingCallService):
         self._waiting_for_faucet = True
 
         try:
-            if self.__token.is_synchronized() and \
+            if self._sci.is_synchronized() and \
                     self.get_ether_from_faucet() and \
                     self.get_gnt_from_faucet():
                 self.monitor_progress()
