@@ -175,10 +175,6 @@ class PeerSession(BasicSafeSession):
         """
         self.send(message.RemoveTask(task_id=task_id))
 
-    def send_get_resource_peers(self):
-        """ Send get resource peers message """
-        self.send(message.GetResourcePeers())
-
     def send_degree(self, degree):
         """ Send degree message
          :param int degree: degree of this node
@@ -349,13 +345,6 @@ class PeerSession(BasicSafeSession):
     def _react_to_remove_task(self, msg):
         self.p2p_service.remove_task_header(msg.task_id)
 
-    def _react_to_get_resource_peers(self, msg):
-        resource_peers = self.p2p_service.get_resource_peers()
-        self.send(message.ResourcePeers(resource_peers=resource_peers))
-
-    def _react_to_resource_peers(self, msg):
-        self.p2p_service.set_resource_peers(msg.resource_peers)
-
     def _react_to_degree(self, msg):
         self.degree = msg.degree
 
@@ -508,7 +497,6 @@ class PeerSession(BasicSafeSession):
 
     def __set_msg_interpretations(self):
         self.__set_basic_msg_interpretations()
-        self.__set_resource_msg_interpretations()
         self.__set_ranking_msg_interpretations()
 
     def __set_basic_msg_interpretations(self):
@@ -526,12 +514,6 @@ class PeerSession(BasicSafeSession):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.WantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,  # noqa
             message.SetTaskSession.TYPE: self._react_to_set_task_session,
-        })
-
-    def __set_resource_msg_interpretations(self):
-        self._interpretation.update({
-            message.GetResourcePeers.TYPE: self._react_to_get_resource_peers,
-            message.ResourcePeers.TYPE: self._react_to_resource_peers,
         })
 
     def __set_ranking_msg_interpretations(self):

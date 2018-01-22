@@ -50,9 +50,6 @@ class BaseResourceServer(object):
     def get_distributed_resource_root(self):
         return self.resource_manager.storage.get_root()
 
-    def get_peers(self):
-        self.client.get_resource_peers()
-
     def sync_network(self):
         self._download_resources()
 
@@ -145,9 +142,6 @@ class BaseResourceServer(object):
         return self.keys_auth.verify(sig, data, public_key)
 
     def start_accepting(self):
-        pass
-
-    def set_resource_peers(self, *args, **kwargs):
         pass
 
     def add_files_to_send(self, *args):
