@@ -1,9 +1,10 @@
-from golem_messages import message
 import os
 from pathlib import Path
 import types
 from unittest.mock import Mock, patch, ANY
 import uuid
+
+from golem_messages import message
 
 from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
