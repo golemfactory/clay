@@ -4,7 +4,6 @@ from typing import Set
 
 
 DENY_LIST_NAME = "deny.txt"
-ALLOW_LIST_NAME = "allow.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
 
 
@@ -49,10 +48,10 @@ def _read_set_from_file(path: Path) -> Set[str]:
 
 
 def get_acl(datadir: Path) -> Acl:
-    deny_set = _read_set_from_file(datadir / DENY_LIST_NAME)
+    nodes_ids = _read_set_from_file(datadir / DENY_LIST_NAME)
 
-    if ALL_EXCEPT_ALLOWED in deny_set:
-        allow_set = _read_set_from_file(datadir / ALLOW_LIST_NAME)
-        return _AllowAcl(allow_set)
+    if ALL_EXCEPT_ALLOWED in nodes_ids:
+        nodes_ids.remove(ALL_EXCEPT_ALLOWED)
+        return _AllowAcl(nodes_ids)
 
-    return _DenyAcl(deny_set)
+    return _DenyAcl(nodes_ids)
