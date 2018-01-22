@@ -166,13 +166,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return None
         return self.task_server.keys_auth.ecc.raw_privkey
 
-    @property
-    def my_public_key(self):
-        if self.task_server is None:
-            logger.error("Task Server is None, can't get public key.")
-            return None
-        return self.task_server.keys_auth.ecc.raw_pubkey
-
     ###################################
     # IMessageHistoryProvider methods #
     ###################################
