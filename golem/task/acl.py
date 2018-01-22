@@ -41,10 +41,11 @@ class _AllowAcl(Acl):
 
 
 def _read_set_from_file(path: Path) -> Set[str]:
-    if not path.exists():
+    try:
+        with path.open() as f:
+            return set(line.strip() for line in f)
+    except OSError:
         return set()
-    with path.open() as f:
-        return set(line.strip() for line in f)
 
 
 def get_acl(datadir: Path) -> Acl:
