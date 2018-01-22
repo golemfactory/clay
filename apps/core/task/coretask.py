@@ -260,7 +260,7 @@ class CoreTask(Task):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
     def get_subtasks(self, part):
-        return []
+        return dict()
 
     def restart(self):
         for subtask_id in list(self.subtasks_given.keys()):
