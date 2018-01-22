@@ -1,3 +1,4 @@
+import calendar
 import functools
 import hashlib
 import logging
@@ -7,6 +8,7 @@ import pickle
 import threading
 import time
 
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from twisted.internet import defer
 from twisted.internet import reactor
@@ -32,12 +34,12 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-def drop_after_attr_error(*args, **kwargs):
+def drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured")
     args[0].dropped()
 
 
-def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
+def call_task_computer_and_drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured")
     args[0].task_computer.session_closed()
     args[0].dropped()
@@ -163,6 +165,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.error("Task Server is None, can't sign a message.")
             return None
         return self.task_server.keys_auth.ecc.raw_privkey
+
+    @property
+    def my_public_key(self):
+        if self.task_server is None:
+            logger.error("Task Server is None, can't get public key.")
+            return None
+        return self.task_server.keys_auth.ecc.raw_pubkey
 
     ###################################
     # IMessageHistoryProvider methods #
@@ -377,6 +386,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         node_name = self.task_server.get_node_name()
+
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
@@ -385,10 +395,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         except history.MessageNotFound:
             task_to_compute = None
-            logger.info(
+            logger.warning(
                 '[CONCENT] TaskToCompute not found for subtask: %r',
                 task_result.subtask_id,
             )
+            return
 
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -405,20 +416,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(report_computed_task)
 
         msg = message.ForceReportComputedTask()
-        try:
-            task_to_compute = history.MessageHistoryService.get_sync_as_message(
-                task=task_result.task_id,
-                subtask=task_result.subtask_id,
-                msg_cls='TaskToCompute',
-            )
-        except history.MessageNotFound:
-            logger.warning(
-                '[CONCENT] Cannot create ForceReportComputedTask. '
-                'TaskToCompute message not found for task: %r subtask: %r',
-                task_result.task_id,
-                task_result.subtask_id,
-            )
-            return
         msg.task_to_compute = task_to_compute
         result_hash = yield deferred_compute_result_hash(task_result)
         msg.result_hash = 'sha1:' + result_hash.hexdigest()
@@ -561,22 +558,91 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id in self.task_manager.subtask2task_mapping:
-            self.task_server.receive_subtask_computation_time(
-                msg.subtask_id,
-                msg.computation_time
-            )
-            self.result_owner = EthAccountInfo(
-                msg.key_id,
-                msg.port,
-                msg.address,
-                msg.node_name,
-                msg.node_info,
-                msg.eth_account
-            )
-            self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
-        else:
+        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
+            logger.warning('Received unknown subtask_id: %r', msg)
             self.dropped()
+            return
+
+        if msg.task_to_compute is None:
+            logger.warning('Did not receive task_to_compute: %r', msg)
+            self.dropped()
+            return
+
+        get_msg = functools.partial(
+            history.MessageHistoryService.get_sync_as_message,
+            task=msg.task_id,
+            subtask=msg.subtask_id,
+        )
+
+        # Check msg.task_to_compute signature
+        try:
+            self.task_server.keys_auth.ecc.verify(
+                signature=msg.task_to_compute.sig,
+                message=msg.task_to_compute.get_short_hash(),
+            )
+        except (AssertionError, msg_exceptions.InvalidSignature()):
+            logger.warning('Received fake task_to_compute: %r', msg)
+            self.dropped()
+            return
+
+        def send_reject(reason, **kwargs):
+            self.send(message.concents.RejectReportComputedTask(
+                subtask_id=msg.subtask_id,
+                reason=reason,
+                task_to_compute=msg.task_to_compute,
+                **kwargs,
+            ))
+
+        reject_reasons = message.concents.RejectReportComputedTask.REASON
+        now_ts = calendar.timegm(time.gmtime())
+        # Check task deadline
+        if now_ts > msg.task_to_compute.compute_task_def['deadline']:
+            return send_reject(reject_reasons.TaskTimeLimitExceeded)
+        # Check subtask deadline
+        if now_ts > XXX subtask_deadlin:
+            return send_reject(reject_reasons.SubtaskTimeLimitExceeded)
+
+        # CannotComputeTask received
+        try:
+            unwanted_msg = get_msg(msg_cls='CannotComputeTask')
+            return send_reject(
+                reject_reasons.GotMessageCannotComputeTask,
+                cannot_compute_task=unwanted_msg,
+            )
+        except history.MessageNotFound:
+            pass
+
+        # TaskFailure received
+        try:
+            unwanted_msg = get_msg(msg_cls='TaskFailure')
+            return send_reject(
+                reject_reasons.GotMessageCannotComputeTask,
+                task_failure=unwanted_msg,
+            )
+        except history.MessageNotFound:
+            pass
+
+        # Verification passed, will send ACK
+
+        self.task_server.receive_subtask_computation_time(
+            msg.subtask_id,
+            msg.computation_time
+        )
+
+        self.send(message.concents.AckReportComputedTask(
+            subtask_id=msg.subtask_id,
+            task_to_compute=msg.task_to_compute,
+        ))
+
+        self.result_owner = EthAccountInfo(
+            msg.key_id,
+            msg.port,
+            msg.address,
+            msg.node_name,
+            msg.node_info,
+            msg.eth_account
+        )
+        self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
 
     @history.provider_history
     def _react_to_get_task_result(self, msg):
