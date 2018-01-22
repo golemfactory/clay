@@ -29,7 +29,6 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
@@ -784,8 +783,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_directories(self, *_):
         c = self.client
 
-        c.resource_server = ResourceServer.__new__(ResourceServer)
-        c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
+        def unique_dir():
+            d = self.new_path / str(uuid.uuid4())
+            d.mkdir(exist_ok=True)
+            return d
+
+        c.resource_server = Mock()
+        c.resource_server.get_distributed_resource_root.return_value = \
+            unique_dir()
 
         self.assertIsInstance(c.get_datadir(), str)
         self.assertIsInstance(c.get_dir_manager(), DirManager)
