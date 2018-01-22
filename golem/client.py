@@ -198,8 +198,6 @@ class Client(HardwarePresetsMixin):
 
         self.resource_server = None
         self.resource_port = 0
-        self.last_get_resource_peers_time = time.time()
-        self.get_resource_peers_interval = 5.0
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
@@ -631,9 +629,6 @@ class Client(HardwarePresetsMixin):
 
     def get_suggested_conn_reverse(self, key_id):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
-
-    def get_resource_peers(self):
-        self.p2pservice.send_get_resource_peers()
 
     def get_peers(self):
         return list(self.p2pservice.peers.values())

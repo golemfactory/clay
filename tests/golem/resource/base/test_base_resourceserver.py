@@ -17,10 +17,6 @@ class MockClient:
     def __init__(self):
         self.downloaded = None
         self.failed = None
-        self.resource_peers = []
-
-    def get_resource_peers(self, *args, **kwargs):
-        return self.resource_peers
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
