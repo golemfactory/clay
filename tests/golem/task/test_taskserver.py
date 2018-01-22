@@ -19,6 +19,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.taskbase import TaskHeader, ResultType
@@ -1024,12 +1025,18 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_http_error_and_resource_hashes(self):
+        self._test_with_error_and_resource_hashes(HTTPError)
+
+    def test_with_resource_error_and_resource_hashes(self):
+        self._test_with_error_and_resource_hashes(ResourceError)
+
+    def _test_with_error_and_resource_hashes(self, error_class):
         self._create_tasks(self.ts, self.task_count)
         for state in self.ts.task_manager.tasks_states.values():
             state.resource_hash = str(uuid.uuid4())
 
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=HTTPError):
+                          side_effect=error_class):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == \
                 self.task_count * 2

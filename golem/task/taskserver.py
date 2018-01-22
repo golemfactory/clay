@@ -24,6 +24,7 @@ from golem.network.transport.tcpnetwork import (
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
+from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.resource import ResourceType, get_resources_for_task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.deny import get_deny_set
@@ -96,7 +97,7 @@ class TaskResourcesMixin(object):
             )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
-        except HTTPError as exc:
+        except (ResourceError, HTTPError) as exc:
             if resource_hash:
                 return self._restore_resources(files, task_id)
             self._restore_resources_error(task_id, exc)
