@@ -103,6 +103,12 @@ class AbstractToken(object, metaclass=abc.ABCMeta):
         data = token_abi.encode_function_call('create', [])
         self._send_transaction(privkey, token_address, data, 90000)
 
+    def wait_until_synchronized(self) -> bool:
+        return self._client.wait_until_synchronized()
+
+    def is_synchronized(self) -> bool:
+        return self._client.is_synchronized()
+
     @abc.abstractmethod
     def get_balance(self, addr: str) -> int:
         pass
