@@ -1,7 +1,14 @@
+import logging
 import math
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
+from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
+
+
+logger = logging.getLogger("apps.blender")
+
+NUM_CROPS = 3
 
 
 class BlenderVerifier(FrameRenderingVerifier):
@@ -43,3 +50,27 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)
+
+    def _verify_imgs(self, subtask_info, results, reference_data, resources):
+        if not super(BlenderVerifier, self)._verify_imgs(subtask_info, results,
+                                                         reference_data,
+                                                         resources):
+            return False
+
+        if not self._render_crops(subtask_info, resources):
+            return False
+        return True
+
+    # FIXME remove pylint-disable
+    # pylint: disable=unused-argument
+    def _render_crops(self, subtask_info, resources, num_crops=NUM_CROPS,
+                      crop_size=None):
+        if not self._check_computer():
+            return False
+
+        crops_info = generate_crops((subtask_info['res_x'],
+                                     subtask_info['res_y']),
+                                    subtask_info['crop_window'], num_crops,
+                                    crop_size)
+        logger.info(crops_info)
+        return True
