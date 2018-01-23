@@ -1,15 +1,13 @@
 import unittest
 from distutils.version import StrictVersion
-from os import urandom, path
+from os import path
 
-import requests
 from mock import patch, Mock
 
-from golem.ethereum.node import log, NodeProcess, tETH_faucet_donate, \
+from golem.ethereum.node import log, NodeProcess, \
     FALLBACK_NODE_LIST, get_public_nodes
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.utils import encode_hex
 
 
 class MockPopen(Mock):
@@ -17,40 +15,9 @@ class MockPopen(Mock):
         return "Version: 1.6.2", Mock()
 
 
-class RopstenFaucetTest(unittest.TestCase, PEP8MixIn):
+class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = ["golem/ethereum/node.py"]
 
-    @patch('requests.get')
-    def test_error_code(self, get):
-        addr = urandom(20)
-        response = Mock(spec=requests.Response)
-        response.status_code = 500
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @patch('requests.get')
-    def test_error_msg(self, get):
-        addr = urandom(20)
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @patch('requests.get')
-    def test_success(self, get):
-        addr = urandom(20)
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 1486605259,
-                                      'amount': 999999999999999}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is True
-        assert get.call_count == 1
-        assert encode_hex(addr)[2:] in get.call_args[0][0]
-
-
-class EthereumNodeTest(TempDirFixture, LogTestCase):
     def test_ethereum_node(self):
         np = NodeProcess(self.tempdir, start_node=True)
         assert np.is_running() is False
