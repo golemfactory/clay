@@ -8,7 +8,6 @@ import sys
 import tempfile
 import threading
 import time
-from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
@@ -34,7 +33,6 @@ FALLBACK_NODE_LIST = [
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
 ]
-DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
 
 
 def get_public_nodes():
@@ -47,24 +45,6 @@ def get_public_nodes():
     addr_list = FALLBACK_NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
-
-
-def tETH_faucet_donate(addr):
-    addr = normalize_address(addr)
-    request = DONATE_URL_TEMPLATE.format(addr.hex())
-    response = requests.get(request)
-    if response.status_code != 200:
-        log.error("tETH Faucet error code {}".format(response.status_code))
-        return False
-    response = response.json()
-    if response['paydate'] == 0:
-        log.warning("tETH Faucet warning {}".format(response['message']))
-        return False
-    # The paydate is not actually very reliable, usually some day in the past.
-    paydate = datetime.fromtimestamp(response['paydate'])
-    amount = int(response['amount']) / denoms.ether
-    log.info("Faucet: {:.6f} ETH on {}".format(amount, paydate))
-    return True
 
 
 class Faucet(object):
