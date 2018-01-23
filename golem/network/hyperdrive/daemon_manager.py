@@ -99,10 +99,8 @@ class HyperdriveDaemonManager(object):
     def _create_sub(self):
         try:
             os.makedirs(self._dir, exist_ok=True)
-
-            pipe = subprocess.PIPE if is_frozen() else None
             return subprocess.Popen(self._command, stdin=DEVNULL,
-                                    stdout=pipe, stderr=pipe)
+                                    stdout=None, stderr=None)
         except OSError:
             return self._critical_error()
 
