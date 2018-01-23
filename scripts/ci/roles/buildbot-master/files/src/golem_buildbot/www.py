@@ -1,4 +1,7 @@
+# pylint: disable=import-error
+from buildbot.www.hooks.github import GitHubEventHandler
 from buildbot.plugins import util
+# pylint: enable=import-error
 
 from .settings import local_settings
 
@@ -26,6 +29,16 @@ _authz = util.Authz(
     ])
 
 
+class MyGitHubPrHandler(GitHubEventHandler):  # pylint: disable=R0903
+    def handle_pull_request_review(self, payload, event):
+        # Update event payload to match pull_request event, based on:
+        # https://github.com/buildbot/buildbot/blob/master/master/buildbot/www/hooks/github.py # noqa pylint: disable=line-too-long
+        payload['number'] = payload['pull_request']['number']
+        payload['action'] = "synchronize"
+        payload['pull_request']['commits'] = -1
+        return self.handle_pull_request(payload, event)
+
+
 www = dict(
     port=8010,
     plugins=dict(waterfall_view={}, console_view={}),
@@ -35,6 +48,7 @@ www = dict(
         'github': {
             'strict': True,
             'secret': local_settings['github_webhook_secret'],
+            'class': MyGitHubPrHandler,
         },
     },
 )
