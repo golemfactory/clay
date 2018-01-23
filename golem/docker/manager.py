@@ -322,7 +322,7 @@ class DockerManager(DockerConfigManager):
         cwd = os.getcwd()
 
         for entry in entries:
-            image, docker_file, tag = entry
+            image, docker_file, tag, build_dir = entry
             version = cls._image_version(entry)
 
             try:
@@ -331,7 +331,7 @@ class DockerManager(DockerConfigManager):
                             .format(version))
                 cls.command('build', args=['-t', image,
                                            '-f', docker_file,
-                                           '.'])
+                                           build_dir])
                 cls.command('tag', args=[image, version])
             finally:
                 os.chdir(cwd)
@@ -360,7 +360,7 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _image_version(cls, entry):
-        image, _, tag = entry
+        image, _, tag, _ = entry
         return '{}:{}'.format(image, tag)
 
     @classmethod
