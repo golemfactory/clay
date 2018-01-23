@@ -3,6 +3,7 @@ import logging
 from ethereum.utils import privtoaddr
 
 from golem.ethereum import Client
+from golem.ethereum.smartcontractinterface import SmartContractInterface
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.token import GNTWToken
 from golem.transactions.ethereum.ethereumpaymentskeeper \
@@ -38,19 +39,19 @@ class EthereumTransactionSystem(TransactionSystem):
 
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self._client = Client(datadir, start_geth, start_port, address)
-        token = GNTWToken(self._client)
+        client = Client(datadir, start_geth, start_port, address)
+        token = GNTWToken(client)
+        self._sci = SmartContractInterface(client, token)
         self.payment_processor = PaymentProcessor(
-            client=self._client,
             privkey=node_priv_key,
-            token=token,
+            sci=self._sci,
             faucet=True
         )
 
         super().__init__(
             incomes_keeper=EthereumIncomesKeeper(
                 self.payment_processor.eth_address(),
-                token)
+                self._sci)
         )
 
         self.payment_processor.start()
@@ -58,7 +59,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def stop(self):
         if self.payment_processor.running:
             self.payment_processor.stop()
-        self._client._kill_node()
+        self._sci.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(

@@ -59,14 +59,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
             assert e.payment_processor._loopingCall.start.called
-            assert e._client.node.start.called
+            assert e._sci._geth_client.node.start.called
 
             mock_is_service_running.return_value = False
             e.stop()
-            assert e._client.node is None
+            assert e._sci._geth_client.node is None
             assert not e.payment_processor._loopingCall.stop.called
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e._client.node is None
+            assert e._sci._geth_client.node is None
             assert e.payment_processor._loopingCall.stop.called
