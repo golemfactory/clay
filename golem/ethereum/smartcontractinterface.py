@@ -1,14 +1,16 @@
 from typing import Any, Dict, List, Optional
 from ethereum.transactions import Transaction
+from .client import Client
+from .token import GNTWToken
 
 
 class SmartContractInterface(object):
-    def __init__(self, geth_client, token):
-        self.GAS_PRICE = token.GAS_PRICE
-        self.GAS_PER_PAYMENT = token.GAS_PER_PAYMENT
-        self.GAS_BATCH_PAYMENT_BASE = token.GAS_BATCH_PAYMENT_BASE
-        self._geth_client = geth_client
-        self._token = token
+    def __init__(self, datadir, start_geth, start_port, address):
+        self._geth_client = Client(datadir, start_geth, start_port, address)
+        self._token = GNTWToken(self._geth_client)
+        self.GAS_PRICE = self._token.GAS_PRICE
+        self.GAS_PER_PAYMENT = self._token.GAS_PER_PAYMENT
+        self.GAS_BATCH_PAYMENT_BASE = self._token.GAS_BATCH_PAYMENT_BASE
 
     def get_eth_balance(self, address: str) -> Optional[int]:
         """
