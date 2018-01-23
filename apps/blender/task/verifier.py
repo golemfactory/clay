@@ -100,7 +100,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             additional_resources=[]
         )
 
-    def _generate_ctd(self, subtask_info, script_src):
+    @staticmethod
+    def _generate_ctd(subtask_info, script_src):
         ctd = copy(subtask_info['ctd'])
 
         ctd['extra_data']['outfilebasename'] = \
@@ -109,8 +110,11 @@ class BlenderVerifier(FrameRenderingVerifier):
         ctd['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
         return ctd
 
-    def _crop_rendered(self, results, time_spend):
-        logger.info("Crop for verification rendered")
+    @staticmethod
+    def _crop_rendered(results, time_spend):
+        logger.info("Crop for verification rendered. Time spent: {}, "
+                    "results: {}".format(time_spend, results))
 
-    def _crop_render_failure(self, error):
+    @staticmethod
+    def _crop_render_failure(error):
         logger.info("Crop for verification render failure {}".format(error))
