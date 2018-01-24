@@ -16,7 +16,8 @@ logger = logging.getLogger("apps.lux")
 
 class LuxRenderVerifier(RenderingVerifier):
 
-    def _check_files(self, subtask_info, results, reference_data, resources):
+    def _check_files(self, subtask_info, results, reference_data, resources,
+                     callback):
         # First, assume it is wrong ;p
         self.state = SubtaskVerificationState.WRONG_ANSWER
 
@@ -27,6 +28,8 @@ class LuxRenderVerifier(RenderingVerifier):
             self.message = "Exception during verification of subtask: "
             self.message += str(subtask_info["subtask_id"]) + " " + str(e)
             logger.info(self.message)
+        finally:
+            callback()
 
     # pylint: disable=unused-argument
     def _validate_lux_results(self, subtask_info, results, reference_data,

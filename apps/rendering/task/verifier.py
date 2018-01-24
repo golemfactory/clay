@@ -11,11 +11,13 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerifier(CoreVerifier):
 
-    def _check_files(self, subtask_info, results, reference_data, resources):
+    def _check_files(self, subtask_info, results, reference_data, resources,
+                     callback):
         if self._verify_imgs(subtask_info, results, reference_data, resources):
             self.state = SubtaskVerificationState.VERIFIED
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
+        callback()
 
     # pylint: disable=unused-argument
     def _verify_imgs(self, subtask_info, results, reference_data, resources):
@@ -53,7 +55,8 @@ class RenderingVerifier(CoreVerifier):
 
 class FrameRenderingVerifier(RenderingVerifier):
 
-    def _check_files(self, subtask_info, results, reference_data, resources):
+    def _check_files(self, subtask_info, results, reference_data, resources,
+                     callback):
         use_frames = subtask_info['use_frames']
         total_tasks = subtask_info['total_tasks']
         frames = subtask_info['all_frames']
@@ -61,12 +64,30 @@ class FrameRenderingVerifier(RenderingVerifier):
             frames_list = subtask_info['frames']
             if len(results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
-                return
-        if not self._verify_imgs(subtask_info, results, reference_data,
-                                 resources):
-            self.state = SubtaskVerificationState.WRONG_ANSWER
-        else:
+                callback()
+
+        def success():
             self.state = SubtaskVerificationState.VERIFIED
+            callback()
+
+        def failure():
+            self.state = SubtaskVerificationState.WRONG_ANSWER
+            callback()
+
+        self._verify_imgs(subtask_info, results, reference_data, resources,
+                          success, failure)
+
+    def _verify_imgs(self, subtask_info, results, reference_data, resources,
+                     success=None, failure=None):
+        if super(FrameRenderingVerifier, self)._verify_imgs(
+            subtask_info,
+            results,
+            reference_data,
+            resources
+        ):
+            success()
+        else:
+            failure()
 
     def _get_part_img_size(self, subtask_info):
         use_frames = subtask_info['use_frames']

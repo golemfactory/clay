@@ -9,6 +9,8 @@ from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from collections import Callable
+from threading import Lock
 
 
 logger = logging.getLogger("apps.blender")
@@ -17,6 +19,11 @@ NUM_CROPS = 3
 
 
 class BlenderVerifier(FrameRenderingVerifier):
+
+    def __init__(self, callback: Callable):
+        super(BlenderVerifier, self).__init__(callback)
+        self.lock = Lock()
+        self.verified_crops_counter = 0
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -56,15 +63,18 @@ class BlenderVerifier(FrameRenderingVerifier):
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)
 
-    def _verify_imgs(self, subtask_info, results, reference_data, resources):
-        if not super(BlenderVerifier, self)._verify_imgs(subtask_info, results,
-                                                         reference_data,
-                                                         resources):
-            return False
+    def _verify_imgs(self, subtask_info, results, reference_data, resources,
+                     success_, failure):
+        def success():
+            self.success = success_
+            self.failure = failure
+            self._render_crops(subtask_info, resources)
 
-        if not self._render_crops(subtask_info, resources):
-            return False
-        return True
+        super(BlenderVerifier, self)._verify_imgs(
+                subtask_info,
+                results,
+                reference_data,
+                resources, success, failure)
 
     # pylint: disable=unused-argument
     def _render_crops(self, subtask_info, resources, num_crops=NUM_CROPS,
@@ -111,11 +121,17 @@ class BlenderVerifier(FrameRenderingVerifier):
         ctd['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
         return ctd
 
-    @staticmethod
-    def _crop_rendered(results, time_spend):
+    def _crop_rendered(self, results, time_spend):
         logger.info("Crop for verification rendered. Time spent: %r, "
-                    "results: %r" % (time_spend, results))
+                    "results: %r", time_spend, results)
+        with self.lock:
+            self.verified_crops_counter += 1
+            if self.verified_crops_counter == NUM_CROPS:
+                self.success()
 
-    @staticmethod
-    def _crop_render_failure(error):
-        logger.warning("Crop for verification render failure: %r" % error)
+    def _crop_render_failure(self, error):
+        logger.warning("Crop for verification render failure %r", error)
+        with self.lock:
+            self.verified_crops_counter += 1
+            if self.verified_crops_counter == NUM_CROPS:
+                self.failure()

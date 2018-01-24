@@ -31,6 +31,7 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.ci import ci_skip
 from apps.core.task.coretask import logger as logger_core
+from golem.verification.verifier import SubtaskVerificationState
 
 class TestBlenderDefaults(unittest.TestCase):
 
@@ -95,6 +96,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file1, "PNG")
 
         self.bt.computation_finished(extra_data.ctd['subtask_id'], [file1], ResultType.FILES)
+        self.bt.verifier.state = SubtaskVerificationState.VERIFIED
+        self.bt.verifier.verification_completed()
         assert self.bt.subtasks_given[extra_data.ctd['subtask_id']]['status'] == \
                SubtaskStatus.finished
 
@@ -106,6 +109,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         self.bt.computation_finished(extra_data.ctd['subtask_id'], [file2], ResultType.FILES)
+        self.bt.verifier.state = SubtaskVerificationState.VERIFIED
+        self.bt.verifier.verification_completed()
         assert self.bt.subtasks_given[extra_data.ctd['subtask_id']]['status'] == \
                SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'

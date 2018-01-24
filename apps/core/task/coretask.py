@@ -205,9 +205,9 @@ class CoreTask(Task):
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        verifier = self.VERIFIER_CLASS(self.verification_finished)
-        verifier.computer = ComputerAdapter()
-        verifier.start_verification(
+        self.verifier = self.VERIFIER_CLASS(self.verification_finished)
+        self.verifier.computer = ComputerAdapter()
+        self.verifier.start_verification(
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
             resources=self.task_resources,

@@ -45,7 +45,8 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn):
         bv = BlenderVerifier(lambda: None)
         with self.assertLogs(logger, level="WARNING") as logs:
             bv._crop_render_failure("There was a problem")
-        assert any("Crop for verification render failure: 'There was a problem'"
+        assert any("WARNING:apps.blender:Crop for verification render failure"
+                   " 'There was a problem'"
                    in log for log in logs.output)
 
     def test_crop_rendered(self):
