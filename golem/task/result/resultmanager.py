@@ -38,7 +38,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
     # Using a temp path
     def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
-                     success, error, async=True, client_options=None, output_dir=None):
+                     success, error, async_=True, client_options=None, output_dir=None):
 
         file_name = task_id + "." + subtask_id
         file_path = self.resource_manager.storage.get_path(file_name, task_id)
@@ -62,7 +62,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                             client_options=client_options,
                                             success=package_downloaded,
                                             error=error,
-                                            async=async)
+                                            async_=async_)
 
     def create(self, node, task_result, key_or_secret=None):
         if not key_or_secret:

@@ -139,4 +139,4 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                  secret,
                                  success=success,
                                  error=error,
-                                 async=False)
+                                 async_=False)
