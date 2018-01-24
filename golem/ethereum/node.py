@@ -11,18 +11,13 @@ import time
 from distutils.version import StrictVersion
 
 import requests
-from ethereum.keys import privtoaddr
-from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
-from golem.utils import encode_hex, decode_hex
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
-from golem_messages.cryptography import privtopub
 
 log = logging.getLogger('golem.ethereum')
 
@@ -45,24 +40,6 @@ def get_public_nodes():
     addr_list = FALLBACK_NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
-
-
-class Faucet(object):
-    PRIVKEY = "{:32}".format("Golem Faucet").encode()
-    PUBKEY = privtopub(PRIVKEY)
-    ADDR = privtoaddr(PRIVKEY)
-
-    @staticmethod
-    def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count(encode_hex(Faucet.ADDR))
-        addr = normalize_address(addr)
-        tx = Transaction(nonce, 1, 21000, addr, value, '')
-        tx.sign(Faucet.PRIVKEY)
-        h = ethnode.send(tx)
-        log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       encode_hex(addr), h))
-        h = decode_hex(h[2:])
-        return h
 
 
 class NodeProcess(object):
