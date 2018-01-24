@@ -388,7 +388,9 @@ class CoreTask(Task):
             return task_result
         else:
             logger.error(
-                "Task result type not supported {}".format(result_type))
+                "Task result type not supported %r",
+                result_type,
+            )
             self.stderr[subtask_id] = "[GOLEM] Task result {} not supported" \
                 .format(result_type)
             return []

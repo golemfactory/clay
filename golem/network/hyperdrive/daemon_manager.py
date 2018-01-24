@@ -4,11 +4,11 @@ import logging
 import os
 import subprocess
 import sys
-
 import time
-from requests import ConnectionError
 
-from golem.core.common import DEVNULL, is_frozen
+import requests
+
+from golem.core.common import DEVNULL
 from golem.core.processmonitor import ProcessMonitor
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.report import report_calls, Component
@@ -48,7 +48,7 @@ class HyperdriveDaemonManager(object):
     def addresses(self):
         try:
             return self._get_addresses()
-        except ConnectionError as e:
+        except requests.ConnectionError:
             logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 

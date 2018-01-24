@@ -13,12 +13,12 @@ from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     SqliteDatabase, TextField, BlobField)
+from playhouse.shortcuts import RetryOperationalError
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
-from playhouse.shortcuts import RetryOperationalError
 
 log = logging.getLogger('golem.db')
 

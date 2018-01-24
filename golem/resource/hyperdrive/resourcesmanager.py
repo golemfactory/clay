@@ -19,7 +19,7 @@ def is_collection(obj):
     return isinstance(obj, Iterable) and isinstance(obj, Sized)
 
 
-def handle_async(on_error, async_param='async'):
+def handle_async(on_error, async_param='async_'):
     def decorator(func):
         default = default_argument_value(func, async_param)
 
@@ -121,7 +121,7 @@ class HyperdriveResourceManager(ClientHandler):
                 .addErrback(on_error)
 
     @handle_async(on_error=partial(log_error, "Error adding task: %r"))
-    def add_task(self, files, task_id, resource_hash=None, async=True):
+    def add_task(self, files, task_id, resource_hash=None, async_=True):
 
         prefix = self.storage.cache.get_prefix(task_id)
         resources = self.storage.get_resources(task_id)
@@ -140,27 +140,27 @@ class HyperdriveResourceManager(ClientHandler):
         self.storage.cache.set_prefix(task_id, prefix)
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
-                               async=async)
+                               async_=async_)
 
     @handle_async(on_error=partial(log_error, "Error adding file: %r"))
-    def add_file(self, path, task_id, async=False):
-        return self._add_files([path], task_id, async=async)
+    def add_file(self, path, task_id, async_=False):
+        return self._add_files([path], task_id, async_=async_)
 
     @handle_async(on_error=partial(log_error, "Error adding files: %r"))
-    def add_files(self, files, task_id, resource_hash=None, async=False):
+    def add_files(self, files, task_id, resource_hash=None, async_=False):
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
-                               async=async)
+                               async_=async_)
 
-    def _add_files(self, files, task_id, resource_hash=None, async=False):
+    def _add_files(self, files, task_id, resource_hash=None, async_=False):
         """
         Adds files to hyperdrive.
         :param files: File collection
         :param task_id: Task's id
         :param resource_hash: If set, a 'restore' method is called; 'add'
         otherwise
-        :param async: Use asynchronous methods of HyperdriveAsyncClient
-        :return: Deferred if async; (hash, file list) otherwise
+        :param async_: Use asynchronous methods of HyperdriveAsyncClient
+        :return: Deferred if async_; (hash, file list) otherwise
         """
         if not all(os.path.isabs(f) for f in files):
             raise ResourceError("Resource manager: trying to add relative file "
@@ -179,7 +179,7 @@ class HyperdriveResourceManager(ClientHandler):
             raise ResourceError("Resource manager: missing files (task: '{}'):"
                                 "\n{}".format(task_id, missing))
 
-        if async:
+        if async_:
             return self._add_files_async(resource_hash, files, task_id)
         return self._add_files_sync(resource_hash, files, task_id)
 
@@ -259,7 +259,7 @@ class HyperdriveResourceManager(ClientHandler):
 
     def pull_resource(self, entry, task_id,
                       success, error,
-                      client=None, client_options=None, async=True):
+                      client=None, client_options=None, async_=True):
 
         resource_path = self.storage.get_path('', task_id)
         resource = Resource(resource_hash=entry[0], task_id=task_id,
@@ -298,11 +298,11 @@ class HyperdriveResourceManager(ClientHandler):
                        error=error_wrapper,
                        client=client,
                        client_options=client_options,
-                       async=async)
+                       async_=async_)
 
     def _pull(self, resource: Resource, task_id: str,
               success, error,
-              client=None, client_options=None, async=True):
+              client=None, client_options=None, async_=True):
 
         client = client or self.client
         kwargs = dict(
@@ -312,7 +312,7 @@ class HyperdriveResourceManager(ClientHandler):
             client_options=client_options
         )
 
-        if async:
+        if async_:
             deferred = self._retry_async(client.get_async, **kwargs)
             deferred.addCallbacks(success, error)
         else:

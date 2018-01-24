@@ -1,11 +1,10 @@
+import copy
 import logging
+import os
 import threading
 import time
 import traceback
-from threading import Lock, Thread
 
-import copy
-import os
 
 logger = logging.getLogger("golem.task.taskthread")
 
@@ -18,7 +17,7 @@ class TimeoutException(JobException):
     pass
 
 
-class TaskThread(Thread):
+class TaskThread(threading.Thread):
     def __init__(self, task_computer, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout=0):
         super(TaskThread, self).__init__()
@@ -35,7 +34,7 @@ class TaskThread(Thread):
         self.tmp_path = tmp_path
         self.working_directory = working_directory
         self.prev_working_directory = ""
-        self.lock = Lock()
+        self.lock = threading.Lock()
         self.error = False
         self.error_msg = ""
         self.start_time = time.time()
@@ -116,7 +115,10 @@ class TaskThread(Thread):
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
-            self.result, self.error_msg = self.vm.run_task(self.src_code, extra_data)
+            self.result, self.error_msg = self.vm.run_task(
+                self.src_code,
+                extra_data
+            )
         finally:
             self.end_time = time.time()
             os.chdir(self.prev_working_directory)

@@ -1178,7 +1178,7 @@ class DoWorkService(LoopingCallService):
         if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
             try:
                 self._client.check_payments()
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 log.exception("check_payments failed")
 
     def _time_for(self, key: Hashable, interval_seconds: float):
