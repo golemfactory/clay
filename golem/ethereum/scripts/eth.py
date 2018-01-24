@@ -15,8 +15,24 @@ from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 from golem.core.simpleenv import get_local_datadir
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit, TestGNT
-from golem.ethereum.node import Faucet
 from golem.utils import encode_hex, decode_hex
+from golem_messages.cryptography import privtopub
+
+
+class Faucet(object):
+    PRIVKEY = "{:32}".format("Golem Faucet").encode()
+    PUBKEY = privtopub(PRIVKEY)
+    ADDR = keys.privtoaddr(PRIVKEY)
+
+    @staticmethod
+    def gimme_money(ethnode, addr, value):
+        nonce = ethnode.get_transaction_count(encode_hex(Faucet.ADDR))
+        addr = normalize_address(addr)
+        tx = Transaction(nonce, 1, 21000, addr, value, '')
+        tx.sign(Faucet.PRIVKEY)
+        h = ethnode.send(tx)
+        h = decode_hex(h[2:])
+        return h
 
 
 class SimpleAccount:
