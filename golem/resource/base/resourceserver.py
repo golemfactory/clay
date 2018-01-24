@@ -96,7 +96,7 @@ class BaseResourceServer(object):
             self.pending_resources.pop(task_id, None)
             return task_id
 
-    def _download_resources(self, async=True):
+    def _download_resources(self, async_=True):
         pending = dict(self.pending_resources)
 
         for task_id, entries in list(pending.items()):
@@ -107,7 +107,7 @@ class BaseResourceServer(object):
                                                         client_options=entry.client_options,
                                                         success=self._download_success,
                                                         error=self._download_error,
-                                                        async=async)
+                                                        async_=async_)
 
     def _download_success(self, resource, _, task_id):
         if resource:

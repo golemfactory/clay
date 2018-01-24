@@ -25,6 +25,7 @@ from golem.network.transport.tcpnetwork import (
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
+from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.resource import ResourceType, get_resources_for_task
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
@@ -97,7 +98,7 @@ class TaskResourcesMixin(object):
             )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
-        except HTTPError as exc:
+        except (ResourceError, HTTPError) as exc:
             if resource_hash:
                 return self._restore_resources(files, task_id)
             self._restore_resources_error(task_id, exc)
@@ -361,11 +362,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             except Exception as exc:
                 logger.error("Error closing incoming session: %s", exc)
 
-    def get_tasks_headers(self):
-        ths_tk = self.task_keeper.get_all_tasks()
+    def get_own_tasks_headers(self):
         ths_tm = self.task_manager.get_tasks_headers()
-        ret = [th.to_dict() for th in ths_tk + ths_tm]
-        return ret
+        return [th.to_dict() for th in ths_tm]
+
+    def get_others_tasks_headers(self):
+        ths_tk = self.task_keeper.get_all_tasks()
+        return [th.to_dict() for th in ths_tk]
 
     def add_task_header(self, th_dict_repr):
         try:

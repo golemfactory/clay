@@ -84,6 +84,7 @@ class DockerManager(DockerConfigManager):
             return XhyveHypervisor.instance(self)
         return None
 
+    @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
 
         if is_windows():
@@ -242,6 +243,7 @@ class DockerManager(DockerConfigManager):
             return [i.strip() for i in output.split("\n") if i]
         return []
 
+    @report_calls(Component.docker, 'instance.check')
     def docker_machine_running(self, name=None):
         if not self.docker_machine:
             raise EnvironmentError("No Docker VM available")
@@ -255,6 +257,7 @@ class DockerManager(DockerConfigManager):
             logger.debug("DockerMachine_output: %s", e.output)
         return False
 
+    @report_calls(Component.docker, 'instance.start')
     def start_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: starting {}".format(name))
@@ -264,7 +267,9 @@ class DockerManager(DockerConfigManager):
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to start the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
+            raise
 
+    @report_calls(Component.docker, 'instance.stop')
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: stopping '{}'".format(name))
@@ -397,6 +402,7 @@ class DockerManager(DockerConfigManager):
         self._set_docker_machine_env()
         cb()
 
+    @report_calls(Component.docker, 'instance.env')
     def _set_docker_machine_env(self, retried=False):
         try:
             output = self.command('env', self.docker_machine,
@@ -417,7 +423,6 @@ Ensure that you try the following before reporting an issue:
     docker-machine.exe create --driver virtualbox golem
  4. Restart Windows machine"""
             logger.error(typical_solution_s)
-
             raise
 
         if output:

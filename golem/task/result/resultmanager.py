@@ -1,10 +1,10 @@
-import abc
 import logging
+
+import abc
 import os
 
-from golem.core.fileencrypt import FileEncryptor
 from golem.core.async import AsyncRequest, async_run
-from golem.resource.hyperdrive.resource import Resource
+from golem.core.fileencrypt import FileEncryptor
 from .resultpackage import EncryptingTaskResultPackager
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class TaskResultPackageManager(object, metaclass=abc.ABCMeta):
         self.resource_manager = resource_manager
 
     @abc.abstractmethod
-    def create(self, node, task_result, client_options=None, **kwargs):
+    def create(self, node, task_result, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -38,7 +38,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
     # Using a temp path
     def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
-                     success, error, async=True, client_options=None, output_dir=None):
+                     success, error, async_=True, client_options=None, output_dir=None):
 
         file_name = task_id + "." + subtask_id
         file_path = self.resource_manager.storage.get_path(file_name, task_id)
@@ -62,9 +62,9 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                             client_options=client_options,
                                             success=package_downloaded,
                                             error=error,
-                                            async=async)
+                                            async_=async_)
 
-    def create(self, node, task_result, client_options=None, key_or_secret=None):
+    def create(self, node, task_result, key_or_secret=None):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
@@ -81,7 +81,6 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                task_result=task_result)
 
         self.resource_manager.add_file(path, task_id)
-
         for resource in self.resource_manager.get_resources(task_id):
             if file_name in resource.files:
                 return resource.hash, file_path

@@ -601,11 +601,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     # TASK FUNCTIONS
     ############################
-    def get_tasks_headers(self):
+    def get_own_tasks_headers(self):
         """ Return a list of a known tasks headers
         :return list: list of task header
         """
-        return self.task_server.get_tasks_headers()
+        return self.task_server.get_own_tasks_headers()
+
+    def get_others_tasks_headers(self):
+        """ Return a list of a known tasks headers
+        :return list: list of task header
+        """
+        return self.task_server.get_others_tasks_headers()
 
     def add_task_header(self, th_dict_repr):
         """ Add new task header to a list of known task headers

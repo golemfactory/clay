@@ -120,9 +120,6 @@ class RenderingTask(CoreTask):
         """
         pass
 
-    def get_subtasks(self, part):
-        pass
-
     def get_preview_file_path(self):
         return self.preview_file_path
 
