@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<DOCUMENT Type="Advanced Installer" CreateVersion="14.5.2" version="14.5.2" Modules="professional" RootPath="..\..*" Language="en_GB" Id="{DD7ACB8E-6560-4C11-BE2E-BB2A4150EDC1}">
+  <COMPONENT cid="caphyon.advinst.msicomp.ProjectOptionsComponent">
+    <ROW Name="HiddenItems" Value="AppXProductDetailsComponent;AppXDependenciesComponent;AppXAppDetailsComponent;AppXVisualAssetsComponent;AppXCapabilitiesComponent;AppXAppDeclarationsComponent;AppXUriRulesComponent;MsiJavaComponent;MsiDriverPackagesComponent;UserAccountsComponent;ScheduledTasksComponent;SqlConnectionComponent;AutorunComponent;FirewallExceptionComponent;GameUxComponent;MsiDirectEditorComponent;SharePointSlnComponent;SilverlightSlnComponent;MultipleInstancesComponent;SccmComponent;ActSyncAppComponent"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiPropsComponent">
+    <ROW Property="AI_BITMAP_DISPLAY_MODE" Value="0"/>
+    <ROW Property="AI_FINDEXE_TITLE" Value="Select the installation package for [|ProductName]" ValueLocId="AI.Property.FindExeTitle"/>
+    <ROW Property="AI_PRODUCTNAME_ARP" Value="[|ProductName] version [|ProductVersion]"/>
+    <ROW Property="AI_QUICKLAUNCH_SH" Type="4" MsiKey="AI_QUICKLAUNCH_SH"/>
+    <ROW Property="AI_SHORTCUTSREG" Value="0|0|0|0|"/>
+    <ROW Property="AI_STARTUP_SH" Type="4" MsiKey="AI_STARTUP_SH"/>
+    <ROW Property="AI_ThemeStyle" Value="aero" MultiBuildValue="DefaultBuild:classic" MsiKey="AI_ThemeStyle"/>
+    <ROW Property="AI_UNINSTALLER" Value="msiexec.exe"/>
+    <ROW Property="ALLUSERS" Value="1"/>
+    <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
+    <ROW Property="ARPNOREPAIR" Value="1" MultiBuildValue="DefaultBuild:1"/>
+    <ROW Property="ARPPRODUCTICON" Value="favicon.exe" Type="8"/>
+    <ROW Property="ARPSYSTEMCOMPONENT" Value="1"/>
+    <ROW Property="AiFeatIcoMainFeature" Value="favicon.exe" Type="8"/>
+    <ROW Property="BannerBitmap" Value="banner" MultiBuildValue="DefaultBuild:bannertop01.jpg" Type="1" MsiKey="BannerBitmap"/>
+    <ROW Property="DialogBitmap" Value="dialog" MultiBuildValue="DefaultBuild:bannerfull01.jpg" Type="1" MsiKey="DialogBitmap"/>
+    <ROW Property="ExtractFilesFirst" Value="1"/>
+    <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
+    <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
+    <ROW Property="ProductCode" Value="2057:{FCE7A370-59C3-446D-80ED-A80A1BAE38F3} " Type="16"/>
+    <ROW Property="ProductLanguage" Value="2057"/>
+    <ROW Property="ProductName" Value="Golem"/>
+    <ROW Property="ProductVersion" Value="0.11.0" Type="32"/>
+    <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
+    <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
+    <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
+    <ROW Property="WindowsType9X" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
+    <ROW Property="WindowsType9XDisplay" MultiBuildValue="DefaultBuild:Windows 9x/ME" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT" MultiBuildValue="DefaultBuild:Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT40" MultiBuildValue="DefaultBuild:Windows NT 4.0" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT40Display" MultiBuildValue="DefaultBuild:Windows NT 4.0" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT50" MultiBuildValue="DefaultBuild:Windows 2000" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT50Display" MultiBuildValue="DefaultBuild:Windows 2000" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT5X" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT5XDisplay" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNTDisplay" MultiBuildValue="DefaultBuild:32-bit Windows versions" ValueLocId="-"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
+    <ROW Directory="APPDIR" Directory_Parent="TARGETDIR" DefaultDir="APPDIR:." IsPseudoRoot="1"/>
+    <ROW Directory="AppDataFolder" Directory_Parent="TARGETDIR" DefaultDir="APPDAT~1|AppDataFolder" IsPseudoRoot="1"/>
+    <ROW Directory="DesktopFolder" Directory_Parent="TARGETDIR" DefaultDir="DESKTO~1|DesktopFolder" IsPseudoRoot="1"/>
+    <ROW Directory="Golem_Dir" Directory_Parent="ProgramFilesFolder" DefaultDir="Golem"/>
+    <ROW Directory="HyperG_1_Dir" Directory_Parent="ProgramFiles64Folder" DefaultDir="HyperG"/>
+    <ROW Directory="HyperG_Dir" Directory_Parent="ProgramFilesFolder" DefaultDir="HyperG"/>
+    <ROW Directory="LuxRender08_test_scene_Dir" Directory_Parent="lux_Dir" DefaultDir="LUXREN~1|LuxRender08_test_scene"/>
+    <ROW Directory="NewFolder_1_Dir" Directory_Parent="NewFolder_Dir" DefaultDir="INTERN~1|Internet Explorer"/>
+    <ROW Directory="NewFolder_2_Dir" Directory_Parent="NewFolder_1_Dir" DefaultDir="QUICKL~1|Quick Launch"/>
+    <ROW Directory="NewFolder_Dir" Directory_Parent="AppDataFolder" DefaultDir="MICROS~1|Microsoft"/>
+    <ROW Directory="ProgramFiles64Folder" Directory_Parent="TARGETDIR" DefaultDir="PROGRA~2|ProgramFiles64Folder" IsPseudoRoot="1"/>
+    <ROW Directory="ProgramFilesFolder" Directory_Parent="TARGETDIR" DefaultDir="PROGRA~1|ProgramFilesFolder" IsPseudoRoot="1"/>
+    <ROW Directory="Release_Dir" Directory_Parent="x64_Dir" DefaultDir="Release"/>
+    <ROW Directory="SHORTCUTDIR" Directory_Parent="TARGETDIR" DefaultDir="SHORTC~1|SHORTCUTDIR" IsPseudoRoot="1"/>
+    <ROW Directory="Scene_Dir" Directory_Parent="LuxRender08_test_scene_Dir" DefaultDir="Scene"/>
+    <ROW Directory="StartupFolder" Directory_Parent="TARGETDIR" DefaultDir="STARTU~1|StartupFolder" IsPseudoRoot="1"/>
+    <ROW Directory="TARGETDIR" DefaultDir="SourceDir"/>
+    <ROW Directory="__Dir" Directory_Parent="Scene_Dir" DefaultDir="00001"/>
+    <ROW Directory="apps_Dir" Directory_Parent="APPDIR" DefaultDir="apps"/>
+    <ROW Directory="blender_Dir" Directory_Parent="examples_Dir" DefaultDir="blender"/>
+    <ROW Directory="examples_Dir" Directory_Parent="APPDIR" DefaultDir="examples"/>
+    <ROW Directory="locales_Dir" Directory_Parent="APPDIR" DefaultDir="locales"/>
+    <ROW Directory="lux_Dir" Directory_Parent="examples_Dir" DefaultDir="lux"/>
+    <ROW Directory="rendering_Dir" Directory_Parent="apps_Dir" DefaultDir="RENDER~1|rendering"/>
+    <ROW Directory="resources_1_Dir" Directory_Parent="APPDIR" DefaultDir="RESOUR~1|resources"/>
+    <ROW Directory="resources_Dir" Directory_Parent="rendering_Dir" DefaultDir="RESOUR~1|resources"/>
+    <ROW Directory="taskcollector.tlog_Dir" Directory_Parent="Release_Dir" DefaultDir="TASKCO~1.TLO|taskcollector.tlog"/>
+    <ROW Directory="taskcollector_Dir" Directory_Parent="resources_Dir" DefaultDir="TASKCO~1|taskcollector"/>
+    <ROW Directory="x64_Dir" Directory_Parent="taskcollector_Dir" DefaultDir="x64"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
+    <ROW Component="AIShRegAnswer" ComponentId="{A5AAAB35-1647-4E0D-9EAD-EA32AC226446}" Directory_="APPDIR" Attributes="260" KeyPath="AIShRegAnswer"/>
+    <ROW Component="AI_CustomARPName" ComponentId="{2462EE81-3E77-4DD7-A871-F7FD7B37A3CD}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
+    <ROW Component="AI_ExePath" ComponentId="{E4EBF48B-0937-4467-A8CE-BA9097359940}" Directory_="APPDIR" Attributes="260" KeyPath="AI_ExePath"/>
+    <ROW Component="APPDIR" ComponentId="{33DBAA61-0C3E-4C0A-A5B6-FF9575EEB496}" Directory_="APPDIR" Attributes="0"/>
+    <ROW Component="CL.command.1.tlog" ComponentId="{1B1583A6-4EA6-440C-962B-A16220F14493}" Directory_="taskcollector.tlog_Dir" Attributes="0" KeyPath="CL.command.1.tlog" Type="0"/>
+    <ROW Component="Cube_0000_m000.ply" ComponentId="{F9403AE7-BF43-41DA-AC82-434BD431B3BF}" Directory_="__Dir" Attributes="0" KeyPath="Cube_0000_m000.ply" Type="0"/>
+    <ROW Component="FreeImage.dll" ComponentId="{3F156A65-C228-470C-ADF6-953DC56F9C36}" Directory_="Release_Dir" Attributes="256" KeyPath="FreeImage.dll"/>
+    <ROW Component="NewFolder" ComponentId="{CB07874E-2413-4F94-9D88-DA308652F712}" Directory_="NewFolder_2_Dir" Attributes="0"/>
+    <ROW Component="ProductInformation" ComponentId="{4E049E3C-3789-43A3-90E0-2EA888B54C87}" Directory_="APPDIR" Attributes="4" KeyPath="Version"/>
+    <ROW Component="SHORTCUTDIR" ComponentId="{CF4756A6-A0CC-4E64-B14B-12848A9C9430}" Directory_="SHORTCUTDIR" Attributes="0"/>
+    <ROW Component="am.pak" ComponentId="{DE9585E9-9A39-446C-AE3F-4D4C36BDD089}" Directory_="locales_Dir" Attributes="0" KeyPath="am.pak" Type="0"/>
+    <ROW Component="apimswincoreconsolel110.dll" ComponentId="{9DEBCEF8-B571-4C49-A471-5F242E813519}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreconsolel110.dll"/>
+    <ROW Component="apimswincoredatetimel110.dll" ComponentId="{C6968740-3B79-4680-B80D-7C37298BD7DD}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoredatetimel110.dll"/>
+    <ROW Component="apimswincoredebugl110.dll" ComponentId="{F0A9096E-D558-4524-A26B-7F700E92ED2C}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoredebugl110.dll"/>
+    <ROW Component="apimswincoreerrorhandlingl110.dll" ComponentId="{64A843EE-FB60-4C71-94CC-99CECDF05893}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreerrorhandlingl110.dll"/>
+    <ROW Component="apimswincorefilel110.dll" ComponentId="{02F15900-3811-44E5-BD2B-964189265D54}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorefilel110.dll"/>
+    <ROW Component="apimswincorefilel120.dll" ComponentId="{D962B32D-26CC-4AFA-BAB1-54CB9F0067CA}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorefilel120.dll"/>
+    <ROW Component="apimswincorefilel210.dll" ComponentId="{B23500FD-5B39-4B63-9F34-C13C089D02C3}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorefilel210.dll"/>
+    <ROW Component="apimswincorehandlel110.dll" ComponentId="{2282123C-A6D1-4D39-AAD2-E8F0A989DAD7}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorehandlel110.dll"/>
+    <ROW Component="apimswincoreheapl110.dll" ComponentId="{BDCE8ED4-501E-4AC7-853F-D2C402956DE7}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreheapl110.dll"/>
+    <ROW Component="apimswincoreinterlockedl110.dll" ComponentId="{031B9FA0-F072-4A96-BCAC-E9F0A363DAF6}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreinterlockedl110.dll"/>
+    <ROW Component="apimswincorelibraryloaderl110.dll" ComponentId="{A084EDB3-2DA8-4536-BF4D-429FE9D0BDB2}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorelibraryloaderl110.dll"/>
+    <ROW Component="apimswincorelocalizationl120.dll" ComponentId="{643D6456-9041-4058-9435-D1A8E8838F87}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorelocalizationl120.dll"/>
+    <ROW Component="apimswincorememoryl110.dll" ComponentId="{3A312049-7CB0-40C7-B97A-D617817CF653}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorememoryl110.dll"/>
+    <ROW Component="apimswincorenamedpipel110.dll" ComponentId="{BB4CF67E-DA47-4100-87D3-8CD2773B335D}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorenamedpipel110.dll"/>
+    <ROW Component="apimswincoreprocessenvironmentl110.dll" ComponentId="{C0CA82EB-02F6-4A0F-AE0B-1F47747A041C}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreprocessenvironmentl110.dll"/>
+    <ROW Component="apimswincoreprocessthreadsl110.dll" ComponentId="{6AE6597F-6C11-4011-82B3-F812A38C84CF}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreprocessthreadsl110.dll"/>
+    <ROW Component="apimswincoreprocessthreadsl111.dll" ComponentId="{19F7A80A-F060-444E-A9C4-9CE6043E4031}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreprocessthreadsl111.dll"/>
+    <ROW Component="apimswincoreprofilel110.dll" ComponentId="{67EAD222-857F-4880-B872-86F164D8F51E}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreprofilel110.dll"/>
+    <ROW Component="apimswincorertlsupportl110.dll" ComponentId="{F7D2B441-9E85-4FBE-89BF-705D91DBEC3B}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorertlsupportl110.dll"/>
+    <ROW Component="apimswincorestringl110.dll" ComponentId="{189FDA01-B125-48E8-ACEA-4567476AA931}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincorestringl110.dll"/>
+    <ROW Component="apimswincoresynchl110.dll" ComponentId="{6777D934-D659-418D-BC8B-CD72B3A14F35}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoresynchl110.dll"/>
+    <ROW Component="apimswincoresynchl120.dll" ComponentId="{A2E3E536-45F6-4B58-8444-44137BBB575C}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoresynchl120.dll"/>
+    <ROW Component="apimswincoresysinfol110.dll" ComponentId="{94270579-BF34-4EF4-97EE-B977BAE9EAC9}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoresysinfol110.dll"/>
+    <ROW Component="apimswincoretimezonel110.dll" ComponentId="{DB6E9C0B-6499-411A-9941-1CD100A8A042}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoretimezonel110.dll"/>
+    <ROW Component="apimswincoreutill110.dll" ComponentId="{26BEB11F-F6A1-4E25-B1BE-DFC88E21293C}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincoreutill110.dll"/>
+    <ROW Component="apimswincrtconiol110.dll" ComponentId="{5A8EB52D-1DF1-4A8D-8C0E-59826BC0FC30}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtconiol110.dll"/>
+    <ROW Component="apimswincrtconvertl110.dll" ComponentId="{9383A737-5720-4728-BB9F-821C8C3222B0}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtconvertl110.dll"/>
+    <ROW Component="apimswincrtenvironmentl110.dll" ComponentId="{61517133-89F6-4061-9E10-97305A20F4DC}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtenvironmentl110.dll"/>
+    <ROW Component="apimswincrtfilesysteml110.dll" ComponentId="{EBF110BE-F130-4B17-A8EC-71A448153D53}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtfilesysteml110.dll"/>
+    <ROW Component="apimswincrtheapl110.dll" ComponentId="{347845B9-A960-4AEE-8BD8-2266F327F752}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtheapl110.dll"/>
+    <ROW Component="apimswincrtlocalel110.dll" ComponentId="{13ADBA48-1ECE-4A0F-84D2-6B9360D992E6}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtlocalel110.dll"/>
+    <ROW Component="apimswincrtmathl110.dll" ComponentId="{A841893D-5267-4EE2-919A-88F8675F2766}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtmathl110.dll"/>
+    <ROW Component="apimswincrtmultibytel110.dll" ComponentId="{11C53B82-E121-4BD9-ABB5-4E8A2698BC19}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtmultibytel110.dll"/>
+    <ROW Component="apimswincrtprivatel110.dll" ComponentId="{5F711779-217A-4A23-81F8-CF417E8D0D68}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtprivatel110.dll"/>
+    <ROW Component="apimswincrtprocessl110.dll" ComponentId="{C238A9CA-9B7C-4A54-AB35-96515F3F7FA2}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtprocessl110.dll"/>
+    <ROW Component="apimswincrtruntimel110.dll" ComponentId="{9E23D568-2A67-4AD9-8B30-165DD71FE611}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtruntimel110.dll"/>
+    <ROW Component="apimswincrtstdiol110.dll" ComponentId="{D6D790F2-0E2F-4D75-AF38-9AFCE284B624}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtstdiol110.dll"/>
+    <ROW Component="apimswincrtstringl110.dll" ComponentId="{E2D28BBE-E50B-4BCA-8EA3-751A0D948C09}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtstringl110.dll"/>
+    <ROW Component="apimswincrttimel110.dll" ComponentId="{26C12180-2690-4154-8344-010326CCD8F3}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrttimel110.dll"/>
+    <ROW Component="apimswincrtutilityl110.dll" ComponentId="{31B3CC3B-FD93-42A3-A9C9-B674598D86CE}" Directory_="APPDIR" Attributes="256" KeyPath="apimswincrtutilityl110.dll"/>
+    <ROW Component="appupdate.yml" ComponentId="{BC67F69B-2B3D-4CA1-91AB-4F81F03E41C6}" Directory_="resources_1_Dir" Attributes="0" KeyPath="appupdate.yml" Type="0"/>
+    <ROW Component="author.txt" ComponentId="{2F17C04D-D3DF-4C4D-9343-5DDA778F85EA}" Directory_="lux_Dir" Attributes="0" KeyPath="author.txt" Type="0"/>
+    <ROW Component="blink_image_resources_200_percent.pak" ComponentId="{B11469A0-EC97-4ED0-8942-D778758B944D}" Directory_="APPDIR" Attributes="0" KeyPath="blink_image_resources_200_percent.pak" Type="0"/>
+    <ROW Component="bmw27_cpu.blend" ComponentId="{EC3B1575-9008-4580-8674-C5133E5B73B9}" Directory_="blender_Dir" Attributes="0" KeyPath="bmw27_cpu.blend" Type="0"/>
+    <ROW Component="d3dcompiler_47.dll" ComponentId="{67277CB6-270A-4196-BED4-D71CEB36008C}" Directory_="APPDIR" Attributes="256" KeyPath="d3dcompiler_47.dll"/>
+    <ROW Component="elevate.exe" ComponentId="{04F1F1F2-DF5B-41D0-87AA-4F5BB0084E14}" Directory_="resources_1_Dir" Attributes="0" KeyPath="elevate.exe"/>
+    <ROW Component="ffmpeg.dll" ComponentId="{A9E78C0C-14F6-4169-8A07-236792342867}" Directory_="APPDIR" Attributes="256" KeyPath="ffmpeg.dll"/>
+    <ROW Component="golem.exe" ComponentId="{C15EBEAB-7495-4498-9443-1A80EF67AB4A}" Directory_="APPDIR" Attributes="256" KeyPath="golem.exe"/>
+    <ROW Component="golemapp.exe" ComponentId="{CD197D00-7B77-4597-87B9-14E21AC5ADBD}" Directory_="APPDIR" Attributes="256" KeyPath="golemapp.exe"/>
+    <ROW Component="golemcli.exe" ComponentId="{597DA958-CB0C-4457-A39D-86C244DB3893}" Directory_="APPDIR" Attributes="256" KeyPath="golemcli.exe"/>
+    <ROW Component="hyperg.exe" ComponentId="{7295917B-3404-4807-8F1B-C9B94B674450}" Directory_="APPDIR" Attributes="256" KeyPath="hyperg.exe"/>
+    <ROW Component="hypergclient.exe" ComponentId="{BCCB47C6-A56B-4E0C-A3C7-441610AB211E}" Directory_="APPDIR" Attributes="256" KeyPath="hypergclient.exe"/>
+    <ROW Component="libEGL.dll" ComponentId="{51A8A8CD-4DDC-48BB-94E9-865DC9DF0254}" Directory_="APPDIR" Attributes="256" KeyPath="libEGL.dll"/>
+    <ROW Component="libGLESv2.dll" ComponentId="{2D016F55-808F-44BF-AFC1-FFB8F8A9559E}" Directory_="APPDIR" Attributes="256" KeyPath="libGLESv2.dll"/>
+    <ROW Component="libeay32.dll" ComponentId="{E8255172-7D34-40AA-8B53-0A6BA91B6658}" Directory_="APPDIR" Attributes="256" KeyPath="libeay32.dll"/>
+    <ROW Component="msvcp140.dll" ComponentId="{2FFD10D0-3EFD-4881-A586-9C52C6586A78}" Directory_="APPDIR" Attributes="256" KeyPath="msvcp140.dll"/>
+    <ROW Component="node.dll" ComponentId="{6EF91E7B-65BB-46AB-A700-081A874CB597}" Directory_="APPDIR" Attributes="256" KeyPath="node.dll"/>
+    <ROW Component="ssleay32.dll" ComponentId="{E41E81B8-9179-4554-BD5D-D7AB079E4ACC}" Directory_="APPDIR" Attributes="256" KeyPath="ssleay32.dll"/>
+    <ROW Component="taskcollector.exe" ComponentId="{3996D4E9-F3D2-4057-80EB-A15A947DC030}" Directory_="Release_Dir" Attributes="256" KeyPath="taskcollector.exe"/>
+    <ROW Component="taskcollector.iobj" ComponentId="{6B74087E-FDAF-4473-941B-415C2AF3E160}" Directory_="Release_Dir" Attributes="0" KeyPath="taskcollector.iobj" Type="0"/>
+    <ROW Component="ucrtbase.dll" ComponentId="{E75038D9-6ED0-4589-947E-730F51BEE54C}" Directory_="APPDIR" Attributes="256" KeyPath="ucrtbase.dll"/>
+    <ROW Component="vc141.pdb" ComponentId="{0510780F-1453-4FD9-A10A-9DA4FFF5B51F}" Directory_="Release_Dir" Attributes="0" KeyPath="vc140.pdb" Type="4"/>
+    <ROW Component="vcruntime140.dll" ComponentId="{0A6E7E92-E44B-4A4A-B8CB-E27479FC0E5F}" Directory_="APPDIR" Attributes="256" KeyPath="vcruntime140.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
+    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="16" Components="AIShRegAnswer AI_CustomARPName AI_ExePath APPDIR CL.command.1.tlog Cube_0000_m000.ply FreeImage.dll NewFolder ProductInformation SHORTCUTDIR am.pak apimswincoreconsolel110.dll apimswincoredatetimel110.dll apimswincoredebugl110.dll apimswincoreerrorhandlingl110.dll apimswincorefilel110.dll apimswincorefilel120.dll apimswincorefilel210.dll apimswincorehandlel110.dll apimswincoreheapl110.dll apimswincoreinterlockedl110.dll apimswincorelibraryloaderl110.dll apimswincorelocalizationl120.dll apimswincorememoryl110.dll apimswincorenamedpipel110.dll apimswincoreprocessenvironmentl110.dll apimswincoreprocessthreadsl110.dll apimswincoreprocessthreadsl111.dll apimswincoreprofilel110.dll apimswincorertlsupportl110.dll apimswincorestringl110.dll apimswincoresynchl110.dll apimswincoresynchl120.dll apimswincoresysinfol110.dll apimswincoretimezonel110.dll apimswincoreutill110.dll apimswincrtconiol110.dll apimswincrtconvertl110.dll apimswincrtenvironmentl110.dll apimswincrtfilesysteml110.dll apimswincrtheapl110.dll apimswincrtlocalel110.dll apimswincrtmathl110.dll apimswincrtmultibytel110.dll apimswincrtprivatel110.dll apimswincrtprocessl110.dll apimswincrtruntimel110.dll apimswincrtstdiol110.dll apimswincrtstringl110.dll apimswincrttimel110.dll apimswincrtutilityl110.dll appupdate.yml author.txt blink_image_resources_200_percent.pak bmw27_cpu.blend d3dcompiler_47.dll elevate.exe ffmpeg.dll golem.exe golemapp.exe golemcli.exe hyperg.exe hypergclient.exe libEGL.dll libGLESv2.dll libeay32.dll msvcp140.dll node.dll ssleay32.dll taskcollector.exe taskcollector.iobj ucrtbase.dll vc141.pdb vcruntime140.dll"/>
+    <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiFilesComponent">
+    <ROW File="CL.command.1.tlog" Component_="CL.command.1.tlog" FileName="CLCOMM~1.TLO|CL.command.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\CL.command.1.tlog" SelfReg="false" NextFile="CL.read.1.tlog"/>
+    <ROW File="CL.read.1.tlog" Component_="CL.command.1.tlog" FileName="CLREAD~1.TLO|CL.read.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\CL.read.1.tlog" SelfReg="false" NextFile="CL.write.1.tlog"/>
+    <ROW File="CL.write.1.tlog" Component_="CL.command.1.tlog" FileName="CLWRIT~1.TLO|CL.write.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\CL.write.1.tlog" SelfReg="false" NextFile="link.command.1.tlog"/>
+    <ROW File="Cube_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~1.PLY|Cube_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_0000_m000.ply" SelfReg="false" NextFile="Cube_001_0000_m000.ply"/>
+    <ROW File="Cube_001_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~2.PLY|Cube_001_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_001_0000_m000.ply" SelfReg="false" NextFile="Cube_017_0000_m000.ply"/>
+    <ROW File="Cube_017_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~3.PLY|Cube_017_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_017_0000_m000.ply" SelfReg="false" NextFile="Cube_018_0000_m000.ply"/>
+    <ROW File="Cube_018_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~4.PLY|Cube_018_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_018_0000_m000.ply" SelfReg="false" NextFile="Cube_020_0000_m000.ply"/>
+    <ROW File="Cube_020_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~5.PLY|Cube_020_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_020_0000_m000.ply" SelfReg="false" NextFile="Cube_020_0001_m000.ply"/>
+    <ROW File="Cube_020_0001_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~6.PLY|Cube_020_0001_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_020_0001_m000.ply" SelfReg="false" NextFile="Cube_020_0002_m000.ply"/>
+    <ROW File="Cube_020_0002_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~7.PLY|Cube_020_0002_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_020_0002_m000.ply" SelfReg="false" NextFile="Cube_020_0003_m000.ply"/>
+    <ROW File="Cube_020_0003_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~8.PLY|Cube_020_0003_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_020_0003_m000.ply" SelfReg="false" NextFile="Cube_021_0000_m000.ply"/>
+    <ROW File="Cube_021_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_0~9.PLY|Cube_021_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_021_0000_m000.ply" SelfReg="false" NextFile="Cube_021_0001_m000.ply"/>
+    <ROW File="Cube_021_0001_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_~10.PLY|Cube_021_0001_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_021_0001_m000.ply" SelfReg="false" NextFile="Cube_021_0002_m000.ply"/>
+    <ROW File="Cube_021_0002_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_~11.PLY|Cube_021_0002_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_021_0002_m000.ply" SelfReg="false" NextFile="Cube_021_0003_m000.ply"/>
+    <ROW File="Cube_021_0003_m000.ply" Component_="Cube_0000_m000.ply" FileName="CUBE_~12.PLY|Cube_021_0003_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Cube_021_0003_m000.ply" SelfReg="false" NextFile="LuxRenderGeometry.lxo"/>
+    <ROW File="FreeImage.dll" Component_="FreeImage.dll" FileName="FREEIM~1.DLL|FreeImage.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\FreeImage.dll" SelfReg="false" NextFile="taskcollector.exe"/>
+    <ROW File="HashInfo.txt" Component_="blink_image_resources_200_percent.pak" FileName="HashInfo.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\HashInfo.txt" SelfReg="false" NextFile="hypergclient.exe"/>
+    <ROW File="LICENSE.electron.txt" Component_="blink_image_resources_200_percent.pak" FileName="LICENS~1.TXT|LICENSE.electron.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\LICENSE.electron.txt" SelfReg="false" NextFile="LICENSES.chromium.html"/>
+    <ROW File="LICENSES.chromium.html" Component_="blink_image_resources_200_percent.pak" FileName="LICENS~1.HTM|LICENSES.chromium.html" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\LICENSES.chromium.html" SelfReg="false" NextFile="am.pak"/>
+    <ROW File="LuxRenderGeometry.lxo" Component_="Cube_0000_m000.ply" FileName="LUXREN~1.LXO|LuxRender-Geometry.lxo" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\LuxRender-Geometry.lxo" SelfReg="false" NextFile="LuxRenderMaterials.lxm"/>
+    <ROW File="LuxRenderMaterials.lxm" Component_="Cube_0000_m000.ply" FileName="LUXREN~1.LXM|LuxRender-Materials.lxm" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\LuxRender-Materials.lxm" SelfReg="false" NextFile="LuxRenderVolumes.lxv"/>
+    <ROW File="LuxRenderVolumes.lxv" Component_="Cube_0000_m000.ply" FileName="LUXREN~1.LXV|LuxRender-Volumes.lxv" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\LuxRender-Volumes.lxv" SelfReg="false" NextFile="Plane_0000_m000.ply"/>
+    <ROW File="OpenSSLLicense.txt" Component_="blink_image_resources_200_percent.pak" FileName="OPENSS~1.TXT|OpenSSL License.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\OpenSSL License.txt" SelfReg="false" NextFile="pdf_viewer_resources.pak"/>
+    <ROW File="Plane_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~1.PLY|Plane_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_0000_m000.ply" SelfReg="false" NextFile="Plane_001_0000_m000.ply"/>
+    <ROW File="Plane_001_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~2.PLY|Plane_001_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_001_0000_m000.ply" SelfReg="false" NextFile="Plane_002_0000_m000.ply"/>
+    <ROW File="Plane_002_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~3.PLY|Plane_002_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_002_0000_m000.ply" SelfReg="false" NextFile="Plane_003_0000_m000.ply"/>
+    <ROW File="Plane_003_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~4.PLY|Plane_003_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_003_0000_m000.ply" SelfReg="false" NextFile="Plane_004_0000_m000.ply"/>
+    <ROW File="Plane_004_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~5.PLY|Plane_004_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_004_0000_m000.ply" SelfReg="false" NextFile="Plane_004_0000_m001.ply"/>
+    <ROW File="Plane_004_0000_m001.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~6.PLY|Plane_004_0000_m001.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_004_0000_m001.ply" SelfReg="false" NextFile="Plane_005_0000_m000.ply"/>
+    <ROW File="Plane_005_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~7.PLY|Plane_005_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_005_0000_m000.ply" SelfReg="false" NextFile="Plane_005_0000_m001.ply"/>
+    <ROW File="Plane_005_0000_m001.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~8.PLY|Plane_005_0000_m001.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_005_0000_m001.ply" SelfReg="false" NextFile="Plane_006_0000_m000.ply"/>
+    <ROW File="Plane_006_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE_~9.PLY|Plane_006_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_006_0000_m000.ply" SelfReg="false" NextFile="Plane_006_0000_m001.ply"/>
+    <ROW File="Plane_006_0000_m001.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~10.PLY|Plane_006_0000_m001.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_006_0000_m001.ply" SelfReg="false" NextFile="Plane_007_0000_m000.ply"/>
+    <ROW File="Plane_007_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~11.PLY|Plane_007_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_007_0000_m000.ply" SelfReg="false" NextFile="Plane_008_0000_m000.ply"/>
+    <ROW File="Plane_008_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~12.PLY|Plane_008_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_008_0000_m000.ply" SelfReg="false" NextFile="Plane_009_0000_m000.ply"/>
+    <ROW File="Plane_009_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~13.PLY|Plane_009_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_009_0000_m000.ply" SelfReg="false" NextFile="Plane_010_0000_m000.ply"/>
+    <ROW File="Plane_010_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~14.PLY|Plane_010_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_010_0000_m000.ply" SelfReg="false" NextFile="Plane_011_0000_m000.ply"/>
+    <ROW File="Plane_011_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~15.PLY|Plane_011_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_011_0000_m000.ply" SelfReg="false" NextFile="Plane_012_0000_m000.ply"/>
+    <ROW File="Plane_012_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~16.PLY|Plane_012_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_012_0000_m000.ply" SelfReg="false" NextFile="Plane_013_0000_m000.ply"/>
+    <ROW File="Plane_013_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~17.PLY|Plane_013_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_013_0000_m000.ply" SelfReg="false" NextFile="Plane_014_0000_m000.ply"/>
+    <ROW File="Plane_014_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~18.PLY|Plane_014_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_014_0000_m000.ply" SelfReg="false" NextFile="Plane_015_0000_m000.ply"/>
+    <ROW File="Plane_015_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~19.PLY|Plane_015_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_015_0000_m000.ply" SelfReg="false" NextFile="Plane_015_0001_m000.ply"/>
+    <ROW File="Plane_015_0001_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~20.PLY|Plane_015_0001_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_015_0001_m000.ply" SelfReg="false" NextFile="Plane_019_0000_m000.ply"/>
+    <ROW File="Plane_019_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~21.PLY|Plane_019_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_019_0000_m000.ply" SelfReg="false" NextFile="Plane_019_0001_m000.ply"/>
+    <ROW File="Plane_019_0001_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~22.PLY|Plane_019_0001_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_019_0001_m000.ply" SelfReg="false" NextFile="Plane_020_0000_m000.ply"/>
+    <ROW File="Plane_020_0000_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~23.PLY|Plane_020_0000_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_020_0000_m000.ply" SelfReg="false" NextFile="Plane_020_0001_m000.ply"/>
+    <ROW File="Plane_020_0001_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~24.PLY|Plane_020_0001_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_020_0001_m000.ply" SelfReg="false" NextFile="Plane_020_0002_m000.ply"/>
+    <ROW File="Plane_020_0002_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~25.PLY|Plane_020_0002_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_020_0002_m000.ply" SelfReg="false" NextFile="Plane_020_0003_m000.ply"/>
+    <ROW File="Plane_020_0003_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~26.PLY|Plane_020_0003_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_020_0003_m000.ply" SelfReg="false" NextFile="Plane_020_0004_m000.ply"/>
+    <ROW File="Plane_020_0004_m000.ply" Component_="Cube_0000_m000.ply" FileName="PLANE~27.PLY|Plane_020_0004_m000.ply" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\LuxRender08_test_scene\Scene\00001\Plane_020_0004_m000.ply" SelfReg="false" NextFile="schoolcorridor.lxs"/>
+    <ROW File="ReadMe.txt" Component_="blink_image_resources_200_percent.pak" FileName="ReadMe.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ReadMe.txt" SelfReg="false" NextFile="appupdate.yml"/>
+    <ROW File="TaskCollector.obj" Component_="taskcollector.iobj" FileName="TASKCO~1.OBJ|TaskCollector.obj" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\TaskCollector.obj" SelfReg="false" NextFile="taskcollector.pdb"/>
+    <ROW File="am.pak" Component_="am.pak" FileName="am.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\am.pak" SelfReg="false" NextFile="ar.pak"/>
+    <ROW File="apimswincoreconsolel110.dll" Component_="apimswincoreconsolel110.dll" FileName="API-MS~1.DLL|api-ms-win-core-console-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-console-l1-1-0.dll" SelfReg="false" NextFile="apimswincoredatetimel110.dll"/>
+    <ROW File="apimswincoredatetimel110.dll" Component_="apimswincoredatetimel110.dll" FileName="API-MS~2.DLL|api-ms-win-core-datetime-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-datetime-l1-1-0.dll" SelfReg="false" NextFile="apimswincoredebugl110.dll"/>
+    <ROW File="apimswincoredebugl110.dll" Component_="apimswincoredebugl110.dll" FileName="API-MS~3.DLL|api-ms-win-core-debug-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-debug-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreerrorhandlingl110.dll"/>
+    <ROW File="apimswincoreerrorhandlingl110.dll" Component_="apimswincoreerrorhandlingl110.dll" FileName="API-MS~4.DLL|api-ms-win-core-errorhandling-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-errorhandling-l1-1-0.dll" SelfReg="false" NextFile="apimswincorefilel110.dll"/>
+    <ROW File="apimswincorefilel110.dll" Component_="apimswincorefilel110.dll" FileName="API-MS~5.DLL|api-ms-win-core-file-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-file-l1-1-0.dll" SelfReg="false" NextFile="apimswincorefilel120.dll"/>
+    <ROW File="apimswincorefilel120.dll" Component_="apimswincorefilel120.dll" FileName="API-MS~6.DLL|api-ms-win-core-file-l1-2-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-file-l1-2-0.dll" SelfReg="false" NextFile="apimswincorefilel210.dll"/>
+    <ROW File="apimswincorefilel210.dll" Component_="apimswincorefilel210.dll" FileName="API-MS~7.DLL|api-ms-win-core-file-l2-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-file-l2-1-0.dll" SelfReg="false" NextFile="apimswincorehandlel110.dll"/>
+    <ROW File="apimswincorehandlel110.dll" Component_="apimswincorehandlel110.dll" FileName="API-MS~8.DLL|api-ms-win-core-handle-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-handle-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreheapl110.dll"/>
+    <ROW File="apimswincoreheapl110.dll" Component_="apimswincoreheapl110.dll" FileName="API-MS~9.DLL|api-ms-win-core-heap-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-heap-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreinterlockedl110.dll"/>
+    <ROW File="apimswincoreinterlockedl110.dll" Component_="apimswincoreinterlockedl110.dll" FileName="API-M~10.DLL|api-ms-win-core-interlocked-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-interlocked-l1-1-0.dll" SelfReg="false" NextFile="apimswincorelibraryloaderl110.dll"/>
+    <ROW File="apimswincorelibraryloaderl110.dll" Component_="apimswincorelibraryloaderl110.dll" FileName="API-M~11.DLL|api-ms-win-core-libraryloader-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-libraryloader-l1-1-0.dll" SelfReg="false" NextFile="apimswincorelocalizationl120.dll"/>
+    <ROW File="apimswincorelocalizationl120.dll" Component_="apimswincorelocalizationl120.dll" FileName="API-M~12.DLL|api-ms-win-core-localization-l1-2-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-localization-l1-2-0.dll" SelfReg="false" NextFile="apimswincorememoryl110.dll"/>
+    <ROW File="apimswincorememoryl110.dll" Component_="apimswincorememoryl110.dll" FileName="API-M~13.DLL|api-ms-win-core-memory-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-memory-l1-1-0.dll" SelfReg="false" NextFile="apimswincorenamedpipel110.dll"/>
+    <ROW File="apimswincorenamedpipel110.dll" Component_="apimswincorenamedpipel110.dll" FileName="API-M~14.DLL|api-ms-win-core-namedpipe-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-namedpipe-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreprocessenvironmentl110.dll"/>
+    <ROW File="apimswincoreprocessenvironmentl110.dll" Component_="apimswincoreprocessenvironmentl110.dll" FileName="API-M~15.DLL|api-ms-win-core-processenvironment-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-processenvironment-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreprocessthreadsl110.dll"/>
+    <ROW File="apimswincoreprocessthreadsl110.dll" Component_="apimswincoreprocessthreadsl110.dll" FileName="API-M~16.DLL|api-ms-win-core-processthreads-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-processthreads-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreprocessthreadsl111.dll"/>
+    <ROW File="apimswincoreprocessthreadsl111.dll" Component_="apimswincoreprocessthreadsl111.dll" FileName="API-M~17.DLL|api-ms-win-core-processthreads-l1-1-1.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-processthreads-l1-1-1.dll" SelfReg="false" NextFile="apimswincoreprofilel110.dll"/>
+    <ROW File="apimswincoreprofilel110.dll" Component_="apimswincoreprofilel110.dll" FileName="API-M~18.DLL|api-ms-win-core-profile-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-profile-l1-1-0.dll" SelfReg="false" NextFile="apimswincorertlsupportl110.dll"/>
+    <ROW File="apimswincorertlsupportl110.dll" Component_="apimswincorertlsupportl110.dll" FileName="API-M~19.DLL|api-ms-win-core-rtlsupport-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-rtlsupport-l1-1-0.dll" SelfReg="false" NextFile="apimswincorestringl110.dll"/>
+    <ROW File="apimswincorestringl110.dll" Component_="apimswincorestringl110.dll" FileName="API-M~20.DLL|api-ms-win-core-string-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-string-l1-1-0.dll" SelfReg="false" NextFile="apimswincoresynchl110.dll"/>
+    <ROW File="apimswincoresynchl110.dll" Component_="apimswincoresynchl110.dll" FileName="API-M~21.DLL|api-ms-win-core-synch-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-synch-l1-1-0.dll" SelfReg="false" NextFile="apimswincoresynchl120.dll"/>
+    <ROW File="apimswincoresynchl120.dll" Component_="apimswincoresynchl120.dll" FileName="API-M~22.DLL|api-ms-win-core-synch-l1-2-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-synch-l1-2-0.dll" SelfReg="false" NextFile="apimswincoresysinfol110.dll"/>
+    <ROW File="apimswincoresysinfol110.dll" Component_="apimswincoresysinfol110.dll" FileName="API-M~23.DLL|api-ms-win-core-sysinfo-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-sysinfo-l1-1-0.dll" SelfReg="false" NextFile="apimswincoretimezonel110.dll"/>
+    <ROW File="apimswincoretimezonel110.dll" Component_="apimswincoretimezonel110.dll" FileName="API-M~24.DLL|api-ms-win-core-timezone-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-timezone-l1-1-0.dll" SelfReg="false" NextFile="apimswincoreutill110.dll"/>
+    <ROW File="apimswincoreutill110.dll" Component_="apimswincoreutill110.dll" FileName="API-M~25.DLL|api-ms-win-core-util-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-util-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtconiol110.dll"/>
+    <ROW File="apimswincrtconiol110.dll" Component_="apimswincrtconiol110.dll" FileName="API-M~26.DLL|api-ms-win-crt-conio-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-conio-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtconvertl110.dll"/>
+    <ROW File="apimswincrtconvertl110.dll" Component_="apimswincrtconvertl110.dll" FileName="API-M~27.DLL|api-ms-win-crt-convert-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-convert-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtenvironmentl110.dll"/>
+    <ROW File="apimswincrtenvironmentl110.dll" Component_="apimswincrtenvironmentl110.dll" FileName="API-M~28.DLL|api-ms-win-crt-environment-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-environment-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtfilesysteml110.dll"/>
+    <ROW File="apimswincrtfilesysteml110.dll" Component_="apimswincrtfilesysteml110.dll" FileName="API-M~29.DLL|api-ms-win-crt-filesystem-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-filesystem-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtheapl110.dll"/>
+    <ROW File="apimswincrtheapl110.dll" Component_="apimswincrtheapl110.dll" FileName="API-M~30.DLL|api-ms-win-crt-heap-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-heap-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtlocalel110.dll"/>
+    <ROW File="apimswincrtlocalel110.dll" Component_="apimswincrtlocalel110.dll" FileName="API-M~31.DLL|api-ms-win-crt-locale-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-locale-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtmathl110.dll"/>
+    <ROW File="apimswincrtmathl110.dll" Component_="apimswincrtmathl110.dll" FileName="API-M~32.DLL|api-ms-win-crt-math-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-math-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtmultibytel110.dll"/>
+    <ROW File="apimswincrtmultibytel110.dll" Component_="apimswincrtmultibytel110.dll" FileName="API-M~33.DLL|api-ms-win-crt-multibyte-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-multibyte-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtprivatel110.dll"/>
+    <ROW File="apimswincrtprivatel110.dll" Component_="apimswincrtprivatel110.dll" FileName="API-M~34.DLL|api-ms-win-crt-private-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-private-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtprocessl110.dll"/>
+    <ROW File="apimswincrtprocessl110.dll" Component_="apimswincrtprocessl110.dll" FileName="API-M~35.DLL|api-ms-win-crt-process-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-process-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtruntimel110.dll"/>
+    <ROW File="apimswincrtruntimel110.dll" Component_="apimswincrtruntimel110.dll" FileName="API-M~36.DLL|api-ms-win-crt-runtime-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-runtime-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtstdiol110.dll"/>
+    <ROW File="apimswincrtstdiol110.dll" Component_="apimswincrtstdiol110.dll" FileName="API-M~37.DLL|api-ms-win-crt-stdio-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-stdio-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtstringl110.dll"/>
+    <ROW File="apimswincrtstringl110.dll" Component_="apimswincrtstringl110.dll" FileName="API-M~38.DLL|api-ms-win-crt-string-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-string-l1-1-0.dll" SelfReg="false" NextFile="apimswincrttimel110.dll"/>
+    <ROW File="apimswincrttimel110.dll" Component_="apimswincrttimel110.dll" FileName="API-M~39.DLL|api-ms-win-crt-time-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-time-l1-1-0.dll" SelfReg="false" NextFile="apimswincrtutilityl110.dll"/>
+    <ROW File="apimswincrtutilityl110.dll" Component_="apimswincrtutilityl110.dll" FileName="API-M~40.DLL|api-ms-win-crt-utility-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-crt-utility-l1-1-0.dll" SelfReg="false" NextFile="FreeImage.dll"/>
+    <ROW File="app.asar" Component_="appupdate.yml" FileName="APP~1.ASA|app.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\app.asar" SelfReg="false" NextFile="electron.asar"/>
+    <ROW File="appupdate.yml" Component_="appupdate.yml" FileName="APP-UP~1.YML|app-update.yml" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\app-update.yml" SelfReg="false" NextFile="app.asar"/>
+    <ROW File="ar.pak" Component_="am.pak" FileName="ar.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ar.pak" SelfReg="false" NextFile="bg.pak"/>
+    <ROW File="author.txt" Component_="author.txt" FileName="author.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\author.txt" SelfReg="false" NextFile="Cube_0000_m000.ply"/>
+    <ROW File="bg.pak" Component_="am.pak" FileName="bg.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bg.pak" SelfReg="false" NextFile="bn.pak"/>
+    <ROW File="blink_image_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="BLINK_~1.PAK|blink_image_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\blink_image_resources_200_percent.pak" SelfReg="false" NextFile="content_resources_200_percent.pak"/>
+    <ROW File="bmw27_cpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~1.BLE|bmw27_cpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_cpu.blend" SelfReg="false" NextFile="author.txt"/>
+    <ROW File="bn.pak" Component_="am.pak" FileName="bn.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bn.pak" SelfReg="false" NextFile="ca.pak"/>
+    <ROW File="ca.pak" Component_="am.pak" FileName="ca.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ca.pak" SelfReg="false" NextFile="cs.pak"/>
+    <ROW File="content_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="CONTEN~1.PAK|content_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\content_resources_200_percent.pak" SelfReg="false" NextFile="content_shell.pak"/>
+    <ROW File="content_shell.pak" Component_="blink_image_resources_200_percent.pak" FileName="CONTEN~2.PAK|content_shell.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\content_shell.pak" SelfReg="false" NextFile="d3dcompiler_47.dll"/>
+    <ROW File="cs.pak" Component_="am.pak" FileName="cs.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\cs.pak" SelfReg="false" NextFile="da.pak"/>
+    <ROW File="d3dcompiler_47.dll" Component_="d3dcompiler_47.dll" FileName="D3DCOM~1.DLL|d3dcompiler_47.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\d3dcompiler_47.dll" SelfReg="false" NextFile="bmw27_cpu.blend"/>
+    <ROW File="da.pak" Component_="am.pak" FileName="da.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\da.pak" SelfReg="false" NextFile="de.pak"/>
+    <ROW File="de.pak" Component_="am.pak" FileName="de.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\de.pak" SelfReg="false" NextFile="el.pak"/>
+    <ROW File="el.pak" Component_="am.pak" FileName="el.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\el.pak" SelfReg="false" NextFile="enGB.pak"/>
+    <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="elevate.exe"/>
+    <ROW File="elevate.exe" Component_="elevate.exe" FileName="elevate.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\elevate.exe" SelfReg="false" NextFile="snapshot_blob.bin" DigSign="true"/>
+    <ROW File="enGB.pak" Component_="am.pak" FileName="en-GB.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-GB.pak" SelfReg="false" NextFile="enUS.pak"/>
+    <ROW File="enUS.pak" Component_="am.pak" FileName="en-US.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-US.pak" SelfReg="false" NextFile="es419.pak"/>
+    <ROW File="es.pak" Component_="am.pak" FileName="es.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\es.pak" SelfReg="false" NextFile="et.pak"/>
+    <ROW File="es419.pak" Component_="am.pak" FileName="es-419.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\es-419.pak" SelfReg="false" NextFile="es.pak"/>
+    <ROW File="et.pak" Component_="am.pak" FileName="et.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\et.pak" SelfReg="false" NextFile="fa.pak"/>
+    <ROW File="fa.pak" Component_="am.pak" FileName="fa.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fa.pak" SelfReg="false" NextFile="fakebidi.pak"/>
+    <ROW File="fakebidi.pak" Component_="am.pak" FileName="FAKE-B~1.PAK|fake-bidi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fake-bidi.pak" SelfReg="false" NextFile="fi.pak"/>
+    <ROW File="ffmpeg.dll" Component_="ffmpeg.dll" FileName="ffmpeg.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ffmpeg.dll" SelfReg="false" NextFile="golem.exe"/>
+    <ROW File="fi.pak" Component_="am.pak" FileName="fi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fi.pak" SelfReg="false" NextFile="fil.pak"/>
+    <ROW File="fil.pak" Component_="am.pak" FileName="fil.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fil.pak" SelfReg="false" NextFile="fr.pak"/>
+    <ROW File="fr.pak" Component_="am.pak" FileName="fr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fr.pak" SelfReg="false" NextFile="gu.pak"/>
+    <ROW File="golem.exe" Component_="golem.exe" FileName="golem.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golem.exe" SelfReg="false" NextFile="golemapp.exe" DigSign="true"/>
+    <ROW File="golemapp.exe" Component_="golemapp.exe" FileName="golemapp.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemapp.exe" SelfReg="false" NextFile="golemcli.exe" DigSign="true"/>
+    <ROW File="golemcli.exe" Component_="golemcli.exe" FileName="golemcli.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemcli.exe" SelfReg="false" NextFile="HashInfo.txt" DigSign="true"/>
+    <ROW File="gu.pak" Component_="am.pak" FileName="gu.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\gu.pak" SelfReg="false" NextFile="he.pak"/>
+    <ROW File="he.pak" Component_="am.pak" FileName="he.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\he.pak" SelfReg="false" NextFile="hi.pak"/>
+    <ROW File="hi.pak" Component_="am.pak" FileName="hi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hi.pak" SelfReg="false" NextFile="hr.pak"/>
+    <ROW File="hr.pak" Component_="am.pak" FileName="hr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hr.pak" SelfReg="false" NextFile="hu.pak"/>
+    <ROW File="hu.pak" Component_="am.pak" FileName="hu.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hu.pak" SelfReg="false" NextFile="id.pak"/>
+    <ROW File="hyperg.exe" Component_="hyperg.exe" FileName="hyperg.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg.exe" SelfReg="false" NextFile="icudtl.dat" DigSign="true"/>
+    <ROW File="hypergclient.exe" Component_="hypergclient.exe" FileName="HYPERG~1.EXE|hyperg-client.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg-client.exe" SelfReg="false" NextFile="hyperg.exe" DigSign="true"/>
+    <ROW File="icudtl.dat" Component_="blink_image_resources_200_percent.pak" FileName="icudtl.dat" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\icudtl.dat" SelfReg="false" NextFile="leveldown.node"/>
+    <ROW File="id.pak" Component_="am.pak" FileName="id.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\id.pak" SelfReg="false" NextFile="it.pak"/>
+    <ROW File="it.pak" Component_="am.pak" FileName="it.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\it.pak" SelfReg="false" NextFile="ja.pak"/>
+    <ROW File="ja.pak" Component_="am.pak" FileName="ja.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ja.pak" SelfReg="false" NextFile="kn.pak"/>
+    <ROW File="kn.pak" Component_="am.pak" FileName="kn.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\kn.pak" SelfReg="false" NextFile="ko.pak"/>
+    <ROW File="ko.pak" Component_="am.pak" FileName="ko.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ko.pak" SelfReg="false" NextFile="lt.pak"/>
+    <ROW File="leveldown.node" Component_="blink_image_resources_200_percent.pak" FileName="LEVELD~1.NOD|leveldown.node" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\leveldown.node" SelfReg="false" NextFile="libeay32.dll"/>
+    <ROW File="libEGL.dll" Component_="libEGL.dll" FileName="libEGL.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\libEGL.dll" SelfReg="false" NextFile="libGLESv2.dll"/>
+    <ROW File="libGLESv2.dll" Component_="libGLESv2.dll" FileName="LIBGLE~1.DLL|libGLESv2.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\libGLESv2.dll" SelfReg="false" NextFile="LICENSE.electron.txt"/>
+    <ROW File="libeay32.dll" Component_="libeay32.dll" FileName="libeay32.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\libeay32.dll" SelfReg="false" NextFile="libEGL.dll"/>
+    <ROW File="link.command.1.tlog" Component_="CL.command.1.tlog" FileName="LINKCO~1.TLO|link.command.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\link.command.1.tlog" SelfReg="false" NextFile="link.read.1.tlog"/>
+    <ROW File="link.read.1.tlog" Component_="CL.command.1.tlog" FileName="LINKRE~1.TLO|link.read.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\link.read.1.tlog" SelfReg="false" NextFile="link.write.1.tlog"/>
+    <ROW File="link.write.1.tlog" Component_="CL.command.1.tlog" FileName="LINKWR~1.TLO|link.write.1.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\link.write.1.tlog" SelfReg="false" NextFile="taskcollector.lastbuildstate"/>
+    <ROW File="lt.pak" Component_="am.pak" FileName="lt.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\lt.pak" SelfReg="false" NextFile="lv.pak"/>
+    <ROW File="lv.pak" Component_="am.pak" FileName="lv.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\lv.pak" SelfReg="false" NextFile="ml.pak"/>
+    <ROW File="ml.pak" Component_="am.pak" FileName="ml.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ml.pak" SelfReg="false" NextFile="mr.pak"/>
+    <ROW File="mr.pak" Component_="am.pak" FileName="mr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\mr.pak" SelfReg="false" NextFile="ms.pak"/>
+    <ROW File="ms.pak" Component_="am.pak" FileName="ms.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ms.pak" SelfReg="false" NextFile="nb.pak"/>
+    <ROW File="msvcp140.dll" Component_="msvcp140.dll" FileName="msvcp140.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\msvcp140.dll" SelfReg="false" NextFile="natives_blob.bin"/>
+    <ROW File="natives_blob.bin" Component_="blink_image_resources_200_percent.pak" FileName="NATIVE~1.BIN|natives_blob.bin" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\natives_blob.bin" SelfReg="false" NextFile="node.dll"/>
+    <ROW File="nb.pak" Component_="am.pak" FileName="nb.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\nb.pak" SelfReg="false" NextFile="nl.pak"/>
+    <ROW File="nl.pak" Component_="am.pak" FileName="nl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\nl.pak" SelfReg="false" NextFile="pl.pak"/>
+    <ROW File="node.dll" Component_="node.dll" FileName="node.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\node.dll" SelfReg="false" NextFile="OpenSSLLicense.txt"/>
+    <ROW File="pdf_viewer_resources.pak" Component_="blink_image_resources_200_percent.pak" FileName="PDF_VI~1.PAK|pdf_viewer_resources.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\pdf_viewer_resources.pak" SelfReg="false" NextFile="rabin.node"/>
+    <ROW File="pl.pak" Component_="am.pak" FileName="pl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pl.pak" SelfReg="false" NextFile="ptBR.pak"/>
+    <ROW File="ptBR.pak" Component_="am.pak" FileName="pt-BR.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pt-BR.pak" SelfReg="false" NextFile="ptPT.pak"/>
+    <ROW File="ptPT.pak" Component_="am.pak" FileName="pt-PT.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pt-PT.pak" SelfReg="false" NextFile="ro.pak"/>
+    <ROW File="rabin.node" Component_="blink_image_resources_200_percent.pak" FileName="RABIN~1.NOD|rabin.node" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\rabin.node" SelfReg="false" NextFile="ReadMe.txt"/>
+    <ROW File="ro.pak" Component_="am.pak" FileName="ro.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ro.pak" SelfReg="false" NextFile="ru.pak"/>
+    <ROW File="ru.pak" Component_="am.pak" FileName="ru.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ru.pak" SelfReg="false" NextFile="sk.pak"/>
+    <ROW File="schoolcorridor.lxs" Component_="author.txt" FileName="SCHOOL~1.LXS|schoolcorridor.lxs" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\lux\schoolcorridor.lxs" SelfReg="false" NextFile="ffmpeg.dll"/>
+    <ROW File="sk.pak" Component_="am.pak" FileName="sk.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sk.pak" SelfReg="false" NextFile="sl.pak"/>
+    <ROW File="sl.pak" Component_="am.pak" FileName="sl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sl.pak" SelfReg="false" NextFile="sr.pak"/>
+    <ROW File="snapshot_blob.bin" Component_="blink_image_resources_200_percent.pak" FileName="SNAPSH~1.BIN|snapshot_blob.bin" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\snapshot_blob.bin" SelfReg="false" NextFile="sodium.node"/>
+    <ROW File="sodium.node" Component_="blink_image_resources_200_percent.pak" FileName="SODIUM~1.NOD|sodium.node" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\sodium.node" SelfReg="false" NextFile="ssleay32.dll"/>
+    <ROW File="sr.pak" Component_="am.pak" FileName="sr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sr.pak" SelfReg="false" NextFile="sv.pak"/>
+    <ROW File="ssleay32.dll" Component_="ssleay32.dll" FileName="ssleay32.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ssleay32.dll" SelfReg="false" NextFile="ucrtbase.dll"/>
+    <ROW File="sv.pak" Component_="am.pak" FileName="sv.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sv.pak" SelfReg="false" NextFile="sw.pak"/>
+    <ROW File="sw.pak" Component_="am.pak" FileName="sw.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sw.pak" SelfReg="false" NextFile="ta.pak"/>
+    <ROW File="ta.pak" Component_="am.pak" FileName="ta.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ta.pak" SelfReg="false" NextFile="te.pak"/>
+    <ROW File="taskcollector.exe" Component_="taskcollector.exe" FileName="TASKCO~1.EXE|taskcollector.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.exe" SelfReg="false" NextFile="taskcollector.iobj" DigSign="true"/>
+    <ROW File="taskcollector.iobj" Component_="taskcollector.iobj" FileName="TASKCO~1.IOB|taskcollector.iobj" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.iobj" SelfReg="false" NextFile="taskcollector.ipdb"/>
+    <ROW File="taskcollector.ipdb" Component_="taskcollector.iobj" FileName="TASKCO~1.IPD|taskcollector.ipdb" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.ipdb" SelfReg="false" NextFile="TaskCollector.obj"/>
+    <ROW File="taskcollector.lastbuildstate" Component_="CL.command.1.tlog" FileName="TASKCO~1.LAS|taskcollector.lastbuildstate" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\taskcollector.lastbuildstate" SelfReg="false" NextFile="blink_image_resources_200_percent.pak"/>
+    <ROW File="taskcollector.log" Component_="taskcollector.iobj" FileName="TASKCO~1.LOG|taskcollector.log" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.log" SelfReg="false" NextFile="vc140.pdb"/>
+    <ROW File="taskcollector.pdb" Component_="taskcollector.exe" FileName="TASKCO~1.PDB|taskcollector.pdb" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.pdb" SelfReg="false" NextFile="CL.command.1.tlog"/>
+    <ROW File="te.pak" Component_="am.pak" FileName="te.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\te.pak" SelfReg="false" NextFile="th.pak"/>
+    <ROW File="th.pak" Component_="am.pak" FileName="th.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\th.pak" SelfReg="false" NextFile="tr.pak"/>
+    <ROW File="tr.pak" Component_="am.pak" FileName="tr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\tr.pak" SelfReg="false" NextFile="uk.pak"/>
+    <ROW File="ucrtbase.dll" Component_="ucrtbase.dll" FileName="ucrtbase.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ucrtbase.dll" SelfReg="false" NextFile="ui_resources_200_percent.pak"/>
+    <ROW File="ui_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="UI_RES~1.PAK|ui_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ui_resources_200_percent.pak" SelfReg="false" NextFile="vcruntime140.dll"/>
+    <ROW File="uk.pak" Component_="am.pak" FileName="uk.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\uk.pak" SelfReg="false" NextFile="vi.pak"/>
+    <ROW File="vc140.pdb" Component_="vc141.pdb" FileName="vc140.pdb" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\vc140.pdb" SelfReg="false"/>
+    <ROW File="vcruntime140.dll" Component_="vcruntime140.dll" FileName="VCRUNT~1.DLL|vcruntime140.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\vcruntime140.dll" SelfReg="false" NextFile="views_resources_200_percent.pak"/>
+    <ROW File="vi.pak" Component_="am.pak" FileName="vi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\vi.pak" SelfReg="false" NextFile="zhCN.pak"/>
+    <ROW File="views_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="VIEWS_~1.PAK|views_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\views_resources_200_percent.pak" SelfReg="false" NextFile="taskcollector.log"/>
+    <ROW File="zhCN.pak" Component_="am.pak" FileName="zh-CN.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\zh-CN.pak" SelfReg="false" NextFile="zhTW.pak"/>
+    <ROW File="zhTW.pak" Component_="am.pak" FileName="zh-TW.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\zh-TW.pak" SelfReg="false" NextFile="msvcp140.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.AiRemoveFileComponent">
+    <ROW RemoveFile="_" Options="3"/>
+    <ROW RemoveFile="__1" Options="3"/>
+    <ROW RemoveFile="__2" Options="3"/>
+    <ROW RemoveFile="__3" Options="3"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
+    <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.BuildComponent">
+    <ROW BuildKey="DefaultBuild" BuildName="DefaultBuild" BuildOrder="1" BuildType="0" Languages="en_GB" InstallationType="2" CabsLocation="1" UseLzma="true" LzmaMethod="2" LzmaCompressionLevel="2" PackageType="1" FilesInsideExe="true" ExeIconPath="Installer\favicon.ico" ExtractionFolder="[AppDataFolder][|Manufacturer]\[|ProductName] [|ProductVersion]\install" ExtUI="true" UseLargeSchema="true" ExeName="[|ProductName]-[|ProductVersion]-installer" MsiPackageType="x64"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.DictionaryComponent">
+    <ROW Path="&lt;AI_DICTS&gt;ui.ail"/>
+    <ROW Path="&lt;AI_DICTS&gt;ui_en_GB.ail"/>
+    <ROW Path="&lt;AI_DICTS&gt;ui_en.ail"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.FragmentComponent">
+    <ROW Fragment="CommonUI.aip" Path="&lt;AI_FRAGS&gt;CommonUI.aip"/>
+    <ROW Fragment="FolderDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\FolderDlg.aip"/>
+    <ROW Fragment="LicenseAgreementDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\LicenseAgreementDlg.aip"/>
+    <ROW Fragment="MaintenanceTypeDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\MaintenanceTypeDlg.aip"/>
+    <ROW Fragment="MaintenanceWelcomeDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\MaintenanceWelcomeDlg.aip"/>
+    <ROW Fragment="PreparePrereqDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\PreparePrereqDlg.aip"/>
+    <ROW Fragment="PrerequisitesDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\PrerequisitesDlg.aip"/>
+    <ROW Fragment="ProgressPrereqDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\ProgressPrereqDlg.aip"/>
+    <ROW Fragment="SequenceDialogs.aip" Path="&lt;AI_THEMES&gt;classic\fragments\SequenceDialogs.aip"/>
+    <ROW Fragment="Sequences.aip" Path="&lt;AI_FRAGS&gt;Sequences.aip"/>
+    <ROW Fragment="ShortcutsDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\ShortcutsDlg.aip"/>
+    <ROW Fragment="StaticUIStrings.aip" Path="&lt;AI_FRAGS&gt;StaticUIStrings.aip"/>
+    <ROW Fragment="UI.aip" Path="&lt;AI_THEMES&gt;classic\fragments\UI.aip"/>
+    <ROW Fragment="Validation.aip" Path="&lt;AI_FRAGS&gt;Validation.aip"/>
+    <ROW Fragment="VerifyRemoveDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\VerifyRemoveDlg.aip"/>
+    <ROW Fragment="VerifyRepairDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\VerifyRepairDlg.aip"/>
+    <ROW Fragment="WelcomeDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\WelcomeDlg.aip"/>
+    <ROW Fragment="WelcomePrereqDlg.aip" Path="&lt;AI_THEMES&gt;classic\fragments\WelcomePrereqDlg.aip"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiActionTextComponent">
+    <ROW Action="AI_AiRemoveFilesCommit" Description="Executing file removal operations." DescriptionLocId="ActionText.Description.AI_AiRemoveFilesCommit" Template="Removing file: [1]" TemplateLocId="ActionText.Template.AI_AiRemoveFilesCommit"/>
+    <ROW Action="AI_AiRemoveFilesDeferred_Permanent" Description="Preparing files for removal" DescriptionLocId="ActionText.Description.AI_AiRemoveFilesDeferred_Permanent" Template="Preparing file: [1]" TemplateLocId="ActionText.Template.AI_AiRemoveFilesDeferred_Permanent"/>
+    <ROW Action="AI_AiRemoveFilesDeferred_Undoable" Description="Preparing files for removal" DescriptionLocId="ActionText.Description.AI_AiRemoveFilesDeferred_Undoable" Template="Preparing file: [1]" TemplateLocId="ActionText.Template.AI_AiRemoveFilesDeferred_Undoable"/>
+    <ROW Action="AI_AiRemoveFilesImmediate" Description="Generating actions to remove files." DescriptionLocId="ActionText.Description.AI_AiRemoveFilesImmediate" Template="Preparing file: [1]" TemplateLocId="ActionText.Template.AI_AiRemoveFilesImmediate"/>
+    <ROW Action="AI_AiRemoveFilesRollback" Description="Restoring removed files" DescriptionLocId="ActionText.Description.AI_AiRemoveFilesRollback" Template="Restoring file: [1]" TemplateLocId="ActionText.Template.AI_AiRemoveFilesRollback"/>
+    <ROW Action="AI_DeleteLzma" Description="Deleting files extracted from archive" DescriptionLocId="ActionText.Description.AI_DeleteLzma" TemplateLocId="-"/>
+    <ROW Action="AI_DeleteRLzma" Description="Deleting files extracted from archive" DescriptionLocId="ActionText.Description.AI_DeleteLzma" TemplateLocId="-"/>
+    <ROW Action="AI_ExtractFiles" Description="Extracting files from archive" DescriptionLocId="ActionText.Description.AI_ExtractLzma" TemplateLocId="-"/>
+    <ROW Action="AI_ExtractLzma" Description="Extracting files from archive" DescriptionLocId="ActionText.Description.AI_ExtractLzma" TemplateLocId="-"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiAppSearchComponent">
+    <ROW Property="AI_SETUPEXEPATH" Signature_="AI_EXE_PATH_CU" Builds="DefaultBuild"/>
+    <ROW Property="AI_SETUPEXEPATH" Signature_="AI_EXE_PATH_LM" Builds="DefaultBuild"/>
+    <ROW Property="AI_SHORTCUTSREG" Signature_="AI_ShRegOptionMachine"/>
+    <ROW Property="AI_SHORTCUTSREG" Signature_="AI_ShRegOptionUser"/>
+    <ROW Property="GOLEM_UNINSTALL" Signature_="AppSearchSign"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiBinaryComponent">
+    <ROW Name="Prereq.dll" SourcePath="&lt;AI_CUSTACTS&gt;Prereq.dll"/>
+    <ROW Name="ResourceCleaner.dll" SourcePath="&lt;AI_CUSTACTS&gt;ResourceCleaner.dll"/>
+    <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
+    <ROW Name="bannerfull01.jpg" SourcePath="Installer\Installer_Win\banner-full-01.jpg"/>
+    <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
+    <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiControlComponent">
+    <ROW Dialog_="LicenseAgreementDlg" Control="AgreementText" Type="ScrollableText" X="20" Y="60" Width="330" Height="120" Attributes="7" Text="Installer\Installer_Win\LICENCE.rtf" Order="400" TextLocId="Control.Text.LicenseAgreementDlg#AgreementText_2" MsiKey="LicenseAgreementDlg#AgreementText"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiControlEventComponent">
+    <ROW Dialog_="WelcomeDlg" Control_="Next" Event="NewDialog" Argument="LicenseAgreementDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="MaintenanceWelcomeDlg" Control_="Next" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT" Ordering="99"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_MAINT" Ordering="198"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="CustomizeDlg" Condition="AI_MAINT" Ordering="202"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_INSTALL" Ordering="197"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="ShortcutsDlg" Condition="AI_INSTALL" Ordering="201"/>
+    <ROW Dialog_="CustomizeDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_MAINT" Ordering="101"/>
+    <ROW Dialog_="CustomizeDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT" Ordering="1"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="ChangeButton" Event="NewDialog" Argument="CustomizeDlg" Condition="AI_MAINT" Ordering="501"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceWelcomeDlg" Condition="AI_MAINT" Ordering="1"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="RemoveButton" Event="NewDialog" Argument="VerifyRemoveDlg" Condition="AI_MAINT AND InstallMode=&quot;Remove&quot;" Ordering="601"/>
+    <ROW Dialog_="VerifyRemoveDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT AND InstallMode=&quot;Remove&quot;" Ordering="1"/>
+    <ROW Dialog_="MaintenanceTypeDlg" Control_="RepairButton" Event="NewDialog" Argument="VerifyRepairDlg" Condition="AI_MAINT AND InstallMode=&quot;Repair&quot;" Ordering="601"/>
+    <ROW Dialog_="VerifyRepairDlg" Control_="Back" Event="NewDialog" Argument="MaintenanceTypeDlg" Condition="AI_MAINT AND InstallMode=&quot;Repair&quot;" Ordering="1"/>
+    <ROW Dialog_="VerifyRepairDlg" Control_="Repair" Event="EndDialog" Argument="Return" Condition="AI_MAINT AND InstallMode=&quot;Repair&quot;" Ordering="399" Options="1"/>
+    <ROW Dialog_="VerifyRemoveDlg" Control_="Remove" Event="EndDialog" Argument="Return" Condition="AI_MAINT AND InstallMode=&quot;Remove&quot;" Ordering="299" Options="1"/>
+    <ROW Dialog_="PatchWelcomeDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_PATCH" Ordering="201"/>
+    <ROW Dialog_="ResumeDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_RESUME" Ordering="299"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Install" Event="EndDialog" Argument="Return" Condition="AI_PATCH" Ordering="199"/>
+    <ROW Dialog_="VerifyReadyDlg" Control_="Back" Event="NewDialog" Argument="PatchWelcomeDlg" Condition="AI_PATCH" Ordering="203"/>
+    <ROW Dialog_="ShortcutsDlg" Control_="Next" Event="NewDialog" Argument="VerifyReadyDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="ShortcutsDlg" Control_="Back" Event="NewDialog" Argument="FolderDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="FolderDlg" Control_="Next" Event="NewDialog" Argument="ShortcutsDlg" Condition="AI_INSTALL" Ordering="201"/>
+    <ROW Dialog_="FolderDlg" Control_="Back" Event="NewDialog" Argument="LicenseAgreementDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="LicenseAgreementDlg" Control_="Next" Event="NewDialog" Argument="FolderDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="LicenseAgreementDlg" Control_="Back" Event="NewDialog" Argument="WelcomeDlg" Condition="AI_INSTALL" Ordering="1"/>
+    <ROW Dialog_="WelcomePrereqDlg" Control_="Next" Event="NewDialog" Argument="PrerequisitesDlg" Condition="AI_BOOTSTRAPPER" Ordering="1"/>
+    <ROW Dialog_="PrerequisitesDlg" Control_="Next" Event="EndDialog" Argument="Return" Condition="AI_BOOTSTRAPPER" Ordering="1"/>
+    <ROW Dialog_="PrerequisitesDlg" Control_="Back" Event="NewDialog" Argument="WelcomePrereqDlg" Condition="AI_BOOTSTRAPPER" Ordering="1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiCreateFolderComponent">
+    <ROW Directory_="APPDIR" Component_="APPDIR" ManualDelete="true"/>
+    <ROW Directory_="SHORTCUTDIR" Component_="SHORTCUTDIR" ManualDelete="false"/>
+    <ROW Directory_="NewFolder_2_Dir" Component_="NewFolder" ManualDelete="false"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiCustActComponent">
+    <ROW Action="AI_AiRemoveFilesCommit" Type="11777" Source="ResourceCleaner.dll" Target="OnAiRemoveFilesCommit" WithoutSeq="true"/>
+    <ROW Action="AI_AiRemoveFilesDeferred_Permanent" Type="11265" Source="ResourceCleaner.dll" Target="OnAiRemoveFilesPermanent" WithoutSeq="true"/>
+    <ROW Action="AI_AiRemoveFilesDeferred_Undoable" Type="11265" Source="ResourceCleaner.dll" Target="OnAiRemoveFilesUndoable" WithoutSeq="true"/>
+    <ROW Action="AI_AiRemoveFilesImmediate" Type="1" Source="ResourceCleaner.dll" Target="OnAiRemoveFilesImmediate"/>
+    <ROW Action="AI_AiRemoveFilesRollback" Type="11521" Source="ResourceCleaner.dll" Target="OnAiUndoRemoveFiles"/>
+    <ROW Action="AI_AppSearchEx" Type="1" Source="Prereq.dll" Target="DoAppSearchEx"/>
+    <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Type="51" Source="AI_SETUPEXEPATH_ORIGINAL" Target="[AI_SETUPEXEPATH]"/>
+    <ROW Action="AI_DATA_SETTER" Type="51" Source="AI_ExtractFiles" Target="[AI_SETUPEXEPATH]"/>
+    <ROW Action="AI_DATA_SETTER_1" Type="51" Source="StopProcess_Golem" Target="Golem.exe"/>
+    <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
+    <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
+    <ROW Action="AI_DATA_SETTER_4" Type="51" Source="StopProcess_DockerToolbox" Target="DockerToolbox.exe"/>
+    <ROW Action="AI_DATA_SETTER_5" Type="51" Source="StopProcess_VBoxHeadless" Target="VBoxHeadless.exe"/>
+    <ROW Action="AI_DATA_SETTER_6" Type="51" Source="StopProcess_VirtualBoxInterface" Target="VBoxSVC.exe"/>
+    <ROW Action="AI_DATA_SETTER_7" Type="51" Source="StopProcess_VBoxNetDHCP" Target="VBoxNetDHCP.exe"/>
+    <ROW Action="AI_DATA_SETTER_8" Type="51" Source="AI_DEL_EMPTY_SHORTCUTDIR" Target="[SHORTCUTDIR]"/>
+    <ROW Action="AI_DATA_SETTER_9" Type="51" Source="CustomActionData" Target="We detected a version of golem pre 0.11.0, it will be removed during the installation. |Old version detected |MB_OK,MB_ICONINFORMATION,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
+    <ROW Action="AI_DELETE_SHORTCUTS" Type="1" Source="aicustact.dll" Target="DeleteShortcuts"/>
+    <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Type="3073" Source="aicustact.dll" Target="DeleteEmptyDirectory" AdditionalSeq="AI_DATA_SETTER_8"/>
+    <ROW Action="AI_DOWNGRADE" Type="19" Target="4010"/>
+    <ROW Action="AI_DeleteCadLzma" Type="51" Source="AI_DeleteLzma" Target="[AI_SETUPEXEPATH]"/>
+    <ROW Action="AI_DeleteLzma" Type="1025" Source="lzmaextractor.dll" Target="DeleteLZMAFiles"/>
+    <ROW Action="AI_DeleteRCadLzma" Type="51" Source="AI_DeleteRLzma" Target="[AI_SETUPEXEPATH]"/>
+    <ROW Action="AI_DeleteRLzma" Type="1281" Source="lzmaextractor.dll" Target="DeleteLZMAFiles"/>
+    <ROW Action="AI_DpiContentScale" Type="1" Source="aicustact.dll" Target="DpiContentScale"/>
+    <ROW Action="AI_EnableDebugLog" Type="321" Source="aicustact.dll" Target="EnableDebugLog"/>
+    <ROW Action="AI_EstimateExtractFiles" Type="1" Source="Prereq.dll" Target="EstimateExtractFiles"/>
+    <ROW Action="AI_ExtractCadLzma" Type="51" Source="AI_ExtractLzma" Target="[AI_SETUPEXEPATH]"/>
+    <ROW Action="AI_ExtractFiles" Type="1025" Source="Prereq.dll" Target="ExtractSourceFiles" AdditionalSeq="AI_DATA_SETTER"/>
+    <ROW Action="AI_ExtractLzma" Type="1025" Source="lzmaextractor.dll" Target="ExtractLZMAFiles"/>
+    <ROW Action="AI_FindExeLzma" Type="1" Source="lzmaextractor.dll" Target="FindEXE"/>
+    <ROW Action="AI_GetArpIconPath" Type="1" Source="aicustact.dll" Target="GetArpIconPath"/>
+    <ROW Action="AI_InstallModeCheck" Type="1" Source="aicustact.dll" Target="UpdateInstallMode" WithoutSeq="true"/>
+    <ROW Action="AI_PREPARE_UPGRADE" Type="65" Source="aicustact.dll" Target="PrepareUpgrade"/>
+    <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Type="51" Source="AI_SETUPEXEPATH" Target="[AI_SETUPEXEPATH_ORIGINAL]"/>
+    <ROW Action="AI_RESTORE_LOCATION" Type="65" Source="aicustact.dll" Target="RestoreLocation"/>
+    <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
+    <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
+    <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
+    <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
+    <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
+    <ROW Action="MessageBox" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
+    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
+    <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
+    <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
+    <ROW Action="StopProcess_DockerToolbox" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_4"/>
+    <ROW Action="StopProcess_Golem" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_1"/>
+    <ROW Action="StopProcess_Golemapp" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_2"/>
+    <ROW Action="StopProcess_VBoxHeadless" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_5"/>
+    <ROW Action="StopProcess_VBoxNetDHCP" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_7"/>
+    <ROW Action="StopProcess_VirtualBoxInterface" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_6"/>
+    <ROW Action="StopProcess_hyperg" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_3"/>
+    <ROW Action="StripQuotesFromUninstallPath" Type="4134" Target="Script Text" TargetUnformatted="txt = Session.Property(&quot;GOLEM_UNINSTALL&quot;)&#13;&#10;Session.Property(&quot;GOLEM_UNINSTALL_CLEAN&quot;) = replace(txt,&quot;&quot;&quot;&quot;,&quot;&quot;)"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiEnvComponent">
+    <ROW Environment="PATH" Name="=-*Path" Value="[~];[APPDIR]" Component_="ProductInformation"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
+    <ROW Name="favicon.exe" SourcePath="Installer\favicon.ico" Index="0"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiInstExSeqComponent">
+    <ROW Action="AI_DOWNGRADE" Condition="AI_NEWERPRODUCTFOUND AND (UILevel &lt;&gt; 5)" Sequence="210"/>
+    <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
+    <ROW Action="AI_STORE_LOCATION" Condition="(Not Installed) OR REINSTALL" Sequence="1501"/>
+    <ROW Action="AI_PREPARE_UPGRADE" Condition="AI_UPGRADE=&quot;No&quot; AND (Not Installed)" Sequence="1399"/>
+    <ROW Action="AI_ResolveKnownFolders" Sequence="54"/>
+    <ROW Action="AI_EnableDebugLog" Sequence="53"/>
+    <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99" Builds="DefaultBuild"/>
+    <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102" Builds="DefaultBuild"/>
+    <ROW Action="AI_DeleteCadLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="199" Builds="DefaultBuild"/>
+    <ROW Action="AI_DeleteRCadLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="198" Builds="DefaultBuild"/>
+    <ROW Action="AI_ExtractCadLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="197" Builds="DefaultBuild"/>
+    <ROW Action="AI_FindExeLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="196" Builds="DefaultBuild"/>
+    <ROW Action="AI_ExtractLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="1549" Builds="DefaultBuild"/>
+    <ROW Action="AI_DeleteRLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="1548" Builds="DefaultBuild"/>
+    <ROW Action="AI_DeleteLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="6599" Builds="DefaultBuild"/>
+    <ROW Action="AI_ExtractFiles" Sequence="3998" Builds="DefaultBuild"/>
+    <ROW Action="AI_DATA_SETTER" Sequence="3997"/>
+    <ROW Action="AI_EstimateExtractFiles" Sequence="3999" Builds="DefaultBuild"/>
+    <ROW Action="AI_AiRemoveFilesRollback" Sequence="3099"/>
+    <ROW Action="StopProcess_DockerToolbox" Sequence="1608"/>
+    <ROW Action="AI_DATA_SETTER_4" Sequence="1607"/>
+    <ROW Action="StopProcess_VBoxHeadless" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_5" Sequence="1609"/>
+    <ROW Action="StopProcess_Golem" Sequence="1602"/>
+    <ROW Action="AI_DATA_SETTER_1" Sequence="1601"/>
+    <ROW Action="StopProcess_Golemapp" Sequence="1604"/>
+    <ROW Action="AI_DATA_SETTER_2" Sequence="1603"/>
+    <ROW Action="StopProcess_hyperg" Sequence="1606"/>
+    <ROW Action="AI_DATA_SETTER_3" Sequence="1605"/>
+    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1614"/>
+    <ROW Action="AI_DATA_SETTER_6" Sequence="1613"/>
+    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1612"/>
+    <ROW Action="AI_DATA_SETTER_7" Sequence="1611"/>
+    <ROW Action="AI_AppSearchEx" Sequence="101"/>
+    <ROW Action="AI_DELETE_SHORTCUTS" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="1402"/>
+    <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6402"/>
+    <ROW Action="AI_DATA_SETTER_8" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6401"/>
+    <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
+    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1616"/>
+    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1615"/>
+    <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
+    <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
+    <ROW Action="AI_ResolveKnownFolders" Sequence="53"/>
+    <ROW Action="AI_DpiContentScale" Sequence="52"/>
+    <ROW Action="AI_EnableDebugLog" Sequence="51"/>
+    <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99"/>
+    <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102"/>
+    <ROW Action="AI_AppSearchEx" Sequence="101"/>
+    <ROW Action="MessageBox" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="202"/>
+    <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="201"/>
+    <ROW Action="ForceReboot" Condition="( Installed AND ( REMOVE = &quot;ALL&quot; OR AI_INSTALL_MODE = &quot;Remove&quot; ) )" Sequence="1301"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
+    <ROW Condition="( Version9X OR VersionNT64 )" Description="[ProductName] can not be installed on [WindowsTypeNTDisplay]." DescriptionLocId="AI.LaunchCondition.NoNT" IsPredefined="true" Builds="DefaultBuild"/>
+    <ROW Condition="(VersionNT &lt;&gt; 400)" Description="[ProductName] can not be installed on [WindowsTypeNT40Display]." DescriptionLocId="AI.LaunchCondition.NoNT40" IsPredefined="true" Builds="DefaultBuild"/>
+    <ROW Condition="(VersionNT &lt;&gt; 500)" Description="[ProductName] can not be installed on [WindowsTypeNT50Display]." DescriptionLocId="AI.LaunchCondition.NoNT50" IsPredefined="true" Builds="DefaultBuild"/>
+    <ROW Condition="(VersionNT64 OR ((VersionNT &lt;&gt; 501) OR (ServicePackLevel = 3))) AND ((VersionNT &lt;&gt; 502) OR (ServicePackLevel = 2))" Description="[ProductName] cannot be installed on [WindowsTypeNT5XDisplay]." DescriptionLocId="AI.LaunchCondition.NoNT5X" IsPredefined="true" Builds="DefaultBuild"/>
+    <ROW Condition="VersionNT" Description="[ProductName] can not be installed on [WindowsType9XDisplay]." DescriptionLocId="AI.LaunchCondition.No9X" IsPredefined="true" Builds="DefaultBuild"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiRegLocatorComponent">
+    <ROW Signature_="AI_EXE_PATH_CU" Root="1" Key="Software\Caphyon\Advanced Installer\LZMA\[ProductCode]\[ProductVersion]" Name="AI_ExePath" Type="2"/>
+    <ROW Signature_="AI_EXE_PATH_LM" Root="2" Key="Software\Caphyon\Advanced Installer\LZMA\[ProductCode]\[ProductVersion]" Name="AI_ExePath" Type="2"/>
+    <ROW Signature_="AI_ShRegOptionMachine" Root="2" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Type="2"/>
+    <ROW Signature_="AI_ShRegOptionUser" Root="1" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Type="2"/>
+    <ROW Signature_="AppSearchSign" Root="2" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{C8E494CC-06C7-40CB-827A-20D07903013F}_is1" Name="UninstallString" Type="18"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiRegsComponent">
+    <ROW Registry="AIShRegAnswer" Root="-1" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Value="[AI_SHORTCUTSREG]" Component_="AIShRegAnswer"/>
+    <ROW Registry="AI_ExePath" Root="-1" Key="Software\Caphyon\Advanced Installer\LZMA\[ProductCode]\[ProductVersion]" Name="AI_ExePath" Value="[AI_SETUPEXEPATH]" Component_="AI_ExePath"/>
+    <ROW Registry="Comments" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="Comments" Value="[ARPCOMMENTS]" Component_="AI_CustomARPName"/>
+    <ROW Registry="Contact" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="Contact" Value="[ARPCONTACT]" Component_="AI_CustomARPName"/>
+    <ROW Registry="DisplayIcon" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="DisplayIcon" Value="[ARP_ICON_PATH]" Component_="AI_CustomARPName"/>
+    <ROW Registry="DisplayName" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="DisplayName" Value="[AI_PRODUCTNAME_ARP]" Component_="AI_CustomARPName"/>
+    <ROW Registry="DisplayVersion" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="DisplayVersion" Value="[ProductVersion]" Component_="AI_CustomARPName"/>
+    <ROW Registry="EstimatedSize" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="EstimatedSize" Value="#[AI_ARP_SIZE]" Component_="AI_CustomARPName"/>
+    <ROW Registry="HelpLink" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="HelpLink" Value="[ARPHELPLINK]" Component_="AI_CustomARPName"/>
+    <ROW Registry="HelpTelephone" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="HelpTelephone" Value="[ARPHELPTELEPHONE]" Component_="AI_CustomARPName"/>
+    <ROW Registry="InstallLocation" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="InstallLocation" Value="[APPDIR]" Component_="AI_CustomARPName"/>
+    <ROW Registry="ModifyPath" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="ModifyPath" Value="[AI_UNINSTALLER] /i [ProductCode] AI_UNINSTALLER_CTP=1" Component_="AI_CustomARPName"/>
+    <ROW Registry="NoRepair" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="NoRepair" Value="#1" Component_="AI_CustomARPName"/>
+    <ROW Registry="Path" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="Path" Value="[APPDIR]" Component_="ProductInformation"/>
+    <ROW Registry="Publisher" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="Publisher" Value="[Manufacturer]" Component_="AI_CustomARPName"/>
+    <ROW Registry="URLInfoAbout" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="URLInfoAbout" Value="[ARPURLINFOABOUT]" Component_="AI_CustomARPName"/>
+    <ROW Registry="URLUpdateInfo" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="URLUpdateInfo" Value="[ARPURLUPDATEINFO]" Component_="AI_CustomARPName"/>
+    <ROW Registry="UninstallPath" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="UninstallPath" Value="[AI_UNINSTALLER] /x [ProductCode] AI_UNINSTALLER_CTP=1" Component_="AI_CustomARPName"/>
+    <ROW Registry="UninstallString" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="UninstallString" Value="[AI_UNINSTALLER] /x [ProductCode] AI_UNINSTALLER_CTP=1" Component_="AI_CustomARPName"/>
+    <ROW Registry="Version" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="Version" Value="[ProductVersion]" Component_="ProductInformation"/>
+    <ROW Registry="VersionMajor" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="VersionMajor" Value="#0" Component_="AI_CustomARPName"/>
+    <ROW Registry="VersionMinor" Root="-1" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\[ProductName] [ProductVersion]" Name="VersionMinor" Value="#10" Component_="AI_CustomARPName"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiRemoveFileComponent">
+    <ROW FileKey="_" Component_="ProductInformation" DirProperty="APPDIR" InstallMode="2"/>
+    <ROW FileKey="__1" Component_="ProductInformation" DirProperty="Golem_Dir" InstallMode="1"/>
+    <ROW FileKey="__2" Component_="ProductInformation" DirProperty="HyperG_Dir" InstallMode="1"/>
+    <ROW FileKey="__3" Component_="ProductInformation" DirProperty="HyperG_1_Dir" InstallMode="1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiShortsComponent">
+    <ROW Shortcut="Golem" Directory_="SHORTCUTDIR" Name="Golem" Component_="ProductInformation" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Golem_1" Directory_="DesktopFolder" Name="Golem" Component_="ProductInformation" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Golem_2" Directory_="StartupFolder" Name="Golem" Component_="AIShRegAnswer" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Golem_3" Directory_="NewFolder_2_Dir" Name="Golem" Component_="AIShRegAnswer" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiThemeComponent">
+    <ATTRIBUTE name="UsedTheme" value="classic"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.MsiUpgradeComponent">
+    <ROW UpgradeCode="[|UpgradeCode]" VersionMin="0.0.1" VersionMax="[|ProductVersion]" Attributes="257" ActionProperty="OLDPRODUCTS"/>
+    <ROW UpgradeCode="[|UpgradeCode]" VersionMin="[|ProductVersion]" Attributes="2" ActionProperty="AI_NEWERPRODUCTFOUND"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
+    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="17.10.0" SetupFileUrl="C:\BuildResources\DockerToolbox.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="izym" TargetName="DockerToolbox.exe"/>
+    <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /quiet /norestart" BasicUiComLine="/install /quiet /norestart" NoUiComLine="/install /quiet /norestart" Options="izym" TargetName="vc_redist.x64.exe"/>
+    <ATTRIBUTE name="PrereqsOrder" value="DockerToolbox MicrosoftVisualC"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.PreReqSearchComponent">
+    <ROW SearchKey="SystemFolderfile.dll" Prereq="MicrosoftVisualC" SearchType="0" SearchString="[SystemFolder]file.dll" VerMin="1.0" Order="1" Property="PreReqSearch"/>
+    <ROW SearchKey="SystemFolderfile.dll_1" Prereq="DockerToolbox" SearchType="0" SearchString="[SystemFolder]file.dll" VerMin="1.0" Order="1" Property="PreReqSearch_1"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.SynchronizedFolderComponent">
+    <ROW Directory_="APPDIR" SourcePath="Installer\Installer_Win\install_tmp" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
+  </COMPONENT>
+</DOCUMENT>
