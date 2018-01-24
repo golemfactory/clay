@@ -422,7 +422,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['crop_window'] = (0.0, 1.0, min_y, max_y)
         self.subtasks_given[hash]['subtask_timeout'] = \
             self.header.subtask_timeout
-        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir  # FIXME
+        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir  # FIXME issue #1955
 
         part = self._count_part(start_task, parts)
 

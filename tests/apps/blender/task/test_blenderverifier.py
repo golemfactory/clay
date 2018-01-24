@@ -43,22 +43,22 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn):
 
     def test_crop_render_failure(self):
         bv = BlenderVerifier(lambda: None)
-        with self.assertLogs(logger, level="WARNING") as l:
+        with self.assertLogs(logger, level="WARNING") as logs:
             bv._crop_render_failure("There was a problem")
         assert any("Crop for verification render failure: 'There was a problem'"
-                   in log for log in l.output)
+                   in log for log in logs.output)
 
     def test_crop_rendered(self):
         bv = BlenderVerifier(lambda: None)
-        with self.assertLogs(logger, level="INFO") as l:
+        with self.assertLogs(logger, level="INFO") as logs:
             bv._crop_rendered({"abc": "def"}, 2913)
         assert any("Crop for verification rendered"
-                   in log for log in l.output)
-        assert any("2913" in log for log in l.output)
-        assert any("def" in log for log in l.output)
+                   in log for log in logs.output)
+        assert any("2913" in log for log in logs.output)
+        assert any("def" in log for log in logs.output)
 
     def test_generate_ctd(self):
-        bv = BlenderVerifier(lambda : None)
+        bv = BlenderVerifier(lambda: None)
         old_script = "print(str(2 + 3))"
         ctd = {"extra_data": {"outfilebasename": "mytask",
                               "script_src": old_script,

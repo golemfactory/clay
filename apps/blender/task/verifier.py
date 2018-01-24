@@ -90,7 +90,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             use_compositing=False
         )
         ctd = self._generate_ctd(subtask_info, script_src)
-        # FIXME (root path)
+        # FIXME issue #1955
         self.computer.start_computation(
             root_path=os.path.join(subtask_info['tmp_dir'],
                                    subtask_info['subtask_id'], str(num)),
