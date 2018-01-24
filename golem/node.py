@@ -18,9 +18,17 @@ class Node(object):
     :type client golem.client.Client:
     """
 
-    def __init__(self, datadir=None, peers=None, transaction_system=False,
-                 use_monitor=False, use_docker_machine_manager=True,
-                 start_geth=False, geth_port=None, **config_overrides):
+    def __init__(  # pylint: disable=too-many-arguments
+            self,
+            datadir=None,
+            peers=None,
+            transaction_system=False,
+            use_monitor=False,
+            use_docker_machine_manager=True,
+            start_geth=False,
+            start_geth_port=None,
+            geth_address=None,
+            **config_overrides):
 
         self.client = Client(
             datadir=datadir,
@@ -28,7 +36,8 @@ class Node(object):
             use_docker_machine_manager=use_docker_machine_manager,
             use_monitor=use_monitor,
             start_geth=start_geth,
-            geth_port=geth_port,
+            start_geth_port=start_geth_port,
+            geth_address=geth_address,
             **config_overrides
         )
 
@@ -121,6 +130,31 @@ class Node(object):
 class OptNode(Node):
 
     @staticmethod
+    def enforce_start_geth_used(ctx, param, value):
+        del param
+        if value and not ctx.params.get('start_geth', False):
+            raise click.BadParameter(
+                "it makes sense only together with --start-geth")
+        return value
+
+    @staticmethod
+    def parse_http_addr(ctx, param, value):
+        del ctx, param
+        if value:
+            try:
+                http_prefix = 'http://'
+                if not value.startswith(http_prefix):
+                    raise click.BadParameter(
+                        "Address without http:// prefix"
+                        "specified: {}".format(value))
+                SocketAddress.parse(value[len(http_prefix):])
+                return value
+            except ipaddress.AddressValueError as e:
+                raise click.BadParameter(
+                    "Invalid network address specified: {}".format(e))
+        return None
+
+    @staticmethod
     def parse_node_addr(ctx, param, value):
         del ctx, param
         if value:
@@ -130,7 +164,7 @@ class OptNode(Node):
             except ipaddress.AddressValueError as e:
                 raise click.BadParameter(
                     "Invalid network address specified: {}".format(e))
-        return ''
+        return None
 
     @staticmethod
     def parse_rpc_address(ctx, param, value):

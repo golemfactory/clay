@@ -35,44 +35,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                                      "Invalid Ethereum address constructed"):
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
-    @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
-    def test_sync(self, sleep, *_):
-        switch_value = [True]
-
-        def false():
-            return False
-
-        def switch(*_):
-            switch_value[0] = not switch_value[0]
-            return not switch_value[0]
-
-        def error(*_):
-            raise Exception
-
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=false):
-            e.sync()
-            assert sleep.call_count == 1
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=switch):
-            e.sync()
-            assert sleep.call_count == 2
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=error):
-            e.sync()
-            assert sleep.call_count == 0
-
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
@@ -96,21 +58,15 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            assert e.incomes_keeper.processor. \
-                _loopingCall.start.called
-            assert e.incomes_keeper.processor \
-                ._PaymentProcessor__client.node.start.called
+            assert e.payment_processor._loopingCall.start.called
+            assert e._sci._geth_client.node.start.called
 
             mock_is_service_running.return_value = False
             e.stop()
-            assert not e.incomes_keeper.processor. \
-                _PaymentProcessor__client.node.stop.called
-            assert not e.incomes_keeper.processor. \
-                _loopingCall.stop.called
+            assert e._sci._geth_client.node is None
+            assert not e.payment_processor._loopingCall.stop.called
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e.incomes_keeper.processor. \
-                _PaymentProcessor__client.node is None
-            assert e.incomes_keeper.processor. \
-                _loopingCall.stop.called
+            assert e._sci._geth_client.node is None
+            assert e.payment_processor._loopingCall.stop.called

@@ -6,6 +6,7 @@ import os
 import time
 import weakref
 from collections import deque
+from pathlib import Path
 from typing import Iterable, Optional
 
 from golem_messages import message
@@ -26,8 +27,8 @@ from golem.network.transport.tcpserver import (
 from golem.ranking.helper.trust import Trust
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.resource import ResourceType, get_resources_for_task
+from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from .taskcomputer import TaskComputer
@@ -208,7 +209,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
         self.response_list = {}
-        self.deny_set = get_deny_set(datadir=client.datadir)
+        self.acl = get_acl(Path(client.datadir))
         self.resource_handshakes = {}
 
         network = TCPNetwork(
@@ -523,9 +524,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if type(result) is Income:
             Trust.PAYMENT.increase(expected_income.sender_node, self.max_trust)
 
-    def subtask_accepted(self, subtask_id):
+    def subtask_accepted(self, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
+        self.client.transaction_system.incomes_keeper.update_awaiting(
+            subtask_id,
+            accepted_ts,
+        )
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(
@@ -564,6 +569,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             task_id, subtask_id, value, account_info)
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
+        return payment
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
@@ -642,14 +648,14 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         return self.forwarded_session_requests.pop(key_id, None)
 
     def should_accept_provider(self, node_id):
-        if node_id in self.deny_set:
+        if not self.acl.is_allowed(node_id):
             return False
         trust = self.get_computing_trust(node_id)
         logger.debug("Computing trust level: {}".format(trust))
         return trust >= self.config_desc.computing_trust
 
     def should_accept_requestor(self, node_id):
-        if node_id in self.deny_set:
+        if not self.acl.is_allowed(node_id):
             return SupportStatus.err(
                 {UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)

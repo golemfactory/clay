@@ -29,7 +29,6 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
@@ -413,6 +412,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
+    @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
@@ -784,8 +784,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_directories(self, *_):
         c = self.client
 
-        c.resource_server = ResourceServer.__new__(ResourceServer)
-        c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
+        def unique_dir():
+            d = self.new_path / str(uuid.uuid4())
+            d.mkdir(exist_ok=True)
+            return d
+
+        c.resource_server = Mock()
+        c.resource_server.get_distributed_resource_root.return_value = \
+            unique_dir()
 
         self.assertIsInstance(c.get_datadir(), str)
         self.assertIsInstance(c.get_dir_manager(), DirManager)
@@ -959,6 +965,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             DefaultEnvironment.get_id()))
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
+
+    def test_run_benchmark_fail(self, *_):
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+
+        def raise_exc(*_args, **_kwargs):
+            raise Exception('Test exception')
+
+        with patch("golem.docker.image.DockerImage.is_available",
+                   return_value=True), \
+                patch("golem.docker.job.DockerJob.__init__",
+                      side_effect=raise_exc), \
+                self.assertRaises(Exception):
+            sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):

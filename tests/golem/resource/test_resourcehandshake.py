@@ -1,10 +1,13 @@
-import uuid
-from unittest.mock import Mock, patch, ANY
-
+# pylint: disable=protected-access
 import os
 import types
-from twisted.internet.defer import Deferred
+import uuid
+
+from pathlib import Path
+from unittest.mock import Mock, patch, ANY
+
 from golem_messages import message
+from twisted.internet.defer import Deferred
 
 from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -14,6 +17,7 @@ from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
+from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture
 
 
@@ -625,7 +629,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.task_server = Mock(
             client=Mock(datadir=data_dir),
             node=Mock(key=str(uuid.uuid4())),
-            deny_set=set(),
+            acl=get_acl(Path(data_dir)),
             resource_handshakes=dict(),
             task_manager=Mock(
                 task_result_manager=Mock(

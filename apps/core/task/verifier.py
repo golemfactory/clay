@@ -19,7 +19,6 @@ class CoreVerifier(StateVerifier):
         self.callback(subtask_id=self.subtask_info['subtask_id'],
                       verdict=self.state,
                       result=self._get_answer())
-        self._clear_state()
 
     def _check_files(self, subtask_info, results, reference_data, resources):
         for result in results:
@@ -32,7 +31,8 @@ class CoreVerifier(StateVerifier):
         self.message = "No proper task result found"
 
     # pylint: disable=unused-argument
-    def _verify_result(self, subtask_info, result, reference_data, resources):
+    def _verify_result(self, subtask_info: dict, result: str,
+                       reference_data: list, resources: list):
         """ Override this to change verification method
         """
         return True

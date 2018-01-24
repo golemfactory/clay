@@ -146,7 +146,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         # 3. Requestor is on a black list.
         tar.reset_mock()
-        ts.deny_set.add("key")
+        ts.acl.disallow("key")
         task_header = get_example_task_header()
         task_header["task_id"] = "uvw5"
         task_header["task_owner"] = n2
@@ -158,7 +158,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
                 False,
                 {UnsupportReason.DENY_LIST: "key"}))
         ts.remove_task_header("uvw5")
-        ts.deny_set.remove("key")
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
@@ -632,7 +631,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.config_desc.computing_trust = 0.2
         assert ts.should_accept_provider("ABC")
 
-        ts.deny_set.add("ABC")
+        ts.acl.disallow("ABC")
         assert not ts.should_accept_provider("ABC")
 
     def test_should_accept_requestor(self):
@@ -653,7 +652,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.config_desc.requesting_trust = 0.2
         assert ts.should_accept_requestor("ABC").is_ok()
 
-        ts.deny_set.add("ABC")
+        ts.acl.disallow("ABC")
         ss = ts.should_accept_requestor("ABC")
         assert not ss.is_ok()
         assert UnsupportReason.DENY_LIST in ss.desc

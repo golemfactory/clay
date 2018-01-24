@@ -2,21 +2,22 @@ import calendar
 import logging
 import sys
 import time
+import requests
+from datetime import datetime
 from threading import Lock
-from time import sleep
 from typing import Any, List
 
 from ethereum import utils, keys
-from ethereum.utils import denoms
+from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
 
 from golem.core.service import LoopingCallService
-from golem.ethereum import Client
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import decode_hex, encode_hex
-from .node import tETH_faucet_donate
 
 log = logging.getLogger("golem.pay")
+
+DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
 
 
 def get_timestamp() -> int:
@@ -24,11 +25,27 @@ def get_timestamp() -> int:
     return calendar.timegm(time.gmtime())
 
 
+def tETH_faucet_donate(addr):
+    addr = normalize_address(addr)
+    request = DONATE_URL_TEMPLATE.format(addr.hex())
+    response = requests.get(request)
+    if response.status_code != 200:
+        log.error("tETH Faucet error code {}".format(response.status_code))
+        return False
+    response = response.json()
+    if response['paydate'] == 0:
+        log.warning("tETH Faucet warning {}".format(response['message']))
+        return False
+    # The paydate is not actually very reliable, usually some day in the past.
+    paydate = datetime.fromtimestamp(response['paydate'])
+    amount = int(response['amount']) / denoms.ether
+    log.info("Faucet: {:.6f} ETH on {}".format(amount, paydate))
+    return True
+
+
 class PaymentProcessor(LoopingCallService):
     # Default deadline in seconds for new payments.
     DEFAULT_DEADLINE = 10 * 60
-
-    SYNC_CHECK_INTERVAL = 10
 
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
@@ -36,15 +53,13 @@ class PaymentProcessor(LoopingCallService):
     CLOSURE_TIME_DELAY = 10
 
     def __init__(self,
-                 client: Client,
                  privkey,
-                 token,
+                 sci,
                  faucet=False) -> None:
-        self.__token = token
-        self.ETH_PER_PAYMENT = token.GAS_PRICE * token.GAS_PER_PAYMENT
+        self.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         self.ETH_BATCH_PAYMENT_BASE = \
-            token.GAS_PRICE * token.GAS_BATCH_PAYMENT_BASE
-        self.__client = client
+            sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
+        self._sci = sci
         self.__privkey = privkey
         self.__eth_balance = None
         self.__gnt_balance = None
@@ -55,74 +70,11 @@ class PaymentProcessor(LoopingCallService):
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
-        self.__last_sync_check = time.time()
-        self.__sync = False
-        self.__temp_sync = False
         self.__faucet = faucet
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
-
-    def wait_until_synchronized(self):
-        is_synchronized = False
-        while not is_synchronized:
-            try:
-                is_synchronized = self.is_synchronized()
-            except Exception as e:
-                log.error("Error "
-                          "while syncing with eth blockchain: "
-                          "{}".format(e))
-                is_synchronized = False
-            else:
-                sleep(self.SYNC_CHECK_INTERVAL)
-
-        return True
-
-    def is_synchronized(self):
-        """ Checks if the Ethereum node is in sync with the network."""
-        if time.time() - self.__last_sync_check <= self.SYNC_CHECK_INTERVAL:
-            # When checking again within 10 s return previous status.
-            # This also handles geth issue where synchronization starts after
-            # 10 s since the node was started.
-            return self.__sync
-        self.__last_sync_check = time.time()
-
-        def check():
-            peers = self.__client.get_peer_count()
-            log.info("Peer count: {}".format(peers))
-            if peers == 0:
-                return False
-            if self.__client.is_syncing():
-                log.info("Node is syncing...")
-                syncing = self.__client.web3.eth.syncing
-                if syncing:
-                    log.info("currentBlock: " + str(syncing['currentBlock']) +
-                             "\t highestBlock:" + str(syncing['highestBlock']))
-                return False
-            return True
-
-        # TODO: This can be improved now because we use Ethereum Ropsten.
-        # Normally we should check the time of latest block, but Golem testnet
-        # does not produce block regularly. The workaround is to wait for 2
-        # confirmations.
-        if not check():
-            # Reset both sync flags. We have to start over.
-            self.__temp_sync = False
-            self.__sync = False
-            return False
-
-        if not self.__temp_sync:
-            # Set the first flag. We will check again in SYNC_CHECK_INTERVAL s.
-            self.__temp_sync = True
-            return False
-
-        if not self.__sync:
-            # Second confirmation of being in sync. We are sure.
-            self.__sync = True
-            log.info("Synchronized!")
-
-        return True
 
     def eth_address(self, zpad=True):
         raw = keys.privtoaddr(self.__privkey)
@@ -138,7 +90,7 @@ class PaymentProcessor(LoopingCallService):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = self.eth_address(zpad=False)
-            balance = self.__client.get_balance(addr)
+            balance = self._sci.get_eth_balance(addr)
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
@@ -148,11 +100,16 @@ class PaymentProcessor(LoopingCallService):
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            gnt_balance = self.__token.get_balance(self.eth_address(zpad=False))
-            if gnt_balance is not None:
-                self.__gnt_balance = gnt_balance
+            gnt_balance = self._sci.get_gnt_balance(
+                self.eth_address(zpad=False))
+            gntw_balance = self._sci.get_gntw_balance(
+                self.eth_address(zpad=False))
+            if gnt_balance is not None and gntw_balance is not None:
+                log.info("GNT: {} GNTW: {}".format(
+                    gnt_balance / denoms.ether, gntw_balance / denoms.ether))
+                self.__gnt_balance = gnt_balance + gntw_balance
             else:
-                log.warning("Failed to retrieve GNT balance")
+                log.warning("Failed to retrieve GNT/GNTW balance")
         return self.__gnt_balance
 
     def _eth_reserved(self):
@@ -252,7 +209,10 @@ class PaymentProcessor(LoopingCallService):
                 return False
             self._awaiting = rest
 
-        tx = self.__token.batch_transfer(self.__privkey, payments, closure_time)
+        tx = self._sci.prepare_batch_transfer(
+            self.__privkey,
+            payments,
+            closure_time)
         if not tx:
             with self._awaiting_lock:
                 payments.extend(self._awaiting)
@@ -286,7 +246,7 @@ class PaymentProcessor(LoopingCallService):
                     encode_hex(payment.payee),
                     payment.value / denoms.ether))
 
-            tx_hash = self.__client.send(tx)
+            tx_hash = self._sci.send_transaction(tx)
             tx_hex = decode_hex(tx_hash)
             if tx_hex != h:  # FIXME: Improve Client.
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
@@ -306,12 +266,12 @@ class PaymentProcessor(LoopingCallService):
 
         confirmed = []
         failed = {}
-        current_block = self.__client.get_block_number()
+        current_block = self._sci.get_block_number()
 
         for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
-            receipt = self.__client.get_transaction_receipt(hstr)
+            receipt = self._sci.get_transaction_receipt(hstr)
             if not receipt:
                 continue
 
@@ -336,7 +296,7 @@ class PaymentProcessor(LoopingCallService):
                 continue
 
             gas_used = receipt['gasUsed']
-            total_fee = gas_used * self.__token.GAS_PRICE
+            total_fee = gas_used * self._sci.GAS_PRICE
             fee = total_fee // len(payments)
             log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
                      .format(hstr, block_hash, block_number, gas_used, fee))
@@ -384,23 +344,9 @@ class PaymentProcessor(LoopingCallService):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting GNT from faucet")
-            self.__token.request_from_faucet(self.__privkey)
+            self._sci.request_gnt_from_faucet(self.__privkey)
             return False
         return True
-
-    def get_incomes_from_block(self, block, address):
-        return self.__token.get_incomes_from_block(block, address)
-
-    def get_logs(self,
-                 from_block=None,
-                 to_block=None,
-                 address=None,
-                 topics=None):
-
-        return self.__client.get_logs(from_block=from_block,
-                                      to_block=to_block,
-                                      address=address,
-                                      topics=topics)
 
     def _run(self):
         if self._waiting_for_faucet:
@@ -409,7 +355,7 @@ class PaymentProcessor(LoopingCallService):
         self._waiting_for_faucet = True
 
         try:
-            if self.is_synchronized() and \
+            if self._sci.is_synchronized() and \
                     self.get_ether_from_faucet() and \
                     self.get_gnt_from_faucet():
                 self.monitor_progress()
@@ -419,4 +365,3 @@ class PaymentProcessor(LoopingCallService):
 
     def stop(self):
         super(PaymentProcessor, self).stop()
-        self.__client._kill_node()

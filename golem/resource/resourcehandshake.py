@@ -300,11 +300,11 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.deny_set.add(key_id)
+        self.task_server.acl.disallow(key_id)
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
-        return key_id in self.task_server.deny_set
+        return not self.task_server.acl.is_allowed(key_id)
 
     # ########################
     #         MESSAGES

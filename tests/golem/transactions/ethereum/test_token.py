@@ -9,10 +9,10 @@ from golem.ethereum.token import GNTToken, GNTWToken, encode_payments
 from golem.utils import decode_hex, encode_hex
 
 
-def mock_payment(value: int=1):
+def mock_payment(value: int=1, payee=None):
     p = mock.Mock()
     p.value = value
-    p.payee = urandom(20)
+    p.payee = payee if payee is not None else urandom(20)
     return p
 
 
@@ -289,3 +289,29 @@ class GNTWTokenTest(unittest.TestCase):
         self.assertEqual(1, len(incomes))
         self.assertEqual(some_address, incomes[0]['sender'])
         self.assertEqual(15, incomes[0]['value'])
+
+    def test_payment_aggregation(self):
+        a1 = urandom(20)
+        a2 = urandom(20)
+        a3 = urandom(20)
+
+        self.balances['gnt'] = '0x0'
+        self.balances['gntw'] = '0xf'
+
+        payments = [
+            mock_payment(payee=a1),
+            mock_payment(payee=a2),
+            mock_payment(payee=a2),
+            mock_payment(payee=a3),
+            mock_payment(payee=a3),
+            mock_payment(payee=a3),
+        ]
+
+        closure_time = 0
+        tx = self.token.batch_transfer(self.privkey, payments, closure_time)
+
+        expected_gas = self.token.GAS_BATCH_PAYMENT_BASE + \
+            3 * self.token.GAS_PER_PAYMENT
+        data = json.loads(tx.data)
+        self.assertEqual(3, len(data['args'][0]))
+        self.assertEqual(expected_gas, tx.startgas)

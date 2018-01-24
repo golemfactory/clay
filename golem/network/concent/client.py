@@ -1,63 +1,83 @@
+import base64
+import datetime
 import logging
 import queue
 import threading
 import time
 from enum import Enum
-from typing import Optional, Hashable, Type
+from typing import Optional, Hashable
+from urllib.parse import urljoin
 
 import requests
+import golem_messages
 from golem_messages import message
 
-from golem.core.variables import CONCENT_URL
-from golem.network.concent.constants import MSG_DELAYS, MSG_LIFETIMES, \
-    DEFAULT_MSG_LIFETIME
-from golem.network.concent.exceptions import ConcentUnavailableException, \
-    ConcentServiceException, ConcentRequestException
+from golem.core import variables
+from golem.network.concent import constants
+from golem.network.concent import exceptions
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("golem.network.concent.client")
 
 
-class ConcentClient:
+def send_to_concent(msg: message.Message, signing_key, public_key) \
+        -> Optional[str]:
+    """Sends a message to the concent server
 
-    @classmethod
-    def send(cls,
-             data: bytes,
-             url: str = CONCENT_URL) -> Optional[str]:
-        """
-        Sends a message to the concent server
+    :return: Raw reply message, None or exception
+    :rtype: Bytes|None
+    """
 
-        :param data: Serialized message to send
-        :param url: Concent API endpoint URL
-        :return: Raw reply message, None or exception
-        :rtype: Bytes|None
-        """
+    logger.debug('send_to_concent(): Encrypting msg %r', msg)
+    data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
+    logger.debug('send_to_concent(): data: %r', data)
+    concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
+        'X-Golem-Messages': golem_messages.__version__,
+    }
+    try:
+        logger.debug(
+            'send_to_concent(): POST %r hdr: %r',
+            concent_post_url,
+            headers,
+        )
+        response = requests.post(
+            concent_post_url,
+            data=data,
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        logger.warning('Concent RequestException %r', e)
+        response = e.response
 
-        try:
-            response = requests.post(url, data=data)
-        except requests.exceptions.RequestException as e:
-            logger.warning('Concent RequestException %r', e)
-            response = e.response
+    if response is None:
+        raise exceptions.ConcentUnavailableException()
 
-        if response is None:
-            raise ConcentUnavailableException()
+    logger.debug('Headers received from Concent: %s', response.headers)
+    if response.status_code % 500 < 100:
+        logger.warning('Concent failed with status %d and body: %r',
+                       response.status_code, response.text)
 
-        elif response.status_code % 500 < 100:
-            logger.warning('Concent failed with status %d and body: %r',
-                           response.status_code, response.text)
+        raise exceptions.ConcentServiceException(
+            "Concent service exception ({}): {}".format(
+                response.status_code,
+                response.text
+            )
+        )
 
-            raise ConcentServiceException("Concent service exception ({}): {}"
-                                          .format(response.status_code,
-                                                  response.text))
+    elif response.status_code % 400 < 100:
+        logger.warning('Concent request failed with status %d and '
+                       'response: %r', response.status_code, response.text)
 
-        elif response.status_code % 400 < 100:
-            logger.warning('Concent request failed with status %d and '
-                           'response: %r', response.status_code, response.text)
+        raise exceptions.ConcentRequestException(
+            "Concent request exception ({}): {}".format(
+                response.status_code,
+                response.text
+            )
+        )
 
-            raise ConcentRequestException("Concent request exception ({}): {}"
-                                          .format(response.status_code,
-                                                  response.text))
-
-        return response.content or None
+    return response.content or None
 
 
 class ConcentRequestStatus(Enum):
@@ -81,24 +101,22 @@ class ConcentRequestStatus(Enum):
 
 class ConcentRequest:
 
-    __slots__ = ('key', 'msg_data', 'msg_cls', 'status', 'content',
-                 'sent_ts', 'deadline_ts')
+    __slots__ = ('key', 'msg', 'status', 'content',
+                 'sent_at', 'deadline_at')
 
     def __init__(self,
                  key: Hashable,
-                 msg_data: bytes,
-                 msg_cls: Type[message.Message],
-                 lifetime: float) -> None:
+                 msg: message.Message,
+                 lifetime: datetime.timedelta) -> None:
 
         self.key = key
-        self.msg_data = msg_data
-        self.msg_cls = msg_cls
+        self.msg = msg
 
         self.status = ConcentRequestStatus.Initial
         self.content = None
 
-        self.sent_ts = None
-        self.deadline_ts = time.time() + lifetime
+        self.sent_at = None
+        self.deadline_at = datetime.datetime.now() + lifetime
 
     @staticmethod
     def build_key(*args) -> str:
@@ -112,32 +130,31 @@ class ConcentRequest:
 
     def __repr__(self):
         return (
-            "<ConcentRequest({}, {}, {}, sent_ts={}, deadline_ts={})>".format(
+            "<ConcentRequest({}, {}, {}, sent_at={}, deadline_at={})>".format(
                 self.key,
-                self.msg_cls,
+                self.msg,
                 self.status.name,
-                self.sent_ts,
-                self.deadline_ts
+                self.sent_at,
+                self.deadline_at
             )
         )
 
 
 class ConcentClientService(threading.Thread):
 
-    MIN_GRACE_TIME = 5.  # s
-    MAX_GRACE_TIME = 5. * 60  # s
+    MIN_GRACE_TIME = 5  # s
+    MAX_GRACE_TIME = 5 * 60  # s
     GRACE_FACTOR = 2  # n times on each failure
 
-    QUEUE_TIMEOUT = 5  # s
-
-    def __init__(self, enabled=True):
+    def __init__(self, signing_key, public_key, enabled=True):
         super().__init__(daemon=True)
 
+        self.signing_key = signing_key
+        self.public_key = public_key
         self._enabled = enabled  # FIXME: remove
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
-        self._client = ConcentClient()
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
@@ -146,6 +163,7 @@ class ConcentClientService(threading.Thread):
     def run(self) -> None:
         while not self._stop_event.isSet():
             self._loop()
+            time.sleep(1)
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -153,28 +171,33 @@ class ConcentClientService(threading.Thread):
     def submit(self,
                key: Hashable,
                msg: message.Message,
-               msg_data: bytes,
-               delay: Optional[float] = None) -> None:
+               delay: Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
-        :param msg_data: Serialized message to send
         :param delay: Time to wait before sending the message
         :return: None
         """
         from twisted.internet import reactor
 
         msg_cls = msg.__class__
-        lifetime = MSG_LIFETIMES.get(msg_cls, DEFAULT_MSG_LIFETIME)
+        lifetime = constants.MSG_LIFETIMES.get(
+            msg_cls,
+            constants.DEFAULT_MSG_LIFETIME
+        )
         if delay is None:
-            delay = MSG_DELAYS.get(msg_cls, 0)
+            delay = constants.MSG_DELAYS[msg_cls]
 
-        req = ConcentRequest(key, msg_data, msg_cls, lifetime=lifetime)
+        req = ConcentRequest(key, msg, lifetime=lifetime)
         req.status = ConcentRequestStatus.Waiting
 
         if delay:
-            self._delayed[key] = reactor.callLater(delay, self._enqueue, req)
+            self._delayed[key] = reactor.callLater(
+                delay.total_seconds(),
+                self._enqueue,
+                req,
+            )
         else:
             self._enqueue(req)
 
@@ -210,26 +233,28 @@ class ConcentClientService(threading.Thread):
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get(True, self.QUEUE_TIMEOUT)
+            req = self._queue.get_nowait()
         except queue.Empty:
             return
 
         # FIXME: remove
         if not self._enabled:
+            logger.debug('Concent disabled. Dropping %r', req)
             self._history.pop(req.key, None)
             return
 
-        now = time.time()
+        now = datetime.datetime.now()
 
-        if req.deadline_ts < now:
+        if req.deadline_at < now:
             logger.debug('Concent request lifetime has ended: %r', req)
             req.status = ConcentRequestStatus.TimedOut
             return
 
         try:
-            req.sent_ts = now
-            res = self._client.send(req.msg_data)
-        except Exception as exc:
+            req.sent_at = now
+            res = send_to_concent(req.msg, self.signing_key, self.public_key)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.exception('send_to_concent(%r) failed', req.msg)
             req.content = exc
             req.status = ConcentRequestStatus.Error
             self._grace_sleep()
