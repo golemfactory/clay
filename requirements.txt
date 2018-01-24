@@ -36,8 +36,6 @@ pydispatcher
 Crypto
 scrypt
 packaging
-# GitPython < 2.1.8 has problems with latest git version
-GitPython>=2.1.8
 semantic_version
 pyOpenSSL==17.1.0
 requests==2.13.0
