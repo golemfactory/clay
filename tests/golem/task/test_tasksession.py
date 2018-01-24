@@ -1,8 +1,10 @@
+import calendar
 import datetime
 import os
 import pathlib
 import pickle
 import random
+import time
 import unittest
 import unittest.mock as mock
 import uuid
@@ -25,11 +27,14 @@ from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.resource.resource import TaskResourceHeader
+from golem.task import taskstate
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
+
+from tests import factories
 
 
 def fill_slots(msg):
@@ -132,12 +137,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not ts2.task_manager.task_computation_failure.called
 
     @patch(
-        'golem.network.history.MessageHistoryService.get_sync',
-        return_value=[]
+        'golem.network.history.MessageHistoryService.get_sync_as_message',
     )
     def test_send_report_computed_task(self, get_mock):
         ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
@@ -145,8 +148,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
-        with patch("golem.network.history.MessageHistoryService.get_sync"):
-            ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        get_mock.return_value = factories.message.TaskToCompute(
+            compute_task_def__task_id="xyz",
+            compute_task_def__deadline=calendar.timegm(time.gmtime())+3600,
+        )
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+
         ms = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.ReportComputedTask)
         self.assertEqual(ms.subtask_id, "xxyyzz")
@@ -158,11 +165,22 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(ms.eth_account, "0x00")
         self.assertEqual(ms.extra_data, [])
         self.assertEqual(ms.node_info, n)
+
         ts2 = TaskSession(Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
+        ts2.task_manager.tasks_states = tasks_states = {
+            "xyz": {
+                "xxyyzz": taskstate.SubtaskState(),
+            },
+        }
+        tasks_states["xyz"]["xxyyzz"].deadline = \
+            calendar.timegm(time.gmtime())+3600
+
+        get_mock.side_effect = history.MessageNotFound
+
         ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             "xxyyzz", 13190)

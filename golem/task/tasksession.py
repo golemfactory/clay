@@ -577,6 +577,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
 
         def send_reject(reason, **kwargs):
+            logger.debug(
+                '_reacto_to_computed_task.send_reject(%r, **%r)',
+                reason,
+                kwargs,
+            )
             self.send(message.concents.RejectReportComputedTask(
                 subtask_id=msg.subtask_id,
                 reason=reason,
@@ -608,7 +613,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         get_msg = functools.partial(
             history.MessageHistoryService.get_sync_as_message,
-            task=msg.task_id,
+            task=task_id,
             subtask=msg.subtask_id,
         )
 
