@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 import logging
 import math
 import os
@@ -66,6 +66,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             return False
         return True
 
+    # pylint: disable=unused-argument
     def _render_crops(self, subtask_info, resources, num_crops=NUM_CROPS,
                       crop_size=None):
         if not self._check_computer():
@@ -102,7 +103,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     @staticmethod
     def _generate_ctd(subtask_info, script_src):
-        ctd = copy(subtask_info['ctd'])
+        ctd = deepcopy(subtask_info['ctd'])
 
         ctd['extra_data']['outfilebasename'] = \
             "ref_" + subtask_info['outfilebasename']
@@ -112,9 +113,9 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     @staticmethod
     def _crop_rendered(results, time_spend):
-        logger.info("Crop for verification rendered. Time spent: {}, "
-                    "results: {}".format(time_spend, results))
+        logger.info("Crop for verification rendered. Time spent: %r, "
+                    "results: %r" % (time_spend, results))
 
     @staticmethod
     def _crop_render_failure(error):
-        logger.info("Crop for verification render failure {}".format(error))
+        logger.warning("Crop for verification render failure: %r" % error)
