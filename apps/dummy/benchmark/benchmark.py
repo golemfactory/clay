@@ -1,5 +1,5 @@
-import os
 from os.path import join
+from pathlib import Path
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
@@ -45,15 +45,17 @@ class DummyTaskBenchmark(CoreBenchmark):
         return self._task_definition
 
     def verify_result(self, result):
-        for filepath in result:
-            root, ext = os.path.splitext(filepath)
-            ext = ext.lower()
-            sd = self.verification_options.copy()
-            sd["subtask_data"] = self.subtask_data
-            sd["subtask_id"] = "DummyBenchmark"
-            if ext != '.result':
-                return False
-            self.verifier.start_verification(sd, filepath, [], [])
-            if self.verifier.state == SubtaskVerificationState.VERIFIED:
-                return True
-        return False
+        sd = self.verification_options.copy()
+        sd["subtask_data"] = self.subtask_data
+        sd["subtask_id"] = "DummyBenchmark"
+
+        results = [filepath for filepath in result
+                   if Path(filepath).suffix.lower() == '.result']
+
+        self.verifier.start_verification(
+            subtask_info=sd,
+            reference_data=[],
+            resources=[],
+            results=results)
+
+        return self.verifier.state == SubtaskVerificationState.VERIFIED

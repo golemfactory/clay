@@ -8,22 +8,16 @@ import sys
 import tempfile
 import threading
 import time
-from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
-from ethereum.keys import privtoaddr
-from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
-from golem.utils import encode_hex, decode_hex
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
-from golem_messages.cryptography import privtopub
 
 log = logging.getLogger('golem.ethereum')
 
@@ -34,7 +28,6 @@ FALLBACK_NODE_LIST = [
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
 ]
-DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
 
 
 def get_public_nodes():
@@ -47,42 +40,6 @@ def get_public_nodes():
     addr_list = FALLBACK_NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
-
-
-def tETH_faucet_donate(addr):
-    addr = normalize_address(addr)
-    request = DONATE_URL_TEMPLATE.format(addr.hex())
-    response = requests.get(request)
-    if response.status_code != 200:
-        log.error("tETH Faucet error code {}".format(response.status_code))
-        return False
-    response = response.json()
-    if response['paydate'] == 0:
-        log.warning("tETH Faucet warning {}".format(response['message']))
-        return False
-    # The paydate is not actually very reliable, usually some day in the past.
-    paydate = datetime.fromtimestamp(response['paydate'])
-    amount = int(response['amount']) / denoms.ether
-    log.info("Faucet: {:.6f} ETH on {}".format(amount, paydate))
-    return True
-
-
-class Faucet(object):
-    PRIVKEY = "{:32}".format("Golem Faucet").encode()
-    PUBKEY = privtopub(PRIVKEY)
-    ADDR = privtoaddr(PRIVKEY)
-
-    @staticmethod
-    def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count(encode_hex(Faucet.ADDR))
-        addr = normalize_address(addr)
-        tx = Transaction(nonce, 1, 21000, addr, value, '')
-        tx.sign(Faucet.PRIVKEY)
-        h = ethnode.send(tx)
-        log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       encode_hex(addr), h))
-        h = decode_hex(h[2:])
-        return h
 
 
 class NodeProcess(object):

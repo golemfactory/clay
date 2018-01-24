@@ -19,6 +19,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
         assert type(e.get_payment_address()) is str
+        e.stop()
 
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
@@ -38,6 +39,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
+        e.stop()
 
     @mock.patch('golem.core.service.LoopingCallService.running',
                 new_callable=mock.PropertyMock)
@@ -59,14 +61,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
             assert e.payment_processor._loopingCall.start.called
-            assert e._client.node.start.called
+            assert e._sci._geth_client.node.start.called
 
             mock_is_service_running.return_value = False
             e.stop()
-            assert e._client.node is None
+            assert e._sci._geth_client.node is None
             assert not e.payment_processor._loopingCall.stop.called
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e._client.node is None
+            assert e._sci._geth_client.node is None
             assert e.payment_processor._loopingCall.stop.called

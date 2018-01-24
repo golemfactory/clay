@@ -5,6 +5,7 @@ import pickle
 import time
 from typing import Optional
 
+
 import random
 from collections import Counter
 from golem_messages import message
@@ -333,9 +334,9 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        local_patch = local.patch
-        local.patch = None
-        return local == remote and local_patch >= remote.patch
+        if local.major != remote.major or local.minor != remote.minor:
+            return False
+        return local.patch >= remote.patch
 
     def get_support_status(self, task_id) -> Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.

@@ -37,8 +37,8 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
-        client_1.resource_server.resource_manager._add_task(
-            resources, self.task_id)
+        client_1.resource_server.resource_manager.add_task(
+            resources, self.task_id, async_=False)
 
     def tearDown(self):
         self.client_1.quit()
@@ -116,7 +116,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_2._react_to_resource_list(msg_list)
 
         # client_2 downloads resources specified in the message
-        self.client_2.resource_server._download_resources(async=False)
+        self.client_2.resource_server._download_resources(async_=False)
 
         # verify downloaded resources
         for relative_path in self.resources_relative:

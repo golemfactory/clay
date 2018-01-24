@@ -35,12 +35,12 @@ logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **_):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **_):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -493,7 +493,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
-            self.send(message.TaskToCompute(compute_task_def=ctd))
+            msg = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                requestor_id=ctd['task_owner']['key'],
+                provider_id=self.key_id,
+            )
+            self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
         else:
@@ -893,7 +898,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON
         if ctd['key_id'] != self.key_id\
-                or ctd['task_owner'].key != self.key_id:
+                or ctd['task_owner']['key'] != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
@@ -937,8 +942,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
-        resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options()
+        client_options = self.task_server.get_share_options(res.task_id,
+                                                            self.key_id)
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -976,7 +981,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         request = AsyncRequest(task_result_manager.create,
                                self.task_server.node, res,
-                               client_options=client_options,
                                key_or_secret=secret)
 
         return async_run(request, success=success, error=error)

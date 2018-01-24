@@ -2,6 +2,7 @@ import datetime
 import os
 import time
 import uuid
+from types import MethodType
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
@@ -513,6 +514,60 @@ class TestDoWorkService(TestWithReactor):
         assert c.p2pservice.ping_peers.called
         assert log.exception.call_count == 5
 
+    @freeze_time("2018-01-01 00:00:00")
+    def test_time_for(self):
+        do_work_service = DoWorkService(Mock())
+
+        key = 'payments'
+        interval = 4.0
+
+        assert key not in do_work_service._check_ts
+        assert do_work_service._time_for(key, interval)
+        assert key in do_work_service._check_ts
+
+        next_check = do_work_service._check_ts[key]
+
+        with freeze_time("2018-01-01 00:00:01"):
+            assert not do_work_service._time_for(key, interval)
+            assert do_work_service._check_ts[key] == next_check
+
+        with freeze_time("2018-01-01 00:01:00"):
+            assert do_work_service._time_for(key, interval)
+            assert do_work_service._check_ts[key] == time.time() + interval
+
+    @freeze_time("2018-01-01 00:00:00")
+    def test_intervals(self):
+        client = Mock()
+        do_work_service = DoWorkService(client)
+
+        do_work_service._run()
+
+        assert client.p2pservice.sync_network.called
+        assert client.task_server.sync_network.called
+        assert client.resource_server.sync_network.called
+        assert client.ranking.sync_network.called
+        assert client.check_payments.called
+
+        client.reset_mock()
+
+        with freeze_time("2018-01-01 00:00:02"):
+            do_work_service._run()
+
+            assert client.p2pservice.sync_network.called
+            assert client.task_server.sync_network.called
+            assert client.resource_server.sync_network.called
+            assert client.ranking.sync_network.called
+            assert not client.check_payments.called
+
+        with freeze_time("2018-01-01 00:01:00"):
+            do_work_service._run()
+
+            assert client.p2pservice.sync_network.called
+            assert client.task_server.sync_network.called
+            assert client.resource_server.sync_network.called
+            assert client.ranking.sync_network.called
+            assert client.check_payments.called
+
 
 class TestMonitoringPublisherService(TestWithReactor):
     @patch('golem.client.log')
@@ -823,19 +878,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             }
         }
 
+        def add_new_task(instance, task, *_args, **_kwargs):
+            instance.tasks_states[task.header.task_id] = TaskState()
+
         c = self.client
         c.resource_server = Mock()
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-        c.task_server.task_manager.add_new_task = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.add_new_task = MethodType(
+            add_new_task, c.task_server.task_manager)
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
         assert task.header.task_id
 
         assert c.resource_server.add_task.called
-        assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
 
         task_id = task.header.task_id
@@ -907,6 +965,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             DefaultEnvironment.get_id()))
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
+
+    def test_run_benchmark_fail(self, *_):
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+
+        def raise_exc(*_args, **_kwargs):
+            raise Exception('Test exception')
+
+        with patch("golem.docker.image.DockerImage.is_available",
+                   return_value=True), \
+                patch("golem.docker.job.DockerJob.__init__",
+                      side_effect=raise_exc), \
+                self.assertRaises(Exception):
+            sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
