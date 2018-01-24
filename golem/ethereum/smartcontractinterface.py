@@ -5,8 +5,8 @@ from .token import GNTWToken
 
 
 class SmartContractInterface(object):
-    def __init__(self, datadir, start_geth, start_port, address):
-        self._geth_client = Client(datadir, start_geth, start_port, address)
+    def __init__(self, web3):
+        self._geth_client = Client(web3)
         self._token = GNTWToken(self._geth_client)
         self.GAS_PRICE = self._token.GAS_PRICE
         self.GAS_PER_PAYMENT = self._token.GAS_PER_PAYMENT
@@ -44,9 +44,6 @@ class SmartContractInterface(object):
 
     def request_gnt_from_faucet(self, privkey: bytes) -> None:
         self._token.request_from_faucet(privkey)
-
-    def stop(self) -> None:
-        self._geth_client._kill_node()
 
     def wait_until_synchronized(self) -> bool:
         return self._geth_client.wait_until_synchronized()

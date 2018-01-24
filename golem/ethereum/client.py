@@ -5,7 +5,6 @@ import rlp
 from ethereum.utils import zpad
 
 from golem.core.common import get_timestamp_utc
-from .node import NodeProcess
 
 log = logging.getLogger('golem.ethereum')
 
@@ -13,32 +12,15 @@ log = logging.getLogger('golem.ethereum')
 class Client(object):
     """ RPC interface client for Ethereum node."""
 
-    node = None
-
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, datadir, start_node=False, start_port=None,
-                 address=None):
-        if not Client.node:
-            Client.node = NodeProcess(datadir, address, start_node)
-        if not Client.node.is_running():
-            Client.node.start(start_port)
-        self.web3 = Client.node.web3
+    def __init__(self, web3):
+        self.web3 = web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
         self._last_sync_check = time.time()
         self._sync = False
         self._temp_sync = False
-
-    @staticmethod
-    def _kill_node():
-        """
-        Stop node if is running
-        """
-        # FIXME: Keeping the node as a static object might not be the best.
-        if Client.node:
-            Client.node.stop()
-            Client.node = None
 
     def get_peer_count(self):
         """
