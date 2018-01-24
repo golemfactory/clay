@@ -1,7 +1,8 @@
-from golem_messages import message
 import logging
 import os
 import uuid
+
+from golem_messages import message
 
 logger = logging.getLogger('golem.resources')
 
@@ -221,7 +222,7 @@ class ResourceHandshakeSessionMixin:
         handshake = self._get_handshake(key_id)
         deferred = self.resource_manager.add_file(handshake.file,
                                                   self.NONCE_TASK,
-                                                  async=True)
+                                                  async_=True)
         deferred.addCallbacks(
             lambda res: self._nonce_shared(key_id, res),
             lambda exc: self._handshake_error(key_id, exc)

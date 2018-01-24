@@ -643,13 +643,13 @@ def _pull_resource(self, entry, task_id, success, error, **kwargs):
     if not self.successful_downloads:
         return error(RuntimeError('Test exception'))
 
-    kwargs['async'] = False
+    kwargs['async_'] = False
     return self.pull_resource_org(entry, task_id, success, error, **kwargs)
 
 
 def _add_file(self, path, task_id, **kwargs):
     deferred = Deferred()
-    kwargs['async'] = False
+    kwargs['async_'] = False
 
     if self.successful_uploads:
         result = self.add_file_org(path, task_id, **kwargs)
