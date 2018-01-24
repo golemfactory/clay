@@ -2,10 +2,8 @@ import logging
 
 from ethereum.utils import privtoaddr
 
-from golem.ethereum import Client
 from golem.ethereum.smartcontractinterface import SmartContractInterface
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.ethereum.token import GNTWToken
 from golem.transactions.ethereum.ethereumpaymentskeeper \
     import EthereumAddress
 from golem.transactions.ethereum.ethereumincomeskeeper \
@@ -39,9 +37,11 @@ class EthereumTransactionSystem(TransactionSystem):
 
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        client = Client(datadir, start_geth, start_port, address)
-        token = GNTWToken(client)
-        self._sci = SmartContractInterface(client, token)
+        self._sci = SmartContractInterface(
+            datadir,
+            start_geth,
+            start_port,
+            address)
         self.payment_processor = PaymentProcessor(
             privkey=node_priv_key,
             sci=self._sci,

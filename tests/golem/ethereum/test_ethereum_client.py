@@ -20,7 +20,7 @@ class EthereumClientNodeTest(TempDirFixture):
         self.client = Client(self.tempdir, start_node=True)
 
     def tearDown(self):
-        self.client.node.stop()
+        self.client._kill_node()
         super().tearDown()
 
     def test_client(self):
@@ -91,6 +91,10 @@ class EthereumClientTest(TempDirFixture):
         super().setUp()
         self.client = Client(self.tempdir, start_node=False)
         self.client.web3 = mock.Mock()
+
+    def tearDown(self):
+        self.client._kill_node()
+        super().tearDown()
 
     def check_synchronized(self):
         assert not self.client.is_synchronized()

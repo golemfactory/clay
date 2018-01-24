@@ -7,11 +7,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from time import sleep
-from unittest.mock import MagicMock
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
-from golem.ethereum import Client
 from golem.model import Database
 
 
@@ -50,9 +48,6 @@ class TempDirFixture(unittest.TestCase):
 
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
-        # FIXME: This is temporary solution. Ethereum node should always be
-        #        the explicit dependency and users should close it correctly.
-        Client._kill_node()
         try:
             self.__remove_files()
         except OSError:
@@ -130,7 +125,6 @@ class PEP8MixIn(object):
     Afterwards your test case will perform conformance test on files mentioned
     in this attribute.
     """
-
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""
