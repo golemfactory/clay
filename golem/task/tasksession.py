@@ -560,13 +560,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning('Did not receive task_to_compute: %r', msg)
             self.dropped()
             return
-
-        get_msg = functools.partial(
-            history.MessageHistoryService.get_sync_as_message,
-            task=msg.task_id,
-            subtask=msg.subtask_id,
-        )
-
         # Check msg.task_to_compute signature
         try:
             self.task_server.keys_auth.ecc.verify(
@@ -588,12 +581,31 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         reject_reasons = message.concents.RejectReportComputedTask.REASON
         now_ts = calendar.timegm(time.gmtime())
+        task_id = msg.task_to_compute.compute_task_def['task_id']
+
         # Check task deadline
         if now_ts > msg.task_to_compute.compute_task_def['deadline']:
             return send_reject(reject_reasons.TaskTimeLimitExceeded)
         # Check subtask deadline
-        if now_ts > XXX subtask_deadlin:
+        try:
+            subtask_deadline = \
+                self.task_manager.tasks_states[task_id][msg.subtask_id].deadline
+        except KeyError:
+            logger.warning(
+                'Deadline for subtask %r not found.'
+                'Treating as timeouted. Message: %s',
+                msg.subtask_id,
+                msg,
+            )
+            subtask_deadline = -1
+        if now_ts > subtask_deadline:
             return send_reject(reject_reasons.SubtaskTimeLimitExceeded)
+
+        get_msg = functools.partial(
+            history.MessageHistoryService.get_sync_as_message,
+            task=msg.task_id,
+            subtask=msg.subtask_id,
+        )
 
         # CannotComputeTask received
         try:
