@@ -389,8 +389,8 @@ class CoreTask(Task):
         else:
             logger.error(
                 "Task result type not supported {}".format(result_type))
-            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(
-                result_type)
+            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported" \
+                .format(result_type)
             return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
@@ -622,13 +622,13 @@ class CoreTaskBuilder(TaskBuilder):
         >>> get_nonexistant_path('/documents/golem/', 'task1', 'png')
 
         # if path is not exist
-        '/documents/golem/task1' 
+        '/documents/golem/task1'
 
-        # or if exist 
-        '/documents/golem/task 1(1)' 
+        # or if exist
+        '/documents/golem/task 1(1)'
 
         # or even if still exist
-        '/documents/golem/task 1(2)' 
+        '/documents/golem/task 1(2)'
 
         ...
         """
