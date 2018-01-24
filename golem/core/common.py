@@ -14,7 +14,7 @@ DEVNULL = open(os.devnull, 'wb')
 MAX_CPU_WINDOWS = 32
 MAX_CPU_MACOS = 16
 
-ALLOW_LOGLEVELS = [
+ALLOWED_LOGLEVELS = [
     'ERROR'
     'WARNING',
     'INFO',
@@ -179,7 +179,7 @@ def config_logging(suffix='', datadir=None, loglevel=None):
     logdir_path = os.path.join(datadir, 'logs')
 
     wrong_loglevel = None
-    if loglevel and loglevel not in ALLOW_LOGLEVELS:
+    if loglevel and loglevel not in ALLOWED_LOGLEVELS:
         wrong_loglevel = loglevel
         loglevel = None
 
