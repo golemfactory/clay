@@ -599,7 +599,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # Check subtask deadline
         try:
             subtask_deadline = \
-                self.task_manager.tasks_states[task_id][msg.subtask_id].deadline
+                self.task_manager.tasks_states[task_id] \
+                    .subtask_states[msg.subtask_id] \
+                    .deadline
         except KeyError:
             logger.warning(
                 'Deadline for subtask %r not found.'

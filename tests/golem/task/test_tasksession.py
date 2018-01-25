@@ -171,13 +171,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
-        ts2.task_manager.tasks_states = tasks_states = {
-            "xyz": {
-                "xxyyzz": taskstate.SubtaskState(),
-            },
-        }
-        tasks_states["xyz"]["xxyyzz"].deadline = \
+        task_state = taskstate.TaskState()
+        task_state.subtask_states['xxyyzz'] = taskstate.SubtaskState()
+        task_state.subtask_states["xxyyzz"].deadline = \
             calendar.timegm(time.gmtime())+3600
+        ts2.task_manager.tasks_states = tasks_states = {
+            "xyz": task_state,
+        }
 
         get_mock.side_effect = history.MessageNotFound
 
