@@ -248,7 +248,8 @@ class Task(abc.ABC):
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA,
+                             verification_finished=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files

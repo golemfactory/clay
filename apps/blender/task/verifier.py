@@ -21,7 +21,7 @@ NUM_CROPS = 3
 class BlenderVerifier(FrameRenderingVerifier):
 
     def __init__(self, callback: Callable):
-        super(BlenderVerifier, self).__init__(callback)
+        super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
 
@@ -70,7 +70,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.failure = failure
             self._render_crops(subtask_info, resources)
 
-        super(BlenderVerifier, self)._verify_imgs(
+        super()._verify_imgs(
                 subtask_info,
                 results,
                 reference_data,

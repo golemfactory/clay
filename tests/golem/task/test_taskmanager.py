@@ -348,9 +348,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 return sum(self.finished.values()) != len(self.finished)
 
             def computation_finished(self, subtask_id, task_result,
-                                     result_type=ResultType.DATA):
+                                     result_type=ResultType.DATA,
+                                     verification_finished_=None):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
+                verification_finished_()
 
             def verify_subtask(self, subtask_id):
                 return self.verify_subtasks[subtask_id]
@@ -375,7 +377,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert task_id == "xyz"
         ss = self.tm.tasks_states["xyz"].subtask_states["xxyyzz"]
         assert ss.subtask_status == SubtaskStatus.starting
-        assert self.tm.computed_task_received("xxyyzz", [], 0)
+        self.tm.verification_finished = Mock()
+        self.tm.computed_task_received("xxyyzz", [], 0,
+                                       self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 1
         assert t.finished["xxyyzz"]
         assert ss.subtask_progress == 1.0
         assert ss.subtask_rem_time == 0.0
@@ -393,7 +398,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.restart_subtask("aabbcc")
         ss = self.tm.tasks_states["abc"].subtask_states["aabbcc"]
         assert ss.subtask_status == SubtaskStatus.restarted
-        assert not self.tm.computed_task_received("aabbcc", [], 0)
+        self.tm.computed_task_received("aabbcc", [], 0,
+                                       self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 2
         assert ss.subtask_progress == 0.0
         assert ss.subtask_status == SubtaskStatus.restarted
         assert not t2.finished["aabbcc"]
@@ -412,8 +419,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ss.subtask_rem_time == 0.0
         assert ss.stderr == "something went wrong"
         with self.assertLogs(logger, level="WARNING"):
-            assert not self.tm.computed_task_received("qqwwee", [], 0)
-
+            self.tm.computed_task_received(
+                "qqwwee", [],
+                0,
+                self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 3
         th.task_id = "task4"
         t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"], {'ttt4': False, 'sss4': True})
         self.tm.add_new_task(t2)
@@ -422,13 +432,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                                            "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "ttt4"
-        assert not self.tm.computed_task_received("ttt4", [], 0)
+        self.tm.computed_task_received("ttt4", [], 0,
+                                        self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 4
         assert self.tm.tasks_states["task4"].subtask_states["ttt4"].subtask_status == SubtaskStatus.failure
-        assert not self.tm.computed_task_received("ttt4", [], 0)
+        self.tm.computed_task_received("ttt4", [], 0,
+                                        self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 5
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "sss4"
-        assert self.tm.computed_task_received("sss4", [], 0)
+        self.tm.computed_task_received("sss4", [], 0,
+                                        self.tm.verification_finished)
+        assert self.tm.verification_finished.call_count == 6
 
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')

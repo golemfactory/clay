@@ -29,17 +29,16 @@ class TestCoreVerifierr(TempDirFixture, LogTestCase):
         cv = CoreVerifier(callback)
         subtask_info = {"subtask_id": "2432423"}
         cv.subtask_info = subtask_info
-        cv._check_files(dict(), [], [], [], cv.verification_completed)
+        cv._check_files(dict(), [], [], [])
         assert cv.state == SubtaskVerificationState.WRONG_ANSWER
 
         files = self.additional_dir_content([3])
-        cv._check_files(dict(), files, [], [], cv.verification_completed)
+        cv._check_files(dict(), files, [], [])
         assert cv.state == SubtaskVerificationState.VERIFIED
 
         files = self.additional_dir_content([3])
-        cv._check_files(dict(), [files[0]], [], [], cv.verification_completed)
+        cv._check_files(dict(), [files[0]], [], [])
         assert cv.state == SubtaskVerificationState.VERIFIED
 
-        cv._check_files(dict(), ["not a file"], [], [],
-                        cv.verification_completed)
+        cv._check_files(dict(), ["not a file"], [], [])
         assert cv.state == SubtaskVerificationState.WRONG_ANSWER

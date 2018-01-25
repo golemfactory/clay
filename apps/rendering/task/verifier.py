@@ -11,13 +11,12 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerifier(CoreVerifier):
 
-    def _check_files(self, subtask_info, results, reference_data, resources,
-                     callback):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         if self._verify_imgs(subtask_info, results, reference_data, resources):
             self.state = SubtaskVerificationState.VERIFIED
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
-        callback()
+        self.verification_completed()
 
     # pylint: disable=unused-argument
     def _verify_imgs(self, subtask_info, results, reference_data, resources):
@@ -55,8 +54,7 @@ class RenderingVerifier(CoreVerifier):
 
 class FrameRenderingVerifier(RenderingVerifier):
 
-    def _check_files(self, subtask_info, results, reference_data, resources,
-                     callback):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         use_frames = subtask_info['use_frames']
         total_tasks = subtask_info['total_tasks']
         frames = subtask_info['all_frames']
@@ -64,15 +62,15 @@ class FrameRenderingVerifier(RenderingVerifier):
             frames_list = subtask_info['frames']
             if len(results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
-                callback()
+                self.verification_completed()
 
         def success():
             self.state = SubtaskVerificationState.VERIFIED
-            callback()
+            self.verification_completed()
 
         def failure():
             self.state = SubtaskVerificationState.WRONG_ANSWER
-            callback()
+            self.verification_completed()
 
         self._verify_imgs(subtask_info, results, reference_data, resources,
                           success, failure)

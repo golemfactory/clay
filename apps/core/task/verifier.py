@@ -13,21 +13,19 @@ class CoreVerifier(StateVerifier):
                                                      reference_data,
                                                      resources,
                                                      results)
-        self._check_files(subtask_info, results, reference_data, resources,
-                          self.verification_completed)
+        self._check_files(subtask_info, results, reference_data, resources)
 
-    def _check_files(self, subtask_info, results, reference_data, resources,
-                     callback):
+    def _check_files(self, subtask_info, results, reference_data, resources):
         for result in results:
             if os.path.isfile(result):
                 if self._verify_result(subtask_info, result, reference_data,
                                        resources):
                     self.state = SubtaskVerificationState.VERIFIED
-                    callback()
+                    self.verification_completed()
                     return
         self.state = SubtaskVerificationState.WRONG_ANSWER
         self.message = "No proper task result found"
-        callback()
+        self.verification_completed()
 
     def verification_completed(self):
         self.time_ended = datetime.utcnow()
