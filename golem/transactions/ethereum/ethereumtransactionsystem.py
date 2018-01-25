@@ -2,13 +2,14 @@ import logging
 
 from ethereum.utils import privtoaddr
 
-from golem.ethereum.smartcontractinterface import SmartContractInterface
+from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumpaymentskeeper \
     import EthereumAddress
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.transactionsystem import TransactionSystem
+import golem_sci
 
 log = logging.getLogger('golem.pay')
 
@@ -37,11 +38,9 @@ class EthereumTransactionSystem(TransactionSystem):
 
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self._sci = SmartContractInterface(
-            datadir,
-            start_geth,
-            start_port,
-            address)
+        self._node = NodeProcess(datadir, start_geth, address)
+        self._node.start(start_port)
+        self._sci = golem_sci.new_testnet(self._node.web3)
         self.payment_processor = PaymentProcessor(
             privkey=node_priv_key,
             sci=self._sci,
@@ -59,7 +58,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def stop(self):
         if self.payment_processor.running:
             self.payment_processor.stop()
-        self._sci.stop()
+        self._node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(
