@@ -1,2 +1,3 @@
-from . import message
-from . import task
+# pylint: disable=unused-import
+from . import messages  # noqa
+# pylint: enable=unused-import

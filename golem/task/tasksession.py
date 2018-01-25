@@ -571,7 +571,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 signature=msg.task_to_compute.sig,
                 message=msg.task_to_compute.get_short_hash(),
             )
-        except (AssertionError, msg_exceptions.InvalidSignature()):
+        except (AssertionError, msg_exceptions.InvalidSignature):
             logger.warning('Received fake task_to_compute: %r', msg)
             self.dropped()
             return

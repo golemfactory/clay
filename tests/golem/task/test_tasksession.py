@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import calendar
 import datetime
 import os
@@ -8,7 +9,6 @@ import time
 import unittest
 import unittest.mock as mock
 import uuid
-from unittest.mock import Mock, MagicMock, patch
 
 import golem_messages
 from golem_messages import message
@@ -60,11 +60,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def setUp(self):
         super(TestTaskSession, self).setUp()
         random.seed()
-        self.task_session = TaskSession(Mock())
+        self.task_session = TaskSession(mock.Mock())
 
-    @patch('golem.task.tasksession.TaskSession.send')
+    @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
-        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000,)
+        self.task_session.conn.server.get_key_id.return_value = key_id = \
+            'key id%d' % (random.random() * 1000,)
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
@@ -84,9 +85,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
-        conn = Mock(server=Mock())
+        conn = mock.Mock(server=mock.Mock())
         ts = TaskSession(conn)
-        ts._get_handshake = Mock(return_value={})
+        ts._get_handshake = mock.Mock(return_value={})
         ts.verified = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
@@ -136,11 +137,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ))
         assert not ts2.task_manager.task_computation_failure.called
 
-    @patch(
+    @mock.patch(
         'golem.network.history.MessageHistoryService.get_sync_as_message',
     )
     def test_send_report_computed_task(self, get_mock):
-        ts = TaskSession(Mock())
+        ts = TaskSession(mock.Mock())
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
@@ -148,7 +149,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
-        get_mock.return_value = factories.message.TaskToCompute(
+        get_mock.return_value = factories.messages.TaskToCompute(
             compute_task_def__task_id="xyz",
             compute_task_def__deadline=calendar.timegm(time.gmtime())+3600,
         )
@@ -166,7 +167,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(ms.extra_data, [])
         self.assertEqual(ms.node_info, n)
 
-        ts2 = TaskSession(Mock())
+        ts2 = TaskSession(mock.Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(ms.TYPE)
@@ -175,7 +176,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         task_state.subtask_states['xxyyzz'] = taskstate.SubtaskState()
         task_state.subtask_states["xxyyzz"].deadline = \
             calendar.timegm(time.gmtime())+3600
-        ts2.task_manager.tasks_states = tasks_states = {
+        ts2.task_manager.tasks_states = {
             "xyz": task_state,
         }
 
@@ -188,13 +189,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
-    @patch('golem.network.transport.session.BasicSession._react_to_hello')
+    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
     def test_react_to_hello_super(self, super_mock):
-        conn = MagicMock()
+        conn = mock.MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.disconnect = Mock()
-        ts.send = Mock()
+        ts.task_server = mock.Mock()
+        ts.disconnect = mock.Mock()
+        ts.send = mock.Mock()
 
         msg = message.Hello()
         fill_slots(msg)
@@ -202,7 +203,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         super_mock.assert_called_once_with(msg)
 
     def test_react_to_hello(self):
-        conn = MagicMock()
+        conn = mock.MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
         keys_auth = KeysAuth(self.path)
@@ -210,15 +211,16 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         keys_auth.key_id = node.key
 
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.disconnect = Mock()
-        ts.send = Mock()
+        ts.task_server = mock.Mock()
+        ts.disconnect = mock.Mock()
+        ts.send = mock.Mock()
 
         key_id = 'deadbeef'
-        peer_info = MagicMock()
+        peer_info = mock.MagicMock()
         peer_info.key = key_id
-        msg = message.Hello(port=1, node_name='node2', client_key_id=key_id, node_info=peer_info,
-                           proto_id=-1)
+        msg = message.Hello(port=1, node_name='node2', client_key_id=key_id,
+                            node_info=peer_info,
+                            proto_id=-1)
 
         fill_slots(msg)
         ts._react_to_hello(msg)
@@ -231,10 +233,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert ts.send.called
 
     def test_result_received(self):
-        conn = Mock()
+        conn = mock.Mock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_manager = Mock()
+        ts.task_server = mock.Mock()
+        ts.task_manager = mock.Mock()
         ts.task_manager.verify_subtask.return_value = True
 
         extra_data = dict(
@@ -279,15 +281,15 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             def pull_package(content_hash, task_id, subtask_id,
                              secret, success, error, *args, **kwargs):
                 if result:
-                    success(Mock())
+                    success(mock.Mock())
                 else:
                     error(Exception('Pull failed'))
 
             return pull_package
 
-        conn = Mock()
+        conn = mock.Mock()
         ts = TaskSession(conn)
-        ts.result_received = Mock()
+        ts.result_received = mock.Mock()
         ts.task_manager.subtask2task_mapping = dict()
 
         subtask_id = 'xxyyzz'
@@ -296,14 +298,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         ts.task_manager.subtask2task_mapping[subtask_id] = 'xyz'
 
-        msg = message.TaskResultHash(subtask_id=subtask_id, secret=secret,
-                                     multihash=content_hash, options=Mock())
+        msg = message.tasks.TaskResultHash(
+            subtask_id=subtask_id,
+            secret=secret,
+            multihash=content_hash,
+            options=mock.Mock(),
+        )
 
-        ts.task_manager.task_result_manager.pull_package = create_pull_package(True)
+        ts.task_manager.task_result_manager.pull_package = \
+            create_pull_package(True)
         ts._react_to_task_result_hash(msg)
         assert ts.result_received.called
 
-        ts.task_manager.task_result_manager.pull_package = create_pull_package(False)
+        ts.task_manager.task_result_manager.pull_package = \
+            create_pull_package(False)
         ts._react_to_task_result_hash(msg)
         assert ts.task_server.reject_result.called
         assert ts.task_manager.task_computation_failure.called
@@ -313,15 +321,15 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ts._react_to_task_result_hash(msg)
 
     def test_react_to_task_to_compute(self):
-        conn = Mock()
+        conn = mock.Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = Mock()
-        ts.task_computer = Mock()
-        ts.task_server = Mock()
-        ts.send = Mock()
+        ts.task_manager = mock.Mock()
+        ts.task_computer = mock.Mock()
+        ts.task_server = mock.Mock()
+        ts.send = mock.Mock()
 
-        env = Mock()
+        env = mock.Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
         env.allow_custom_main_program_file = False
         env.get_source_code.return_value = None
@@ -468,7 +476,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
-        # Envrionment is Docker environment with proper images, but no srouce code -> failure
+        # Envrionment is Docker environment with proper images,
+        # but no srouce code -> failure
         __reset_mocks()
         de = DockerEnvironmentMock(additional_images=[
             DockerImage("dockerix/xii", tag="323"),
@@ -500,8 +509,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
     def test_get_resource(self):
         conn = BasicProtocol()
-        conn.transport = Mock()
-        conn.server = Mock()
+        conn.transport = mock.Mock()
+        conn.server = mock.Mock()
 
         db = DataBuffer()
 
@@ -516,7 +525,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
-        session.concent_service = MagicMock()
+        session.concent_service = mock.MagicMock()
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
@@ -536,7 +545,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not session.concent_service.cancel.called
 
         # Save subtask information
-        task = Mock(header=Mock(task_owner_key_id='owner_id'))
+        task = mock.Mock(header=mock.Mock(task_owner_key_id='owner_id'))
         task_keeper.subtask_to_task['subtask_id'] = 'task_id'
         task_keeper.active_tasks['task_id'] = task
 
@@ -548,9 +557,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session._react_to_reject_report_computed_task(msg_ack)
         assert session.concent_service.cancel.called
 
-    @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
+    @mock.patch("golem.task.tasksession.TaskSession._check_msg",
+                return_value=True)
     def test_react_to_subtask_payment(self, check_msg_mock):
-        reward_mock = MagicMock()
+        reward_mock = mock.MagicMock()
         self.task_session.task_server.reward_for_subtask_paid = reward_mock
         subtask_id = str(uuid.uuid4())
         reward = random.randint(1, 2 ** 10)
@@ -602,7 +612,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         assert task_server.get_download_options.called
         assert task_server.pull_resources.called
-        assert isinstance(call_options['client_options'], Mock)
+        assert isinstance(call_options['client_options'], mock.Mock)
 
         # Use download options built by TaskServer
         task_server.get_download_options.return_value = client_options
@@ -611,11 +621,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session._react_to_resource_list(msg)
         call_options = task_server.pull_resources.call_args[1]
 
-        assert not isinstance(call_options['client_options'], Mock)
+        assert not isinstance(call_options['client_options'], mock.Mock)
         assert call_options['client_options'].options['peers'] == peers
 
     def test_task_subtask_from_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
+        self.task_session._subtask_to_task = mock.Mock(return_value=None)
         definition = message.ComputeTaskDef({'task_id': 't', 'subtask_id': 's'})
         msg = message.TaskToCompute(compute_task_def=definition, raw=b'\0')
 
@@ -627,7 +637,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not self.task_session._subtask_to_task.called
 
     def test_task_subtask_from_other_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
+        self.task_session._subtask_to_task = mock.Mock(return_value=None)
         msg = message.Hello(raw=b'\0')
 
         task, subtask = self.task_session._task_subtask_from_message(
@@ -639,7 +649,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert self.task_session._subtask_to_task.called
 
     def test_subtask_to_task(self):
-        task_keeper = Mock(subtask_to_task=dict())
+        task_keeper = mock.Mock(subtask_to_task=dict())
         mapping = dict()
 
         self.task_session.task_manager.comp_task_keeper = task_keeper
@@ -661,9 +671,9 @@ class TestSessionWithDB(testutils.DatabaseFixture):
     def setUp(self):
         super(TestSessionWithDB, self).setUp()
         random.seed()
-        self.task_session = TaskSession(Mock())
+        self.task_session = TaskSession(mock.Mock())
 
-    @patch('golem.task.tasksession.TaskSession.send')
+    @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
         transaction_id = str(uuid.uuid4())
         block_number = random.randint(1, 2 ** 8)
@@ -685,7 +695,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         ]
         self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
-    @patch('golem.task.tasksession.TaskSession.send')
+    @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_request_payment(self, send_mock):
         subtask_id = str(uuid.uuid4())
         expected_income = model.ExpectedIncome.create(
@@ -701,7 +711,9 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         ]
         self.assertEqual(send_mock.call_args[0][0].slots(), expected)
 
-    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
+    @mock.patch(
+        'golem.task.tasksession.TaskSession.inform_worker_about_payment'
+    )
     def test_react_to_subtask_payment_request(self, inform_mock) -> None:
         subtask_id = str(uuid.uuid4())
         msg = message.SubtaskPaymentRequest(subtask_id=subtask_id)
@@ -733,7 +745,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         history.MessageHistoryService.instance = None
 
     def test_send_report_computed_task_concent_no_message(self):
-        ts = TaskSession(Mock())
+        ts = TaskSession(mock.Mock())
         n = Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
@@ -742,7 +754,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         ts.concent_service.submit.assert_not_called()
 
     def test_send_report_computed_task_concent_success(self):
-        ts = TaskSession(Mock())
+        ts = TaskSession(mock.Mock())
         n = Node()
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -778,7 +790,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         )
 
     def test_send_report_computed_task_concent_success_many_files(self):
-        ts = TaskSession(Mock())
+        ts = TaskSession(mock.Mock())
         n = Node()
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -834,16 +846,16 @@ def executor_error(req, success, error):
 
 class TestCreatePackage(unittest.TestCase):
     def setUp(self):
-        conn = Mock()
+        conn = mock.Mock()
         ts = TaskSession(conn)
-        ts.dropped = Mock()
-        ts.result_received = Mock()
-        ts.send = Mock()
-        ts.task_manager = Mock()
+        ts.dropped = mock.Mock()
+        ts.result_received = mock.Mock()
+        ts.send = mock.Mock()
+        ts.task_manager = mock.Mock()
 
         subtask_id = 'xxyyzz'
 
-        res = Mock()
+        res = mock.Mock()
         res.subtask_id = subtask_id
         ts.task_server.get_waiting_task_result.return_value = res
 
@@ -853,7 +865,8 @@ class TestCreatePackage(unittest.TestCase):
         self.ts = ts
         self.msg = msg
 
-    @patch('golem.task.tasksession.async_run', side_effect=executor_success)
+    @mock.patch('golem.task.tasksession.async_run',
+                side_effect=executor_success)
     def test_send_task_result_hash_success(self, _):
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
@@ -861,8 +874,8 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.send.called
         assert not ts.dropped.called
 
-    @patch('golem.task.tasksession.async_run',
-           side_effect=executor_recoverable_error)
+    @mock.patch('golem.task.tasksession.async_run',
+                side_effect=executor_recoverable_error)
     def test_send_task_result_hash_recoverable_error(self, _):
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
@@ -870,7 +883,7 @@ class TestCreatePackage(unittest.TestCase):
         assert not ts.send.called
         assert ts.task_server.retry_sending_task_result.called
 
-    @patch('golem.task.tasksession.async_run', side_effect=executor_error)
+    @mock.patch('golem.task.tasksession.async_run', side_effect=executor_error)
     def test_send_task_result_hash_unrecoverable_error(self, _):
         ts = self.ts
         ts._react_to_get_task_result(self.msg)
