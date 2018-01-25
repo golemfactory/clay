@@ -1,6 +1,6 @@
 from golem_messages.message import ComputeTaskDef
 import os
-import mock
+import unittest.mock as mock
 from os import path
 
 import array
@@ -77,8 +77,10 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [], ResultType.DATA)
-        assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']]['status'] == \
+        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
+                                     ResultType.DATA)
+        assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
+                   'status'] == \
                SubtaskStatus.failure
 
         # Successful computation
@@ -93,33 +95,33 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file1, "PNG")
 
         def verification_finished1(*args, **kwargs):
-            #extra_data3.ctd['results'] = kwargs['results']
+            # extra_data3.ctd['results'] = kwargs['results']
 
             result = {'reference_data': None,
-             'message': "",
-             'time_started': None,
-             'time_ended': None,
-             'extra_data': {}}
+                      'message': "",
+                      'time_started': None,
+                      'time_ended': None,
+                      'extra_data': {}}
             result['extra_data']['results'] = kwargs['results']
             self.bt.verification_finished(
                 extra_data3.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('apps.core.task.verifier.CoreVerifier.start_verification',
-                        side_effect=verification_finished1):
-
+        with mock.patch(
+                'apps.core.task.verifier.CoreVerifier.start_verification',
+                side_effect=verification_finished1):
             self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
                                          ResultType.FILES, lambda: None)
-            assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']]['status'] == \
-                   SubtaskStatus.finished
+            assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
+                       'status'] == SubtaskStatus.finished
 
         def verification_finished2(*args, **kwargs):
             result = {'reference_data': None,
-             'message': "",
-             'time_started': None,
-             'time_ended': None,
-             'extra_data': {}}
+                      'message': "",
+                      'time_started': None,
+                      'time_ended': None,
+                      'extra_data': {}}
             result['extra_data']['results'] = kwargs['results']
             self.bt.verification_finished(
                 extra_data4.ctd['subtask_id'],
@@ -133,12 +135,13 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch('apps.core.task.verifier.CoreVerifier.start_verification',
-                    side_effect=verification_finished2):
+        with mock.patch(
+                'apps.core.task.verifier.CoreVerifier.start_verification',
+                side_effect=verification_finished2):
             self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
                                          ResultType.FILES, lambda: None)
-            assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']]['status'] == \
-                   SubtaskStatus.finished
+            assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
+                       'status'] == SubtaskStatus.finished
 
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)

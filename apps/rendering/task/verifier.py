@@ -19,7 +19,9 @@ class RenderingVerifier(CoreVerifier):
         self.verification_completed()
 
     # pylint: disable=unused-argument
-    def _verify_imgs(self, subtask_info, results, reference_data, resources):
+    # pylint: disable-msg=too-many-arguments
+    def _verify_imgs(self, subtask_info, results, reference_data, resources,
+                     success_=None, failure=None):
         if not results:
             return False
 
@@ -75,15 +77,16 @@ class FrameRenderingVerifier(RenderingVerifier):
         self._verify_imgs(subtask_info, results, reference_data, resources,
                           success, failure)
 
+    # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
-                     success=None, failure=None):
+                     success_=None, failure=None):
         if super(FrameRenderingVerifier, self)._verify_imgs(
             subtask_info,
             results,
             reference_data,
             resources
         ):
-            success()
+            success_()
         else:
             failure()
 

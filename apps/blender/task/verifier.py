@@ -2,16 +2,14 @@ from copy import deepcopy
 import logging
 import math
 import os
+from collections import Callable
+from threading import Lock
 
 from golem.core.common import timeout_to_deadline
-
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from collections import Callable
-from threading import Lock
-
 
 logger = logging.getLogger("apps.blender")
 
@@ -24,6 +22,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
+        self.success = None
+        self.failure = None
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -63,22 +63,23 @@ class BlenderVerifier(FrameRenderingVerifier):
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)
 
+    # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
-                     success_, failure):
+                     success_=None, failure=None):
         def success():
             self.success = success_
             self.failure = failure
             self._render_crops(subtask_info, resources)
 
         super()._verify_imgs(
-                subtask_info,
-                results,
-                reference_data,
-                resources, success, failure)
+            subtask_info,
+            results,
+            reference_data,
+            resources, success, failure)
 
-    # pylint: disable=unused-argument
-    def _render_crops(self, subtask_info, resources, num_crops=NUM_CROPS,
-                      crop_size=None):
+    def _render_crops(self, subtask_info, resources,
+                      num_crops=NUM_CROPS, crop_size=None):
+        # pylint: disable=unused-argument
         if not self._check_computer():
             return False
 
@@ -121,6 +122,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         ctd['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
         return ctd
 
+    #  The verification function will generate three random crops, from results
+    #  only after all three will be generated, we can start verification process
     def _crop_rendered(self, results, time_spend):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
@@ -129,9 +132,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             if self.verified_crops_counter == NUM_CROPS:
                 self.success()
 
+    #  One failure is enough to stop verification process, although this might
+    #  changein future
     def _crop_render_failure(self, error):
         logger.warning("Crop for verification render failure %r", error)
-        with self.lock:
-            self.verified_crops_counter += 1
-            if self.verified_crops_counter == NUM_CROPS:
-                self.failure()
+        self.failure()

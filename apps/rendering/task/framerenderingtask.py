@@ -87,8 +87,9 @@ class FrameRenderingTask(RenderingTask):
             self._update_task_preview()
 
     @CoreTask.handle_key_error
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA,
-                             verification_finished_ = None):
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA,
+                             verification_finished_=None):
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,

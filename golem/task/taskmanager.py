@@ -437,7 +437,7 @@ class TaskManager(TaskEventListener):
             ss.results = self.tasks[task_id].get_results(subtask_id)
 
             if not self.tasks[task_id].verify_subtask(subtask_id):
-                logger.debug("Subtask {} not accepted\n".format(subtask_id))
+                logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.subtask_status = SubtaskStatus.failure
                 self.notice_task_updated(task_id)
                 verification_finished_()
@@ -448,13 +448,12 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
                     if self.tasks[task_id].verify_task():
-                        logger.debug("Task {} accepted".format(task_id))
+                        logger.debug("Task %r accepted", task_id)
                         self.tasks_states[task_id].status = TaskStatus.finished
                     else:
-                        logger.debug("Task {} not accepted".format(task_id))
+                        logger.debug("Task %r not accepted", task_id)
             self.notice_task_updated(task_id)
             verification_finished_()
-            return
 
         self.tasks[task_id].computation_finished(
             subtask_id, result, result_type, verification_finished
