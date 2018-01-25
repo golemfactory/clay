@@ -94,7 +94,7 @@ class TaskResourcesMixin(object):
 
         try:
             resource_hash, _ = resource_manager.add_task(
-                files, task_id, resource_hash=resource_hash, async=False
+                files, task_id, resource_hash=resource_hash, async_=False
             )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
