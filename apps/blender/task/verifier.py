@@ -4,26 +4,46 @@ import math
 import os
 from collections import Callable
 from threading import Lock
+from functools import partial
+
+import shutil
 
 from golem.core.common import timeout_to_deadline
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from golem.docker.job import DockerJob
+from golem.docker.image import DockerImage
+from golem.resource.dirmanager import find_task_script
+from golem.core.common import get_golem_path
 
 logger = logging.getLogger("apps.blender")
 
 NUM_CROPS = 3
 
 
-class BlenderVerifier(FrameRenderingVerifier):
+class VerificationContext:
+    def __init__(self, crops_position, crop_id, crops_path):
+        self.crop_id = crop_id
+        self.crop_path = os.path.join(crops_path, str(crop_id))
+        self.crop_position_x = crops_position[crop_id][0]
+        self.crop_position_y = crops_position[crop_id][1]
 
+
+class BlenderVerifier(FrameRenderingVerifier):
     def __init__(self, callback: Callable):
         super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
         self.success = None
         self.failure = None
+        self.docker_image_name = 'golemfactory/image_metrics'
+        self.docker_tag = '1.0'
+        self.crops_path = None
+        self.current_results_file = None
+        self.program_file = find_task_script(os.path.join(
+            get_golem_path(), 'apps', 'rendering'), 'runner.py')
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -66,11 +86,15 @@ class BlenderVerifier(FrameRenderingVerifier):
     # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
                      success_=None, failure=None):
+        self.crops_path = os.path.join(subtask_info['tmp_dir'],
+                                       subtask_info['subtask_id'])
+        self.current_results_file = results[0]
+
         try:
             def success():
                 self.success = success_
                 self.failure = failure
-                self._render_crops(subtask_info, resources)
+                self._render_crops(subtask_info)
 
             super()._verify_imgs(
                 subtask_info,
@@ -81,7 +105,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             logger.error("Crop generation failed %r", e)
             failure()
 
-    def _render_crops(self, subtask_info, resources,
+    def _render_crops(self, subtask_info,
                       num_crops=NUM_CROPS, crop_size=None):
         # pylint: disable=unused-argument
         if not self._check_computer():
@@ -92,10 +116,12 @@ class BlenderVerifier(FrameRenderingVerifier):
                                     subtask_info['crop_window'], num_crops,
                                     crop_size)
         for num in range(num_crops):
-            self._render_one_crop(crops_info[0][num], subtask_info, num)
+            verify_ctx = VerificationContext(crops_info[1], num,
+                                             self.crops_path)
+            self._render_one_crop(crops_info[0][num], subtask_info, verify_ctx)
         return True
 
-    def _render_one_crop(self, crop, subtask_info, num):
+    def _render_one_crop(self, crop, subtask_info, verify_ctx):
         minx, maxx, miny, maxy = crop
 
         script_src = generate_blender_crop_file(
@@ -107,9 +133,9 @@ class BlenderVerifier(FrameRenderingVerifier):
         ctd = self._generate_ctd(subtask_info, script_src)
         # FIXME issue #1955
         self.computer.start_computation(
-            root_path=os.path.join(subtask_info['tmp_dir'],
-                                   subtask_info['subtask_id'], str(num)),
-            success_callback=self._crop_rendered,
+            root_path=verify_ctx.crop_path,
+            success_callback=partial(self._crop_rendered,
+                                     verification_context=verify_ctx),
             error_callback=self._crop_render_failure,
             compute_task_def=ctd,
             resources=self.resources,
@@ -128,16 +154,63 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     #  The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
-    def _crop_rendered(self, results, time_spend):
+    def _crop_rendered(self, results, time_spend, verification_context):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
+
+        resource_path = verification_context.crop_path
+        di = DockerImage(self.docker_image_name, tag=self.docker_tag)
+
+        work_dir = os.path.join(resource_path, "work")
+        output_dir = os.path.join(resource_path, "output")
+
+        if not os.path.exists(work_dir):
+            os.mkdir(work_dir)
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+
+        rendered_scene_path = shutil.copy(self.current_results_file,
+                                          resource_path)
+
+        croped_img_path = shutil.copy(results['data'][1], resource_path)
+
+        params = dict()
+
+        params['cropped_img_path'] = os.path.join(
+            "/golem/resources",
+            os.path.basename(croped_img_path))
+        params['rendered_scene_path'] = os.path.join(
+            "/golem/resources",
+            os.path.basename(rendered_scene_path))
+
+        params['xres'] = verification_context.crop_position_x
+        params['yres'] = verification_context.crop_position_y
+
+        try:
+            with open(self.program_file, "r") as src_file:
+                src_code = src_file.read()
+        except Exception as err:
+            logger.warning("Wrong main program file: {}".format(err))
+            src_code = ""
+
+        with DockerJob(di, src_code, params,
+                       resource_path, work_dir, output_dir,
+                       host_config=None) as job:
+            self.job = job
+            self.job.start()
+            exit_code = self.job.wait()
+            # Get stdout and stderr
+            stdout_file = os.path.join(output_dir, "stdout.log")
+            stderr_file = os.path.join(output_dir, "stderr.log")
+            self.job.dump_logs(stdout_file, stderr_file)
+
         with self.lock:
             self.verified_crops_counter += 1
             if self.verified_crops_counter == NUM_CROPS:
                 self.success()
 
-    #  One failure is enough to stop verification process, although this might
-    #  changein future
+    # One failure is enough to stop verification process, although this might
+    #  change in future
     def _crop_render_failure(self, error):
         logger.warning("Crop for verification render failure %r", error)
         self.failure()
