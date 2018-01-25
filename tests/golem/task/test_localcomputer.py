@@ -1,9 +1,9 @@
+from golem_messages.message import ComputeTaskDef
+from mock import Mock, patch
 from os import path
 
-from mock import Mock, patch
-
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import Task, ComputeTaskDef
+from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -25,19 +25,25 @@ class TestLocalComputer(TestDirFixture):
             self.error_msg = error_msg
 
     def test_computer(self):
-        with self.assertRaises(TypeError):
-            LocalComputer(None, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)
+
         files = self.additional_dir_content([1])
         task = Task(Mock(), Mock(), Mock())
-        lc = LocalComputer(task, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)
+        lc = LocalComputer(root_path=self.path,
+                           success_callback=self._success_callback,
+                           error_callback=self._failure_callback,
+                           get_compute_task_def=self._get_bad_task_def)
         self.assertIsInstance(lc, LocalComputer)
         lc.run()
         assert self.last_error is not None
         assert self.last_result is None
         assert self.error_counter == 1
 
-        lc = LocalComputer(task, self.path, self._success_callback, self._failure_callback, self._get_better_task_def,
-                           use_task_resources=False, additional_resources=files)
+        lc = LocalComputer(root_path=self.path,
+                           success_callback=self._success_callback,
+                           error_callback=self._failure_callback,
+                           get_compute_task_def=self._get_better_task_def,
+                           resources=[],
+                           additional_resources=files)
         lc.run()
         lc.tt.join(60.0)
         path_ = path.join(lc.test_task_res_path, path.basename(files[0]))
@@ -77,7 +83,7 @@ class TestLocalComputer(TestDirFixture):
 
     def _get_better_task_def(self):
         ctd = ComputeTaskDef()
-        ctd.docker_images = BlenderEnvironment().docker_images
+        ctd['docker_images'] = BlenderEnvironment().docker_images
         return ctd
 
     def _success_callback(self, result, time_spent):

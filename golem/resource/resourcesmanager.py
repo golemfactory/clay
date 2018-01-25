@@ -1,9 +1,8 @@
-from .resource import TaskResource, TaskResourceHeader, prepare_delta_zip
+from .resource import TaskResource, TaskResourceHeader
 
 import os
 import logging
 
-from golem.core.databuffer import DataBuffer
 from golem.core.fileshelper import copy_file_tree
 from golem.resource.resourcehash import ResourceHash
 
@@ -58,8 +57,6 @@ class ResourcesManager:
         self.recv_size = 0
         self.owner = owner
         self.last_prct = 0
-        self.buff_size = 4 * 1024 * 1024
-        self.buff = DataBuffer()
 
     def get_resource_header(self, task_id):
 

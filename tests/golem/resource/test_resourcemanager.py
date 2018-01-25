@@ -1,12 +1,12 @@
 import os
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
-from test_dirmanager import TestDirFixture
+from golem.testutils import TempDirFixture
 
 
-class TestResourcesManager(TestDirFixture):
+class TestResourcesManager(TempDirFixture):
     def setUp(self):
-        TestDirFixture.setUp(self)
+        TempDirFixture.setUp(self)
 
         self.dir_manager = DirManager(self.path)
         res_path = self.dir_manager.get_task_resource_dir('task2')

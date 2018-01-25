@@ -5,6 +5,7 @@ from ethereum.utils import privtoaddr
 
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.token import GNTWToken
 from golem.report import report_calls, Component
 from golem.transactions.ethereum.ethereumpaymentskeeper \
     import EthereumAddress
@@ -18,7 +19,8 @@ log = logging.getLogger('golem.pay')
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(self, datadir, node_priv_key, port=None):
+    def __init__(self, datadir, node_priv_key, start_geth=False,  # noqa pylint: disable=too-many-arguments
+                 start_port=None, address=None):
         """ Create new transaction system instance for node with given id
         :param node_priv_key str: node's private key for Ethereum account (32b)
         """
@@ -38,9 +40,12 @@ class EthereumTransactionSystem(TransactionSystem):
 
         log.info("Node Ethereum address: " + self.get_payment_address())
 
+        client = Client(datadir, start_geth, start_port, address)
+        token = GNTWToken(client)
         payment_processor = PaymentProcessor(
-            client=Client(datadir, port),
+            client=client,
             privkey=node_priv_key,
+            token=token,
             faucet=True
         )
 

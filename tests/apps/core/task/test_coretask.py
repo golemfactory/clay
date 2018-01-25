@@ -1,19 +1,16 @@
 import os
 import shutil
 import unittest
-import zipfile
 import zlib
-from copy import copy, deepcopy
+from copy import copy
 
 from mock import MagicMock, Mock
 
-from golem.core.common import is_linux, timeout_to_deadline
+from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader
-from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType, ComputeTaskDef
+from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -393,41 +390,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
-    def test_get_resources(self):
-        c = self._get_core_task()
-        th = TaskResourceHeader(self.path)
-        assert c.get_resources(th) is None
-
-        files = self.additional_dir_content([[1], [[1], [2, [3]]]])
-        c.task_resources = files[1:]
-        resource = c.get_resources(th)
-        assert os.path.isfile(resource)
-        assert zipfile.is_zipfile(resource)
-        z = zipfile.ZipFile(resource)
-        in_z = z.namelist()
-        assert len(in_z) == 6
-
-        assert c.get_resources(th, ResourceType.HASHES) == files[1:]
-
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert p == []
-        assert th2.files_data == []
-        assert th2.sub_dir_headers == []
-
-        with open(files[0], 'w') as f:
-            f.write("ABCD")
-
-        drm = DistributedResourceManager(os.path.dirname(files[0]))
-        res_files = drm.split_file(files[0])
-        c.add_resources({files[0]: res_files})
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert len(p) == 1
-        assert len(th2.files_data) == 1
-        assert th2.sub_dir_headers == []
-
-        assert c.get_resources(th, 3) is None
-        assert c.get_resources(th, "aaa") is None
-        assert c.get_resources(th, None) is None
 
     def test_result_incoming(self):
         c = self._get_core_task()
@@ -481,17 +443,16 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         perf_index = 0
 
         ctd = c._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-        assert isinstance(ctd, ComputeTaskDef)
-        assert ctd.task_id == c.header.task_id
-        assert ctd.subtask_id == hash
-        assert ctd.extra_data == extra_data
-        assert ctd.short_description == c.short_extra_data_repr(extra_data)
-        assert ctd.src_code == c.src_code
-        assert ctd.performance == perf_index
-        assert ctd.working_directory == working_directory
-        assert ctd.docker_images == c.header.docker_images
-        assert ctd.task_owner == c.header.task_owner
-        assert ctd.environment == c.header.environment
+        assert ctd['task_id'] == c.header.task_id
+        assert ctd['subtask_id'] == hash
+        assert ctd['extra_data'] == extra_data
+        assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
+        assert ctd['src_code'] == c.src_code
+        assert ctd['performance'] == perf_index
+        assert ctd['working_directory'] == working_directory
+        assert ctd['docker_images'] == c.header.docker_images
+        assert ctd['task_owner'] == c.header.task_owner
+        assert ctd['environment'] == c.header.environment
 
 
 class TestLogKeyError(LogTestCase):
@@ -509,20 +470,16 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert tti.options == "Options"
         assert tti.task_builder_type == "builder"
         assert tti.definition == "Definition1"
-        assert tti.dialog is None
-        assert tti.dialog_controller is None
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 
-        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2", "builder2", "dialog",
-                           "controller")
+        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2",
+                               "builder2")
         assert tti.name == "Name2"
         assert tti.defaults == "Defaults2"
         assert tti.options == "Options2"
         assert tti.task_builder_type == "builder2"
         assert tti.definition == "Definition2"
-        assert tti.dialog == "dialog"
-        assert tti.dialog_controller == "controller"
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 

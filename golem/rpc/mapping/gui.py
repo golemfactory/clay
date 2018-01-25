@@ -1,4 +1,4 @@
-from golem.rpc.mapping.aliases import *
+from golem.rpc.mapping.rpceventnames import *
 
 GUI_EVENT_MAP = dict(
     config_changed=                 Environment.evt_opts_changed,

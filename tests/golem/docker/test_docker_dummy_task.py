@@ -121,7 +121,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         task_id = task.header.task_id
         extra_data = task.query_extra_data(1.0)
         ctd = extra_data.ctd
-        ctd.deadline = timeout_to_deadline(timeout)
+        ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
@@ -174,7 +174,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd.task_id)
+        result = task_computer.resource_given(ctd['task_id'])
         self.assertTrue(result)
 
         # Thread for task computation should be created by now
@@ -229,38 +229,40 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task = self._test_task()
         ctd = task.query_extra_data(1.0).ctd
+        print(ctd)
+        print(type(ctd))
 
         computer = LocalComputer(
-            task,
-            self.tempdir,
-            Mock(),
-            Mock(),
-            lambda: ctd
+            root_path=self.tempdir,
+            success_callback=Mock(),
+            error_callback=Mock(),
+            compute_task_def=ctd,
+            resources=task.task_resources,
         )
 
         computer.run()
         computer.tt.join()
 
-        output = self._extract_results(computer, task, ctd.subtask_id)
+        output = self._extract_results(computer, task, ctd['subtask_id'])
 
         task.create_reference_data_for_task_validation()
 
         ## assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd.subtask_id, [output],
+        task.computation_finished(ctd['subtask_id'], [output],
                                   result_type=ResultType.FILES)
 
-        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
         self.assertTrue(is_subtask_verified)
         self.assertEqual(task.num_tasks_received, 1)
 
         ## assert bad results - should fail
         bad_output = path.join(path.dirname(output), "badfile.result")
         ctd = task.query_extra_data(10000.).ctd
-        task.computation_finished(ctd.subtask_id, [bad_output],
+        task.computation_finished(ctd['subtask_id'], [bad_output],
                                   result_type=ResultType.FILES)
 
-        self.assertFalse(task.verify_subtask(ctd.subtask_id))
+        self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)
 
     def test_dummytask_TaskTester_should_pass(self):

@@ -1,23 +1,35 @@
 from datetime import datetime
+from golem_messages.message import ComputeTaskDef
 from pathlib import Path
 import random
 import time
 from unittest import TestCase
+import unittest.mock as mock
 
-from mock import Mock
-from mock import patch
-
+import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.variables import APP_VERSION
-from golem.environments.environment import Environment, UnsupportReason
+from golem.environments.environment import Environment, UnsupportReason,\
+    SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
-from golem.task.taskbase import TaskHeader, ComputeTaskDef
+from golem.task.taskbase import TaskHeader
 from golem.task.taskkeeper import CompTaskInfo
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
+    CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+
+
+def async_run(request, success=None, error=None):
+    try:
+        result = request.method(*request.args, **request.kwargs)
+    except Exception as exc:
+        if error:
+            error(exc)
+    else:
+        if success:
+            success(result)
 
 
 class TestTaskHeaderKeeper(LogTestCase):
@@ -42,11 +54,11 @@ class TestTaskHeaderKeeper(LogTestCase):
         supported = tk.check_support(task)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
-        task["min_version"] = APP_VERSION
+        task["min_version"] = golem.__version__
         self.assertTrue(tk.check_support(task))
         task["max_price"] = 10.5
         self.assertTrue(tk.check_support(task))
-        config_desc = Mock()
+        config_desc = mock.Mock()
         config_desc.min_price = 13.0
         tk.change_config(config_desc)
         self.assertFalse(tk.check_support(task))
@@ -91,8 +103,9 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert tk.check_version_compatibility('0.4.0-alpha+build')
         assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
 
-    def test_change_config(self):
-        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
+    @mock.patch('golem.task.taskarchiver.TaskArchiver')
+    def test_change_config(self, tar):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0, task_archiver=tar)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
@@ -106,7 +119,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.add_task_header(task_header)
         self.assertIn("abc", tk.supported_tasks)
         self.assertIsNotNone(tk.task_headers["abc"])
-        config_desc = Mock()
+        config_desc = mock.Mock()
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertNotIn("xyz", tk.supported_tasks)
@@ -119,6 +132,16 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.change_config(config_desc)
         self.assertNotIn("xyz", tk.supported_tasks)
         self.assertNotIn("abc", tk.supported_tasks)
+        # Make sure the tasks stats are properly archived
+        tar.reset_mock()
+        config_desc.min_price = 9.5
+        tk.change_config(config_desc)
+        self.assertNotIn("xyz", tk.supported_tasks)
+        self.assertIn("abc", tk.supported_tasks)
+        tar.add_support_status.assert_any_call(
+            "xyz", SupportStatus(False, {UnsupportReason.MAX_PRICE: 9.0}))
+        tar.add_support_status.assert_any_call(
+            "abc", SupportStatus(True, {}))
 
     def test_get_task(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
@@ -204,6 +227,25 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header['deadline'] = "WRONG DEADLINE"
         assert not tk.add_task_header(task_header)
 
+    @mock.patch('golem.task.taskarchiver.TaskArchiver')
+    def test_task_header_update_stats(self, tar):
+        e = Environment()
+        e.accept_tasks = True
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10, task_archiver=tar)
+        tk.environments_manager.add_environment(e)
+        task_header = get_dict_task_header("good")
+        assert tk.add_task_header(task_header)
+        tar.add_task.assert_called_with(mock.ANY)
+        tar.add_support_status.assert_any_call(
+            "good", SupportStatus(True, {}))
+        tar.reset_mock()
+        task_header['task_id'] = "bad"
+        task_header["max_price"] = 1.0
+        assert tk.add_task_header(task_header)
+        tar.add_task.assert_called_with(mock.ANY)
+        tar.add_support_status.assert_any_call(
+            "bad", SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
+
     def test_is_correct(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
         th = get_dict_task_header()
@@ -223,7 +265,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['deadline'] = get_timestamp_utc() - 10
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Deadline already passed"
+        assert "Deadline already passed" in err
         with self.assertRaisesRegex(TypeError, "Deadline already passed"):
             tk.check_correct(th)
 
@@ -236,7 +278,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['subtask_timeout'] = "abc"
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is not a number"
+        assert "Subtask timeout is not a number" in err
         with self.assertRaisesRegex(TypeError,
                                     "Subtask timeout is not a number"):
             tk.check_correct(th)
@@ -244,7 +286,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         th['subtask_timeout'] = -131
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Subtask timeout is less than 0"
+        assert "Subtask timeout is less than 0" in err
         with self.assertRaisesRegex(TypeError,
                                     "Subtask timeout is less than 0"):
             tk.check_correct(th)
@@ -346,12 +388,63 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIn("tb0", tk.task_headers)
         self.assertEqual(new_limit + 1, len(tk.task_headers))
 
+    def test_get_unsupport_reasons(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        e = Environment()
+        e.accept_tasks = True
+        tk.environments_manager.add_environment(e)
+
+        # Supported task
+        thd = get_dict_task_header("good")
+        tk.add_task_header(thd)
+
+        # Wrong version
+        thd = get_dict_task_header("wrong version")
+        thd["min_version"] = "42.0.17"
+        tk.add_task_header(thd)
+
+        # Wrong environment
+        thd = get_dict_task_header("wrong env")
+        thd["environment"] = "UNKNOWN"
+        tk.add_task_header(thd)
+
+        # Wrong price
+        thd = get_dict_task_header("wrong price")
+        thd["max_price"] = 1
+        tk.add_task_header(thd)
+
+        # Wrong price and version
+        thd = get_dict_task_header("wrong price and version")
+        thd["min_version"] = "42.0.17"
+        thd["max_price"] = 1
+        tk.add_task_header(thd)
+
+        # And one more with wrong version
+        thd = get_dict_task_header("wrong version 2")
+        thd["min_version"] = "42.0.44"
+        tk.add_task_header(thd)
+
+        reasons = tk.get_unsupport_reasons()
+        # 3 tasks with wrong version
+        self.assertIn({'avg': golem.__version__,
+                       'reason': 'app_version',
+                       'ntasks': 3}, reasons)
+        # 2 tasks with wrong price
+        self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
+        # 1 task with wrong environment
+        self.assertIn({'avg': None,
+                       'reason': 'environment_missing',
+                       'ntasks': 1}, reasons)
+        self.assertIn({'avg': None,
+                       'reason': 'environment_not_accepting_tasks',
+                       'ntasks': 1}, reasons)
+
 
 def get_dict_task_header(task_id="xyz"):
     return {
         "task_id": task_id,
         "node_name": "ABC",
-        "task_owner": dict(),
+        "task_owner": {"node_name": "Bob's node"},
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
@@ -360,7 +453,7 @@ def get_dict_task_header(task_id="xyz"):
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 10,
-        "min_version": APP_VERSION
+        "min_version": golem.__version__
     }
 
 
@@ -390,24 +483,52 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         super(TestCompTaskKeeper, self).setUp()
         random.seed()
 
-    def test_persistance(self):
-        """Tests whether tasks are persistent between restarts."""
-        tasks_dir = Path(self.path)
+    def _dump_some_tasks(self, tasks_dir):
         ctk = CompTaskKeeper(tasks_dir)
 
         test_headers = []
-        for x in range(100):
+        test_subtasks_ids = []
+        for x in range(10):
             header = get_task_header()
-            header.task_id = "test%d-%d" % (x, random.random()*1000)
+            header.deadline = timeout_to_deadline(1)
+            header.task_id = "test%d-%d" % (x, random.random() * 1000)
             test_headers.append(header)
-            ctk.add_request(header, int(random.random()*100))
+            ctk.add_request(header, int(random.random() * 100))
+
+            ctd = ComputeTaskDef()
+            ctd['task_id'] = header.task_id
+            ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctk.receive_subtask(ctd)
+            test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
-        ctk = CompTaskKeeper(tasks_dir)
-        for header in test_headers:
-            self.assertIn(header.task_id, ctk.active_tasks)
+        another_ctk = CompTaskKeeper(tasks_dir)
+        for (subtask_id, header) in zip(test_subtasks_ids, test_headers):
+            self.assertIn(subtask_id, another_ctk.subtask_to_task)
+            self.assertIn(header.task_id, another_ctk.active_tasks)
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    @mock.patch('golem.task.taskkeeper.async_run', async_run)
+    def test_persistence(self):
+        """Tests whether tasks are persistent between restarts."""
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
+    @mock.patch('golem.task.taskkeeper.async_run', async_run)
+    def test_remove_old_tasks(self):
+        tasks_dir = Path(self.path)
+        self._dump_some_tasks(tasks_dir)
+
+        ctk = CompTaskKeeper(tasks_dir)
+        ctk.remove_old_tasks()
+
+        self.assertTrue(any(ctk.active_tasks))
+        self.assertTrue(any(ctk.subtask_to_task))
+        time.sleep(1)
+        ctk.remove_old_tasks()
+        self.assertTrue(not any(ctk.active_tasks))
+        self.assertTrue(not any(ctk.subtask_to_task))
+
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
@@ -445,7 +566,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctk.get_value('qwerty', 12)
         self.assertEqual(ctk.get_value(thread.task_id, 600), 2)
 
-        self.assertIsNone(ctk.get_subtask_ttl("abc"))
         ctd = ComputeTaskDef()
         with self.assertLogs(logger, level="WARNING"):
             self.assertFalse(ctk.receive_subtask(ctd))
@@ -464,14 +584,17 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         th = get_task_header()
         ctk.add_request(th, 5)
         ctd = ComputeTaskDef()
-        ctd.task_id = "xyz"
-        ctd.subtask_id = "abc"
+        ctd['task_id'] = "xyz"
+        ctd['subtask_id'] = "abc"
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
+        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, "abc")
+        assert not ctk.check_task_owner_by_subtask(th.task_owner_key_id, "!!!")
+        assert not ctk.check_task_owner_by_subtask('???', "abc")
         ctd2 = ComputeTaskDef()
-        ctd2.task_id = "xyz"
-        ctd2.subtask_id = "def"
+        ctd2['task_id'] = "xyz"
+        ctd2['subtask_id'] = "def"
         ctk.receive_subtask(ctd2)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task.get("def") is None
@@ -480,7 +603,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 1
 
-    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_get_task_env(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):

@@ -1,46 +1,28 @@
-import abc
 import logging
 import os
-from _pysha3 import sha3_256 as _sha3_256
 from abc import abstractmethod
 from hashlib import sha256
 
-import bitcoin
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from devp2p.crypto import ECCx, mk_privkey
 
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
+from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, sha3, \
+        privtopub
+
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
 
-def sha3(seed):
-    """ Return sha3-256 (NOT keccak) of seed in digest
-    :param str seed: data that should be hashed
-    :return str: binary hashed data
-    """
-    if isinstance(seed, str):
-        seed = seed.encode()
-    return _sha3_256(seed).digest()
-
-
 def sha2(seed):
     if isinstance(seed, str):
         seed = seed.encode()
     return int("0x" + sha256(seed).hexdigest(), 16)
-
-
-def privtopub(raw_privkey):
-    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey),
-                                       'bin_electrum')
-    assert len(raw_pubkey) == 64
-    return raw_pubkey
 
 
 def get_random(min_value=0, max_value=None):
@@ -207,11 +189,11 @@ class KeysAuth(object):
     def _get_public_key_loc(cls, key_name):
         return cls.__get_key_loc(key_name)
 
-    @abc.abstractmethod
+    @abstractmethod
     def _load_private_key(self):  # implement in derived classes
         return
 
-    @abc.abstractmethod
+    @abstractmethod
     def _load_public_key(self):  # implement in derived classes
         return
 
@@ -406,7 +388,7 @@ class EllipticalKeysAuth(KeysAuth):
         """
         KeysAuth.__init__(self, datadir, private_key_name, public_key_name)
         try:
-            self.ecc = ECCx(None, self._private_key)
+            self.ecc = ECCx(self._private_key)
         except AssertionError:
             private_key_loc = self._get_private_key_loc(private_key_name)
             public_key_loc = self._get_public_key_loc(public_key_name)
@@ -445,7 +427,7 @@ class EllipticalKeysAuth(KeysAuth):
         :param str data: data to be signed
         :return: signed data
         """
-        return self.ecc.sign(sha3(data))
+        return self.ecc.sign(data)
 
     def verify(self, sig, data, public_key=None):
         """
@@ -464,8 +446,7 @@ class EllipticalKeysAuth(KeysAuth):
                 public_key = self.public_key
             if len(public_key) == 128:
                 public_key = decode_hex(public_key)
-            ecc = ECCx(public_key)
-            return ecc.verify(sig, sha3(data))
+            return ecdsa_verify(public_key, sig, data)
         except AssertionError:
             logger.info("Wrong key format")
         except Exception as exc:
@@ -525,7 +506,7 @@ class EllipticalKeysAuth(KeysAuth):
         self.public_key = pub_key
         self.key_id = self.cnt_key_id(pub_key)
         self.save_to_files(priv_key_loc, pub_key_loc)
-        self.ecc = ECCx(None, self._private_key)
+        self.ecc = ECCx(self._private_key)
 
     @staticmethod
     def _load_private_key_from_file(file_name):

@@ -1,7 +1,7 @@
+from golem_messages import message
 import logging
 
 
-from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport import tcpnetwork
 
@@ -36,21 +36,20 @@ class ResourceSession(BasicSafeSession):
         # set_msg_interpretations
 
         self._interpretation.update({
-            message.MessagePushResource.TYPE: self._react_to_push_resource,
-            message.MessageHasResource.TYPE: self._react_to_has_resource,
-            message.MessageWantsResource.TYPE: self._react_to_wants_resource,
-            message.MessagePullResource.TYPE: self._react_to_pull_resource,
-            message.MessagePullAnswer.TYPE: self._react_to_pull_answer,
-            message.MessageHello.TYPE: self._react_to_hello,
-            message.MessageRandVal.TYPE: self._react_to_rand_val
+            message.PushResource.TYPE: self._react_to_push_resource,
+            message.HasResource.TYPE: self._react_to_has_resource,
+            message.WantsResource.TYPE: self._react_to_wants_resource,
+            message.PullResource.TYPE: self._react_to_pull_resource,
+            message.PullAnswer.TYPE: self._react_to_pull_answer,
+            message.Hello.TYPE: self._react_to_hello,
+            message.RandVal.TYPE: self._react_to_rand_val
         })
 
-        self.can_be_not_encrypted.append(message.MessageHello.TYPE)
-        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        self.can_be_not_encrypted.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
-                message.MessageHello.TYPE,
-                message.MessageRandVal.TYPE
+                message.Hello.TYPE,
+                message.RandVal.TYPE
             ]
         )
 
@@ -67,67 +66,11 @@ class ResourceSession(BasicSafeSession):
     # SafeSession methods #
     #######################
 
-    def encrypt(self, data):
-        """ Encrypt given data using key_id from this connection
-        :param str data: data to be encrypted
-        :return str: encrypted data or unchanged message
-                     (if resource server doesn't exist)
-        """
-        if self.resource_server:
-            return self.resource_server.encrypt(data, self.key_id)
-        logger.warning("Can't encrypt message - no resource_server")
-        return data
-
-    def decrypt(self, data):
-        """Decrypt given data using private key. If during decryption
-           AssertionError occurred this may mean that data is not encrypted
-           simple serialized message. In that case unaltered data are returned.
-        :param str data: data to be decrypted
-        :return str: decrypted data
-        """
+    @property
+    def my_private_key(self):
         if self.resource_server is None:
-            return data
-        try:
-            data = self.resource_server.decrypt(data)
-        except AssertionError:
-            logger.info(
-                "Failed to decrypt message from %r:%r, "
-                "maybe it's not encrypted?",
-                self.address,
-                self.port
-            )
-        except Exception as err:
-            logger.info(
-                "Failed to decrypt message %s from %r:%r",
-                err,
-                self.address,
-                self.port
-            )
-            raise
-
-        return data
-
-    def sign(self, msg):
-        """ Sign given message
-        :param Message msg: message to be signed
-        :return Message: signed message
-        """
-        msg.sig = self.resource_server.sign(msg.get_short_hash())
-        return msg
-
-    def verify(self, msg):
-        """Verify signature on given message. Check if message was signed
-           with key_id from this connection.
-        :param Message msg: message to be verified
-        :return boolean: True if message was signed with key_id from
-                         this connection
-        """
-        verify = self.resource_server.verify_sig(
-            msg.sig,
-            msg.get_short_hash(),
-            self.key_id
-        )
-        return verify
+            return None
+        return self.resource_server.keys_auth.ecc.raw_privkey
 
     def send(self, msg, send_unverified=False):
         """Send given message if connection was verified or send_unverified
@@ -155,7 +98,7 @@ class ResourceSession(BasicSafeSession):
                                      may be needed
         """
         if self.confirmation:
-            self.send(message.MessageHasResource(self.file_name))
+            self.send(message.HasResource(resource=self.file_name))
             self.confirmation = False
             if self.copies > 0:
                 self.resource_server.add_resource_to_send(
@@ -176,12 +119,12 @@ class ResourceSession(BasicSafeSession):
         """ Send information that given resource is needed.
         :param resource: resource name
         """
-        self.send(message.MessagePullResource(resource))
+        self.send(message.PullResource(resource=resource))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
         self.send(
-            message.MessageHello(
+            message.Hello(
                 client_key_id=self.resource_server.get_key_id(),
                 rand_val=self.rand_val
             ),
@@ -195,12 +138,12 @@ class ResourceSession(BasicSafeSession):
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
         if self.resource_server.get_resource_entry(msg.resource):
-            self.send(message.MessageHasResource(msg.resource))
+            self.send(message.HasResource(resource=msg.resource))
             if copies > 0:
                 self.resource_server.get_peers()
                 self.resource_server.add_resource_to_send(msg.resource, copies)
         else:
-            self.send(message.MessageWantsResource(msg.resource))
+            self.send(message.WantsResource(resource=msg.resource))
             self.file_name = msg.resource
             self.conn.stream_mode = True
             self.conn.consumer = tcpnetwork.DecryptFileConsumer(
@@ -227,7 +170,7 @@ class ResourceSession(BasicSafeSession):
         if not has_resource:
             self.resource_server.get_peers()
         self.send(
-            message.MessagePullAnswer(
+            message.PullAnswer(
                 resource=msg.resource,
                 has_resource=has_resource
             )
@@ -237,25 +180,23 @@ class ResourceSession(BasicSafeSession):
         self.resource_server.pull_answer(msg.resource, msg.has_resource, self)
 
     def _react_to_hello(self, msg):
+        super()._react_to_hello(msg)
+        if not self.conn.opened:
+            return
         if self.key_id == 0:
             self.key_id = msg.client_key_id
             self.send_hello()
         elif self.key_id != msg.client_key_id:
             self.dropped()
 
-        if not self.verify(msg):
-            logger.error("Wrong signature for Hello msg")
-            self.disconnect(ResourceSession.DCRUnverified)
-            return
-
         self.send(
-            message.MessageRandVal(rand_val=msg.rand_val),
+            message.RandVal(rand_val=msg.rand_val),
             send_unverified=True
         )
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:
-            self.disconnect(ResourceSession.DCRUnverified)
+            self.disconnect(message.Disconnect.REASON.Unverified)
             return
         self.verified = True
         self.resource_server.verified_conn(self.conn_id)

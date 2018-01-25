@@ -4,19 +4,21 @@ import random
 import operator
 from collections import deque
 import math
+import itertools
 
 logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
 K = 16  # Bucket size
 CONCURRENCY = 3  # parallel find node lookup
 K_SIZE = 512  # pubkey size
-PONG_TIMEOUT = 5   # don't wait for pong longer than this time
+PONG_TIMEOUT = 5  # don't wait for pong longer than this time
 REQUEST_TIMEOUT = 10  # find node requests timeout after this time
 IDLE_REFRESH = 3  # refresh idle buckets after this time
 
 
 class PeerKeeper(object):
     """ Keeps information about peers in a network"""
+
     def __init__(self, key, k_size=K_SIZE):
         """
         Create new peer keeper instance
@@ -28,7 +30,7 @@ class PeerKeeper(object):
         self.k = K  # bucket size
         self.concurrency = CONCURRENCY  # parallel find node lookup
         self.k_size = k_size  # pubkey size
-        self.buckets = [KBucket(0, 2 ** k_size - 1, self.k)]
+        self.buckets = [KBucket(0, 2 ** k_size, self.k)]
         self.pong_timeout = PONG_TIMEOUT
         self.request_timeout = REQUEST_TIMEOUT
         self.idle_refresh = IDLE_REFRESH
@@ -40,22 +42,26 @@ class PeerKeeper(object):
         return "\n".join([str(bucket) for bucket in self.buckets])
 
     def restart(self, key):
-        """ Restart peer keeper after peer key has changed. Remove all buckets and empty all queues.
+        """
+        Restart peer keeper after peer key has changed.
+        Remove all buckets and empty all queues.
         :param hex key: hexadecimal representation of a peer's public key
         """
         self.key = key
         self.key_num = int(key, 16)
-        self.buckets = [KBucket(0, 2 ** self.k_size - 1, self.k)]
+        self.buckets = [KBucket(0, 2 ** self.k_size, self.k)]
         self.expected_pongs = {}
         self.find_requests = {}
         self.sessions_to_end = []
 
     def add_peer(self, peer_info):
-        """ Try to add information about new peer. If it's possible just add it to a proper bucket. Otherwise try
-        to find a candidate to replace.
+        """
+        Try to add information about new peer. If it's possible just add it to
+        a proper bucket. Otherwise try to find a candidate to replace.
         :param Node peer_info: information about a new peer
-        :return None|Node: None if peer has been added to a bucket or if there is no candidate for replacement,
-        otherwise return a candidate to replacement.
+        :return None|Node: None if peer has been added to a bucket or
+         if there is no candidate for replacement, otherwise return a candidate
+         to replacement.
         """
         if peer_info.key == self.key:
             logger.warning("Trying to add self to Routing table")
@@ -66,19 +72,20 @@ class PeerKeeper(object):
         bucket = self.bucket_for_peer(key_num)
         peer_to_remove = bucket.add_peer(peer_info)
         if peer_to_remove:
-            if bucket.start <= self.key_num <= bucket.end:
+            if bucket.start <= self.key_num < bucket.end:
                 self.split_bucket(bucket)
                 return self.add_peer(peer_info)
-            else:
-                self.expected_pongs[peer_to_remove.key] = (peer_info, time.time())
-                return peer_to_remove
+            self.expected_pongs[peer_to_remove.key] = (peer_info, time.time())
+            return peer_to_remove
 
         for bucket in self.buckets:
             logger.debug(str(bucket))
         return None
 
     def set_last_message_time(self, key):
-        """ Set current time as a last message time for a bucket which range contain given key.
+        """
+        Set current time as a last message time for a bucket which range
+        contain given key.
         :param hex key: some peer public key in hexadecimal format
         """
         if not key:
@@ -96,26 +103,30 @@ class PeerKeeper(object):
         :return Node|None: information about random peer
         """
         bucket = self.buckets[random.randint(0, len(self.buckets) - 1)]
-        if len(bucket.peers) > 0:
+        if bucket.peers:
             return bucket.peers[random.randint(0, len(bucket.peers) - 1)]
-        else:
-            return None
+        return None
 
     def pong_received(self, key):
-        """ React to the fact that pong message was received from peer with given key
+        """
+        React to the fact that pong message was received from peer
+        with given key
         :param hex key: public key of a node that has send pong message
         """
         if key in self.expected_pongs:
             del self.expected_pongs[key]
 
     def bucket_for_peer(self, key_num):
-        """ Find a bucket which contains given num in it's range
-        :param long key_num: key long representation for which a bucket should be found
+        """
+        Find a bucket which contains given num in it's range
+        :param long key_num: key long representation for which a bucket
+         should be found
         :return KBucket: bucket containing key in it's range
         """
         for bucket in self.buckets:
             if bucket.start <= key_num < bucket.end:
                 return bucket
+        logger.error("Did not find a bucket for {}".format(key_num))
 
     def split_bucket(self, bucket):
         """ Split given bucket into two buckets
@@ -128,16 +139,21 @@ class PeerKeeper(object):
         self.buckets.insert(idx + 1, buck2)
 
     def cnt_distance(self, key):
-        """ Return distance between this peer and peer with a given key. Distance is a xor between keys.
+        """
+        Return distance between this peer and peer with a given key.
+        Distance is a xor between keys.
         :param hex key: other peer public key
         :return long: distance to other peer
         """
         return self.key_num ^ int(key, 16)
 
     def sync(self):
-        """ Sync peer keeper state. Remove old requests and expected pongs, add new peers if old peers didn't answer
-         to ping. Additionally prepare a list of peers that should be found to correctly fill the buckets.
-        :return dict: information about peers that should be found (key and list of closest known neighbours)
+        """
+        Sync peer keeper state. Remove old requests and expected pongs,
+        add new peers if old peers didn't answer to ping. Additionally prepare a
+        list of peers that should be found to correctly fill the buckets.
+        :return dict: information about peers that should be found (key and list
+          of closest known neighbours)
         """
         self.__remove_old_expected_pongs()
         self.__remove_old_requests()
@@ -145,32 +161,33 @@ class PeerKeeper(object):
         return peers_to_find
 
     def neighbours(self, key_num, alpha=None):
-        """ Return alpha nearest known neighbours to a peer with given key
+        """
+        Return alpha nearest known neighbours to a peer with given key
         :param long key_num: given key in a long format
-        :param None|int alpha: *Default: None* number of neighbours to find. If alpha is set to None then
+        :param None|int alpha: *Default: None* number of neighbours to find.
+         If alpha is set to None then
         default concurrency parameter will be used
         :return list: list of nearest known neighbours
         """
         if not alpha:
             alpha = self.concurrency
 
-        neigh = []
-        for bucket in self.buckets_by_id_distance(key_num):
-            for peer in bucket.peers_by_id_distance(key_num):
-                if int(peer.key, 16) != key_num:
-                    neigh.append(peer)
-                    if len(neigh) == alpha * 2:
-                        break
-        return sorted(neigh, key=lambda p: node_id_distance(p, key_num))[:alpha]
+        def gen_neigh():
+            for bucket in self.buckets_by_id_distance(key_num):
+                for peer in bucket.peers_by_id_distance(key_num):
+                    if int(peer.key, 16) != key_num:
+                        yield peer
+        return list(itertools.islice(gen_neigh(), alpha))
 
     def buckets_by_id_distance(self, key_num):
         """
-        Return list of buckets sorted by distance from given key. Bucket middle range element
-        will be taken into account
+        Return list of buckets sorted by distance from given key.
+        Bucket middle range element will be taken into account
         :param long key_num: given key in long format
         :return list: sorted buckets list
         """
-        return sorted(self.buckets, key=operator.methodcaller('id_distance', key_num))
+        return sorted(
+            self.buckets, key=operator.methodcaller('id_distance', key_num))
 
     def __remove_old_expected_pongs(self):
         cur_time = time.time()
@@ -190,7 +207,7 @@ class PeerKeeper(object):
         cur_time = time.time()
         for bucket in self.buckets:
             if cur_time - bucket.last_updated > self.idle_refresh:
-                key_num = random.randint(bucket.start, bucket.end)
+                key_num = random.randint(bucket.start, bucket.end - 1)
                 self.find_requests[key_num] = cur_time
                 peers_to_find[key_num] = self.neighbours(key_num)
                 bucket.last_updated = cur_time
@@ -198,14 +215,15 @@ class PeerKeeper(object):
 
     def __remove_old_requests(self):
         cur_time = time.time()
-        for key_num, time_ in list(self.find_requests.items()):
+        for key_num, _ in list(self.find_requests.items()):
             if cur_time - time.time() > self.request_timeout:
                 del self.find_requests[key_num]
 
 
 def node_id_distance(node_info, key_num):
-    """ Return distance in XOR metrics between two peers when we have full information about one node and only public
-     key of a second node
+    """
+    Return distance in XOR metrics between two peers when we have full
+    information about one node and only public key of a second node
     :param Node node_info: information about node (peer)
     :param long key_num: other node public key in long format
     :return long: distance between two peers
@@ -213,8 +231,15 @@ def node_id_distance(node_info, key_num):
     return int(node_info.key, 16) ^ key_num
 
 
+def key_distance(key, second_key):
+    return int(key, 16) ^ int(second_key, 16)
+
+
 class KBucket(object):
-    """ K-bucket for keeping information about peers from a given distance range """
+    """
+    K-bucket for keeping information about peers from a given distance range
+    """
+
     def __init__(self, start, end, k):
         """ Create new bucket with range [start, end)
         :param long start: bucket range start
@@ -228,10 +253,13 @@ class KBucket(object):
         self.last_updated = time.time()
 
     def add_peer(self, peer):
-        """ Try to append peer to a bucket. If it's already in a bucket remove it and append it at the end.
-        If a bucket is full then return oldest peer in a bucket as a candidate for replacement
+        """
+        Try to append peer to a bucket. If it's already in a bucket remove it
+        and append it at the end. If a bucket is full then return oldest peer in
+        a bucket as a candidate for replacement
         :param Node peer: peer to add
-        :return Node|None: oldest peer in a bucket, if a new peer hasn't been added or None otherwise
+        :return Node|None: oldest peer in a bucket, if a new peer hasn't been
+         added or None otherwise
         """
         logger.debug("KBucket adding peer {}".format(peer))
         self.last_updated = time.time()
@@ -250,9 +278,12 @@ class KBucket(object):
         return None
 
     def remove_peer(self, key_num):
-        """ Remove peer with given key from this bucket
-        :param long key_num: public key of a node that should be removed from this bucket in long format
-        :return Node|None: information about peer if it was in this bucket, None otherwise
+        """
+        Remove peer with given key from this bucket
+        :param long key_num: public key of a node that should be removed from
+         this bucket in long format
+        :return Node|None: information about peer if it was in this bucket,
+         None otherwise
         """
         for peer in self.peers:
             if int(peer.key, 16) == key_num:
@@ -272,11 +303,12 @@ class KBucket(object):
 
     def split(self):
         """ Split bucket into two buckets
-        :return (KBucket, KBucket): two buckets that were created from this bucket
+        :return (KBucket, KBucket): two buckets that were created from this
+         bucket
         """
         midpoint = (self.start + self.end) / 2
         lower = KBucket(self.start, midpoint, self.k)
-        upper = KBucket(midpoint + 1, self.end, self.k)
+        upper = KBucket(midpoint, self.end, self.k)
         for peer in self.peers:
             if int(peer.key, 16) < midpoint:
                 lower.add_peer(peer)
@@ -285,11 +317,5 @@ class KBucket(object):
         return lower, upper
 
     def __str__(self):
-        return "Bucket: {} - {} peers {}".format(self.start, self.end, len(self.peers))
-
-    @staticmethod
-    def __num_to_pow(num):
-        pow_ = 512
-        while 2 ** pow_ - 1 > num:
-            pow_ -= 1
-        return pow_
+        return "Bucket: {} - {} peers {}".format(
+            self.start, self.end, len(self.peers))

@@ -12,10 +12,6 @@ that there are two types of nodes in the Golem network: requestor nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-## Job offers
-
-- [C++ & Solidity Software Engineer](docs/jobs/cpp_and_solidity_software_engineer.md)
-
 ## Installing and testing
 
 For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
@@ -32,6 +28,12 @@ Then read the application description and [testing](https://github.com/golemfact
 
 All released packages are located [here](https://github.com/golemfactory/golem/releases), however, we strongly encourage you to use prepared installers.
 
+## Usage & troubleshoothing
+
+Documentation for using app is here: https://docs.golem.network/
+
+The most common problems are described in section 10: https://docs.golem.network/10-troubleshooting.html
+
 ## Warning
 
 Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured. Check [this list of issues](https://github.com/golemfactory/golem/labels/security) for more details.
@@ -47,13 +49,11 @@ Golem communicates with external technologies some of them may be downloaded and
 * [Docker](https://www.docker.com/)
 * [FreeImage](http://freeimage.sourceforge.net/)
 * [Geth](https://github.com/ethereum/go-ethereum/wiki/geth)
-* [IPFS](https://ipfs.io/)
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)
-* [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
-* [Qt5](https://www.qt.io/)
 * [SQLite3](https://sqlite.org/index.html)
+* [Pyvmmonitor](http://pyvmmonitor.com)
 
 Benchmarks:
 * General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.
@@ -62,6 +62,10 @@ Benchmarks:
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.
+
+## Job offers
+
+- [C++ & Solidity Software Engineer](docs/jobs/cpp_and_solidity_software_engineer.md)
 
 ## Contact  
 

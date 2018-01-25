@@ -1,14 +1,18 @@
 import collections
 import json
 import logging
+from ipaddress import AddressValueError, ip_address
 
 import requests
-from copy import deepcopy
-from ipaddress import AddressValueError, ip_address
+from requests import HTTPError
 
 from golem.resource.client import IClient, ClientOptions
 
 log = logging.getLogger(__name__)
+
+
+DEFAULT_HYPERDRIVE_PORT = 3282
+DEFAULT_HYPERDRIVE_RPC_PORT = 3292
 
 
 class HyperdriveClient(IClient):
@@ -16,7 +20,8 @@ class HyperdriveClient(IClient):
     CLIENT_ID = 'hyperg'
     VERSION = 1.1
 
-    def __init__(self, port=3292, host='localhost', timeout=None):
+    def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT,
+                 host='localhost', timeout=None):
         super(HyperdriveClient, self).__init__()
 
         # API destination address
@@ -58,7 +63,15 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
-    def get_file(self, multihash, client_options=None, **kwargs):
+    def restore(self, content_hash, **kwargs):
+        response = self._request(
+            command='upload',
+            id=kwargs.get('id'),
+            hash=content_hash
+        )
+        return response['hash']
+
+    def get(self, content_hash, client_options=None, **kwargs):
         filepath = kwargs.pop('filepath')
         peers = None
 
@@ -70,24 +83,16 @@ class HyperdriveClient(IClient):
 
         response = self._request(
             command='download',
-            hash=multihash,
+            hash=content_hash,
             dest=filepath,
             peers=peers
         )
-        return [(filepath, multihash, response['files'])]
+        return [(filepath, content_hash, response['files'])]
 
-    def pin_add(self, file_path, multihash):
-        response = self._request(
-            command='upload',
-            files=[file_path],
-            hash=multihash
-        )
-        return response['hash']
-
-    def pin_rm(self, multihash):
+    def cancel(self, content_hash):
         response = self._request(
             command='cancel',
-            hash=multihash
+            hash=content_hash
         )
         return response['hash']
 
@@ -96,7 +101,14 @@ class HyperdriveClient(IClient):
                                  headers=self._headers,
                                  data=json.dumps(data),
                                  timeout=self.timeout)
-        response.raise_for_status()
+
+        try:
+            response.raise_for_status()
+        except HTTPError:
+            if response.text:
+                raise HTTPError('Hyperdrive HTTP {} error: {}'.format(
+                    response.status_code, response.text), response=response)
+            raise
 
         if response.content:
             return json.loads(response.content.decode('utf-8'))
@@ -161,9 +173,10 @@ class HyperdriveClientOptions(ClientOptions):
                 ip = ip_address(ip_str)
                 port = int(entry[1])
 
-                if ip.is_private:
-                    raise ValueError('address {} is private'
-                                     .format(ip))
+                # FIXME: filter out only private IPs we're not connected to
+                # if ip.is_private:
+                #     raise ValueError('address {} is private'
+                #                      .format(ip))
                 if excluded_ips and entry[0] in excluded_ips:
                     raise ValueError('address {} was excluded'
                                      .format(ip))

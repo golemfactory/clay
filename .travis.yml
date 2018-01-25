@@ -10,7 +10,7 @@ branches:
 
 env:
   global:
-    - GETH_VER=geth-darwin-amd64-1.6.4-9c2882b2
+    - GETH_VER=geth-darwin-amd64-1.7.2-1db4ecdc
     - HYPERG_VER=0.2.1
 
 cache:
@@ -19,7 +19,8 @@ cache:
     - $HOME/Library/Caches/pip
 
 before_install:
-  - brew install python3 qt5 openexr freeimage
+  - brew update
+  - brew install python3 openexr freeimage
 
   # geth
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz
@@ -32,7 +33,6 @@ before_install:
   - ./hyperg/hyperg &
 
   # requirements
-  - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
   - sudo -HE pip3 install -r requirements.txt
   - sudo -HE pip3 install -r requirements-test.txt
   - sudo -HE python3 setup.py develop
@@ -41,7 +41,7 @@ before_install:
   - export ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
 script:
-  - python3 -m pytest --cov=golem${ARG_RUNSLOW}
+  - python3 -m pytest --cov=golem --durations=5 --maxfail=3 -rxs${ARG_RUNSLOW}
   - if [ -z "${ARG_RUNSLOW}" ]; then echo "Not enough approvals."; exit 1; fi
 
 after_success:

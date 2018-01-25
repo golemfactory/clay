@@ -1,7 +1,7 @@
 import os
 import unittest
+from unittest import mock
 
-import mock
 import pytest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
@@ -72,4 +72,4 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         if self.br.tt:
             self.br.tt.join()
 
-        success.assert_called()
+        self.assertEqual(success.call_count, 1)

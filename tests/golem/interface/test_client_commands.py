@@ -22,8 +22,7 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.rpc.mapping import aliases
-from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
@@ -367,10 +366,21 @@ class TestTasks(TempDirFixture):
             'progress': i / 100.0
         } for i in range(1, 6)]
 
+        cls.reasons = [
+            {'avg': '0.8.1', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+
         cls.n_tasks = len(cls.tasks)
         cls.n_subtasks = len(cls.subtasks)
         cls.get_tasks = lambda s, _id: cls.tasks[0] if _id else cls.tasks
         cls.get_subtasks = lambda s, x: cls.subtasks
+        cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
         super(TestTasks, self).setUp()
@@ -384,6 +394,7 @@ class TestTasks(TempDirFixture):
 
         client.get_tasks = self.get_tasks
         client.get_subtasks = self.get_subtasks
+        client.get_unsupport_reasons = self.get_unsupport_reasons
 
         self.client = client
 
@@ -399,8 +410,6 @@ class TestTasks(TempDirFixture):
             client.abort_task.assert_called_with('valid')
             assert tasks.delete('valid')
             client.delete_task.assert_called_with('valid')
-            assert tasks.resume('valid')
-            client.resume_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
@@ -489,6 +498,17 @@ class TestTasks(TempDirFixture):
             assert subtasks.data[1][0] == [
                 'node_1', 'subtask_1', '9', 'waiting', '1.00 %'
             ]
+
+    def test_unsupport(self):
+        client = self.client
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+            unsupport = tasks.unsupport(0)
+            assert isinstance(unsupport, CommandResult)
+            assert unsupport.data[1][0] == ['app_version', 3, '0.8.1']
+            assert unsupport.data[1][1] == ['max_price', 2, 7]
+            assert unsupport.data[1][2] == ['environment_missing', 1, None]
 
     @staticmethod
     @contextmanager
@@ -586,7 +606,7 @@ class TestSettings(TempDirFixture):
 
         _setting_values = {
             'node_name': Values(['node'], ['', None, 12, lambda x: x]),
-            'accept_task': _bool,
+            'accept_tasks': _bool,
             'max_resource_size': _int_gt0,
             'use_waiting_for_task_timeout': _bool,
             'waiting_for_task_timeout': _int_gt0,
@@ -657,13 +677,13 @@ class TestDebug(unittest.TestCase):
             debug = Debug()
             task_id = str(uuid.uuid4())
 
-            debug.rpc((aliases.Network.ident, ))
+            debug.rpc(('net.ident',))
             assert client.get_node.called
 
-            debug.rpc((aliases.Task.task, task_id))
+            debug.rpc(('comp.task', task_id))
             client.get_task.assert_called_with(task_id)
 
-            debug.rpc((aliases.Task.subtasks_borders, task_id, 2))
+            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
             client.get_subtasks_borders.assert_called_with(task_id, 2)
 
             with self.assertRaises(CommandException):

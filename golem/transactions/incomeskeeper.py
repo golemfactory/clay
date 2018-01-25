@@ -24,29 +24,30 @@ class IncomesKeeper(object):
     def run_once(self):
         delta = datetime.datetime.now() - datetime.timedelta(minutes=10)
         with db.atomic():
-            for expected_income in ExpectedIncome\
+            expected_incomes = ExpectedIncome\
                     .select()\
                     .where(ExpectedIncome.modified_date < delta)\
-                    .order_by(-ExpectedIncome.id).limit(50):
-                try:
-                    with db.atomic():
-                        Income.get(
-                            sender_node=expected_income.sender_node,
-                            task=expected_income.task,
-                            subtask=expected_income.subtask,
-                        )
-                except Income.DoesNotExist:
-                    # Income is still expected.
-                    with db.atomic():
-                        expected_income.modified_date = datetime.datetime.now()
-                        expected_income.save()
+                    .order_by(-ExpectedIncome.id)\
+                    .limit(50)\
+                    .execute()
+
+            for expected_income in expected_incomes:
+                is_subtask_paid = Income.select().where(
+                    Income.sender_node == expected_income.sender_node,
+                    Income.task == expected_income.task,
+                    Income.subtask == expected_income.subtask)\
+                    .exists()
+
+                if is_subtask_paid:
+                    expected_income.delete_instance()
+
+                else:  # ask for payment
+                    expected_income.modified_date = datetime.datetime.now()
+                    expected_income.save()
                     dispatcher.send(
                         signal="golem.transactions",
                         event="expected_income",
-                        expected_income=expected_income
-                    )
-                    continue
-                expected_income.delete_instance()
+                        expected_income=expected_income)
 
     def received(self, sender_node_id,
                  task_id,
@@ -64,12 +65,10 @@ class IncomesKeeper(object):
                 expected_income.delete_instance()
 
         except ExpectedIncome.DoesNotExist:
-            logger.info("Unexpected income received :) "
-                        "(%r, %r, %r, %r) ",
-                        sender_node_id,
-                        task_id,
-                        subtask_id,
-                        value)
+            logger.info("ExpectedIncome.DoesNotExist "
+                        "(sender_node_id %r task_id %r, "
+                        "subtask_id %r, value %r) ",
+                        sender_node_id, task_id, subtask_id, value)
 
         try:
             with db.transaction():
@@ -111,13 +110,38 @@ class IncomesKeeper(object):
             value=value
         )
 
+    def update_awaiting(self, subtask_id, accepted_ts):
+        try:
+            # FIXME: query by (sender_id, subtask_id)
+            income = ExpectedIncome.get(subtask=subtask_id)
+        except ExpectedIncome.DoesNotExist:
+            logger.error(
+                "ExpectedIncome.DoesNotExist subtask_id: %r",
+                subtask_id)
+            return
+        income.accepted_ts = accepted_ts
+        income.save()
+
     def get_list_of_all_incomes(self):
         # TODO: pagination
-        return (
-            ExpectedIncome.select(ExpectedIncome, Income)
-            .join(Income, peewee.JOIN_LEFT_OUTER, on=(
-                (ExpectedIncome.subtask == Income.subtask) &
-                (ExpectedIncome.sender_node == Income.sender_node)
-            ))
-            .order_by(ExpectedIncome.created_date.desc())
+        union = ExpectedIncome.select(
+            ExpectedIncome.created_date,
+            ExpectedIncome.sender_node,
+            ExpectedIncome.task,
+            ExpectedIncome.subtask,
+            peewee.SQL("NULL as 'transaction'"),
+            peewee.SQL("NULL as 'block_number'"),
+            ExpectedIncome.value
+        ) | Income.select(
+            Income.created_date,
+            Income.sender_node,
+            Income.task,
+            Income.subtask,
+            Income.transaction,
+            Income.block_number,
+            Income.value
         )
+
+        # Usage of .c : http://docs.peewee-orm.com/en/latest/peewee
+        # /querying.html#using-subqueries
+        return union.order_by(union.c.created_date.desc()).execute()

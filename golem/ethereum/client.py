@@ -1,4 +1,5 @@
 import logging
+import time
 
 import rlp
 from ethereum.utils import zpad
@@ -14,14 +15,20 @@ class Client(object):
 
     node = None
 
-    def __init__(self, datadir, port=None):
+    SYNC_CHECK_INTERVAL = 10
+
+    def __init__(self, datadir, start_node=False, start_port=None,
+                 address=None):
         if not Client.node:
-            Client.node = NodeProcess(datadir)
+            Client.node = NodeProcess(datadir, address, start_node)
         if not Client.node.is_running():
-            Client.node.start(port)
+            Client.node.start(start_port)
         self.web3 = Client.node.web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
+        self._last_sync_check = time.time()
+        self._sync = False
+        self._temp_sync = False
 
     @staticmethod
     def _kill_node():
@@ -62,12 +69,15 @@ class Client(object):
 
     def get_transaction_count(self, address):
         """
-        Returns the number of transactions
-        that have been sent from account
+        Returns the number of transactions that have been sent from account.
+        Use `pending` block to account the transactions that haven't been mined
+        yet. Otherwise it would be problematic to send more than one transaction
+        in less than ~15 seconds span.
         :param address: account address
         :return: number of transactions
         """
-        return self.web3.eth.getTransactionCount(Client.__add_padding(address))
+        return self.web3.eth.getTransactionCount(Client.__add_padding(address),
+                                                 'pending')
 
     def send(self, transaction):
         """
@@ -92,10 +102,10 @@ class Client(object):
             return self.web3.eth.getBalance(account, block)
         except ValueError as e:
             log.error("Ethereum RPC: {}".format(e))
-            return 0
+            return None
 
     def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0,
-             data=None, nonce=0, block=None):
+             data=None, block=None):
         """
         Executes a message call transaction,
         which is directly executed in the VM of the node,
@@ -115,10 +125,6 @@ class Client(object):
         Either a byte string containing the associated data of the message,
         or in the case of a contract-creation transaction,
         the initialisation code
-        :param nonce:
-        Integer of a nonce.
-        This allows to overwrite your own pending
-        transactions that use the same nonce
         :param block:
         integer block number,
         or the string "latest", "earliest" or "pending"
@@ -133,9 +139,11 @@ class Client(object):
             'gasPrice': gas_price,
             'value': value,
             'data': data,
-            'nonce': nonce
         }
         return self.web3.eth.call(obj, block)
+
+    def get_block_number(self):
+        return self.web3.eth.blockNumber
 
     def get_transaction_receipt(self, tx_hash):
         """
@@ -169,7 +177,7 @@ class Client(object):
         obj = {
             'fromBlock': from_block,
             'toBlock': to_block,
-            'address': Client.__add_padding(address),
+            'address': address,
             'topics': topics
         }
         return self.web3.eth.filter(obj).filter_id
@@ -212,9 +220,68 @@ class Client(object):
         """
         for i in range(len(topics)):
             topics[i] = Client.__add_padding(topics[i])
-        filter_id = self.new_filter(from_block, to_block,
-                                    Client.__add_padding(address), topics)
+        filter_id = self.new_filter(from_block, to_block, address, topics)
         return self.web3.eth.getFilterLogs(filter_id)
+
+    def wait_until_synchronized(self) -> bool:
+        is_synchronized = False
+        while not is_synchronized:
+            try:
+                is_synchronized = self.is_synchronized()
+            except Exception as e:
+                log.error("Error "
+                          "while syncing with eth blockchain: "
+                          "{}".format(e))
+                is_synchronized = False
+            else:
+                time.sleep(self.SYNC_CHECK_INTERVAL)
+
+        return True
+
+    def is_synchronized(self):
+        """ Checks if the Ethereum node is in sync with the network."""
+        if time.time() - self._last_sync_check <= self.SYNC_CHECK_INTERVAL:
+            # When checking again within 10 s return previous status.
+            # This also handles geth issue where synchronization starts after
+            # 10 s since the node was started.
+            return self._sync
+        self._last_sync_check = time.time()
+
+        def check():
+            peers = self.get_peer_count()
+            log.info("Peer count: {}".format(peers))
+            if peers == 0:
+                return False
+            if self.is_syncing():
+                log.info("Node is syncing...")
+                syncing = self.web3.eth.syncing
+                if syncing:
+                    log.info("currentBlock: " + str(syncing['currentBlock']) +
+                             "\t highestBlock:" + str(syncing['highestBlock']))
+                return False
+            return True
+
+        # TODO: This can be improved now because we use Ethereum Ropsten.
+        # Normally we should check the time of latest block, but Golem testnet
+        # does not produce block regularly. The workaround is to wait for 2
+        # confirmations.
+        if not check():
+            # Reset both sync flags. We have to start over.
+            self._temp_sync = False
+            self._sync = False
+            return False
+
+        if not self._temp_sync:
+            # Set the first flag. We will check again in SYNC_CHECK_INTERVAL s.
+            self._temp_sync = True
+            return False
+
+        if not self._sync:
+            # Second confirmation of being in sync. We are sure.
+            self._sync = True
+            log.info("Synchronized!")
+
+        return True
 
     @staticmethod
     def __add_padding(address):

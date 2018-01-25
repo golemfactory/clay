@@ -21,7 +21,6 @@ declare -r GOLEM_DIR=$HOME'/golem'
 
 # Questions
 declare -i INSTALL_DOCKER=0
-declare -i INSTALL_GETH=1
 declare -i reinstall=0
 
 # PACKAGE VERSION
@@ -77,7 +76,7 @@ function ask_user()
 function release_url()
 {
     json=$(wget -qO- --header='Accept: application/json' $1)
-    echo ${json} | python -c '\
+    echo ${json} | python3 -c '\
         import sys, json;                          \
         j = json.load(sys.stdin);                  \
         k = "browser_download_url";                \
@@ -88,7 +87,7 @@ function release_url()
               ][0])'
 }
 
-# @brief check if dependencies (pip, Docker, and Ethereum)
+# @brief check if dependencies (Docker)
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
@@ -96,12 +95,6 @@ function check_dependencies()
     if [[ -z "$( service --status-all 2>&1 | grep -F 'docker' )" ]]; then
         ask_user "Docker not found. Do you want to install it? (y/n)"
         INSTALL_DOCKER=$?
-    fi
-
-    # check if geth is installed
-    if [[ -z "$( dpkg -l | awk '{print $2}' | grep geth )" ]]; then
-        ask_user "Geth not found. Do you want to install it? (y/n)"
-        INSTALL_GETH=$?
     fi
 }
 
@@ -117,15 +110,9 @@ function install_dependencies()
     fi
 
     declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
-               libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
+               libssl-dev autoconf libgmp-dev libtool libffi-dev \
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
-               ethereum )
-
-    if [[ ${INSTALL_GETH} -eq 1 ]]; then
-        info_msg "INSTALLING GETH"
-        sudo apt-get install -y -q software-properties-common >/dev/null
-        sudo add-apt-repository -y ppa:ethereum/ethereum >/dev/null
-    fi
+               libfreeimage3 )
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
@@ -168,7 +155,7 @@ function install_dependencies()
         wget -qO- ${hyperg} > ${hyperg_pack}
         [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
         tar -xvf ${hyperg_pack} >/dev/null
-        mv hyperg $HOME/
+        [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f ${hyperg_pack} &>/dev/null
     fi
@@ -212,7 +199,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
 
@@ -230,7 +217,7 @@ function download_package() {
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        error_msg "Contact golem team: https://chat.golem.network/ or contact@golem.network"
         exit 1
     fi
     return 0
@@ -281,11 +268,12 @@ function install_golem()
     if [[ -f ${GOLEM_DIR}/golemapp ]]; then
         CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        NEWER_VERSION=$(printf "$CURRENT_VERSION\n$PACKAGE_VERSION" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | tail -n 1)
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi
-        if [[ "$CURRENT_VERSION" > "$PACKAGE_VERSION" ]]; then
+        if [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
             ask_user "Newer version ($CURRENT_VERSION) of Golem detected. Downgrade to version $PACKAGE_VERSION? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi

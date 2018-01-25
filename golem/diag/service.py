@@ -4,7 +4,7 @@ import json
 import logging
 from pprint import pformat
 
-from twisted.internet.task import LoopingCall
+from golem.core.service import LoopingCallService
 
 
 __all__ = ['DiagnosticsOutputFormat', 'DiagnosticsProvider', 'DiagnosticsService']
@@ -36,11 +36,11 @@ class DiagnosticsProvider(object, metaclass=abc.ABCMeta):
         raise ValueError("Unknown output format")
 
 
-class DiagnosticsService(object):
+class DiagnosticsService(LoopingCallService):
     def __init__(self, output_format=None):
+        super().__init__(interval_seconds=300)
         self._providers = dict()
         self._output_format = output_format or DiagnosticsOutputFormat.string
-        self._looping_call = None
 
     def register(self, provider, method=None, output_format=None):
         if isinstance(provider, DiagnosticsProvider):
@@ -61,16 +61,7 @@ class DiagnosticsService(object):
     def unregister_all(self):
         self._providers = {}
 
-    def start_looping_call(self, interval=300):
-        if not self._looping_call:
-            self._looping_call = LoopingCall(self.log_diagnostics)
-            self._looping_call.start(interval)
-
-    def stop_looping_call(self):
-        if self._looping_call:
-            self._looping_call.stop()
-
-    def log_diagnostics(self):
+    def _run(self):
         for v in list(self._providers.values()):
             method = v['method']
             data = v['provider'].get_diagnostics(v["output_format"])
