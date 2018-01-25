@@ -342,21 +342,18 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.get_ether_from_faucet = failure
 
         self.pp._run()
-        assert not self.pp._waiting_for_faucet
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
         self.pp.get_ether_from_faucet = success
 
         self.pp._run()
-        assert not self.pp._waiting_for_faucet
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
         self.pp.get_gnt_from_faucet = success
 
         self.pp._run()
-        assert not self.pp._waiting_for_faucet
         assert self.pp.monitor_progress.called
         assert self.pp.sendout.called
 
