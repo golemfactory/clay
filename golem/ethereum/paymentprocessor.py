@@ -65,16 +65,13 @@ class PaymentProcessor(LoopingCallService):
         self.__gnt_balance = None
         self.__eth_reserved = 0
         self.__gnt_reserved = 0
-        self.__eth_update_ts = 0
-        self.__gnt_update_ts = 0
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__faucet = faucet
-        self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
-        super(PaymentProcessor, self).__init__(13)
+        super().__init__(13)
 
     def eth_address(self, zpad=True):
         raw = keys.privtoaddr(self.__privkey)
@@ -349,19 +346,8 @@ class PaymentProcessor(LoopingCallService):
         return True
 
     def _run(self):
-        if self._waiting_for_faucet:
-            return
-
-        self._waiting_for_faucet = True
-
-        try:
-            if self._sci.is_synchronized() and \
-                    self.get_ether_from_faucet() and \
-                    self.get_gnt_from_faucet():
-                self.monitor_progress()
-                self.sendout()
-        finally:
-            self._waiting_for_faucet = False
-
-    def stop(self):
-        super(PaymentProcessor, self).stop()
+        if self._sci.is_synchronized() and \
+                self.get_ether_from_faucet() and \
+                self.get_gnt_from_faucet():
+            self.monitor_progress()
+            self.sendout()
