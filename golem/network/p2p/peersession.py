@@ -175,10 +175,6 @@ class PeerSession(BasicSafeSession):
         """
         self.send(message.RemoveTask(task_id=task_id))
 
-    def send_get_resource_peers(self):
-        """ Send get resource peers message """
-        self.send(message.GetResourcePeers())
-
     def send_degree(self, degree):
         """ Send degree message
          :param int degree: degree of this node
@@ -330,14 +326,30 @@ class PeerSession(BasicSafeSession):
             self.p2p_service.try_to_add_peer(pi)
 
     def _react_to_get_tasks(self, msg):
-        tasks = self.p2p_service.get_tasks_headers()
-        if not tasks:
+        my_tasks = self.p2p_service.get_own_tasks_headers()
+        other_tasks = self.p2p_service.get_others_tasks_headers()
+        if not my_tasks and not other_tasks:
             return
-        if len(tasks) > variables.TASK_HEADERS_LIMIT:
-            tasks_to_send = random.sample(tasks, variables.TASK_HEADERS_LIMIT)
-            self.send(message.Tasks(tasks=tasks_to_send))
-        else:
-            self.send(message.Tasks(tasks=tasks))
+
+        tasks_to_send = []
+
+        try:
+            tasks_to_send = random.sample(
+                my_tasks, variables.TASK_HEADERS_LIMIT // 2)
+        except ValueError:
+            tasks_to_send.extend(my_tasks)
+        except TypeError:
+            logger.debug("Unexpected format of my task list %r", my_tasks)
+
+        reminder = variables.TASK_HEADERS_LIMIT - len(tasks_to_send)
+        try:
+            tasks_to_send.extend(random.sample(other_tasks, reminder))
+        except ValueError:
+            tasks_to_send.extend(other_tasks)
+        except TypeError:
+            logger.debug("Unexpected format of other task list %r", other_tasks)
+
+        self.send(message.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
@@ -348,13 +360,6 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_remove_task(self, msg):
         self.p2p_service.remove_task_header(msg.task_id)
-
-    def _react_to_get_resource_peers(self, msg):
-        resource_peers = self.p2p_service.get_resource_peers()
-        self.send(message.ResourcePeers(resource_peers=resource_peers))
-
-    def _react_to_resource_peers(self, msg):
-        self.p2p_service.set_resource_peers(msg.resource_peers)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree
@@ -508,7 +513,6 @@ class PeerSession(BasicSafeSession):
 
     def __set_msg_interpretations(self):
         self.__set_basic_msg_interpretations()
-        self.__set_resource_msg_interpretations()
         self.__set_ranking_msg_interpretations()
 
     def __set_basic_msg_interpretations(self):
@@ -526,12 +530,6 @@ class PeerSession(BasicSafeSession):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.WantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,  # noqa
             message.SetTaskSession.TYPE: self._react_to_set_task_session,
-        })
-
-    def __set_resource_msg_interpretations(self):
-        self._interpretation.update({
-            message.GetResourcePeers.TYPE: self._react_to_get_resource_peers,
-            message.ResourcePeers.TYPE: self._react_to_resource_peers,
         })
 
     def __set_ranking_msg_interpretations(self):

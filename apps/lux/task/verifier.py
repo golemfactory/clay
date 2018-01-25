@@ -109,9 +109,7 @@ class LuxRenderVerifier(RenderingVerifier):
         return filename.lower().endswith(ext.lower())
 
     def merge_flm_files(self, new_flm, subtask_info, output):
-        if not self.computer:
-            self.state = SubtaskVerificationState.NOT_SURE
-            self.message = "No computer available to verify data"
+        if not self._check_computer():
             return False
 
         ctd = self.query_extra_data_for_advanced_verification(new_flm,
@@ -127,9 +125,7 @@ class LuxRenderVerifier(RenderingVerifier):
             additional_resources=[output, new_flm]
         )
 
-        if not self.computer.wait():
-            self.state = SubtaskVerificationState.NOT_SURE
-            self.message = "Computation was not run correctly"
+        if not self._wait_for_computer():
             return False
         if self.verification_error:
             self.state = SubtaskVerificationState.NOT_SURE

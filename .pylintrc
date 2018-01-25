@@ -125,6 +125,8 @@ ignored-classes=optparse.Values,
                 thread._local,
                 _thread._local,
                 twisted.internet.reactor,
+                pathlib.PurePath,
+                types,
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime

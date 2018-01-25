@@ -5,98 +5,15 @@ from os import urandom
 
 from ethereum.utils import privtoaddr
 
-from golem.ethereum.token import GNTToken, GNTWToken, encode_payments
+from golem.ethereum.token import GNTWToken, encode_payments
 from golem.utils import decode_hex, encode_hex
 
 
-def mock_payment(value: int=1):
+def mock_payment(value: int=1, payee=None):
     p = mock.Mock()
     p.value = value
-    p.payee = urandom(20)
+    p.payee = payee if payee is not None else urandom(20)
     return p
-
-
-class GNTTokenTest(unittest.TestCase):
-    def setUp(self):
-        self.client = mock.Mock()
-        self.privkey = urandom(32)
-        self.addr = '0x' + encode_hex(privtoaddr(self.privkey))
-        self.token = GNTToken(self.client)
-
-    def test_get_balance(self):
-        abi = mock.Mock()
-        self.token._GNTToken__testGNT = abi
-        encoded_data = 'dada'
-        abi.encode_function_call.return_value = encoded_data
-
-        self.client.call.return_value = None
-        self.assertEqual(None, self.token.get_balance(self.addr))
-        abi.encode_function_call.assert_called_with(
-            'balanceOf',
-            [privtoaddr(self.privkey)])
-        self.client.call.assert_called_with(
-            _from=mock.ANY,
-            to='0x' + encode_hex(self.token.TESTGNT_ADDR),
-            data='0x' + encode_hex(encoded_data),
-            block='pending')
-
-        self.client.call.return_value = '0x'
-        self.assertEqual(0, self.token.get_balance(self.addr))
-
-        self.client.call.return_value = '0xf'
-        self.assertEqual(15, self.token.get_balance(self.addr))
-
-    def test_batches(self):
-        p1 = mock_payment()
-        p2 = mock_payment()
-        p3 = mock_payment()
-
-        nonce = 0
-        self.client.get_transaction_count.return_value = nonce
-
-        abi = mock.Mock()
-        self.token._GNTToken__testGNT = abi
-        encoded_data = 'dada'
-        abi.encode_function_call.return_value = encoded_data
-
-        tx = self.token.batch_transfer(self.privkey, [p1, p2, p3], 0)
-        self.assertEqual(nonce, tx.nonce)
-        self.assertEqual(self.token.TESTGNT_ADDR, tx.to)
-        self.assertEqual(0, tx.value)
-        expected_gas = self.token.GAS_BATCH_PAYMENT_BASE + \
-            3 * self.token.GAS_PER_PAYMENT
-        self.assertEqual(expected_gas, tx.startgas)
-        self.assertEqual(encoded_data, tx.data)
-        abi.encode_function_call.assert_called_with(
-            'batchTransfer',
-            [encode_payments([p1, p2, p3])])
-
-    def test_get_incomes_from_block(self):
-        block_number = 1
-        receiver_address = '0xbadcode'
-        some_address = '0xdeadbeef'
-
-        self.client.get_logs.return_value = None
-        incomes = self.token.get_incomes_from_block(block_number,
-                                                    receiver_address)
-        self.assertEqual(None, incomes)
-
-        topics = [self.token.TRANSFER_EVENT_ID, None, receiver_address]
-        self.client.get_logs.assert_called_with(
-            block_number,
-            block_number,
-            '0x' + encode_hex(self.token.TESTGNT_ADDR),
-            topics)
-
-        self.client.get_logs.return_value = [{
-            'topics': ['0x0', some_address, receiver_address],
-            'data': '0xf',
-        }]
-        incomes = self.token.get_incomes_from_block(block_number,
-                                                    receiver_address)
-        self.assertEqual(1, len(incomes))
-        self.assertEqual(some_address, incomes[0]['sender'])
-        self.assertEqual(15, incomes[0]['value'])
 
 
 def abi_encoder(function_name, args):
@@ -122,11 +39,11 @@ class GNTWTokenTest(unittest.TestCase):
 
         gnt_abi = mock.Mock()
         gnt_abi.encode_function_call.side_effect = abi_encoder
-        self.token._GNTWToken__gnt = gnt_abi
+        self.token._gnt = gnt_abi
 
         gntw_abi = mock.Mock()
         gntw_abi.encode_function_call.side_effect = abi_encoder
-        self.token._GNTWToken__gntw = gntw_abi
+        self.token._gntw = gntw_abi
 
         self.balances = {
             'gnt': None,
@@ -289,3 +206,29 @@ class GNTWTokenTest(unittest.TestCase):
         self.assertEqual(1, len(incomes))
         self.assertEqual(some_address, incomes[0]['sender'])
         self.assertEqual(15, incomes[0]['value'])
+
+    def test_payment_aggregation(self):
+        a1 = urandom(20)
+        a2 = urandom(20)
+        a3 = urandom(20)
+
+        self.balances['gnt'] = '0x0'
+        self.balances['gntw'] = '0xf'
+
+        payments = [
+            mock_payment(payee=a1),
+            mock_payment(payee=a2),
+            mock_payment(payee=a2),
+            mock_payment(payee=a3),
+            mock_payment(payee=a3),
+            mock_payment(payee=a3),
+        ]
+
+        closure_time = 0
+        tx = self.token.batch_transfer(self.privkey, payments, closure_time)
+
+        expected_gas = self.token.GAS_BATCH_PAYMENT_BASE + \
+            3 * self.token.GAS_PER_PAYMENT
+        data = json.loads(tx.data)
+        self.assertEqual(3, len(data['args'][0]))
+        self.assertEqual(expected_gas, tx.startgas)

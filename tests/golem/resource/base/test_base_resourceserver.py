@@ -17,10 +17,6 @@ class MockClient:
     def __init__(self):
         self.downloaded = None
         self.failed = None
-        self.resource_peers = []
-
-    def get_resource_peers(self, *args, **kwargs):
-        return self.resource_peers
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
@@ -167,7 +163,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def testGetResources(self):
         self.resource_manager.add_task(self.target_resources, self.task_id,
-                                       async=False)
+                                       async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
         relative = [[r.hash, r.files] for r in resources]
@@ -187,7 +183,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         new_task_path = new_server.resource_manager.storage.get_dir(new_task_id)
 
         new_server.download_resources(relative, new_task_id)
-        new_server._download_resources(async=False)
+        new_server._download_resources(async_=False)
 
         for entry in relative:
             for f in entry[1]:
