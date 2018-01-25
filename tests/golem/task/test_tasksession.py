@@ -229,7 +229,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0], message.SubtaskResultRejected)
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsRejected)
         assert conn.close.called
 
         extra_data.update(dict(
@@ -241,7 +242,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == message.SubtaskResultAccepted
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsAccepted)
         assert conn.close.called
 
         extra_data.update(dict(

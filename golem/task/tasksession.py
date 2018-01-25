@@ -300,7 +300,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
 
         payment = self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.SubtaskResultAccepted(
+        self.send(message.tasks.SubtaskResultsAccepted(
             subtask_id=subtask_id,
             payment_ts=payment.processed_ts))
 
@@ -449,7 +449,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(message.SubtaskResultRejected(subtask_id=subtask_id))
+        self.send(message.tasks.SubtaskResultsRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -954,8 +954,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.TaskResultHash.TYPE: self._react_to_task_result_hash,
             message.GetResource.TYPE: self._react_to_get_resource,
             message.ResourceList.TYPE: self._react_to_resource_list,
-            message.SubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
-            message.SubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
+            message.tasks.SubtaskResultsAccepted.TYPE:
+                self._react_to_subtask_result_accepted,
+            message.tasks.SubtaskResultsRejected.TYPE:
+                self._react_to_subtask_result_rejected,
             message.TaskFailure.TYPE: self._react_to_task_failure,
             message.DeltaParts.TYPE: self._react_to_delta_parts,
             message.Hello.TYPE: self._react_to_hello,

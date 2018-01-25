@@ -255,14 +255,17 @@ class TestBasicProtocol(LogTestCase):
             protocol.dataReceived(packed_data)
             protocol.session.interpret.assert_called_once_with(msg)
 
-    def test_dataReceived_long(self):
+    @mock.patch(
+        'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
+    )
+    def test_dataReceived_long(self, load_mock):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
         protocol = BasicProtocol()
         protocol.transport = MagicMock()
         protocol.opened = True
         protocol.session = MagicMock()
         self.assertIsNone(protocol.dataReceived(data))
-        protocol.transport.loseConnection.assert_called_once_with()
+        self.assertEqual(load_mock.call_count, 0)
 
 class TestSocketAddress(TestCase):
     def test_zone_index(self):

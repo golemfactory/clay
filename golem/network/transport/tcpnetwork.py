@@ -245,7 +245,7 @@ class BasicProtocol(SessionProtocol):
         self.opened = False
         self.db = DataBuffer()
         self.lock = Lock()
-        SessionProtocol.__init__(self)
+        super().__init__()
         self.spam_protector = SpamProtector()
 
     def send_message(self, msg):
@@ -325,45 +325,42 @@ class BasicProtocol(SessionProtocol):
             self.db.append_bytes(data)
             mess = self._data_to_messages()
 
-        if mess is None:
-            logger.warning("Too long pending message, closing connection")
-            self.close()
-            return
-
         for m in mess:
             self.session.interpret(m)
 
+    def _load_message(self, data):
+        msg = golem_messages.load(data, None, None)
+        logger.debug(
+            'BasicProtocol._load_message(): received %r',
+            msg,
+        )
+        return msg
+
     def _data_to_messages(self):
         messages = []
-        def valid_len():
-            msg_len = self.db.peek_ulong()
-            return msg_len is None or msg_len <= MAX_MESSAGE_SIZE
-        if not valid_len():
-            return None
-        data = self.db.read_len_prefixed_bytes()
 
-        while data:
+        for data in self.db.get_len_prefixed_bytes():
+            if len(data) > MAX_MESSAGE_SIZE:
+                logger.info(
+                    'Ignoring huge message %dB from %r',
+                    len(data),
+                    self.transport.getPeer(),
+                )
+                continue
             if not self.spam_protector.check_msg(data):
-                return messages
+                continue
 
             try:
-                msg = golem_messages.load(data, None, None)
+                msg = self._load_message(data)
+            except golem_messages.exceptions.MessageError as e:
+                logger.info("Failed to deserialize message (%r) %r", e, data)
                 logger.debug(
-                    'BasicProtocol._data_to_messages(): received %r',
-                    msg,
+                    "BasicProtocol._data_to_messages() failed %r",
+                    data,
+                    exc_info=True,
                 )
-            except AssertionError:
-                # Decryption error
-                msg = None
 
-            if msg:
-                messages.append(msg)
-            else:
-                logger.error("Failed to deserialize message %r", data)
-
-            if not valid_len():
-                return None
-            data = self.db.read_len_prefixed_bytes()
+            messages.append(msg)
 
         return messages
 
@@ -416,31 +413,17 @@ class SafeProtocol(ServerProtocol):
         length = struct.pack("!L", len(serialized))
         return length + serialized
 
-    def _data_to_messages(self):
-        messages = []
-        for buf in self.db.get_len_prefixed_bytes():
-            if not self.spam_protector.check_msg(buf):
-                continue
-
-            try:
-                msg = golem_messages.load(
-                    buf,
-                    self.session.my_private_key,
-                    self.session.theirs_public_key,
-                )
-                logger.debug(
-                    'SafeProtocol._data_to_messages(): received %r',
-                    msg,
-                )
-            except AssertionError:
-                # Decryption error
-                msg = None
-            except golem_messages.exceptions.InvalidSignature:
-                logger.info("Failed to verify message signature %r", buf)
-                msg = None
-            if msg:
-                messages.append(msg)
-        return messages
+    def _load_message(self, data):
+        msg = golem_messages.load(
+            data,
+            self.session.my_private_key,
+            self.session.theirs_public_key,
+        )
+        logger.debug(
+            'SafeProtocol._load_message(): received %r',
+            msg,
+        )
+        return msg
 
 
 class FilesProtocol(SafeProtocol):
