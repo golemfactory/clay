@@ -7,12 +7,12 @@ from os import path
 
 from mock import patch, Mock
 
-from golem.ethereum import Client
 from golem.ethereum.node import log, NodeProcess, \
     FALLBACK_NODE_LIST, get_public_nodes
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
+from golem_sci.client import Client
 
 
 class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
