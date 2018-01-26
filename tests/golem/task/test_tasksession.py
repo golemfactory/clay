@@ -228,7 +228,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
             payment = ts.task_server.accept_result(subtask_id,
                                                    ts.result_owner)
-            ts.send(message.SubtaskResultAccepted(
+            ts.send(message.tasks.SubtaskResultsAccepted(
                 subtask_id=subtask_id,
                 payment_ts=payment.processed_ts))
             ts.dropped()
@@ -243,7 +243,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0], message.SubtaskResultRejected)
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsRejected)
         assert conn.close.called
 
         extra_data.update(dict(
@@ -256,7 +257,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == message.SubtaskResultAccepted
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsAccepted)
         assert conn.close.called
 
         extra_data.update(dict(
