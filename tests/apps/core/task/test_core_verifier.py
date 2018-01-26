@@ -23,10 +23,12 @@ class TestCoreVerifierr(TempDirFixture, LogTestCase):
         assert cv.state == SubtaskVerificationState.VERIFIED
 
     def test_check_files(self):
-        def callback():
+        def callback(subtask_id, verdict, result):
             pass
 
         cv = CoreVerifier(callback)
+        subtask_info = {"subtask_id": "2432423"}
+        cv.subtask_info = subtask_info
         cv._check_files(dict(), [], [], [])
         assert cv.state == SubtaskVerificationState.WRONG_ANSWER
 
