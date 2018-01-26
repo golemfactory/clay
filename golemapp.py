@@ -74,7 +74,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', default=None,
               help="Change level for all loggers and handlers, "
-              "possible values are WARNING, INFO or DEBUG")
+              "possible values are ERROR, WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
           start_geth, start_geth_port, geth_address, version, m, loglevel):
