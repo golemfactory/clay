@@ -2,7 +2,7 @@ import logging
 import os
 import struct
 import unittest
-from unittest import mock, TestCase
+from unittest import mock
 
 from freezegun import freeze_time
 from golem_messages import message
@@ -276,7 +276,7 @@ class TestBasicProtocol(LogTestCase):
         self.assertIsNone(protocol.dataReceived(data))
         self.assertEqual(load_mock.call_count, 0)
 
-class TestSocketAddress(TestCase):
+class TestSocketAddress(unittest.TestCase):
     def test_zone_index(self):
         base_address = "fe80::3"
         address = "fe80::3%eth0"
