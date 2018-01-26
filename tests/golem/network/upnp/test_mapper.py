@@ -31,6 +31,9 @@ class MockPortMapper(IPortMapper):
         if self._discover_raises:
             raise RuntimeError("Test error")
 
+    def get_mapping(self, external_port: int, protocol: str = 'TCP'):
+        pass
+
     def create_mapping(self, local_port, external_port=None,
                        protocol='TCP', lease_duration=None):
         pass

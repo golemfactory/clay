@@ -27,6 +27,12 @@ class IPortMapper(ABC):
         pass
 
     @abstractmethod
+    def get_mapping(self,
+                    external_port: int,
+                    protocol: str = 'TCP'):
+        pass
+
+    @abstractmethod
     def create_mapping(self,
                        local_port: int,
                        external_port: int = None,
@@ -81,7 +87,7 @@ class PortMapperManager(IPortMapper):
             try:
                 device = mapper.discover()
                 net = mapper.network
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.warning('%s: discovery error: %s', mapper.name, exc)
                 continue
 
@@ -92,6 +98,21 @@ class PortMapperManager(IPortMapper):
                 return device
 
             logger.warning('%s-compatible device was not found', mapper.name)
+
+    def get_mapping(self,
+                    external_port: int,
+                    protocol: str = 'TCP'):
+
+        if not self.available:
+            return None
+
+        mapper = self._active_mapper
+
+        try:
+            return mapper.get_mapping(external_port, protocol)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.info('%s: cannot retrieve mapping for port %u (%s): %s',
+                        mapper.name, external_port, protocol, exc)
 
     def create_mapping(self,
                        local_port: int,
@@ -107,7 +128,7 @@ class PortMapperManager(IPortMapper):
         try:
             port = mapper.create_mapping(local_port, external_port,
                                          protocol, lease_duration)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.warning('%s: cannot map port %u (%s): %s',
                            mapper.name, local_port, protocol, exc)
         else:
@@ -126,7 +147,7 @@ class PortMapperManager(IPortMapper):
 
         try:
             mapper.remove_mapping(external_port, protocol)
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.warning('%s: cannot remove external port %u (%s) mapping: '
                            '%r', mapper.name, external_port, protocol, exc)
             return False
