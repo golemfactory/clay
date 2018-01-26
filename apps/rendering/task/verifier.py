@@ -80,12 +80,13 @@ class FrameRenderingVerifier(RenderingVerifier):
     # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
                      success_=None, failure=None):
-        if super(FrameRenderingVerifier, self)._verify_imgs(
+        result = super(FrameRenderingVerifier, self)._verify_imgs(
             subtask_info,
             results,
             reference_data,
             resources
-        ):
+        )
+        if result:
             success_()
         else:
             failure()
