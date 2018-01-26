@@ -1,11 +1,13 @@
 import logging
 import os
 import struct
+import unittest
 from unittest import mock, TestCase
 
 from freezegun import freeze_time
 from golem_messages import message
 
+from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
@@ -25,6 +27,13 @@ from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 MagicMock = mock.MagicMock
+
+
+class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = [
+        'golem/network/transport/tcpnetwork.py',
+        'golem/network/transport/tcpnetwork_helpers.py',
+    ]
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
