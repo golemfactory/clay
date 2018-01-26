@@ -16,9 +16,12 @@ class RenderingVerifier(CoreVerifier):
             self.state = SubtaskVerificationState.VERIFIED
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
+        self.verification_completed()
 
     # pylint: disable=unused-argument
-    def _verify_imgs(self, subtask_info, results, reference_data, resources):
+    # pylint: disable-msg=too-many-arguments
+    def _verify_imgs(self, subtask_info, results, reference_data, resources,
+                     success_=None, failure=None):
         if not results:
             return False
 
@@ -61,12 +64,32 @@ class FrameRenderingVerifier(RenderingVerifier):
             frames_list = subtask_info['frames']
             if len(results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
-                return
-        if not self._verify_imgs(subtask_info, results, reference_data,
-                                 resources):
-            self.state = SubtaskVerificationState.WRONG_ANSWER
-        else:
+                self.verification_completed()
+
+        def success():
             self.state = SubtaskVerificationState.VERIFIED
+            self.verification_completed()
+
+        def failure():
+            self.state = SubtaskVerificationState.WRONG_ANSWER
+            self.verification_completed()
+
+        self._verify_imgs(subtask_info, results, reference_data, resources,
+                          success, failure)
+
+    # pylint: disable-msg=too-many-arguments
+    def _verify_imgs(self, subtask_info, results, reference_data, resources,
+                     success_=None, failure=None):
+        result = super(FrameRenderingVerifier, self)._verify_imgs(
+            subtask_info,
+            results,
+            reference_data,
+            resources
+        )
+        if result:
+            success_()
+        else:
+            failure()
 
     def _get_part_img_size(self, subtask_info):
         use_frames = subtask_info['use_frames']

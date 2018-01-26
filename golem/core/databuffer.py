@@ -1,5 +1,4 @@
 import struct
-from golem.core.common import to_unicode
 
 from .variables import LONG_STANDARD_SIZE
 

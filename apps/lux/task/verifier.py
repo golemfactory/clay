@@ -27,6 +27,8 @@ class LuxRenderVerifier(RenderingVerifier):
             self.message = "Exception during verification of subtask: "
             self.message += str(subtask_info["subtask_id"]) + " " + str(e)
             logger.info(self.message)
+        finally:
+            self.verification_completed()
 
     # pylint: disable=unused-argument
     def _validate_lux_results(self, subtask_info, results, reference_data,

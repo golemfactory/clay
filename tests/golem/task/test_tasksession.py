@@ -238,6 +238,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server = mock.Mock()
         ts.task_manager = mock.Mock()
         ts.task_manager.verify_subtask.return_value = True
+        subtask_id = "xxyyzz"
+
+        def finished():
+            if not ts.task_manager.verify_subtask(subtask_id):
+                ts._reject_subtask_result(subtask_id)
+                ts.dropped()
+                return
+
+            payment = ts.task_server.accept_result(subtask_id,
+                                                   ts.result_owner)
+            ts.send(message.tasks.SubtaskResultsAccepted(
+                subtask_id=subtask_id,
+                payment_ts=payment.processed_ts))
+            ts.dropped()
 
         extra_data = dict(
             # the result is explicitly serialized using cPickle
@@ -249,7 +263,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0], message.SubtaskResultRejected)
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsRejected)
         assert conn.close.called
 
         extra_data.update(dict(
@@ -258,10 +273,14 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         conn.close.called = False
         ts.msgs_to_send = []
 
+        ts.task_manager.computed_task_received = mock.Mock(
+            side_effect=finished(),
+        )
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == message.SubtaskResultAccepted
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsAccepted)
         assert conn.close.called
 
         extra_data.update(dict(

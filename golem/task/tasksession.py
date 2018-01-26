@@ -261,7 +261,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.conn.producer = None
         self.dropped()
 
-    @dropped_after()
     def result_received(self, extra_data, decrypt=True):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about
@@ -275,12 +274,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if not subtask_id:
             logger.error("No task_id value in extra_data for received data ")
-            return
+            self.dropped()
 
         if result_type is None:
             logger.error("No information about result_type for received data ")
             self._reject_subtask_result(subtask_id)
-            return
+            self.dropped()
 
         if result_type == ResultType.DATA:
             try:
@@ -292,19 +291,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 self._reject_subtask_result(subtask_id)
                 return
 
+        def verification_finished():
+            if not self.task_manager.verify_subtask(subtask_id):
+                self._reject_subtask_result(subtask_id)
+                self.dropped()
+                return
+
+            payment = self.task_server.accept_result(subtask_id,
+                                                     self.result_owner)
+            self.send(message.tasks.SubtaskResultsAccepted(
+                subtask_id=subtask_id,
+                payment_ts=payment.processed_ts))
+            self.dropped()
+
         self.task_manager.computed_task_received(
             subtask_id,
             result,
-            result_type
+            result_type,
+            verification_finished
         )
-        if not self.task_manager.verify_subtask(subtask_id):
-            self._reject_subtask_result(subtask_id)
-            return
-
-        payment = self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.SubtaskResultAccepted(
-            subtask_id=subtask_id,
-            payment_ts=payment.processed_ts))
 
     @log_error()
     def inform_worker_about_payment(self, payment):
@@ -438,7 +443,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(message.SubtaskResultRejected(subtask_id=subtask_id))
+        self.send(message.tasks.SubtaskResultsRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -1031,8 +1036,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.TaskResultHash.TYPE: self._react_to_task_result_hash,
             message.GetResource.TYPE: self._react_to_get_resource,
             message.ResourceList.TYPE: self._react_to_resource_list,
-            message.SubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
-            message.SubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
+            message.tasks.SubtaskResultsAccepted.TYPE:
+                self._react_to_subtask_result_accepted,
+            message.tasks.SubtaskResultsRejected.TYPE:
+                self._react_to_subtask_result_rejected,
             message.TaskFailure.TYPE: self._react_to_task_failure,
             message.DeltaParts.TYPE: self._react_to_delta_parts,
             message.Hello.TYPE: self._react_to_hello,

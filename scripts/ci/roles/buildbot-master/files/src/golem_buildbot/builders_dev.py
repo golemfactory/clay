@@ -79,9 +79,7 @@ def has_no_previous_success(step):
 
 
 class StepsFactory(object):
-    extra_requirements = [
-        'git+https://github.com/pyinstaller/pyinstaller.git',
-    ]
+    extra_requirements = []
 
     # Basic Linux settings, override other platforms.
     platform = 'linux'
@@ -97,6 +95,7 @@ class StepsFactory(object):
     version_script = 'Installer/Installer_Win/version.py'
 
     def build_factory(self):
+        self.requirements_files += ['requirements-build.txt']
         factory = util.BuildFactory()
         factory.addStep(self.git_step())
         factory.addStep(self.venv_step())
@@ -109,6 +108,7 @@ class StepsFactory(object):
         return factory
 
     def test_factory(self):
+        self.requirements_files += ['requirements-test.txt']
         factory = util.BuildFactory()
         factory.addStep(self.git_step())
         factory.addStep(self.venv_step())
@@ -145,7 +145,6 @@ class StepsFactory(object):
             doStepIf=has_no_previous_success)
 
     def requirements_step(self):
-        gitpy_repo = 'git+https://github.com/gitpython-developers/GitPython'
         install_req_cmd = self.pip_command + ['install']
         for rf in self.requirements_files:
             install_req_cmd.append('-r')
@@ -170,11 +169,6 @@ class StepsFactory(object):
                 util.ShellArg(
                     logfile='uninstall enum34',
                     command=self.pip_command + ['uninstall', '-y', 'enum34'],
-                    haltOnFailure=True),
-                util.ShellArg(
-                    logfile='install missing requirements',
-                    command=self.pip_command + ['install', '--upgrade',
-                                                gitpy_repo],
                     haltOnFailure=True),
                 util.ShellArg(
                     logfile='setup.py develop',
@@ -253,8 +247,6 @@ class StepsFactory(object):
             doStepIf=has_no_previous_success)
 
     def test_step(self):
-        install_req_cmd = self.pip_command + ['install', '-r',
-                                              'requirements-test.txt']
 
         test_command = ['-m', 'pytest', '--cov=golem', '--durations=5', '-rxs']
 
@@ -280,18 +272,6 @@ class StepsFactory(object):
                 name='run tests',
                 commands=[
                     util.ShellArg(
-                        logfile='install requirements',
-                        command=install_req_cmd,
-                        flunkOnFailure=True),
-                    # TODO: move to requirements itself?
-                    util.ShellArg(
-                        logfile='install missing requirement',
-                        command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                    'codecov', 'pytest-cov'],
-                        flunkOnFailure=True),
-                    # TODO: add xml results
-                    # TODO 2: add run slow
-                    util.ShellArg(
                         logfile='run tests',
                         command=self.python_command + test_command,
                         flunkOnFailure=True),
@@ -304,18 +284,6 @@ class StepsFactory(object):
             steps.ShellSequence(
                 name='run slow tests',
                 commands=[
-                    util.ShellArg(
-                        logfile='install requirements',
-                        command=install_req_cmd,
-                        flunkOnFailure=True),
-                    # TODO: move to requirements itself?
-                    util.ShellArg(
-                        logfile='install missing requirement',
-                        command=self.pip_command + ['install', 'pyasn1==0.2.3',
-                                                    'codecov', 'pytest-cov'],
-                        flunkOnFailure=True),
-                    # TODO: add xml results
-                    # TODO 2: add run slow
                     util.ShellArg(
                         logfile='run tests',
                         command=self.python_command + test_slow_command,
@@ -385,14 +353,14 @@ class WindowsStepsFactory(StepsFactory):
     pip_command = [r'.venv\Scripts\pip.exe']
     venv_bin_path = util.Interpolate(r'%(prop:builddir)s\build\.venv\Scripts')
     venv_path = util.Interpolate(r'%(prop:builddir)s\build\.venv')
-    requirements_files = ['requirements.txt', 'requirements-win.txt']
+    requirements_files = StepsFactory.requirements_files + \
+        ['requirements-win.txt']
     build_taskcollector_command = [
         'msbuild',
         r'apps\rendering\resources\taskcollector\taskcollector.sln',
         r'/p:Configuration=Release',
         r'/p:Platform=x64',
     ]
-    extra_requirements = StepsFactory.extra_requirements + ['pyethash==0.1.23']
     pathsep = '\\'
     golem_package = r'Installer\Installer_Win\Golem_win_%(prop:version)s.exe'
     golem_package_extension = 'exe'
