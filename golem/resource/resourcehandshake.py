@@ -1,9 +1,8 @@
-from golem_messages import message
 import logging
 import os
 import uuid
 
-from golem.core.async import AsyncRequest, async_run
+from golem_messages import message
 
 logger = logging.getLogger('golem.resources')
 
@@ -221,12 +220,13 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        async_req = AsyncRequest(self.resource_manager.add_file,
-                                 handshake.file,
-                                 self.NONCE_TASK)
-        async_run(async_req,
-                  success=lambda res: self._nonce_shared(key_id, res),
-                  error=lambda exc: self._handshake_error(key_id, exc))
+        deferred = self.resource_manager.add_file(handshake.file,
+                                                  self.NONCE_TASK,
+                                                  async_=True)
+        deferred.addCallbacks(
+            lambda res: self._nonce_shared(key_id, res),
+            lambda exc: self._handshake_error(key_id, exc)
+        )
 
     def _nonce_shared(self, key_id, result):
         handshake = self._get_handshake(key_id)
@@ -301,11 +301,11 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.deny_set.add(key_id)
+        self.task_server.acl.disallow(key_id)
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
-        return key_id in self.task_server.deny_set
+        return not self.task_server.acl.is_allowed(key_id)
 
     # ########################
     #         MESSAGES

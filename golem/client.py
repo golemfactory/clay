@@ -8,7 +8,7 @@ from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from threading import Lock, Thread
-from typing import Dict
+from typing import Dict, Hashable
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
@@ -17,7 +17,8 @@ from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
 import golem
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
                              PUBLISH_TASKS_INTERVAL,
-                             TASKARCHIVE_MAINTENANCE_INTERVAL)
+                             TASKARCHIVE_MAINTENANCE_INTERVAL,
+                             PAYMENT_CHECK_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -202,8 +203,6 @@ class Client(HardwarePresetsMixin):
 
         self.resource_server = None
         self.resource_port = 0
-        self.last_get_resource_peers_time = time.time()
-        self.get_resource_peers_interval = 5.0
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
@@ -494,10 +493,11 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        task_id = task.header.task_id
+
         task_manager = self.task_server.task_manager
         task_manager.add_new_task(task)
-
-        task_id = task.header.task_id
+        task_state = task_manager.tasks_states[task_id]
 
         tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
@@ -506,9 +506,7 @@ class Client(HardwarePresetsMixin):
                                        resources=task.get_resources())
 
         def add_task(result):
-            task_state = task_manager.tasks_states[task_id]
             task_state.resource_hash = result[0]
-
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
@@ -652,9 +650,6 @@ class Client(HardwarePresetsMixin):
 
     def get_suggested_conn_reverse(self, key_id):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
-
-    def get_resource_peers(self):
-        self.p2pservice.send_get_resource_peers()
 
     def get_peers(self):
         return list(self.p2pservice.peers.values())
@@ -1173,6 +1168,7 @@ class DoWorkService(LoopingCallService):
     def __init__(self, client: Client):
         super().__init__(interval_seconds=1)
         self._client = client
+        self._check_ts = {}
 
     def start(self):
         super().start(now=False)
@@ -1200,10 +1196,19 @@ class DoWorkService(LoopingCallService):
             self._client.ranking.sync_network()
         except Exception:
             log.exception("ranking.sync_network failed")
-        try:
-            self._client.check_payments()
-        except Exception:
-            log.exception("check_payments failed")
+
+        if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
+            try:
+                self._client.check_payments()
+            except Exception:  # pylint: disable=broad-except
+                log.exception("check_payments failed")
+
+    def _time_for(self, key: Hashable, interval_seconds: float):
+        now = time.time()
+        if now >= self._check_ts.get(key, 0):
+            self._check_ts[key] = now + interval_seconds
+            return True
+        return False
 
 
 class MonitoringPublisherService(LoopingCallService):
