@@ -103,7 +103,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.peer_order = []  # peer connection order
         self.incoming_peers = {}  # known peers with connections
         self.free_peers = []  # peers to which we're not connected
-        self.resource_peers = {}
         self.seeds = set()
         self.used_seeds = set()
 
@@ -600,74 +599,19 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         self.resource_server = resource_server
 
-    def set_resource_peer(self, addr, port):
-        """Set resource server port and add it to resource peers set
-        :param str addr: address of resource server
-        :param int port: resource server listen port
-        """
-        self.resource_port = port
-        self.resource_peers[self.keys_auth.get_key_id()] = [
-            addr,
-            port,
-            self.node_name,
-            self.node
-        ]
-
-    def send_get_resource_peers(self):
-        """ Request information about resource peers from peers"""
-        for p in list(self.peers.values()):
-            p.send_get_resource_peers()
-
-    def get_resource_peers(self):
-        """ Prepare information about resource peers
-        :return list: list of resource peers information
-        """
-        resource_peers_info = []
-        resource_peers = dict(self.resource_peers)
-        for key_id, additional_items in resource_peers.items():
-            [addr, port, node_name, node_info] = additional_items
-            resource_peers_info.append({
-                'node_name': node_name,
-                'addr': addr,
-                'port': port,
-                'key_id': key_id,
-                'node': node_info,
-            })
-
-        return resource_peers_info
-
-    def set_resource_peers(self, resource_peers):
-        """ Add new resource peers information to resource server
-        :param dict resource_peers: dictionary resource peers known by
-        :return:
-        """
-        for peer in resource_peers:
-            try:
-                if peer['key_id'] != self.keys_auth.get_key_id():
-                    self.resource_peers[peer['key_id']] = [
-                        peer['addr'],
-                        peer['port'],
-                        peer['node_name'],
-                        peer['node'],
-                    ]
-            except KeyError as err:
-                logger.error(
-                    "Wrong set peer message (peer: %r): %r",
-                    peer,
-                    str(err)
-                )
-        resource_peers_copy = self.resource_peers.copy()
-        if self.get_key_id() in resource_peers_copy:
-            del resource_peers_copy[self.node_name]
-        self.resource_server.set_resource_peers(resource_peers_copy)
-
     # TASK FUNCTIONS
     ############################
-    def get_tasks_headers(self):
+    def get_own_tasks_headers(self):
         """ Return a list of a known tasks headers
         :return list: list of task header
         """
-        return self.task_server.get_tasks_headers()
+        return self.task_server.get_own_tasks_headers()
+
+    def get_others_tasks_headers(self):
+        """ Return a list of a known tasks headers
+        :return list: list of task header
+        """
+        return self.task_server.get_others_tasks_headers()
 
     def add_task_header(self, th_dict_repr):
         """ Add new task header to a list of known task headers

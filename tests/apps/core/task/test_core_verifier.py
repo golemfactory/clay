@@ -7,11 +7,28 @@ from apps.core.task.verifier import CoreVerifier
 
 class TestCoreVerifierr(TempDirFixture, LogTestCase):
 
-    def test_check_files(self):
-        def callback():
+    def test_start_verification(self):
+        # given
+        def callback(*args, **kwargs):
             pass
 
         cv = CoreVerifier(callback)
+        subtask_info = {'subtask_id': 5}
+        files = self.additional_dir_content([1])
+
+        # when
+        cv.start_verification(subtask_info, [], [], files)
+
+        # then
+        assert cv.state == SubtaskVerificationState.VERIFIED
+
+    def test_check_files(self):
+        def callback(subtask_id, verdict, result):
+            pass
+
+        cv = CoreVerifier(callback)
+        subtask_info = {"subtask_id": "2432423"}
+        cv.subtask_info = subtask_info
         cv._check_files(dict(), [], [], [])
         assert cv.state == SubtaskVerificationState.WRONG_ANSWER
 

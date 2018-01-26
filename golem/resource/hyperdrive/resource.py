@@ -19,6 +19,10 @@ def norm_path(path):
     return os.path.join(*split) if split else ''
 
 
+class ResourceError(RuntimeError):
+    pass
+
+
 class Resource:
 
     __slots__ = ('hash', 'files', 'path', 'task_id')
@@ -189,5 +193,5 @@ class ResourceStorage(object):
         elif os.path.isdir(src_path):
             copy_file_tree(src_path, dst_path)
         else:
-            raise ValueError("Error reading source path: '{}'"
-                             .format(src_path))
+            raise ResourceError("Error reading source path: '{}'"
+                                .format(src_path))

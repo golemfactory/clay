@@ -110,6 +110,18 @@ class IncomesKeeper(object):
             value=value
         )
 
+    def update_awaiting(self, subtask_id, accepted_ts):
+        try:
+            # FIXME: query by (sender_id, subtask_id)
+            income = ExpectedIncome.get(subtask=subtask_id)
+        except ExpectedIncome.DoesNotExist:
+            logger.error(
+                "ExpectedIncome.DoesNotExist subtask_id: %r",
+                subtask_id)
+            return
+        income.accepted_ts = accepted_ts
+        income.save()
+
     def get_list_of_all_incomes(self):
         # TODO: pagination
         union = ExpectedIncome.select(

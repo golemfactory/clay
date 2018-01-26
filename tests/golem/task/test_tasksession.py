@@ -4,6 +4,7 @@ import pathlib
 import pickle
 import random
 import unittest
+import unittest.mock as mock
 import uuid
 from unittest.mock import Mock, MagicMock, patch
 
@@ -13,12 +14,13 @@ from golem_messages import message
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
+from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -77,7 +79,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
-        conn = Mock(server=Mock(deny_set=set()))
+        conn = Mock(server=Mock())
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
         ts.verified = True
@@ -97,7 +99,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.can_be_not_encrypted.append(mt.TYPE)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
+
+        ctd = message.tasks.ComputeTaskDef()
+        ctd['task_owner'] = Node().to_dict()
+
+        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
@@ -106,7 +112,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", True, False)
+        ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
@@ -212,6 +218,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server = Mock()
         ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
+        subtask_id = "xxyyzz"
+
+        def finished():
+            if not ts.task_manager.verify_subtask(subtask_id):
+                ts._reject_subtask_result(subtask_id)
+                ts.dropped()
+                return
+
+            payment = ts.task_server.accept_result(subtask_id,
+                                                   ts.result_owner)
+            ts.send(message.tasks.SubtaskResultsAccepted(
+                subtask_id=subtask_id,
+                payment_ts=payment.processed_ts))
+            ts.dropped()
 
         extra_data = dict(
             # the result is explicitly serialized using cPickle
@@ -223,7 +243,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0], message.SubtaskResultRejected)
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsRejected)
         assert conn.close.called
 
         extra_data.update(dict(
@@ -232,10 +253,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         conn.close.called = False
         ts.msgs_to_send = []
 
+        ts.task_manager.computed_task_received = Mock(side_effect=finished())
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == message.SubtaskResultAccepted
+        assert isinstance(ts.msgs_to_send[0],
+                          message.tasks.SubtaskResultsAccepted)
         assert conn.close.called
 
         extra_data.update(dict(
@@ -325,12 +348,12 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd = message.ComputeTaskDef()
         ctd['key_id'] = "KEY_ID"
         ctd['subtask_id'] = "SUBTASKID"
-        ctd['task_owner'] = Node()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner'] = Node().to_dict()
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 1112
         ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
-        msg = message.TaskToCompute(compute_task_def=ctd, raw=b'\0')
+        msg = message.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -360,7 +383,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         # Wrong task owner key id -> failure
         __reset_mocks()
         ctd['key_id'] = "KEY_ID"
-        ctd['task_owner'].key = "KEY_ID2"
+        ctd['task_owner']['key'] = "KEY_ID2"
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
             raw=b'\0',
@@ -371,7 +394,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Wrong return port -> failure
         __reset_mocks()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_port'] = 0
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -383,7 +406,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         # Proper port and key -> proper execution
         __reset_mocks()
-        ctd['task_owner'].key = "KEY_ID"
+        ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_port'] = 1319
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -469,7 +492,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         de.main_program_file = file_name
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
@@ -639,11 +661,6 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         super(TestSessionWithDB, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
-        history.MessageHistoryService.instance = None
-
-    def tearDown(self):
-        super().tearDown()
-        history.MessageHistoryService.instance = None
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_inform_worker_about_payment(self, send_mock):
@@ -701,22 +718,30 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         self.task_session._react_to_subtask_payment_request(msg)
         inform_mock.assert_called_once_with(payment)
 
+
+class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
+                                      testutils.TempDirFixture):
+    def setUp(self):
+        testutils.DatabaseFixture.setUp(self)
+        testutils.TempDirFixture.setUp(self)
+        history.MessageHistoryService()
+
+    def tearDown(self):
+        testutils.DatabaseFixture.tearDown(self)
+        testutils.TempDirFixture.tearDown(self)
+        history.MessageHistoryService.instance = None
+
     def test_send_report_computed_task_concent_no_message(self):
         ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
-        ts.verified = True
         n = Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
-        history.MessageHistoryService()
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ts.concent_service.submit.assert_not_called()
 
     def test_send_report_computed_task_concent_success(self):
         ts = TaskSession(Mock())
-        ts.sign = lambda x: b'\0' * message.Message.SIG_LEN
-        ts.verified = True
         n = Node()
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -735,10 +760,64 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             local_role=model.Actor.Provider,
             remote_role=model.Actor.Requestor,
         )
-        service = history.MessageHistoryService()
+        service = history.MessageHistoryService.instance
         service.add_sync(nmsg_dict)
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-        self.assertEqual(ts.concent_service.submit.call_count, 1)
+        ts.concent_service.submit.assert_called_once_with(
+            concent_client.ConcentRequest.build_key(
+                subtask_id,
+                'ForceReportComputedTask',
+            ),
+            mock.ANY,
+        )
+        msg = ts.concent_service.submit.call_args[0][1]
+        self.assertEqual(
+            msg.result_hash,
+            'sha1:37a5301a88da334dc5afc5b63979daa0f3f45e68',
+        )
+
+    def test_send_report_computed_task_concent_success_many_files(self):
+        ts = TaskSession(Mock())
+        n = Node()
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4())
+        result = []
+        for i in range(100, 300, 99):
+            p = pathlib.Path(self.tempdir) / str(i)
+            with p.open('wb') as f:
+                f.write(b'\0' * i*2**20)
+            result.append(str(p))
+        wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n)
+        task_to_compute = message.TaskToCompute()
+        nmsg_dict = dict(
+            task=task_id,
+            subtask=subtask_id,
+            node=node_id,
+            msg_date=datetime.datetime.now(),
+            msg_cls='TaskToCompute',
+            msg_data=pickle.dumps(task_to_compute),
+            local_role=model.Actor.Provider,
+            remote_role=model.Actor.Requestor,
+        )
+        service = history.MessageHistoryService().instance
+        service.add_sync(nmsg_dict)
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_called_once_with(
+            concent_client.ConcentRequest.build_key(
+                subtask_id,
+                'ForceReportComputedTask',
+            ),
+            mock.ANY,
+        )
+        msg = ts.concent_service.submit.call_args[0][1]
+        self.assertEqual(
+            msg.result_hash,
+            'sha1:2bebc22296f03225617704d29d277c9e96fafcc2',
+        )
+
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))

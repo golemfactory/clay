@@ -75,7 +75,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_check_version_compatibility(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
-        tk.app_version = '0.4.5'
+        tk.app_version = '0.4.5-dev+232.138018'
 
         with self.assertRaises(ValueError):
             tk.check_version_compatibility('')

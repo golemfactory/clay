@@ -50,9 +50,6 @@ class BaseResourceServer(object):
     def get_distributed_resource_root(self):
         return self.resource_manager.storage.get_root()
 
-    def get_peers(self):
-        self.client.get_resource_peers()
-
     def sync_network(self):
         self._download_resources()
 
@@ -99,7 +96,7 @@ class BaseResourceServer(object):
             self.pending_resources.pop(task_id, None)
             return task_id
 
-    def _download_resources(self, async=True):
+    def _download_resources(self, async_=True):
         pending = dict(self.pending_resources)
 
         for task_id, entries in list(pending.items()):
@@ -110,7 +107,7 @@ class BaseResourceServer(object):
                                                         client_options=entry.client_options,
                                                         success=self._download_success,
                                                         error=self._download_error,
-                                                        async=async)
+                                                        async_=async_)
 
     def _download_success(self, resource, _, task_id):
         if resource:
@@ -145,9 +142,6 @@ class BaseResourceServer(object):
         return self.keys_auth.verify(sig, data, public_key)
 
     def start_accepting(self):
-        pass
-
-    def set_resource_peers(self, *args, **kwargs):
         pass
 
     def add_files_to_send(self, *args):

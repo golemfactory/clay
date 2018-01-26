@@ -13,6 +13,7 @@ from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     SqliteDatabase, TextField, BlobField)
+from playhouse.shortcuts import RetryOperationalError
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
@@ -21,15 +22,25 @@ from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
+
+class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
+
+    def sequence_exists(self, seq):
+        raise NotImplementedError()
+
+
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = GolemSqliteDatabase(None, threadlocals=True,
+                         pragmas=(
+                             ('foreign_keys', True),
+                             ('busy_timeout', 1000),
+                             ('journal_mode', 'WAL')))
 
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 7
+    SCHEMA_VERSION = 8
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -247,6 +258,7 @@ class ExpectedIncome(BaseModel):
     task = CharField()
     subtask = CharField()
     value = BigIntegerField()
+    accepted_ts = IntegerField(null=True)
 
     def __repr__(self):
         return "<ExpectedIncome: {!r} v:{:.3f}>"\

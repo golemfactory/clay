@@ -121,7 +121,7 @@ class TaskHeader(object):
         return sorted(dictionary.items())
 
 
-class TaskBuilder(object):
+class TaskBuilder(abc.ABC):
     def __init__(self):
         pass
 
@@ -150,7 +150,7 @@ class TaskEventListener(object):
         pass
 
 
-class Task(metaclass=abc.ABCMeta):
+class Task(abc.ABC):
 
     class ExtraData(object):
         def __init__(self, should_wait=False, ctd=None, **kwargs):
@@ -248,7 +248,9 @@ class Task(metaclass=abc.ABCMeta):
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA,
+                             verification_finished=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
