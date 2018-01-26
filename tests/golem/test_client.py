@@ -973,6 +973,21 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    def test_test_status(self, *_):
+        c = self.client
+
+        result = c.check_test_status()
+        self.assertFalse(result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.started})
+        result = c.check_test_status()
+        print(result)
+        self.assertEqual(c.task_test_result, result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.success})
+        result = c.check_test_status()
+        self.assertEqual(c.task_test_result, None)
+
     def test_create_task(self, *_):
         t = DummyTask(total_tasks=10, node_name="node_name",
                       task_definition=DummyTaskDefinition())
