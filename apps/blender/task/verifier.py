@@ -66,16 +66,20 @@ class BlenderVerifier(FrameRenderingVerifier):
     # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
                      success_=None, failure=None):
-        def success():
-            self.success = success_
-            self.failure = failure
-            self._render_crops(subtask_info, resources)
+        try:
+            def success():
+                self.success = success_
+                self.failure = failure
+                self._render_crops(subtask_info, resources)
 
-        super()._verify_imgs(
-            subtask_info,
-            results,
-            reference_data,
-            resources, success, failure)
+            super()._verify_imgs(
+                subtask_info,
+                results,
+                reference_data,
+                resources, success, failure)
+        except Exception as e:
+            logger.error("Crop generation failed %r", e)
+            failure()
 
     def _render_crops(self, subtask_info, resources,
                       num_crops=NUM_CROPS, crop_size=None):
