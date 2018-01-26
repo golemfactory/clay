@@ -218,6 +218,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server = Mock()
         ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
+        subtask_id = "xxyyzz"
+
+        def finished():
+            if not ts.task_manager.verify_subtask(subtask_id):
+                ts._reject_subtask_result(subtask_id)
+                ts.dropped()
+                return
+
+            payment = ts.task_server.accept_result(subtask_id,
+                                                   ts.result_owner)
+            ts.send(message.SubtaskResultAccepted(
+                subtask_id=subtask_id,
+                payment_ts=payment.processed_ts))
+            ts.dropped()
 
         extra_data = dict(
             # the result is explicitly serialized using cPickle
@@ -238,6 +252,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         conn.close.called = False
         ts.msgs_to_send = []
 
+        ts.task_manager.computed_task_received = Mock(side_effect=finished())
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send

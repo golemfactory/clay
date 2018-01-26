@@ -594,7 +594,6 @@ class BlenderRenderTask(FrameRenderingTask):
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
 
-
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
     renderer options

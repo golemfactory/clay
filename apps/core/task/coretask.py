@@ -200,13 +200,19 @@ class CoreTask(Task):
         self._mark_subtask_failed(subtask_id)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA):
+                             result_type=ResultType.DATA,
+                             verification_finished_=None):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        verifier = self.VERIFIER_CLASS(self.verification_finished)
+
+        def verification_finished(subtask_id, verdict, result):
+            self.verification_finished(subtask_id, verdict, result)
+            verification_finished_()
+
+        verifier = self.VERIFIER_CLASS(verification_finished)
         verifier.computer = ComputerAdapter()
         verifier.start_verification(
             subtask_info=self.subtasks_given[subtask_id],
