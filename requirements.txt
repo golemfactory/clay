@@ -8,7 +8,8 @@ peewee>=2.8.1
 Pillow==4.2.1
 psutil==5.2.2
 pluggy==0.6.0
-pyelliptic==1.5.7
+# pyelliptic==1.5.9
+git+https://github.com/mfranciszkiewicz/pyelliptic.git@openssl_1_1#egg=pyelliptic
 coincurve>=5.0.1
 asn1crypto==0.22.0
 pyasn1==0.4.1
