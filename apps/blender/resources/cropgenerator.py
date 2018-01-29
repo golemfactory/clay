@@ -32,7 +32,7 @@ def generate_crops(resolution, crop_scene_window, num_crops,
 
 def random_crop(min_, max_, size_):
     difference = round((max_ - size_) * 100, 2)
-    crop_min = random.randint(round(min_ * 100), difference) / 100
+    crop_min = random.randint(int(round(min_ * 100)), int(difference)) / 100
     crop_max = round(crop_min + size_, 2)
     return crop_min, crop_max
 

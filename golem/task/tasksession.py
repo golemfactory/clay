@@ -501,7 +501,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             msg = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
+                requestor_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
+                provider_public_key=self.key_id,
             )
             self.send(msg)
         elif wait:

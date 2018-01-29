@@ -101,13 +101,14 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(mt.num_cores, 8)
         ts2 = TaskSession(conn)
         ts2.verified = True
-        ts2.key_id = "DEF"
+        ts2.key_id = provider_key = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
 
         ctd = message.tasks.ComputeTaskDef()
         ctd['task_owner'] = Node().to_dict()
+        ctd['task_owner']['key'] = requestor_key = 'req pubkey'
 
         ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
         ts2.interpret(mt)
@@ -118,6 +119,14 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
+        expected = [
+            ['requestor_id', requestor_key],
+            ['provider_id', provider_key],
+            ['requestor_public_key', requestor_key],
+            ['provider_public_key', provider_key],
+            ['compute_task_def', ctd],
+        ]
+        self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
@@ -362,7 +371,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             conn.reset_mock()
 
         # msg.ctd is None -> failure
-        msg = message.TaskToCompute(raw=b'\0')
+        msg = message.TaskToCompute()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -402,7 +411,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['key_id'] = "KEY_ID2"
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -414,7 +422,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['task_owner']['key'] = "KEY_ID2"
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -426,7 +433,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['return_port'] = 0
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -438,7 +444,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['return_port'] = 1319
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         conn.close.assert_not_called()
 
@@ -448,7 +453,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['src_code'] = ""
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -459,7 +463,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['src_code'] = "print 'Hello world!'"
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
@@ -471,7 +474,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server.get_environment_by_id.return_value = None
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -488,7 +490,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ])
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -506,7 +507,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server.get_environment_by_id.return_value = de
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
-            raw=b'\0',
         ))
         assert ts.err_msg == reasons.NoSourceCode
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -550,11 +550,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         msg_ack = message.AckReportComputedTask(
             subtask_id='subtask_id',
-            raw=b'',
         )
         msg_rej = message.RejectReportComputedTask(
             subtask_id='subtask_id',
-            raw=b'',
         )
 
         # Subtask is not known
@@ -592,7 +590,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             reward=reward,
             transaction_id=None,
             block_number=None,
-            raw=b''
         )
 
         self.task_session.interpret(msg)
@@ -646,7 +643,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_task_subtask_from_message(self):
         self.task_session._subtask_to_task = mock.Mock(return_value=None)
         definition = message.ComputeTaskDef({'task_id': 't', 'subtask_id': 's'})
-        msg = message.TaskToCompute(compute_task_def=definition, raw=b'\0')
+        msg = message.TaskToCompute(compute_task_def=definition)
 
         task, subtask = self.task_session._task_subtask_from_message(
             msg, Actor.Provider)
@@ -657,7 +654,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
     def test_task_subtask_from_other_message(self):
         self.task_session._subtask_to_task = mock.Mock(return_value=None)
-        msg = message.Hello(raw=b'\0')
+        msg = message.Hello()
 
         task, subtask = self.task_session._task_subtask_from_message(
             msg, Actor.Provider
@@ -878,7 +875,7 @@ class TestCreatePackage(unittest.TestCase):
         res.subtask_id = subtask_id
         ts.task_server.get_waiting_task_result.return_value = res
 
-        msg = message.GetTaskResult(subtask_id=subtask_id, raw=b'')
+        msg = message.GetTaskResult(subtask_id=subtask_id)
 
         self.subtask_id = subtask_id
         self.ts = ts
