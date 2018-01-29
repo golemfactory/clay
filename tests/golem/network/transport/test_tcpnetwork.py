@@ -1,11 +1,13 @@
 import logging
 import os
 import struct
-from unittest import mock, TestCase
+import unittest
+from unittest import mock
 
 from freezegun import freeze_time
 from golem_messages import message
 
+from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
@@ -25,6 +27,13 @@ from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 MagicMock = mock.MagicMock
+
+
+class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = [
+        'golem/network/transport/tcpnetwork.py',
+        'golem/network/transport/tcpnetwork_helpers.py',
+    ]
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -255,16 +264,19 @@ class TestBasicProtocol(LogTestCase):
             protocol.dataReceived(packed_data)
             protocol.session.interpret.assert_called_once_with(msg)
 
-    def test_dataReceived_long(self):
+    @mock.patch(
+        'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
+    )
+    def test_dataReceived_long(self, load_mock):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
         protocol = BasicProtocol()
         protocol.transport = MagicMock()
         protocol.opened = True
         protocol.session = MagicMock()
         self.assertIsNone(protocol.dataReceived(data))
-        protocol.transport.loseConnection.assert_called_once_with()
+        self.assertEqual(load_mock.call_count, 0)
 
-class TestSocketAddress(TestCase):
+class TestSocketAddress(unittest.TestCase):
     def test_zone_index(self):
         base_address = "fe80::3"
         address = "fe80::3%eth0"

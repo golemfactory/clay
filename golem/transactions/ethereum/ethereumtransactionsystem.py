@@ -3,13 +3,13 @@ import logging
 from ethereum.utils import privtoaddr
 
 from golem.ethereum.node import NodeProcess
-from golem.ethereum.smartcontractinterface import SmartContractInterface
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumpaymentskeeper \
     import EthereumAddress
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.transactionsystem import TransactionSystem
+import golem_sci
 
 log = logging.getLogger('golem.pay')
 
@@ -40,7 +40,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
-        self._sci = SmartContractInterface(self._node.web3)
+        self._sci = golem_sci.new_testnet(self._node.web3)
         self.payment_processor = PaymentProcessor(
             privkey=node_priv_key,
             sci=self._sci,
