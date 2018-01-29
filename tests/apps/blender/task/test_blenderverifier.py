@@ -8,6 +8,7 @@ from apps.blender.task.verifier import BlenderVerifier, logger,\
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.ci import ci_skip
 
 
 class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
@@ -54,6 +55,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
                    " 'There was a problem'"
                    in log for log in logs.output)
 
+    @ci_skip
     @mock.patch('shutil.copy')
     def test_crop_rendered(self, copy_mock):
         bv = BlenderVerifier(lambda: None)
