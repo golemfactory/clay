@@ -290,9 +290,9 @@ class TestMessageHistoryProvider(DatabaseFixture):
 
         provider = Provider()
 
-        msg_hello = message.Hello(raw=b'\0')
-        msg_request = message.WantToComputeTask(task_id='t', raw=b'\0')
-        msg_result = message.ReportComputedTask(subtask_id='s', raw=b'\0')
+        msg_hello = message.Hello()
+        msg_request = message.WantToComputeTask(task_id='t')
+        msg_result = message.ReportComputedTask(subtask_id='s')
 
         NetworkMessage.delete().execute()
 
