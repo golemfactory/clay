@@ -87,4 +87,3 @@ class TestNode(unittest.TestCase):
         assert node.pub_port == node.pub_port
         assert node.p2p_pub_port == node.p2p_pub_port
         assert node.hyperdrive_pub_port == node.hyperdrive_pub_port
-
