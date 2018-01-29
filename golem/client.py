@@ -3,6 +3,7 @@ import logging
 import sys
 import time
 import uuid
+import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
@@ -70,6 +71,7 @@ log = logging.getLogger("golem.client")
 
 
 class ClientTaskComputerEventListener(object):
+
     def __init__(self, client):
         self.client = client
 
@@ -168,7 +170,8 @@ class Client(HardwarePresetsMixin):
             self._services.append(
                 ResourceCleanerService(
                     self,
-                    interval_seconds=max(1, int(clean_resources_older_than/10)),
+                    interval_seconds=max(
+                        1, int(clean_resources_older_than / 10)),
                     older_than_seconds=clean_resources_older_than))
 
         self.cfg = config
@@ -196,6 +199,7 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = None
 
         self.rpc_publisher = None
+        self.task_test_result = None
 
         self.resource_server = None
         self.resource_port = 0
@@ -300,10 +304,10 @@ class Client(HardwarePresetsMixin):
                 task_archiver=self.task_archiver)
 
             monitoring_publisher_service = MonitoringPublisherService(
-                    self.task_server,
-                    interval_seconds=max(
-                        int(self.config_desc.node_snapshot_interval),
-                        1))
+                self.task_server,
+                interval_seconds=max(
+                    int(self.config_desc.node_snapshot_interval),
+                    1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
 
@@ -319,7 +323,7 @@ class Client(HardwarePresetsMixin):
             if clean_tasks_older_than > 0:
                 task_cleaner_service = TaskCleanerService(
                     self,
-                    interval_seconds=max(1, int(clean_tasks_older_than/10)),
+                    interval_seconds=max(1, int(clean_tasks_older_than / 10)),
                     older_than_seconds=clean_tasks_older_than)
                 task_cleaner_service.start()
                 self._services.append(task_cleaner_service)
@@ -538,25 +542,29 @@ class Client(HardwarePresetsMixin):
             async_run(request)
             return True
 
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(
-                Task.evt_task_test_status,
-                TaskTestStatus.error,
-                "Another test is running"
-            )
+        if not self.task_test_result:
+            self.task_test_result = json.dumps(
+                {
+                    "status": TaskTestStatus.error,
+                    "error": "Another test is running"
+                })
         return False
 
     def _run_test_task(self, t_dict):
 
         def on_success(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_test_status,
-                          TaskTestStatus.success, *args, **kwargs)
+            self.task_test_result = json.dumps(
+                {
+                    "status": TaskTestStatus.success,
+                    "error": args,
+                    "more": kwargs
+                })
 
         def on_error(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_test_status,
-                          TaskTestStatus.error, *args, **kwargs)
+            self.task_test_result = json.dumps(
+                {"status": TaskTestStatus.error, "error": args, "more": kwargs})
 
         try:
             dictionary = DictSerializer.load(t_dict)
@@ -568,7 +576,8 @@ class Client(HardwarePresetsMixin):
 
         self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
         self.task_tester.run()
-        self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
+        self.task_test_result = json.dumps(
+            {"status": TaskTestStatus.started, "error": True})
 
     def abort_test_task(self):
         with self.lock:
@@ -576,6 +585,18 @@ class Client(HardwarePresetsMixin):
                 self.task_tester.end_comp()
                 return True
             return False
+
+    def check_test_status(self):
+        if self.task_test_result is None:
+            return False
+        if not json.loads(
+                self.task_test_result)['status'] == TaskTestStatus.started:
+            result = copy(self.task_test_result)
+            # when client receive the eventual result we'll clean result for
+            # the next one.
+            self.task_test_result = None
+            return result
+        return self.task_test_result
 
     def create_task(self, t_dict):
         try:
@@ -782,11 +803,10 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            req = AsyncRequest(self.transaction_system.get_balance)
-            b, ab, d = yield async_run(req)
+            b, ab, d = yield self.transaction_system.get_balance()
             if b is not None:
-                returnValue((str(b), str(ab), str(d)))
-        returnValue((None, None, None))
+                return str(b), str(ab), str(d)
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -918,7 +938,8 @@ class Client(HardwarePresetsMixin):
 
     def remove_computed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(self.get_computed_files_dir(), older_than_seconds)
+        dir_manager.clear_dir(
+            self.get_computed_files_dir(), older_than_seconds)
 
     def remove_distributed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
@@ -927,7 +948,8 @@ class Client(HardwarePresetsMixin):
 
     def remove_received_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(self.get_received_files_dir(), older_than_seconds)
+        dir_manager.clear_dir(
+            self.get_received_files_dir(), older_than_seconds)
 
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
@@ -1315,8 +1337,8 @@ class TaskCleanerService(LoopingCallService):
         now = time.time()
         for task in self._client.get_tasks():
             deadline = task['time_started'] \
-                       + string_to_timeout(task['timeout'])\
-                       + self.older_than_seconds
+                + string_to_timeout(task['timeout'])\
+                + self.older_than_seconds
             if deadline <= now:
                 log.info('Task %s got too old. Deleting.', task['id'])
                 self._client.delete_task(task['id'])

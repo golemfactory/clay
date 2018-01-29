@@ -41,6 +41,7 @@ CORE_METHOD_MAP = dict(
     get_tasks=              'comp.tasks',
     get_task=               'comp.task',
     run_test_task=          'comp.tasks.check',
+    check_test_status=      'comp.task.test.status',
     abort_test_task=        'comp.tasks.check.abort',
     get_unsupport_reasons=  'comp.tasks.unsupport',
     get_task_stats=         'comp.tasks.stats',
