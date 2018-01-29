@@ -1,4 +1,4 @@
-"""Tests related to ConCent integration.
+"""Tests related to Concent integration.
 
 Documentation:
 https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
@@ -6,13 +6,12 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 import calendar
 import datetime
 import tempfile
-import time
-import unittest
 import unittest.mock as mock
 
 from freezegun import freeze_time
 from golem_messages.message import concents
 
+from golem import testutils
 from golem.core import keysauth
 from golem.network import history
 from golem.task import tasksession
@@ -25,17 +24,18 @@ reject_reasons = concents.RejectReportComputedTask.REASON
 # pylint: disable=protected-access
 
 
-class ReactToReportComputedTaskTestCase(unittest.TestCase):
+class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def setUp(self):
+        super().setUp()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
-        self.datadir = tempfile.TemporaryDirectory('golem-test-concent')
         self.task_session.task_server.keys_auth = keys_auth = \
             keysauth.EllipticalKeysAuth(
-                datadir=self.datadir.name,
+                datadir=self.tempdir,
             )
 
         self.msg = factories.messages.ReportComputedTask()
-        now_ts = calendar.timegm(time.gmtime())
+        self.now = datetime.datetime.utcnow()
+        now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 3600
         self.msg.task_to_compute.sig = keys_auth.ecc.sign(
             data=self.msg.task_to_compute.get_short_hash(),
@@ -86,7 +86,7 @@ class ReactToReportComputedTaskTestCase(unittest.TestCase):
     @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_task_deadline(self, send_mock):
         "Reject after task timeout"
-        after_deadline = datetime.datetime.utcnow() \
+        after_deadline = self.now \
             + datetime.timedelta(hours=1, seconds=1)
         with freeze_time(after_deadline):
             self.task_session._react_to_report_computed_task(self.msg)
@@ -109,7 +109,7 @@ class ReactToReportComputedTaskTestCase(unittest.TestCase):
     @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_subtask_deadline(self, send_mock):
         "Reject after subtask timeout"
-        after_deadline = datetime.datetime.utcnow() \
+        after_deadline = self.now \
             + datetime.timedelta(minutes=1, seconds=1)
         with freeze_time(after_deadline):
             self.task_session._react_to_report_computed_task(self.msg)
