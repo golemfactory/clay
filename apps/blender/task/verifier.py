@@ -6,7 +6,6 @@ from collections import Callable
 from threading import Lock
 from functools import partial
 
-from golem.core.common import timeout_to_deadline
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
@@ -15,12 +14,14 @@ from golem.docker.job import DockerJob
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import find_task_script
 from golem.core.common import get_golem_path
+from golem.core.common import timeout_to_deadline
 
 logger = logging.getLogger("apps.blender")
 
 NUM_CROPS = 3
 
 
+# pylint: disable=R0903
 class VerificationContext:
     def __init__(self, crops_position, crop_id, crops_path):
         self.crop_id = crop_id
@@ -29,6 +30,7 @@ class VerificationContext:
         self.crop_position_y = crops_position[crop_id][1]
 
 
+# pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     def __init__(self, callback: Callable):
         super().__init__(callback)
@@ -153,6 +155,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     #  The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
+    # pylint: disable=R0914
     def _crop_rendered(self, results, time_spend, verification_context):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
@@ -183,11 +186,12 @@ class BlenderVerifier(FrameRenderingVerifier):
         params['xres'] = verification_context.crop_position_x
         params['yres'] = verification_context.crop_position_y
 
+        # pylint: disable=W0703
         try:
             with open(self.program_file, "r") as src_file:
                 src_code = src_file.read()
         except Exception as err:
-            logger.warning("Wrong main program file: {}".format(err))
+            logger.warning("Wrong main program file: %r", err)
             src_code = ""
 
         with DockerJob(di, src_code, params,
