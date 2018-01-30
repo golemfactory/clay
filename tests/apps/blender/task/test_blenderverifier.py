@@ -56,12 +56,13 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
                    in log for log in logs.output)
 
     @ci_skip
-    @mock.patch('shutil.copy')
-    def test_crop_rendered(self, copy_mock):
+    @mock.patch('golem.docker.job.DockerJob.start')
+    @mock.patch('golem.docker.job.DockerJob.wait')
+    def test_crop_rendered(self, wait_mock, start_mock):
         bv = BlenderVerifier(lambda: None)
         verify_ctx = VerificationContext([[75, 34]], 0, self.tempdir)
         crop_path = os.path.join(self.tempdir, str(0))
-        bv.current_results_file = "none.png"
+        bv.current_results_file = os.path.join(self.tempdir, "none.png")
         if not os.path.exists(crop_path):
             os.mkdir(crop_path)
         with self.assertLogs(logger, level="INFO") as logs:
@@ -70,6 +71,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
                    in log for log in logs.output)
         assert any("2913" in log for log in logs.output)
         assert any("def" in log for log in logs.output)
+
 
     def test_generate_ctd(self):
         bv = BlenderVerifier(lambda: None)

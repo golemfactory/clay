@@ -6,8 +6,6 @@ from collections import Callable
 from threading import Lock
 from functools import partial
 
-import shutil
-
 from golem.core.common import timeout_to_deadline
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
@@ -44,6 +42,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.current_results_file = None
         self.program_file = find_task_script(os.path.join(
             get_golem_path(), 'apps', 'rendering'), 'runner.py')
+        self.wasFailure = False
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -158,30 +157,28 @@ class BlenderVerifier(FrameRenderingVerifier):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
 
-        resource_path = verification_context.crop_path
+        with self.lock:
+            if self.wasFailure:
+                return
+
+        work_dir = verification_context.crop_path
         di = DockerImage(self.docker_image_name, tag=self.docker_tag)
 
-        work_dir = os.path.join(resource_path, "work")
-        output_dir = os.path.join(resource_path, "output")
+        output_dir = os.path.join(work_dir, "output")
 
-        if not os.path.exists(work_dir):
-            os.mkdir(work_dir)
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
 
-        rendered_scene_path = shutil.copy(self.current_results_file,
-                                          resource_path)
-
-        croped_img_path = shutil.copy(results['data'][1], resource_path)
+        resource_path = os.path.dirname(self.current_results_file)
 
         params = dict()
 
         params['cropped_img_path'] = os.path.join(
-            "/golem/resources",
-            os.path.basename(croped_img_path))
+            "/golem/work/tmp/output",
+            os.path.basename(results['data'][1]))
         params['rendered_scene_path'] = os.path.join(
             "/golem/resources",
-            os.path.basename(rendered_scene_path))
+            os.path.basename(self.current_results_file))
 
         params['xres'] = verification_context.crop_position_x
         params['yres'] = verification_context.crop_position_y
@@ -196,21 +193,25 @@ class BlenderVerifier(FrameRenderingVerifier):
         with DockerJob(di, src_code, params,
                        resource_path, work_dir, output_dir,
                        host_config=None) as job:
-            self.job = job
-            self.job.start()
-            exit_code = self.job.wait()
-            # Get stdout and stderr
+            job.start()
+            was_failure = job.wait()
             stdout_file = os.path.join(output_dir, "stdout.log")
             stderr_file = os.path.join(output_dir, "stderr.log")
-            self.job.dump_logs(stdout_file, stderr_file)
+            job.dump_logs(stdout_file, stderr_file)
 
         with self.lock:
-            self.verified_crops_counter += 1
-            if self.verified_crops_counter == NUM_CROPS:
-                self.success()
+            if was_failure == -1:
+                self.wasFailure = True
+                self.failure()
+            else:
+                self.verified_crops_counter += 1
+                if self.verified_crops_counter == NUM_CROPS:
+                    self.success()
 
     # One failure is enough to stop verification process, although this might
     #  change in future
     def _crop_render_failure(self, error):
         logger.warning("Crop for verification render failure %r", error)
-        self.failure()
+        with self.lock:
+            self.wasFailure = True
+            self.failure()
