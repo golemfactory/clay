@@ -271,7 +271,7 @@ class ResourceHandshakeSessionMixin:
     # ########################
 
     def _handshake_error(self, key_id, error):
-        logger.error("Resource handshake error (%r): %r", key_id, error)
+        logger.info("Resource handshake error (%r): %r", key_id, error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
         self.task_server.task_computer.session_closed()
