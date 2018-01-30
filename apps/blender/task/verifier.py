@@ -39,7 +39,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.success = None
         self.failure = None
         self.docker_image_name = 'golemfactory/image_metrics'
-        self.docker_tag = '1.0'
+        self.docker_tag = '1.1'
         self.crops_path = None
         self.current_results_file = None
         self.program_file = find_task_script(os.path.join(
@@ -168,7 +168,10 @@ class BlenderVerifier(FrameRenderingVerifier):
         di = DockerImage(self.docker_image_name, tag=self.docker_tag)
 
         output_dir = os.path.join(work_dir, "output")
+        logs_dir = os.path.join(work_dir, "logs")
 
+        if not os.path.exists(logs_dir):
+            os.mkdir(logs_dir)
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
 
@@ -178,7 +181,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         params['cropped_img_path'] = os.path.join(
             "/golem/work/tmp/output",
-            os.path.basename(results['data'][1]))
+            os.path.basename(results['data'][0]))
         params['rendered_scene_path'] = os.path.join(
             "/golem/resources",
             os.path.basename(self.current_results_file))
@@ -199,8 +202,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                        host_config=None) as job:
             job.start()
             was_failure = job.wait()
-            stdout_file = os.path.join(output_dir, "stdout.log")
-            stderr_file = os.path.join(output_dir, "stderr.log")
+            stdout_file = os.path.join(logs_dir, "stdout.log")
+            stderr_file = os.path.join(logs_dir, "stderr.log")
             job.dump_logs(stdout_file, stderr_file)
 
         with self.lock:

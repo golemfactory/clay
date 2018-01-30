@@ -66,7 +66,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
         if not os.path.exists(crop_path):
             os.mkdir(crop_path)
         with self.assertLogs(logger, level="INFO") as logs:
-            bv._crop_rendered({"data": [0, "def"]}, 2913, verify_ctx)
+            bv._crop_rendered({"data": ["def"]}, 2913, verify_ctx)
         assert any("Crop for verification rendered"
                    in log for log in logs.output)
         assert any("2913" in log for log in logs.output)
