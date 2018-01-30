@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from golem.core.common import config_logging
+from golem.core.common import config_logging, install_reactor
 from golem.interface.cli import CLI
 from golem.interface.client import debug
 from golem.interface.client.account import Account
@@ -58,6 +58,7 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     # run the cli
+    install_reactor()
     ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
 
