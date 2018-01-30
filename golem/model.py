@@ -40,7 +40,7 @@ db = GolemSqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 8
+    SCHEMA_VERSION = 9
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -60,6 +60,7 @@ class Database:
     @staticmethod
     def create_database() -> None:
         tables = [
+            GenericKeyValue,
             Account,
             ExpectedIncome,
             GlobalRank,
@@ -93,6 +94,11 @@ class BaseModel(Model):
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
+
+
+class GenericKeyValue(BaseModel):
+    key = CharField(primary_key=True)
+    value = CharField(null=True)
 
 
 ##################
