@@ -89,6 +89,22 @@ class EnumField(IntegerField):
         return self.enum_type(value)
 
 
+class StringEnumField(CharField):
+    """ Database field that maps enum types to strings."""
+
+    def __init__(self, enum_type, max_length=255, *args, **kwargs):
+        super().__init__(max_length, *args, **kwargs)
+        self.enum_type = enum_type
+
+    def db_value(self, value):
+        if not isinstance(value, self.enum_type):
+            raise TypeError("Expected {} type".format(self.enum_type.__name__))
+        return value.value  # Get the string value of an enum.
+
+    def python_value(self, value):
+        return self.enum_type(value)
+
+
 class JsonField(TextField):
     """ Database field that stores a Python value in JSON format. """
 
@@ -117,6 +133,15 @@ class PaymentStatus(Enum):
     awaiting = 1  # Created but not introduced to the payment network.
     sent = 2  # Sent to the payment network.
     confirmed = 3  # Confirmed on the payment network.
+
+    # Workarounds for peewee_migration
+
+    def __repr__(self):
+        return '{}.{}'.format(self.__class__.__name__, self.name)
+
+    @property
+    def __self__(self):
+        return self
 
 
 class PaymentDetails(DictSerializable):
@@ -165,13 +190,17 @@ class PaymentDetailsField(DictSerializableJSONField):
     objtype = PaymentDetails
 
 
+class PaymentStatusField(EnumField):
+    """ Database field that stores PaymentStatusField objects as integers. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(PaymentStatus, *args, **kwargs)
+
+
 class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(enum_type=PaymentStatus,
-                       index=True,
-                       default=PaymentStatus.awaiting)
+    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
@@ -386,13 +415,18 @@ class Actor(Enum):
     Provider = "provider"
 
 
-class NetworkMessage(BaseModel):
-    local_role = EnumField(Actor, null=False)
-    remote_role = EnumField(Actor, null=False)
+class ActorField(StringEnumField):
+    """ Database field that stores Actor objects as strings. """
+    def __init__(self, *args, **kwargs):
+        super().__init__(Actor, *args, **kwargs)
 
-    # The node on the other side of the communication.
-    # It can be a receiver or a sender, depending on local_role,
-    # remote_role and msg_cls.
+
+class NetworkMessage(BaseModel):
+    local_role = ActorField(null=False)
+    remote_role = ActorField(null=False)
+
+    # The node we are exchanging messages with. Can be a receiver or a sender,
+    # which is determined by local_role, remote_role and msg_cls.
     node = CharField(null=False)
     task = CharField(null=True, index=True)
     subtask = CharField(null=True, index=True)

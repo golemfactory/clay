@@ -4,6 +4,8 @@ from os import path
 from peewee import SqliteDatabase
 from playhouse.shortcuts import RetryOperationalError
 
+from golem.database.migration.migrator import migrate_schema
+
 log = logging.getLogger('golem.db')
 
 
@@ -27,9 +29,8 @@ class Database:
 
         if not version:
             self._create_database()
-        # FIXME: implemented in a separate branch
         elif migrate and version < self.SCHEMA_VERSION:
-            pass
+            self._migrate_database(version, to_version=self.SCHEMA_VERSION)
 
     def close(self):
         if not self.db.is_closed():
@@ -47,3 +48,9 @@ class Database:
 
         self.db.create_tables(self.models, safe=True)
         self.set_user_version(self.SCHEMA_VERSION)
+
+    def _migrate_database(self, version, to_version) -> None:
+        log.info("Migrating database from version %r to %r",
+                 version, to_version)
+
+        migrate_schema(self.db, self.models, version, to_version)
