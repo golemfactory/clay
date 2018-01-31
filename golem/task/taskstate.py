@@ -1,3 +1,5 @@
+from enum import Enum
+
 from golem.core.common import to_unicode
 
 
@@ -105,3 +107,24 @@ class TaskTestStatus(object):
     started = 'Started'
     success = 'Success'
     error = 'Error'
+
+
+class TaskOp(Enum):
+    WORK_OFFER_RECEIVED = 0
+    TASK_CREATED = 1
+    TASK_STARTED = 2
+    SUBTASK_ASSIGNED = 3
+    SUBTASK_RESULT_DOWNLOADING = 4
+    UNEXPECTED_SUBTASK_RECEIVED = 5
+    SUBTASK_NOT_ACCEPTED = 6
+    SUBTASK_FINISHED = 7
+    SUBTASK_FAILED = 8
+    TASK_FINISHED = 9
+    TASK_NOT_ACCEPTED = 10
+    TASK_TIMEOUT = 11
+    SUBTASK_TIMEOUT = 12
+    TASK_RESTARTED = 13
+    SUBTASK_RESTARTED = 14
+    FRAME_SUBTASK_RESTARTED = 15
+    TASK_ABORTED = 16
+    TASK_RESTORED = 17
