@@ -6,7 +6,8 @@ import click
 from ethereum import slogging
 
 import golem
-from golem.core.variables import PROTOCOL_CONST, REACTOR_THREAD_POOL_SIZE
+from golem.core.common import install_reactor
+from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
 
@@ -115,21 +116,6 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
-
-
-def install_reactor():
-    from golem.core.common import is_osx, is_windows
-
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
-    elif is_osx():
-        from twisted.internet import kqreactor
-        kqreactor.install()
-
-    from twisted.internet import reactor
-    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
-    return reactor
 
 
 def start_crossbar_worker(module):
