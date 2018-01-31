@@ -32,14 +32,16 @@ class VerificationContext:
 
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
+
+    DOCKER_NAME = "golemfactory/image_metrics"
+    DOCKER_TAG = '1.1'
+
     def __init__(self, callback: Callable):
         super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
         self.success = None
         self.failure = None
-        self.docker_image_name = 'golemfactory/image_metrics'
-        self.docker_tag = '1.1'
         self.crops_path = None
         self.current_results_file = None
         self.program_file = find_task_script(os.path.join(
@@ -160,12 +162,17 @@ class BlenderVerifier(FrameRenderingVerifier):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
 
+        filtered_results = list(filter(lambda x:
+                                       not os.path.basename(x).endswith(
+                                           ".log"), results['data']))
+
         with self.lock:
             if self.wasFailure:
                 return
 
         work_dir = verification_context.crop_path
-        di = DockerImage(self.docker_image_name, tag=self.docker_tag)
+        di = DockerImage(BlenderVerifier.DOCKER_NAME,
+                         tag=BlenderVerifier.DOCKER_TAG)
 
         output_dir = os.path.join(work_dir, "output")
         logs_dir = os.path.join(work_dir, "logs")
@@ -181,7 +188,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         params['cropped_img_path'] = os.path.join(
             "/golem/work/tmp/output",
-            os.path.basename(results['data'][0]))
+            os.path.basename(filtered_results[0]))
         params['rendered_scene_path'] = os.path.join(
             "/golem/resources",
             os.path.basename(self.current_results_file))

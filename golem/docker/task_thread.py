@@ -62,14 +62,11 @@ class DockerTaskThread(TaskThread):
                 raise TimeoutException
             work_dir = os.path.join(self.tmp_path, "work")
             output_dir = os.path.join(self.tmp_path, "output")
-            logs_dir = os.path.join(self.tmp_path, "logs")
 
             if not os.path.exists(work_dir):
                 os.mkdir(work_dir)
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
-            if not os.path.exists(logs_dir):
-                os.mkdir(logs_dir)
 
             if self.docker_manager:
                 host_config = self.docker_manager.container_host_config
@@ -86,8 +83,8 @@ class DockerTaskThread(TaskThread):
                 self.job.start()
                 exit_code = self.job.wait()
                 # Get stdout and stderr
-                stdout_file = os.path.join(logs_dir, self.STDOUT_FILE)
-                stderr_file = os.path.join(logs_dir, self.STDERR_FILE)
+                stdout_file = os.path.join(output_dir, self.STDOUT_FILE)
+                stderr_file = os.path.join(output_dir, self.STDERR_FILE)
                 self.job.dump_logs(stdout_file, stderr_file)
 
                 if self.mc:
