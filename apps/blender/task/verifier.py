@@ -2,6 +2,7 @@ from copy import deepcopy
 import logging
 import math
 import os
+import posixpath
 from collections import Callable
 from threading import Lock
 from functools import partial
@@ -186,10 +187,10 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         params = dict()
 
-        params['cropped_img_path'] = os.path.join(
+        params['cropped_img_path'] = posixpath.join(
             "/golem/work/tmp/output",
             os.path.basename(filtered_results[0]))
-        params['rendered_scene_path'] = os.path.join(
+        params['rendered_scene_path'] = posixpath.join(
             "/golem/resources",
             os.path.basename(self.current_results_file))
 
