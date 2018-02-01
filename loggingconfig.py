@@ -74,6 +74,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.db': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
             'level': 'INFO',
             'propagate': True,
