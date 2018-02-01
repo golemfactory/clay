@@ -1,6 +1,7 @@
 import logging
 
 from ethereum.utils import privtoaddr
+from eth_utils import encode_hex
 
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -40,17 +41,18 @@ class EthereumTransactionSystem(TransactionSystem):
 
         self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
-        self._sci = golem_sci.new_testnet(self._node.web3)
+        self._sci = golem_sci.new_testnet(
+            self._node.web3,
+            encode_hex(privtoaddr(node_priv_key)),
+            lambda tx: tx.sign(node_priv_key),
+        )
         self.payment_processor = PaymentProcessor(
-            privkey=node_priv_key,
             sci=self._sci,
             faucet=True
         )
 
         super().__init__(
-            incomes_keeper=EthereumIncomesKeeper(
-                self.payment_processor.eth_address(),
-                self._sci)
+            incomes_keeper=EthereumIncomesKeeper(self._sci),
         )
 
         self.payment_processor.start()

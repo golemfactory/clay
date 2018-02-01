@@ -1,6 +1,5 @@
 import os
 import random
-import unittest
 import uuid
 
 import mock
@@ -19,35 +18,11 @@ def mock_sci():
     return sci
 
 
-class TestPaymentProcessor(unittest.TestCase):
-    def setUp(self):
-        privkey = (b'!\xcd!^\xfe#\x82-#!Z]b\xb4\x8ce[\n\xfbN\x18V\x8c\x1dA'
-                   b'\xea\x8c\xe8ZO\xc9\xdb')
-        with mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.load_from_db"):  # noqa
-            self.payment_processor = paymentprocessor.PaymentProcessor(
-                privkey=privkey,
-                sci=mock_sci()
-            )
-
-    def test_eth_address(self):
-        # Test with zpad
-        expected = ('0x000000000000000000000000e1ad9e38fc4bf20e5'
-                    'd4847e00e8a05170c87913f')
-        self.assertEqual(expected, self.payment_processor.eth_address())
-
-        # Test without zpad
-        expected = '0xe1ad9e38fc4bf20e5d4847e00e8a05170c87913f'
-        result = self.payment_processor.eth_address(zpad=False)
-        self.assertEqual(expected, result)
-
-
 class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
     def setUp(self):
         super(TestPaymentProcessorWithDB, self).setUp()
         random.seed()
-        privkey = os.urandom(32)
         self.payment_processor = paymentprocessor.PaymentProcessor(
-            privkey=privkey,
             sci=mock_sci()
         )
 
@@ -73,19 +48,19 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
 
         # Sent payments
         self.assertEqual({}, self.payment_processor._inprogress)
-        tx_hash = os.urandom(32)
+        tx_hash = '0x' + encode_hex(os.urandom(32))
         sent_payment = model.Payment.create(
             subtask='sent' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details=model.PaymentDetails(tx=encode_hex(tx_hash)),
+            details=model.PaymentDetails(tx=tx_hash[2:]),
             status=model.PaymentStatus.sent
         )
         sent_payment2 = model.Payment.create(
             subtask='sent2' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details=model.PaymentDetails(tx=encode_hex(tx_hash)),
+            details=model.PaymentDetails(tx=tx_hash[2:]),
             status=model.PaymentStatus.sent
         )
         self.payment_processor.load_from_db()
