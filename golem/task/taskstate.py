@@ -110,13 +110,13 @@ class TaskTestStatus(object):
 
 
 class Operation(Enum):
-    def task_related(self) -> bool:  # pylint disable=no-self-use
+    def task_related(self) -> bool:  # pylint: disable=no-self-use
         return False
 
-    def subtask_related(self) -> bool:  # pylint disable=no-self-use
+    def subtask_related(self) -> bool:  # pylint: disable=no-self-use
         return False
 
-    def unnoteworthy(self) -> bool:  # pylint disable=no-self-use
+    def unnoteworthy(self) -> bool:  # pylint: disable=no-self-use
         return False
 
 

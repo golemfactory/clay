@@ -582,7 +582,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         from golem.network.transport import tcpnetwork
         ts.network.listen = MagicMock(
             side_effect=lambda listen_info, waiting_task_result:
-            tcpnetwork.TCPNetwork.__call_failure_callback(
+            tcpnetwork.TCPNetwork.__call_failure_callback(  # noqa pylint: disable=too-many-function-args
                 listen_info.failure_callback,
                 {'waiting_task_result': waiting_task_result}
             )
@@ -756,16 +756,17 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = \
-        ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF",
-                                                                     "DEF",
-                                                                     "xyz",
-                                                                     1000, 10,
-                                                                     5, 10, 2,
-                                                                     "10.10.10.10")
+            ts.task_manager.activeStatus[0]
+        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+            "DEF",
+            "DEF",
+            "xyz",
+            1000, 10,
+            5, 10, 2,
+            "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states[
-                             "xxyyzz"].computation_time, 1031)
+            "xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 1010 / 3600)
         self.assertEqual(
             ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value,
@@ -774,10 +775,11 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", account_info)
-        ts.client.transaction_system.add_payment_info.assert_called_with("xyz",
-                                                                         "xxyyzz",
-                                                                         expected_value,
-                                                                         account_info)
+        ts.client.transaction_system.add_payment_info.assert_called_with(
+            "xyz",
+            "xxyyzz",
+            expected_value,
+            account_info)
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
@@ -806,7 +808,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = \
-        ts.task_manager.activeStatus[0]
+            ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
 
@@ -882,7 +884,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
-                   self.task_count
+                self.task_count
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_http_error(self):
@@ -893,7 +895,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
-                   self.task_count
+                self.task_count
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_http_error_and_resource_hashes(self):
@@ -911,9 +913,9 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
                           side_effect=error_class):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == \
-                   self.task_count * 2
+                self.task_count * 2
             assert self.ts.task_manager.delete_task.call_count == \
-                   self.task_count
+                self.task_count
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_restore_resources(self):
@@ -923,4 +925,4 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
         assert self.resource_manager.add_task.call_count == self.task_count
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
-               self.task_count
+            self.task_count
