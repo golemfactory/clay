@@ -1,12 +1,17 @@
+import os
+import mock
+
 from golem.core.common import timeout_to_deadline
 
-from apps.blender.task.verifier import BlenderVerifier, logger
+from apps.blender.task.verifier import BlenderVerifier, logger,\
+    VerificationContext
 
-from golem.testutils import PEP8MixIn
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.ci import ci_skip
 
 
-class TestBlenderVerifier(LogTestCase, PEP8MixIn):
+class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = ["apps/blender/task/verifier.py"]
 
     def test_get_part_size_from_subtask_number(self):
@@ -50,14 +55,23 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn):
                    " 'There was a problem'"
                    in log for log in logs.output)
 
-    def test_crop_rendered(self):
+    @ci_skip
+    @mock.patch('golem.docker.job.DockerJob.start')
+    @mock.patch('golem.docker.job.DockerJob.wait')
+    def test_crop_rendered(self, wait_mock, start_mock):
         bv = BlenderVerifier(lambda: None)
+        verify_ctx = VerificationContext([[75, 34]], 0, self.tempdir)
+        crop_path = os.path.join(self.tempdir, str(0))
+        bv.current_results_file = os.path.join(self.tempdir, "none.png")
+        if not os.path.exists(crop_path):
+            os.mkdir(crop_path)
         with self.assertLogs(logger, level="INFO") as logs:
-            bv._crop_rendered({"abc": "def"}, 2913)
+            bv._crop_rendered({"data": ["def"]}, 2913, verify_ctx)
         assert any("Crop for verification rendered"
                    in log for log in logs.output)
         assert any("2913" in log for log in logs.output)
         assert any("def" in log for log in logs.output)
+
 
     def test_generate_ctd(self):
         bv = BlenderVerifier(lambda: None)

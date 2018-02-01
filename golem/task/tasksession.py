@@ -2,7 +2,6 @@ import functools
 import logging
 import os
 import pickle
-import threading
 import time
 
 from golem_messages import message
@@ -12,10 +11,8 @@ from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
-from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment, Actor
-from golem.model import db
+from golem.model import Actor
 from golem.network import history
 from golem.network.concent import exceptions as concent_exceptions
 from golem.network.concent import helpers as concent_helpers
@@ -300,29 +297,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             result_type,
             verification_finished
         )
-
-    @log_error()
-    def inform_worker_about_payment(self, payment):
-        logger.debug('inform_worker_about_payment(%r)', payment)
-        if payment.details:
-            logger.debug('payment.details: %r', payment.details)
-        transaction_id = payment.details.tx
-        block_number = payment.details.block_number
-        msg = message.SubtaskPayment(
-            subtask_id=payment.subtask,
-            reward=payment.value,
-            transaction_id=transaction_id,
-            block_number=block_number
-        )
-        self.send(msg)
-
-    @log_error()
-    def request_payment(self, expected_income):
-        logger.debug('request_payment(%r)', expected_income)
-        msg = message.SubtaskPaymentRequest(
-            subtask_id=expected_income.subtask
-        )
-        self.send(msg)
 
     def _reject_subtask_result(self, subtask_id, reason):
         self.task_server.reject_result(subtask_id, self.result_owner)
@@ -768,50 +742,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
 
     @history.provider_history
-    def _react_to_subtask_payment(self, msg):
-        if msg.transaction_id is None:
-            logger.debug(
-                'PAYMENT PENDING %r for %r',
-                msg.reward,
-                msg.subtask_id
-            )
-            return
-        if msg.block_number is None:
-            logger.debug(
-                'PAYMENT NOT MINED: %r for %r tid: %r',
-                msg.reward,
-                msg.subtask_id,
-                msg.transaction_id
-            )
-            return
-
-        # reward_for_subtask_paid -> ethereum incomes keeper requires
-        # being sync with blockchain
-        # run it in separate thread to prevent hanging the main thread
-        thread = threading.Thread(
-            target=self.task_server.reward_for_subtask_paid,
-            args=(),
-            kwargs={
-                'subtask_id': msg.subtask_id,
-                'reward': msg.reward,
-                'transaction_id': msg.transaction_id,
-                'block_number': msg.block_number
-            }
-        )
-        thread.daemon = True                            # Daemonize thread
-        thread.start()                                  # Start the execution
-
-    def _react_to_subtask_payment_request(self, msg):
-        logger.debug('_react_to_subtask_payment_request: %r', msg)
-        try:
-            with db.atomic():
-                payment = Payment.get(Payment.subtask == msg.subtask_id)
-        except Payment.DoesNotExist:
-            logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
-            return
-        self.inform_worker_about_payment(payment)
-
-    @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
@@ -995,8 +925,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
-            message.SubtaskPayment.TYPE: self._react_to_subtask_payment,
-            message.SubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
 
             # Concent messages
             message.AckReportComputedTask.TYPE:

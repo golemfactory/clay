@@ -576,43 +576,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session._react_to_reject_report_computed_task(msg_ack)
         assert session.concent_service.cancel.called
 
-    @mock.patch("golem.task.tasksession.TaskSession._check_msg",
-                return_value=True)
-    def test_react_to_subtask_payment(self, check_msg_mock):
-        reward_mock = mock.MagicMock()
-        self.task_session.task_server.reward_for_subtask_paid = reward_mock
-        subtask_id = str(uuid.uuid4())
-        reward = random.randint(1, 2 ** 10)
-        transaction_id = str(uuid.uuid4())
-        block_number = random.randint(1, 2 ** 10)
-
-        # Pending
-        msg = message.SubtaskPayment(
-            subtask_id=subtask_id,
-            reward=reward,
-            transaction_id=None,
-            block_number=None,
-        )
-
-        self.task_session.interpret(msg)
-        reward_mock.assert_not_called()
-
-        # Transaction created but not mined
-        msg.transaction_id = transaction_id
-        self.task_session.interpret(msg)
-        reward_mock.assert_not_called()
-
-        # Proper/finished transaction
-        msg.block_number = block_number
-        self.task_session.interpret(msg)
-
-        reward_mock.assert_called_once_with(
-            subtask_id=subtask_id,
-            reward=reward,
-            transaction_id=transaction_id,
-            block_number=block_number
-        )
-
     def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
@@ -683,71 +646,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.task_manager = None
         assert not self.task_session._subtask_to_task('sid_1', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
-
-
-class TestSessionWithDB(testutils.DatabaseFixture):
-    def setUp(self):
-        super(TestSessionWithDB, self).setUp()
-        random.seed()
-        self.task_session = TaskSession(mock.Mock())
-
-    @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_inform_worker_about_payment(self, send_mock):
-        transaction_id = str(uuid.uuid4())
-        block_number = random.randint(1, 2 ** 8)
-        payment = model.Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=str(uuid.uuid4()),
-            value=random.randint(1, 10),
-            details=model.PaymentDetails(
-                tx=transaction_id,
-                block_number=block_number,
-            )
-        )
-        self.task_session.inform_worker_about_payment(payment)
-        expected = [
-            ['subtask_id', payment.subtask],
-            ['reward', payment.value],
-            ['transaction_id', transaction_id],
-            ['block_number', block_number],
-        ]
-        self.assertEqual(send_mock.call_args[0][0].slots(), expected)
-
-    @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_request_payment(self, send_mock):
-        subtask_id = str(uuid.uuid4())
-        expected_income = model.ExpectedIncome.create(
-            sender_node=str(uuid.uuid4()),
-            sender_node_details=None,
-            value=random.randint(1, 10),
-            subtask=subtask_id,
-            task=str(uuid.uuid4())
-        )
-        self.task_session.request_payment(expected_income)
-        expected = [
-            ['subtask_id', subtask_id],
-        ]
-        self.assertEqual(send_mock.call_args[0][0].slots(), expected)
-
-    @mock.patch(
-        'golem.task.tasksession.TaskSession.inform_worker_about_payment'
-    )
-    def test_react_to_subtask_payment_request(self, inform_mock) -> None:
-        subtask_id = str(uuid.uuid4())
-        msg = message.SubtaskPaymentRequest(subtask_id=subtask_id)
-        # Payment does not exist
-        self.task_session._react_to_subtask_payment_request(msg)
-        inform_mock.assert_not_called()
-
-        # Payment exists
-        payment = model.Payment.create(
-            subtask=subtask_id,
-            payee=str(uuid.uuid4()),
-            value=random.randint(1, 10),
-            details=model.PaymentDetails()
-        )
-        self.task_session._react_to_subtask_payment_request(msg)
-        inform_mock.assert_called_once_with(payment)
 
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
