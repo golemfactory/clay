@@ -53,6 +53,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         with patch('twisted.internet.task.LoopingCall.start'), \
             patch('twisted.internet.task.LoopingCall.stop'), \
+            patch('golem_sci.new_testnet'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
             patch(pkg + 'node.NodeProcess.__init__', _init), \
