@@ -66,11 +66,25 @@ class NodeProcess(object):
         self.web3 = None  # web3 client interface
         self.addr_list = [addr] if addr else get_public_nodes()
 
-        self.__prog = None  # geth location
         self.__ps = None  # child process
 
     def is_running(self):
         return self.__ps is not None
+
+    def _check_geth_version(self):
+        version = self.web3.version.node.split("/")
+        if version[0] != "Geth":
+            raise Exception("Expected geth client, got {}".format(version[0]))
+        match = re.search("^v(\d+\.\d+\.\d+)", version[1]).group(1)
+
+        ver = StrictVersion(match)
+        log.info('Geth version: %s', ver)
+        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
+            self.stop()
+            raise OSError("Incompatible geth version: {}. "
+                          "Expected >= {} and <= {}"
+                          .format(ver, self.MIN_GETH_VERSION,
+                                  self.MAX_GETH_VERSION))
 
     @report_calls(Component.ethereum, 'node.start')
     def start(self, start_port=None):
@@ -92,6 +106,8 @@ class NodeProcess(object):
             if time.time() > deadline:
                 return self._start_timed_out(provider, start_port)
             time.sleep(0.1)
+
+        self._check_geth_version()
 
         genesis_block = self.get_genesis_block()
 
@@ -159,7 +175,7 @@ class NodeProcess(object):
         raise OSError("Cannot connect to geth: {}".format(provider))
 
     def _create_local_ipc_provider(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
-        self._find_geth()
+        prog = self._find_geth()
 
         # Init geth datadir
         geth_log_dir = os.path.join(self.datadir, "logs")
@@ -182,7 +198,7 @@ class NodeProcess(object):
             ipc_path = r'\\.\pipe\{}'.format(self.start_node)
 
         args = [
-            self.__prog,
+            prog,
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
@@ -227,20 +243,5 @@ class NodeProcess(object):
         if not geth:
             raise OSError("Ethereum client 'geth' not found")
 
-        output, _ = subprocess.Popen(
-            [geth, 'version'],
-            **self.SUBPROCESS_PIPES
-        ).communicate()
-
-        match = re.search("Version: (\d+\.\d+\.\d+)",
-                          str(output, 'utf-8')).group(1)
-
-        ver = StrictVersion(match)
-        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            raise OSError("Incompatible geth version: {}. "
-                          "Expected >= {} and <= {}"
-                          .format(ver, self.MIN_GETH_VERSION,
-                                  self.MAX_GETH_VERSION))
-
-        log.info("geth {}: {}".format(ver, geth))
-        self.__prog = geth
+        log.info("geth {}:".format(geth))
+        return geth
