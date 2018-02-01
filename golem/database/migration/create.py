@@ -110,26 +110,25 @@ def _parse_commandline_args(args) -> tuple:
 
     flag_options = {
         'datadir': {
-            'nargs': '+',
+            'nargs': 1,
             'type': str,
             'default': None,
             'help': 'Golem\'s datadir'
         },
         'outdir': {
-            'nargs': '+',
+            'nargs': 1,
             'type': str,
             'default': None,
             'help': 'Destination dir to save migrations to'
         },
         'name': {
-            'nargs': '+',
+            'nargs': 1,
             'type': str,
             'default': None,
             'help': 'Migration name'
         },
         'force': {
             'action': 'store_true',
-            'type': bool,
             'default': False,
             'help': 'Recreate the migration script for current schema'
         }
@@ -148,9 +147,9 @@ def _parse_commandline_args(args) -> tuple:
 def create_from_commandline(args):
     """ Parse command line arguments and create a schema migration script """
     parsed, _ = _parse_commandline_args(args)
-    data_dir = parsed.datadir
-    out_dir = parsed.outdir
-    name = parsed.name
+    data_dir = parsed.datadir[0] if parsed.datadir else None
+    out_dir = parsed.outdir[0] if parsed.outdir else None
+    name = parsed.name[0] if parsed.name else None
     force = parsed.force
 
     create_migration(data_dir, out_dir, name, force)
