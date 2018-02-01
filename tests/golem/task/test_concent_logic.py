@@ -155,7 +155,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             self.task_session._react_to_report_computed_task(self.msg)
         self.assert_reject_reason(
             send_mock,
-            reject_reasons.GotMessageCannotComputeTask,
+            reject_reasons.GotMessageTaskFailure,
             task_failure=unwanted_msg,
         )
 

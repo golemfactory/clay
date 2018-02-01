@@ -1,18 +1,12 @@
-import calendar
 import functools
-import hashlib
 import logging
 import os
-import pathlib
 import pickle
 import threading
 import time
 
-from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from twisted.internet import defer
-from twisted.internet import reactor
-from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
@@ -23,6 +17,8 @@ from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
 from golem.network import history
+from golem.network.concent import exceptions as concent_exceptions
+from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -54,39 +50,6 @@ def dropped_after():
             return result
         return curry
     return inner
-
-
-def compute_result_hash(task_result):
-    result_hash = hashlib.sha1()
-    if task_result.result_type == ResultType.FILES:
-        # task_result.result is an array of filenames
-        for filename in task_result.result:
-            p = pathlib.Path(filename)
-            logger.info(
-                'Computing checksum (%.3fMB) of %s',
-                p.stat().st_size / 2**20,
-                p
-            )
-            with open(filename, 'rb') as f:
-                while True:
-                    chunk = f.read(2**20)  # 1MB
-                    if not chunk:
-                        break
-                    result_hash.update(chunk)
-
-    else:
-        logger.info('Computing checksum of single result')
-        result_hash.update(task_result.result.encode('utf-8'))
-    return result_hash
-
-
-def deferred_compute_result_hash(task_result):
-    if reactor.running:
-        execute = threads.deferToThread
-    else:
-        logger.debug('Reactor not running. Switching to blocking call')
-        execute = defer.execute
-    return execute(compute_result_hash, task_result)
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
@@ -415,7 +378,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         msg = message.ForceReportComputedTask()
         msg.task_to_compute = task_to_compute
-        result_hash = yield deferred_compute_result_hash(task_result)
+        result_hash = yield concent_helpers.deferred_compute_result_hash(
+            task_result,
+        )
         msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
 
@@ -572,91 +537,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning('Did not receive task_to_compute: %r', msg)
             self.dropped()
             return
-        # Check msg.task_to_compute signature
+
         try:
-            self.task_server.keys_auth.ecc.verify(
-                sig=msg.task_to_compute.sig,
-                inputb=msg.task_to_compute.get_short_hash(),
-            )
-        except (AssertionError, msg_exceptions.InvalidSignature):
-            logger.warning('Received fake task_to_compute: %r', msg)
-            self.dropped()
-            return
-
-        def send_reject(reason, **kwargs):
-            logger.debug(
-                '_reacto_to_computed_task.send_reject(%r, **%r)',
-                reason,
-                kwargs,
-            )
-            self.send(message.concents.RejectReportComputedTask(
-                subtask_id=msg.subtask_id,
-                reason=reason,
-                task_to_compute=msg.task_to_compute,
-                **kwargs,
-            ))
-
-        reject_reasons = message.concents.RejectReportComputedTask.REASON
-        now_ts = calendar.timegm(time.gmtime())
-        task_id = msg.task_to_compute.compute_task_def['task_id']
-
-        # Check task deadline
-        if now_ts > msg.task_to_compute.compute_task_def['deadline']:
-            return send_reject(reject_reasons.TaskTimeLimitExceeded)
-        # Check subtask deadline
-        try:
-            subtask_deadline = \
-                self.task_manager.tasks_states[task_id] \
-                    .subtask_states[msg.subtask_id] \
-                    .deadline
-        except KeyError:
-            logger.warning(
-                'Deadline for subtask %r not found.'
-                'Treating as timeouted. Message: %s',
-                msg.subtask_id,
+            concent_helpers.process_report_computed_task(
                 msg,
+                task_session=self,
             )
-            subtask_deadline = -1
-        if now_ts > subtask_deadline:
-            return send_reject(reject_reasons.SubtaskTimeLimitExceeded)
-
-        get_msg = functools.partial(
-            history.MessageHistoryService.get_sync_as_message,
-            task=task_id,
-            subtask=msg.subtask_id,
-        )
-
-        # CannotComputeTask received
-        try:
-            unwanted_msg = get_msg(msg_cls='CannotComputeTask')
-            return send_reject(
-                reject_reasons.GotMessageCannotComputeTask,
-                cannot_compute_task=unwanted_msg,
-            )
-        except history.MessageNotFound:
-            pass
-
-        # TaskFailure received
-        try:
-            unwanted_msg = get_msg(msg_cls='TaskFailure')
-            return send_reject(
-                reject_reasons.GotMessageCannotComputeTask,
-                task_failure=unwanted_msg,
-            )
-        except history.MessageNotFound:
-            pass
-
-        # Verification passed, will send ACK
+        except concent_exceptions.ConcentVerificationFailed:
+            return
 
         self.task_server.receive_subtask_computation_time(
             msg.subtask_id,
             msg.computation_time
         )
-
-        self.send(message.concents.AckReportComputedTask(
-            subtask_id=msg.subtask_id,
-            task_to_compute=msg.task_to_compute,
-        ))
 
         self.result_owner = EthAccountInfo(
             msg.key_id,
