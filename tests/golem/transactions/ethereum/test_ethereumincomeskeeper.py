@@ -1,5 +1,6 @@
-import mock
 import uuid
+
+import mock
 
 from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper \

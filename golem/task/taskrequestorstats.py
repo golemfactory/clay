@@ -1,11 +1,13 @@
 import logging
 import time
 from collections import defaultdict
-from typing import (NamedTuple, List, Optional, DefaultDict)
+from typing import (
+    NamedTuple, Optional)
+# , List, DefaultDict) # pylint: disable=unused-import
 
 from pydispatch import dispatcher
 
-from golem.task.taskstate import Operation, TaskOp, SubtaskOp, OtherOp, \
+from golem.task.taskstate import Operation, TaskOp, SubtaskOp, \
     SubtaskStatus, TaskStatus, TaskState
 
 __all__ = ['RequestorTaskStatsManager']
@@ -34,10 +36,11 @@ class TaskInfo:
     """
 
     def __init__(self):
-        self.latest_status: TaskStatus = TaskStatus.notStarted
-        self._want_to_compute_count: int = 0
-        self.messages: List[TaskMsg] = []
-        self.subtasks: DefaultDict[str, SubtaskInfo] = defaultdict(SubtaskInfo)
+        self.latest_status = TaskStatus.notStarted  # type: TaskStatus
+        self._want_to_compute_count = 0
+        self.messages = []  # type: List[TaskMsg]
+        self.subtasks = defaultdict(
+            SubtaskInfo)  # type: DefaultDict[str, SubtaskInfo]
 
     def got_want_to_compute(self):
         """Makes note of a received work offer"""
@@ -385,7 +388,8 @@ class RequestorTaskStats:
     """
 
     def __init__(self):
-        self.tasks: DefaultDict[str, TaskInfo] = defaultdict(TaskInfo)
+        self.tasks = defaultdict(
+            TaskInfo)  # type: DefaultDict[str, TaskInfo]
         self.stats = EMPTY_CURRENT_STATS
         self.finished_stats = EMPTY_FINISHED_STATS
 
@@ -400,7 +404,7 @@ class RequestorTaskStats:
         if task_id in self.tasks:
             old_task_stats = self.get_task_stats(task_id)
 
-        if not op or isinstance(op, OtherOp):
+        if not op or op.unnoteworthy():
             pass
 
         elif op == TaskOp.WORK_OFFER_RECEIVED:
@@ -428,12 +432,12 @@ class RequestorTaskStats:
                 msg = TaskMsg(ts=the_time, op=TaskOp.RESTORED)
                 self.tasks[task_id].got_task_message(msg, task_state.status)
 
-        elif isinstance(op, TaskOp):
+        elif op.task_related():
             self.tasks[task_id].got_task_message(
                 TaskMsg(ts=time.time(), op=op),
                 task_state.status)
 
-        elif isinstance(op, SubtaskOp):
+        elif op.subtask_related():
             assert subtask_id
             self.tasks[task_id].got_subtask_message(
                 subtask_id,
@@ -453,7 +457,7 @@ class RequestorTaskStats:
 
     def is_task_finished(self, task_id: str) -> bool:
         """Returns True for a known, completed task"""
-        ti: Optional[TaskInfo] = self.tasks.get(task_id)
+        ti = self.tasks.get(task_id)
         return bool(ti and ti.is_completed())
 
     def get_task_stats(self, task_id: str) -> TaskStats:
@@ -463,7 +467,7 @@ class RequestorTaskStats:
         will then be final. It will work on the task in progress, but
         some fields like ``not_downloaded_subtasks_cnt`` can decrease.
         """
-        ti: TaskInfo = self.tasks[task_id]
+        ti = self.tasks[task_id]  # type: TaskInfo
         return TaskStats(
             finished=ti.is_completed(),
             task_failed=ti.has_task_failed(),

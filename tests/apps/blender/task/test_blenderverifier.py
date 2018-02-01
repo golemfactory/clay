@@ -1,11 +1,10 @@
 import os
+
 import mock
 
-from golem.core.common import timeout_to_deadline
-
-from apps.blender.task.verifier import BlenderVerifier, logger,\
+from apps.blender.task.verifier import BlenderVerifier, logger, \
     VerificationContext
-
+from golem.core.common import timeout_to_deadline
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.ci import ci_skip
