@@ -5,11 +5,12 @@ from typing import Optional
 
 import os
 import peewee
-from peewee_migrate import Router
+from peewee_migrate import Router as _Router
 
 import golem
 from golem.core.simpleenv import get_local_datadir
-from golem.database import Database, schemas
+from golem.database import Database
+from golem.database.migration import default_migrate_dir
 from golem.model import DB_MODELS, db
 
 TEMPLATE = """SCHEMA_VERSION = {schema_version}
@@ -19,56 +20,98 @@ from {model_package} import *  # pylint: disable=unused-import
 """
 
 
+def latest_migration_exists():
+    environment = Router.Environment(default_migrate_dir())
+    return environment.last_version == Database.SCHEMA_VERSION
+
+
 def create_migration(data_dir: Optional[str] = None,
-                     out_dir: Optional[str] = None,
-                     migration_name: Optional[str] = None):
+                     migrate_dir: Optional[str] = None,
+                     migration_name: Optional[str] = None,
+                     force: bool = False):
 
     """ Create a schema migration script """
-    from peewee_migrate import router
+    from peewee_migrate.router import MIGRATE_TEMPLATE
 
     if not data_dir:
         data_dir = get_local_datadir('default')
-    if not out_dir:
-        out_dir = schemas.__path__[0]
+    if not migrate_dir:
+        migrate_dir = default_migrate_dir()
     if not migration_name:
         migration_name = 'schema'
 
+    environment = Router.Environment(migrate_dir)
     database = Database(db, data_dir, DB_MODELS, migrate=False)
     template = TEMPLATE.format(schema_version=database.SCHEMA_VERSION,
                                model_package=golem.model.__name__,
-                               template=router.MIGRATE_TEMPLATE)
+                               template=MIGRATE_TEMPLATE)
 
-    last_version = last_schema_version(database.db, out_dir)
-    if database.SCHEMA_VERSION <= (last_version or 0):
-        print('Database schema migration scripts are up-to-date')
-        return
+    if database.SCHEMA_VERSION <= (environment.last_version or 0):
+        if force:
+            script_path = os.path.join(migrate_dir, environment.last_script)
+            os.unlink(script_path)
+        else:
+            print('Migration scripts are up-to-date')
+            return
 
     print('> database:   {}'.format(database.db.database))
-    print('> output dir: {}'.format(out_dir))
+    print('> output dir: {}'.format(migrate_dir))
 
     try:
         with _patch_peewee():
-            r = _Router(database.db, out_dir, database.SCHEMA_VERSION, template)
+            r = Router(database.db, migrate_dir,
+                       database.SCHEMA_VERSION, template)
             name = r.create(migration_name, auto=golem.model)
     finally:
         database.close()
         if os.path.exists('peewee.db'):
             os.unlink('peewee.db')
 
-    partial_path = os.path.join(out_dir, name)
+    partial_path = os.path.join(migrate_dir, name)
     return '{}.py'.format(partial_path)
 
 
-def last_schema_version(database, out_dir):
-    router = _Router(database, out_dir, None, None)
-    version = router.next_schema_num()
-    return version - 1 if version else None
+class Router(_Router):
 
+    class Environment:
 
-class _Router(Router):
+        def __init__(self, migrate_dir=default_migrate_dir()):
+            self._router = Router.__new__(Router)
+            self._router.migrate_dir = migrate_dir
+            self._router._schema_version = None
+            self._router._template = None
 
-    def __init__(self, database, out_dir, schema_version, template, **kwargs):
-        super().__init__(database, out_dir, **kwargs)
+        @property
+        def scripts(self):
+            return self._router.todo
+
+        @property
+        def last_version(self):
+            files = self.scripts
+            if files:
+                return self.version_from_name(files[-1])
+
+        @property
+        def last_script(self):
+            files = self.scripts
+            return '{}.py'.format(files[-1]) if files else None
+
+        @staticmethod
+        def version_from_name(file_name):
+            if not file_name:
+                return None
+
+            split = file_name.split('_')
+            return int(split[0])
+
+    def __init__(self,
+                 database: peewee.Database,
+                 migrate_dir: str,
+                 schema_version: int,
+                 template: str,
+                 **kwargs):
+
+        super().__init__(database, migrate_dir, **kwargs)
         self._schema_version = schema_version
         self._template = template
 
@@ -77,8 +120,9 @@ class _Router(Router):
         if not todo:
             return self._schema_version
 
-        split = todo[-1].split('_')
-        return int(split[0]) + 1
+        version = self.Environment.version_from_name(todo[-1])
+        if version:
+            return version + 1
 
     def compile(self, name, migrate='', rollback='', _num=None):
         name = '{:03}_{}'.format(self.next_schema_num(), name)
@@ -127,6 +171,7 @@ def _parse_commandline_args(args) -> tuple:
         ('name', ('-n', '--name',)),
         ('datadir', ('-d', '--datadir')),
         ('outdir', ('-o', '--outdir',)),
+        ('force', ('-f', '--force'))
     ]
 
     flag_options = {
@@ -147,6 +192,12 @@ def _parse_commandline_args(args) -> tuple:
             'type': str,
             'default': None,
             'help': 'Migration name'
+        },
+        'force': {
+            'action': 'store_true',
+            'type': bool,
+            'default': False,
+            'help': 'Recreate the migration script for current schema'
         }
     }
 
@@ -166,8 +217,9 @@ def create_from_commandline(args):
     data_dir = parsed.datadir
     out_dir = parsed.outdir
     name = parsed.name
+    force = parsed.force
 
-    create_migration(data_dir, out_dir, name)
+    create_migration(data_dir, out_dir, name, force)
 
 
 if __name__ == '__main__':
