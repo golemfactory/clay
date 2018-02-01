@@ -575,8 +575,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # Check msg.task_to_compute signature
         try:
             self.task_server.keys_auth.ecc.verify(
-                signature=msg.task_to_compute.sig,
-                message=msg.task_to_compute.get_short_hash(),
+                sig=msg.task_to_compute.sig,
+                inputb=msg.task_to_compute.get_short_hash(),
             )
         except (AssertionError, msg_exceptions.InvalidSignature):
             logger.warning('Received fake task_to_compute: %r', msg)

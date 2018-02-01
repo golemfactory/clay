@@ -37,7 +37,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 3600
         self.msg.task_to_compute.sig = keys_auth.ecc.sign(
-            data=self.msg.task_to_compute.get_short_hash(),
+            inputb=self.msg.task_to_compute.get_short_hash(),
         )
         self.task_session.task_manager.subtask2task_mapping = {
             self.msg.subtask_id: None,  # value ignored
