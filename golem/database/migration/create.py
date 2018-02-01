@@ -1,15 +1,12 @@
-import inspect
 import sys
-from contextlib import contextmanager
 from typing import Optional
 
 import os
-import peewee
 
 import golem
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.database.migration import default_migrate_dir
+from golem.database.migration import default_migrate_dir, patch_peewee
 from golem.database.migration.router import Router
 from golem.model import DB_MODELS, db
 
@@ -20,8 +17,8 @@ from {model_package} import *  # pylint: disable=unused-import
 """
 
 
-def latest_migration_exists():
-    environment = Router.Environment(default_migrate_dir())
+def latest_migration_exists(migrate_dir=default_migrate_dir()):
+    environment = Router.Environment(migrate_dir)
     return environment.last_version == Database.SCHEMA_VERSION
 
 
@@ -58,7 +55,7 @@ def create_migration(data_dir: Optional[str] = None,
     print('> output dir: {}'.format(migrate_dir))
 
     try:
-        with _patch_peewee():
+        with patch_peewee():
             r = Router(database.db, migrate_dir,
                        database.SCHEMA_VERSION, template)
             name = r.create(migration_name, auto=golem.model)
@@ -69,33 +66,6 @@ def create_migration(data_dir: Optional[str] = None,
 
     partial_path = os.path.join(migrate_dir, name)
     return '{}.py'.format(partial_path)
-
-
-@contextmanager
-def _patch_peewee():
-    """
-    Temporarily assign all known models and field types to the peewee module.
-    peewee_migrate assumes that all models and field types are located there.
-    """
-
-    def is_field(cls):
-        return inspect.isclass(cls) and issubclass(cls, peewee.Field)
-
-    db_fields = [c for _, c in inspect.getmembers(golem.model, is_field)]
-
-    undo = set()
-
-    for db_class in db_fields + DB_MODELS:
-        property_name = db_class.__name__
-
-        if not hasattr(peewee, property_name):
-            undo.add(property_name)
-            setattr(peewee, property_name, db_class)
-
-    yield
-
-    for property_name in undo:
-        delattr(peewee, property_name)
 
 
 def _parse_commandline_args(args) -> tuple:
