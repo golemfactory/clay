@@ -18,7 +18,10 @@ class Node(DictSerializable):
                  pub_port: Optional[int] = None,
                  nat_type: Optional[List[str]] = None,
                  p2p_prv_port: Optional[int] = None,
-                 p2p_pub_port: Optional[int] = None) -> None:
+                 p2p_pub_port: Optional[int] = None,
+                 hyperdrive_prv_port: Optional[int] = None,
+                 hyperdrive_pub_port: Optional[int] = None) -> None:
+
         self.node_name = node_name
         self.key = key
         # task server ports
@@ -31,21 +34,20 @@ class Node(DictSerializable):
         self.prv_addr = prv_addr
         self.pub_addr = pub_addr
         self.prv_addresses = []  # type: List[str]
+        # hyperdrive
+        self.hyperdrive_prv_port = hyperdrive_prv_port
+        self.hyperdrive_pub_port = hyperdrive_pub_port
 
         self.port_status = None
 
-        self.nat_type = nat_type  # Please do not remove nat_type property,
+        self.nat_type = nat_type  # Please do not remove the nat_type property,
         # it's still useful for stats / debugging connectivity.
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
-        if not self.pub_addr:
-            if self.prv_port:
-                self.pub_addr, self.pub_port, self.nat_type = \
-                    get_external_address(self.prv_port)
-            else:
-                self.pub_addr, _, self.nat_type = get_external_address()
-
         self.prv_addresses = get_host_addresses(use_ipv6)
+
+        if not self.pub_addr:
+            self.pub_addr, _, self.nat_type = get_external_address()
 
         if not self.prv_addr:
             if self.pub_addr in self.prv_addresses:
@@ -57,6 +59,16 @@ class Node(DictSerializable):
             logger.warning("Specified node address {} is not among detected "
                            "network addresses: {}".format(self.prv_addr,
                                                           self.prv_addresses))
+
+    def update_public_info(self) -> None:
+        if self.pub_addr is None:
+            self.pub_addr = self.prv_addr
+        if self.pub_port is None:
+            self.pub_port = self.prv_port
+        if self.p2p_pub_port is None:
+            self.p2p_pub_port = self.p2p_prv_port
+        if self.hyperdrive_pub_port is None:
+            self.hyperdrive_pub_port = self.hyperdrive_prv_port
 
     def is_super_node(self) -> bool:
         if self.pub_addr is None or self.prv_addr is None:
