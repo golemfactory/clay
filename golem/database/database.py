@@ -4,7 +4,7 @@ from os import path
 from peewee import SqliteDatabase
 from playhouse.shortcuts import RetryOperationalError
 
-from golem.database.migration.migrator import migrate_schema
+from golem.database.migration.migrate import migrate_schema
 
 log = logging.getLogger('golem.db')
 
