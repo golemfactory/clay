@@ -1,16 +1,12 @@
 import functools
-import hashlib
 import logging
 import os
-import pathlib
 import pickle
 import threading
 import time
 
 from golem_messages import message
 from twisted.internet import defer
-from twisted.internet import reactor
-from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
@@ -21,6 +17,8 @@ from golem.docker.environment import DockerEnvironment
 from golem.model import Payment, Actor
 from golem.model import db
 from golem.network import history
+from golem.network.concent import exceptions as concent_exceptions
+from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -32,12 +30,12 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-def drop_after_attr_error(*args, **kwargs):
+def drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
 
 
-def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
+def call_task_computer_and_drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
@@ -52,39 +50,6 @@ def dropped_after():
             return result
         return curry
     return inner
-
-
-def compute_result_hash(task_result):
-    result_hash = hashlib.sha1()
-    if task_result.result_type == ResultType.FILES:
-        # task_result.result is an array of filenames
-        for filename in task_result.result:
-            p = pathlib.Path(filename)
-            logger.info(
-                'Computing checksum (%.3fMB) of %s',
-                p.stat().st_size / 2**20,
-                p
-            )
-            with open(filename, 'rb') as f:
-                while True:
-                    chunk = f.read(2**20)  # 1MB
-                    if not chunk:
-                        break
-                    result_hash.update(chunk)
-
-    else:
-        logger.info('Computing checksum of single result')
-        result_hash.update(task_result.result.encode('utf-8'))
-    return result_hash
-
-
-def deferred_compute_result_hash(task_result):
-    if reactor.running:
-        execute = threads.deferToThread
-    else:
-        logger.debug('Reactor not running. Switching to blocking call')
-        execute = defer.execute
-    return execute(compute_result_hash, task_result)
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
@@ -382,6 +347,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         node_name = self.task_server.get_node_name()
+
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
@@ -390,10 +356,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         except history.MessageNotFound:
             task_to_compute = None
-            logger.info(
+            logger.warning(
                 '[CONCENT] TaskToCompute not found for subtask: %r',
                 task_result.subtask_id,
             )
+            return
 
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -410,23 +377,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(report_computed_task)
 
         msg = message.ForceReportComputedTask()
-        try:
-            task_to_compute = history.MessageHistoryService.get_sync_as_message(
-                task=task_result.task_id,
-                subtask=task_result.subtask_id,
-                msg_cls='TaskToCompute',
-            )
-        except history.MessageNotFound:
-            logger.warning(
-                '[CONCENT] Cannot create ForceReportComputedTask. '
-                'TaskToCompute message not found for task: %r subtask: %r',
-                task_result.task_id,
-                task_result.subtask_id,
-            )
-            return
-
         msg.task_to_compute = task_to_compute
-        result_hash = yield deferred_compute_result_hash(task_result)
+        result_hash = yield concent_helpers.deferred_compute_result_hash(
+            task_result,
+        )
         msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
 
@@ -574,22 +528,38 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id in self.task_manager.subtask2task_mapping:
-            self.task_server.receive_subtask_computation_time(
-                msg.subtask_id,
-                msg.computation_time
-            )
-            self.result_owner = EthAccountInfo(
-                msg.key_id,
-                msg.port,
-                msg.address,
-                msg.node_name,
-                msg.node_info,
-                msg.eth_account
-            )
-            self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
-        else:
+        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
+            logger.warning('Received unknown subtask_id: %r', msg)
             self.dropped()
+            return
+
+        if msg.task_to_compute is None:
+            logger.warning('Did not receive task_to_compute: %r', msg)
+            self.dropped()
+            return
+
+        try:
+            concent_helpers.process_report_computed_task(
+                msg,
+                task_session=self,
+            )
+        except concent_exceptions.ConcentVerificationFailed:
+            return
+
+        self.task_server.receive_subtask_computation_time(
+            msg.subtask_id,
+            msg.computation_time
+        )
+
+        self.result_owner = EthAccountInfo(
+            msg.key_id,
+            msg.port,
+            msg.address,
+            msg.node_name,
+            msg.node_info,
+            msg.eth_account
+        )
+        self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
 
     @history.provider_history
     def _react_to_get_task_result(self, msg):
