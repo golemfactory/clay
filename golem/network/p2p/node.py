@@ -54,9 +54,12 @@ class Node(DictSerializable):
                 self.prv_addr = get_host_address(seed_host, use_ipv6)
 
         if self.prv_addr not in self.prv_addresses:
-            logger.warning("Specified node address {} is not among detected "
-                           "network addresses: {}".format(self.prv_addr,
-                                                          self.prv_addresses))
+            logger.warning(
+                "Specified node address %s is not among detected "
+                "network addresses: %s",
+                self.prv_addr,
+                self.prv_addresses,
+            )
 
     def is_super_node(self) -> bool:
         if self.pub_addr is None or self.prv_addr is None:
