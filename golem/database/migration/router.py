@@ -55,7 +55,24 @@ class Router(_Router):
         self._schema_version = schema_version
         self._template = template
 
+    @property
+    def environment(self):
+        return self.Environment(self.migrate_dir)
+
+    @property
+    def todo(self):
+        """Scan migrations in file system."""
+        os.makedirs(self.migrate_dir, exist_ok=True)
+
+        return sorted(
+            [f[:-3] for f in os.listdir(self.migrate_dir)
+             if self.filemask.match(f)],
+            key=self.Environment.version_from_name
+        )
+
     def next_schema_num(self):
+        """Get next schema version number."""
+
         todo = self.todo
         if not todo:
             return self._schema_version
@@ -65,6 +82,8 @@ class Router(_Router):
             return version + 1
 
     def compile(self, name: str, migrate: str = '', rollback: str = '', _=None):
+        """Compile the migration script template."""
+
         name = '{:03}_{}'.format(self.next_schema_num(), name)
         filename = name + '.py'
         path = os.path.join(self.migrate_dir, filename)
