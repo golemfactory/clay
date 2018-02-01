@@ -25,9 +25,7 @@ from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-
-# For type annotations:
-from golem.task.taskmanager import TaskManager  # pylint: disable=unused-import
+from golem.task.taskmanager import TaskManager
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +92,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
-        self.task_manager = self.task_server.task_manager  # type: TaskManager
+        self.task_manager: TaskManager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id

@@ -1,24 +1,21 @@
 import logging
 import time
 from collections import defaultdict
-from typing import (  # pylint: disable=unused-import
-    NamedTuple, List, Optional, DefaultDict)
+from typing import (NamedTuple, List, Optional, DefaultDict)
 
 from pydispatch import dispatcher
 
-from golem.task.taskstate import TaskOp, SubtaskStatus, TaskStatus, TaskState
-
+from golem.task.taskstate import Operation, TaskOp, SubtaskOp, OtherOp, \
+    SubtaskStatus, TaskStatus, TaskState
 
 __all__ = ['RequestorTaskStatsManager']
 
 logger = logging.getLogger(__name__)
 
-
 TASK_COMPLETED_STATUSES = [TaskStatus.finished, TaskStatus.aborted,
                            TaskStatus.timeout]
 
-
-TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", TaskOp)])
+TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", Operation)])
 
 
 class SubtaskInfo:  # pylint: disable=too-few-public-methods
@@ -37,11 +34,10 @@ class TaskInfo:
     """
 
     def __init__(self):
-        self.latest_status = TaskStatus.notStarted  # type: TaskStatus
-        self._want_to_compute_count = 0
-        self.messages = []  # type: List[TaskMsg]
-        self.subtasks = defaultdict(
-            SubtaskInfo)  # type: DefaultDict[str, SubtaskInfo]
+        self.latest_status: TaskStatus = TaskStatus.notStarted
+        self._want_to_compute_count: int = 0
+        self.messages: List[TaskMsg] = []
+        self.subtasks: DefaultDict[str, SubtaskInfo] = defaultdict(SubtaskInfo)
 
     def got_want_to_compute(self):
         """Makes note of a received work offer"""
@@ -84,7 +80,7 @@ class TaskInfo:
                 cnt += 1
         return cnt
 
-    def _subtasks_count_specific_task_ops(self, op: TaskOp):
+    def _subtasks_count_specific_ops(self, op: Operation):
         cnt = 0
         for st in self.subtasks.values():
             for msg in st.messages:
@@ -94,18 +90,18 @@ class TaskInfo:
 
     def not_accepted_results_count(self) -> int:
         """Number of times a subtask failed verification"""
-        return self._subtasks_count_specific_task_ops(
-            TaskOp.SUBTASK_NOT_ACCEPTED)
+        return self._subtasks_count_specific_ops(
+            SubtaskOp.NOT_ACCEPTED)
 
     def timeout_count(self) -> int:
         """Number of times a subtask has not beed finished in time"""
-        return self._subtasks_count_specific_task_ops(
-            TaskOp.SUBTASK_TIMEOUT)
+        return self._subtasks_count_specific_ops(
+            SubtaskOp.TIMEOUT)
 
     def failed_count(self) -> int:
         """Number of subtasks that failed on computing side"""
-        return self._subtasks_count_specific_task_ops(
-            TaskOp.SUBTASK_FAILED)
+        return self._subtasks_count_specific_ops(
+            SubtaskOp.FAILED)
 
     def not_downloaded_count(self) -> int:
         """Returns # of subtasks that were reported as computed but their
@@ -119,10 +115,10 @@ class TaskInfo:
         for st in self.subtasks.values():
             download_in_progress = False
             for msg in st.messages:
-                if msg.op == TaskOp.SUBTASK_RESULT_DOWNLOADING:
+                if msg.op == SubtaskOp.RESULT_DOWNLOADING:
                     download_in_progress = True
-                elif msg.op in [TaskOp.SUBTASK_FINISHED,
-                                TaskOp.SUBTASK_NOT_ACCEPTED]:
+                elif msg.op in [SubtaskOp.FINISHED,
+                                SubtaskOp.NOT_ACCEPTED]:
                     download_in_progress = False
             if download_in_progress:
                 cnt += 1
@@ -132,8 +128,8 @@ class TaskInfo:
         """Returns total time in seconds spent on the task
 
         It is calculated as a wall time between ``TASK_CREATED`` or
-        ``TASK_RESTORED`` and one of ``TASK_FINISHED``,
-        ``TASK_NOT_ACCEPTED`` and ``TASK_TIMEOUT`` messages. If the
+        ``TASK_RESTORED`` and one of ``TASK_FINISHED``, ``TASK_NOT_ACCEPTED``,
+        ``TASK_ABORTED`` and ``TASK_TIMEOUT`` messages. If the
         task is in progress then current time is taken instead of the
         latter. Note that the time spent paused is also included in
         the total time.
@@ -145,11 +141,11 @@ class TaskInfo:
             finish_time = time.time()
 
         for msg in reversed(self.messages):
-            if (msg.op in [TaskOp.TASK_CREATED, TaskOp.TASK_RESTORED]
+            if (msg.op in [TaskOp.CREATED, TaskOp.RESTORED]
                     and not start_time):
                 start_time = msg.ts
-            elif (msg.op in [TaskOp.TASK_FINISHED, TaskOp.TASK_NOT_ACCEPTED,
-                             TaskOp.TASK_ABORTED, TaskOp.TASK_TIMEOUT]
+            elif (msg.op in [TaskOp.FINISHED, TaskOp.NOT_ACCEPTED,
+                             TaskOp.ABORTED, TaskOp.TIMEOUT]
                   and not finish_time):
                 finish_time = msg.ts
 
@@ -163,14 +159,14 @@ class TaskInfo:
         (SUBTASK_NOT_ACCEPTED) are considered failures in this method.
         """
         for msg in self.messages:
-            if msg.op in [TaskOp.TASK_NOT_ACCEPTED,
-                          TaskOp.TASK_TIMEOUT]:
+            if msg.op in [TaskOp.NOT_ACCEPTED,
+                          TaskOp.TIMEOUT]:
                 return True
         for st in self.subtasks.values():
             for msg in st.messages:
-                if msg.op in [TaskOp.SUBTASK_FAILED,
-                              TaskOp.SUBTASK_NOT_ACCEPTED,
-                              TaskOp.SUBTASK_TIMEOUT]:
+                if msg.op in [SubtaskOp.FAILED,
+                              SubtaskOp.NOT_ACCEPTED,
+                              SubtaskOp.TIMEOUT]:
                     return True
         return False
 
@@ -182,7 +178,7 @@ class TaskInfo:
         return self.latest_status in TASK_COMPLETED_STATUSES
 
     def has_task_failed(self) -> bool:
-        """Had the task failed
+        """Has the task failed
 
         If true it means that the whole task failed which is different
         from subtasks failing, which are reported via
@@ -211,12 +207,12 @@ class TaskInfo:
                 continue
             in_progress = False
             for msg in st.messages:
-                if msg.op == TaskOp.SUBTASK_ASSIGNED:
+                if msg.op == SubtaskOp.ASSIGNED:
                     in_progress = True
-                elif msg.op in [TaskOp.SUBTASK_TIMEOUT,
-                                TaskOp.SUBTASK_FINISHED,
-                                TaskOp.SUBTASK_FAILED,
-                                TaskOp.SUBTASK_NOT_ACCEPTED]:
+                elif msg.op in [SubtaskOp.TIMEOUT,
+                                SubtaskOp.FINISHED,
+                                SubtaskOp.FAILED,
+                                SubtaskOp.NOT_ACCEPTED]:
                     in_progress = False
             if in_progress:
                 cnt += 1
@@ -277,8 +273,9 @@ def update_current_stats_with_task(
     a brand new one is returned.
     """
     is_new_task = old is None
-    if old is None:
+    if is_new_task:
         old = EMPTY_TASK_STATS
+
     return CurrentStats(
         tasks_cnt=current.tasks_cnt + (1 if is_new_task else 0),
         finished_task_cnt=(current.finished_task_cnt
@@ -319,7 +316,7 @@ FinishedTasksStats = NamedTuple("FinishedTasksStats", [
     ("finished_ok", FinishedTasksSummary),
     ("finished_with_failures", FinishedTasksSummary),
     ("failed", FinishedTasksSummary)])
-FinishedTasksSummary.__doc__ = """Statisitics about finished tasks
+FinishedTasksSummary.__doc__ = """Statistics about finished tasks
 
 Divided into groups depending on the level of success: `finished_ok`
 are tasks that were verified ok and had no problems along the way,
@@ -387,89 +384,65 @@ class RequestorTaskStats:
     used for extracting information from it.
     """
 
-    # Ops that result in storing of task level information
-    TASK_LEVEL_OPS = [TaskOp.TASK_STARTED, TaskOp.TASK_FINISHED,
-                      TaskOp.TASK_NOT_ACCEPTED, TaskOp.TASK_TIMEOUT,
-                      TaskOp.TASK_RESTARTED, TaskOp.TASK_ABORTED,
-                      TaskOp.TASK_CREATED, TaskOp.TASK_RESTORED]
-
-    # Ops that result in storing of subtask level information; subtask_id needs
-    # to be set for those
-    SUBTASK_LEVEL_OPS = [TaskOp.SUBTASK_ASSIGNED,
-                         TaskOp.SUBTASK_RESULT_DOWNLOADING,
-                         TaskOp.SUBTASK_NOT_ACCEPTED,
-                         TaskOp.SUBTASK_FINISHED,
-                         TaskOp.SUBTASK_FAILED,
-                         TaskOp.SUBTASK_TIMEOUT,
-                         TaskOp.SUBTASK_RESTARTED]
-
-    # Ops that are not really interesting, for statistics anyway
-    UNNOTEWORTHY_OPS = [TaskOp.FRAME_SUBTASK_RESTARTED,
-                        TaskOp.UNEXPECTED_SUBTASK_RECEIVED]
-
     def __init__(self):
-        self.tasks = defaultdict(
-            TaskInfo)  # type: DefaultDict[str, TaskInfo]
+        self.tasks: DefaultDict[str, TaskInfo] = defaultdict(TaskInfo)
         self.stats = EMPTY_CURRENT_STATS
         self.finished_stats = EMPTY_FINISHED_STATS
 
     def on_message(self,
                    task_id: str,
                    task_state: TaskState,
-                   task_op: TaskOp,
-                   subtask_id: Optional[str] = None) -> None:
+                   subtask_id: str = None,
+                   op: Operation = None) -> None:
         """Updates stats according to the received information."""
 
         old_task_stats = None
         if task_id in self.tasks:
             old_task_stats = self.get_task_stats(task_id)
 
-        if task_op == TaskOp.WORK_OFFER_RECEIVED:
+        if not op or isinstance(op, OtherOp):
+            pass
+
+        elif op == TaskOp.WORK_OFFER_RECEIVED:
             self.tasks[task_id].got_want_to_compute()
 
-        elif task_op == TaskOp.TASK_RESTORED:
+        elif op == TaskOp.RESTORED:
             if task_state.status in TASK_COMPLETED_STATUSES:
                 logger.debug("Skipping completed task %r", task_id)
             else:
                 the_time = time.time()
-                msg1 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_RESTARTED)
-                msg2 = TaskMsg(ts=the_time, op=TaskOp.SUBTASK_ASSIGNED)
                 for s_id in task_state.subtask_states.keys():
                     subtask_status = (task_state.subtask_states[s_id]
                                       .subtask_status)
                     self.tasks[task_id].got_subtask_message(
                         s_id,
-                        msg1,
+                        TaskMsg(ts=the_time, op=SubtaskOp.RESTARTED),
                         subtask_status)
                     if subtask_status in [SubtaskStatus.starting,
                                           SubtaskStatus.downloading]:
                         self.tasks[task_id].got_subtask_message(
                             s_id,
-                            msg2,
+                            TaskMsg(ts=the_time, op=SubtaskOp.ASSIGNED),
                             subtask_status)
 
-                msg = TaskMsg(ts=the_time, op=TaskOp.TASK_RESTORED)
+                msg = TaskMsg(ts=the_time, op=TaskOp.RESTORED)
                 self.tasks[task_id].got_task_message(msg, task_state.status)
 
-        elif task_op in self.TASK_LEVEL_OPS:
+        elif isinstance(op, TaskOp):
             self.tasks[task_id].got_task_message(
-                TaskMsg(ts=time.time(), op=task_op),
+                TaskMsg(ts=time.time(), op=op),
                 task_state.status)
 
-        elif task_op in self.SUBTASK_LEVEL_OPS:
+        elif isinstance(op, SubtaskOp):
             assert subtask_id
             self.tasks[task_id].got_subtask_message(
                 subtask_id,
-                TaskMsg(ts=time.time(), op=task_op),
+                TaskMsg(ts=time.time(), op=op),
                 task_state.subtask_states[subtask_id].subtask_status)
 
-        elif task_op in self.UNNOTEWORTHY_OPS:
-            # these are not interesting and are not stored
-            pass
-
         else:
-            # Unknown task_op, log problem
-            logger.debug("Unknown TaskOp %r", task_op.name)
+            # Unknown operation, log problem
+            logger.debug("Unknown TaskOp %r", op.name)
 
         if task_id in self.tasks:
             new_task_stats = self.get_task_stats(task_id)
@@ -480,7 +453,7 @@ class RequestorTaskStats:
 
     def is_task_finished(self, task_id: str) -> bool:
         """Returns True for a known, completed task"""
-        ti = self.tasks.get(task_id)
+        ti: Optional[TaskInfo] = self.tasks.get(task_id)
         return bool(ti and ti.is_completed())
 
     def get_task_stats(self, task_id: str) -> TaskStats:
@@ -490,7 +463,7 @@ class RequestorTaskStats:
         will then be final. It will work on the task in progress, but
         some fields like ``not_downloaded_subtasks_cnt`` can decrease.
         """
-        ti = self.tasks[task_id]  # type: TaskInfo
+        ti: TaskInfo = self.tasks[task_id]
         return TaskStats(
             finished=ti.is_completed(),
             task_failed=ti.has_task_failed(),
@@ -520,6 +493,7 @@ class RequestorTaskStatsManager:
     signal ``golem.taskmanager`` with event ``task_status_updated``. This signal
     is normally emitted by :py:meth:`TaskManager.notice_task_updated` method.
     """
+
     def __init__(self):
         self.requestor_stats = RequestorTaskStats()
         dispatcher.connect(self.cb_message,
@@ -532,13 +506,12 @@ class RequestorTaskStatsManager:
                    event: Optional[str],
                    task_id: str,
                    task_state: TaskState,
-                   subtask_id: Optional[str] = None,
-                   task_op: Optional[TaskOp] = None):
+                   subtask_id: str = None,
+                   op: Operation = None):
         """A callback for ``pydispatcher`` messages about tasks"""
-        if event != 'task_status_updated' or not task_id or not task_op:
+        if event != 'task_status_updated' or not task_id or not op:
             return
-        self.requestor_stats.on_message(task_id, task_state,
-                                        task_op, subtask_id)
+        self.requestor_stats.on_message(task_id, task_state, subtask_id, op)
 
     def get_current_stats(self) -> CurrentStats:
         """See :py:meth:`RequestorTaskStats.get_current_stats`"""

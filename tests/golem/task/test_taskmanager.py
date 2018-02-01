@@ -21,7 +21,7 @@ from golem.task.taskbase import Task, TaskHeader, \
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
-    TaskStatus, ComputerState, TaskOp
+    TaskStatus, ComputerState, TaskOp, SubtaskOp, OtherOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
@@ -31,10 +31,12 @@ from apps.dummy.task.dummytask import (
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.resource.dirmanager import DirManager
 
+
 class PickableMock(Mock):
     # to make the mock pickable
     def __reduce__(self):
         return (Mock, ())
+
 
 class TaskMock(Task):
 
@@ -56,6 +58,7 @@ class TaskMock(Task):
     def __reduce__(self):
         return (Mock, ())
 
+
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
@@ -63,6 +66,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     PEP8_FILES = [
         'golem/task/taskmanager.py',
     ]
+
     def setUp(self):
         super(TestTaskManager, self).setUp()
         random.seed()
@@ -111,7 +115,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         ctd['environment'] = "DEFAULT"
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
-        task_mock.query_extra_data_return_value = Task.ExtraData(should_wait=False, ctd=ctd)
+        task_mock.query_extra_data_return_value = Task.ExtraData(
+            should_wait=False, ctd=ctd)
         Task.get_progress = Mock()
         task_mock.get_progress.return_value = 0.3
 
@@ -120,50 +125,52 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def _connect_signal_handler(self):
         handler_called = False
         handler_params = []
-        def handler(sender, signal, event, task_id, subtask_id = None,
-                    task_op = None):
+
+        def handler(sender, signal, event, task_id, subtask_id=None, op=None):   # noqa pylint: too-many-arguments
             nonlocal handler_called
             nonlocal handler_params
 
             handler_called = True
             handler_params.append((sender, signal, event, task_id, subtask_id,
-                                   task_op))
+                                   op))
 
         def checker(expected_events):
             self.assertTrue(handler_called, "Handler has not been called")
 
-            for (e_task_id, e_subtask_id, e_task_op) in expected_events[::-1]:
-                sender, signal, event, task_id, subtask_id, task_op =\
+            for (e_task_id, e_subtask_id, e_op) in expected_events[::-1]:
+                sender, signal, event, task_id, subtask_id, op = \
                     handler_params.pop()
 
-                self.assertEqual(event, "task_status_updated",
-                                 "Unexpected task status")
+                self.assertEqual(
+                    event, "task_status_updated", "Unexpected task status")
                 if e_task_id:
-                    self.assertEqual(task_id, e_task_id,
-                                     "Received event for wrong task")
+                    self.assertEqual(
+                        task_id, e_task_id, "Received event for wrong task")
                 if e_subtask_id:
-                    self.assertIsNotNone(subtask_id,
+                    self.assertIsNotNone(
+                        subtask_id,
                         "No subtask specified in the received event")
-                    self.assertEqual(subtask_id, e_subtask_id,
-                                     "Received event for wrong subtask")
-                if e_task_op:
-                    self.assertIsNotNone(task_op,
-                        "No task_op specified in the received event")
-                    self.assertEqual(task_op, e_task_op,
-                                     "Received event with wrong task_op")
+                    self.assertEqual(
+                        subtask_id, e_subtask_id,
+                        "Received event for wrong subtask")
+                if e_op:
+                    self.assertIsNotNone(
+                        op, "No operation specified in the received event")
+                    self.assertEqual(
+                        op, e_op, "Received event with wrong operation")
 
         dispatcher.connect(handler, signal="golem.taskmanager",
                            sender=dispatcher.Any, weak=True)
-        return (handler, checker)
+        return handler, checker
 
     def test_start_task(self):
         task_mock = self._get_task_mock()
 
-        (h,c) = self._connect_signal_handler()
+        (h, c) = self._connect_signal_handler()
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
-        c([("xyz", None, TaskOp.TASK_CREATED),
-           ("xyz", None, TaskOp.TASK_STARTED)])
+        c([("xyz", None, TaskOp.CREATED),
+           ("xyz", None, TaskOp.STARTED)])
         del h
 
         with self.assertRaises(RuntimeError):
@@ -181,43 +188,46 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         dummy_task = dtb.build()
         header = self._get_task_header(task_id=task_id, timeout=120.0,
-                              subtask_timeout=120.0)
-        dummy_task.header=header
+                                       subtask_timeout=120.0)
+        dummy_task.header = header
 
         return dummy_task
 
     def test_dump_and_restore(self):
 
         task_ids = ["xyz0", "xyz1"]
-        tasks =  [ self._get_test_dummy_task(task_id) for task_id in task_ids]
+        tasks = [self._get_test_dummy_task(task_id) for task_id in task_ids]
 
         with self.assertLogs(logger, level="DEBUG") as l:
             keys_auth = Mock()
             keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-            temp_tm = TaskManager("ABC",Node(),
-                keys_auth=keys_auth,
-                root_path=self.path,
-                task_persistence=True)
+            temp_tm = TaskManager("ABC", Node(),
+                                  keys_auth=keys_auth,
+                                  root_path=self.path,
+                                  task_persistence=True)
 
             temp_tm.key_id = "KEYID"
             temp_tm.listen_address = "10.10.10.10"
             temp_tm.listen_port = 2222
 
-            for task,task_id in zip(tasks,task_ids ):
+            for task, task_id in zip(tasks, task_ids):
                 temp_tm.add_new_task(task)
                 temp_tm.start_task(task.header.task_id)
-                assert any("TASK %s DUMPED" % task_id in log for log in l.output)
+                assert any(
+                    "TASK %s DUMPED" % task_id in log for log in l.output)
 
         with self.assertLogs(logger, level="DEBUG") as l:
             fresh_tm = TaskManager("ABC", Node(), keys_auth=Mock(),
-                                 root_path=self.path, task_persistence=True)
+                                   root_path=self.path, task_persistence=True)
 
-            assert any("SEARCHING FOR TASKS TO RESTORE" in log for log in l.output)
+            assert any(
+                "SEARCHING FOR TASKS TO RESTORE" in log for log in l.output)
             assert any("RESTORE TASKS" in log for log in l.output)
 
-            for task,task_id in zip(tasks,task_ids ):
+            for task, task_id in zip(tasks, task_ids):
                 restored_task = fresh_tm.tasks[task.header.task_id]
-                assert any("TASK %s RESTORED" % task_id in log for log in l.output)
+                assert any(
+                    "TASK %s RESTORED" % task_id in log for log in l.output)
                 # check some task's properties...
                 assert restored_task.header.task_id == task.header.task_id
 
@@ -233,8 +243,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock = self._get_task_mock()
         self.tm.add_new_task(task_mock)
 
-        (h,c) = self._connect_signal_handler()
-        self.tm.got_wants_to_compute("xyz","1234","a name")
+        (h, c) = self._connect_signal_handler()
+        self.tm.got_wants_to_compute("xyz", "1234", "a name")
         c([("xyz", None, TaskOp.WORK_OFFER_RECEIVED)])
         del h
 
@@ -253,12 +263,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
 
-        (h,c) = self._connect_signal_handler()
+        (h, c) = self._connect_signal_handler()
         subtask, wrong_task, wait = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is not None
         assert not wrong_task
-        c([("xyz", subtask['subtask_id'], TaskOp.SUBTASK_ASSIGNED)])
+        c([("xyz", subtask['subtask_id'], SubtaskOp.ASSIGNED)])
         del h
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
@@ -345,7 +355,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert any("not my subtask" in log for log in l.output)
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
+        with patch('golem.task.taskbase.Task.needs_computation',
+                   return_value=True):
             subtask, wrong_task, wait = self.tm.get_next_subtask(
                 node_id="DEF",
                 node_name="DEF",
@@ -361,11 +372,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.assertFalse(wrong_task)
 
         self.tm.set_value("xyz", "xxyyzz", 13)
-        self.assertEqual(self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
         self.assertEqual(self.tm.get_value("xxyyzz"), 13)
 
         self.tm.set_computation_time("xxyyzz", 3601)
-        self.assertEqual(self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 1011)
+        self.assertEqual(
+            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 1011)
 
     def test_change_config(self):
         self.assertTrue(self.tm.use_distributed_resources)
@@ -417,10 +430,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             def restart_subtask(self, subtask_id):
                 self.restarted[subtask_id] = True
 
-        t = TestTask(th, "print 'Hello world'", ["xxyyzz"], verify_subtasks={"xxyyzz": True})
+        t = TestTask(th, "print 'Hello world'", ["xxyyzz"],
+                     verify_subtasks={"xxyyzz": True})
         self.tm.add_new_task(t)
         self.tm.start_task(t.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000, 10000, 10000)
+        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
+                                                                "xyz", 1030, 10,
+                                                                10000, 10000,
+                                                                10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "xxyyzz"
         assert not should_wait
@@ -438,15 +455,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ss.subtask_rem_time == 0.0
         assert ss.subtask_status == SubtaskStatus.finished
         assert self.tm.tasks_states["xyz"].status == TaskStatus.finished
-        c([("xyz", ctd['subtask_id'], TaskOp.SUBTASK_FINISHED),
-           ("xyz", None, TaskOp.TASK_FINISHED)])
+        c([("xyz", ctd['subtask_id'], SubtaskOp.FINISHED),
+           ("xyz", None, TaskOp.FINISHED)])
         del h
 
         th.task_id = "abc"
-        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"], verify_subtasks={"aabbcc": True})
+        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"],
+                      verify_subtasks={"aabbcc": True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
+        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
+                                                                "abc", 1030, 10,
+                                                                10000, 10000,
+                                                                10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "aabbcc"
         assert not should_wait
@@ -460,20 +481,24 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ss.subtask_progress == 0.0
         assert ss.subtask_status == SubtaskStatus.restarted
         assert not t2.finished["aabbcc"]
-        c([("abc", "aabbcc", TaskOp.SUBTASK_RESTARTED),
-           ("abc", "aabbcc", TaskOp.UNEXPECTED_SUBTASK_RECEIVED)])
+        c([("abc", "aabbcc", SubtaskOp.RESTARTED),
+           ("abc", "aabbcc", OtherOp.UNEXPECTED)])
         del h
 
         th.task_id = "qwe"
-        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
+        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"],
+                      {"qqwwee": True, "rrttyy": True})
         self.tm.add_new_task(t3)
         self.tm.start_task(t3.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
+        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
+                                                                "qwe", 1030, 10,
+                                                                10000, 10000,
+                                                                10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "qqwwee"
         (h, c) = self._connect_signal_handler()
         self.tm.task_computation_failure("qqwwee", "something went wrong")
-        c([("qwe", ctd['subtask_id'], TaskOp.SUBTASK_FAILED)])
+        c([("qwe", ctd['subtask_id'], SubtaskOp.FAILED)])
         del h
         ss = self.tm.tasks_states["qwe"].subtask_states["qqwwee"]
         assert ss.subtask_status == SubtaskStatus.failure
@@ -486,36 +511,43 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 "qqwwee", [],
                 0,
                 self.tm.verification_finished)
-            c([("qwe", "qqwwee", TaskOp.UNEXPECTED_SUBTASK_RECEIVED)])
+            c([("qwe", "qqwwee", OtherOp.UNEXPECTED)])
             del h
         assert self.tm.verification_finished.call_count == 3
         th.task_id = "task4"
-        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"], {'ttt4': False, 'sss4': True})
+        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"],
+                      {'ttt4': False, 'sss4': True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2,
-                                                           "10.10.10.10")
+        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
+                                                                "task4", 1000,
+                                                                10, 5, 10, 2,
+                                                                "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "ttt4"
         (h, c) = self._connect_signal_handler()
         self.tm.computed_task_received("ttt4", [], 0,
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 4
-        assert self.tm.tasks_states["task4"].subtask_states["ttt4"].subtask_status == SubtaskStatus.failure
+        assert self.tm.tasks_states["task4"].subtask_states[
+            "ttt4"].subtask_status == SubtaskStatus.failure
         self.tm.computed_task_received("ttt4", [], 0,
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 5
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2, "10.10.10.10")
+        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
+                                                                "task4", 1000,
+                                                                10, 5, 10, 2,
+                                                                "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "sss4"
         self.tm.computed_task_received("sss4", [], 0,
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 6
-        c([("task4", "ttt4", TaskOp.SUBTASK_NOT_ACCEPTED),
-           ("task4", "ttt4", TaskOp.UNEXPECTED_SUBTASK_RECEIVED),
-           ("task4", "sss4", TaskOp.SUBTASK_ASSIGNED),
-           ("task4", "sss4", TaskOp.SUBTASK_FINISHED),
-           ("task4", None, TaskOp.TASK_FINISHED)])
+        c([("task4", "ttt4", SubtaskOp.NOT_ACCEPTED),
+           ("task4", "ttt4", OtherOp.UNEXPECTED),
+           ("task4", "sss4", SubtaskOp.ASSIGNED),
+           ("task4", "sss4", SubtaskOp.FINISHED),
+           ("task4", None, TaskOp.FINISHED)])
         del h
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
@@ -526,7 +558,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock = self._get_task_mock()
         task_mock.counting_nodes = {}
 
-        with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
+        with patch("golem.task.taskbase.Task.result_incoming") \
+                as result_incoming_mock:
             self.tm.task_result_incoming(subtask_id)
             assert not result_incoming_mock.called
 
@@ -547,15 +580,17 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.subtask2task_mapping[subtask_id] = "xyz"
         self.tm.tasks_states["xyz"] = task_state
 
-        with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
+        with patch("golem.task.taskbase.Task.result_incoming") \
+                as result_incoming_mock:
             (h, c) = self._connect_signal_handler()
             self.tm.task_result_incoming(subtask_id)
             assert result_incoming_mock.called
             assert dump_mock.called
-            c([("xyz", subtask_id, TaskOp.SUBTASK_RESULT_DOWNLOADING)])
+            c([("xyz", subtask_id, SubtaskOp.RESULT_DOWNLOADING)])
 
         self.tm.tasks = []
-        with patch("golem.task.taskbase.Task.result_incoming") as result_incoming_mock:
+        with patch("golem.task.taskbase.Task.result_incoming") \
+                as result_incoming_mock:
             self.tm.task_result_incoming(subtask_id)
             assert not result_incoming_mock.called
 
@@ -577,8 +612,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ss.subtask_status == SubtaskStatus.failure
         assert not self.tm.task_computation_failure("aabbcc",
                                                     "something went wrong")
-        c([("xyz", "aabbcc", TaskOp.SUBTASK_FAILED),
-           ("xyz", "aabbcc", TaskOp.UNEXPECTED_SUBTASK_RECEIVED)])
+        c([("xyz", "aabbcc", SubtaskOp.FAILED),
+           ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
         del h
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
@@ -595,30 +630,42 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert self.tm.get_subtasks("xyz") == []
         assert self.tm.get_subtasks("TASK 1") == []
 
-        self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
-        self.tm.get_next_subtask("NODEID", "NODENAME", "TASK 1", 1000, 100, 10000, 10000)
+        self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000,
+                                 10000)
+        self.tm.get_next_subtask("NODEID", "NODENAME", "TASK 1", 1000, 100,
+                                 10000, 10000)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
-        self.tm.get_next_subtask("NODEID2", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        self.tm.get_next_subtask("NODEID2", "NODENAME", "xyz", 1000, 100, 10000,
+                                 10000)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "ddeeff"
-        self.tm.get_next_subtask("NODEID3", "NODENAME", "xyz", 1000, 100, 10000, 10000)
-        self.assertEqual(set(self.tm.get_subtasks("xyz")), {"xxyyzz", "aabbcc", "ddeeff"})
+        self.tm.get_next_subtask("NODEID3", "NODENAME", "xyz", 1000, 100, 10000,
+                                 10000)
+        self.assertEqual(set(self.tm.get_subtasks("xyz")),
+                         {"xxyyzz", "aabbcc", "ddeeff"})
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
 
     def test_resource_send(self):
         from pydispatch import dispatcher
         self.tm.task_persistence = True
-        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'", None)
+        t = Task(
+            TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"),
+            "print 'hello world'", None)
         listener_mock = Mock()
+
         def listener(sender, signal, event, task_id):
             self.assertEqual(event, 'task_status_updated')
             self.assertEqual(task_id, t.header.task_id)
             listener_mock()
+
         dispatcher.connect(listener, signal='golem.taskmanager')
         try:
+            self.assertEqual(0, listener_mock.call_count)
             self.tm.add_new_task(t)
+            self.assertEqual(1, listener_mock.call_count)
             self.tm.start_task(t.header.task_id)
+            self.assertEqual(2, listener_mock.call_count)
             self.tm.resources_send("xyz")
-            self.assertEqual(listener_mock.call_count, 3)
+            self.assertEqual(3, listener_mock.call_count)
         finally:
             dispatcher.disconnect(listener, signal='golem.taskmanager')
 
@@ -633,28 +680,36 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.check_timeouts()
         assert self.tm.tasks_states['xyz'].status == TaskStatus.timeout
         # Task with subtask timeout
-        with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
-            t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc", timeout=10, subtask_timeout=0.1)
+        with patch('golem.task.taskbase.Task.needs_computation',
+                   return_value=True):
+            t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc",
+                                     timeout=10, subtask_timeout=0.1)
             self.tm.add_new_task(t2)
             self.tm.start_task(t2.header.task_id)
-            self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2, "10.10.10.10")
+            self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2,
+                                     "10.10.10.10")
             time.sleep(0.1)
             self.tm.check_timeouts()
             assert self.tm.tasks_states["abc"].status == TaskStatus.waiting
-            assert self.tm.tasks_states["abc"].subtask_states["aabbcc"].subtask_status == SubtaskStatus.failure
+            assert self.tm.tasks_states["abc"].subtask_states[
+                "aabbcc"].subtask_status == SubtaskStatus.failure
         # Task with task and subtask timeout
-        with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
-            t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty", timeout=0.1, subtask_timeout=0.1)
+        with patch('golem.task.taskbase.Task.needs_computation',
+                   return_value=True):
+            t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty",
+                                     timeout=0.1, subtask_timeout=0.1)
             self.tm.add_new_task(t3)
             self.tm.start_task(t3.header.task_id)
-            self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
+            self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2,
+                                     "10.10.10.10")
             time.sleep(0.1)
             (h, c) = self._connect_signal_handler()
             self.tm.check_timeouts()
             assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
-            assert self.tm.tasks_states["qwe"].subtask_states["qwerty"].subtask_status == SubtaskStatus.failure
-            c([("qwe", None, TaskOp.TASK_TIMEOUT),
-               ("qwe", "qwerty", TaskOp.SUBTASK_TIMEOUT)])
+            assert self.tm.tasks_states["qwe"].subtask_states[
+                 "qwerty"].subtask_status == SubtaskStatus.failure
+            c([("qwe", None, TaskOp.TIMEOUT),
+               ("qwe", "qwerty", SubtaskOp.TIMEOUT)])
             del h
 
     def test_task_event_listener(self):
@@ -685,7 +740,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.abort_task("xyz")
 
         assert self.tm.tasks_states["xyz"].status == TaskStatus.aborted
-        c([("xyz", None, TaskOp.TASK_ABORTED)])
+        c([("xyz", None, TaskOp.ABORTED)])
         del h
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -821,10 +876,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             (h, c) = self._connect_signal_handler()
             for i in range(3):
                 tm.restart_frame_subtasks(task_id, i + 1)
-            c([(task_id, None, TaskOp.SUBTASK_RESTARTED),
-               (task_id, None, TaskOp.SUBTASK_RESTARTED),
-               (task_id, None, TaskOp.SUBTASK_RESTARTED),
-               (task_id, None, TaskOp.FRAME_SUBTASK_RESTARTED)])
+            c([(task_id, None, SubtaskOp.RESTARTED),
+               (task_id, None, SubtaskOp.RESTARTED),
+               (task_id, None, SubtaskOp.RESTARTED),
+               (task_id, None, OtherOp.FRAME_RESTARTED)])
             del h
 
         subtask_states = {}
@@ -886,7 +941,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             task.preview_updater = Mock()
             task.preview_updater.preview_res_x = 100
-            task.preview_updater.get_offset = Mock(wraps=lambda part: part*10)
+            task.preview_updater.get_offset = Mock(wraps=lambda part: part * 10)
             task.preview_updaters = [Mock()] * n
             task.use_frames = fixed_frames or i % 2 == 0
 
@@ -917,7 +972,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         subtask_id = None
 
         for i in range(0, n):
-
             subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
             subtask.subtask_status = SubtaskStatus.starting

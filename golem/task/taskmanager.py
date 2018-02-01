@@ -21,7 +21,7 @@ from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
-    SubtaskState, TaskOp
+    SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
 
 logger = logging.getLogger(__name__)
 
@@ -164,11 +164,10 @@ class TaskManager(TaskEventListener):
 
         self.tasks[task_id] = task
         self.tasks_states[task_id] = ts
-        self.notice_task_updated(task_id)
         logger.info("Task %s added", task_id)
 
-        self.notice_task_updated(task.header.task_id,
-                                 task_op=TaskOp.TASK_CREATED,
+        self.notice_task_updated(task_id,
+                                 op=TaskOp.CREATED,
                                  persist=False)
 
     @handle_task_key_error
@@ -180,7 +179,7 @@ class TaskManager(TaskEventListener):
                                .format(task_id))
 
         task_state.status = TaskStatus.waiting
-        self.notice_task_updated(task_id, task_op=TaskOp.TASK_STARTED)
+        self.notice_task_updated(task_id, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
     def _dump_filepath(self, task_id):
@@ -244,8 +243,8 @@ class TaskManager(TaskEventListener):
                     broken_paths.add(path)
 
             if task_id is not None:
-                self.notice_task_updated(task_id, task_op=TaskOp.TASK_RESTORED,
-                         persist=False)
+                self.notice_task_updated(task_id, op=TaskOp.RESTORED,
+                                         persist=False)
 
         for path in broken_paths:
             path.unlink()
@@ -256,8 +255,10 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
-    def got_wants_to_compute(self, task_id: str, key_id: str,
-                             node_name: str):
+    def got_wants_to_compute(self,
+                             task_id: str,
+                             key_id: str,  # pylint: disable=unused-argument
+                             node_name: str):  # pylint: disable=unused-argument
         """
         Updates number of offers to compute task.
 
@@ -272,7 +273,8 @@ class TaskManager(TaskEventListener):
         """
         if task_id in self.tasks:
             self.notice_task_updated(task_id,
-                                     task_op=TaskOp.WORK_OFFER_RECEIVED)
+                                     op=TaskOp.WORK_OFFER_RECEIVED,
+                                     persist=False)
 
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
@@ -325,6 +327,7 @@ class TaskManager(TaskEventListener):
                 logger.debug('estimated memory >')
                 return False
             return True
+
         if not has_subtasks():
             logger.info(
                 "Cannot get next task for estimated performance %r",
@@ -347,7 +350,7 @@ class TaskManager(TaskEventListener):
             if not isinstance(ctd, ComputeTaskDef) or not ctd['subtask_id']:
                 logger.debug('check ctd: ctd not instance or not subtask_id')
                 return False
-            if task_id != ctd['task_id']\
+            if task_id != ctd['task_id'] \
                     or ctd['subtask_id'] in self.subtask2task_mapping:
                 logger.debug(
                     'check ctd: %r != %r or %r in self.subtask2task_maping',
@@ -359,6 +362,7 @@ class TaskManager(TaskEventListener):
                 logger.debug('check ctd: subtask_states')
                 return False
             return True
+
         if not check_compute_task_def():
             return None, False, False
 
@@ -373,7 +377,7 @@ class TaskManager(TaskEventListener):
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
-                                 task_op=TaskOp.SUBTASK_ASSIGNED)
+                                 op=SubtaskOp.ASSIGNED)
         return ctd, False, extra_data.should_wait
 
     def get_tasks_headers(self):
@@ -451,7 +455,7 @@ class TaskManager(TaskEventListener):
                            .format(subtask_id, subtask_status))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
-                                     task_op=TaskOp.UNEXPECTED_SUBTASK_RECEIVED)
+                                     op=OtherOp.UNEXPECTED)
             verification_finished_()
             return
 
@@ -470,13 +474,13 @@ class TaskManager(TaskEventListener):
                 self.notice_task_updated(
                     task_id,
                     subtask_id=subtask_id,
-                    task_op=TaskOp.SUBTASK_NOT_ACCEPTED)
+                    op=SubtaskOp.NOT_ACCEPTED)
                 verification_finished_()
                 return
 
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
-                                     task_op=TaskOp.SUBTASK_FINISHED)
+                                     op=SubtaskOp.FINISHED)
 
             if self.tasks_states[task_id].status in self.activeStatus:
                 if not self.tasks[task_id].finished_computation():
@@ -485,8 +489,7 @@ class TaskManager(TaskEventListener):
                     if self.tasks[task_id].verify_task():
                         logger.debug("Task %r accepted", task_id)
                         self.tasks_states[task_id].status = TaskStatus.finished
-                        self.notice_task_updated(task_id,
-                                                 task_op = TaskOp.TASK_FINISHED)
+                        self.notice_task_updated(task_id, op=TaskOp.FINISHED)
                     else:
                         logger.debug("Task %r not accepted", task_id)
 
@@ -508,7 +511,7 @@ class TaskManager(TaskEventListener):
                            .format(subtask_id, subtask_status))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
-                                     task_op=TaskOp.UNEXPECTED_SUBTASK_RECEIVED)
+                                     op=OtherOp.UNEXPECTED)
             return False
 
         self.tasks[task_id].computation_failed(subtask_id)
@@ -520,7 +523,7 @@ class TaskManager(TaskEventListener):
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
-                                 task_op=TaskOp.SUBTASK_FAILED)
+                                 op=SubtaskOp.FAILED)
         return True
 
     def task_result_incoming(self, subtask_id):
@@ -538,7 +541,7 @@ class TaskManager(TaskEventListener):
                 self.notice_task_updated(
                     task_id,
                     subtask_id=subtask_id,
-                    task_op=TaskOp.SUBTASK_RESULT_DOWNLOADING)
+                    op=SubtaskOp.RESULT_DOWNLOADING)
             else:
                 logger.error("Unknown task id: {}".format(task_id))
         else:
@@ -556,8 +559,7 @@ class TaskManager(TaskEventListener):
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
-                self.notice_task_updated(th.task_id,
-                                         task_op=TaskOp.TASK_TIMEOUT)
+                self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
                 if SubtaskStatus.is_computed(s.subtask_status):
@@ -569,7 +571,7 @@ class TaskManager(TaskEventListener):
                         s.stderr = "[GOLEM] Timeout"
                         self.notice_task_updated(th.task_id,
                                                  subtask_id=s.subtask_id,
-                                                 task_op=TaskOp.SUBTASK_TIMEOUT)
+                                                 op=SubtaskOp.TIMEOUT)
         return nodes_with_timeouts
 
     def get_progresses(self):
@@ -602,7 +604,7 @@ class TaskManager(TaskEventListener):
                 ss.subtask_status = SubtaskStatus.restarted
 
         logger.info("Task %s put into restarted state", task_id)
-        self.notice_task_updated(task_id, task_op=TaskOp.TASK_RESTARTED)
+        self.notice_task_updated(task_id, op=TaskOp.RESTARTED)
 
     @handle_subtask_key_error
     def restart_subtask(self, subtask_id):
@@ -616,7 +618,7 @@ class TaskManager(TaskEventListener):
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
-                                 task_op=TaskOp.SUBTASK_RESTARTED)
+                                 op=SubtaskOp.RESTARTED)
 
     @handle_task_key_error
     def restart_frame_subtasks(self, task_id, frame):
@@ -634,12 +636,11 @@ class TaskManager(TaskEventListener):
             subtask_state.stderr = "[GOLEM] Restarted"
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
-                                     task_op=TaskOp.SUBTASK_RESTARTED,
+                                     op=SubtaskOp.RESTARTED,
                                      persist=False)
 
         task.status = TaskStatus.computing
-        self.notice_task_updated(task_id,
-                                 task_op=TaskOp.FRAME_SUBTASK_RESTARTED)
+        self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
     def abort_task(self, task_id):
@@ -649,7 +650,7 @@ class TaskManager(TaskEventListener):
             del self.subtask2task_mapping[sub.subtask_id]
         self.tasks_states[task_id].subtask_states.clear()
 
-        self.notice_task_updated(task_id, task_op=TaskOp.TASK_ABORTED)
+        self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
     @handle_task_key_error
     def get_output_states(self, task_id):
@@ -824,8 +825,8 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def notice_task_updated(self, task_id, subtask_id=None, task_op=None,
-                            persist=True):
+    def notice_task_updated(self, task_id: str, subtask_id: str = None,
+                            op: Operation = None, persist: bool = True):
         """Called when a task is modified, saves the task and
         propagates information
 
@@ -844,10 +845,9 @@ class TaskManager(TaskEventListener):
         final one is considered save-worthy.
 
         :param str task_id: id of the updated task
-        :param Optional[str] subtask_id: if the operation done on the
+        :param str subtask_id: if the operation done on the
           task is related to a subtask, id of that subtask
-        :param Optional[TaskOp] task_op: description of the performed
-          operation
+        :param Operation op: performed operation
         :param bool persist: should the task be persisted now
         """
         # self.save_state()
@@ -859,5 +859,5 @@ class TaskManager(TaskEventListener):
             task_id=task_id,
             task_state=self.tasks_states.get(task_id),
             subtask_id=subtask_id,
-            task_op=task_op,
+            op=op,
         )

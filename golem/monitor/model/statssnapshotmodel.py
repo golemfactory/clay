@@ -40,6 +40,7 @@ class ComputationTime(BasicModel):
         self.success = success
         self.value = value
 
+
 class RequestorStatsModel(BasicModel):
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     def __init__(self, meta_data: BasicModel, current_stats: CurrentStats,

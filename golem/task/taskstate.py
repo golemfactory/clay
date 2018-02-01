@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 
 from golem.core.common import to_unicode
 
@@ -109,22 +109,36 @@ class TaskTestStatus(object):
     error = 'Error'
 
 
-class TaskOp(Enum):
-    WORK_OFFER_RECEIVED = 0
-    TASK_CREATED = 1
-    TASK_STARTED = 2
-    SUBTASK_ASSIGNED = 3
-    SUBTASK_RESULT_DOWNLOADING = 4
-    UNEXPECTED_SUBTASK_RECEIVED = 5
-    SUBTASK_NOT_ACCEPTED = 6
-    SUBTASK_FINISHED = 7
-    SUBTASK_FAILED = 8
-    TASK_FINISHED = 9
-    TASK_NOT_ACCEPTED = 10
-    TASK_TIMEOUT = 11
-    SUBTASK_TIMEOUT = 12
-    TASK_RESTARTED = 13
-    SUBTASK_RESTARTED = 14
-    FRAME_SUBTASK_RESTARTED = 15
-    TASK_ABORTED = 16
-    TASK_RESTORED = 17
+class Operation(Enum):
+    pass
+
+
+class TaskOp(Operation):
+    """Ops that result in storing of task level information"""
+    WORK_OFFER_RECEIVED = auto()
+    CREATED = auto()
+    STARTED = auto()
+    FINISHED = auto()
+    NOT_ACCEPTED = auto()
+    TIMEOUT = auto()
+    RESTARTED = auto()
+    ABORTED = auto()
+    RESTORED = auto()
+
+
+class SubtaskOp(Operation):
+    """Ops that result in storing of subtask level information;
+    subtask_id needs to be set for them"""
+    ASSIGNED = auto()
+    RESULT_DOWNLOADING = auto()
+    NOT_ACCEPTED = auto()
+    FINISHED = auto()
+    FAILED = auto()
+    TIMEOUT = auto()
+    RESTARTED = auto()
+
+
+class OtherOp(Operation):
+    """Ops that are not really interesting; for statistics anyway"""
+    UNEXPECTED = auto()
+    FRAME_RESTARTED = auto()
