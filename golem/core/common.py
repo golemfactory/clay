@@ -8,6 +8,7 @@ import sys
 import pytz
 
 from golem.core import simpleenv
+from golem.core.variables import REACTOR_THREAD_POOL_SIZE
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -244,3 +245,17 @@ def get_cpu_count():
     if is_osx():
         return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
     return cpu_count()  # No limitatons on Linux
+
+
+def install_reactor():
+
+    if is_windows():
+        from twisted.internet import iocpreactor
+        iocpreactor.install()
+    elif is_osx():
+        from twisted.internet import kqreactor
+        kqreactor.install()
+
+    from twisted.internet import reactor
+    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
+    return reactor
