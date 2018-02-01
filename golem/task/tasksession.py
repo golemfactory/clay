@@ -293,8 +293,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         def send_verification_failure():
             self._reject_subtask_result(
                 subtask_id,
-                reason=message.tasks.SubtaskResultsRejected.REASON\
-                    .VerificationNegative
+                reason=message.tasks.SubtaskResultsRejected.REASON
+                .VerificationNegative
             )
 
         if not subtask_id:
@@ -681,8 +681,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             # until we implement `ForceGetTaskResults` (pending)
             self._reject_subtask_result(
                 subtask_id,
-                reason=message.tasks.SubtaskResultsRejected.REASON \
-                    .ResourcesFailure
+                reason=message.tasks.SubtaskResultsRejected.REASON
+                .ResourcesFailure
             )
 
             self.task_manager.task_computation_failure(

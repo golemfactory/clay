@@ -221,6 +221,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts._react_to_hello(msg)
         assert ts.send.called
 
+    @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
     def test_result_received(self):
         conn = Mock()
         ts = TaskSession(conn)
@@ -281,6 +282,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not ts.msgs_to_send
         assert conn.close.called
 
+    @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
     def test_react_to_task_result_hash(self):
 
         def create_pull_package(result):
