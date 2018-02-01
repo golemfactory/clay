@@ -31,7 +31,7 @@ from golem.task import taskstate
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
-from golem.task.tasksession import TaskSession, logger
+from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
@@ -908,3 +908,22 @@ class TestCreatePackage(unittest.TestCase):
 
         assert ts.send.called
         assert ts.dropped.called
+
+class GetTaskMessageTest(unittest.TestCase):
+    def test_get_task_message(self):
+        with mock.patch('golem.task.tasksession.history'
+                        '.MessageHistoryService.get_sync_as_message',
+                        mock.Mock(
+                            return_value=factories.messages.TaskToCompute()
+                        )):
+            msg = get_task_message('TaskToCompute', 'foo', 'bar')
+            self.assertIsInstance(msg, message.tasks.TaskToCompute)
+
+    def test_get_task_message_fail(self):
+        with mock.patch('golem.task.tasksession.history'
+                        '.MessageHistoryService.get_sync_as_message',
+                        mock.Mock(
+                            side_effect=history.MessageNotFound()
+                        )):
+            msg = get_task_message('TaskToCompute', 'foo', 'bar')
+            self.assertIsNone(msg)
