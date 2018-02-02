@@ -621,11 +621,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         return self.task_server.add_task_header(th_dict_repr)
 
-    def remove_task_header(self, task_id):
+    def remove_task_header(self, task_id) -> bool:
         """ Remove header of a task with given id from a list of a known tasks
         :param str task_id: id of a task that should be removed
+        :return: False if task was already removed
         """
-        self.task_server.remove_task_header(task_id)
+        return self.task_server.remove_task_header(task_id)
 
     def remove_task(self, task_id):
         """ Ask all peers to remove information about given task

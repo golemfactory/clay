@@ -458,9 +458,13 @@ class TaskHeaderKeeper:
         for tid in to_remove:
             self.remove_task_header(tid)
 
-    def remove_task_header(self, task_id):
+    def remove_task_header(self, task_id) -> bool:
         """ Removes task with given id from a list of known task headers.
+        return: False if task was already removed
         """
+        if task_id in self.removed_tasks:
+            return False
+
         if task_id in self.task_headers:
             owner_key_id = self.task_headers[task_id].task_owner_key_id
             del self.task_headers[task_id]
@@ -471,6 +475,7 @@ class TaskHeaderKeeper:
         if task_id in self.support_status:
             del self.support_status[task_id]
         self.removed_tasks[task_id] = time.time()
+        return True
 
     def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed
