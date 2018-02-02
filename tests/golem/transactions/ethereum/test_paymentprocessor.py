@@ -360,6 +360,25 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.monitor_progress.called
         assert self.pp.sendout.called
 
+    def test_get_ether_sci_failure(self):
+        # given
+        self.pp.monitor_progress = Mock()
+        self.sci.is_synchronized.return_value = True
+        self.pp.sendout = Mock()
+
+        self.pp._PaymentProcessor__faucet = True
+
+        self.sci.get_eth_balance.return_value = None
+        self.sci.get_gnt_balance.return_value = None
+        self.sci.get_gntw_balance.return_value = None
+
+        # when
+        self.pp._run()
+
+        # then
+        assert not self.pp.monitor_progress.called
+        assert not self.pp.sendout.called
+
 
 def make_awaiting_payment(value=None, ts=None):
     p = mock.Mock()
