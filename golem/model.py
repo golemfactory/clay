@@ -40,7 +40,7 @@ db = GolemSqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 9
+    SCHEMA_VERSION = 10
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -261,7 +261,6 @@ class Payment(BaseModel):
 class ExpectedIncome(BaseModel):
     sender_node = CharField()
     sender_node_details = NodeField()
-    task = CharField()
     subtask = CharField()
     value = BigIntegerField()
     accepted_ts = IntegerField(null=True)
@@ -277,10 +276,8 @@ class ExpectedIncome(BaseModel):
 class Income(BaseModel):
     """Payments received from other nodes."""
     sender_node = CharField()
-    task = CharField()
     subtask = CharField()
     transaction = CharField()
-    block_number = BigIntegerField()
     value = BigIntegerField()
 
     class Meta:
@@ -288,12 +285,11 @@ class Income(BaseModel):
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
-        return "<Income: {!r} v:{:.3f} tid:{!r} bn:{!r}>"\
+        return "<Income: {!r} v:{:.3f} tid:{!r}>"\
             .format(
                 self.subtask,
                 self.value,
                 self.transaction,
-                self.block_number
             )
 
 

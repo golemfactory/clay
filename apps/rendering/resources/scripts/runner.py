@@ -2,6 +2,7 @@
 
 import os
 import sys
+
 # pylint: disable=import-error
 import params  # This module is generated before this script is run
 
@@ -10,7 +11,7 @@ if __name__ == '__main__':
     # pylint: disable:no-name-in-module
     from scripts import img_metrics_calculator
 else:
-    from .scripts import img_metrics_calculator
+    from apps.rendering.resources.scripts import img_metrics_calculator
 
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"

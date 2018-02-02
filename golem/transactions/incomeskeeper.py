@@ -34,7 +34,6 @@ class IncomesKeeper(object):
             for expected_income in expected_incomes:
                 is_subtask_paid = Income.select().where(
                     Income.sender_node == expected_income.sender_node,
-                    Income.task == expected_income.task,
                     Income.subtask == expected_income.subtask)\
                     .exists()
 
@@ -49,35 +48,31 @@ class IncomesKeeper(object):
                         event="expected_income",
                         expected_income=expected_income)
 
-    def received(self, sender_node_id,
-                 task_id,
+    def received(self,
+                 sender_node_id,
                  subtask_id,
                  transaction_id,
-                 block_number,
                  value):
 
         try:
             with db.transaction():
                 expected_income = \
                     ExpectedIncome.get(sender_node=sender_node_id,
-                                       task=task_id,
                                        subtask=subtask_id)
                 expected_income.delete_instance()
 
         except ExpectedIncome.DoesNotExist:
             logger.info("ExpectedIncome.DoesNotExist "
-                        "(sender_node_id %r task_id %r, "
+                        "(sender_node_id %r, "
                         "subtask_id %r, value %r) ",
-                        sender_node_id, task_id, subtask_id, value)
+                        sender_node_id, subtask_id, value)
 
         try:
             with db.transaction():
                 income = Income.create(
                     sender_node=sender_node_id,
-                    task=task_id,
                     subtask=subtask_id,
                     transaction=transaction_id,
-                    block_number=block_number,
                     value=value)
                 return income
 
@@ -94,18 +89,16 @@ class IncomesKeeper(object):
                 db_income.transaction
             )
 
-    def expect(self, sender_node_id, p2p_node, task_id, subtask_id, value):
+    def expect(self, sender_node_id, p2p_node, subtask_id, value):
         logger.debug(
-            "expect(%r, %r, %r, %r)",
+            "expect(%r, %r, %r)",
             sender_node_id,
-            task_id,
             subtask_id,
             value
         )
         return ExpectedIncome.create(
             sender_node=sender_node_id,
             sender_node_details=p2p_node,
-            task=task_id,
             subtask=subtask_id,
             value=value
         )
@@ -127,18 +120,14 @@ class IncomesKeeper(object):
         union = ExpectedIncome.select(
             ExpectedIncome.created_date,
             ExpectedIncome.sender_node,
-            ExpectedIncome.task,
             ExpectedIncome.subtask,
             peewee.SQL("NULL as 'transaction'"),
-            peewee.SQL("NULL as 'block_number'"),
             ExpectedIncome.value
         ) | Income.select(
             Income.created_date,
             Income.sender_node,
-            Income.task,
             Income.subtask,
             Income.transaction,
-            Income.block_number,
             Income.value
         )
 

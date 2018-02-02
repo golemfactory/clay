@@ -47,3 +47,43 @@ class TestNode(unittest.TestCase):
         print(deser_dict)
         n_deser = Node.from_dict(deser_dict)
         self.assertEqual(n.__dict__, n_deser.__dict__)
+
+    def test_update_public_info_invalid(self):
+        node = Node(
+            node_name="Node 1",
+            key="key_1"
+        )
+
+        assert node.pub_addr is None
+        assert node.pub_port is None
+        assert node.p2p_pub_port is None
+        assert node.hyperdrive_pub_port is None
+
+        node.update_public_info()
+
+        assert node.pub_addr is None
+        assert node.pub_port is None
+        assert node.p2p_pub_port is None
+        assert node.hyperdrive_pub_port is None
+
+    def test_update_public_info(self):
+        node = Node(
+            node_name="Node 1",
+            key="key_1",
+            prv_addr='10.0.0.10',
+            prv_port=40103,
+            p2p_prv_port=40102,
+            hyperdrive_prv_port=3282
+        )
+
+        assert node.pub_addr is None
+        assert node.pub_port is None
+        assert node.p2p_pub_port is None
+        assert node.hyperdrive_pub_port is None
+
+        node.update_public_info()
+
+        assert node.pub_addr == node.prv_addr
+        assert node.pub_port == node.pub_port
+        assert node.p2p_pub_port == node.p2p_pub_port
+        assert node.hyperdrive_pub_port == node.hyperdrive_pub_port

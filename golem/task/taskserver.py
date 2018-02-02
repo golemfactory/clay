@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import datetime
 import itertools
 import logging
 import os
@@ -10,10 +9,8 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from golem_messages import message
-from pydispatch import dispatcher
 from requests import HTTPError
 
-from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 from golem.environments.environment import SupportStatus, UnsupportReason
@@ -200,8 +197,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
         self.results_to_send = {}
         self.failures_to_send = {}
-        self.payments_to_send = set()
-        self.payment_requests_to_send = set()
 
         self.use_ipv6 = use_ipv6
 
@@ -216,35 +211,11 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
-        dispatcher.connect(
-            self.paymentprocessor_listener, signal="golem.paymentprocessor")
-        dispatcher.connect(
-            self.transactions_listener, signal="golem.transactions")
-
-    def paymentprocessor_listener(self,
-                                  sender,
-                                  signal,
-                                  event='default',
-                                  **kwargs):
-        if event != 'payment.confirmed':
-            return
-        payment = kwargs.pop('payment')
-        logging.debug('Notified about payment.confirmed: %r', payment)
-        self.payments_to_send.add(payment)
-
-    def transactions_listener(self, sender, signal, event='default', **kwargs):
-        if event != 'expected_income':
-            return
-        expected_income = kwargs.pop('expected_income')
-        logger.debug('REQUESTS_TO_SEND: expected_income')
-        self.payment_requests_to_send.add(expected_income)
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
         self.__send_waiting_results()
-        self.send_waiting_payments()
-        self.send_waiting_payment_requests()
         self.task_computer.run()
         self.task_connections_helper.sync()
         self._sync_forwarded_session_requests()
@@ -318,7 +289,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 self.client.transaction_system.incomes_keeper.expect(
                     sender_node_id=owner_key_id,
                     p2p_node=owner,
-                    task_id=task_id,
                     subtask_id=subtask_id,
                     value=value,
                 )
@@ -488,41 +458,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             # payment
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
-
-    def reward_for_subtask_paid(self, subtask_id, reward, transaction_id,
-                                block_number):
-        try:
-            expected_income = model.ExpectedIncome.get(subtask=subtask_id)
-        except model.ExpectedIncome.DoesNotExist:
-            logger.warning(
-                'Received unexpected payment confirmation message for subtask '
-                '%r \n (value: %r GNT, transaction_id: %r, block number:%r)',
-                subtask_id, reward, transaction_id, block_number)
-            return
-
-        logger.info(
-            'Received payment confirmation message for subtask_id %r \n '
-            '(expected reward: %r GNT, reward claimed in message %r GNT \n '
-            'transaction_id: %r, block number:%r)', subtask_id,
-            expected_income.value, reward, transaction_id, block_number)
-
-        # Checks whether the claimed reward value matches
-        # expectations (db vs blockchain).
-        # We don't care what is the value of reward claimed in message
-        # since byzantine node can send whatever it likes.
-        result = self.client.transaction_system.incomes_keeper.received(
-            sender_node_id=expected_income.sender_node,
-            task_id=expected_income.task,
-            subtask_id=subtask_id,
-            transaction_id=transaction_id,
-            block_number=block_number,
-            value=expected_income.value,
-        )
-
-        # Trust is increased only after confirmation from incomes keeper
-        from golem.model import Income
-        if type(result) is Income:
-            Trust.PAYMENT.increase(expected_income.sender_node, self.max_trust)
 
     def subtask_accepted(self, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -878,33 +813,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[subtask_id] = session
 
-    def connection_for_payment_established(self, session, conn_id, obj):
-        # obj - Payment
-        logger.debug('connection_for_payment_established(%r)', obj)
-
-        self.new_session_prepare(
-            session=session,
-            subtask_id=obj.subtask,
-            key_id=obj.get_sender_node().key,
-            conn_id=conn_id)
-        self._mark_connected(conn_id, session.address, session.port)
-        session.send_hello()
-        session.inform_worker_about_payment(obj)
-
-    def connection_for_payment_request_established(self, session, conn_id,
-                                                   obj):
-        # obj - ExpectedIncome
-        logger.debug('connection_for_payment_request_established(%r)', obj)
-
-        self.new_session_prepare(
-            session=session,
-            subtask_id=obj.subtask,
-            key_id=obj.get_sender_node().key,
-            conn_id=conn_id)
-        self._mark_connected(conn_id, session.address, session.port)
-        session.send_hello()
-        session.request_payment(obj)
-
     def noop(self, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
@@ -948,62 +856,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                     return [s]
         return []
 
-    def _send_waiting(self, elems_set, subtask_id_getter, req_type,
-                      session_cbk, p2p_node_getter):
-        for elem in elems_set.copy():
-            if hasattr(elem, '_last_try') and (datetime.datetime.now() - elem._last_try) < datetime.timedelta(seconds=30):  # noqa
-                continue
-            logger.debug('_send_waiting(): %r', elem)
-            elem._last_try = datetime.datetime.now()
-            subtask_id = subtask_id_getter(elem)
-            sessions = self._find_sessions(subtask_id)
-
-            logger.debug('_send_waiting() len(sessions):%r', len(sessions))
-            if not sessions:
-                p2p_node = p2p_node_getter(elem)
-                if p2p_node is None:
-                    logger.debug('Empty node info in %r', elem)
-                    elems_set.remove(elem)
-                    continue
-                if not isinstance(p2p_node.prv_port, int):
-                    logger.debug('Invalid port in %r', elem)
-                    elems_set.remove(elem)
-                    continue
-                self._add_pending_request(
-                    req_type=req_type,
-                    task_owner=p2p_node,
-                    port=p2p_node.prv_port,
-                    key_id=None,
-                    args={
-                        'obj': elem
-                    })
-                return
-            for session in sessions:
-                if isinstance(session, weakref.ref):
-                    session = session()
-                    if session is None:
-                        continue
-                session_cbk(session, elem)
-            elems_set.remove(elem)
-
-    def send_waiting_payment_requests(self):
-        self._send_waiting(
-            elems_set=self.payment_requests_to_send,
-            subtask_id_getter=lambda expected_income: expected_income.subtask,
-            p2p_node_getter=lambda expected_income: expected_income.get_sender_node(),  # noqa
-            req_type=TASK_CONN_TYPES['payment_request'],
-            session_cbk=lambda session, expected_income: session.request_payment(expected_income)  # noqa
-        )
-
-    def send_waiting_payments(self):
-        self._send_waiting(
-            elems_set=self.payments_to_send,
-            subtask_id_getter=lambda payment: payment.subtask,
-            p2p_node_getter=lambda payment: payment.get_sender_node(),
-            req_type=TASK_CONN_TYPES['payment'],
-            session_cbk=lambda session, payment: session.inform_worker_about_payment(payment)  # noqa
-        )
-
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):
             wtr = self.results_to_send[subtask_id]
@@ -1043,18 +895,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
         self.failures_to_send.clear()
 
-    def __connection_for_payment_failure(self, *args, **kwargs):
-        if 'conn_id' in kwargs:
-            self.final_conn_failure(kwargs['conn_id'])
-        else:
-            logger.warning("There is no connection id for handle failure")
-
-    def __connection_for_payment_request_failure(self, *args, **kwargs):
-        if 'conn_id' in kwargs:
-            self.final_conn_failure(kwargs['conn_id'])
-        else:
-            logger.warning("There is no connection id for handle failure")
-
     # CONFIGURATION METHODS
     #############################
     @staticmethod
@@ -1071,10 +911,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_established,
-            TASK_CONN_TYPES['payment']:
-            self.connection_for_payment_established,
-            TASK_CONN_TYPES['payment_request']:
-            self.connection_for_payment_request_established,
         })
 
     def _set_conn_failure(self):
@@ -1087,10 +923,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_failure,
-            TASK_CONN_TYPES['payment']:
-            self.__connection_for_payment_failure,
-            TASK_CONN_TYPES['payment_request']:
-            self.__connection_for_payment_request_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -1103,10 +935,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['payment']:
-            self.noop,
-            TASK_CONN_TYPES['payment_request']:
-            self.noop,
         })
 
     def _set_listen_established(self):
@@ -1159,8 +987,6 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
-    'payment': 10,
-    'payment_request': 11,
 }
 
 
