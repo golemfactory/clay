@@ -19,8 +19,6 @@ from .peerkeeper import PeerKeeper, key_distance
 logger = logging.getLogger(__name__)
 
 LAST_MESSAGE_BUFFER_LEN = 5  # How many last messages should we keep
-# How often should we disconnect with a random node
-REFRESH_PEERS_TIMEOUT = 1200
 # After how many seconds from the last try should we try to connect with seed?
 RECONNECT_WITH_SEED_THRESHOLD = 30
 # Should nodes that connects with us solve hashcash challenge?
@@ -91,7 +89,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
         self.last_time_tried_connect_with_seed = 0
         self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
-        self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
         self.challenge_history = deque(maxlen=HISTORY_LEN)
         self.last_challenge = ""
@@ -858,18 +855,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.remove_peer(peer)
                 peer.disconnect(
                     message.Disconnect.REASON.Timeout
-                )
-
-    def __refresh_old_peers(self):
-        cur_time = time.time()
-        if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
-            self.last_refresh_peers = cur_time
-            if len(self.peers) > 1:
-                peer_id = random.choice(list(self.peers.keys()))
-                peer = self.peers[peer_id]
-                self.refresh_peer(peer)
-                peer.disconnect(
-                    message.Disconnect.REASON.Refresh
                 )
 
     def _sync_forward_requests(self):
