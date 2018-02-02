@@ -1,5 +1,4 @@
-freezegun
+-r requirements-test.txt
 PyInstaller
 pylint
 mypy
-flake8
