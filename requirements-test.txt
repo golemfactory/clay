@@ -5,5 +5,3 @@ pytest-cov
 codecov
 flake8
 factory-boy==2.9.2
-# Required by buildbots to run unit test
-pyasn1==0.2.3
