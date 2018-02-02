@@ -24,7 +24,6 @@ Some examples (model - class or model name)::
 
 """
 
-import datetime as dt
 import peewee as pw
 
 try:
@@ -44,11 +43,9 @@ def migrate(migrator, database, fake=False, **kwargs):
                            local_role=pw.ActorField(),
                            remote_role=pw.ActorField())
 
-    migrator.change_fields('payment',
-                           status=pw.PaymentStatusField(
-                               default=PaymentStatus.awaiting,
-                               index=True),
-                           value=pw.BigIntegerField())
+    migrator.change_fields('payment', status=pw.PaymentStatusField(
+        default=PaymentStatus.awaiting, index=True
+    ))
 
     migrator.drop_index('performance', 'environment_id')
 
@@ -62,17 +59,14 @@ def rollback(migrator, database, fake=False, **kwargs):
 
     migrator.add_index('performance', 'environment_id', unique=True)
 
-    migrator.change_fields('payment', status=pw.EnumField(default=PaymentStatus.awaiting, index=True),
-        value=pw.BigIntegerField())
+    migrator.change_fields('payment', status=pw.EnumField(
+        default=PaymentStatus.awaiting, index=True
+    ))
 
-    migrator.change_fields('networkmessage', local_role=pw.EnumField(),
-        remote_role=pw.EnumField())
-
-    migrator.change_fields('income', value=pw.BigIntegerField())
+    migrator.change_fields('networkmessage',
+                           local_role=pw.EnumField(),
+                           remote_role=pw.EnumField())
 
     migrator.drop_index('hardwarepreset', 'name')
 
     migrator.add_index('hardwarepreset', 'name', unique=True)
-
-    migrator.change_fields('expectedincome', value=pw.BigIntegerField())
-
