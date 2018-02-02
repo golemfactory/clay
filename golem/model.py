@@ -1,91 +1,33 @@
 import datetime
+import inspect
 import json
-import logging
 import pickle
 from enum import Enum
-from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
 
-
+import sys
 from ethereum.utils import denoms
 from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
-                    SqliteDatabase, TextField, BlobField)
-from playhouse.shortcuts import RetryOperationalError
+                    TextField, BlobField)
 
 from golem.core.simpleserializer import DictSerializable
+from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.utils import decode_hex, encode_hex
 
-log = logging.getLogger('golem.db')
-
-
-class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
-
-    def sequence_exists(self, seq):
-        raise NotImplementedError()
-
-
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
+
+# TODO: migrate to golem.database
 db = GolemSqliteDatabase(None, threadlocals=True,
                          pragmas=(
                              ('foreign_keys', True),
                              ('busy_timeout', 1000),
                              ('journal_mode', 'WAL')))
-
-
-class Database:
-    # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 10
-
-    def __init__(self, datadir):
-        # TODO: Global database is bad idea. Check peewee for other solutions.
-        self.db = db
-        db.init(path.join(datadir, 'golem.db'))
-        db.connect()
-        self.create_database()
-
-    @staticmethod
-    def _get_user_version() -> int:
-        return int(db.execute_sql('PRAGMA user_version').fetchone()[0])
-
-    @staticmethod
-    def _set_user_version(version: int) -> None:
-        db.execute_sql('PRAGMA user_version = {}'.format(version))
-
-    @staticmethod
-    def create_database() -> None:
-        tables = [
-            GenericKeyValue,
-            Account,
-            ExpectedIncome,
-            GlobalRank,
-            HardwarePreset,
-            Income,
-            KnownHosts,
-            LocalRank,
-            NeighbourLocRank,
-            Payment,
-            Stats,
-            TaskPreset,
-            Performance,
-            NetworkMessage
-        ]
-        version = Database._get_user_version()
-        if version != Database.SCHEMA_VERSION:
-            log.info("New database version {}, previous {}".format(
-                Database.SCHEMA_VERSION, version))
-            db.drop_tables(tables, safe=True)
-            Database._set_user_version(Database.SCHEMA_VERSION)
-        db.create_tables(tables, safe=True)
-
-    def close(self):
-        if not self.db.is_closed():
-            self.db.close()
 
 
 class BaseModel(Model):
@@ -462,3 +404,17 @@ class NetworkMessage(BaseModel):
     def as_message(self) -> message.Message:
         msg = pickle.loads(self.msg_data)
         return msg
+
+
+def _collect_db_models():
+    return inspect.getmembers(
+        sys.modules[__name__],
+        lambda cls: (
+            inspect.isclass(cls) and
+            issubclass(cls, BaseModel) and
+            cls is not BaseModel
+        )
+    )
+
+
+DB_MODELS = [cls for _, cls in _collect_db_models()]

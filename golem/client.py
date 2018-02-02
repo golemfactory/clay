@@ -30,11 +30,12 @@ from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
+from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import Database
+from golem.model import DB_MODELS, db
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -128,7 +129,7 @@ class Client(HardwarePresetsMixin):
         )
 
         # Initialize database
-        self.db = Database(datadir)
+        self.db = Database(db, datadir, DB_MODELS)
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
