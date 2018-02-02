@@ -492,6 +492,8 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(task_id, op=TaskOp.FINISHED)
                     else:
                         logger.debug("Task %r not accepted", task_id)
+                        self.notice_task_updated(task_id,
+                                                 op=TaskOp.NOT_ACCEPTED)
 
             verification_finished_()
 

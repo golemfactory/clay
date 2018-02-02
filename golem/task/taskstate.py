@@ -89,6 +89,10 @@ class TaskStatus(object):
     timeout = "Timeout"
     restarted = "Restart"
 
+    @classmethod
+    def is_completed(cls, status):
+        return status in [cls.finished, cls.aborted, cls.timeout]
+
 
 class SubtaskStatus(object):
     starting = "Starting"

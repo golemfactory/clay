@@ -12,9 +12,6 @@ __all__ = ['RequestorTaskStatsManager']
 
 logger = logging.getLogger(__name__)
 
-TASK_COMPLETED_STATUSES = [TaskStatus.finished, TaskStatus.aborted,
-                           TaskStatus.timeout]
-
 TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", Operation)])
 
 
@@ -176,7 +173,7 @@ class TaskInfo:
 
         In other words, is its latest status in the list of finished.
         """
-        return self.latest_status in TASK_COMPLETED_STATUSES
+        return TaskStatus.is_completed(self.latest_status)
 
     def has_task_failed(self) -> bool:
         """Has the task failed
@@ -295,9 +292,9 @@ def update_current_stats_with_task(
                                 - old.timed_out_subtasks_cnt
                                 + new.timed_out_subtasks_cnt),
         not_downloadable_subtasks_cnt=(
-            current.not_downloadable_subtasks_cnt
-            - (old.not_downloaded_subtasks_cnt if old.finished else 0)
-            + (new.not_downloaded_subtasks_cnt if new.finished else 0)),
+                current.not_downloadable_subtasks_cnt
+                - (old.not_downloaded_subtasks_cnt if old.finished else 0)
+                + (new.not_downloaded_subtasks_cnt if new.finished else 0)),
         failed_subtasks_cnt=(current.failed_subtasks_cnt
                              - old.failed_subtasks_cnt
                              + new.failed_subtasks_cnt),
@@ -409,7 +406,7 @@ class RequestorTaskStats:
             self.tasks[task_id].got_want_to_compute()
 
         elif op == TaskOp.RESTORED:
-            if task_state.status in TASK_COMPLETED_STATUSES:
+            if TaskStatus.is_completed(task_state.status):
                 logger.debug("Skipping completed task %r", task_id)
             else:
                 the_time = time.time()
@@ -444,7 +441,7 @@ class RequestorTaskStats:
 
         else:
             # Unknown operation, log problem
-            logger.debug("Unknown TaskOp %r", op.name)
+            logger.debug("Unknown operation %r", op.name)
 
         if task_id in self.tasks:
             new_task_stats = self.get_task_stats(task_id)

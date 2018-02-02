@@ -233,6 +233,8 @@ class TestTaskInfo(TestCase, testutils.PEP8MixIn):
         ti.got_task_message(tm, TaskStatus.timeout)
         self.assertEqual(ti.in_progress_subtasks_count(), 0,
                          "No subtasks should be in progress")
+        self.assertEqual(ti.timeout_count(), 0,
+                         "No subtask should have timed out")
         self.assertTrue(ti.had_failures_or_timeouts(),
                         "Whole task should have failed")
 
@@ -611,12 +613,12 @@ class TestRequestorTaskStats(LogTestCase):
         tstate.time_started = 0.0
 
         class UnknownOp(Operation):
-            UNKNOWN = 314
+            UNKNOWN = object()
 
         with self.assertLogs(logger, level="DEBUG") as log:
             rs.on_message("task1", tstate, op=UnknownOp.UNKNOWN)
 
-            assert any("Unknown TaskOp" in l for l in log.output)
+            assert any("Unknown operation" in l for l in log.output)
 
     def test_restore_finished_task(self):
         # finished task should be skipped during restore so it does not

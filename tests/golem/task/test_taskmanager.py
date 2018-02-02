@@ -124,44 +124,36 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     def _connect_signal_handler(self):
         handler_called = False
-        handler_params = []
+        params = []
 
-        def handler(sender, signal, event, task_id, subtask_id=None,
-                    op=None):  # noqa pylint: too-many-arguments
+        def handler(sender, signal, event, task_id, subtask_id=None, op=None):  # noqa pylint: too-many-arguments
             nonlocal handler_called
-            nonlocal handler_params
+            nonlocal params
 
             handler_called = True
-            handler_params.append((sender, signal, event, task_id, subtask_id,
-                                   op))
+            params.append((sender, signal, event, task_id, subtask_id, op))
 
         def checker(expected_events):
-            self.assertTrue(handler_called, "Handler has not been called")
+            self.assertTrue(handler_called, "Handler should have been called")
 
             for (e_task_id, e_subtask_id, e_op) in expected_events[::-1]:
-                sender, signal, event, task_id, subtask_id, op = \
-                    handler_params.pop()
+                sender, signal, event, task_id, subtask_id, op = params.pop()
 
-                self.assertEqual(
-                    event, "task_status_updated", "Unexpected task status")
+                self.assertEqual(event, "task_status_updated", "Bad event")
                 if e_task_id:
-                    self.assertEqual(
-                        task_id, e_task_id, "Received event for wrong task")
+                    self.assertEqual(task_id, e_task_id, "wrong task")
                 if e_subtask_id:
-                    self.assertIsNotNone(
-                        subtask_id,
-                        "No subtask specified in the received event")
-                    self.assertEqual(
-                        subtask_id, e_subtask_id,
-                        "Received event for wrong subtask")
+                    self.assertIsNotNone(subtask_id, "No subtask_id")
+                    self.assertEqual(subtask_id, e_subtask_id, "Bad subtask_id")
                 if e_op:
-                    self.assertIsNotNone(
-                        op, "No operation specified in the received event")
-                    self.assertEqual(
-                        op, e_op, "Received event with wrong operation")
+                    self.assertIsNotNone(op, "No operation")
+                    self.assertEqual(op, e_op, "Bad operation")
 
-        dispatcher.connect(handler, signal="golem.taskmanager",
-                           sender=dispatcher.Any, weak=True)
+        dispatcher.connect(handler,
+                           signal="golem.taskmanager",
+                           sender=dispatcher.Any,
+                           weak=True)
+
         return handler, checker
 
     def test_start_task(self):
@@ -660,11 +652,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         dispatcher.connect(listener, signal='golem.taskmanager')
         try:
-            self.assertEqual(0, listener_mock.call_count)
             self.tm.add_new_task(t)
-            self.assertEqual(1, listener_mock.call_count)
             self.tm.start_task(t.header.task_id)
-            self.assertEqual(2, listener_mock.call_count)
             self.tm.resources_send("xyz")
             self.assertEqual(3, listener_mock.call_count)
         finally:
