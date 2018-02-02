@@ -63,6 +63,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
         verify_ctx = VerificationContext([[75, 34]], 0, self.tempdir)
         crop_path = os.path.join(self.tempdir, str(0))
         bv.current_results_file = os.path.join(self.tempdir, "none.png")
+        open(bv.current_results_file, mode='a').close()
         if not os.path.exists(crop_path):
             os.mkdir(crop_path)
         with self.assertLogs(logger, level="INFO") as logs:
