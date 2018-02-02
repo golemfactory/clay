@@ -53,4 +53,4 @@ class Database:
         log.info("Migrating database from version %r to %r",
                  version, to_version)
 
-        migrate_schema(self.db, self.models, version, to_version)
+        migrate_schema(self, version, to_version)
