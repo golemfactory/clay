@@ -25,7 +25,6 @@ from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.task.taskmanager import TaskManager  # pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 

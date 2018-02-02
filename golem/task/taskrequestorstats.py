@@ -1,9 +1,7 @@
 import logging
 import time
 from collections import defaultdict
-from typing import (
-    NamedTuple, Optional)
-# , List, DefaultDict) # pylint: disable=unused-import
+from typing import NamedTuple, Optional
 
 from pydispatch import dispatcher
 
