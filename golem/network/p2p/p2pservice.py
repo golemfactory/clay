@@ -229,10 +229,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
            Remove excess information about peers
         """
         super().sync_network(timeout=self.last_message_time_threshold)
-        if self.task_server:
-            self.__send_message_get_tasks()
 
         now = time.time()
+
+        # We are given access to TaskServer by Client in start_network method.
+        # We don't want to send GetTasks messages, before we can handle them.
+        if self.task_server and now - self.last_tasks_request > TASK_INTERVAL:
+            self.last_tasks_request = now
+            self._send_get_tasks()
 
         if now - self.last_peers_request > PEERS_INTERVAL:
             self.last_peers_request = now
@@ -817,11 +821,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for p in list(self.peers.values()):
             p.send_get_peers()
 
-    def __send_message_get_tasks(self):
-        if time.time() - self.last_tasks_request > TASK_INTERVAL:
-            self.last_tasks_request = time.time()
-            for p in list(self.peers.values()):
-                p.send_get_tasks()
+    def _send_get_tasks(self):
+        for p in list(self.peers.values()):
+            p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
         peer_conn = session.conn.transport.getPeer()
