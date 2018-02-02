@@ -1,6 +1,7 @@
-import mock
 import random
 from unittest import TestCase
+
+import mock
 
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -19,7 +20,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
     def setUp(self):
         random.seed()
 
-    def test_monitor_messages(self):
+    @staticmethod
+    def test_monitor_messages():
         nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3",
                                 ClientConfigDescriptor())
         m = MONITOR_CONFIG.copy()
@@ -46,7 +48,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         monitor.shut_down()
 
     def test_protocol_versions(self):
-        """Test wether correct protocol versions were sent."""
+        """Test whether correct protocol versions were sent."""
         from golem.core.variables import PROTOCOL_CONST
         monitor = SystemMonitor(
             NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337",
@@ -68,13 +70,14 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                         'task': PROTOCOL_CONST.ID,
                     },
                 }
+                self.assertEqual(expected_d, result)
 
         check(monitor.on_login, "Login")
         check(monitor.on_logout, "Logout")
 
     def test_ping_request(self):
         from pydispatch import dispatcher
-        SystemMonitor(
+        monitor = SystemMonitor(
             NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337",
                               ClientConfigDescriptor()), MONITOR_CONFIG)
         port = random.randint(20, 50000)
@@ -93,7 +96,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
 
             signals = []
 
-            def l(sender, signal, event, **kwargs):
+            def l(sender, signal, event, **kwargs):  # noqa pylint: disable=unused-argument
                 signals.append((signal, event, kwargs))
 
             dispatcher.connect(l, signal="golem.p2p")
@@ -104,3 +107,5 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             self.assertEqual(signals, [('golem.p2p', 'unreachable',
                                         {'description': 'failure',
                                          'port': port})])
+        # we keep active reference for dispatcher not to remove it
+        del monitor

@@ -454,7 +454,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
-
     def subtask_accepted(self, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
@@ -851,7 +850,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 if s.task_id == task_id:
                     return [s]
         return []
-
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):
