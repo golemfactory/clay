@@ -292,9 +292,9 @@ def update_current_stats_with_task(
                                 - old.timed_out_subtasks_cnt
                                 + new.timed_out_subtasks_cnt),
         not_downloadable_subtasks_cnt=(
-                current.not_downloadable_subtasks_cnt
-                - (old.not_downloaded_subtasks_cnt if old.finished else 0)
-                + (new.not_downloaded_subtasks_cnt if new.finished else 0)),
+            current.not_downloadable_subtasks_cnt
+            - (old.not_downloaded_subtasks_cnt if old.finished else 0)
+            + (new.not_downloaded_subtasks_cnt if new.finished else 0)),
         failed_subtasks_cnt=(current.failed_subtasks_cnt
                              - old.failed_subtasks_cnt
                              + new.failed_subtasks_cnt),
