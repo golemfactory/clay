@@ -1,6 +1,7 @@
 import json
 from typing import Any, Optional
 from uuid import uuid4
+import re
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
@@ -38,7 +39,8 @@ class Tasks:
 
     client = None  # type: Client
 
-    task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
+    task_table_headers = ['id', 'remaining',
+                          'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
@@ -188,7 +190,19 @@ class Tasks:
         return '{:.2f} %'.format(progress * 100.0)
 
     def __create_from_json(self, jsondata: str) -> Any:
+        task_name = ""
         dictionary = json.loads(jsondata)
+        if 'name' in dictionary.keys():
+            task_name = dictionary['name']
+        if (len(task_name) < 4 or len(task_name) > 24):
+            raise SyntaxError(
+                "Length of task name cannot be less\
+                 than 4 or more than 24 characters.")
+        pattern = re.compile("^[a-zA-Z0-9_\-\.]+( [a-zA-Z0-9_\-\.]+)*$")
+        if not pattern.match(task_name):
+            raise SyntaxError(
+                "Task name can only contain letters, numbers,\
+                 spaces between characters, underline, dash or dot.")
         # FIXME CHANGE TASKI ID
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
