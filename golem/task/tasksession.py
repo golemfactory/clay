@@ -471,16 +471,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
-            self.task_computer.task_given(ctd)
-        else:
-            self.send(
-                message.CannotComputeTask(
-                    subtask_id=ctd['subtask_id'],
-                    reason=self.err_msg
-                )
+            if self.task_computer.task_given(ctd):
+                return
+        self.send(
+            message.CannotComputeTask(
+                subtask_id=ctd['subtask_id'],
+                reason=self.err_msg
             )
-            self.task_computer.session_closed()
-            self.dropped()
+        )
+        self.task_computer.session_closed()
+        self.dropped()
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()

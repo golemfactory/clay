@@ -100,6 +100,7 @@ class TaskComputer(object):
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(
             ctd['task_id'],
+            ctd['subtask_id'],
             self.resource_manager.get_resource_header(ctd['task_id']),
             ctd['return_address'],
             ctd['return_port'],
@@ -364,11 +365,14 @@ class TaskComputer(object):
         if self.waiting_for_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
+    def __request_resource(self, task_id, subtask_id, resource_header,
+                           return_address, return_port, key_id, task_owner):
         self.wait(ttl=self.waiting_for_task_timeout)
-        self.waiting_for_task = self.task_server.request_resource(task_id, resource_header, return_address, return_port,
-                                                                  key_id,
-                                                                  task_owner)
+        if not self.task_server.request_resource(task_id, subtask_id,
+                                                 resource_header,
+                                                 return_address, return_port,
+                                                 key_id, task_owner):
+            self.reset()
 
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, subtask_deadline):

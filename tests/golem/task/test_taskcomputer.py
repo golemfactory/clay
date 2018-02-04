@@ -138,7 +138,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
                              timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with(
-            "xyz", tc.resource_manager.get_resource_header("xyz"),
+            "xyz", "xxyyzz", tc.resource_manager.get_resource_header("xyz"),
             "10.10.10.10", 10203, "key", p2p_node)
 
         assert tc.task_resource_collected("xyz")
@@ -186,7 +186,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
                              timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with(
-            "xyz",  tc.resource_manager.get_resource_header("xyz"),
+            "xyz", "aabbcc", tc.resource_manager.get_resource_header("xyz"),
             "10.10.10.10", 10203, "key", p2p_node)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
