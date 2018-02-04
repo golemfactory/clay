@@ -661,22 +661,23 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
-        task_type_name = task.task_definition.task_type.lower()
-        task_type = self.task_types[task_type_name]
-        state = self.tasks_states.get(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
+        if task:
+            task_type_name = task.task_definition.task_type.lower()
+            task_type = self.task_types[task_type_name]
+            state = self.tasks_states.get(task.header.task_id)
+            timeout = task.task_definition.full_task_timeout
 
-        dictionary = {
-            'duration': max(timeout - state.remaining_time, 0),
-            # single=True retrieves one preview file. If rendering frames,
-            # it's the preview of the most recently computed frame.
-            'preview': task_type.get_preview(task, single=True)
-        }
+            dictionary = {
+                'duration': max(timeout - state.remaining_time, 0),
+                # single=True retrieves one preview file. If rendering frames,
+                # it's the preview of the most recently computed frame.
+                'preview': task_type.get_preview(task, single=True)
+            }
 
-        return update_dict(dictionary,
-                           task.to_dictionary(),
-                           state.to_dictionary(),
-                           self.get_task_definition_dict(task))
+            return update_dict(dictionary,
+                               task.to_dictionary(),
+                               state.to_dictionary(),
+                               self.get_task_definition_dict(task))
 
     def get_tasks_dict(self):
         return [self.get_task_dict(task_id) for task_id

@@ -652,7 +652,7 @@ class Client(HardwarePresetsMixin):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
-        if hasattr(self.p2pservice, 'peers'):
+        if self.p2pservice:
             return list(self.p2pservice.peers.values())
         return list()
 
@@ -741,7 +741,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_dict(task_id)
 
     def get_tasks(self, task_id=None):
-        if hasattr(self.task_server, 'task_manager'):
+        if self.task_server:
             if task_id:
                 return self.task_server.task_manager.get_task_dict(task_id)
             return self.task_server.task_manager.get_tasks_dict()
