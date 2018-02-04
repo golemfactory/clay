@@ -6,7 +6,7 @@ import click
 from ethereum import slogging
 
 import golem
-from golem.core.variables import PROTOCOL_CONST
+from golem.core.variables import PROTOCOL_CONST, REACTOR_THREAD_POOL_SIZE
 from golem.node import OptNode
 
 
@@ -42,24 +42,28 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                    "only inside sub-network with "
                    "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
-              callback=OptNode.parse_node_addr,
+              callback=OptNode.parse_node_addr, metavar="<host>",
               help="Network address to use for this node")
 @click.option('--rpc-address', '-r', multiple=False,
-              callback=OptNode.parse_rpc_address,
-              help="RPC server address to use: <ipv4_addr>:<port> or "
-                   "[<ipv6_addr>]:<port>")
-@click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or "
-                   "[<ipv6_addr>]:<port>")
-@click.option('--start-geth', is_flag=True, default=False,
-              help="Start geth node")
+              callback=OptNode.parse_rpc_address, metavar="<host>:<port>",
+              help="RPC server address to use")
+@click.option('--peer', '-p', multiple=True,
+              callback=OptNode.parse_peer, metavar="<host>:<port>",
+              help="Connect with given peer")
+@click.option('--start-geth', is_flag=True, default=False, is_eager=True,
+              help="Start local geth node")
+@click.option('--start-geth-port', default=None, type=int,
+              callback=OptNode.enforce_start_geth_used, metavar="<port>",
+              help="Port number to be used by locally started geth node")
+@click.option('--geth-address', default=None, metavar="http://<host>:<port>",
+              callback=OptNode.parse_http_addr,
+              help="Connect with given geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
 @click.option('--klass', expose_value=False)
-@click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
 @click.option('--multiprocessing-fork', nargs=1, expose_value=False)
@@ -70,10 +74,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', default=None,
               help="Change level for all loggers and handlers, "
-              "possible values are WARNING, INFO or DEBUG")
+              "possible values are ERROR, WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, version, m, geth_port, loglevel):
+          start_geth, start_geth_port, geth_address, version, m, loglevel):
     freeze_support()
     delete_reactor()
 
@@ -103,7 +107,8 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
         node = OptNode(peers=peer, node_address=node_address,
                        use_monitor=monitor, start_geth=start_geth,
-                       geth_port=geth_port, **config)
+                       start_geth_port=start_geth_port,
+                       geth_address=geth_address, **config)
         node.run(use_rpc=True)
 
 
@@ -113,11 +118,17 @@ def delete_reactor():
 
 
 def install_reactor():
-    from golem.core.common import is_windows
+    from golem.core.common import is_osx, is_windows
+
     if is_windows():
         from twisted.internet import iocpreactor
         iocpreactor.install()
+    elif is_osx():
+        from twisted.internet import kqreactor
+        kqreactor.install()
+
     from twisted.internet import reactor
+    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
 
 

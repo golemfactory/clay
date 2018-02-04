@@ -1,0 +1,4 @@
+---
+
+- name: "geerlingguy.homebrew"
+- name: "elliotweiser.osx-command-line-tools"

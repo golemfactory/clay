@@ -2,11 +2,15 @@ import functools
 import hashlib
 import logging
 import os
+import pathlib
 import pickle
 import threading
 import time
 
 from golem_messages import message
+from twisted.internet import defer
+from twisted.internet import reactor
+from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
@@ -29,12 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 def drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
 
 
 def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
-    logger.warning("Attribute error occured")
+    logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
 
@@ -48,6 +52,39 @@ def dropped_after():
             return result
         return curry
     return inner
+
+
+def compute_result_hash(task_result):
+    result_hash = hashlib.sha1()
+    if task_result.result_type == ResultType.FILES:
+        # task_result.result is an array of filenames
+        for filename in task_result.result:
+            p = pathlib.Path(filename)
+            logger.info(
+                'Computing checksum (%.3fMB) of %s',
+                p.stat().st_size / 2**20,
+                p
+            )
+            with open(filename, 'rb') as f:
+                while True:
+                    chunk = f.read(2**20)  # 1MB
+                    if not chunk:
+                        break
+                    result_hash.update(chunk)
+
+    else:
+        logger.info('Computing checksum of single result')
+        result_hash.update(task_result.result.encode('utf-8'))
+    return result_hash
+
+
+def deferred_compute_result_hash(task_result):
+    if reactor.running:
+        execute = threads.deferToThread
+    else:
+        logger.debug('Reactor not running. Switching to blocking call')
+        execute = defer.execute
+    return execute(compute_result_hash, task_result)
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
@@ -222,7 +259,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.conn.producer = None
         self.dropped()
 
-    @dropped_after()
     def result_received(self, extra_data, decrypt=True):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about
@@ -236,12 +272,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if not subtask_id:
             logger.error("No task_id value in extra_data for received data ")
-            return
+            self.dropped()
 
         if result_type is None:
             logger.error("No information about result_type for received data ")
             self._reject_subtask_result(subtask_id)
-            return
+            self.dropped()
 
         if result_type == ResultType.DATA:
             try:
@@ -253,17 +289,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 self._reject_subtask_result(subtask_id)
                 return
 
+        def verification_finished():
+            if not self.task_manager.verify_subtask(subtask_id):
+                self._reject_subtask_result(subtask_id)
+                self.dropped()
+                return
+
+            payment = self.task_server.accept_result(subtask_id,
+                                                     self.result_owner)
+            self.send(message.tasks.SubtaskResultsAccepted(
+                subtask_id=subtask_id,
+                payment_ts=payment.processed_ts))
+            self.dropped()
+
         self.task_manager.computed_task_received(
             subtask_id,
             result,
-            result_type
+            result_type,
+            verification_finished
         )
-        if not self.task_manager.verify_subtask(subtask_id):
-            self._reject_subtask_result(subtask_id)
-            return
-
-        self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.SubtaskResultAccepted(subtask_id=subtask_id))
 
     @log_error()
     def inform_worker_about_payment(self, payment):
@@ -310,6 +354,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all)
+    @defer.inlineCallbacks
     def send_report_computed_task(
             self,
             task_result,
@@ -364,8 +409,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        msg_cls = message.ForceReportComputedTask
-        msg = msg_cls()
+        msg = message.ForceReportComputedTask()
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
@@ -380,18 +424,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 task_result.subtask_id,
             )
             return
+
         msg.task_to_compute = task_to_compute
-        # FIXME: Only ResultType.DATA is currently in use #1796
-        assert task_result.result_type == ResultType.DATA
-        msg.result_hash = 'sha1:' + hashlib.sha1(
-            task_result.result.encode('utf-8')
-        ).hexdigest()
+        result_hash = yield deferred_compute_result_hash(task_result)
+        msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
-        msg_data = msg.serialize()  # Refactored in #1823
 
         self.concent_service.submit(
-            ConcentRequest.build_key(task_result.subtask_id, msg_cls),
-            msg_data, msg_cls
+            ConcentRequest.build_key(
+                task_result.subtask_id,
+                msg.__class__.__name__,
+            ),
+            msg,
         )
 
     def send_task_failure(self, subtask_id, err_msg):
@@ -410,7 +454,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(message.SubtaskResultRejected(subtask_id=subtask_id))
+        self.send(message.tasks.SubtaskResultsRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -465,7 +509,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
-            self.send(message.TaskToCompute(compute_task_def=ctd))
+            msg = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                requestor_id=ctd['task_owner']['key'],
+                requestor_public_key=ctd['task_owner']['key'],
+                provider_id=self.key_id,
+                provider_public_key=self.key_id,
+            )
+            self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
         else:
@@ -553,7 +604,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         secret = msg.secret
         content_hash = msg.multihash
         subtask_id = msg.subtask_id
-        client_options = self.task_server.get_download_options(self.key_id)
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
@@ -618,7 +670,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id)
+        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
         self.dropped()
 
     @history.provider_history
@@ -645,10 +697,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
 
-        # Prefer known client options to ones provided in the message
-        client_options = self.task_server.get_download_options(self.key_id)
-        if not (client_options.options and client_options.options.get('peers')):
-            client_options = msg.options
+        client_options = self.task_server.get_download_options(self.key_id,
+                                                               self.address)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
@@ -746,7 +796,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
             self.concent_service.cancel(
                 ConcentRequest.build_key(msg.subtask_id,
-                                         message.ForceReportComputedTask)
+                                         'ForceReportComputedTask')
             )
         else:
             logger.warning("Requestor '%r' acknowledged a computed task report "
@@ -762,7 +812,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
             self.concent_service.cancel(
                 ConcentRequest.build_key(msg.subtask_id,
-                                         message.ForceReportComputedTask)
+                                         'ForceReportComputedTask')
             )
         else:
             logger.warning("Requestor '%r' rejected a computed task report of"
@@ -785,7 +835,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON
         if ctd['key_id'] != self.key_id\
-                or ctd['task_owner'].key != self.key_id:
+                or ctd['task_owner']['key'] != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
@@ -829,8 +879,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
-        resource_manager = task_result_manager.resource_manager
-        client_options = resource_manager.build_client_options()
+        client_options = self.task_server.get_share_options(res.task_id,
+                                                            self.key_id)
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -868,7 +918,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         request = AsyncRequest(task_result_manager.create,
                                self.task_server.node, res,
-                               client_options=client_options,
                                key_or_secret=secret)
 
         return async_run(request, success=success, error=error)
@@ -912,8 +961,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.TaskResultHash.TYPE: self._react_to_task_result_hash,
             message.GetResource.TYPE: self._react_to_get_resource,
             message.ResourceList.TYPE: self._react_to_resource_list,
-            message.SubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,  # noqa
-            message.SubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,  # noqa
+            message.tasks.SubtaskResultsAccepted.TYPE:
+                self._react_to_subtask_result_accepted,
+            message.tasks.SubtaskResultsRejected.TYPE:
+                self._react_to_subtask_result_rejected,
             message.TaskFailure.TYPE: self._react_to_task_failure,
             message.DeltaParts.TYPE: self._react_to_delta_parts,
             message.Hello.TYPE: self._react_to_hello,

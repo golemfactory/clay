@@ -30,6 +30,7 @@ OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
 
 USE_IP6 = 0
+USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
 
@@ -41,6 +42,7 @@ PUBLISH_BALANCE_INTERVAL = 3.0
 PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
+PAYMENT_CHECK_INTERVAL = 10.0
 MAX_SENDING_DELAY = 360
 # How frequently task archive should be saved to disk (in seconds)
 TASKARCHIVE_MAINTENANCE_INTERVAL = 30
@@ -105,6 +107,7 @@ class AppConfig:
             public_address="",
             eth_account="",
             use_ipv6=USE_IP6,
+            use_upnp=USE_UPNP,
             start_port=START_PORT,
             end_port=END_PORT,
             rpc_address=RPC_ADDRESS,

@@ -286,16 +286,19 @@ class TestP2PService(testutils.DatabaseFixture):
         def true_method(*args) -> bool:
             return True
 
-        key_id = str(uuid.uuid4())
-        conn_id = str(uuid.uuid4())
-        peer_id = str(uuid.uuid4())
+        def gen_uuid():
+            return str(uuid.uuid4()).replace('-', '')
+
+        key_id = gen_uuid()
+        conn_id = gen_uuid()
+        peer_id = gen_uuid()
 
         node_info = mock.MagicMock()
         node_info.key = key_id
         node_info.is_super_node = true_method
 
         peer = mock.MagicMock()
-        peer.key_id = str(uuid.uuid4())
+        peer.key_id = gen_uuid()
 
         self.service.peers[peer_id] = peer
         self.service.node = node_info
@@ -347,7 +350,6 @@ class TestP2PService(testutils.DatabaseFixture):
 
         self.service.peers[p.key_id] = p
         self.service.peers['deadbeef02'] = p2
-        self.service.resource_peers['deadbeef02'] = [1, 2, 3, 4]
         self.service.peer_order = [p.key_id, p2.key_id]
         self.service.peer_keeper.sessions_to_end = [p2]
 
@@ -357,12 +359,6 @@ class TestP2PService(testutils.DatabaseFixture):
         degrees = self.service.get_peers_degree()
         assert len(degrees) == 2
         assert p.key_id in degrees
-
-        self.service.send_get_resource_peers()
-        assert p.send_get_resource_peers.called
-
-        resource_peers = self.service.get_resource_peers()
-        assert len(resource_peers) == 1
 
         self.service.remove_task('task_id')
         assert p.send_remove_task.called

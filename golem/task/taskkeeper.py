@@ -1,18 +1,19 @@
-import golem_messages.message
 import logging
 import math
 import pathlib
 import pickle
-import random
 import time
-
 from typing import Optional
-import typing
+
+
+import random
 from collections import Counter
+from golem_messages import message
 from semantic_version import Version
 
 import golem
 from golem.core import common
+from golem.core.async import AsyncRequest, async_run
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -51,7 +52,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], golem_messages.message.ComputeTaskDef):
+    if isinstance(args[1], message.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
@@ -82,6 +83,9 @@ class CompTaskKeeper:
     def dump(self):
         if not self.persist:
             return
+        async_run(AsyncRequest(self._dump_tasks))
+
+    def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
@@ -330,9 +334,9 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        local_patch = local.patch
-        local.patch = None
-        return local == remote and local_patch >= remote.patch
+        if local.major != remote.major or local.minor != remote.minor:
+            return False
+        return local.patch >= remote.patch
 
     def get_support_status(self, task_id) -> Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.

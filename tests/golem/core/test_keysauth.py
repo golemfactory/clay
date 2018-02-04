@@ -1,14 +1,15 @@
-from golem_messages import message
 from os import path
 from random import random, randint
 import time
 
-from golem.core.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.utils import encode_hex, decode_hex
+
+from golem_messages import message
+from golem_messages.cryptography import ECCx, ecdsa_verify
 
 
 class KeysAuthTest(TestWithKeysAuth):
@@ -229,7 +230,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
         ek.key_id = ek.cnt_key_id(ek.public_key)
-        ek.ecc = ECCx(None, ek._private_key)
+        ek.ecc = ECCx(ek._private_key)
 
         msg = message.WantToComputeTask(node_name='node_name',
                                        task_id='task_id',
@@ -237,8 +238,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                                        price=5 * 10 ** 18,
                                        max_resource_size=250000000,
                                        max_memory_size=300000000,
-                                       num_cores=4,
-                                       timestamp=time.time())
+                                       num_cores=4)
 
         data = msg.get_short_hash()
         signature = ek.sign(data)

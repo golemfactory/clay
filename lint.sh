@@ -47,9 +47,9 @@ status() {
 LINTDIFF="./lintdiff.sh -o -b $BRANCH"
 
 commands=(
-    "$LINTDIFF pylint --disable=R apps golem gui scripts setup_util '*.py'"
-    "$LINTDIFF pylint --disable=R,protected-access tests"
-    "$LINTDIFF pycodestyle"
+    "$LINTDIFF pylint apps golem gui scripts setup_util '*.py'"
+    "$LINTDIFF pylint --disable=protected-access,no-self-use tests"
+    "$LINTDIFF flake8"
     "$LINTDIFF mypy apps golem gui scripts setup_util tests '*.py'"
 )
 

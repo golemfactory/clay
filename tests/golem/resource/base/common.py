@@ -37,8 +37,8 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
-        client_1.resource_server.resource_manager._add_task(
-            resources, self.task_id)
+        client_1.resource_server.resource_manager.add_task(
+            resources, self.task_id, async_=False)
 
     def tearDown(self):
         self.client_1.quit()
@@ -92,7 +92,12 @@ class AddGetResources(TempDirFixture, LogTestCase):
         client.task_server.start_accepting = mock.Mock()
         client.task_server.task_computer = mock.Mock()
 
-        task_session = TaskSession(mock.Mock(server=client.task_server))
+        get_peer = mock.Mock(return_value=mock.Mock(host='127.0.0.1',
+                                                    port='3282'))
+        transport = mock.Mock(getPeer=get_peer)
+
+        task_session = TaskSession(mock.Mock(server=client.task_server,
+                                             transport=transport))
         task_session.task_id = task_id
 
         resource_dir = resource_manager.storage.get_dir(task_id)
@@ -111,7 +116,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_2._react_to_resource_list(msg_list)
 
         # client_2 downloads resources specified in the message
-        self.client_2.resource_server._download_resources(async=False)
+        self.client_2.resource_server._download_resources(async_=False)
 
         # verify downloaded resources
         for relative_path in self.resources_relative:

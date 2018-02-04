@@ -1,6 +1,5 @@
-import unittest.mock as mock
 import random
-import sys
+import mock
 import uuid
 
 from golem.model import db
@@ -29,12 +28,11 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     ]
 
     def setUp(self, ):
-        super(TestEthereumIncomesKeeper, self).setUp()
+        super().setUp()
         random.seed()
-        payment_processor = mock.MagicMock()
-        payment_processor.eth_address.return_value = get_receiver_id()
-        payment_processor.is_synchronized.return_value = True
-        self.instance = EthereumIncomesKeeper(payment_processor)
+        self.token = mock.Mock()
+        self.token.is_synchronized.return_value = True
+        self.instance = EthereumIncomesKeeper(get_receiver_id(), self.token)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
@@ -48,22 +46,22 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         }
 
         # Transaction not in blockchain
-        self.instance.processor.get_incomes_from_block.return_value = None
+        self.token.get_incomes_from_block.return_value = None
         self.instance.received(**received_kwargs)
         super_received_mock.assert_not_called()
-        self.instance.processor.wait_until_synchronized.assert_not_called()
+        self.token.wait_until_synchronized.assert_not_called()
 
-        self.instance.processor.is_synchronized.return_value = False
+        self.token.is_synchronized.return_value = False
         self.instance.received(**received_kwargs)
-        assert self.instance.processor.wait_until_synchronized.call_count == 1
-        self.instance.processor.is_synchronized.return_value = True
-        self.instance.processor.get_incomes_from_block.assert_called_with(
+        assert self.token.wait_until_synchronized.call_count == 1
+        self.token.is_synchronized.return_value = True
+        self.token.get_incomes_from_block.assert_called_with(
             received_kwargs['block_number'],
-            self.instance.processor.eth_address())
+            get_receiver_id())
 
-        self.instance.processor.get_incomes_from_block.return_value = []
+        self.token.get_incomes_from_block.return_value = []
         # Payment for us but value too small
-        self.instance.processor.get_incomes_from_block.return_value.append(
+        self.token.get_incomes_from_block.return_value.append(
             {
                 'sender': get_some_id(),
                 'value': received_kwargs['value'] - 1,
@@ -74,7 +72,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
         # Payment with exact value
-        self.instance.processor.get_incomes_from_block.return_value.append(
+        self.token.get_incomes_from_block.return_value.append(
             {
                 'sender': get_some_id(),
                 'value': 1,
@@ -85,7 +83,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
         # Payment with higher value
-        self.instance.processor.get_incomes_from_block.return_value.append(
+        self.token.get_incomes_from_block.return_value.append(
             {
                 'sender': get_some_id(),
                 'value': 1,
@@ -106,7 +104,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         }
         db_value = BigIntegerField().db_value(received_kwargs['value'])
 
-        self.instance.processor.get_incomes_from_block.return_value = [
+        self.token.get_incomes_from_block.return_value = [
             {
                 'sender': get_some_id(),
                 'value': int(db_value, 16),
@@ -175,7 +173,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
         # Batched Payment with exact value
         db_value = BigIntegerField().db_value(2 * value)
-        self.instance.processor.get_incomes_from_block.return_value = [
+        self.token.get_incomes_from_block.return_value = [
             {
                 'sender': get_some_id(),
                 'value': int(db_value, 16),

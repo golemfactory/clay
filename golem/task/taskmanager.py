@@ -95,7 +95,7 @@ class TaskManager(TaskEventListener):
         )
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting, TaskStatus.restarted]
+                             TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
@@ -148,9 +148,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
-
-        self.dir_manager.clear_temporary(task_id)
-        self.dir_manager.get_task_temporary_dir(task_id, create=True)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -211,6 +208,7 @@ class TaskManager(TaskEventListener):
 
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
+        broken_paths = set()
         for path in self.tasks_dir.iterdir():
             if not path.suffix == '.pickle':
                 continue
@@ -232,7 +230,10 @@ class TaskManager(TaskEventListener):
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError):
                     logger.exception('Problem restoring task from: %s', path)
-                    path.unlink()
+                    # On Windows, attempting to remove a file that is in use
+                    # causes an exception to be raised, therefore
+                    # we'll remove broken files later
+                    broken_paths.add(path)
 
             if task_id is not None:
                 dispatcher.send(
@@ -240,6 +241,8 @@ class TaskManager(TaskEventListener):
                     event='task_status_updated',
                     task_id=task_id
                 )
+        for path in broken_paths:
+            path.unlink()
 
     @handle_task_key_error
     def resources_send(self, task_id):
@@ -338,7 +341,7 @@ class TaskManager(TaskEventListener):
         ctd['key_id'] = task.header.task_owner_key_id
         ctd['return_address'] = task.header.task_owner_address
         ctd['return_port'] = task.header.task_owner_port
-        ctd['task_owner'] = task.header.task_owner
+        ctd['task_owner'] = task.header.task_owner.to_dict()
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
@@ -410,7 +413,8 @@ class TaskManager(TaskEventListener):
         return value
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result, result_type):
+    def computed_task_received(self, subtask_id, result, result_type,
+                               verification_finished_):
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -420,36 +424,40 @@ class TaskManager(TaskEventListener):
             logger.warning("Result for subtask {} when subtask state is {}"
                            .format(subtask_id, subtask_status))
             self.notice_task_updated(task_id)
-            return False
+            verification_finished_()
+            return
+
+        def verification_finished():
+            ss = self.tasks_states[task_id].subtask_states[subtask_id]
+            ss.subtask_progress = 1.0
+            ss.subtask_rem_time = 0.0
+            ss.subtask_status = SubtaskStatus.finished
+            ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
+            ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
+            ss.results = self.tasks[task_id].get_results(subtask_id)
+
+            if not self.tasks[task_id].verify_subtask(subtask_id):
+                logger.debug("Subtask %r not accepted\n", subtask_id)
+                ss.subtask_status = SubtaskStatus.failure
+                self.notice_task_updated(task_id)
+                verification_finished_()
+                return
+
+            if self.tasks_states[task_id].status in self.activeStatus:
+                if not self.tasks[task_id].finished_computation():
+                    self.tasks_states[task_id].status = TaskStatus.computing
+                else:
+                    if self.tasks[task_id].verify_task():
+                        logger.debug("Task %r accepted", task_id)
+                        self.tasks_states[task_id].status = TaskStatus.finished
+                    else:
+                        logger.debug("Task %r not accepted", task_id)
+            self.notice_task_updated(task_id)
+            verification_finished_()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type,
+            subtask_id, result, result_type, verification_finished
         )
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.subtask_progress = 1.0
-        ss.subtask_rem_time = 0.0
-        ss.subtask_status = SubtaskStatus.finished
-        ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
-        ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
-        ss.results = self.tasks[task_id].get_results(subtask_id)
-
-        if not self.tasks[task_id].verify_subtask(subtask_id):
-            logger.debug("Subtask {} not accepted\n".format(subtask_id))
-            ss.subtask_status = SubtaskStatus.failure
-            self.notice_task_updated(task_id)
-            return False
-
-        if self.tasks_states[task_id].status in self.activeStatus:
-            if not self.tasks[task_id].finished_computation():
-                self.tasks_states[task_id].status = TaskStatus.computing
-            else:
-                if self.tasks[task_id].verify_task():
-                    logger.debug("Task {} accepted".format(task_id))
-                    self.tasks_states[task_id].status = TaskStatus.finished
-                else:
-                    logger.debug("Task {} not accepted".format(task_id))
-        self.notice_task_updated(task_id)
-        return True
 
     @handle_subtask_key_error
     def task_computation_failure(self, subtask_id, err):
@@ -534,23 +542,19 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
-    def restart_task(self, task_id):
+    def put_task_in_restarted_state(self, task_id):
+        """
+        When restarting task, it's put in a final state 'restarted' and
+        a new one is created.
+        """
         self.dir_manager.clear_temporary(task_id)
-        task = self.tasks[task_id]
 
-        task.restart()
         self.tasks_states[task_id].status = TaskStatus.restarted
-        task.header.deadline = timeout_to_deadline(
-            task.task_definition.full_task_timeout)
-        self.tasks_states[task_id].time_started = time.time()
-
-        for ss in list(self.tasks_states[task_id].subtask_states.values()):
+        for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
-        task.header.signature = self.sign_task_header(task.header)
-
-        logger.info("Task %s restarted", task_id)
+        logger.info("Task %s put into restarted state", task_id)
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error

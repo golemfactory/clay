@@ -257,7 +257,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd['subtask_id'],
                                   [new_flm_file, new_preview_file],
-                                  result_type=ResultType.FILES)
+                                  result_type=ResultType.FILES,
+                                  verification_finished_=lambda: None)
 
 
         is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
@@ -269,7 +270,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(10000).ctd
         task.computation_finished(ctd['subtask_id'],
                                   [bad_flm_file, new_preview_file],
-                                  result_type=ResultType.FILES)
+                                  result_type=ResultType.FILES,
+                                  verification_finished_=lambda: None)
 
         self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)

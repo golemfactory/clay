@@ -15,21 +15,21 @@ from golem.resource.resource import (TaskResourceHeader, decompress_dir,
 logger = logging.getLogger("golem.task")
 
 
-class LocalComputer(object):
+class LocalComputer:
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
 
     def __init__(self,
                  root_path: str,
-                 success_callback,
-                 error_callback,
+                 success_callback: Callable,
+                 error_callback: Callable,
                  get_compute_task_def: Callable[[], ComputeTaskDef] = None,
                  compute_task_def: ComputeTaskDef = None,
-                 check_mem=False,
-                 comp_failed_warning=DEFAULT_WARNING,
-                 comp_success_message=DEFAULT_SUCCESS,
-                 resources=None,
-                 additional_resources=None):
+                 check_mem: bool = False,
+                 comp_failed_warning: str = DEFAULT_WARNING,
+                 comp_success_message: str = DEFAULT_SUCCESS,
+                 resources: list = None,
+                 additional_resources=None) -> None:
         self.res_path = None
         self.tmp_dir = None
         self.success = False
@@ -53,7 +53,7 @@ class LocalComputer(object):
         self.end_time = None
         self.test_task_res_path = None
 
-    def run(self):
+    def run(self) -> None:
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
@@ -68,10 +68,10 @@ class LocalComputer(object):
             self.tt.start()
 
         except Exception as exc:
-            logger.warning("{}: {}".format(self.comp_failed_warning, exc))
-            self.error_callback(to_unicode(exc))
+            logger.warning("%s: %s", self.comp_failed_warning, exc)
+            self.error_callback(exc)
 
-    def end_comp(self):
+    def end_comp(self) -> bool:
         if self.tt:
             self.tt.end_comp()
             return True
@@ -95,7 +95,10 @@ class LocalComputer(object):
             self.computation_failure(task_thread)
 
     def is_success(self, task_thread):
-        return not task_thread.error and task_thread.result and task_thread.result.get("data")
+        return \
+            not task_thread.error \
+            and task_thread.result \
+            and task_thread.result.get("data")
 
     def computation_success(self, task_thread):
         self.success_callback(task_thread.result, self._get_time_spent())
@@ -121,6 +124,7 @@ class LocalComputer(object):
         else:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
+
         if resources:
             rh = TaskResourceHeader(self.test_task_res_path)
             res_file = get_resources_for_task(resource_header=rh,

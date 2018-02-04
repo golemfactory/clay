@@ -1,0 +1,13 @@
+[Unit]
+Description=BuildBot worker{{worker_postfix}} service
+After=network.target
+
+[Service]
+User={{worker_user}}
+Group={{worker_group}}
+WorkingDirectory={{_worker_service_dir}}
+ExecStart={{_worker_service_bin}} start --nodaemon
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,13 +1,12 @@
 import datetime
-from golem_messages.message import ComputeTaskDef
 import os
 import random
 import uuid
 from collections import deque
 from math import ceil
-
 from unittest.mock import Mock, MagicMock, patch, ANY
 
+from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
 import golem
@@ -17,7 +16,11 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.p2p.node import Node
+from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resource import ResourceError
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -143,7 +146,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         # 3. Requestor is on a black list.
         tar.reset_mock()
-        ts.deny_set.add("key")
+        ts.acl.disallow("key")
         task_header = get_example_task_header()
         task_header["task_id"] = "uvw5"
         task_header["task_owner"] = n2
@@ -155,7 +158,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
                 False,
                 {UnsupportReason.DENY_LIST: "key"}))
         ts.remove_task_header("uvw5")
-        ts.deny_set.remove("key")
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
@@ -301,13 +303,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         with self.assertRaises(Exception) as raised:
             ts.add_task_header(task_header)
             self.assertEqual(raised.exception.message, "Invalid signature")
-            self.assertEqual(len(ts.get_tasks_headers()), 0)
+            self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
         task_header["task_owner_key_id"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()), 1)
+        self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz_2"
@@ -315,18 +317,19 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()), 2)
+        self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         self.assertIsNotNone(ts.add_task_header(task_header))
-        self.assertEqual(len(ts.get_tasks_headers()), 2)
+        self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         new_header = dict(task_header)
         new_header["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
 
         self.assertIsNotNone(ts.add_task_header(new_header))
-        self.assertEqual(len(ts.get_tasks_headers()), 2)
-        saved_task = next(th for th in ts.get_tasks_headers() if th["task_id"] == "xyz_2")
+        self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        saved_task = next(th for th in ts.get_others_tasks_headers()
+                          if th["task_id"] == "xyz_2")
         self.assertEqual(saved_task["signature"], new_header["signature"])
 
     def test_sync(self):
@@ -628,7 +631,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.config_desc.computing_trust = 0.2
         assert ts.should_accept_provider("ABC")
 
-        ts.deny_set.add("ABC")
+        ts.acl.disallow("ABC")
         assert not ts.should_accept_provider("ABC")
 
     def test_should_accept_requestor(self):
@@ -649,7 +652,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.config_desc.requesting_trust = 0.2
         assert ts.should_accept_requestor("ABC").is_ok()
 
-        ts.deny_set.add("ABC")
+        ts.acl.disallow("ABC")
         ss = ts.should_accept_requestor("ABC")
         assert not ss.is_ok()
         assert UnsupportReason.DENY_LIST in ss.desc
@@ -738,6 +741,29 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.new_connection(tss)
         assert len(ts.task_sessions_incoming) == 1
         assert ts.task_sessions_incoming.pop() == tss
+
+    def test_download_options(self):
+        ccd = ClientConfigDescriptor()
+        dm = DirManager(self.path)
+        rm = HyperdriveResourceManager(dm)
+
+        forced_peer = {'TCP': ['1.2.3.4', DEFAULT_HYPERDRIVE_PORT]}
+        existing_peer = {'TCP': ['4.5.6.7', 4282]}
+
+        self.client.resource_server.resource_manager = rm
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+
+        client_options = ts.get_download_options('node_key_id')
+        assert client_options.options.get('peers') == []
+        client_options = ts.get_download_options('node_key_id', '1.2.3.4')
+        assert client_options.options.get('peers') == [forced_peer]
+
+        ts.get_resource_peer = Mock(return_value=existing_peer)
+        client_options = ts.get_download_options('node_key_id')
+        assert client_options.options.get('peers') == [existing_peer]
+        client_options = ts.get_download_options('node_key_id', '1.2.3.4')
+        assert client_options.options.get('peers') == [forced_peer]
 
 
 class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
@@ -998,12 +1024,18 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_http_error_and_resource_hashes(self):
+        self._test_with_error_and_resource_hashes(HTTPError)
+
+    def test_with_resource_error_and_resource_hashes(self):
+        self._test_with_error_and_resource_hashes(ResourceError)
+
+    def _test_with_error_and_resource_hashes(self, error_class):
         self._create_tasks(self.ts, self.task_count)
         for state in self.ts.task_manager.tasks_states.values():
             state.resource_hash = str(uuid.uuid4())
 
         with patch.object(self.resource_manager, 'add_task',
-                          side_effect=HTTPError):
+                          side_effect=error_class):
             self.ts.restore_resources()
             assert self.resource_manager.add_task.call_count == \
                 self.task_count * 2
@@ -1019,4 +1051,3 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
-

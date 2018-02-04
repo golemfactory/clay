@@ -59,7 +59,7 @@ class StateVerifier(Verifier):
         if self.state in self.active_status:
             self.state = SubtaskVerificationState.NOT_SURE
         self.message = "Verification was stopped"
-        answer = self._get_anwser()
+        answer = self._get_answer()
         self.callback(subtask_id=self.subtask_info['subtask_id'],
                       verdict=self.state,
                       results=answer)
@@ -75,9 +75,23 @@ class StateVerifier(Verifier):
         self.time_ended = None
         self.extra_data = {}
 
-    def _get_anwser(self):
+    def _get_answer(self):
         return {'reference_data': self.reference_data,
                 'message': self.message,
                 'time_started': self.time_started,
                 'time_ended': self.time_ended,
                 'extra_data': self.extra_data}
+
+    def _check_computer(self):
+        if not self.computer:
+            self.state = SubtaskVerificationState.NOT_SURE
+            self.message = "No computer available to verify data"
+            return False
+        return True
+
+    def _wait_for_computer(self):
+        if not self.computer.wait():
+            self.state = SubtaskVerificationState.NOT_SURE
+            self.message = "Computation was not run correctly"
+            return False
+        return True

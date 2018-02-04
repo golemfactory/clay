@@ -1,15 +1,17 @@
 import logging
 import os
 import struct
+import unittest
 from unittest import mock
-from unittest import TestCase
 
-MagicMock = mock.MagicMock
+from freezegun import freeze_time
+from golem_messages import message
 
+from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem_messages import message
+from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
                                                 EncryptFileProducer,
@@ -17,11 +19,21 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 EncryptDataProducer,
                                                 DecryptDataConsumer,
                                                 BasicProtocol,
-                                                logger, SocketAddress,
+                                                SafeProtocol,
+                                                SocketAddress,
                                                 MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
+
+MagicMock = mock.MagicMock
+
+
+class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = [
+        'golem/network/transport/tcpnetwork.py',
+        'golem/network/transport/tcpnetwork_helpers.py',
+    ]
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -253,17 +265,53 @@ class TestBasicProtocol(LogTestCase):
             .interpret
             .call_args[0][0].TYPE, m.TYPE)
 
-    def test_dataReceived_long(self):
+    @mock.patch('golem_messages.load')
+    def test_drop_set_task(self, load_mock):
+        protocol = SafeProtocol(MagicMock())
+        protocol.opened = True
+        protocol.session = mock.MagicMock()
+        protocol.session.my_private_key = None
+        protocol.session.theirs_public_key = None
+
+        with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
+            node = Node(
+                node_name='super_node',
+                key=str("key"),
+                pub_addr='1.2.3.4',
+                prv_addr='1.2.3.4',
+                pub_port=10000,
+                prv_port=10000)
+
+            msg = message.SetTaskSession(
+                key_id=None,
+                node_info=node,
+                conn_id=None,
+                super_node_info=None)
+            data = msg.serialize()
+            packed_data = struct.pack("!L", len(data)) + data
+            load_mock.return_value = msg
+            for _ in range(0, 100):
+                protocol.dataReceived(packed_data)
+            protocol.session.interpret.assert_called_once_with(msg)
+            frozen_datetime.move_to("2017-01-14 10:30:45")
+            protocol.session.interpret.reset_mock()
+            protocol.dataReceived(packed_data)
+            protocol.session.interpret.assert_called_once_with(msg)
+
+    @mock.patch(
+        'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
+    )
+    def test_dataReceived_long(self, load_mock):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
         protocol = BasicProtocol()
         protocol.transport = MagicMock()
         protocol.opened = True
         protocol.session = MagicMock()
         self.assertIsNone(protocol.dataReceived(data))
-        protocol.transport.loseConnection.assert_called_once_with()
+        self.assertEqual(load_mock.call_count, 0)
 
 
-class TestSocketAddress(TestCase):
+class TestSocketAddress(unittest.TestCase):
 
     def test_zone_index(self):
         base_address = "fe80::3"
