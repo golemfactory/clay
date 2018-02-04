@@ -459,22 +459,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     @handle_attr_error_with_task_computer
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
-        if msg.compute_task_def is None:
+        ctd = msg.compute_task_def
+        if ctd is None:
             logger.debug('TaskToCompute without ctd: %r', msg)
             self.task_computer.session_closed()
             self.dropped()
             return
-        if self._check_ctd_params(msg.compute_task_def)\
-                and self._set_env_params(msg.compute_task_def)\
-                and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
+        if self._check_ctd_params(ctd)\
+                and self._set_env_params(ctd)\
+                and self.task_manager.comp_task_keeper.receive_subtask(ctd):
             self.task_server.add_task_session(
-                msg.compute_task_def['subtask_id'], self
+                ctd['subtask_id'], self
             )
-            self.task_computer.task_given(msg.compute_task_def)
+            self.task_computer.task_given(ctd)
         else:
             self.send(
                 message.CannotComputeTask(
-                    subtask_id=msg.compute_task_def['subtask_id'],
+                    subtask_id=ctd['subtask_id'],
                     reason=self.err_msg
                 )
             )
