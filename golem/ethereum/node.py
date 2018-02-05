@@ -13,7 +13,7 @@ from distutils.version import StrictVersion
 import requests
 from web3 import Web3, IPCProvider, HTTPProvider
 
-from golem.core.common import is_windows, DEVNULL
+from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import find_free_net_port
@@ -212,7 +212,8 @@ class NodeProcess(object):
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
-                                     stdin=DEVNULL)
+                                     stdin=DEVNULL,
+                                     startupinfo=SUBPROCESS_STARTUP_INFO)
 
         tee_kwargs = {
             'proc': self.__ps,
