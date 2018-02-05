@@ -10,7 +10,6 @@ import unittest
 import unittest.mock as mock
 import uuid
 
-import golem_messages
 from golem_messages import message
 
 from golem import model
@@ -26,7 +25,6 @@ from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
-from golem.resource.resource import TaskResourceHeader
 from golem.task import taskstate
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
@@ -79,7 +77,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['challenge', None],
             ['difficulty', None],
             ['metadata', None],
-            ['golem_messages_version', golem_messages.__version__],
         ]
         msg = send_mock.call_args[0][0]
         self.assertCountEqual(msg.slots(), expected)
@@ -540,7 +537,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             m.serialize(lambda x: b'\000' * 65),
         )
         sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
+        sess.request_resource(str(uuid.uuid4()))
 
         assert message.Message.deserialize(db.buffered_data, lambda x: x)
 
