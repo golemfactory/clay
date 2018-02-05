@@ -1,16 +1,19 @@
 import abc
+import binascii
 import os
 import uuid
 import zipfile
 
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
 
 
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
+    def create(self, output_path, disk_files=None, cbor_files=None,
+               write_sha1_file=True, **kwargs):
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
@@ -27,7 +30,26 @@ class Packager(object):
                     cbor_data = CBORSerializer.dumps(file_data)
                     self.write_cbor_file(of, file_name, cbor_data)
 
+        if write_sha1_file:
+            self.write_sha1(output_path)
+
         return output_path
+
+    @classmethod
+    def read_sha1(cls, output_path):
+        sha1_file_path = output_path + '.sha1'
+
+        with open(sha1_file_path, 'r') as sf:
+            contents = sf.read().strip()
+            return binascii.unhexlify(contents)
+
+    @classmethod
+    def write_sha1(cls, output_path):
+        sha1_file_path = output_path + '.sha1'
+        sha1 = SimpleHash.hash_file(output_path)
+
+        with open(sha1_file_path, 'w') as sf:
+            sf.write(binascii.hexlify(sha1).decode('utf8'))
 
     @abc.abstractmethod
     def extract(self, input_path, output_dir=None, **kwargs):
