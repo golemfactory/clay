@@ -8,8 +8,7 @@ peewee<2.11,>=2.8
 Pillow==4.2.1
 psutil==5.2.2
 pluggy==0.6.0
-pyelliptic==1.5.7
-coincurve>=7.0.0
+coincurve>=7.1.0
 asn1crypto==0.22.0
 pyasn1==0.4.1
 pysha3>=1.0.2
@@ -50,4 +49,4 @@ pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
 Golem-Messages==1.6.2
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@f844eb827074d7a7278982e1c07dc167eb2bcad3#egg=golem_sci
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@8ab8dbbbd689fb5ba04914de5ec317607fd95fc9#egg=golem_sci

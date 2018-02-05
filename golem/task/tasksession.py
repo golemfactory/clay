@@ -1,26 +1,21 @@
 import functools
-import hashlib
 import logging
 import os
-import pathlib
 import pickle
-import threading
 import time
 
 from golem_messages import message
 from twisted.internet import defer
-from twisted.internet import reactor
-from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
-from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
-from golem.model import Payment, Actor
-from golem.model import db
+from golem.model import Actor
 from golem.network import history
+from golem.network.concent import exceptions as concent_exceptions
+from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.client import ConcentRequest
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -32,12 +27,12 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-def drop_after_attr_error(*args, **kwargs):
+def drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
 
 
-def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
+def call_task_computer_and_drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
@@ -52,39 +47,6 @@ def dropped_after():
             return result
         return curry
     return inner
-
-
-def compute_result_hash(task_result):
-    result_hash = hashlib.sha1()
-    if task_result.result_type == ResultType.FILES:
-        # task_result.result is an array of filenames
-        for filename in task_result.result:
-            p = pathlib.Path(filename)
-            logger.info(
-                'Computing checksum (%.3fMB) of %s',
-                p.stat().st_size / 2**20,
-                p
-            )
-            with open(filename, 'rb') as f:
-                while True:
-                    chunk = f.read(2**20)  # 1MB
-                    if not chunk:
-                        break
-                    result_hash.update(chunk)
-
-    else:
-        logger.info('Computing checksum of single result')
-        result_hash.update(task_result.result.encode('utf-8'))
-    return result_hash
-
-
-def deferred_compute_result_hash(task_result):
-    if reactor.running:
-        execute = threads.deferToThread
-    else:
-        logger.debug('Reactor not running. Switching to blocking call')
-        execute = defer.execute
-    return execute(compute_result_hash, task_result)
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
@@ -309,29 +271,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             verification_finished
         )
 
-    @log_error()
-    def inform_worker_about_payment(self, payment):
-        logger.debug('inform_worker_about_payment(%r)', payment)
-        if payment.details:
-            logger.debug('payment.details: %r', payment.details)
-        transaction_id = payment.details.tx
-        block_number = payment.details.block_number
-        msg = message.SubtaskPayment(
-            subtask_id=payment.subtask,
-            reward=payment.value,
-            transaction_id=transaction_id,
-            block_number=block_number
-        )
-        self.send(msg)
-
-    @log_error()
-    def request_payment(self, expected_income):
-        logger.debug('request_payment(%r)', expected_income)
-        msg = message.SubtaskPaymentRequest(
-            subtask_id=expected_income.subtask
-        )
-        self.send(msg)
-
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)
         self.send_result_rejected(subtask_id)
@@ -382,6 +321,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
         node_name = self.task_server.get_node_name()
+
         try:
             task_to_compute = history.MessageHistoryService.get_sync_as_message(
                 task=task_result.task_id,
@@ -390,10 +330,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
         except history.MessageNotFound:
             task_to_compute = None
-            logger.info(
+            logger.warning(
                 '[CONCENT] TaskToCompute not found for subtask: %r',
                 task_result.subtask_id,
             )
+            return
 
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -410,23 +351,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(report_computed_task)
 
         msg = message.ForceReportComputedTask()
-        try:
-            task_to_compute = history.MessageHistoryService.get_sync_as_message(
-                task=task_result.task_id,
-                subtask=task_result.subtask_id,
-                msg_cls='TaskToCompute',
-            )
-        except history.MessageNotFound:
-            logger.warning(
-                '[CONCENT] Cannot create ForceReportComputedTask. '
-                'TaskToCompute message not found for task: %r subtask: %r',
-                task_result.task_id,
-                task_result.subtask_id,
-            )
-            return
-
         msg.task_to_compute = task_to_compute
-        result_hash = yield deferred_compute_result_hash(task_result)
+        result_hash = yield concent_helpers.deferred_compute_result_hash(
+            task_result,
+        )
         msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
 
@@ -574,22 +502,38 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id in self.task_manager.subtask2task_mapping:
-            self.task_server.receive_subtask_computation_time(
-                msg.subtask_id,
-                msg.computation_time
-            )
-            self.result_owner = EthAccountInfo(
-                msg.key_id,
-                msg.port,
-                msg.address,
-                msg.node_name,
-                msg.node_info,
-                msg.eth_account
-            )
-            self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
-        else:
+        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
+            logger.warning('Received unknown subtask_id: %r', msg)
             self.dropped()
+            return
+
+        if msg.task_to_compute is None:
+            logger.warning('Did not receive task_to_compute: %r', msg)
+            self.dropped()
+            return
+
+        try:
+            concent_helpers.process_report_computed_task(
+                msg,
+                task_session=self,
+            )
+        except concent_exceptions.ConcentVerificationFailed:
+            return
+
+        self.task_server.receive_subtask_computation_time(
+            msg.subtask_id,
+            msg.computation_time
+        )
+
+        self.result_owner = EthAccountInfo(
+            msg.key_id,
+            msg.port,
+            msg.address,
+            msg.node_name,
+            msg.node_info,
+            msg.eth_account
+        )
+        self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
 
     @history.provider_history
     def _react_to_get_task_result(self, msg):
@@ -742,50 +686,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
-
-    @history.provider_history
-    def _react_to_subtask_payment(self, msg):
-        if msg.transaction_id is None:
-            logger.debug(
-                'PAYMENT PENDING %r for %r',
-                msg.reward,
-                msg.subtask_id
-            )
-            return
-        if msg.block_number is None:
-            logger.debug(
-                'PAYMENT NOT MINED: %r for %r tid: %r',
-                msg.reward,
-                msg.subtask_id,
-                msg.transaction_id
-            )
-            return
-
-        # reward_for_subtask_paid -> ethereum incomes keeper requires
-        # being sync with blockchain
-        # run it in separate thread to prevent hanging the main thread
-        thread = threading.Thread(
-            target=self.task_server.reward_for_subtask_paid,
-            args=(),
-            kwargs={
-                'subtask_id': msg.subtask_id,
-                'reward': msg.reward,
-                'transaction_id': msg.transaction_id,
-                'block_number': msg.block_number
-            }
-        )
-        thread.daemon = True                            # Daemonize thread
-        thread.start()                                  # Start the execution
-
-    def _react_to_subtask_payment_request(self, msg):
-        logger.debug('_react_to_subtask_payment_request: %r', msg)
-        try:
-            with db.atomic():
-                payment = Payment.get(Payment.subtask == msg.subtask_id)
-        except Payment.DoesNotExist:
-            logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
-            return
-        self.inform_worker_about_payment(payment)
 
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
@@ -971,8 +871,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
-            message.SubtaskPayment.TYPE: self._react_to_subtask_payment,
-            message.SubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
 
             # Concent messages
             message.AckReportComputedTask.TYPE:

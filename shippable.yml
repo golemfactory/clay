@@ -8,7 +8,7 @@ build:
     - git checkout -b shippable-lint  # Shippable doesn't make a branch for us, unlike CircleCI
     - shippable_retry pip3 install -r requirements.txt
     - shippable_retry pip3 install -r requirements-lint.txt
-    - if [ "$IS_PULL_REQUEST" -eq "true" ]; then
+    - if [ "$IS_PULL_REQUEST" = "true" ]; then
           LINTDIFF_BASE_BRANCH="origin/${BASE_BRANCH}";
       else
           LINTDIFF_BASE_BRANCH="${COMMIT}~1";

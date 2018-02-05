@@ -1,6 +1,5 @@
 import datetime
 import random
-import sys
 import time
 
 from golem.model import db
@@ -36,42 +35,35 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         random.seed()
         self.incomes_keeper = IncomesKeeper()
 
-    def _test_expect_income(self, sender_node_id, task_id, subtask_id, value):
+    def _test_expect_income(self, sender_node_id, subtask_id, value):
         self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
-            task_id=task_id,
             subtask_id=subtask_id,
             p2p_node=Node(),
             value=value
         )
         with db.atomic():
             expected_income = ExpectedIncome.get(sender_node=sender_node_id,
-                                                 task=task_id,
                                                  subtask=subtask_id)
         self.assertEqual(expected_income.value, value)
 
     def test_received(self):
         sender_node_id = generate_some_id('sender_node_id')
-        task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(MAX_INT, MAX_INT+10)
+        value = random.randint(MAX_INT, MAX_INT + 10)
 
         self.assertEqual(ExpectedIncome.select().count(), 0)
         self._test_expect_income(sender_node_id=sender_node_id,
-                                 task_id=task_id,
                                  subtask_id=subtask_id,
                                  value=value
                                  )
         self.assertEqual(ExpectedIncome.select().count(), 1)
 
         transaction_id = generate_some_id('transaction_id')
-        block_number = random.randint(0, sys.maxsize)
         income = self.incomes_keeper.received(
             sender_node_id=sender_node_id,
-            task_id=task_id,
             subtask_id=subtask_id,
             transaction_id=transaction_id,
-            block_number=block_number,
             value=value
         )
 
@@ -80,37 +72,31 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.assertIsNotNone(income)
 
         with db.atomic():
-            income = Income.get(sender_node=sender_node_id, task=task_id,
-                                subtask=subtask_id)
+            income = Income.get(sender_node=sender_node_id, subtask=subtask_id)
         self.assertEqual(income.value, value)
         self.assertEqual(income.transaction, transaction_id)
-        self.assertEqual(income.block_number, block_number)
 
         # try to duplicate key
         # same sender cannot pay for the same subtask twice
         new_transaction = generate_some_id('transaction_id2')
-        new_value = random.randint(MAX_INT, MAX_INT+10)
+        new_value = random.randint(MAX_INT, MAX_INT + 10)
         income = self.incomes_keeper.received(
             sender_node_id=sender_node_id,
-            task_id=task_id,
             subtask_id=subtask_id,
             transaction_id=new_transaction,
-            block_number=block_number,
             value=new_value
         )
         self.assertIsNone(income)
 
     def test_run_once(self):
         sender_node_id = generate_some_id('sender_node_id')
-        task_id = generate_some_id('task_id')
         subtask_id = generate_some_id('subtask_id')
-        value = random.randint(MAX_INT, MAX_INT+10)
+        value = random.randint(MAX_INT, MAX_INT + 10)
         transaction_id = generate_some_id('transaction_id')
 
         expected_income = self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
             p2p_node=Node(),
-            task_id=task_id,
             subtask_id=subtask_id,
             value=value
         )
@@ -131,10 +117,8 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         # Matching received but too early to check
         Income.create(
             sender_node=sender_node_id,
-            task=task_id,
             subtask=subtask_id,
             transaction=transaction_id,
-            block_number=random.randint(0, sys.maxsize),
             value=value)
 
         with db.atomic():

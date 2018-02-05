@@ -69,12 +69,10 @@ class TransactionSystem(object):
                 else PaymentStatus.awaiting
 
             return {
-                "task": to_unicode(o.task),
                 "subtask": to_unicode(o.subtask),
                 "payer": to_unicode(o.sender_node),
                 "value": to_unicode(o.value),
                 "status": to_unicode(status.name),
-                "block_number": to_unicode(o.block_number),
                 "transaction": to_unicode(o.transaction),
                 "created": datetime_to_timestamp(o.created_date),
                 "modified": datetime_to_timestamp(o.modified_date)

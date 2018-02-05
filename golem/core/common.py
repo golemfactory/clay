@@ -1,10 +1,12 @@
-from calendar import timegm
 import collections
-from datetime import datetime
 import logging.config
-from multiprocessing import cpu_count
 import os
+import subprocess
 import sys
+from calendar import timegm
+from datetime import datetime
+from multiprocessing import cpu_count
+
 import pytz
 
 from golem.core import simpleenv
@@ -259,3 +261,10 @@ def install_reactor():
     from twisted.internet import reactor
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
+
+
+if is_windows():
+    SUBPROCESS_STARTUP_INFO = subprocess.STARTUPINFO()
+    SUBPROCESS_STARTUP_INFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    SUBPROCESS_STARTUP_INFO = None
