@@ -1,26 +1,26 @@
 from unittest import TestCase
 
-from apps.blender.resources.cropgenerator import (find_crop_size,
-                                                  generate_crops,
-                                                  pixel,
-                                                  random_crop)
+from apps.blender.task.blendercropper import BlenderCropper
 
 from golem.testutils import PEP8MixIn
 
 
 class TestGenerateCrops(TestCase, PEP8MixIn):
-    PEP8_FILES = ["apps/blender/resources/cropgenerator.py"]
+    PEP8_FILES = ["apps/blender/task/blendercropper.py"]
+
+    def setUp(self):
+        self.cropper = BlenderCropper()
 
     def test_find_crop_size(self):
-        assert find_crop_size(800) == 0.01
-        assert find_crop_size(8000) == 0.01
-        assert find_crop_size(400) == 0.02
-        assert find_crop_size(799) == 0.02
-        assert find_crop_size(399) == 0.03
+        assert self.cropper._find_split_size(800) == 0.01
+        assert self.cropper._find_split_size(8000) == 0.01
+        assert self.cropper._find_split_size(400) == 0.02
+        assert self.cropper._find_split_size(799) == 0.02
+        assert self.cropper._find_split_size(399) == 0.03
 
     def test_random_crop(self):
         def _test_crop(min_, max_, step):
-            crop_min, crop_max = random_crop(min_, max_, step)
+            crop_min, crop_max = self.cropper._random_split(min_, max_, step)
             assert round(crop_min, 2) >= round(min_, 2)
             assert round(crop_max, 2) <= round(max_, 2)
             assert abs(crop_max - crop_min - step) <= 0.01
@@ -31,17 +31,18 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
         _test_crop(0.032, 0.42, 0.01)
 
     def test_pixel(self):
-        assert pixel((800, 600), 0.0, 1.0, 0.0, 1.0) == (0, 0)
-        assert pixel((800, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
-        assert pixel((799, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
+        assert self.cropper._pixel((800, 600), 0.0, 1.0, 0.0, 1.0) == (0, 0)
+        assert self.cropper._pixel((800, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
+        assert self.cropper._pixel((799, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
 
     def test_generate_crop(self):
         def _test_crop(resolution, crop, num, ncrop_size=None):
             if ncrop_size is None:
-                crops_info = generate_crops(resolution, crop, num)
+                crops_info = self.cropper.generate_split_data(resolution, crop,
+                                                              num)
             else:
-                crops_info = generate_crops(resolution, crop, num,
-                                            ncrop_size)
+                crops_info = self.cropper.generate_split_data(resolution, crop,
+                                                              num, ncrop_size)
             assert len(crops_info) == 2
             crops, pixels = crops_info
             assert len(crops) == num

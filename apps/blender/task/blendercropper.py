@@ -51,8 +51,8 @@ class BlenderCropper:
         left, right, top, bottom = image_border
 
         if crop_size is None:
-            self.crop_size = (self.find_split_size(resolution[0]),
-                              self.find_split_size(resolution[1]))
+            self.crop_size = (self._find_split_size(resolution[0]),
+                              self._find_split_size(resolution[1]))
 
         split_values = []
         split_pixels = []
@@ -61,12 +61,12 @@ class BlenderCropper:
         # Blender cropping window from top left. Cropped window pixels
         # 0,0 are in top left
         for _ in range(splits_num):
-            split_x = self.random_split(left, right, self.crop_size[0])
-            split_y = self.random_split(top, bottom, self.crop_size[1])
+            split_x = self._random_split(left, right, self.crop_size[0])
+            split_y = self._random_split(top, bottom, self.crop_size[1])
             split_values.append((split_x[0], split_x[1], split_y[0],
                                  split_y[1]))
-            split_pixels.append(self.pixel(resolution, split_x[0], split_y[1],
-                                           left, bottom))
+            split_pixels.append(self._pixel(resolution, split_x[0], split_y[1],
+                                            left, bottom))
         return split_values, split_pixels
 
     def render_crops(self, computer, resources, crop_rendered,
@@ -75,6 +75,9 @@ class BlenderCropper:
                      crop_size=None):
         # pylint: disable=unused-argument
 
+        crops_path = os.path.join(subtask_info['tmp_dir'],
+                                  subtask_info['subtask_id'])
+
         crops_info = self.generate_split_data((subtask_info['res_x'],
                                                subtask_info['res_y']),
                                               subtask_info['crop_window'],
@@ -82,7 +85,7 @@ class BlenderCropper:
                                               crop_size)
         for num in range(num_crops):
             verify_ctx = CropContext(crops_info[1], self.crop_counter,
-                                     self.crops_path)
+                                     crops_path)
             self._render_one_crop(computer, resources,
                                   crops_info[0][self.crop_counter],
                                   subtask_info, verify_ctx, crop_rendered,

@@ -31,7 +31,6 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.verified_crops_counter = 0
         self.success = None
         self.failure = None
-        self.crops_path = None
         self.current_results_file = None
         self.program_file = find_task_script(os.path.join(
             get_golem_path(), 'apps', 'rendering'), 'runner.py')
@@ -82,8 +81,6 @@ class BlenderVerifier(FrameRenderingVerifier):
     # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
                      success_=None, failure=None):
-        self.crops_path = os.path.join(subtask_info['tmp_dir'],
-                                       subtask_info['subtask_id'])
         self.current_results_file = results[0]
         self.subtask_info = subtask_info
 
@@ -167,10 +164,9 @@ class BlenderVerifier(FrameRenderingVerifier):
                        host_config=None) as job:
             job.start()
             was_failure = job.wait()
-            self.metrics[verification_context.crop_id] = json.loads(
-                os.path.join(
-                    output_dir,
-                    "result.txt"))
+            with open(os.path.join(output_dir, "result.txt")) as json_data:
+                self.metrics[verification_context.crop_id] = json.load(
+                    json_data)
             stdout_file = os.path.join(logs_dir, "stdout.log")
             stderr_file = os.path.join(logs_dir, "stderr.log")
             job.dump_logs(stdout_file, stderr_file)
@@ -222,5 +218,3 @@ class BlenderVerifier(FrameRenderingVerifier):
                                        self.crops_size[1] + 0.01))
         else:
             self.failure()
-
-
