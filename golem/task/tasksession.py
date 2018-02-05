@@ -275,7 +275,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_server.reject_result(subtask_id, self.result_owner)
         self.send_result_rejected(subtask_id)
 
-    def request_resource(self, task_id, resource_header):
+    def request_resource(self, task_id):
         """Ask for a resources for a given task. Task owner should compare
            given resource header with resources for that task and send only
            lacking / changed resources
@@ -287,7 +287,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(
             message.GetResource(
                 task_id=task_id,
-                resource_header=resource_header
+                resource_header=None,  # unused slot
             )
         )
 
