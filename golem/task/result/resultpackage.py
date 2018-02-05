@@ -11,6 +11,25 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
 
 
+def backup_rename(file_path, max_iterations=100):
+    if not os.path.exists(file_path):
+        return
+
+    name = None
+    counter = 0
+
+    while counter < max(1, max_iterations):
+        counter += 1
+        name = file_path + '.{}'.format(counter)
+
+        if not os.path.exists(name):
+            break
+        elif counter == max_iterations:
+            name = file_path + '.{}'.format(uuid.uuid4())
+
+    os.rename(file_path, name)
+
+
 class Packager(object):
 
     def create(self, output_path, disk_files=None, cbor_files=None,
@@ -60,6 +79,10 @@ class Packager(object):
         pass
 
     @abc.abstractmethod
+    def package_name(self, file_path):
+        pass
+
+    @abc.abstractmethod
     def write_disk_file(self, obj, file_path, file_name):
         pass
 
@@ -93,47 +116,48 @@ class ZipPackager(Packager):
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
 
+    @classmethod
+    def package_name(cls, file_path):
+        return file_path + '.zip'
+
 
 class EncryptingPackager(Packager):
 
     creator_class = ZipPackager
     encryptor_class = AESFileEncryptor
 
-    def __init__(self, key_or_secret):
-
+    def __init__(self, secret):
         self._packager = self.creator_class()
-        self.key_or_secret = key_or_secret
+        self._secret = secret
 
     def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
+        tmp_file_path = self.package_name(output_path)
+        backup_rename(tmp_file_path)
 
-        output_dir = os.path.dirname(output_path)
-        pkg_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".pkg")
-        out_file_path, pkg_sha1 = super().create(pkg_file_path,
+        pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
                                                  disk_files=disk_files,
                                                  cbor_files=cbor_files,
                                                  sha1_path=output_path)
 
-        self.encryptor_class.encrypt(out_file_path,
-                                     output_path,
-                                     self.key_or_secret)
+        self.encryptor_class.encrypt(pkg_file_path, output_path,
+                                     secret=self._secret)
         return output_path, pkg_sha1
 
     def extract(self, input_path, output_dir=None, **kwargs):
+        tmp_file_path = self.package_name(input_path)
+        backup_rename(tmp_file_path)
 
-        input_dir = os.path.dirname(input_path)
-        tmp_file_path = os.path.join(input_dir, str(uuid.uuid4()) + ".dec")
-
-        self.encryptor_class.decrypt(input_path,
-                                     tmp_file_path,
-                                     self.key_or_secret)
-
+        self.encryptor_class.decrypt(input_path, tmp_file_path,
+                                     secret=self._secret)
         os.remove(input_path)
-        os.rename(tmp_file_path, input_path)
 
-        return self._packager.extract(input_path, output_dir=output_dir)
+        return self._packager.extract(tmp_file_path, output_dir=output_dir)
 
     def generator(self, output_path):
         return self._packager.generator(output_path)
+
+    def package_name(self, file_path):
+        return self.creator_class.package_name(file_path)
 
     def write_disk_file(self, obj, file_path, file_name):
         self._packager.write_disk_file(obj, file_path, file_name)
@@ -184,7 +208,6 @@ class EncryptingTaskResultPackager(EncryptingPackager):
             with open(descriptor_path, 'rb') as src:
                 descriptor = CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
-
         except Exception as e:
             raise ValueError('Invalid package descriptor {}'.format(e))
 
