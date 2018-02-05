@@ -17,6 +17,7 @@ from golem.network import history
 from golem.network.concent import exceptions as concent_exceptions
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.client import ConcentRequest
+from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resource import decompress_dir
@@ -366,7 +367,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             address=address,
             port=port,
             key_id=self.task_server.get_key_id(),
-            node_info=node_info,
+            node_info=node_info.to_dict(),
             eth_account=eth_account,
             extra_data=extra_data)
         report_computed_task.task_to_compute = task_to_compute
@@ -577,7 +578,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             msg.port,
             msg.address,
             msg.node_name,
-            msg.node_info,
+            p2p_node.Node.from_dict(msg.node_info),
             msg.eth_account
         )
         self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
@@ -655,15 +656,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        key_id = self.task_server.get_key_id()
         task_id = msg.task_id
-
         resources = self.task_server.get_resources(task_id)
-        options = self.task_server.get_share_options(task_id, key_id)
 
         self.send(message.ResourceList(
             resources=resources,
-            options=options
+            options=None,  # unused slot
         ))
 
     @history.provider_history
@@ -833,8 +831,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
-        client_options = self.task_server.get_share_options(res.task_id,
-                                                            self.key_id)
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -851,7 +847,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                     subtask_id=subtask_id,
                     multihash=result_hash,
                     secret=secret,
-                    options=client_options
+                    options=None,  # unused slot
                 )
             )
 
