@@ -48,11 +48,12 @@ class SimpleHash(object):
         return cls.base64_encode(cls.hash(data))
 
     @classmethod
-    def hash_file_base64(cls, filename, block_size=2 ** 20):
-        """Return sha1 of data from given file encoded with base64
+    def hash_file(cls, filename, block_size=2 ** 20):
+        """Return sha1 of data from given file
         :param str filename: name of a file that should be read
-        :param int block_size: *Default: 2**20* data will be read from file in chunks of this size
-        :return str: base64 encoded sha1 of data from file <filename>
+        :param int block_size: *Default: 2**20* data will be read from file in
+        chunks of this size
+        :return bytes: bytes of data from file <filename>
         """
         with open(filename, "rb") as f:
             sha = hashlib.sha1()
@@ -63,7 +64,17 @@ class SimpleHash(object):
                     break
                 sha.update(data)
 
-            return cls.base64_encode(sha.digest())
+            return sha.digest()
+
+    @classmethod
+    def hash_file_base64(cls, filename, block_size=2 ** 20):
+        """Return sha1 of data from given file encoded with base64
+        :param str filename: name of a file that should be read
+        :param int block_size: *Default: 2**20* data will be read from file in
+        chunks of this size
+        :return str: base64 encoded sha1 of data from file <filename>
+        """
+        return cls.base64_encode(cls.hash_file(filename, block_size))
 
     @classmethod
     def hash_object(cls):
