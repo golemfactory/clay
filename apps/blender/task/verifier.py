@@ -88,15 +88,12 @@ class BlenderVerifier(FrameRenderingVerifier):
             def success():
                 self.success = success_
                 self.failure = failure
-                if not self._check_computer():
-                    logger.error(self.message)
-                    failure()
-                    self.crops_size = self.cropper.render_crops(
-                        self.computer,
-                        self.resources,
-                        self._crop_rendered,
-                        self._crop_render_failure,
-                        subtask_info)
+                self.crops_size = self.cropper.render_crops(
+                    self.computer,
+                    self.resources,
+                    self._crop_rendered,
+                    self._crop_render_failure,
+                    subtask_info)
 
             super()._verify_imgs(
                 subtask_info,
@@ -191,7 +188,7 @@ class BlenderVerifier(FrameRenderingVerifier):
     def make_verdict(self):
         avg_corr = 0
         avg_ssim = 0
-        for key, metric in self.metrics:
+        for key, metric in self.metrics.items():
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']
         avg_corr /= 3
@@ -205,11 +202,17 @@ class BlenderVerifier(FrameRenderingVerifier):
         w_ssim_min = 0.6
 
         if avg_ssim > w_ssim and avg_corr > w_corr:
+            logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
             self.success()
         elif avg_ssim < w_ssim and avg_corr < w_corr:
+            logger.info("Subtask %r NOT verified",
+                        self.subtask_info['subtask_id'])
             self.failure()
         elif avg_ssim > w_ssim_min and avg_corr > w_corr_min:
             self.verified_crops_counter = 0
+            self.metrics.clear()
+            logger.info("Performing additional verification for subtask %r ",
+                        self.subtask_info['subtask_id'])
             self.cropper.render_crops(self.computer, self.resources,
                                       self._crop_rendered,
                                       self._crop_render_failure,
@@ -217,4 +220,6 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         else:
+            logger.warning("Unexpected verification output for subtask %r",
+                           self.subtask_info['subtask_id'])
             self.failure()
