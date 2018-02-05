@@ -160,7 +160,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         get_mock.return_value = factories.messages.TaskToCompute(
             compute_task_def__task_id="xyz",
-            compute_task_def__deadline=calendar.timegm(time.gmtime())+3600,
+            compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
@@ -184,7 +184,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         task_state = taskstate.TaskState()
         task_state.subtask_states['xxyyzz'] = taskstate.SubtaskState()
         task_state.subtask_states["xxyyzz"].deadline = \
-            calendar.timegm(time.gmtime())+3600
+            calendar.timegm(time.gmtime()) + 3600
         ts2.task_manager.tasks_states = {
             "xyz": task_state,
         }
@@ -536,7 +536,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         db = DataBuffer()
 
         sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(m.serialize(lambda x: b'\000'*65))
+        sess.send = lambda m: db.append_bytes(
+            m.serialize(lambda x: b'\000' * 65),
+        )
         sess._can_send = lambda *_: True
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
@@ -715,7 +717,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         for i in range(100, 300, 99):
             p = pathlib.Path(self.tempdir) / str(i)
             with p.open('wb') as f:
-                f.write(b'\0' * i*2**20)
+                f.write(b'\0' * i * 2**20)
             result.append(str(p))
         wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
                                 13190, 10, 0, "10.10.10.10",
@@ -807,15 +809,17 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.send.called
         assert ts.dropped.called
 
+
 class GetTaskMessageTest(unittest.TestCase):
     def test_get_task_message(self):
+        msg = factories.messages.TaskToCompute()
         with mock.patch('golem.task.tasksession.history'
                         '.MessageHistoryService.get_sync_as_message',
                         mock.Mock(
-                            return_value=factories.messages.TaskToCompute()
+                            return_value=msg,
                         )):
-            msg = get_task_message('TaskToCompute', 'foo', 'bar')
-            self.assertIsInstance(msg, message.tasks.TaskToCompute)
+            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar')
+            self.assertEqual(msg, msg_historical)
 
     def test_get_task_message_fail(self):
         with mock.patch('golem.task.tasksession.history'
