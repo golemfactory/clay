@@ -70,7 +70,6 @@ class ReportComputedTask(factory.Factory):
     computation_time = factory.Faker('pyfloat')
     node_name = factory.Faker('name')
     address = factory.Faker('ipv4')
-    node_info = factory.Faker('text')
     port = factory.Faker('pyint')
     key_id = factory.Faker('binary', length=64)
     task_to_compute = factory.SubFactory(TaskToCompute)

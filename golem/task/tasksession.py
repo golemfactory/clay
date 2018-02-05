@@ -300,6 +300,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         )
 
     def _reject_subtask_result(self, subtask_id, reason):
+        logger.debug('_reject_subtask_result(%r, %r)', subtask_id, reason)
         self.task_server.reject_result(subtask_id, self.result_owner)
         self.send_result_rejected(subtask_id, reason)
 

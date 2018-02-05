@@ -326,7 +326,11 @@ class BasicProtocol(SessionProtocol):
             logger.error("Send message failed - connection closed.")
             return False
 
-        msg_to_send = self._prepare_msg_to_send(msg)
+        try:
+            msg_to_send = self._prepare_msg_to_send(msg)
+        except golem_messages.exceptions.SerializationError:
+            logger.exception('Cannot serialize message: %s', msg)
+            raise
 
         if msg_to_send is None:
             return False
@@ -380,7 +384,7 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize()
+        ser_msg = golem_messages.dump(msg, None, None)
 
         db = DataBuffer()
         db.append_len_prefixed_bytes(ser_msg)
