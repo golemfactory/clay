@@ -130,7 +130,7 @@ class TaskResourcesMixin(object):
 
         if subtask_id in self.task_sessions:
             session = self.task_sessions[subtask_id]
-            session.request_resource(subtask_id, resource_header)
+            session.request_resource(subtask_id)
         else:
             logger.error("Cannot map subtask_id {} to session"
                          .format(subtask_id))
