@@ -33,6 +33,7 @@ from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
+from tests.factories import p2p as p2p_factories
 
 
 def fill_slots(msg):
@@ -150,7 +151,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts = TaskSession(mock.Mock())
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
-        n = Node()
+        n = p2p_factories.Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
@@ -171,7 +172,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(ms.port, 30102)
         self.assertEqual(ms.eth_account, "0x00")
         self.assertEqual(ms.extra_data, [])
-        self.assertEqual(ms.node_info, n)
+        self.assertEqual(ms.node_info, n.to_dict())
 
         ts2 = TaskSession(mock.Mock())
         ts2.verified = True
@@ -581,10 +582,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         client = 'test_client'
         version = 1.0
         peers = [{'TCP': ('127.0.0.1', 3282)}]
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
         msg = message.ResourceList(resources=[['1'], ['2']],
-                                   options=client_options)
+                                   options=None)
 
         # Use locally saved hyperdrive client options
         self.task_session._react_to_resource_list(msg)
@@ -595,6 +594,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert isinstance(call_options['client_options'], mock.Mock)
 
         # Use download options built by TaskServer
+        client_options = ClientOptions(client, version,
+                                       options={'peers': peers})
         task_server.get_download_options.return_value = client_options
 
         self.task_session.task_server.pull_resources.reset_mock()
