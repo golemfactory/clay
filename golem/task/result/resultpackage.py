@@ -1,8 +1,9 @@
-import abc
 import binascii
-import os
 import uuid
 import zipfile
+
+import abc
+import os
 
 from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.simplehash import SimpleHash
@@ -108,9 +109,9 @@ class EncryptingPackager(Packager):
 
         output_dir = os.path.dirname(output_path)
         pkg_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".pkg")
-        out_file_path = super(EncryptingPackager, self).create(pkg_file_path,
-                                                               disk_files=disk_files,
-                                                               cbor_files=cbor_files)
+        out_file_path = super().create(pkg_file_path,
+                                       disk_files=disk_files,
+                                       cbor_files=cbor_files)
 
         self.encryptor_class.encrypt(out_file_path,
                                      output_path,
@@ -159,10 +160,6 @@ class EncryptingTaskResultPackager(EncryptingPackager):
     descriptor_file_name = '.package_desc'
     result_file_name = '.result_cbor'
 
-    def __init__(self, key_or_secret):
-        self.parent = super(EncryptingTaskResultPackager, self)
-        self.parent.__init__(key_or_secret)
-
     def create(self, output_path,
                disk_files=None, cbor_files=None,
                node=None, task_result=None, **kwargs):
@@ -174,13 +171,13 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         descriptor = TaskResultDescriptor(node, task_result)
         cbor_files.append((self.descriptor_file_name, descriptor))
 
-        return self.parent.create(output_path,
-                                  disk_files=disk_files,
-                                  cbor_files=cbor_files)
+        return super().create(output_path,
+                              disk_files=disk_files,
+                              cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
 
-        files, files_dir = self.parent.extract(input_path, output_dir=output_dir)
+        files, files_dir = super().extract(input_path, output_dir=output_dir)
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
@@ -189,7 +186,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
             os.remove(descriptor_path)
 
         except Exception as e:
-            raise ValueError('Invalid package descriptor %r' % e.message)
+            raise ValueError('Invalid package descriptor {}'.format(e))
 
         if self.descriptor_file_name in files:
             files.remove(self.descriptor_file_name)
@@ -218,7 +215,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         elif result.result_type == ResultType.FILES:
             disk_files.extend(result.result)
         else:
-            raise ValueError("Invalid result type {}".format(result.result_type))
+            raise ValueError("Invalid result type {}"
+                             .format(result.result_type))
 
         return disk_files, cbor_files
 
