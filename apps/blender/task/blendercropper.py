@@ -1,10 +1,9 @@
 import math
 import random
 import os
-import numpy as np
-
 from copy import deepcopy
 from functools import partial
+import numpy as np
 
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
@@ -69,6 +68,7 @@ class BlenderCropper:
                                             left, bottom))
         return split_values, split_pixels
 
+    # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
                      crop_render_failure, subtask_info,
                      num_crops=3,
@@ -83,7 +83,7 @@ class BlenderCropper:
                                               subtask_info['crop_window'],
                                               num_crops,
                                               crop_size)
-        for num in range(num_crops):
+        for _ in range(num_crops):
             verify_ctx = CropContext(crops_info[1], self.crop_counter,
                                      crops_path)
             self._render_one_crop(computer, resources,
@@ -95,7 +95,10 @@ class BlenderCropper:
 
     # FIXME it would be better to make this subtask agnostic, pass only data
     # needed to generate crops. Drop local computer.
-    def _render_one_crop(self, computer, resources, crop, subtask_info,
+    # pylint: disable-msg=too-many-arguments
+    # pylint: disable=R0914
+    @staticmethod
+    def _render_one_crop(computer, resources, crop, subtask_info,
                          verify_ctx, crop_rendered, crop_render_failure):
         minx, maxx, miny, maxy = crop
 

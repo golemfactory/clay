@@ -9,19 +9,17 @@ from shutil import copy
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
+from apps.blender.task.blendercropper import BlenderCropper
 from golem.docker.job import DockerJob
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import find_task_script
 from golem.core.common import get_golem_path
-from apps.blender.task.blendercropper import BlenderCropper
-from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.blender")
 
 
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
-
     DOCKER_NAME = "golemfactory/image_metrics"
     DOCKER_TAG = '1.1'
 
@@ -39,6 +37,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.metrics = dict()
         self.subtask_info = None
         self.crops_size = ()
+        self.additional_test = False
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -104,7 +103,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             logger.error("Crop generation failed %r", e)
             failure()
 
-    #  The verification function will generate three random crops, from results
+    # The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
     # pylint: disable=R0914
     def _crop_rendered(self, results, time_spend, verification_context):
@@ -128,7 +127,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         resource_dir = os.path.join(work_dir, "resources")
 
         if not os.path.exists(resource_dir):
-                os.mkdir(resource_dir)
+            os.mkdir(resource_dir)
         if not os.path.exists(logs_dir):
             os.mkdir(logs_dir)
         if not os.path.exists(output_dir):
@@ -188,7 +187,7 @@ class BlenderVerifier(FrameRenderingVerifier):
     def make_verdict(self):
         avg_corr = 0
         avg_ssim = 0
-        for key, metric in self.metrics.items():
+        for _, metric in self.metrics.items():
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']
         avg_corr /= 3
@@ -208,9 +207,11 @@ class BlenderVerifier(FrameRenderingVerifier):
             logger.info("Subtask %r NOT verified",
                         self.subtask_info['subtask_id'])
             self.failure()
-        elif avg_ssim > w_ssim_min and avg_corr > w_corr_min:
+        elif avg_ssim > w_ssim_min and avg_corr > w_corr_min and \
+                not self.additional_test:
             self.verified_crops_counter = 0
             self.metrics.clear()
+            self.additional_test = True
             logger.info("Performing additional verification for subtask %r ",
                         self.subtask_info['subtask_id'])
             self.cropper.render_crops(self.computer, self.resources,
@@ -220,6 +221,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         else:
-            logger.warning("Unexpected verification output for subtask %r",
-                           self.subtask_info['subtask_id'])
+            logger.warning("Unexpected verification output for subtask %r,"
+                           " imgCorr = %r, ssim = %r",
+                           self.subtask_info['subtask_id'], avg_corr, avg_ssim)
             self.failure()
