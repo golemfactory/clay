@@ -77,7 +77,7 @@
 - name: Link hyperg
   file:
     src: "{{ hyperg_install_dir}}/hyperg"
-    dest: /usr/local/bin/hyperg
+    dest: "{{ hyperg_link_target_dir }}/hyperg"
     state: link
 
 
