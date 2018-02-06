@@ -6,7 +6,8 @@ import click
 from ethereum import slogging
 
 import golem
-from golem.core.variables import PROTOCOL_CONST, REACTOR_THREAD_POOL_SIZE
+from golem.core.common import install_reactor
+from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
 
@@ -74,7 +75,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', default=None,
               help="Change level for all loggers and handlers, "
-              "possible values are WARNING, INFO or DEBUG")
+              "possible values are ERROR, WARNING, INFO or DEBUG")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
           start_geth, start_geth_port, geth_address, version, m, loglevel):
@@ -115,21 +116,6 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
-
-
-def install_reactor():
-    from golem.core.common import is_osx, is_windows
-
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
-    elif is_osx():
-        from twisted.internet import kqreactor
-        kqreactor.install()
-
-    from twisted.internet import reactor
-    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
-    return reactor
 
 
 def start_crossbar_worker(module):

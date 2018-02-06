@@ -40,7 +40,7 @@ db = GolemSqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 8
+    SCHEMA_VERSION = 11
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -60,6 +60,7 @@ class Database:
     @staticmethod
     def create_database() -> None:
         tables = [
+            GenericKeyValue,
             Account,
             ExpectedIncome,
             GlobalRank,
@@ -93,6 +94,11 @@ class BaseModel(Model):
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
+
+
+class GenericKeyValue(BaseModel):
+    key = CharField(primary_key=True)
+    value = CharField(null=True)
 
 
 ##################
@@ -248,14 +254,9 @@ class Payment(BaseModel):
                 self.processed_ts
             )
 
-    def get_sender_node(self) -> Optional[Node]:
-        return self.details.node_info
-
 
 class ExpectedIncome(BaseModel):
     sender_node = CharField()
-    sender_node_details = NodeField()
-    task = CharField()
     subtask = CharField()
     value = BigIntegerField()
     accepted_ts = IntegerField(null=True)
@@ -264,17 +265,12 @@ class ExpectedIncome(BaseModel):
         return "<ExpectedIncome: {!r} v:{:.3f}>"\
             .format(self.subtask, self.value)
 
-    def get_sender_node(self):
-        return self.sender_node_details
-
 
 class Income(BaseModel):
     """Payments received from other nodes."""
     sender_node = CharField()
-    task = CharField()
     subtask = CharField()
     transaction = CharField()
-    block_number = BigIntegerField()
     value = BigIntegerField()
 
     class Meta:
@@ -282,12 +278,11 @@ class Income(BaseModel):
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
-        return "<Income: {!r} v:{:.3f} tid:{!r} bn:{!r}>"\
+        return "<Income: {!r} v:{:.3f} tid:{!r}>"\
             .format(
                 self.subtask,
                 self.value,
                 self.transaction,
-                self.block_number
             )
 
 

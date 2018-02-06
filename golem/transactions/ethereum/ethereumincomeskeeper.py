@@ -2,87 +2,75 @@
 
 import logging
 
-from golem.model import db
-from golem import model
-from golem.model import Income
+from ethereum.utils import denoms, sha3
+
+from golem.model import ExpectedIncome, GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
+from golem.utils import decode_hex
 
 logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
+    REQUIRED_CONFS = 6
+    BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
+    BLOCK_NUMBER_BUFFER = 10
 
     def __init__(self, eth_address: str, sci) -> None:
         self.__eth_address = eth_address
         self.__sci = sci
 
-    def received(self,
-                 sender_node_id,
-                 task_id,
-                 subtask_id,
-                 transaction_id,
-                 block_number,
-                 value):
-
-        logger.debug('MY ADDRESS: %r', self.__eth_address)
-
-        if not self.__sci.is_synchronized():
-            logger.warning("token must be synchronized with "
-                           "blockchain, otherwise income may not be found."
-                           "Please wait until synchronized")
-            self.__sci.wait_until_synchronized()
-
-        incomes = self.__sci.get_incomes_from_block(
-            block_number,
-            self.__eth_address)
-        if not incomes:
-            logger.error('Transaction not present in blockchain: %r',
-                         transaction_id)
-            return
-
-        # Prevent using the same payment for another subtask
-        try:
-            with db.transaction():
-                spent_tokens = \
-                    model.Income.select().where(
-                        model.Income.transaction == transaction_id).get().value
-        except Income.DoesNotExist:
-            spent_tokens = 0
-
-        # FIXME in Brass:
-        # currently our db doesnt support partial payments for subtasks,
-        # ie Income primary_key = CompositeKey('sender_node', 'subtask')
-        # watch out: peewee sum() may:
-        # 1) overflow if it becomes bigger than 8 bytes
-        # 2) cannot sum strings (value is encoded to hex then saved to db)
-
-        received_tokens = 0
-        received_tokens -= spent_tokens
-        for income in incomes:
-            # Should we verify sender address?
-            sender = income['sender']
-            income_value = income['value']
-            logger.debug(
-                'INCOME: from %r v:%r',
-                sender,
-                income_value
-            )
-            received_tokens += income_value
-        if received_tokens < value:
-            logger.error(
-                "Not enough tokens received for subtask: %r."
-                "expected: %r got: %r",
-                subtask_id,
-                value,
-                received_tokens
-            )
-            return
-        logger.debug('received_tokens: %r', received_tokens)
-        return super().received(
-            sender_node_id=sender_node_id,
-            task_id=task_id,
-            subtask_id=subtask_id,
-            transaction_id=transaction_id,
-            block_number=block_number,
-            value=value
+        values = GenericKeyValue.select().where(
+            GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
+        from_block = int(values.get().value) if values.count() == 1 else 0
+        self.__sci.subscribe_to_incoming_batch_transfers(
+            eth_address,
+            from_block,
+            self._on_batch_event,
+            self.REQUIRED_CONFS,
         )
+
+    def _on_batch_event(self, event):
+        expected = ExpectedIncome.select().where(
+            ExpectedIncome.accepted_ts > 0,
+            ExpectedIncome.accepted_ts <= event.closure_time)
+
+        def is_sender(sender_node):
+            return sha3(decode_hex(sender_node))[12:] == \
+                decode_hex(event.sender)
+        expected = [e for e in expected if is_sender(e.sender_node)]
+        expected_value = sum([e.value for e in expected])
+        if expected_value == 0:
+            # Probably already handled event
+            return
+
+        if expected_value != event.amount:
+            # Need to report this to Concent if expected is greater
+            # and probably move all these expected incomes to a different table
+            logger.warning(
+                'Batch transfer amount does not match, expected %r, got %r',
+                expected_value / denoms.ether,
+                event.amount / denoms.ether)
+
+        amount_left = event.amount
+
+        for e in expected:
+            value = min(amount_left, e.value)
+            amount_left -= value
+            self.received(
+                sender_node_id=e.sender_node,
+                subtask_id=e.subtask,
+                transaction_id=event.tx_hash,
+                value=value,
+            )
+
+    def stop(self) -> None:
+        block_number = self.__sci.get_block_number()
+        if block_number:
+            with GenericKeyValue._meta.database.transaction():
+                kv, _ = GenericKeyValue.get_or_create(
+                    key=self.BLOCK_NUMBER_DB_KEY)
+                kv.value = block_number - self.REQUIRED_CONFS -\
+                    self.BLOCK_NUMBER_BUFFER
+                kv.save()
+        super().stop()

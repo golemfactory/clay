@@ -58,6 +58,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def stop(self):
         if self.payment_processor.running:
             self.payment_processor.stop()
+        self.incomes_keeper.stop()
         self._node.stop()
 
     def add_payment_info(self, *args, **kwargs):

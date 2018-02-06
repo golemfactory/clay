@@ -2,6 +2,8 @@ import datetime
 import os
 import time
 import uuid
+import json
+
 from types import MethodType
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
@@ -38,6 +40,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
+from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
@@ -56,6 +59,7 @@ def random_hex_str() -> str:
 
 
 class TestCreateClient(TestDirFixture):
+
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
@@ -156,7 +160,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             ExpectedIncome(
                 sender_node=random_hex_str(),
                 sender_node_details=Node(),
-                task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
@@ -457,7 +460,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         new_task_id = self.client.restart_task(task_id)
 
         assert task_id != new_task_id
-        assert task_manager.tasks_states[task_id].status == TaskStatus.restarted
+        assert task_manager.tasks_states[
+            task_id].status == TaskStatus.restarted
         assert all(
             ss.subtask_status == SubtaskStatus.restarted
             for ss
@@ -467,6 +471,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
 
 class TestDoWorkService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         c = Mock()
@@ -570,6 +575,7 @@ class TestDoWorkService(TestWithReactor):
 
 
 class TestMonitoringPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     @patch('golem.client.dispatcher.send')
     def test_run(self, send, log):
@@ -589,6 +595,7 @@ class TestMonitoringPublisherService(TestWithReactor):
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         c = Mock()
@@ -601,6 +608,7 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
 
 
 class TestTasksPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         rpc_publisher = Mock()
@@ -614,6 +622,7 @@ class TestTasksPublisherService(TestWithReactor):
 
 
 class TestTaskArchiverService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         task_archiver = Mock()
@@ -626,6 +635,7 @@ class TestTaskArchiverService(TestWithReactor):
 
 
 class TestBalancePublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         rpc_publisher = Mock()
@@ -656,6 +666,7 @@ class TestBalancePublisherService(TestWithReactor):
 
 
 class TestResourceCleanerService(TestWithReactor):
+
     def test_run(self):
         older_than_seconds = 5
 
@@ -673,6 +684,7 @@ class TestResourceCleanerService(TestWithReactor):
 
 
 class TestTaskCleanerService(TestWithReactor):
+
     @freeze_time('2017-11-27 10:00:00.1')
     @patch('golem.client.log')
     def test_run_noop(self, log):
@@ -718,7 +730,7 @@ class TestTaskCleanerService(TestWithReactor):
                 older_than_seconds=older_than_seconds)
 
             frozen_time.tick(delta=datetime.timedelta(
-                seconds=older_than_seconds+timeout_seconds-1))
+                seconds=older_than_seconds + timeout_seconds - 1))
             service._run()
 
             c.delete_task.assert_not_called()
@@ -734,6 +746,7 @@ class TestTaskCleanerService(TestWithReactor):
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
@@ -902,31 +915,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         frames = c.get_subtasks_frames(task_id)
         assert frames is not None
 
-    @patch('golem.client.async_run')
-    def test_get_balance(self, async_run, *_):
+    def test_get_balance(self, *_):
         c = self.client
 
         result = (None, None, None)
 
-        deferred = Deferred()
-        deferred.result = result
-        deferred.called = True
-
-        async_run.return_value = deferred
-
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = sync_wait(c.get_balance())
+        balance = yield sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (None, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == ("1", "1", "None")
         assert all(isinstance(entry, str) for entry in balance)
@@ -1042,6 +1048,21 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    def test_test_status(self, *_):
+        c = self.client
+
+        result = c.check_test_status()
+        self.assertFalse(result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.started})
+        result = c.check_test_status()
+        print(result)
+        self.assertEqual(c.task_test_result, result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.success})
+        result = c.check_test_status()
+        self.assertEqual(c.task_test_result, None)
+
     def test_create_task(self, *_):
         t = DummyTask(total_tasks=10, node_name="node_name",
                       task_definition=DummyTaskDefinition())
@@ -1076,7 +1097,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
         c.task_archiver.get_unsupport_reasons = Mock()
         c.task_archiver.get_unsupport_reasons.side_effect = lambda days: [
-            {'avg': str(days*21)+'.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': str(days * 21) + '.0.0',
+             'reason': 'app_version', 'ntasks': 3},
             {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
             {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
             {'avg': None,
@@ -1223,6 +1245,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
 
 class TestEventListener(TestCase):
+
     def test_task_computer_event_listener(self):
         client = Mock()
         listener = ClientTaskComputerEventListener(client)
