@@ -1,6 +1,5 @@
 import os
-
-import mock
+from unittest import mock
 
 from apps.blender.task.verifier import BlenderVerifier, logger, \
     VerificationContext
