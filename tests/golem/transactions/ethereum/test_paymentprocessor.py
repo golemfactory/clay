@@ -324,38 +324,60 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
 
-    def test_get_ether(self, *_):
-        def exception(*_):
-            raise Exception
-
-        def failure(*_):
-            return False
-
-        def success(*_):
-            return True
-
+    def test_get_ether_and_gnt_failure(self):
         self.pp.monitor_progress = Mock()
-        self.pp.is_synchronized = lambda *_: True
+        self.sci.is_synchronized.return_value = True
         self.pp.sendout = Mock()
 
-        self.pp.get_gnt_from_faucet = failure
-        self.pp.get_ether_from_faucet = failure
+        self.pp.get_gnt_from_faucet = Mock(return_value=False)
+        self.pp.get_ether_from_faucet = Mock(return_value=False)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
-        self.pp.get_ether_from_faucet = success
+    def test_get_gnt_failure(self):
+        self.pp.monitor_progress = Mock()
+        self.sci.is_synchronized.return_value = True
+        self.pp.sendout = Mock()
+
+        self.pp.get_gnt_from_faucet = Mock(return_value=False)
+        self.pp.get_ether_from_faucet = Mock(return_value=True)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
-        self.pp.get_gnt_from_faucet = success
+    def test_get_ether(self):
+        self.pp.monitor_progress = Mock()
+        self.sci.is_synchronized.return_value = True
+        self.pp.sendout = Mock()
+
+        self.pp.get_gnt_from_faucet = Mock(return_value=True)
+        self.pp.get_ether_from_faucet = Mock(return_value=True)
 
         self.pp._run()
         assert self.pp.monitor_progress.called
         assert self.pp.sendout.called
+
+    def test_get_ether_sci_failure(self):
+        # given
+        self.pp.monitor_progress = Mock()
+        self.sci.is_synchronized.return_value = True
+        self.pp.sendout = Mock()
+
+        self.pp._PaymentProcessor__faucet = True
+
+        self.sci.get_eth_balance.return_value = None
+        self.sci.get_gnt_balance.return_value = None
+        self.sci.get_gntw_balance.return_value = None
+
+        # when
+        self.pp._run()
+
+        # then
+        assert not self.pp.monitor_progress.called
+        assert not self.pp.sendout.called
 
 
 def make_awaiting_payment(value=None, ts=None):

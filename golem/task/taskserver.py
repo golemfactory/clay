@@ -286,7 +286,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             if self.client.transaction_system:
                 self.client.transaction_system.incomes_keeper.expect(
                     sender_node_id=owner_key_id,
-                    p2p_node=owner,
                     subtask_id=subtask_id,
                     value=value,
                 )

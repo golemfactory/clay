@@ -196,7 +196,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             sender_node_id="key",
             subtask_id="xyzxyz",
             value=1,
-            p2p_node=n,
         )
 
         with self.assertLogs(logger, level='WARNING'):
@@ -213,7 +212,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
         model.ExpectedIncome.create(
             sender_node="key",
-            sender_node_details=None,
             task=ctd['task_id'],
             subtask=ctd['subtask_id'],
             value=1
