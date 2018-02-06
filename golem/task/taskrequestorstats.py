@@ -103,7 +103,11 @@ class TaskInfo:
 
     def not_downloaded_count(self) -> int:
         """Returns # of subtasks that were reported as computed but their
-        results were never downloaded
+        results were never downloaded.
+
+        Subtask is considered `not downloaded`, when there was
+        RESULT_DOWNLOADING msg, not followed by FINISHED nor NOT_ACCEPTED.
+        Other msgs are ignored.
 
         Note that if executed for a task that is still in progress this will
         also include subtasks that are actively sending results at the moment
