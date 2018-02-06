@@ -2,13 +2,13 @@
 
 #install geth
 - name: add geth repo
-  become_user: buildbot-worker
+  become_user: "{{ buildbot_user }}"
   become: yes
   homebrew_tap:
-    name: ethereum/ethereum
+    name: "{{ geth_repository }}"
 
 - name: install geth and dependencies
-  become_user: buildbot-worker
+  become_user: "{{ buildbot_user }}"
   become: yes
   homebrew:
     name: "{{ item }}"
@@ -23,7 +23,7 @@
 
 # install hyperg
 - name: install tar
-  become_user: buildbot-worker
+  become_user: "{{ buildbot_user }}"
   become: yes
   homebrew:
     name: gnu-tar
@@ -39,22 +39,22 @@
 - name: Prepare hyperg directory
   become: yes
   file:
-    dest: /usr/local/share
+    dest: "{{ hyperg_base_dir }}"
     state: directory
 
 - name: download hyperg
   become: yes
   unarchive:
     remote_src: yes
-    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_darwin-x64.tar.gz
-    dest: /usr/local/share/
+    src: "{{ hyperg_package_url }}"
+    dest: "{{ hyperg_base_dir }}"
   args:
-    creates: /usr/local/share/hyperg
+    creates: "{{ hyperg_install_dir }}"
 
 
 - name: Link hyperg
   file:
-    src: /usr/local/share/hyperg/hyperg
+    src: "{{ hyperg_install_dir }}/hyperg"
     dest: /usr/local/bin/hyperg
     state: link
 
@@ -62,7 +62,7 @@
 # install pythons
 - name: install python and deps
   become: yes
-  become_user: buildbot-worker
+  become_user: "{{ buildbot_user }}"
   homebrew:
     name: "{{ item }}"
   with_items:

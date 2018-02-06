@@ -1,0 +1,8 @@
+hyperg_version: 0.2.4
+hyperg_package_url: "https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v{{ hyperg_version }}/hyperg_{{ hyperg_version }}_darwin-x64.tar.gz"
+hyperg_base_dir: /usr/local/share
+hyperg_install_dir: "{{ hyperg_base_dir }}/hyperg"
+
+geth_repository: "ethereum/ethereum"
+
+buildbot_user: buildbot-worker
