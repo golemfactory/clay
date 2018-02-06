@@ -1,0 +1,13 @@
+hyperg_version: 0.2.4
+hyperg_package_url: "https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v{{ hyperg_version }}/hyperg_{{ hyperg_version }}_linux-x64.tar.gz"
+hyperg_base_dir: /opt
+hyperg_install_dir: "{{ hyperg_base_dir }}/hyperg"
+
+docker_ce_repository_key_url: "https://download.docker.com/linux/ubuntu/gpg"
+docker_ce_repository_url: "https://download.docker.com/linux/ubuntu"
+
+geth_repository: "ppa:ethereum/ethereum"
+
+buildbot_user: buildbot-worker
+buildbot_group: buildbot-worker
+buildbot_user_homedir: "/home/{{ buildbot_user }}"
