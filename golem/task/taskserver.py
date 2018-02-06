@@ -125,8 +125,7 @@ class TaskResourcesMixin(object):
         peers = self.get_resource_peers(task_id)
         return resource_manager.build_client_options(peers=peers)
 
-    def request_resource(self, task_id, subtask_id, resource_header,
-                         address, port, key_id, task_owner):
+    def request_resource(self, task_id, subtask_id, resource_header):
         if subtask_id not in self.task_sessions:
             logger.error("Cannot map subtask_id {} to session"
                          .format(subtask_id))

@@ -102,10 +102,6 @@ class TaskComputer(object):
             ctd['task_id'],
             ctd['subtask_id'],
             self.resource_manager.get_resource_header(ctd['task_id']),
-            ctd['return_address'],
-            ctd['return_port'],
-            ctd['key_id'],
-            p2p_node,
         )
         return True
 
@@ -365,13 +361,10 @@ class TaskComputer(object):
         if self.waiting_for_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, subtask_id, resource_header,
-                           return_address, return_port, key_id, task_owner):
+    def __request_resource(self, task_id, subtask_id, resource_header):
         self.wait(ttl=self.waiting_for_task_timeout)
         if not self.task_server.request_resource(task_id, subtask_id,
-                                                 resource_header,
-                                                 return_address, return_port,
-                                                 key_id, task_owner):
+                                                 resource_header):
             self.reset()
 
     def __compute_task(self, subtask_id, docker_images,
