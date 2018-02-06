@@ -7,11 +7,13 @@ hyperg_package_path: '{{ build_resources_dir }}\hyperg_0.2.3_windows-x64.zip'
 buildbot_build_resources_url: "https://s3.amazonaws.com/golem-buildbot-build-resources/pywin32-221-cp36-cp36m-win_amd64.whl"
 buildbot_build_resources_path: '{{ build_resources_dir }}\pywin32-221-cp36-cp36m-win_amd64.whl'
 
-geth_package_url: "https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.7.2-1db4ecdc.zip"
-geth_install_dir: '{{ build_resources_dir }}\geth-windows-amd64-1.7.2-1db4ecdc'
-geth_package_path: '{{ build_resources_dir }}\geth-windows-amd64-1.7.2-1db4ecdc.zip'
+geth_version: 1.7.2-1db4ecdc
+geth_package_url: "https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-{{ geth_version }}.zip"
+geth_install_dir: '{{ build_resources_dir }}\geth-windows-amd64-{{ geth_version }}'
+geth_package_path: '{{ build_resources_dir }}\geth-windows-amd64-{{ geth_version }}.zip'
 
-golem_electron_url: "https://github.com/golemfactory/golem-electron/releases/download/0.1.4/win-unpacked.zip"
+golem_electron_version: 0.1.4
+golem_electron_url: "https://github.com/golemfactory/golem-electron/releases/download/{{ golem_electron_version }}/win-unpacked.zip"
 golem_electron_package_path: '{{ build_resources_dir }}\win-unpacked.zip'
 golem_electron_path: '{{ build_resources_dir }}\win-unpacked'
 
