@@ -85,7 +85,7 @@ class TestZipPackager(TestDirFixture):
 
     def testCreate(self):
         zp = ZipPackager()
-        path = zp.create(self.out_path, self.files, self.pickle_files)
+        path, _ = zp.create(self.out_path, self.files, self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -111,7 +111,7 @@ class TestEncryptingPackager(TestDirFixture):
 
     def testCreate(self):
         ep = EncryptingPackager(self.secret)
-        path = ep.create(self.out_path, self.files, self.pickle_files)
+        path, _ = ep.create(self.out_path, self.files, self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -140,10 +140,10 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         node = MockNode(node_name)
 
         tr = MockTaskResult(self.task_id, self.files)
-        path = etp.create(self.out_path,
-                          node=node,
-                          task_result=tr,
-                          cbor_files=self.pickle_files)
+        path, _ = etp.create(self.out_path,
+                             node=node,
+                             task_result=tr,
+                             cbor_files=self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -151,9 +151,9 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         tr = MockTaskResult(self.task_id, "Result string data",
                             result_type=ResultType.DATA)
 
-        path = etp.create(self.out_path,
-                          node=node,
-                          task_result=tr)
+        path, _ = etp.create(self.out_path,
+                             node=node,
+                             task_result=tr)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -163,10 +163,10 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         node = MockNode(node_name)
         tr = MockTaskResult(self.task_id, self.files)
 
-        path = etp.create(self.out_path,
-                          node=node,
-                          task_result=tr,
-                          cbor_files=self.pickle_files)
+        path, _ = etp.create(self.out_path,
+                             node=node,
+                             task_result=tr,
+                             cbor_files=self.pickle_files)
 
         extracted = etp.extract(path)
 
@@ -191,10 +191,10 @@ class TestExtractedPackage(TestDirFixture):
         node = MockNode(node_name)
         tr = MockTaskResult(self.task_id, self.files)
 
-        path = etp.create(self.out_path,
-                          node=node,
-                          task_result=tr,
-                          cbor_files=self.pickle_files)
+        path, _ = etp.create(self.out_path,
+                             node=node,
+                             task_result=tr,
+                             cbor_files=self.pickle_files)
 
         extracted = etp.extract(path)
         extra_data = extracted.to_extra_data()

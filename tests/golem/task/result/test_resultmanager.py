@@ -30,44 +30,42 @@ class MockTaskResult:
         self.owner = owner
 
 
+def create_package(result_manager, node_name, task_id):
+    rm = result_manager.resource_manager
+
+    res_dir = rm.storage.get_dir(task_id)
+    out_dir = os.path.join(res_dir, 'out_dir')
+    out_dir_file = os.path.join(out_dir, 'dir_file')
+    out_file = os.path.join(res_dir, 'out_file')
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(out_file, 'w') as f:
+        f.write("File contents")
+    with open(out_dir_file, 'w') as f:
+        f.write("Dir file contents")
+
+    files = [out_file, out_dir_file]
+    rm.add_files(files, task_id)
+
+    secret = result_manager.gen_secret()
+    result = result_manager.create(
+        node=Mock(
+            node_name=node_name,
+            key=str(uuid.uuid4())
+        ),
+        task_result=MockTaskResult(
+            task_id,
+            [rm.storage.relative_path(f, task_id) for f in files]
+        ),
+        key_or_secret=secret
+    )
+
+    return result, secret
+
+
 class TestEncryptedResultPackageManager(TestDirFixture):
 
     node_name = 'test_suite'
-
-    class TestPackageCreator(object):
-
-        @staticmethod
-        def create(result_manager, node_name, task_id):
-            rm = result_manager.resource_manager
-
-            res_dir = rm.storage.get_dir(task_id)
-            out_dir = os.path.join(res_dir, 'out_dir')
-            out_dir_file = os.path.join(out_dir, 'dir_file')
-            out_file = os.path.join(res_dir, 'out_file')
-
-            os.makedirs(out_dir, exist_ok=True)
-            with open(out_file, 'w') as f:
-                f.write("File contents")
-            with open(out_dir_file, 'w') as f:
-                f.write("Dir file contents")
-
-            files = [out_file, out_dir_file]
-            rm.add_files(files, task_id)
-
-            secret = result_manager.gen_secret()
-            result = result_manager.create(
-                node=Mock(
-                    node_name=node_name,
-                    key=str(uuid.uuid4())
-                ),
-                task_result=MockTaskResult(
-                    task_id,
-                    [rm.storage.relative_path(f, task_id) for f in files]
-                ),
-                key_or_secret=secret
-            )
-
-            return result, secret
 
     def setUp(self):
         TestDirFixture.setUp(self)
@@ -91,20 +89,18 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
     def testCreate(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        content_hash, path = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, sha1 = data
 
+        self.assertIsNotNone(sha1)
+        self.assertIsInstance(sha1, str)
         self.assertIsInstance(path, str)
         self.assertTrue(os.path.isfile(path))
 
     def testExtract(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        content_hash, path = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, _ = data
 
         extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)
@@ -114,10 +110,8 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
     def testPullPackage(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        content_hash, path = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, _ = data
 
         assert os.path.exists(path)
         assert content_hash

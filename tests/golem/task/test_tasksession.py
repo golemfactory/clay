@@ -1,20 +1,19 @@
 # pylint: disable=protected-access
 import calendar
 import datetime
-import os
 import pathlib
 import pickle
-import random
 import time
 import unittest
 import unittest.mock as mock
 import uuid
 
 import golem_messages
+import os
+import random
 from golem_messages import message
 
-from golem import model
-from golem import testutils
+from golem import model, testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
@@ -33,7 +32,6 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger
 from golem.tools.assertlogs import LogTestCase
-
 from tests import factories
 
 
@@ -156,7 +154,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         n = Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
+                                30102, "key1", n, package_sha1="deadbeef")
 
         get_mock.return_value = factories.messages.TaskToCompute(
             compute_task_def__task_id="xyz",
@@ -663,7 +661,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         n = Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
+                                30102, "key1", n, package_sha1="deadbeef")
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ts.concent_service.submit.assert_not_called()
 
@@ -675,7 +673,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         node_id = str(uuid.uuid4())
         wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
+                                30102, "key1", n, package_sha1="deadbeef")
         task_to_compute = message.TaskToCompute()
         nmsg_dict = dict(
             task=task_id,
@@ -700,7 +698,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         msg = ts.concent_service.submit.call_args[0][1]
         self.assertEqual(
             msg.result_hash,
-            'sha1:37a5301a88da334dc5afc5b63979daa0f3f45e68',
+            'sha1:deadbeef',
         )
 
     def test_send_report_computed_task_concent_success_many_files(self):
@@ -717,7 +715,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             result.append(str(p))
         wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
                                 13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n)
+                                30102, "key1", n, package_sha1="deadbeef")
         task_to_compute = message.TaskToCompute()
         nmsg_dict = dict(
             task=task_id,
@@ -742,7 +740,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         msg = ts.concent_service.submit.call_args[0][1]
         self.assertEqual(
             msg.result_hash,
-            'sha1:2bebc22296f03225617704d29d277c9e96fafcc2',
+            'sha1:deadbeef',
         )
 
 
@@ -759,48 +757,36 @@ def executor_error(req, success, error):
 
 
 class TestCreatePackage(unittest.TestCase):
+
     def setUp(self):
-        conn = mock.Mock()
-        ts = TaskSession(conn)
-        ts.dropped = mock.Mock()
+        subtask_id = str(uuid.uuid4())
+
+        ts = TaskSession(mock.Mock())
+
+        ts.disconnect = mock.Mock()
         ts.result_received = mock.Mock()
         ts.send = mock.Mock()
         ts.task_manager = mock.Mock()
 
-        subtask_id = 'xxyyzz'
-
-        res = mock.Mock()
-        res.subtask_id = subtask_id
-        ts.task_server.get_waiting_task_result.return_value = res
-
-        msg = message.GetTaskResult(subtask_id=subtask_id)
-
         self.subtask_id = subtask_id
         self.ts = ts
-        self.msg = msg
+        self.res = mock.Mock(subtask_id=subtask_id, package_sha1='deadbeef')
 
-    @mock.patch('golem.task.tasksession.async_run',
-                side_effect=executor_success)
-    def test_send_task_result_hash_success(self, _):
-        ts = self.ts
-        ts._react_to_get_task_result(self.msg)
+    def test_send_task_result_hash_success(self):
+        msg = message.GetTaskResult(self.subtask_id)
 
-        assert ts.send.called
-        assert not ts.dropped.called
+        self.ts.task_server.get_waiting_task_result.return_value = self.res
+        self.ts._react_to_get_task_result(msg)
 
-    @mock.patch('golem.task.tasksession.async_run',
-                side_effect=executor_recoverable_error)
-    def test_send_task_result_hash_recoverable_error(self, _):
-        ts = self.ts
-        ts._react_to_get_task_result(self.msg)
+        assert self.ts.send.call_count == 1
+        assert self.ts.send.called
+        assert not self.ts.disconnect.called
 
-        assert not ts.send.called
-        assert ts.task_server.retry_sending_task_result.called
+    def test_send_task_result_hash_unknown(self):
+        msg = message.GetTaskResult(self.subtask_id)
 
-    @mock.patch('golem.task.tasksession.async_run', side_effect=executor_error)
-    def test_send_task_result_hash_unrecoverable_error(self, _):
-        ts = self.ts
-        ts._react_to_get_task_result(self.msg)
+        self.ts.task_server.get_waiting_task_result.return_value = None
+        self.ts._react_to_get_task_result(msg)
 
-        assert ts.send.called
-        assert ts.dropped.called
+        assert not self.ts.send.called
+        assert self.ts.disconnect.called
