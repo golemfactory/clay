@@ -89,7 +89,7 @@ class IncomesKeeper(object):
                 db_income.transaction
             )
 
-    def expect(self, sender_node_id, p2p_node, subtask_id, value):
+    def expect(self, sender_node_id, subtask_id, value):
         logger.debug(
             "expect(%r, %r, %r)",
             sender_node_id,
@@ -98,7 +98,6 @@ class IncomesKeeper(object):
         )
         return ExpectedIncome.create(
             sender_node=sender_node_id,
-            sender_node_details=p2p_node,
             subtask=subtask_id,
             value=value
         )
