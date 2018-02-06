@@ -971,8 +971,6 @@ class WaitingTaskResult(object):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.result = result
-        self.result_type = result_type
         self.computing_time = computing_time
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
@@ -980,12 +978,15 @@ class WaitingTaskResult(object):
         self.owner_port = owner_port
         self.owner_key_id = owner_key_id
         self.owner = owner
-        self.already_sending = False
 
+        self.result = result
+        self.result_type = result_type
         self.result_path = result_path
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+
+        self.already_sending = False
 
 
 class WaitingTaskFailure(object):

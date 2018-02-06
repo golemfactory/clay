@@ -70,22 +70,22 @@ class Packager(object):
 
 class ZipPackager(Packager):
 
+    ZIP_MODE = zipfile.ZIP_STORED  # no compression
+
     def extract(self, input_path, output_dir=None, **kwargs):
 
         if not output_dir:
             output_dir = os.path.dirname(input_path)
+        os.makedirs(output_dir, exist_ok=True)
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        with zipfile.ZipFile(input_path, 'r') as zf:
+        with zipfile.ZipFile(input_path, 'r', compression=self.ZIP_MODE) as zf:
             zf.extractall(output_dir)
             extracted = zf.namelist()
 
         return extracted, output_dir
 
     def generator(self, output_path):
-        return zipfile.ZipFile(output_path, mode='w')
+        return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
         obj.write(file_path, file_name)
@@ -101,7 +101,7 @@ class EncryptingPackager(Packager):
 
     def __init__(self, key_or_secret):
 
-        self._creator = self.creator_class()
+        self._packager = self.creator_class()
         self.key_or_secret = key_or_secret
 
     def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
@@ -130,16 +130,16 @@ class EncryptingPackager(Packager):
         os.remove(input_path)
         os.rename(tmp_file_path, input_path)
 
-        return self._creator.extract(input_path, output_dir=output_dir)
+        return self._packager.extract(input_path, output_dir=output_dir)
 
     def generator(self, output_path):
-        return self._creator.generator(output_path)
+        return self._packager.generator(output_path)
 
     def write_disk_file(self, obj, file_path, file_name):
-        self._creator.write_disk_file(obj, file_path, file_name)
+        self._packager.write_disk_file(obj, file_path, file_name)
 
     def write_cbor_file(self, obj, file_name, cbord_data):
-        self._creator.write_cbor_file(obj, file_name, cbord_data)
+        self._packager.write_cbor_file(obj, file_name, cbord_data)
 
 
 class TaskResultDescriptor(object):
