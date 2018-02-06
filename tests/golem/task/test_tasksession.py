@@ -8,9 +8,11 @@ import unittest
 import unittest.mock as mock
 import uuid
 
-import golem_messages
 import os
 import random
+
+import golem_messages
+
 from golem_messages import message
 
 from golem import model, testutils
