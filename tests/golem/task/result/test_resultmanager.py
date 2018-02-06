@@ -1,7 +1,7 @@
-from unittest.mock import Mock
-
-import os
 import uuid
+import os
+
+from unittest.mock import Mock, patch
 
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
@@ -96,6 +96,22 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         self.assertIsInstance(sha1, str)
         self.assertIsInstance(path, str)
         self.assertTrue(os.path.isfile(path))
+
+    def testCreateEnvironmentError(self):
+        manager = EncryptedResultPackageManager(self.resource_manager)
+        manager.resource_manager.add_file = Mock()
+
+        with self.assertRaises(EnvironmentError):
+            create_package(manager, self.node_name, self.task_id)
+
+    def testCreateUnexpectedError(self):
+        manager = EncryptedResultPackageManager(self.resource_manager)
+        manager.resource_manager.add_file = Mock()
+
+        with patch('os.path.exists', return_value=False):
+            with self.assertRaises(Exception) as exc:
+                assert not isinstance(exc, EnvironmentError)
+                create_package(manager, self.node_name, self.task_id)
 
     def testExtract(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
