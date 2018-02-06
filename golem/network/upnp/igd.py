@@ -1,6 +1,6 @@
 import functools
 from itertools import chain
-from typing import Optional
+from typing import Optional, Tuple
 
 import miniupnpc
 
@@ -43,9 +43,12 @@ class IGDPortMapper(IPortMapper):
 
     def get_mapping(self,
                     external_port: int,
-                    protocol: str = 'TCP'):
+                    protocol: str = 'TCP') -> Optional[Tuple[str, int, bool]]:
 
-        return self.upnp.getspecificportmapping(external_port, protocol)
+        mapping = self.upnp.getspecificportmapping(external_port, protocol)
+        if mapping:
+            ip, port, _description, enabled = mapping[:4]
+            return ip, port, enabled
 
     def create_mapping(self,
                        local_port: int,
@@ -79,7 +82,7 @@ class IGDPortMapper(IPortMapper):
 
         try:
             existing_mapping = self.get_mapping(external_port, protocol)
-            ip, port, _, enabled = existing_mapping
+            ip, port, enabled = existing_mapping
             return enabled and local_ip == ip and local_port == port
         except Exception:  # pylint: disable=broad-except
             return False

@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from copy import deepcopy
 
@@ -29,7 +29,7 @@ class IPortMapper(ABC):
     @abstractmethod
     def get_mapping(self,
                     external_port: int,
-                    protocol: str = 'TCP'):
+                    protocol: str = 'TCP') -> Optional[Tuple[str, int, bool]]:
         pass
 
     @abstractmethod
@@ -101,7 +101,7 @@ class PortMapperManager(IPortMapper):
 
     def get_mapping(self,
                     external_port: int,
-                    protocol: str = 'TCP'):
+                    protocol: str = 'TCP') -> Optional[Tuple[str, int, bool]]:
 
         if not self.available:
             return None
