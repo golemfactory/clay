@@ -9,66 +9,10 @@
     name: buildbot-worker
     home: /Users/buildbot-worker
 
-
-#install geth
-- name: add geth repo
-  become_user: buildbot-worker
-  homebrew_tap:
-    name: ethereum/ethereum
-
-- name: install geth and dependencies
-  become_user: buildbot-worker
-  homebrew:
-    name: "{{ item }}"
-  with_items:
-    - ethereum
-    - automake
-    - pkg-config
-    - libtool
-    - libffi
-    - gmp
-
-
-# install hyperg
-- name: install tar
-  become_user: buildbot-worker
-  homebrew:
-    name: gnu-tar
-    options:
-      - with-default-names
-
-# Link gtar to replace tar
-- lineinfile:
-    create: yes
-    path: ~/.bashrc
-    line: export PATH=/usr/local/bin:$PATH
-
-- name: Prepare hyperg directory
-  become: yes
-  file:
-    dest: /usr/local/share
-    state: directory
-
-- name: download hyperg
-  become: yes
-  unarchive:
-    remote_src: yes
-    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.3/hyperg_0.2.3_darwin-x64.tar.gz
-    dest: /usr/local/share/
-  args:
-    creates: /usr/local/share/hyperg
-
-
-- name: Link hyperg
-  file:
-    src: /usr/local/share/hyperg/hyperg
-    dest: /usr/local/bin/hyperg
-    state: link
-
-
 # install pythons
 - name: install python and deps
   become_user: buildbot-worker
+  become: yes
   homebrew:
     name: "{{ item }}"
   with_items:
