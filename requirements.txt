@@ -8,7 +8,7 @@ peewee<2.11,>=2.8
 Pillow==4.2.1
 psutil==5.2.2
 pluggy==0.6.0
-coincurve>=5.0.1
+coincurve>=7.1.0
 asn1crypto==0.22.0
 pyasn1==0.4.1
 pysha3>=1.0.2
