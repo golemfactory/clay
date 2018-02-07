@@ -3,8 +3,9 @@ set -e
 # a more basic version of lint.sh from marmistrz/lintdiff
 
 BRANCH="origin/develop"
+FULL=false
 VERBOSE=false
-COLUMNS=$(( $(tput cols) - 10 ))
+COLUMNS=$(( $(tput cols || echo 80) - 10 ))
 
 hline() {
     printf "%${COLUMNS}s\n" | tr " " "-"
@@ -13,15 +14,19 @@ hline() {
 usage() {
     printf "Usage: $0 [-b <branch>] [-v] [-h]\n"
     printf "    -b <branch>       branch to use for comparison. default is ${BRANCH}\n"
+    printf "    -f                do a full check, not only changed files\n"
     printf "    -v                be verbose\n"
     printf "    -h                show this help message\n"
     exit 1
 }
 
-while getopts "b:vh" opt; do
+while getopts "b:fvh" opt; do
     case $opt in
         b)
             BRANCH="${OPTARG}"
+            ;;
+        f)
+            FULL=true
             ;;
         v)
             VERBOSE=true
@@ -60,27 +65,33 @@ if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
   exit -1
 fi
 
-# credit: https://gist.github.com/kentcdodds/9768d9a8d0bfbf6797cd
-CHG_PY_FILES=$(git diff --name-only --diff-filter=d ${BRANCH}..HEAD -- '*.py')
+if [[ "${FULL}" = true ]]; then
+    PY_FILES2CHK="apps golem gui scripts setup_util '*.py'"
+    PROD_PY_FILES2CHK="${PY_FILES2CHK}"
+    TEST_PY_FILES2CHK="tests"
+else
+    # credit: https://gist.github.com/kentcdodds/9768d9a8d0bfbf6797cd
+    PY_FILES2CHK=$(git diff --name-only --diff-filter=d ${BRANCH}..HEAD -- '*.py')
 
-if [[ -z "${CHG_PY_FILES}" ]]; then
-    printf "⚡️  No python files were changed\n"
-    exit 0
-elif [[ "${VERBOSE}" = true ]]; then
-    printf "Changed python files:\n"
-    printf "${CHG_PY_FILES}\n\n" | sed "s/^/    /"
+    if [[ -z "${PY_FILES2CHK}" ]]; then
+        printf "⚡️  No python files were changed\n"
+        exit 0
+    elif [[ "${VERBOSE}" = true ]]; then
+        printf "Changed python files:\n"
+        printf "${PY_FILES2CHK}\n\n" | sed "s/^/    /"
+    fi
+
+    PROD_PY_FILES2CHK=$(echo "${PY_FILES2CHK}" | grep -v '^tests/') || true
+    TEST_PY_FILES2CHK=$(echo "${PY_FILES2CHK}" | grep '^tests/') || true
 fi
-
-CHG_PY_PROD_FILES=$(echo "${CHG_PY_FILES}" | grep -v '^tests/') || true
-CHG_PY_TEST_FILES=$(echo "${CHG_PY_FILES}" | grep '^tests/') || true
 
 LINTDIFF="./lintdiff.sh -o -b ${BRANCH}"
 
 commands=(
-    "$LINTDIFF pylint ${CHG_PY_PROD_FILES}"
-    "$LINTDIFF pylint --disable=protected-access,no-self-use ${CHG_PY_TEST_FILES}"
-    "$LINTDIFF flake8 ${CHG_PY_FILES}"
-    "$LINTDIFF mypy ${CHG_PY_FILES}"
+    "$LINTDIFF pylint ${PROD_PY_FILES2CHK}"
+    "$LINTDIFF pylint --disable=protected-access,no-self-use ${TEST_PY_FILES2CHK}"
+    "$LINTDIFF flake8 ${PY_FILES2CHK}"
+    "$LINTDIFF mypy ${PY_FILES2CHK}"
 )
 
 names=(
