@@ -198,16 +198,16 @@ class TaskComputer(object):
                 self.stats.increase_stat('tasks_with_timeout')
             else:
                 self.stats.increase_stat('tasks_with_errors')
-            self.task_server.send_task_failed(
-                subtask_id,
-                subtask['task_id'],
-                task_thread.error_msg,
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
-            )
+                self.task_server.send_task_failed(
+                    subtask_id,
+                    subtask['task_id'],
+                    task_thread.error_msg,
+                    subtask['return_address'],
+                    subtask['return_port'],
+                    subtask['key_id'],
+                    p2p_node,
+                    self.node_name,
+                )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
 
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
