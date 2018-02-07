@@ -52,7 +52,7 @@ message() {
 }
 
 status() {
-    if [ "$1" -eq 0 ]; then
+    if [[ "$1" -eq 0 ]]; then
         printf " [${GREEN}OK${RESET}]\n"
     else
         printf " [${RED}FAIL${RESET}]\n"
@@ -74,7 +74,7 @@ files_to_check() {
 
 main() {
     # credit: https://unix.stackexchange.com/questions/155046/determine-if-git-working-directory-is-clean-from-a-script/183976
-    if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
+    if [[ -n "$(git status --untracked-files=no --porcelain)" ]]; then
         message "You must commit or stash changes."
         exit -1
     fi
@@ -122,7 +122,7 @@ main() {
 
     local nfailed=0
     for i in "${!names[@]}"; do
-        if [ ${exitcode[$i]} -ne 0 ]; then
+        if [[ "${exitcode[$i]}" -ne 0 ]]; then
             let "nfailed++" || true
 
             hline
@@ -132,7 +132,7 @@ main() {
         fi
     done
 
-    if [ $nfailed -gt 0 ]; then
+    if [[ "${nfailed}" -gt 0 ]]; then
         printf "Errors occurred, summary:\n"
         for i in "${!names[@]}"; do
             printf "%-20s" "${names[$i]}..."
