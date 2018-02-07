@@ -3,13 +3,11 @@
 #install geth
 - name: add geth repo
   become_user: "{{ buildbot_user }}"
-  become: yes
   homebrew_tap:
     name: "{{ geth_repository }}"
 
 - name: install geth and dependencies
   become_user: "{{ buildbot_user }}"
-  become: yes
   homebrew:
     name: "{{ item }}"
   with_items:
@@ -24,7 +22,6 @@
 # install hyperg
 - name: install tar
   become_user: "{{ buildbot_user }}"
-  become: yes
   homebrew:
     name: gnu-tar
     options:
@@ -61,7 +58,6 @@
 
 # install pythons
 - name: install python and deps
-  become: yes
   become_user: "{{ buildbot_user }}"
   homebrew:
     name: "{{ item }}"
