@@ -95,14 +95,13 @@ class TaskComputer(object):
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
-        p2p_node = P2PNode.from_dict(ctd['task_owner'])
-        self.wait(ttl=self.waiting_for_task_timeout)
+        self.wait(ttl=min(self.waiting_for_task_timeout,
+                          deadline_to_timeout(ctd['deadline'])))
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(
             ctd['task_id'],
-            ctd['subtask_id'],
-            self.resource_manager.get_resource_header(ctd['task_id']),
+            ctd['subtask_id']
         )
         return True
 
@@ -363,10 +362,9 @@ class TaskComputer(object):
         if self.waiting_for_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, subtask_id, resource_header):
+    def __request_resource(self, task_id, subtask_id):
         self.wait(ttl=self.waiting_for_task_timeout)
-        if not self.task_server.request_resource(task_id, subtask_id,
-                                                 resource_header):
+        if not self.task_server.request_resource(task_id, subtask_id):
             self.reset()
 
     def __compute_task(self, subtask_id, docker_images,
