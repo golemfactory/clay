@@ -64,7 +64,9 @@ files_to_check() {
         message "Performing full check"
         find . -name '*.py' | cut -f2 -d'/' | uniq
     else
-        message "Comparing HEAD..${BRANCH}"
+        local cur_hash=$(git rev-parse --short HEAD)
+        local ref_hash=$(git rev-parse --short "${BRANCH}")
+        message "Comparing HEAD(${cur_hash})..${BRANCH}(${ref_hash})"
         # credit: https://gist.github.com/kentcdodds/9768d9a8d0bfbf6797cd
         git diff --name-only --diff-filter=d "${BRANCH}..HEAD" -- '*.py'
     fi
