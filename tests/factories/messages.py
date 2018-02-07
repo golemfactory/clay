@@ -75,3 +75,10 @@ class ReportComputedTask(factory.Factory):
     task_to_compute = factory.SubFactory(TaskToCompute)
     size = factory.Faker('pyint')
     checksum = factory.Faker('text')
+
+
+class SubtaskResultsRejected(factory.Factory):
+    class Meta:
+        model = tasks.SubtaskResultsRejected
+
+    report_computed_task = factory.SubFactory(ReportComputedTask)

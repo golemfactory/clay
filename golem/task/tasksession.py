@@ -12,6 +12,7 @@ from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
+from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import exceptions as concent_exceptions
@@ -550,6 +551,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_computer.session_closed()
         self.dropped()
 
+    @history.requestor_history
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id not in self.task_manager.subtask2task_mapping:
             logger.warning('Received unknown subtask_id: %r', msg)
@@ -671,8 +673,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.dropped()
 
     @history.provider_history
-    def _react_to_subtask_result_rejected(self, msg):
-        self.task_server.subtask_rejected(msg.subtask_id)
+    def _react_to_subtask_results_rejected(self, msg):
+        self.task_server.subtask_rejected(
+            subtask_id=msg.report_computed_task.subtask_id,
+        )
         self.dropped()
 
     def _react_to_task_failure(self, msg):
@@ -820,10 +824,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         return True
 
     def __check_docker_images(self, ctd, env):
-        for image in ctd['docker_images']:
+        for image_dict in ctd['docker_images']:
+            image = DockerImage(**image_dict)
             for env_image in env.docker_images:
                 if env_image.cmp_name_and_tag(image):
-                    ctd['docker_images'] = [image]
+                    ctd['docker_images'] = [image_dict]
                     return True
 
         reasons = message.CannotComputeTask.REASON
@@ -915,7 +920,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.tasks.SubtaskResultsAccepted.TYPE:
                 self._react_to_subtask_result_accepted,
             message.tasks.SubtaskResultsRejected.TYPE:
-                self._react_to_subtask_result_rejected,
+                self._react_to_subtask_results_rejected,
             message.TaskFailure.TYPE: self._react_to_task_failure,
             message.DeltaParts.TYPE: self._react_to_delta_parts,
             message.Hello.TYPE: self._react_to_hello,

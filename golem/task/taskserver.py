@@ -357,8 +357,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 self.task_keeper.add_task_header(th_dict_repr)
 
             return True
-        except Exception as err:
-            logger.warning("Wrong task header received: {}".format(err))
+        except Exception:  # pylint: disable=broad-except
+            logger.warning("Wrong task header received", exc_info=True)
             return False
 
     def verify_header_sig(self, th_dict_repr):

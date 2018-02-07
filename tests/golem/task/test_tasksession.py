@@ -302,6 +302,15 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not ts.msgs_to_send
         assert conn.close.called
 
+    @mock.patch('golem.task.tasksession.TaskSession.dropped')
+    def test_result_rejected(self, dropped_mock):
+        msg = factories.messages.SubtaskResultsRejected()
+        self.task_session._react_to_subtask_results_rejected(msg)
+        self.task_session.task_server.subtask_rejected.assert_called_once_with(
+            subtask_id=msg.report_computed_task.subtask_id,
+        )
+        dropped_mock.assert_called_once_with()
+
     @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
     def test_react_to_task_result_hash(self):
 
@@ -389,7 +398,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 1112
-        ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
+        ctd['docker_images'] = [
+            DockerImage("dockerix/xiii", tag="323").to_dict(),
+        ]
         msg = message.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
