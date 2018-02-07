@@ -56,7 +56,7 @@ def get_mock_task(task_id, subtask_id):
     task_mock.header = TaskHeader.from_dict(get_example_task_header())
     task_mock.header.task_id = task_id
     task_mock.header.max_price = 1010
-    task_mock.query_extra_data.return_value.ctd= ComputeTaskDef(
+    task_mock.query_extra_data.return_value.ctd = ComputeTaskDef(
         task_id=task_id,
         subtask_id=subtask_id,
     )
@@ -176,9 +176,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["task_id"] = "xyz"
         ts.add_task_header(task_header)
         ts.request_task()
-        self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        self.assertTrue(
+            ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101,
+                            "key", n, "node_name"))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        self.assertTrue(
+            ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101,
+                            "key", n, "node_name"))
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
@@ -218,8 +222,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         )
 
         from golem.model import Income
-        ts.client.transaction_system.\
-            incomes_keeper.received.\
+        ts.client.transaction_system. \
+            incomes_keeper.received. \
             return_value = Income()
 
         prev_call_count = trust.PAYMENT.increase.call_count
@@ -296,7 +300,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
         task_header["task_owner_key_id"] = keys_auth_2.key_id
-        task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
+        task_header["signature"] = keys_auth_2.sign(
+            TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
@@ -304,7 +309,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz_2"
         task_header["task_owner_key_id"] = keys_auth_2.key_id
-        task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
+        task_header["signature"] = keys_auth_2.sign(
+            TaskHeader.dict_to_binary(task_header))
 
         self.assertIsNotNone(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
@@ -314,7 +320,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         new_header = dict(task_header)
         new_header["task_owner"]["pub_port"] = 9999
-        new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
+        new_header["signature"] = keys_auth_2.sign(
+            TaskHeader.dict_to_binary(new_header))
 
         self.assertIsNotNone(ts.add_task_header(new_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
@@ -496,7 +503,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertEqual(session.key_id, 'key_id')
         self.assertIn('subtask_id', ts.task_sessions)
         self.assertTrue(session.send_hello.called)
-        session.send_task_failure.assert_called_once_with('subtask_id', 'err_msg')
+        session.send_task_failure.assert_called_once_with('subtask_id',
+                                                          'err_msg')
 
     def test_conn_for_start_session_failure(self):
 
@@ -574,17 +582,18 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         from golem.network.transport import tcpnetwork
         ts.network.listen = MagicMock(
             side_effect=lambda listen_info, waiting_task_result:
-                tcpnetwork.TCPNetwork.__call_failure_callback(
-                    listen_info.failure_callback,
-                    {'waiting_task_result': waiting_task_result}
-                )
+            tcpnetwork.TCPNetwork.__call_failure_callback(  # noqa pylint: disable=too-many-function-args
+                listen_info.failure_callback,
+                {'waiting_task_result': waiting_task_result}
+            )
         )
 
         # Try sending mocked task_result
         wtr = MagicMock()
         wtr.owner_key_id = 'owner_key_id'
         kwargs = {'waiting_task_result': wtr}
-        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id', 'owner_port', wtr.owner_key_id, kwargs)
+        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id',
+                                'owner_port', wtr.owner_key_id, kwargs)
         ts._sync_pending()
         ts.client.want_to_start_task_session.assert_called_once_with(
             wtr.owner_key_id,
@@ -653,7 +662,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, key_id)
         self.assertEqual(session.conn_id, conn_id)
-        mark_mock.assert_called_once_with(conn_id, session.address, session.port)
+        mark_mock.assert_called_once_with(conn_id, session.address,
+                                          session.port)
 
     def test_new_connection(self):
         ccd = ClientConfigDescriptor()
@@ -745,19 +755,31 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
-                                                                     1000, 10, 5, 10, 2,
-                                                                     "10.10.10.10")
+        ts.task_manager.tasks_states["xyz"].status = \
+            ts.task_manager.activeStatus[0]
+        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+            "DEF",
+            "DEF",
+            "xyz",
+            1000, 10,
+            5, 10, 2,
+            "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
-        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
+        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states[
+            "xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 1010 / 3600)
-        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, expected_value)
+        self.assertEqual(
+            ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value,
+            expected_value)
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", account_info)
-        ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
+        ts.client.transaction_system.add_payment_info.assert_called_with(
+            "xyz",
+            "xxyyzz",
+            expected_value,
+            account_info)
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
@@ -785,7 +807,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
+        ts.task_manager.tasks_states["xyz"].status = \
+            ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
 
@@ -796,7 +819,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         account_info.eth_account.address = None
 
         ts.accept_result("xxyyzz", account_info)
-        self.assertEqual(ts.client.transaction_system.add_payment_info.call_count, 0)
+        self.assertEqual(
+            ts.client.transaction_system.add_payment_info.call_count, 0)
 
     def test_disconnect(self):
         task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
