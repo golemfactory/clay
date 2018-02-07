@@ -148,7 +148,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         'golem.network.history.MessageHistoryService.get_sync_as_message',
     )
     def test_send_report_computed_task(self, get_mock):
-        ts = TaskSession(mock.Mock())
+        ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = p2p_factories.Node()
@@ -160,6 +160,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             compute_task_def__task_id="xyz",
             compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
+        ts.task_server.get_key_id.return_value = 'key id'
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
         ms = ts.conn.send_message.call_args[0][0]
