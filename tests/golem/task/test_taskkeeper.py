@@ -498,6 +498,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctd['environment'] = header.environment
+            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 10)
             ctk.receive_subtask(ctd)
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -586,6 +588,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "abc"
+        ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
+        ctd['environment'] = th.environment
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
