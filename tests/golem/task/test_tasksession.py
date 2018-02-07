@@ -803,8 +803,7 @@ class TestCreatePackage(unittest.TestCase):
         self.ts.task_server.get_waiting_task_result.return_value = None
         self.ts._react_to_get_task_result(msg)
 
-        assert self.ts.send.called
-        assert self.ts.dropped.called
+        assert self.ts.disconnect.called
 
 
 class GetTaskMessageTest(unittest.TestCase):
