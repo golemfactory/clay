@@ -19,6 +19,19 @@ def norm_path(path):
     return os.path.join(*split) if split else ''
 
 
+def relative_path(path, prefix):
+    if path.startswith(prefix):
+        return_path = path.replace(prefix, '', 1)
+    else:
+        return_path = path
+
+    if prefix:
+        while return_path and return_path.startswith(os.path.sep):
+            return_path = return_path[len(os.path.sep):]
+
+    return return_path
+
+
 class ResourceError(RuntimeError):
     pass
 
@@ -151,20 +164,9 @@ class ResourceStorage(object):
         return self.cache.has_resource(resource) and resource.exists
 
     def relative_path(self, path, task_id):
-
         path = norm_path(path)
         common_prefix = self.cache.get_prefix(task_id)
-
-        if path.startswith(common_prefix):
-            return_path = path.replace(common_prefix, '', 1)
-        else:
-            return_path = path
-
-        if common_prefix:
-            while return_path and return_path.startswith(os.path.sep):
-                return_path = return_path[len(os.path.sep):]
-
-        return return_path
+        return relative_path(path, common_prefix)
 
     def copy_dir(self, src_dir):
 
