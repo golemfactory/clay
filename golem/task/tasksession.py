@@ -659,12 +659,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        task_id = msg.task_id
-        resources = self.task_server.get_resources(task_id)
+        resources = self.task_server.get_resources(msg.task_id)
+        options = self.task_server.get_share_options(
+            task_id=msg.task_id,
+            key_id=self.task_server.get_key_id()
+        )
 
         self.send(message.ResourceList(
             resources=resources,
-            options=None,  # unused slot
+            options=options.__dict__,  # This slot will be used in #1768
         ))
 
     @history.provider_history
@@ -837,6 +840,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
+        options = self.task_server.get_share_options(
+            task_id=res.task_id,
+            key_id=self.key_id,
+        )
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
@@ -853,7 +860,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                     subtask_id=subtask_id,
                     multihash=result_hash,
                     secret=secret,
-                    options=None,  # unused slot
+                    options=options.__dict__,  # This slot will be used in #1768
                 )
             )
 
