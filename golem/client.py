@@ -882,13 +882,6 @@ class Client(HardwarePresetsMixin):
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_server.change_timeouts(
-            task_id,
-            full_task_timeout,
-            subtask_timeout
-        )
-
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
         if state:

@@ -1,17 +1,14 @@
 # pylint: disable=protected-access
 import calendar
 import datetime
+import os
 import pathlib
 import pickle
+import random
 import time
 import unittest
 import unittest.mock as mock
 import uuid
-
-import os
-import random
-
-import golem_messages
 
 from golem_messages import message
 
@@ -27,14 +24,15 @@ from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
-from golem.resource.resource import TaskResourceHeader
 from golem.task import taskstate
 from golem.task.taskbase import ResultType
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
-from golem.task.tasksession import TaskSession, logger
+from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
+
 from tests import factories
+from tests.factories import p2p as p2p_factories
 
 
 def fill_slots(msg):
@@ -79,7 +77,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['challenge', None],
             ['difficulty', None],
             ['metadata', None],
-            ['golem_messages_version', golem_messages.__version__],
         ]
         msg = send_mock.call_args[0][0]
         self.assertCountEqual(msg.slots(), expected)
@@ -150,18 +147,19 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         'golem.network.history.MessageHistoryService.get_sync_as_message',
     )
     def test_send_report_computed_task(self, get_mock):
-        ts = TaskSession(mock.Mock())
+        ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
-        n = Node()
+        n = p2p_factories.Node()
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n, package_sha1="deadbeef")
 
         get_mock.return_value = factories.messages.TaskToCompute(
             compute_task_def__task_id="xyz",
-            compute_task_def__deadline=calendar.timegm(time.gmtime())+3600,
+            compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
+        ts.task_server.get_key_id.return_value = 'key id'
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
         ms = ts.conn.send_message.call_args[0][0]
@@ -174,7 +172,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertEqual(ms.port, 30102)
         self.assertEqual(ms.eth_account, "0x00")
         self.assertEqual(ms.extra_data, [])
-        self.assertEqual(ms.node_info, n)
+        self.assertEqual(ms.node_info, n.to_dict())
 
         ts2 = TaskSession(mock.Mock())
         ts2.verified = True
@@ -184,7 +182,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         task_state = taskstate.TaskState()
         task_state.subtask_states['xxyyzz'] = taskstate.SubtaskState()
         task_state.subtask_states["xxyyzz"].deadline = \
-            calendar.timegm(time.gmtime())+3600
+            calendar.timegm(time.gmtime()) + 3600
         ts2.task_manager.tasks_states = {
             "xyz": task_state,
         }
@@ -241,6 +239,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts._react_to_hello(msg)
         assert ts.send.called
 
+    @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
     def test_result_received(self):
         conn = mock.Mock()
         ts = TaskSession(conn)
@@ -303,6 +302,16 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not ts.msgs_to_send
         assert conn.close.called
 
+    @mock.patch('golem.task.tasksession.TaskSession.dropped')
+    def test_result_rejected(self, dropped_mock):
+        msg = factories.messages.SubtaskResultsRejected()
+        self.task_session._react_to_subtask_results_rejected(msg)
+        self.task_session.task_server.subtask_rejected.assert_called_once_with(
+            subtask_id=msg.report_computed_task.subtask_id,
+        )
+        dropped_mock.assert_called_once_with()
+
+    @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
     def test_react_to_task_result_hash(self):
 
         def create_pull_package(result):
@@ -389,7 +398,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd['task_owner']['key'] = "KEY_ID"
         ctd['return_address'] = "10.10.10.10"
         ctd['return_port'] = 1112
-        ctd['docker_images'] = [DockerImage("dockerix/xiii", tag="323")]
+        ctd['docker_images'] = [
+            DockerImage("dockerix/xiii", tag="323").to_dict(),
+        ]
         msg = message.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -534,9 +545,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         db = DataBuffer()
 
         sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(m.serialize(lambda x: b'\000'*65))
+        sess.send = lambda m: db.append_bytes(
+            m.serialize(lambda x: b'\000' * 65),
+        )
         sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
+        sess.request_resource(str(uuid.uuid4()))
 
         assert message.Message.deserialize(db.buffered_data, lambda x: x)
 
@@ -580,10 +593,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         client = 'test_client'
         version = 1.0
         peers = [{'TCP': ('127.0.0.1', 3282)}]
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
         msg = message.ResourceList(resources=[['1'], ['2']],
-                                   options=client_options)
+                                   options=None)
 
         # Use locally saved hyperdrive client options
         self.task_session._react_to_resource_list(msg)
@@ -594,6 +605,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert isinstance(call_options['client_options'], mock.Mock)
 
         # Use download options built by TaskServer
+        client_options = ClientOptions(client, version,
+                                       options={'peers': peers})
         task_server.get_download_options.return_value = client_options
 
         self.task_session.task_server.pull_resources.reset_mock()
@@ -713,7 +726,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         for i in range(100, 300, 99):
             p = pathlib.Path(self.tempdir) / str(i)
             with p.open('wb') as f:
-                f.write(b'\0' * i*2**20)
+                f.write(b'\0' * i * 2**20)
             result.append(str(p))
         wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
                                 13190, 10, 0, "10.10.10.10",
@@ -790,5 +803,26 @@ class TestCreatePackage(unittest.TestCase):
         self.ts.task_server.get_waiting_task_result.return_value = None
         self.ts._react_to_get_task_result(msg)
 
-        assert not self.ts.send.called
-        assert self.ts.disconnect.called
+        assert self.ts.send.called
+        assert self.ts.dropped.called
+
+
+class GetTaskMessageTest(unittest.TestCase):
+    def test_get_task_message(self):
+        msg = factories.messages.TaskToCompute()
+        with mock.patch('golem.task.tasksession.history'
+                        '.MessageHistoryService.get_sync_as_message',
+                        mock.Mock(
+                            return_value=msg,
+                        )):
+            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar')
+            self.assertEqual(msg, msg_historical)
+
+    def test_get_task_message_fail(self):
+        with mock.patch('golem.task.tasksession.history'
+                        '.MessageHistoryService.get_sync_as_message',
+                        mock.Mock(
+                            side_effect=history.MessageNotFound()
+                        )):
+            msg = get_task_message('TaskToCompute', 'foo', 'bar')
+            self.assertIsNone(msg)

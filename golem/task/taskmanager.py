@@ -648,14 +648,6 @@ class TaskManager(TaskEventListener):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 
-    @handle_task_key_error
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        task = self.tasks[task_id]
-        task.header.deadline = timeout_to_deadline(full_task_timeout)
-        task.header.subtask_timeout = subtask_timeout
-        task.full_task_timeout = full_task_timeout
-        task.header.last_checking = time.time()
-
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 

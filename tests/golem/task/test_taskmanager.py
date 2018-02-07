@@ -251,11 +251,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert isinstance(subtask, ComputeTaskDef)
 
-        task_mock.query_extra_data_return_value.ctd['subtask_id'] = None
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
-            "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
-        assert subtask is None
-
         self.tm.delete_task("xyz")
         assert self.tm.tasks.get("xyz") is None
         assert self.tm.tasks_states.get("xyz") is None
@@ -637,17 +632,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         borders = tm.get_subtasks_borders(task_id, 2)
         assert len(borders) == 0
-
-    def test_change_timeouts(self):
-        t = self._get_task_mock(timeout=20, subtask_timeout=40)
-        self.tm.add_new_task(t)
-        assert get_timestamp_utc() + 15 <= t.header.deadline
-        assert t.header.deadline <= get_timestamp_utc() + 20
-        assert t.header.subtask_timeout == 40
-        self.tm.change_timeouts("xyz", 60, 10)
-        assert get_timestamp_utc() + 55 <= t.header.deadline
-        assert t.header.deadline <= get_timestamp_utc() + 60
-        assert t.header.subtask_timeout == 10
 
     def test_update_signatures(self):
 

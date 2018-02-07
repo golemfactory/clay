@@ -130,7 +130,7 @@ class TaskResourcesMixin(object):
 
         if subtask_id in self.task_sessions:
             session = self.task_sessions[subtask_id]
-            session.request_resource(subtask_id, resource_header)
+            session.request_resource(subtask_id)
         else:
             logger.error("Cannot map subtask_id {} to session"
                          .format(subtask_id))
@@ -370,8 +370,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 self.task_keeper.add_task_header(th_dict_repr)
 
             return True
-        except Exception as err:
-            logger.warning("Wrong task header received: {}".format(err))
+        except Exception:  # pylint: disable=broad-except
+            logger.warning("Wrong task header received", exc_info=True)
             return False
 
     def verify_header_sig(self, th_dict_repr):
@@ -450,10 +450,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
         self.task_keeper.change_config(config_desc)
-
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_manager.change_timeouts(task_id, full_task_timeout,
-                                          subtask_timeout)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
