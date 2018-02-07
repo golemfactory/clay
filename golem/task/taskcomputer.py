@@ -9,6 +9,7 @@ from pydispatch import dispatcher
 
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
+from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
@@ -108,7 +109,8 @@ class TaskComputer(object):
 
                 with self.lock:
                     if self.counting_thread is not None:
-                        logger.error("Got resource for task: %r"
+                        logger.error(
+                            "Got resource for task: %r"
                             "But I'm busy with another one. Ignoring.",
                             task_id)
                         return  # busy
@@ -394,6 +396,7 @@ class TaskComputer(object):
                 os.makedirs(temp_dir)
 
         if docker_images:
+            docker_images = [DockerImage(**did) for did in docker_images]
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
                                   resource_dir, temp_dir, task_timeout)

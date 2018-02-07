@@ -1,6 +1,5 @@
 # pylint: disable= protected-access
 import copy
-import golem_messages
 from golem_messages import message
 import ipaddress
 from pydispatch import dispatcher
@@ -273,12 +272,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             'solve_challenge': None,
             'challenge': None,
             'difficulty': None,
-            'golem_messages_version': golem_messages.__version__,
         }
-        for slot in message.Hello.__slots__:
-            if slot in msg_kwargs:
-                continue
-            msg_kwargs[slot] = None
 
         # Test not seed
         msg = message.Hello(**msg_kwargs)

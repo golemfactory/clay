@@ -49,6 +49,7 @@ class IGDPortMapper(IPortMapper):
         if mapping:
             ip, port, _description, enabled = mapping[:4]
             return ip, port, enabled
+        return None
 
     def create_mapping(self,
                        local_port: int,
