@@ -15,6 +15,7 @@ from golem.ethereum.paymentprocessor import PaymentProcessor, tETH_faucet_donate
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
+from golem_sci.interface import TransactionReceipt
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -234,12 +235,12 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
-        receipt = {
+        receipt = TransactionReceipt({
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
             'status': '0x1',
-        }
+        })
         self.sci.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         self.assertEqual(len(inprogress), 1)
@@ -278,12 +279,12 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_transaction_receipt.return_value = None
 
         tx_block_number = 1337
-        receipt = {
+        receipt = TransactionReceipt({
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
             'status': '0x0',
-        }
+        })
         self.sci.get_block_number.return_value = \
             tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
         self.sci.get_transaction_receipt.return_value = receipt
@@ -295,7 +296,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.sendout()
         self.assertEqual(len(inprogress), 1)
 
-        receipt['status'] = '0x1'
+        receipt.status = True
         self.sci.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         self.assertEqual(len(inprogress), 0)
