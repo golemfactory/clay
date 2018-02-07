@@ -181,7 +181,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         resource_dir = os.path.join(work_dir, "resources")
 
         if not os.path.exists(resource_dir):
-                os.mkdir(resource_dir)
+            os.mkdir(resource_dir)
         if not os.path.exists(logs_dir):
             os.mkdir(logs_dir)
         if not os.path.exists(output_dir):
