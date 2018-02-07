@@ -5,9 +5,7 @@ import pickle
 import time
 
 from golem_messages import message
-from twisted.internet import defer
 
-from golem.core.async import AsyncRequest, async_run
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
@@ -323,7 +321,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all)
-    @defer.inlineCallbacks
     def send_report_computed_task(
             self,
             task_result,
@@ -350,8 +347,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 task_result.result_type
             )
             return
-        node_name = self.task_server.get_node_name()
 
+        node_name = self.task_server.get_node_name()
         task_to_compute = get_task_message(
             'TaskToCompute',
             task_result.task_id,
@@ -383,13 +380,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # the `ReportComputedTask` sent above before the delay elapses,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
-
-        msg = message.ForceReportComputedTask()
-        msg.task_to_compute = task_to_compute
-        result_hash = yield concent_helpers.deferred_compute_result_hash(
-            task_result,
+        msg = message.ForceReportComputedTask(
+            task_to_compute=task_to_compute,
+            result_hash='sha1:' + task_result.package_sha1
         )
-        msg.result_hash = 'sha1:' + result_hash.hexdigest()
         logger.debug('[CONCENT] ForceReport: %s', msg)
 
         self.concent_service.submit(
@@ -587,13 +581,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
 
     @history.provider_history
-    def _react_to_get_task_result(self, msg):
-        res = self.task_server.get_waiting_task_result(msg.subtask_id)
-        if res is None:
-            return
+    def _react_to_get_task_result(self, msg) -> None:
+        wtr = self.task_server.get_waiting_task_result(msg.subtask_id)
+        if wtr is None:
+            logger.warning("Result was requested for an unknown subtask "
+                           "id: %r", msg.subtask_id)
+            return self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
-        res.already_sending = True
-        return self.__send_result_hash(res)
+        wtr.already_sending = True
+        client_options = self.task_server.get_share_options(wtr.task_id,
+                                                            self.key_id)
+
+        msg = message.TaskResultHash(
+            subtask_id=wtr.subtask_id,
+            multihash=wtr.result_hash,
+            secret=wtr.result_secret,
+            options=client_options.__dict__  # This slot will be used in #1768
+        )
+        self.send(msg)
 
     def _react_to_task_result_hash(self, msg):
         secret = msg.secret
@@ -837,53 +842,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         reasons = message.CannotComputeTask.REASON
         self.err_msg = reasons.WrongDockerImages
         return False
-
-    def __send_result_hash(self, res):
-        task_result_manager = self.task_manager.task_result_manager
-        options = self.task_server.get_share_options(
-            task_id=res.task_id,
-            key_id=self.key_id,
-        )
-
-        subtask_id = res.subtask_id
-        secret = task_result_manager.gen_secret()
-
-        def success(result):
-            result_hash, result_path = result
-            logger.debug(
-                "Task session: sending task result hash: %r (%r)",
-                result_hash, result_path
-            )
-
-            self.send(
-                message.TaskResultHash(
-                    subtask_id=subtask_id,
-                    multihash=result_hash,
-                    secret=secret,
-                    options=options.__dict__,  # This slot will be used in #1768
-                )
-            )
-
-        def error(exc):
-            logger.error(
-                "Couldn't create a task result package for subtask %r: %r",
-                res.subtask_id,
-                exc
-            )
-
-            if isinstance(exc, EnvironmentError):
-                self.task_server.retry_sending_task_result(subtask_id)
-            else:
-                self.send_task_failure(subtask_id, '{}'.format(exc))
-                self.task_server.task_result_sent(subtask_id)
-
-            self.dropped()
-
-        request = AsyncRequest(task_result_manager.create,
-                               self.task_server.node, res,
-                               key_or_secret=secret)
-
-        return async_run(request, success=success, error=error)
 
     def __receive_data_result(self, msg):
         extra_data = {

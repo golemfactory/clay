@@ -1,16 +1,20 @@
-import abc
-import os
+import binascii
 import uuid
 import zipfile
 
+import abc
+import os
+
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
 
 
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
+    def create(self, output_path, disk_files=None, cbor_files=None,
+               sha1_path=None, **kwargs):
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
@@ -27,7 +31,25 @@ class Packager(object):
                     cbor_data = CBORSerializer.dumps(file_data)
                     self.write_cbor_file(of, file_name, cbor_data)
 
-        return output_path
+        pkg_sha1 = self.write_sha1(output_path, sha1_path or output_path)
+        return output_path, pkg_sha1
+
+    @classmethod
+    def read_sha1(cls, package_path: str):
+        sha1_file_path = package_path + '.sha1'
+
+        with open(sha1_file_path, 'r') as sf:
+            return sf.read().strip()
+
+    @classmethod
+    def write_sha1(cls, source_path: str, package_path: str):
+        sha1_path = package_path + '.sha1'
+        pkg_sha1 = SimpleHash.hash_file(source_path)
+        pkg_sha1 = binascii.hexlify(pkg_sha1).decode('utf8')
+
+        with open(sha1_path, 'w') as sf:
+            sf.write(pkg_sha1)
+        return pkg_sha1
 
     @abc.abstractmethod
     def extract(self, input_path, output_dir=None, **kwargs):
@@ -48,22 +70,22 @@ class Packager(object):
 
 class ZipPackager(Packager):
 
+    ZIP_MODE = zipfile.ZIP_STORED  # no compression
+
     def extract(self, input_path, output_dir=None, **kwargs):
 
         if not output_dir:
             output_dir = os.path.dirname(input_path)
+        os.makedirs(output_dir, exist_ok=True)
 
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        with zipfile.ZipFile(input_path, 'r') as zf:
+        with zipfile.ZipFile(input_path, 'r', compression=self.ZIP_MODE) as zf:
             zf.extractall(output_dir)
             extracted = zf.namelist()
 
         return extracted, output_dir
 
     def generator(self, output_path):
-        return zipfile.ZipFile(output_path, mode='w')
+        return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
         obj.write(file_path, file_name)
@@ -79,21 +101,22 @@ class EncryptingPackager(Packager):
 
     def __init__(self, key_or_secret):
 
-        self._creator = self.creator_class()
+        self._packager = self.creator_class()
         self.key_or_secret = key_or_secret
 
     def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
 
         output_dir = os.path.dirname(output_path)
         pkg_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".pkg")
-        out_file_path = super(EncryptingPackager, self).create(pkg_file_path,
-                                                               disk_files=disk_files,
-                                                               cbor_files=cbor_files)
+        out_file_path, pkg_sha1 = super().create(pkg_file_path,
+                                                 disk_files=disk_files,
+                                                 cbor_files=cbor_files,
+                                                 sha1_path=output_path)
 
         self.encryptor_class.encrypt(out_file_path,
                                      output_path,
                                      self.key_or_secret)
-        return output_path
+        return output_path, pkg_sha1
 
     def extract(self, input_path, output_dir=None, **kwargs):
 
@@ -107,16 +130,16 @@ class EncryptingPackager(Packager):
         os.remove(input_path)
         os.rename(tmp_file_path, input_path)
 
-        return self._creator.extract(input_path, output_dir=output_dir)
+        return self._packager.extract(input_path, output_dir=output_dir)
 
     def generator(self, output_path):
-        return self._creator.generator(output_path)
+        return self._packager.generator(output_path)
 
     def write_disk_file(self, obj, file_path, file_name):
-        self._creator.write_disk_file(obj, file_path, file_name)
+        self._packager.write_disk_file(obj, file_path, file_name)
 
     def write_cbor_file(self, obj, file_name, cbord_data):
-        self._creator.write_cbor_file(obj, file_name, cbord_data)
+        self._packager.write_cbor_file(obj, file_name, cbord_data)
 
 
 class TaskResultDescriptor(object):
@@ -137,10 +160,6 @@ class EncryptingTaskResultPackager(EncryptingPackager):
     descriptor_file_name = '.package_desc'
     result_file_name = '.result_cbor'
 
-    def __init__(self, key_or_secret):
-        self.parent = super(EncryptingTaskResultPackager, self)
-        self.parent.__init__(key_or_secret)
-
     def create(self, output_path,
                disk_files=None, cbor_files=None,
                node=None, task_result=None, **kwargs):
@@ -152,13 +171,13 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         descriptor = TaskResultDescriptor(node, task_result)
         cbor_files.append((self.descriptor_file_name, descriptor))
 
-        return self.parent.create(output_path,
-                                  disk_files=disk_files,
-                                  cbor_files=cbor_files)
+        return super().create(output_path,
+                              disk_files=disk_files,
+                              cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
 
-        files, files_dir = self.parent.extract(input_path, output_dir=output_dir)
+        files, files_dir = super().extract(input_path, output_dir=output_dir)
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
@@ -167,7 +186,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
             os.remove(descriptor_path)
 
         except Exception as e:
-            raise ValueError('Invalid package descriptor %r' % e.message)
+            raise ValueError('Invalid package descriptor {}'.format(e))
 
         if self.descriptor_file_name in files:
             files.remove(self.descriptor_file_name)
@@ -196,7 +215,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         elif result.result_type == ResultType.FILES:
             disk_files.extend(result.result)
         else:
-            raise ValueError("Invalid result type {}".format(result.result_type))
+            raise ValueError("Invalid result type {}"
+                             .format(result.result_type))
 
         return disk_files, cbor_files
 
