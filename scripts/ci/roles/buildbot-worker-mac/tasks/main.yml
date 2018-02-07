@@ -9,10 +9,15 @@
     name: buildbot-worker
     home: /Users/buildbot-worker
 
+# needed for proper working of brew installed components like pip3
+- lineinfile:
+    create: yes
+    path: ~/.bashrc
+    line: export PATH=/usr/local/bin:$PATH
+
 # install pythons
 - name: install python and deps
   become_user: buildbot-worker
-  become: yes
   homebrew:
     name: "{{ item }}"
   with_items:
