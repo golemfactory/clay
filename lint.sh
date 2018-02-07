@@ -1,35 +1,36 @@
 #!/bin/bash
+set -e
 # a more basic version of lint.sh from marmistrz/lintdiff
 
-DEFAULT_BRANCH="origin/develop"
+BRANCH="origin/develop"
+VERBOSE=false
+COLUMNS=$(( $(tput cols) - 10 ))
 
 hline() {
-    printf %"$COLUMNS"s | tr " " "-"
+    printf "%${COLUMNS}s\n" | tr " " "-"
 }
 
 usage() {
-    echo "Usage: $0 <reference-branch>"
-    echo "default reference branch is ${DEFAULT_BRANCH}"
+    printf "Usage: $0 [-b <branch>] [-v] [-h]\n"
+    printf "    -b <branch>       branch to use for comparison. default is ${BRANCH}\n"
+    printf "    -v                be verbose\n"
+    printf "    -h                show this help message\n"
+    exit 1
 }
 
-case $# in
-    0)
-        BRANCH="${DEFAULT_BRANCH}"
-        echo "Using ${DEFAULT_BRANCH} as reference branch"
-        ;;
-    1)
-        if [ "$1" == "-h" ]; then
+while getopts "b:vh" opt; do
+    case $opt in
+        b)
+            BRANCH="${OPTARG}"
+            ;;
+        v)
+            VERBOSE=true
+            ;;
+        *)
             usage
-            exit 0
-        else
-            BRANCH="$1"
-        fi
-        ;;
-    *)
-        usage
-        exit 1
-        ;;
-esac
+            ;;
+    esac
+done
 
 RED=$(
     tput bold
@@ -45,37 +46,41 @@ nfailed=0
 
 status() {
     if [ "$1" -eq 0 ]; then
-        echo "${GREEN}OK${RESET}"
+        printf " [${GREEN}OK${RESET}]\n"
     else
-        echo "${RED}FAIL${RESET}"
+        printf " [${RED}FAIL${RESET}]\n"
     fi
 }
 
-CUR_HASH=$(git rev-parse --short HEAD)
-REF_HASH=$(git rev-parse --short "${BRANCH}")
+printf "Comparing HEAD..${BRANCH}\n\n"
 
-echo "Comparing ${REF_HASH}...${CUR_HASH}"
+# credit: https://unix.stackexchange.com/questions/155046/determine-if-git-working-directory-is-clean-from-a-script/183976
+if [ -n "$(git status --untracked-files=no --porcelain)" ]; then
+  printf "⚡️  You must commit or stash changes.\n"
+  exit -1
+fi
 
-changed_files() {
-    git diff --name-only "${CUR_HASH}..${REF_HASH}" | grep '\.py$'
-}
+# credit: https://gist.github.com/kentcdodds/9768d9a8d0bfbf6797cd
+CHG_PY_FILES=$(git diff --name-only --diff-filter=d ${BRANCH}..HEAD -- '*.py')
 
-changed_prod_files() {
-    changed_files | grep -v '^tests/'
-}
+if [[ -z "${CHG_PY_FILES}" ]]; then
+    printf "⚡️  No python files were changed\n"
+    exit 0
+elif [[ "${VERBOSE}" = true ]]; then
+    printf "Changed python files:\n"
+    printf "${CHG_PY_FILES}\n\n" | sed "s/^/    /"
+fi
 
-changed_test_files() {
-    changed_files | grep '^tests/'
-}
-
+CHG_PY_PROD_FILES=$(echo "${CHG_PY_FILES}" | grep -v '^tests/') || true
+CHG_PY_TEST_FILES=$(echo "${CHG_PY_FILES}" | grep '^tests/') || true
 
 LINTDIFF="./lintdiff.sh -o -b ${BRANCH}"
 
 commands=(
-    "$LINTDIFF pylint $(changed_prod_files)"
-    "$LINTDIFF pylint --disable=protected-access,no-self-use $(changed_test_files)"
-    "$LINTDIFF flake8 $(changed_files)"
-    "$LINTDIFF mypy $(changed_files)"
+    "$LINTDIFF pylint ${CHG_PY_PROD_FILES}"
+    "$LINTDIFF pylint --disable=protected-access,no-self-use ${CHG_PY_TEST_FILES}"
+    "$LINTDIFF flake8 ${CHG_PY_FILES}"
+    "$LINTDIFF mypy ${CHG_PY_FILES}"
 )
 
 names=(
@@ -86,29 +91,34 @@ names=(
 )
 
 for i in "${!names[@]}"; do
-    printf "%-20s" "${names[$i]}..."
-    outputs[$i]=$(${commands[$i]} 2>&1)
-    exitcode[$i]=$?
+    if [[ "${VERBOSE}" = true ]]; then
+        printf "%-${COLUMNS}s" "${commands[$i]} ..." | tr '\r\n' ' '
+    else
+        printf "%-20s" "${names[$i]}..."
+    fi
+    exitcode[$i]=0
+    outputs[$i]=$(${commands[$i]} 2>&1) || exitcode[$i]=$?
     status ${exitcode[$i]}
 done
 
 for i in "${!names[@]}"; do
     if [ ${exitcode[$i]} -ne 0 ]; then
-        let "nfailed++"
+        let "nfailed++" || true
 
         hline
-        echo "${names[$i]} failed, output:"
-        echo -e "\n"
-        echo "${outputs[$i]}"
+        printf "${names[$i]} failed, output:\n\n"
+        printf "${outputs[$i]}\n"
         hline
     fi
 done
 
 if [ $nfailed -gt 0 ]; then
-    echo "Errors occurred, summary:"
+    printf "Errors occurred, summary:\n"
     for i in "${!names[@]}"; do
         printf "%-20s" "${names[$i]}..."
         status ${exitcode[$i]}
     done
     exit 1
+else
+    printf "⚡️  changed files passed linting!\n"
 fi
