@@ -10,10 +10,9 @@ import threading
 import time
 from distutils.version import StrictVersion
 
-import requests
 from web3 import Web3, IPCProvider, HTTPProvider
 
-from golem.core.common import is_windows, DEVNULL
+from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import find_free_net_port
@@ -22,8 +21,7 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-NODE_LIST_URL = 'https://rinkeby.golem.network'
-FALLBACK_NODE_LIST = [
+NODE_LIST = [
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
@@ -32,12 +30,7 @@ FALLBACK_NODE_LIST = [
 
 def get_public_nodes():
     """Returns public geth RPC addresses"""
-    try:
-        return requests.get(NODE_LIST_URL).json()
-    except Exception as exc:
-        log.error("Error downloading node list: %s", exc)
-
-    addr_list = FALLBACK_NODE_LIST[:]
+    addr_list = NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
 
@@ -212,7 +205,8 @@ class NodeProcess(object):
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
-                                     stdin=DEVNULL)
+                                     stdin=DEVNULL,
+                                     startupinfo=SUBPROCESS_STARTUP_INFO)
 
         tee_kwargs = {
             'proc': self.__ps,

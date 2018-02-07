@@ -326,7 +326,11 @@ class PaymentProcessor(LoopingCallService):
                 self.add(p)
 
     def get_ether_from_faucet(self):
-        if self.__faucet and self.eth_balance(True) < 0.01 * denoms.ether:
+        eth_balance = self.eth_balance(True)
+        if eth_balance is None:
+            return False
+
+        if self.__faucet and eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH")
             addr = keys.privtoaddr(self.__privkey)
             tETH_faucet_donate(addr)
@@ -334,7 +338,11 @@ class PaymentProcessor(LoopingCallService):
         return True
 
     def get_gnt_from_faucet(self):
-        if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
+        gnt_balance = self.gnt_balance(True)
+        if gnt_balance is None:
+            return False
+
+        if self.__faucet and gnt_balance < 100 * denoms.ether:
             log.info("Requesting GNT from faucet")
             self._sci.request_gnt_from_faucet(self.__privkey)
             return False

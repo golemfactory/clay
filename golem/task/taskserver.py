@@ -288,7 +288,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             if self.client.transaction_system:
                 self.client.transaction_system.incomes_keeper.expect(
                     sender_node_id=owner_key_id,
-                    p2p_node=owner,
                     subtask_id=subtask_id,
                     value=value,
                 )
@@ -368,8 +367,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         _key = th_dict_repr["task_owner_key_id"]
         return self.verify_sig(_sig, _bin, _key)
 
-    def remove_task_header(self, task_id):
-        self.task_keeper.remove_task_header(task_id)
+    def remove_task_header(self, task_id) -> bool:
+        return self.task_keeper.remove_task_header(task_id)
 
     def add_task_session(self, subtask_id, session):
         self.task_sessions[subtask_id] = session

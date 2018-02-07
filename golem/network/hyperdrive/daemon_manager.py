@@ -8,7 +8,7 @@ import time
 
 import requests
 
-from golem.core.common import DEVNULL
+from golem.core.common import DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.core.processmonitor import ProcessMonitor
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.report import report_calls, Component
@@ -100,7 +100,8 @@ class HyperdriveDaemonManager(object):
         try:
             os.makedirs(self._dir, exist_ok=True)
             return subprocess.Popen(self._command, stdin=DEVNULL,
-                                    stdout=None, stderr=None)
+                                    stdout=None, stderr=None,
+                                    startupinfo=SUBPROCESS_STARTUP_INFO)
         except OSError:
             return self._critical_error()
 

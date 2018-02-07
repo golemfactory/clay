@@ -1,6 +1,6 @@
 import functools
 from itertools import chain
-from typing import Optional
+from typing import Optional, Tuple
 
 import miniupnpc
 
@@ -41,6 +41,15 @@ class IGDPortMapper(IPortMapper):
         self._available = True
         return igd
 
+    def get_mapping(self,
+                    external_port: int,
+                    protocol: str = 'TCP') -> Optional[Tuple[str, int, bool]]:
+
+        mapping = self.upnp.getspecificportmapping(external_port, protocol)
+        if mapping:
+            ip, port, _description, enabled = mapping[:4]
+            return ip, port, enabled
+
     def create_mapping(self,
                        local_port: int,
                        external_port: int = None,
@@ -49,6 +58,10 @@ class IGDPortMapper(IPortMapper):
 
         local_ip = self.network['local_ip_address']
         external_port = external_port or local_port
+
+        # Explicit check to prevent warnings
+        if self._mapping_exists(local_port, external_port, protocol):
+            return external_port
 
         create_mapping = functools.partial(self._create_mapping, protocol,
                                            local_ip, local_port, external_port)
@@ -59,6 +72,20 @@ class IGDPortMapper(IPortMapper):
 
     def remove_mapping(self, external_port: int, protocol: str = 'TCP'):
         return self.upnp.deleteportmapping(external_port, protocol)
+
+    def _mapping_exists(self,
+                        local_port: int,
+                        external_port: int,
+                        protocol: str = 'TCP'):
+
+        local_ip = self.network['local_ip_address']
+
+        try:
+            existing_mapping = self.get_mapping(external_port, protocol)
+            ip, port, enabled = existing_mapping
+            return enabled and local_ip == ip and local_port == port
+        except Exception:  # pylint: disable=broad-except
+            return False
 
     def _create_mapping(self,
                         protocol: str,
@@ -87,6 +114,6 @@ class IGDPortMapper(IPortMapper):
         range_2 = range(1024, preferred_port)
 
         for port in chain(range_1, range_2):
-            if not self.upnp.getspecificportmapping(port, protocol):
+            if not self.get_mapping(port, protocol):
                 return port
         raise RuntimeError("no free external ports are available")

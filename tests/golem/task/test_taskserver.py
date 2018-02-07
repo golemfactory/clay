@@ -102,14 +102,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         task_header["task_owner"] = n2
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), "uvw")
-        ts.remove_task_header("uvw")
+        assert ts.remove_task_header("uvw")
         task_header["task_owner_port"] = 0
         task_header["task_id"] = "uvw2"
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
         self.assertIsNone(ts.request_task())
         self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
-        ts.remove_task_header("uvw2")
+        assert not ts.remove_task_header("uvw2")
 
         # Task can be rejected for 3 reasons at this stage; in all cases
         # the task should be reported TaskArchiver listed as unsupported:
@@ -126,7 +126,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             SupportStatus(
                 False,
                 {UnsupportReason.REQUESTOR_TRUST: 0.3}))
-        ts.remove_task_header("uvw3")
+        assert ts.remove_task_header("uvw3")
 
         # 2. Task's max price is too low
         tar.reset_mock()
@@ -142,7 +142,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             SupportStatus(
                 False,
                 {UnsupportReason.MAX_PRICE: 1}))
-        ts.remove_task_header("uvw4")
+        assert ts.remove_task_header("uvw4")
 
         # 3. Requestor is on a black list.
         tar.reset_mock()
@@ -157,7 +157,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             SupportStatus(
                 False,
                 {UnsupportReason.DENY_LIST: "key"}))
-        ts.remove_task_header("uvw5")
+        assert ts.remove_task_header("uvw5")
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust):
@@ -196,7 +196,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             sender_node_id="key",
             subtask_id="xyzxyz",
             value=1,
-            p2p_node=n,
         )
 
         with self.assertLogs(logger, level='WARNING'):
@@ -213,7 +212,6 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
         model.ExpectedIncome.create(
             sender_node="key",
-            sender_node_details=None,
             task=ctd['task_id'],
             subtask=ctd['subtask_id'],
             value=1

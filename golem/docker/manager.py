@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from threading import Thread
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
-    DEVNULL, to_unicode
+    DEVNULL, to_unicode, SUBPROCESS_STARTUP_INFO
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 from golem.report import report_calls, Component
@@ -301,6 +301,7 @@ class DockerManager(DockerConfigManager):
         params = dict(shell=shell, stdin=DEVNULL)
 
         output = subprocess.check_output(command, stderr=subprocess.STDOUT,
+                                         startupinfo=SUBPROCESS_STARTUP_INFO,
                                          **params)
         logger.debug('docker_machine_command_output: %s', output)
         return to_unicode(output)
