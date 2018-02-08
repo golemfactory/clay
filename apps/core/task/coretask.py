@@ -337,7 +337,8 @@ class CoreTask(Task):
             ctd['docker_images'] = [
                 di.to_dict() for di in self.header.docker_images
             ]
-        ctd['deadline'] = timeout_to_deadline(self.header.subtask_timeout)
+        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
+                              self.header.deadline)
         ctd['task_owner'] = self.header.task_owner.to_dict()
         ctd['environment'] = self.header.environment
 
