@@ -646,7 +646,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
 
     def test_react_to_cannot_assign_task(self):
-        task_keeper = CompTaskKeeper(pathlib.Path(self.path))
+        task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(TaskHeader(environment='DEFAULT',
                                            node_name="ABC",
                                            task_id="abc",
