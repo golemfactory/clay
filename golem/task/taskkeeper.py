@@ -145,33 +145,34 @@ class CompTaskKeeper:
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
 
-        not_accepted_message = "Cannot accept subtask %s for task %s. " % \
-                               (comp_task_def['subtask_id'],
-                                comp_task_def['task_id'])
+        not_accepted_message = "Cannot accept subtask %s for task %s. %s"
+        log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
         if not task.requests > 0:
-            logger.info(not_accepted_message +
+            logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")
+
             return False
         if not self.check_deadline(comp_task_def['deadline'], task):
-            logger.info(not_accepted_message +
-                        "Request for this task has wrong deadline %r" %
-                        comp_task_def['deadline'])
+            msg = "Request for this task has wrong deadline %r" % \
+                  comp_task_def['deadline']
+            logger.info(not_accepted_message, *log_args, msg)
             return False
         if comp_task_def['subtask_id'] in task.subtasks:
-            logger.info(not_accepted_message +
+            logger.info(not_accepted_message, *log_args,
                         "Definition of this subtask was already received.")
             return False
         if comp_task_def['environment'] != task.header.environment:
-            logger.info(not_accepted_message +
-                        "Different environment than .")
+            msg = "Expected environment: %s, received: %s." % (
+                task.header.environment, comp_task_def['environment'])
+            logger.info(not_accepted_message, *log_args, msg)
             return False
         return True
 
     @staticmethod
     def check_deadline(deadline, task):
         now_ = common.get_timestamp_utc()
-        if now_ > deadline or deadline > deadline + task.header.subtask_timeout:
+        if now_ > deadline or deadline > now_ + task.header.subtask_timeout:
             return False
         return True
 
