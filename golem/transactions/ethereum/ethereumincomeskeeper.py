@@ -4,7 +4,7 @@ import logging
 
 from ethereum.utils import denoms, sha3
 
-from golem.model import ExpectedIncome, GenericKeyValue
+from golem.model import Income, GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
 from golem.utils import decode_hex
 
@@ -31,9 +31,10 @@ class EthereumIncomesKeeper(IncomesKeeper):
         )
 
     def _on_batch_event(self, event):
-        expected = ExpectedIncome.select().where(
-            ExpectedIncome.accepted_ts > 0,
-            ExpectedIncome.accepted_ts <= event.closure_time)
+        expected = Income.select().where(
+            Income.accepted_ts > 0,
+            Income.accepted_ts <= event.closure_time,
+            Income.transaction.is_null())
 
         def is_sender(sender_node):
             return sha3(decode_hex(sender_node))[12:] == \

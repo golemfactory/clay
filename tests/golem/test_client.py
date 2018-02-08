@@ -26,7 +26,7 @@ from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Payment, PaymentStatus, ExpectedIncome
+from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -157,7 +157,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         n = 9
         incomes = [
-            ExpectedIncome(
+            Income(
                 sender_node=random_hex_str(),
                 sender_node_details=Node(),
                 subtask=random_hex_str(),
