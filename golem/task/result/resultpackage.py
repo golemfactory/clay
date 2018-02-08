@@ -138,6 +138,8 @@ class ZipPackager(Packager):
 
     @classmethod
     def package_name(cls, file_path):
+        if file_path.lower().endswith('.zip'):
+            return file_path
         return file_path + '.zip'
 
 
