@@ -111,8 +111,9 @@ def report_calls(component, method, stage=None, once=False):
             if once:
                 prop = '_report_called_{}'.format(method)
                 if hasattr(func, prop):
-                    return func(*args, **kwargs)
+                    return
                 setattr(func, prop, True)
+                return func(*args, **kwargs)
             # Use the context manager to report the execution stage
             with report_call(component, method, stage):
                 return func(*args, **kwargs)
