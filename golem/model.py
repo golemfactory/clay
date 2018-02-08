@@ -225,13 +225,9 @@ class Payment(BaseModel):
                 self.processed_ts
             )
 
-    def get_sender_node(self) -> Optional[Node]:
-        return self.details.node_info
-
 
 class ExpectedIncome(BaseModel):
     sender_node = CharField()
-    sender_node_details = NodeField()
     subtask = CharField()
     value = BigIntegerField()
     accepted_ts = IntegerField(null=True)
@@ -239,9 +235,6 @@ class ExpectedIncome(BaseModel):
     def __repr__(self):
         return "<ExpectedIncome: {!r} v:{:.3f}>"\
             .format(self.subtask, self.value)
-
-    def get_sender_node(self):
-        return self.sender_node_details
 
 
 class Income(BaseModel):

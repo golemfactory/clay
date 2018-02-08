@@ -1,4 +1,3 @@
-from golem_messages.message import ComputeTaskDef
 import logging
 import os
 import shutil
@@ -6,7 +5,10 @@ from threading import Lock
 import time
 from typing import Callable
 
+from golem_messages.message import ComputeTaskDef
+
 from golem.core.common import to_unicode
+from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import (TaskResourceHeader, decompress_dir,
@@ -67,16 +69,15 @@ class LocalComputer:
             self.tt = self._get_task_thread(ctd)
             self.tt.start()
 
-        except Exception as exc:
-            logger.warning("%s: %s", self.comp_failed_warning, exc)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("%s", self.comp_failed_warning, exc_info=True)
             self.error_callback(exc)
 
     def end_comp(self) -> bool:
         if self.tt:
             self.tt.end_comp()
             return True
-        else:
-            return False
+        return False
 
     def get_progress(self):
         if self.tt:
@@ -146,17 +147,19 @@ class LocalComputer:
         os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
-        return DockerTaskThread(self,
-                                ctd['subtask_id'],
-                                ctd['docker_images'],
-                                ctd['working_directory'],
-                                ctd['src_code'],
-                                ctd['extra_data'],
-                                ctd['short_description'],
-                                self.test_task_res_path,
-                                self.tmp_dir,
-                                0,
-                                check_mem=self.check_mem)
+        return DockerTaskThread(
+            self,
+            ctd['subtask_id'],
+            [DockerImage(**did) for did in ctd['docker_images']],
+            ctd['working_directory'],
+            ctd['src_code'],
+            ctd['extra_data'],
+            ctd['short_description'],
+            self.test_task_res_path,
+            self.tmp_dir,
+            0,
+            check_mem=self.check_mem,
+        )
 
 
 class ComputerAdapter(object):

@@ -15,6 +15,7 @@ class MockPortMapper(IPortMapper):
         self.available_calls = 0
         self.network_calls = 0
         self.discover_calls = 0
+        self.get_mapping_calls = 0
 
     @property
     def available(self):
@@ -30,6 +31,10 @@ class MockPortMapper(IPortMapper):
         self.discover_calls += 1
         if self._discover_raises:
             raise RuntimeError("Test error")
+
+    def get_mapping(self, external_port: int, protocol: str = 'TCP'):
+        self.get_mapping_calls += 1
+        return '10.0.0.10', 40102, True
 
     def create_mapping(self, local_port, external_port=None,
                        protocol='TCP', lease_duration=None):
@@ -221,3 +226,26 @@ class TestPortMapperManagerProperties(TestCase):
 
         assert manager.mapping == manager._mapping
         assert manager.mapping is not manager._mapping
+
+
+class TestPortMapperManagerGetMapping(TestCase):
+
+    def test_available(self):
+        mapper = MockPortMapper()
+        manager = PortMapperManager(mappers=[mapper])
+        manager._active_mapper = mapper
+        assert manager.get_mapping(40102)
+        assert mapper.get_mapping_calls == 1
+
+    def test_not_available(self):
+        mapper = MockPortMapper()
+        manager = PortMapperManager(mappers=[mapper])
+        assert not manager.get_mapping(40102)
+        assert mapper.get_mapping_calls == 0
+
+    def test_exception(self):
+        mapper = MockPortMapper()
+        mapper.get_mapping = Mock(side_effect=Exception('Test exception'))
+        manager = PortMapperManager(mappers=[mapper])
+        manager._active_mapper = mapper
+        assert not manager.get_mapping(40102)

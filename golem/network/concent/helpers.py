@@ -8,7 +8,6 @@ import time
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from twisted.internet import defer
-from twisted.internet import reactor
 from twisted.internet import threads
 
 from golem.network import history
@@ -44,6 +43,10 @@ def compute_result_hash(task_result):
 
 
 def deferred_compute_result_hash(task_result):
+    # Import reactor only when it is necessary;
+    # otherwise process-wide signal handlers may be installed
+    from twisted.internet import reactor
+
     if reactor.running:
         execute = threads.deferToThread
     else:

@@ -125,16 +125,15 @@ class TaskResourcesMixin(object):
         peers = self.get_resource_peers(task_id)
         return resource_manager.build_client_options(peers=peers)
 
-    def request_resource(self, subtask_id, resource_header, address, port,
-                         key_id, task_owner):
-
-        if subtask_id in self.task_sessions:
-            session = self.task_sessions[subtask_id]
-            session.request_resource(subtask_id, resource_header)
-        else:
+    def request_resource(self, task_id, subtask_id):
+        if subtask_id not in self.task_sessions:
             logger.error("Cannot map subtask_id {} to session"
                          .format(subtask_id))
-        return subtask_id
+            return False
+
+        session = self.task_sessions[subtask_id]
+        session.request_resource(task_id)
+        return True
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.client.pull_resources(
@@ -280,15 +279,12 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
 
-        Trust.REQUESTED.increase(owner_key_id)
-
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(
                 task_id, computing_time)
             if self.client.transaction_system:
                 self.client.transaction_system.incomes_keeper.expect(
                     sender_node_id=owner_key_id,
-                    p2p_node=owner,
                     subtask_id=subtask_id,
                     value=value,
                 )
@@ -296,19 +292,34 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             delay_time = 0.0
             last_sending_trial = 0
 
-            self.results_to_send[subtask_id] = WaitingTaskResult(
-                task_id, subtask_id, result['data'], result['result_type'],
-                computing_time, last_sending_trial, delay_time, owner_address,
-                owner_port, owner_key_id, owner)
+            wtr = WaitingTaskResult(task_id, subtask_id, result['data'],
+                                    result['result_type'], computing_time,
+                                    last_sending_trial, delay_time,
+                                    owner_address, owner_port, owner_key_id,
+                                    owner)
+
+            self.create_and_set_result_package(wtr)
+            self.results_to_send[subtask_id] = wtr
+
+            Trust.REQUESTED.increase(owner_key_id)
         else:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         return True
 
+    def create_and_set_result_package(self, wtr):
+        task_result_manager = self.task_manager.task_result_manager
+
+        wtr.result_secret = task_result_manager.gen_secret()
+        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        wtr.result_hash, wtr.result_path, wtr.package_sha1 = result
+
     def send_task_failed(self, subtask_id, task_id, err_msg, owner_address,
                          owner_port, owner_key_id, owner, node_name):
-        Trust.REQUESTED.decrease(owner_key_id)
+
         if subtask_id not in self.failures_to_send:
+            Trust.REQUESTED.decrease(owner_key_id)
+
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
                 task_id, subtask_id, err_msg, owner_address, owner_port,
                 owner_key_id, owner)
@@ -358,8 +369,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
                 self.task_keeper.add_task_header(th_dict_repr)
 
             return True
-        except Exception as err:
-            logger.warning("Wrong task header received: {}".format(err))
+        except Exception:  # pylint: disable=broad-except
+            logger.warning("Wrong task header received", exc_info=True)
             return False
 
     def verify_header_sig(self, th_dict_repr):
@@ -368,8 +379,8 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         _key = th_dict_repr["task_owner_key_id"]
         return self.verify_sig(_sig, _bin, _key)
 
-    def remove_task_header(self, task_id):
-        self.task_keeper.remove_task_header(task_id)
+    def remove_task_header(self, task_id) -> bool:
+        return self.task_keeper.remove_task_header(task_id)
 
     def add_task_session(self, subtask_id, session):
         self.task_sessions[subtask_id] = session
@@ -438,10 +449,6 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
         self.task_keeper.change_config(config_desc)
-
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_manager.change_timeouts(task_id, full_task_timeout,
-                                          subtask_timeout)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -951,13 +958,13 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
 
 
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type,
-                 computing_time, last_sending_trial, delay_time, owner_address,
-                 owner_port, owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, result, result_type, computing_time,
+                 last_sending_trial, delay_time, owner_address, owner_port,
+                 owner_key_id, owner, result_path=None, result_hash=None,
+                 result_secret=None, package_sha1=None):
+
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.result = result
-        self.result_type = result_type
         self.computing_time = computing_time
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
@@ -965,6 +972,14 @@ class WaitingTaskResult(object):
         self.owner_port = owner_port
         self.owner_key_id = owner_key_id
         self.owner = owner
+
+        self.result = result
+        self.result_type = result_type
+        self.result_path = result_path
+        self.result_hash = result_hash
+        self.result_secret = result_secret
+        self.package_sha1 = package_sha1
+
         self.already_sending = False
 
 
