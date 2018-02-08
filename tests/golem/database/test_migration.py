@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -96,19 +97,6 @@ class TestCreateMigration(TempDirFixture):
         assert os.path.exists(output_file)
 
 
-class FailingField(CharField):
-
-    def db_value(self, value):
-        raise RuntimeError("db_value test error")
-
-    def python_value(self, value):
-        raise RuntimeError("python_value test error")
-
-
-class FailingModel(BaseModel):
-    value = FailingField()
-
-
 class ExtraTestModel(BaseModel):
     value = CharField()
 
@@ -127,9 +115,31 @@ def collect_all_db_data(models):
     return {m: set(m.select().execute()) for m in models}
 
 
-class TestMigration(DatabaseFixture):
+def unregister_extra_models():
+    if hasattr(golem.model, 'ExtraTestModel'):
+        delattr(golem.model, 'ExtraTestModel')
+    if hasattr(golem.model, 'SecondExtraTestModel'):
+        delattr(golem.model, 'SecondExtraTestModel')
 
-    def test_upgrade_downgrade_twice(self):
+    if ExtraTestModel in golem.model.DB_MODELS:
+        golem.model.DB_MODELS.remove(ExtraTestModel)
+    if SecondExtraTestModel in golem.model.DB_MODELS:
+        golem.model.DB_MODELS.remove(SecondExtraTestModel)
+
+
+@contextmanager
+def schema_version_ctx(*cleanup_fns):
+    initial_version = Database.SCHEMA_VERSION
+    yield
+    Database.SCHEMA_VERSION = initial_version
+
+    for cleanup_fn in cleanup_fns or []:
+        cleanup_fn()
+
+
+class TestMigrationUpgradeDowngrade(DatabaseFixture):
+
+    def test_upgrade_twice(self):
 
         data_dir = self.tempdir
         out_dir = os.path.join(data_dir, 'schemas')
@@ -149,7 +159,7 @@ class TestMigration(DatabaseFixture):
 
         from_version = Database.SCHEMA_VERSION
 
-        try:
+        with schema_version_ctx(unregister_extra_models):
 
             # -- Add a model and bump version (1)
             golem.model.ExtraTestModel = ExtraTestModel
@@ -209,21 +219,10 @@ class TestMigration(DatabaseFixture):
             assert self.database.get_user_version() == from_version
             assert current_state == initial_state
 
-        finally:
-            # -- Revert version and models
-            Database.SCHEMA_VERSION = from_version
 
-            if hasattr(golem.model, 'ExtraTestModel'):
-                delattr(golem.model, 'ExtraTestModel')
-            if hasattr(golem.model, 'SecondExtraTestModel'):
-                delattr(golem.model, 'SecondExtraTestModel')
+class TestMigrationAlteredModel(DatabaseFixture):
 
-            if ExtraTestModel in golem.model.DB_MODELS:
-                golem.model.DB_MODELS.remove(ExtraTestModel)
-            if SecondExtraTestModel in golem.model.DB_MODELS:
-                golem.model.DB_MODELS.remove(SecondExtraTestModel)
-
-    def test_alter_model_upgrade_downgrade(self):
+    def test_add_remove_property(self):
 
         data_dir = self.tempdir
         out_dir = os.path.join(data_dir, 'schemas')
@@ -235,10 +234,12 @@ class TestMigration(DatabaseFixture):
         create_migration(data_dir, out_dir)
         assert len(os.listdir(out_dir)) == 1
 
-        extra_field = CharField(default='default', null=True)
+        extra_field = CharField(default='default', null=False)
         from_version = Database.SCHEMA_VERSION
 
-        try:
+        with schema_version_ctx(lambda: Account._meta.
+                                remove_field('extra_field')):
+
             # -- Add an extra field, increase version
             Database.SCHEMA_VERSION = from_version + 1
             extra_field.add_to_class(Account, 'extra_field')
@@ -253,9 +254,9 @@ class TestMigration(DatabaseFixture):
             # -- Upgrade
             migrate_schema(self.database, from_version, from_version + 1,
                            migrate_dir=out_dir)
-
-            assert all(hasattr(a, 'extra_field')
-                       for a in Account.select().execute())
+            account_columns = self.database.db.get_columns('account')
+            assert any(column.name == 'extra_field'
+                       for column in account_columns)
 
             # -- Downgrade
             Account._meta.remove_field('extra_field')
@@ -264,10 +265,6 @@ class TestMigration(DatabaseFixture):
             migrate_schema(self.database, from_version + 1, from_version,
                            migrate_dir=out_dir)
 
-            assert all(not hasattr(a, 'extra_field')
-                       for a in Account.select().execute())
-
-        finally:
-            # -- Revert version and models
-            Database.SCHEMA_VERSION = from_version
-            Account._meta.remove_field('extra_field')
+            account_columns = self.database.db.get_columns('account')
+            assert all(column.name != 'extra_field'
+                       for column in account_columns)

@@ -39,12 +39,10 @@ def migrate_schema(database: 'Database',
 
         # Teach migrator previous changes
         for script in previous_scripts:
-            router.run_one(script, migrator, fake=True, downgrade=downgrade)
+            router.run_one(script, migrator, fake=True)
 
         for script in scripts:
             router.run_one(script, migrator, fake=False, downgrade=downgrade)
-            # Teach migrator the changes
-            router.run_one(script, migrator, fake=True, downgrade=downgrade)
 
     database.set_user_version(to_version)
 

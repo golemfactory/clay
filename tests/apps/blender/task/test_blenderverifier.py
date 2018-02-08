@@ -1,11 +1,9 @@
 import os
-import mock
+from unittest import mock
 
-from golem.core.common import timeout_to_deadline
-
-from apps.blender.task.verifier import BlenderVerifier, logger,\
+from apps.blender.task.verifier import BlenderVerifier, logger, \
     VerificationContext
-
+from golem.core.common import timeout_to_deadline
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.ci import ci_skip
@@ -63,6 +61,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
         verify_ctx = VerificationContext([[75, 34]], 0, self.tempdir)
         crop_path = os.path.join(self.tempdir, str(0))
         bv.current_results_file = os.path.join(self.tempdir, "none.png")
+        open(bv.current_results_file, mode='a').close()
         if not os.path.exists(crop_path):
             os.mkdir(crop_path)
         with self.assertLogs(logger, level="INFO") as logs:

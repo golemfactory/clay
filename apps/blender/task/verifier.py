@@ -6,6 +6,7 @@ import posixpath
 from collections import Callable
 from threading import Lock
 from functools import partial
+from shutil import copy
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.cropgenerator import generate_crops
@@ -177,13 +178,16 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         output_dir = os.path.join(work_dir, "output")
         logs_dir = os.path.join(work_dir, "logs")
+        resource_dir = os.path.join(work_dir, "resources")
 
+        if not os.path.exists(resource_dir):
+            os.mkdir(resource_dir)
         if not os.path.exists(logs_dir):
             os.mkdir(logs_dir)
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
 
-        resource_path = os.path.dirname(self.current_results_file)
+        copy(self.current_results_file, resource_dir)
 
         params = dict()
 
@@ -206,7 +210,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             src_code = ""
 
         with DockerJob(di, src_code, params,
-                       resource_path, work_dir, output_dir,
+                       resource_dir, work_dir, output_dir,
                        host_config=None) as job:
             job.start()
             was_failure = job.wait()

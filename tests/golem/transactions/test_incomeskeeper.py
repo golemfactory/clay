@@ -39,7 +39,6 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
             subtask_id=subtask_id,
-            p2p_node=Node(),
             value=value
         )
         with db.atomic():
@@ -96,7 +95,6 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
 
         expected_income = self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
-            p2p_node=Node(),
             subtask_id=subtask_id,
             value=value
         )
