@@ -11,16 +11,21 @@
     - name: python3
     - name: git
       params: '"/GitAndUnixToolsOnPath"'
-    - name: visualstudio2017community
-    - name: microsoft-visual-cpp-build-tools
-    - name: innosetup
 
+- win_chocolatey:
+    name: "{{ item.name }}"
+    params: "{{ item.params|default('') }}"
+    timeout: 15000
+  with_items:
+    - name: visualstudio2017community
 
 - win_chocolatey:
     name: "{{ item.name }}"
     params: "{{ item.params|default('') }}"
     timeout: 5400
   with_items:
+    - name: microsoft-visual-cpp-build-tools
+    - name: innosetup
     - name: visualstudio2017-workload-nativedesktop
       params: "--includeOptional"
 
@@ -80,7 +85,7 @@
 
 - name: create service for the buildbot worker
   win_shell:
-    py -2 C:\Python27\Scripts\buildbot_worker_windows_service.exe
+    py -3 C:\Python36\Scripts\buildbot_worker_windows_service.exe
       --user .\buildbot-worker
       --password
       "{{ vault_windows_worker_password }}"
