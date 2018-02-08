@@ -16,6 +16,7 @@
 
 - win_chocolatey:
     name: visualstudio2017community
+    skip_scripts: yes
     timeout: 15000
 
 - win_chocolatey:
