@@ -515,8 +515,11 @@ class Client(HardwarePresetsMixin):
                                        tmp_dir=tmp_dir,
                                        resources=task.get_resources())
 
-        def add_task(result):
-            task_state.resource_hash = result[0]
+        def add_task(resource_server_result):
+            resource_manager_result, package_hash = resource_server_result
+            task_state.package_hash = package_hash
+            task_state.resource_hash = resource_manager_result[0]
+
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 

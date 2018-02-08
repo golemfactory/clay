@@ -65,16 +65,16 @@ class BaseResourceServer(object):
         _result.addErrback(self._add_task_error)
 
         resource_dir = self.resource_manager.storage.get_dir(task_id)
-        package_path = os.path.join(resource_dir,
-                                    self.packager.package_name(task_id))
+        package_path = os.path.join(resource_dir, task_id)
 
-        def _add_task_resources(*_):
-            _deferred = self.resource_manager.add_task([package_path], task_id)
-            _deferred.chainDeferred(_result)
+        def _add_task_resources(packager_result):
+            path, sha1 = packager_result
+            _deferred = self.resource_manager.add_task([path], task_id)
+            _deferred.addCallback(lambda r: _result.callback((r, sha1)))
+            _deferred.addErrback(_result.errback)
 
         async_req = AsyncRequest(self.packager.create, package_path, files)
-        _create = async_run(async_req)
-        _create.addCallbacks(_add_task_resources, _result.errback)
+        async_run(async_req, _add_task_resources, _result.errback)
 
         return _result
 
