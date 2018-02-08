@@ -49,14 +49,6 @@ def migrate(migrator, _database, **_kwargs):
             db_table = "account"
 
     @migrator.create_model
-    class BaseModel(pw.Model):
-        created_date = pw.DateTimeField(default=dt.datetime.now)
-        modified_date = pw.DateTimeField(default=dt.datetime.now)
-
-        class Meta:
-            db_table = "basemodel"
-
-    @migrator.create_model
     class ExpectedIncome(pw.Model):
         created_date = pw.DateTimeField(default=dt.datetime.now)
         modified_date = pw.DateTimeField(default=dt.datetime.now)
@@ -243,5 +235,4 @@ def rollback(migrator, _database, **_kwargs):
     migrator.remove_model('globalrank')
     migrator.remove_model('generickeyvalue')
     migrator.remove_model('expectedincome')
-    migrator.remove_model('basemodel')
     migrator.remove_model('account')
