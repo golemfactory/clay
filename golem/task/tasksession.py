@@ -481,12 +481,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
+            # FIXME: uncomment after upgrading to Golem-Messages > 1.7.0
+            # task_state = self.task_manager.tasks_states[ctd['task_id']]
             msg = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
                 requestor_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
+                # package_hash='sha1:' + task_state.package_hash,
             )
             self.send(msg)
         elif wait:

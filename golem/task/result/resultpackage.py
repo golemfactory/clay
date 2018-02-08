@@ -1,11 +1,13 @@
 import binascii
 import uuid
 import zipfile
+from typing import Iterable, Tuple, Optional
 
 import abc
 import os
 
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.fileshelper import common_dir, relative_path
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
@@ -32,17 +34,21 @@ def backup_rename(file_path, max_iterations=100):
 
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, cbor_files=None,
-               sha1_path=None, **kwargs):
+    def create(self,
+               output_path: str,
+               disk_files: Iterable[str] = None,
+               cbor_files: Iterable[Tuple[str, str]] = None,
+               sha1_path: Optional[str] = None,
+               **kwargs):
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
 
+        disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
 
             if disk_files:
-                for file_path in disk_files:
-                    file_name = os.path.basename(file_path)
+                for file_path, file_name in disk_files.items():
                     self.write_disk_file(of, file_path, file_name)
 
             if cbor_files:
@@ -69,6 +75,19 @@ class Packager(object):
         with open(sha1_path, 'w') as sf:
             sf.write(pkg_sha1)
         return pkg_sha1
+
+    @classmethod
+    def _prepare_file_dict(cls, disk_files):
+        if len(disk_files) == 1:
+            disk_file = next(iter(disk_files))
+            prefix = os.path.dirname(disk_file)
+        else:
+            prefix = common_dir(disk_files)
+
+        return {
+            absolute_path: relative_path(absolute_path, prefix)
+            for absolute_path in disk_files
+        }
 
     @abc.abstractmethod
     def extract(self, input_path, output_dir=None, **kwargs):
@@ -118,6 +137,8 @@ class ZipPackager(Packager):
 
     @classmethod
     def package_name(cls, file_path):
+        if file_path.lower().endswith('.zip'):
+            return file_path
         return file_path + '.zip'
 
 
@@ -130,7 +151,12 @@ class EncryptingPackager(Packager):
         self._packager = self.creator_class()
         self._secret = secret
 
-    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
+    def create(self,
+               output_path: str,
+               disk_files: Iterable[str] = None,
+               cbor_files: Iterable[Tuple[str, str]] = None,
+               **kwargs):
+
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
 
@@ -162,8 +188,8 @@ class EncryptingPackager(Packager):
     def write_disk_file(self, obj, file_path, file_name):
         self._packager.write_disk_file(obj, file_path, file_name)
 
-    def write_cbor_file(self, obj, file_name, cbord_data):
-        self._packager.write_cbor_file(obj, file_name, cbord_data)
+    def write_cbor_file(self, obj, file_name, cbor_data):
+        self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
 class TaskResultDescriptor(object):
@@ -184,8 +210,10 @@ class EncryptingTaskResultPackager(EncryptingPackager):
     descriptor_file_name = '.package_desc'
     result_file_name = '.result_cbor'
 
-    def create(self, output_path,
-               disk_files=None, cbor_files=None,
+    def create(self,
+               output_path: str,
+               disk_files: Iterable[str] = None,
+               cbor_files: Iterable[Tuple[str, str]] = None,
                node=None, task_result=None, **kwargs):
 
         disk_files, cbor_files = self.__collect_files(task_result,

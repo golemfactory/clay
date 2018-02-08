@@ -44,14 +44,20 @@ from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
+
     try:
         result = req.method(*req.args, **req.kwargs)
-    # pylint: disable=broad-except
-    except Exception as e:
-        error(e)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
     else:
-        if success:
-            success(result)
+        deferred.callback(result)
+
+    return deferred
 
 
 def random_hex_str() -> str:
