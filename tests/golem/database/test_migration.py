@@ -1,15 +1,17 @@
+import functools
 from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import patch
 
 import os
+
 from peewee import CharField
 
 import golem
 from golem.database import Database
 from golem.database.migration.create import create_from_commandline, \
     create_migration
-from golem.database.migration.migrate import migrate_schema
+from golem.database.migration.migrate import migrate_schema, choose_scripts
 from golem.model import Account, BaseModel, DB_MODELS, Stats
 from golem.testutils import DatabaseFixture, TempDirFixture
 
@@ -266,3 +268,88 @@ class TestMigrationAlteredModel(DatabaseFixture):
             account_columns = self.database.db.get_columns('account')
             assert all(column.name != 'extra_field'
                        for column in account_columns)
+
+
+class TestSavedMigrations(TempDirFixture):
+
+    @contextmanager
+    def database_context(self):
+        from golem.model import db
+        version = Database.SCHEMA_VERSION
+        database = Database(db, self.tempdir, DB_MODELS, migrate=False)
+        yield database
+        Database.SCHEMA_VERSION = version
+        database.close()
+
+    @patch('golem.database.Database._create_tables')
+    def test_invalid(self, create_db):
+        with self.database_context() as database:
+            create_db.reset_mock()
+            assert all(not m.table_exists() for m in DB_MODELS)
+
+            database._migrate_schema(0, Database.SCHEMA_VERSION)
+            assert create_db.called
+
+    @patch('golem.database.Database._create_tables')
+    def test_10_to_latest(self, _):
+        with self.database_context() as database:
+            assert all(not m.table_exists() for m in DB_MODELS)
+
+            database._migrate_schema(9, 10)
+            assert database.get_user_version() == 10
+            database._migrate_schema(10, Database.SCHEMA_VERSION)
+            assert database.get_user_version() == Database.SCHEMA_VERSION
+
+            assert all(m.table_exists() for m in DB_MODELS)
+
+    def test_same_version(self):
+        with self.database_context() as database:
+            database._migrate_schema(Database.SCHEMA_VERSION,
+                                     Database.SCHEMA_VERSION)
+            assert all(m.table_exists() for m in DB_MODELS)
+
+
+def generate(start, stop):
+    return ['{:03}_script'.format(i) for i in range(start, stop + 1)]
+
+
+def choose(scripts, start, stop):
+    return choose_scripts(scripts, start, stop)[0]
+
+
+class TestChooseMigrationScripts(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.scripts = generate(0, 30)
+
+    def test(self):
+        get = functools.partial(choose, self.scripts)
+
+        assert get(-10, -10) == []
+        assert get(-10, -2) == []
+        assert get(-10, 0) == []
+        assert get(1, 10) == generate(2, 10)
+        assert get(7, 12) == generate(8, 12)
+        assert get(1, 40) == generate(2, 30)
+        assert get(7, 12) == generate(8, 12)
+        assert get(29, 40) == generate(30, 30)
+        assert get(40, 40) == []
+        assert get(41, 42) == []
+
+    def test_downgrade(self):
+        get = functools.partial(choose, self.scripts)
+
+        def gen_rev(s, e):
+            return generate(s, e)[::-1]
+
+        assert get(-10, -10) == []
+        assert get(-10, -2) == []
+        assert get(-10, 0) == []
+        assert get(10, 1) == gen_rev(2, 10)
+        assert get(12, 7) == gen_rev(8, 12)
+        assert get(40, 1) == gen_rev(2, 30)
+        assert get(12, 7) == gen_rev(8, 12)
+        assert get(40, 29) == gen_rev(30, 30)
+        assert get(40, 40) == []
+        assert get(42, 41) == []
