@@ -25,7 +25,7 @@ from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
-from golem.task.taskbase import ResultType
+from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, get_task_message
@@ -658,6 +658,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.task_manager = None
         assert not self.task_session._subtask_to_task('sid_1', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
+
+    def test_react_to_cannot_assign_task(self):
+        task_keeper = CompTaskKeeper(self.new_path)
+        task_keeper.add_request(TaskHeader(environment='DEFAULT',
+                                           node_name="ABC",
+                                           task_id="abc",
+                                           task_owner_address="10.10.10.10",
+                                           task_owner_port=2311,
+                                           task_owner_key_id="KEY_ID"), 20)
+        assert task_keeper.active_tasks["abc"].requests == 1
+        self.task_session.task_manager.comp_task_keeper = task_keeper
+        msg_cat = message.CannotAssignTask(task_id="abc")
+        self.task_session._react_to_cannot_assign_task(msg_cat)
+        assert task_keeper.active_tasks["abc"].requests == 0
 
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
