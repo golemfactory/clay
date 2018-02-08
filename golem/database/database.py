@@ -1,6 +1,6 @@
 import logging
-
 from os import path
+
 from peewee import SqliteDatabase
 from playhouse.shortcuts import RetryOperationalError
 
