@@ -37,6 +37,33 @@ class PyTest(test):
         sys.exit(errno)
 
 
+class DatabaseMigration(Command):
+    description = "create database schema migration scripts"
+    user_options = [
+        ('force', 'f', 're-create last schema migration script')
+    ]
+
+    def initialize_options(self):
+        self.force = False
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        from golem.database.migration.create import create_migration
+
+        try:
+            migration_script_path = create_migration(force=self.force)
+        except Exception:  # pylint: disable=broad-except
+            print("FATAL: cannot create a database migration script")
+            raise
+
+        if migration_script_path:
+            print("Database migration script has been created at {}.\n"
+                  "Please check and edit the file before committing."
+                  .format(migration_script_path))
+
+
 class PyInstaller(Command):
     description = "run pyinstaller and packaging actions"
     user_options = [
