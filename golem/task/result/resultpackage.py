@@ -7,10 +7,9 @@ import abc
 import os
 
 from golem.core.fileencrypt import AESFileEncryptor
-from golem.core.fileshelper import common_dir
+from golem.core.fileshelper import common_dir, relative_path
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
-from golem.resource.hyperdrive.resource import relative_path
 from golem.task.taskbase import ResultType
 
 

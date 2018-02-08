@@ -4,7 +4,7 @@ import shutil
 from threading import Lock
 from typing import List
 
-from golem.core.fileshelper import copy_file_tree
+from golem.core.fileshelper import copy_file_tree, relative_path
 
 
 def split_path(path):
@@ -17,19 +17,6 @@ def norm_path(path):
     while split and split[0] in ['.', '..']:
         split = split[1:]
     return os.path.join(*split) if split else ''
-
-
-def relative_path(path, prefix):
-    if path.startswith(prefix):
-        return_path = path.replace(prefix, '', 1)
-    else:
-        return_path = path
-
-    if prefix:
-        while return_path and return_path.startswith(os.path.sep):
-            return_path = return_path[len(os.path.sep):]
-
-    return return_path
 
 
 class ResourceError(RuntimeError):
