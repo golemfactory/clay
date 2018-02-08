@@ -55,7 +55,6 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, content_hash, task_id, subtask_id)
-            os.remove(file_path)
 
         resource = content_hash, [file_name]
         self.resource_manager.pull_resource(resource, task_id,

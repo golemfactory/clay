@@ -6,7 +6,7 @@ from unittest.mock import Mock
 from golem.core.fileencrypt import FileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultpackage import EncryptingPackager, \
-    EncryptingTaskResultPackager, ExtractedPackage, ZipPackager
+    EncryptingTaskResultPackager, ExtractedPackage, ZipPackager, backup_rename
 from golem.task.taskbase import ResultType
 from golem.testutils import TempDirFixture
 
@@ -74,7 +74,6 @@ class TestZipPackager(PackageDirContentsFixture):
         path, _ = zp.create(self.out_path, self.disk_files, self.memory_files)
 
         self.assertTrue(os.path.exists(path))
-        os.remove(path)
 
     def testExtract(self):
         zp = ZipPackager()
@@ -164,3 +163,53 @@ class TestExtractedPackage(PackageDirContentsFixture):
 
         for filename in extra_data.get('result', []):
             self.assertTrue(os.path.exists(filename))
+
+
+class TestBackupRename(TempDirFixture):
+
+    FILE_CONTENTS = 'Test file contents'
+
+    def test(self):
+        file_dir = os.path.join(self.path, 'directory')
+        file_path = os.path.join(file_dir, 'file')
+        os.makedirs(file_dir, exist_ok=True)
+
+        def create_file():
+            with open(file_path, 'w') as f:
+                f.write(self.FILE_CONTENTS)
+
+        def file_count():
+            return len(os.listdir(file_dir))
+
+        def file_contents(num):
+            with open(file_path + '.{}'.format(num)) as f:
+                return f.read().strip()
+
+        backup_rename(file_path)
+        assert file_count() == 0
+
+        create_file()
+
+        assert file_count() == 1
+        backup_rename(file_path, max_iterations=2)
+        assert file_count() == 1
+        assert file_contents(1) == self.FILE_CONTENTS
+
+        create_file()
+
+        backup_rename(file_path, max_iterations=2)
+        assert file_count() == 2
+        assert file_contents(1) == self.FILE_CONTENTS
+        assert file_contents(2) == self.FILE_CONTENTS
+
+        create_file()
+
+        backup_rename(file_path, max_iterations=2)
+        assert file_count() == 3
+
+        files = os.listdir(file_dir)
+        files.remove('file.1')
+        files.remove('file.2')
+
+        with open(os.path.join(file_dir, files[0])) as f:
+            assert f.read().strip() == self.FILE_CONTENTS

@@ -1,29 +1,53 @@
 import binascii
 import uuid
 import zipfile
+from typing import Iterable, Tuple, Optional
 
 import abc
 import os
 
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.fileshelper import common_dir, relative_path
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
 
 
+def backup_rename(file_path, max_iterations=100):
+    if not os.path.exists(file_path):
+        return
+
+    name = None
+    counter = 0
+
+    while counter < max(1, max_iterations):
+        counter += 1
+        name = file_path + '.{}'.format(counter)
+
+        if not os.path.exists(name):
+            break
+        elif counter == max_iterations:
+            name = file_path + '.{}'.format(uuid.uuid4())
+
+    os.rename(file_path, name)
+
+
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, cbor_files=None,
-               sha1_path=None, **kwargs):
+    def create(self,
+               output_path: str,
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **_kwargs):
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
 
+        disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
 
             if disk_files:
-                for file_path in disk_files:
-                    file_name = os.path.basename(file_path)
+                for file_path, file_name in disk_files.items():
                     self.write_disk_file(of, file_path, file_name)
 
             if cbor_files:
@@ -31,7 +55,7 @@ class Packager(object):
                     cbor_data = CBORSerializer.dumps(file_data)
                     self.write_cbor_file(of, file_name, cbor_data)
 
-        pkg_sha1 = self.write_sha1(output_path, sha1_path or output_path)
+        pkg_sha1 = self.write_sha1(output_path, output_path)
         return output_path, pkg_sha1
 
     @classmethod
@@ -51,12 +75,29 @@ class Packager(object):
             sf.write(pkg_sha1)
         return pkg_sha1
 
+    @classmethod
+    def _prepare_file_dict(cls, disk_files):
+        if len(disk_files) == 1:
+            disk_file = next(iter(disk_files))
+            prefix = os.path.dirname(disk_file)
+        else:
+            prefix = common_dir(disk_files)
+
+        return {
+            absolute_path: relative_path(absolute_path, prefix)
+            for absolute_path in disk_files
+        }
+
     @abc.abstractmethod
     def extract(self, input_path, output_dir=None, **kwargs):
         pass
 
     @abc.abstractmethod
     def generator(self, output_path):
+        pass
+
+    @abc.abstractmethod
+    def package_name(self, file_path):
         pass
 
     @abc.abstractmethod
@@ -93,53 +134,60 @@ class ZipPackager(Packager):
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
 
+    @classmethod
+    def package_name(cls, file_path):
+        if file_path.lower().endswith('.zip'):
+            return file_path
+        return file_path + '.zip'
+
 
 class EncryptingPackager(Packager):
 
     creator_class = ZipPackager
     encryptor_class = AESFileEncryptor
 
-    def __init__(self, key_or_secret):
-
+    def __init__(self, secret):
         self._packager = self.creator_class()
-        self.key_or_secret = key_or_secret
+        self._secret = secret
 
-    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
+    def create(self,
+               output_path: str,
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **_kwargs):
 
-        output_dir = os.path.dirname(output_path)
-        pkg_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".pkg")
-        out_file_path, pkg_sha1 = super().create(pkg_file_path,
+        tmp_file_path = self.package_name(output_path)
+        backup_rename(tmp_file_path)
+
+        pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
                                                  disk_files=disk_files,
-                                                 cbor_files=cbor_files,
-                                                 sha1_path=output_path)
+                                                 cbor_files=cbor_files)
 
-        self.encryptor_class.encrypt(out_file_path,
-                                     output_path,
-                                     self.key_or_secret)
+        self.encryptor_class.encrypt(pkg_file_path, output_path,
+                                     secret=self._secret)
         return output_path, pkg_sha1
 
     def extract(self, input_path, output_dir=None, **kwargs):
+        tmp_file_path = self.package_name(input_path)
+        backup_rename(tmp_file_path)
 
-        input_dir = os.path.dirname(input_path)
-        tmp_file_path = os.path.join(input_dir, str(uuid.uuid4()) + ".dec")
-
-        self.encryptor_class.decrypt(input_path,
-                                     tmp_file_path,
-                                     self.key_or_secret)
-
+        self.encryptor_class.decrypt(input_path, tmp_file_path,
+                                     secret=self._secret)
         os.remove(input_path)
-        os.rename(tmp_file_path, input_path)
 
-        return self._packager.extract(input_path, output_dir=output_dir)
+        return self._packager.extract(tmp_file_path, output_dir=output_dir)
 
     def generator(self, output_path):
         return self._packager.generator(output_path)
 
+    def package_name(self, file_path):
+        return self.creator_class.package_name(file_path)
+
     def write_disk_file(self, obj, file_path, file_name):
         self._packager.write_disk_file(obj, file_path, file_name)
 
-    def write_cbor_file(self, obj, file_name, cbord_data):
-        self._packager.write_cbor_file(obj, file_name, cbord_data)
+    def write_cbor_file(self, obj, file_name, cbor_data):
+        self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
 class TaskResultDescriptor(object):
@@ -160,10 +208,14 @@ class EncryptingTaskResultPackager(EncryptingPackager):
     descriptor_file_name = '.package_desc'
     result_file_name = '.result_cbor'
 
-    def create(self, output_path,
-               disk_files=None, cbor_files=None,
-               node=None, task_result=None, **kwargs):
+    def create(self,
+               output_path: str,
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **kwargs):
 
+        node = kwargs.get('node')
+        task_result = kwargs.get('task_result')
         disk_files, cbor_files = self.__collect_files(task_result,
                                                       disk_files=disk_files,
                                                       cbor_files=cbor_files)
@@ -184,7 +236,6 @@ class EncryptingTaskResultPackager(EncryptingPackager):
             with open(descriptor_path, 'rb') as src:
                 descriptor = CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
-
         except Exception as e:
             raise ValueError('Invalid package descriptor {}'.format(e))
 
