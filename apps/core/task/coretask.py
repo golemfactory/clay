@@ -17,7 +17,6 @@ from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
-from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import ComputerAdapter
@@ -334,7 +333,10 @@ class CoreTask(Task):
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         ctd['working_directory'] = working_directory
-        ctd['docker_images'] = self.header.docker_images
+        if self.header.docker_images:
+            ctd['docker_images'] = [
+                di.to_dict() for di in self.header.docker_images
+            ]
         ctd['deadline'] = timeout_to_deadline(self.header.subtask_timeout)
         ctd['task_owner'] = self.header.task_owner.to_dict()
         ctd['environment'] = self.header.environment

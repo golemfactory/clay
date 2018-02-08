@@ -591,7 +591,7 @@ class TestMonitoringPublisherService(TestWithReactor):
         service._run()
 
         assert not log.debug.called
-        assert send.call_count == 2
+        assert send.call_count == 3
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):
