@@ -2,6 +2,8 @@
     file: site_settings.yml
     name: site_settings
 
+- name: test if we have winrm connection
+  win_ping:
 
 - win_chocolatey:
     name: python3
