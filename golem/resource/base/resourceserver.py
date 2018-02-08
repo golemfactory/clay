@@ -120,7 +120,7 @@ class BaseResourceServer(object):
         download_statuses = [TransferStatus.idle, TransferStatus.failed]
         pending = dict(self.pending_resources)
 
-        for task_id, entries in pending.items():
+        for _, entries in pending.items():
             for entry in entries:
 
                 if entry.status not in download_statuses:
@@ -162,8 +162,8 @@ class BaseResourceServer(object):
 
         async_req = AsyncRequest(extract_packages, resource[1])
         async_run(async_req).addCallbacks(
-            lambda _:  self.client.task_resource_collected(task_id,
-                                                           unpack_delta=False),
+            lambda _: self.client.task_resource_collected(task_id,
+                                                          unpack_delta=False),
             lambda e: self._download_error(e, resource, task_id)
         )
 

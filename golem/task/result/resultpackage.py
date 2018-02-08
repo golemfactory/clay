@@ -36,10 +36,9 @@ class Packager(object):
 
     def create(self,
                output_path: str,
-               disk_files: Iterable[str] = None,
-               cbor_files: Iterable[Tuple[str, str]] = None,
-               sha1_path: Optional[str] = None,
-               **kwargs):
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **_kwargs):
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
@@ -56,7 +55,7 @@ class Packager(object):
                     cbor_data = CBORSerializer.dumps(file_data)
                     self.write_cbor_file(of, file_name, cbor_data)
 
-        pkg_sha1 = self.write_sha1(output_path, sha1_path or output_path)
+        pkg_sha1 = self.write_sha1(output_path, output_path)
         return output_path, pkg_sha1
 
     @classmethod
@@ -153,17 +152,16 @@ class EncryptingPackager(Packager):
 
     def create(self,
                output_path: str,
-               disk_files: Iterable[str] = None,
-               cbor_files: Iterable[Tuple[str, str]] = None,
-               **kwargs):
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **_kwargs):
 
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
 
         pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
                                                  disk_files=disk_files,
-                                                 cbor_files=cbor_files,
-                                                 sha1_path=output_path)
+                                                 cbor_files=cbor_files)
 
         self.encryptor_class.encrypt(pkg_file_path, output_path,
                                      secret=self._secret)
@@ -212,10 +210,12 @@ class EncryptingTaskResultPackager(EncryptingPackager):
 
     def create(self,
                output_path: str,
-               disk_files: Iterable[str] = None,
-               cbor_files: Iterable[Tuple[str, str]] = None,
-               node=None, task_result=None, **kwargs):
+               disk_files: Optional[Iterable[str]] = None,
+               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
+               **kwargs):
 
+        node = kwargs.get('node')
+        task_result = kwargs.get('task_result')
         disk_files, cbor_files = self.__collect_files(task_result,
                                                       disk_files=disk_files,
                                                       cbor_files=cbor_files)
