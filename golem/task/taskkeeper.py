@@ -44,6 +44,12 @@ class CompTaskInfo:
             self.requests
         )
 
+    def check_deadline(self, deadline):
+        now_ = common.get_timestamp_utc()
+        if now_ > deadline or deadline > now_ + self.header.subtask_timeout:
+            return False
+        return True
+
 
 class CompSubtaskInfo:
     def __init__(self, subtask_id):
@@ -153,7 +159,7 @@ class CompTaskKeeper:
                         "Request for this task was not send.")
 
             return False
-        if not self.check_deadline(comp_task_def['deadline'], task):
+        if not task.check_deadline(comp_task_def['deadline']):
             msg = "Request for this task has wrong deadline %r" % \
                   comp_task_def['deadline']
             logger.info(not_accepted_message, *log_args, msg)
@@ -166,13 +172,6 @@ class CompTaskKeeper:
             msg = "Expected environment: %s, received: %s." % (
                 task.header.environment, comp_task_def['environment'])
             logger.info(not_accepted_message, *log_args, msg)
-            return False
-        return True
-
-    @staticmethod
-    def check_deadline(deadline, task):
-        now_ = common.get_timestamp_utc()
-        if now_ > deadline or deadline > now_ + task.header.subtask_timeout:
             return False
         return True
 
