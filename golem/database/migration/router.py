@@ -18,8 +18,8 @@ class Router(_Router):
             self._router = Router.__new__(Router)
             self._router.logger = log
             self._router.migrate_dir = migrate_dir
-            self._router._schema_version = None
-            self._router._template = None
+            self._router.schema_version = None
+            self._router.template = None
 
         @property
         def scripts(self):
@@ -30,6 +30,7 @@ class Router(_Router):
             files = self.scripts
             if files:
                 return self.version_from_name(files[-1])
+            return None
 
         @property
         def last_script(self):
@@ -52,8 +53,8 @@ class Router(_Router):
                  **kwargs):
 
         super().__init__(database, migrate_dir, **kwargs)
-        self._schema_version = schema_version
-        self._template = template
+        self.schema_version = schema_version
+        self.template = template
 
     @property
     def environment(self):
@@ -75,11 +76,12 @@ class Router(_Router):
 
         todo = self.todo
         if not todo:
-            return self._schema_version
+            return self.schema_version
 
         version = self.Environment.version_from_name(todo[-1])
         if version:
             return version + 1
+        return None
 
     def compile(self, name: str, migrate: str = '', rollback: str = '', _=None):
         """Compile the migration script template."""
@@ -90,7 +92,7 @@ class Router(_Router):
 
         with open(path, 'w') as f:
             params = dict(migrate=migrate, rollback=rollback, name=filename)
-            formatted = self._template.format(**params)
+            formatted = self.template.format(**params)
             f.write(formatted)
 
         return name

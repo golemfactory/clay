@@ -10,7 +10,9 @@ from golem.database.migration import default_migrate_dir, patch_peewee
 from golem.database.migration.router import Router
 from golem.model import DB_MODELS, db
 
-TEMPLATE = """SCHEMA_VERSION = {schema_version}
+TEMPLATE = """# pylint: disable=no-member
+# pylint: disable=too-few-public-methods
+SCHEMA_VERSION = {schema_version}
 from {model_package} import *  # pylint: disable=unused-import
 
 {template}
@@ -49,7 +51,7 @@ def create_migration(data_dir: Optional[str] = None,
             os.unlink(script_path)
         else:
             print('Migration scripts are up-to-date')
-            return
+            return None
 
     print('> database:   {}'.format(database.db.database))
     print('> output dir: {}'.format(migrate_dir))

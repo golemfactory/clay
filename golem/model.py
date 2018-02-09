@@ -92,7 +92,7 @@ class EnumField(IntegerField):
 class StringEnumField(CharField):
     """ Database field that maps enum types to strings."""
 
-    def __init__(self, enum_type, max_length=255, *args, **kwargs):
+    def __init__(self, enum_type, *args, max_length=255, **kwargs):
         super().__init__(max_length, *args, **kwargs)
         self.enum_type = enum_type
 

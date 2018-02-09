@@ -13,10 +13,27 @@ def migrate_schema(database: 'Database',
         return
 
     downgrade = from_version > to_version
-    reference_version = to_version if downgrade else from_version
 
     router = Router(database.db, migrate_dir, schema_version=to_version)
-    environment = router.environment
+    scripts, previous_scripts = _scripts(router.environment,
+                                         from_version, to_version)
+
+    with patch_peewee():
+        migrator = Migrator(router.database)
+
+        # Teach migrator previous changes
+        for script in previous_scripts:
+            router.run_one(script, migrator, fake=True)
+
+        for script in scripts:
+            router.run_one(script, migrator, fake=False, downgrade=downgrade)
+
+    database.set_user_version(to_version)
+
+
+def _scripts(environment, from_version, to_version):
+    downgrade = from_version > to_version
+    reference_version = to_version if downgrade else from_version
     all_scripts = environment.scripts
 
     start_idx = -1
@@ -34,17 +51,4 @@ def migrate_schema(database: 'Database',
         previous_scripts += scripts
         scripts = list(reversed(scripts))
 
-    with patch_peewee():
-        migrator = Migrator(router.database)
-
-        # Teach migrator previous changes
-        for script in previous_scripts:
-            router.run_one(script, migrator, fake=True)
-
-        for script in scripts:
-            router.run_one(script, migrator, fake=False, downgrade=downgrade)
-
-    database.set_user_version(to_version)
-
-
-
+    return scripts, previous_scripts

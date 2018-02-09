@@ -4,8 +4,6 @@ from unittest.mock import patch
 
 import os
 from peewee import CharField
-from peewee_migrate.migrator import SchemaMigrator, Migrator
-from playhouse.migrate import migrate
 
 import golem
 from golem.database import Database
