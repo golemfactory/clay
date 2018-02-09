@@ -275,8 +275,8 @@ class ConcentClientService(threading.Thread):
                 variables.CONCENT_PUBKEY,
             )
         except golem_messages.exceptions.MessageError as e:
-            logger.warning("Can't deserialize concent message %s", e)
-            logger.debug('Problem parsing msg: %s', exc_info=True)
+            logger.warning("Can't deserialize concent message %s:%r", e, data)
+            logger.debug('Problem parsing msg', exc_info=True)
             return
         self.received_messages.put(msg)
 
