@@ -498,6 +498,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctd['environment'] = header.environment
+            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 10)
             ctk.receive_subtask(ctd)
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -586,6 +588,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "abc"
+        ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
+        ctd['environment'] = th.environment
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
@@ -619,3 +623,50 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         assert ctk.get_task_env("abc") == "NOTDEFAULT"
         assert ctk.get_task_env("xyz") == "DEFAULT"
+
+    def test_check_comp_task_def(self):
+        ctk = CompTaskKeeper(self.new_path)
+        header = get_task_header()
+        ctk.add_request(header, 40003)
+        ctk.active_tasks['xyz'].requests = 0
+        comp_task_def = {'task_id': "xyz", 'subtask_id': 'xxyyzz',
+                         'deadline': get_timestamp_utc() + 100,
+                         'environment': 'DEFAULT'}
+        with self.assertLogs(logger, level="INFO") as l:
+            assert not ctk.check_comp_task_def(comp_task_def)
+        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
+               'Request for this task was not send.' in l.output[0]
+
+        ctk.active_tasks['xyz'].requests = 1
+        comp_task_def['deadline'] = 0
+        with self.assertLogs(logger, level="INFO") as l:
+            assert not ctk.check_comp_task_def(comp_task_def)
+        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
+               'Request for this task has wrong deadline 0' in l.output[0]
+
+        comp_task_def['deadline'] = get_timestamp_utc() + 240
+
+        with self.assertLogs(logger, level="INFO"):
+            assert not ctk.check_comp_task_def(comp_task_def)
+
+        comp_task_def['deadline'] = get_timestamp_utc() + 100
+        assert ctk.check_comp_task_def(comp_task_def)
+
+        ctk.active_tasks['xyz'].subtasks['xxyyzz'] = comp_task_def
+        with self.assertLogs(logger, level="INFO") as l:
+            assert not ctk.check_comp_task_def(comp_task_def)
+        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
+               'Definition of this subtask was already received.' in l.output[0]
+
+        del ctk.active_tasks['xyz'].subtasks['xxyyzz']
+        assert ctk.check_comp_task_def(comp_task_def)
+
+        comp_task_def['environment'] = "DIFFERENT_ENV"
+        with self.assertLogs(logger, level="INFO") as l:
+            assert not ctk.check_comp_task_def(comp_task_def)
+        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
+               'Expected environment: DEFAULT, received: DIFFERENT_ENV.' in \
+               l.output[0]
+
+
+

@@ -226,33 +226,23 @@ class Payment(BaseModel):
             )
 
 
-class ExpectedIncome(BaseModel):
+class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
     value = BigIntegerField()
     accepted_ts = IntegerField(null=True)
-
-    def __repr__(self):
-        return "<ExpectedIncome: {!r} v:{:.3f}>"\
-            .format(self.subtask, self.value)
-
-
-class Income(BaseModel):
-    """Payments received from other nodes."""
-    sender_node = CharField()
-    subtask = CharField()
-    transaction = CharField()
-    value = BigIntegerField()
+    transaction = CharField(null=True)
 
     class Meta:
         database = db
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
-        return "<Income: {!r} v:{:.3f} tid:{!r}>"\
+        return "<Income: {!r} v:{:.3f} accepted_ts:{!r} tid:{!r}>"\
             .format(
                 self.subtask,
                 self.value,
+                self.accepted_ts,
                 self.transaction,
             )
 

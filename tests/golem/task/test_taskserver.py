@@ -1,4 +1,3 @@
-import datetime
 import os
 import random
 import uuid
@@ -214,7 +213,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
-        model.ExpectedIncome.create(
+        model.Income.create(
             sender_node="key",
             task=ctd['task_id'],
             subtask=ctd['subtask_id'],
