@@ -24,3 +24,7 @@ class ConcentUnavailableException(ConcentException):
     Concent is not available
     """
     pass
+
+
+class ConcentVerificationFailed(ConcentException):
+    pass

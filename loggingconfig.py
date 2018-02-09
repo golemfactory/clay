@@ -70,7 +70,15 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.client': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.gnt_converter': {
             'level': 'INFO',
             'propagate': True,
         },

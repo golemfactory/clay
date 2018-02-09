@@ -7,6 +7,7 @@ from ipaddress import ip_address
 from threading import Lock
 
 import golem_messages
+from golem_messages import message
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, \
     TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
@@ -327,7 +328,11 @@ class BasicProtocol(SessionProtocol):
             logger.error("Send message failed - connection closed.")
             return False
 
-        msg_to_send = self._prepare_msg_to_send(msg)
+        try:
+            msg_to_send = self._prepare_msg_to_send(msg)
+        except golem_messages.exceptions.SerializationError:
+            logger.exception('Cannot serialize message: %s', msg)
+            raise
 
         if msg_to_send is None:
             return False
@@ -382,7 +387,7 @@ class BasicProtocol(SessionProtocol):
 
     # Protected functions
     def _prepare_msg_to_send(self, msg):
-        ser_msg = msg.serialize()
+        ser_msg = golem_messages.dump(msg, None, None)
 
         db = DataBuffer()
         db.append_len_prefixed_bytes(ser_msg)
@@ -430,6 +435,18 @@ class BasicProtocol(SessionProtocol):
                     self.transport.getPeer(),
                 )
                 continue
+            except golem_messages.exceptions.VersionMismatchError as e:
+                logger.debug(
+                    "Message version mismatch: %s from %s. Closing.",
+                    e,
+                    self.transport.getPeer(),
+                )
+                msg = message.base.Disconnect(
+                    reason=message.base.Disconnect.REASON.ProtocolVersion,
+                )
+                self.send_message(msg)
+                self.close()
+                return []
             except golem_messages.exceptions.MessageError as e:
                 logger.info("Failed to deserialize message (%r) %r", e, data)
                 logger.debug(

@@ -9,6 +9,7 @@ from pydispatch import dispatcher
 
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
+from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
@@ -31,7 +32,8 @@ class CompStats(object):
 
 
 class TaskComputer(object):
-    """ TaskComputer is responsible for task computations that take place in Golem application. Tasks are started
+    """ TaskComputer is responsible for task computations that take
+    place in Golem application. Tasks are started
     in separate threads.
     """
 
@@ -46,21 +48,27 @@ class TaskComputer(object):
         """
         self.node_name = node_name
         self.task_server = task_server
+        # Id of the task that we're currently waiting for  for
         self.waiting_for_task = None
-        self.counting_task = False
+        # Id of the task that we're currently computing
+        self.counting_task = None
+        # TaskThread
         self.counting_thread = None
         self.task_requested = False
+        # Is task computer currently able to run computation?
         self.runnable = True
         self.listeners = []
         self.last_task_request = time.time()
 
-        self.waiting_ttl = 0
-        self.last_checking = time.time()
+        # when we should stop waiting for the task
+        self.waiting_deadline = None
 
         self.dir_manager = None
         self.resource_manager = None
         self.task_request_frequency = None
-        self.use_waiting_ttl = None
+        # Is there a time limit after which we don't wait for task timeout
+        # anymore
+        self.use_waiting_deadline = False
         self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
@@ -81,22 +89,19 @@ class TaskComputer(object):
         self.delta = None
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
+        # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks
 
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
-        p2p_node = P2PNode.from_dict(ctd['task_owner'])
-        self.wait(ttl=self.waiting_for_task_timeout)
+        self.wait(ttl=min(self.waiting_for_task_timeout,
+                          deadline_to_timeout(ctd['deadline'])))
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(
             ctd['task_id'],
-            self.resource_manager.get_resource_header(ctd['task_id']),
-            ctd['return_address'],
-            ctd['return_port'],
-            ctd['key_id'],
-            p2p_node,
+            ctd['subtask_id']
         )
         return True
 
@@ -108,7 +113,8 @@ class TaskComputer(object):
 
                 with self.lock:
                     if self.counting_thread is not None:
-                        logger.error("Got resource for task: %r"
+                        logger.error(
+                            "Got resource for task: %r"
                             "But I'm busy with another one. Ignoring.",
                             task_id)
                         return  # busy
@@ -196,16 +202,16 @@ class TaskComputer(object):
                 self.stats.increase_stat('tasks_with_timeout')
             else:
                 self.stats.increase_stat('tasks_with_errors')
-            self.task_server.send_task_failed(
-                subtask_id,
-                subtask['task_id'],
-                task_thread.error_msg,
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
-            )
+                self.task_server.send_task_failed(
+                    subtask_id,
+                    subtask['task_id'],
+                    task_thread.error_msg,
+                    subtask['return_address'],
+                    subtask['return_port'],
+                    subtask['key_id'],
+                    p2p_node,
+                    self.node_name,
+                )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
 
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
@@ -242,6 +248,7 @@ class TaskComputer(object):
         self.counting_task = None
 
     def run(self):
+        """ Main loop of task computer """
         if self.counting_task:
             if self.counting_thread is not None:
                 self.counting_thread.check_timeout()
@@ -250,11 +257,8 @@ class TaskComputer(object):
                 if time.time() - self.last_task_request > self.task_request_frequency:
                     if self.counting_thread is None:
                         self.__request_task()
-            elif self.use_waiting_ttl:
-                time_ = time.time()
-                self.waiting_ttl -= time_ - self.last_checking
-                self.last_checking = time_
-                if self.waiting_ttl < 0:
+            elif self.use_waiting_deadline:
+                if self.waiting_deadline < time.time():
                     self.reset()
 
     def get_progresses(self):
@@ -326,44 +330,42 @@ class TaskComputer(object):
         self.session_closed()
 
     def session_closed(self):
-        if not self.counting_task:
+        if self.counting_task is None:
             self.reset()
 
     def wait(self, wait=True, ttl=None):
-        self.use_waiting_ttl = wait
+        self.use_waiting_deadline = wait
         if ttl is None:
-            self.waiting_ttl = self.waiting_for_task_session_timeout
-        else:
-            self.waiting_ttl = ttl
+            ttl = self.waiting_for_task_session_timeout
 
-    def reset(self, computing_task=False):
-        self.counting_task = computing_task
-        self.use_waiting_ttl = False
+        self.waiting_deadline = time.time() + ttl
+
+    def reset(self, counting_task=None):
+        self.counting_task = counting_task
+        self.use_waiting_deadline = False
         self.task_requested = False
         self.waiting_for_task = None
-        self.waiting_ttl = 0
+        self.waiting_deadline = None
 
     def __request_task(self):
         with self.lock:
-            perform_request = not self.waiting_for_task and not self.counting_task
+            perform_request = not self.waiting_for_task and \
+                              (self.counting_task is None)
 
         if not perform_request:
             return
 
         now = time.time()
         self.wait()
-        self.last_checking = now
         self.last_task_request = now
         self.waiting_for_task = self.task_server.request_task()
         if self.waiting_for_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
-        self.last_checking = time.time()
+    def __request_resource(self, task_id, subtask_id):
         self.wait(ttl=self.waiting_for_task_timeout)
-        self.waiting_for_task = self.task_server.request_resource(task_id, resource_header, return_address, return_port,
-                                                                  key_id,
-                                                                  task_owner)
+        if not self.task_server.request_resource(task_id, subtask_id):
+            self.reset()
 
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, subtask_deadline):
@@ -382,7 +384,7 @@ class TaskComputer(object):
         working_dir = self.assigned_subtasks[subtask_id]['working_directory']
         unique_str = str(uuid.uuid4())
 
-        self.reset(computing_task=task_id)
+        self.reset(counting_task=task_id)
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)
@@ -394,6 +396,7 @@ class TaskComputer(object):
                 os.makedirs(temp_dir)
 
         if docker_images:
+            docker_images = [DockerImage(**did) for did in docker_images]
             tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
                                   resource_dir, temp_dir, task_timeout)

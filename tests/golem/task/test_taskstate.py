@@ -17,7 +17,8 @@ class TestSubtaskState(unittest.TestCase):
         self.assertEqual(ss.results, [1])
         self.assertEqual(ss2.results, [2])
 
-    def test_to_dictionary(self):
+    @staticmethod
+    def test_to_dictionary():
         ss = SubtaskState()
         ss.subtask_definition = "My long task definition"
         ss.subtask_id = "ABCDEF"

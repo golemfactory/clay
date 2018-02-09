@@ -4,13 +4,11 @@ from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
 from golem.interface.command import command, group
-# For type annotations:
-from golem.client import Client  # pylint: disable=unused-import
 
 
 @group(help="Manage account")
 class Account:
-    client = None  # type: Client
+    client = None  # type: 'golem.rpc.session.Client'
 
     @command(help="Display account & financial info")
     def info(self) -> Dict[str, Any]:
