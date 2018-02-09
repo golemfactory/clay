@@ -56,7 +56,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         value2 = MAX_INT + 100
         accepted_ts2 = 2137
 
-        assert 0 == Income.select().count()
+        assert Income.select().count() == 0
         self._test_expect_income(
             sender_node_id=sender_node_id,
             subtask_id=subtask_id1,
@@ -67,7 +67,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             subtask_id=subtask_id2,
             value=value2,
         )
-        assert 2 == Income.select().count()
+        assert Income.select().count() == 2
 
         transaction_id = '0x' + 64 * '1'
         transaction_id1 = '0x' + 64 * 'b'
@@ -117,7 +117,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         value1 = MAX_INT + 10
         value2 = MAX_INT + 100
 
-        assert 0 == Income.select().count()
+        assert Income.select().count() == 0
         self._test_expect_income(
             sender_node_id=sender_node_id1,
             subtask_id=subtask_id1,
@@ -128,7 +128,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             subtask_id=subtask_id2,
             value=value2,
         )
-        assert 2 == Income.select().count()
+        assert Income.select().count() == 2
 
         transaction_id1 = '0x' + 64 * 'b'
         transaction_id2 = '0x' + 64 * 'd'
