@@ -13,6 +13,7 @@ from twisted.internet import threads
 
 from golem.network import history
 from golem.network.concent import exceptions
+from golem.network.concent.handlers_library import library
 from golem.task import taskbase
 
 
@@ -144,7 +145,6 @@ def process_report_computed_task(msg, task_session):
 
 
 def process_messages_received_from_concent(concent_service):
-    from golem.network.concent import received_handler
     # Process first 50 messages only in one sync
     for _ in range(50):
         try:
@@ -152,7 +152,7 @@ def process_messages_received_from_concent(concent_service):
         except queue.Empty:
             break
         try:
-            received_handler.library.interpret(msg)
+            library.interpret(msg)
         except Exception:  # pylint: disable=broad-except
             logger.exception('Problem interpreting: %r', msg)
         concent_service.received_messages.task_done()

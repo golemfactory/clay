@@ -146,8 +146,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service = None
         self.concent_service = ConcentClientService(
             enabled=False,
-            signing_key=self.keys_auth._private_key,
-            public_key=self.keys_auth.public_key,
+            keys_auth=self.keys_auth,
         )
 
         self.task_server = None

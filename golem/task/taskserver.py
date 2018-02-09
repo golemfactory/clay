@@ -42,8 +42,6 @@ class TaskServer(PendingConnectionsServer, taskresources.TaskResourcesMixin):
                  use_ipv6=False,
                  use_docker_machine_manager=True,
                  task_archiver=None):
-        from golem.network.concent import \
-            received_handler as concent_received_handler
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -98,6 +96,8 @@ class TaskServer(PendingConnectionsServer, taskresources.TaskResourcesMixin):
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
+        from golem.network.concent import \
+            received_handler as concent_received_handler
         self.concent_received_message_handler = \
             concent_received_handler.TaskServerMessageHandler(self)
 
