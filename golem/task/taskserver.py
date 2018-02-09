@@ -37,13 +37,12 @@ class TaskServer(PendingConnectionsServer, taskresources.TaskResourcesMixin):
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor(),
-                 keys_auth,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True,
                  task_archiver=None):
         self.client = client
-        self.keys_auth = keys_auth
+        self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
         self.node = node

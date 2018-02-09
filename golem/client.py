@@ -297,7 +297,7 @@ class Client(HardwarePresetsMixin):
             self.task_server = TaskServer(
                 self.node,
                 self.config_desc,
-                self.keys_auth, self,
+                self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
                 task_archiver=self.task_archiver)
