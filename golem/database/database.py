@@ -17,7 +17,7 @@ class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
 
 class Database:
 
-    SCHEMA_VERSION = 12
+    SCHEMA_VERSION = 13
 
     def __init__(self, db, datadir, models, migrate=True):
         self.db = db
