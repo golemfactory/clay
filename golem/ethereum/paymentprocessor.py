@@ -260,27 +260,23 @@ class PaymentProcessor(LoopingCallService):
             if not receipt:
                 continue
 
-            block_hash = receipt['blockHash'][2:]
-            if len(block_hash) != 64:
-                raise ValueError(
-                    "block hash length should be 64, but is: {}".format(
-                        len(block_hash)))
+            block_hash = receipt.block_hash[2:]
 
-            block_number = receipt['blockNumber']
+            block_number = receipt.block_number
             if current_block - block_number < self.REQUIRED_CONFIRMATIONS:
                 continue
 
             # if the transaction failed for whatever reason we need to retry
-            if receipt['status'] != '0x1':
+            if not receipt.status:
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.awaiting
                         p.save()
                 failed[hstr] = payments
-                log.warning("Failed transaction: {}".format(receipt))
+                log.warning("Failed transaction: %r", receipt)
                 continue
 
-            gas_used = receipt['gasUsed']
+            gas_used = receipt.gas_used
             total_fee = gas_used * self._sci.GAS_PRICE
             fee = total_fee // len(payments)
             log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
