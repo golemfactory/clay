@@ -2,34 +2,53 @@
     file: site_settings.yml
     name: site_settings
 
-- name: test if we have winrm connection
+- name: Register space required in GB for vs2017 install
+  set_fact:
+    required_space: 35
+
+- name: Test if we have winrm connection
   win_ping:
 
-- win_chocolatey:
-    name: python3
-    timeout: 10000
+- name: Run ps to get free disk space
+  win_command:  powershell.exe "Get-PSDrive C | Select-Object Free | ConvertTo-Json"
+  register: getpsdrive
 
-- win_chocolatey:
+- name: Register freediskspace as a fact
+  set_fact:
+    freediskspace: "{{ (getpsdrive.stdout | from_json).Free // 1073741824 }}"
+
+
+- name: Install python3
+  win_chocolatey:
+    name: python3
+    when:
+    - freediskspace | int > required_space
+
+- name: Install git
+  win_chocolatey:
     name: git
     params: '"/GitAndUnixToolsOnPath"'
-    timeout: 5400
 
-- win_chocolatey:
+- name: Install vs2017
+  win_chocolatey:
     name: visualstudio2017community
-    skip_scripts: yes
-    timeout: 15000
-
-- win_chocolatey:
-    name: "{{ item.name }}"
-    params: "{{ item.params|default('') }}"
     timeout: 5400
-  with_items:
-    - name: microsoft-visual-cpp-build-tools
-    - name: innosetup
-    - name: visualstudio2017-workload-nativedesktop
-      params: "--includeOptional"
 
-- name: install pypiwin32
+- name: Install visual cpp build tools
+  win_chocolatey:
+    name: microsoft-visual-cpp-build-tools
+
+- name: Install innosetup
+  win_chocolatey:
+    name: innosetup
+
+- name: Install VS2017 Workload Native Desktop
+  win_chocolatey:
+    name: visualstudio2017-workload-nativedesktop
+    params: "--includeOptional"
+    timeout: 5400
+
+- name: Install pypiwin32
   win_shell: py -3 -m pip install pypiwin32
   args:
     creates: C:\Python36\Scripts\pywin32_postinstall.py
@@ -59,7 +78,9 @@
 
 
 - name: install buildbot-worker
-  win_shell: py -3 -m pip install buildbot-worker
+  # NOTE: Pip for buildbot doesn't work with Windows 10 PL/RU/etc.
+  # win_shell: py -3 -m pip install buildbot-worker
+  win_shell: py -3 -m easy_install buildbot-worker
   args:
     creates: C:\Python36\Scripts\buildbot-worker.exe
 
@@ -68,7 +89,7 @@
   become: yes
   become_user: buildbot-worker
   win_shell:
-    py -3 C:\Python36\Scripts\buildbot-worker.exe create-worker
+    C:\Python36\Scripts\buildbot-worker.exe create-worker
       C:\BuildbotWorker
       "{{worker_master_hostname}}"
       "{{worker_name}}"
@@ -85,7 +106,7 @@
 
 - name: create service for the buildbot worker
   win_shell:
-    py -3 C:\Python36\Scripts\buildbot_worker_windows_service.exe
+    C:\Python36\Scripts\buildbot_worker_windows_service.exe
       --user .\buildbot-worker
       --password
       "{{ vault_windows_worker_password }}"
