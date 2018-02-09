@@ -1,3 +1,5 @@
+# pylint: disable=no-member
+# pylint: disable=too-few-public-methods
 """Peewee migrations -- 011_schema.py.
 
 Some examples (model - class or model name)::

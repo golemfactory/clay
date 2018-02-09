@@ -1,3 +1,8 @@
+# pylint: disable=no-member
+# pylint: disable=too-few-public-methods
+# pylint: disable=unused-variable
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-statements
 """Peewee migrations -- 010_schema.py.
 
 Some examples (model - class or model name)::
