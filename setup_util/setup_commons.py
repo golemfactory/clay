@@ -43,8 +43,12 @@ class DatabaseMigration(Command):
         ('force', 'f', 're-create last schema migration script')
     ]
 
-    def initialize_options(self):
+    def __init__(self, dist, **kw):
+        super().__init__(dist, **kw)
         self.force = False
+
+    def initialize_options(self):
+        pass
 
     def finalize_options(self):
         pass

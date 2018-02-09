@@ -1,15 +1,13 @@
-SCHEMA_VERSION = 10
-from golem.model import *  # pylint: disable=unused-import
-
 """Peewee migrations -- 010_schema.py.
 
 Some examples (model - class or model name)::
 
-    > Model = migrator.orm['model_name']            # Return model in current state by name
+    # Return model in current state by name
+    > Model = migrator.orm['model_name']
 
     > migrator.sql(sql)                             # Run custom SQL
     > migrator.python(func, *args, **kwargs)        # Run python code
-    > migrator.create_model(Model)                  # Create a model (could be used as decorator)
+    > migrator.create_model(Model)                  # Create a model
     > migrator.remove_model(model, cascade=True)    # Remove a model
     > migrator.add_fields(model, **fields)          # Add fields to a model
     > migrator.change_fields(model, **fields)       # Change fields
@@ -27,13 +25,13 @@ Some examples (model - class or model name)::
 import datetime as dt
 import peewee as pw
 
-try:
-    import playhouse.postgres_ext as pw_pext
-except ImportError:
-    pass
+from golem.model import Actor, PaymentStatus
 
 
-def migrate(migrator, database, fake=False, **kwargs):
+SCHEMA_VERSION = 10
+
+
+def migrate(migrator, _database, **_kwargs):
     """Write your migrations here."""
 
     @migrator.create_model
@@ -224,37 +222,21 @@ def migrate(migrator, database, fake=False, **kwargs):
             primary_key = pw.CompositeKey('task_type', 'name')
 
 
-
-def rollback(migrator, database, fake=False, **kwargs):
+def rollback(migrator, _database, **_kwargs):
     """Write your rollback migrations here."""
 
     migrator.remove_model('taskpreset')
-
     migrator.remove_model('stats')
-
     migrator.remove_model('performance')
-
     migrator.remove_model('payment')
-
     migrator.remove_model('networkmessage')
-
     migrator.remove_model('neighbourlocrank')
-
     migrator.remove_model('localrank')
-
     migrator.remove_model('knownhosts')
-
     migrator.remove_model('income')
-
     migrator.remove_model('hardwarepreset')
-
     migrator.remove_model('globalrank')
-
     migrator.remove_model('generickeyvalue')
-
     migrator.remove_model('expectedincome')
-
     migrator.remove_model('basemodel')
-
     migrator.remove_model('account')
-
