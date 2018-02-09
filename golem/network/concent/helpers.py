@@ -3,6 +3,7 @@ import functools
 import hashlib
 import logging
 import pathlib
+import queue
 import time
 
 from golem_messages import exceptions as msg_exceptions
@@ -140,3 +141,18 @@ def process_report_computed_task(msg, task_session):
         subtask_id=msg.subtask_id,
         task_to_compute=msg.task_to_compute,
     ))
+
+
+def process_messages_received_from_concent(concent_service):
+    from golem.network.concent import received_handler
+    # Process first 50 messages only in one sync
+    for _ in range(50):
+        try:
+            msg = concent_service.received_messages.get_nowait()
+        except queue.Empty:
+            break
+        try:
+            received_handler.library.interpret(msg)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('Problem interpreting: %r', msg)
+        concent_service.received_messages.task_done()

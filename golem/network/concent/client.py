@@ -28,7 +28,10 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     """
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
+    if msg is None:
+        data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
+    else:
+        data = b''
     logger.debug('send_to_concent(): data: %r', data)
     concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
     headers = {
@@ -101,8 +104,7 @@ class ConcentRequestStatus(Enum):
 
 class ConcentRequest:
 
-    __slots__ = ('key', 'msg', 'status', 'content',
-                 'sent_at', 'deadline_at')
+    __slots__ = ('key', 'msg', 'status', 'sent_at', 'deadline_at')
 
     def __init__(self,
                  key: Hashable,
@@ -113,7 +115,6 @@ class ConcentRequest:
         self.msg = msg
 
         self.status = ConcentRequestStatus.Initial
-        self.content = None
 
         self.sent_at = None
         self.deadline_at = datetime.datetime.now() + lifetime
@@ -146,11 +147,12 @@ class ConcentClientService(threading.Thread):
     MAX_GRACE_TIME = 5 * 60  # s
     GRACE_FACTOR = 2  # n times on each failure
 
-    def __init__(self, signing_key, public_key, enabled=True):
+    def __init__(self, keys_auth, enabled=True):
         super().__init__(daemon=True)
 
-        self.signing_key = signing_key
-        self.public_key = public_key
+        self.keys_auth = keys_auth
+        # self.private_key = private_key
+        # self.public_key = public_key
         self._enabled = enabled  # FIXME: remove
         self._stop_event = threading.Event()
 
@@ -158,7 +160,7 @@ class ConcentClientService(threading.Thread):
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
-        self._history = dict()
+        self.received_messages = queue.Queue(maxsize=100)
 
     def run(self) -> None:
         while not self._stop_event.isSet():
@@ -167,6 +169,9 @@ class ConcentClientService(threading.Thread):
 
     def stop(self) -> None:
         self._stop_event.set()
+        logger.info('Waiting for received messages queue to empty')
+        self.received_messages.join()
+        logger.info('%s stopped', self)
 
     def submit(self,
                key: Hashable,
@@ -215,32 +220,26 @@ class ConcentClientService(threading.Thread):
             return True
         return False
 
-    def result(self,
-               key: Hashable,
-               default: Optional = None) -> Optional[ConcentRequest]:
-        """
-        Fetch and remove the ConcentRequest from queue.
-
-        :param key: Request identifier
-        :param default: Default value if key was not found
-        :return: ConcentRequest|None
-        """
-        return self._history.pop(key, default)
-
     def _loop(self) -> None:
         """
         Main service loop. Requests from the queue are sent one by one (FIFO).
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get_nowait()
+            req = self._queue.get(timeout=60)
         except queue.Empty:
+            # Send empty "ping" message
+            res = send_to_concent(
+                None,
+                self.keys_auth.ecc.raw_privkey,
+                self.keys_auth.ecc.raw_pubkey,
+            )
+            self.react_to_concent_message(res)
             return
 
         # FIXME: remove
         if not self._enabled:
             logger.debug('Concent disabled. Dropping %r', req)
-            self._history.pop(req.key, None)
             return
 
         now = datetime.datetime.now()
@@ -252,16 +251,34 @@ class ConcentClientService(threading.Thread):
 
         try:
             req.sent_at = now
-            res = send_to_concent(req.msg, self.signing_key, self.public_key)
-        except Exception as exc:  # pylint: disable=broad-except
+            res = send_to_concent(
+                req.msg,
+                self.keys_auth.ecc.raw_privkey,
+                self.keys_auth.ecc.raw_pubkey,
+            )
+        except Exception:  # pylint: disable=broad-except
             logger.exception('send_to_concent(%r) failed', req.msg)
-            req.content = exc
             req.status = ConcentRequestStatus.Error
             self._grace_sleep()
         else:
-            req.content = res
             req.status = ConcentRequestStatus.Success
             self._grace_time = self.MIN_GRACE_TIME
+            self.react_to_concent_message(res)
+
+    def react_to_concent_message(self, data):
+        if data is None:
+            return
+        try:
+            msg = golem_messages.load(
+                data,
+                self.keys_auth.ecc.raw_privkey,
+                variables.CONCENT_PUBKEY,
+            )
+        except golem_messages.exceptions.MessageError as e:
+            logger.warning("Can't deserialize concent message %s", e)
+            logger.debug('Problem parsing msg: %s', exc_info=True)
+            return
+        self.received_messages.put(msg)
 
     def _grace_sleep(self):
         self._grace_time = min(self._grace_time * self.GRACE_FACTOR,
@@ -273,5 +290,4 @@ class ConcentClientService(threading.Thread):
     def _enqueue(self, req):
         req.status = ConcentRequestStatus.Queued
         self._delayed.pop(req.key, None)
-        self._history[req.key] = req
         self._queue.put(req)
