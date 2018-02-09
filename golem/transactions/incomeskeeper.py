@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from ethereum.utils import denoms
+
 from golem.model import Income
+from golem.utils import pubkeytoaddr
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
 
 
-class IncomesKeeper(object):
+class IncomesKeeper:
     """Keeps information about payments received from other nodes
     """
 
@@ -20,27 +23,35 @@ class IncomesKeeper(object):
         # TODO Check for unpaid incomes and ask Concent for them
         pass
 
-    def received(self,
-                 sender_node_id,
-                 subtask_id,
-                 transaction_id,
-                 value) -> None:
+    def received_batch_transfer(self, tx_hash, sender, amount, closure_time):
+        expected = Income.select().where(
+            Income.accepted_ts > 0,
+            Income.accepted_ts <= closure_time,
+            Income.transaction.is_null())
+        expected = \
+            [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
 
-        with Income._meta.database.transaction():
-            try:
-                income = Income.get(
-                    sender_node=sender_node_id,
-                    subtask=subtask_id,
-                )
-            except Income.DoesNotExist:
-                logger.info("Income.DoesNotExist "
-                            "(sender_node_id %r, "
-                            "subtask_id %r, value %r) ",
-                            sender_node_id, subtask_id, value)
-                return
-            income.transaction = transaction_id[2:]
-            income.value = value
-            income.save()
+        expected_value = sum([e.value for e in expected])
+        if expected_value == 0:
+            # Probably already handled event
+            return
+
+        if expected_value != amount:
+            # Need to report this to Concent if expected is greater
+            # and probably move all these expected incomes to a different table
+            logger.warning(
+                'Batch transfer amount does not match, expected %r, got %r',
+                expected_value / denoms.ether,
+                amount / denoms.ether)
+
+        amount_left = amount
+
+        for e in expected:
+            value = min(amount_left, e.value)
+            amount_left -= value
+            e.transaction = tx_hash[2:]
+            e.value = value  # TODO don't change the value, wait for Concent
+            e.save()
 
     def expect(self, sender_node_id, subtask_id, value):
         logger.debug(
@@ -63,6 +74,13 @@ class IncomesKeeper(object):
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",
                 subtask_id)
+            return
+        if income.accepted_ts is not None and income.accepted_ts != accepted_ts:
+            logger.error(
+                "Duplicated accepted_ts %r for %r",
+                accepted_ts,
+                income,
+            )
             return
         income.accepted_ts = accepted_ts
         income.save()

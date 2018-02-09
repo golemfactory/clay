@@ -157,9 +157,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         n = 9
         incomes = [
-            Income(
+            Income.create(
                 sender_node=random_hex_str(),
-                sender_node_details=Node(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
