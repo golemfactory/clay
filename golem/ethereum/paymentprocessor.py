@@ -5,15 +5,16 @@ import time
 import requests
 from datetime import datetime
 from threading import Lock
-from typing import Any, List
+from typing import Any, Dict, List, Optional, Tuple
 
-from ethereum import utils, keys
 from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
 
 from golem.core.service import LoopingCallService
 from golem.model import db, Payment, PaymentStatus
-from golem.utils import decode_hex, encode_hex
+from golem.utils import encode_hex
+
+from .gntconverter import GNTConverter
 
 log = logging.getLogger("golem.pay")
 
@@ -53,18 +54,18 @@ class PaymentProcessor(LoopingCallService):
     CLOSURE_TIME_DELAY = 10
 
     def __init__(self,
-                 privkey,
                  sci,
                  faucet=False) -> None:
         self.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         self.ETH_BATCH_PAYMENT_BASE = \
             sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
-        self.__privkey = privkey
-        self.__eth_balance = None
-        self.__gnt_balance = None
+        self._gnt_converter = GNTConverter(sci)
+        self.__eth_balance = None  # type: Optional[int]
+        self.__gnt_balance = None  # type: Optional[int]
+        self.__gntw_balance = None  # type: Optional[int]
         self.__eth_reserved = 0
-        self.__gnt_reserved = 0
+        self.__gntw_reserved = 0
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
@@ -73,21 +74,15 @@ class PaymentProcessor(LoopingCallService):
         self.load_from_db()
         super().__init__(13)
 
-    def eth_address(self, zpad=True):
-        raw = keys.privtoaddr(self.__privkey)
-        # TODO: Hack RPC client to allow using raw address.
-        if zpad:
-            raw = utils.zpad(raw, 32)
-        return '0x' + encode_hex(raw)
-
     def balance_known(self):
-        return self.__gnt_balance is not None and self.__eth_balance is not None
+        return self.__gnt_balance is not None and \
+            self.__gntw_balance is not None and \
+            self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
-            addr = self.eth_address(zpad=False)
-            balance = self._sci.get_eth_balance(addr)
+            balance = self._sci.get_eth_balance(self._sci.get_eth_address())
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
@@ -96,18 +91,29 @@ class PaymentProcessor(LoopingCallService):
         return self.__eth_balance
 
     def gnt_balance(self, refresh=False):
-        if self.__gnt_balance is None or refresh:
+        if self.__gnt_balance is None or self.__gntw_balance is None or refresh:
             gnt_balance = self._sci.get_gnt_balance(
-                self.eth_address(zpad=False))
-            gntw_balance = self._sci.get_gntw_balance(
-                self.eth_address(zpad=False))
-            if gnt_balance is not None and gntw_balance is not None:
-                log.info("GNT: {} GNTW: {}".format(
-                    gnt_balance / denoms.ether, gntw_balance / denoms.ether))
-                self.__gnt_balance = gnt_balance + gntw_balance
+                self._sci.get_eth_address())
+            if gnt_balance is not None:
+                self.__gnt_balance = gnt_balance
             else:
-                log.warning("Failed to retrieve GNT/GNTW balance")
-        return self.__gnt_balance
+                log.warning("Failed to retrieve GNT balance")
+
+            gntw_balance = self._sci.get_gntw_balance(
+                self._sci.get_eth_address())
+            if gntw_balance is not None:
+                self.__gntw_balance = gntw_balance
+            else:
+                log.warning("Failed to retrieve GNTW balance")
+
+            if self.__gnt_balance is not None and \
+               self.__gntw_balance is not None:
+                log.info(
+                    "GNT: %r GNTW: %r",
+                    self.__gnt_balance / denoms.ether,
+                    self.__gntw_balance / denoms.ether,
+                )
+        return self.__gnt_balance + self.__gntw_balance
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
@@ -117,17 +123,17 @@ class PaymentProcessor(LoopingCallService):
         return self.eth_balance() - self._eth_reserved()
 
     def _gnt_reserved(self):
-        return self.__gnt_reserved
+        return self.__gntw_reserved
 
     def _gnt_available(self):
-        return self.gnt_balance() - self.__gnt_reserved
+        return self.gnt_balance() - self.__gntw_reserved
 
     def load_from_db(self):
         with db.atomic():
             for sent_payment in Payment \
                     .select() \
                     .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = decode_hex(sent_payment.details.tx)
+                transaction_hash = '0x' + sent_payment.details.tx
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
@@ -157,26 +163,27 @@ class PaymentProcessor(LoopingCallService):
             # TODO: Optimize by checking the time once per service update.
             self.deadline = min(self.deadline, ts + deadline)
 
-        self.__gnt_reserved += payment.value
+        self.__gntw_reserved += payment.value
         self.__eth_reserved += self.ETH_PER_PAYMENT
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
             self._gnt_available() / denoms.ether,
-            self.__gnt_reserved / denoms.ether))
+            self.__gntw_reserved / denoms.ether))
 
-    def __get_next_batch(self,
-                         payments: List[Payment],
-                         closure_time: int) -> (List[Payment], List[Payment]):
+    def __get_next_batch(
+            self,
+            payments: List[Payment],
+            closure_time: int) -> Tuple[List[Payment], List[Payment]]:
         payments.sort(key=lambda p: p.processed_ts)
-        gnt_balance = self.gnt_balance()
+        gntw_balance = self.__gntw_balance
         eth_balance = self.eth_balance() - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
         for p in payments:
             if p.processed_ts > closure_time:
                 break
-            gnt_balance -= p.value
+            gntw_balance -= p.value
             eth_balance -= self.ETH_PER_PAYMENT
-            if gnt_balance < 0 or eth_balance < 0:
+            if gntw_balance < 0 or eth_balance < 0:
                 break
             ind += 1
 
@@ -197,63 +204,45 @@ class PaymentProcessor(LoopingCallService):
                 log.info("Next sendout in {} s".format(self.deadline - now))
                 return False
 
+            if self._gnt_converter.is_converting():
+                log.info('Waiting for GNT-GNTW conversion')
+                return False
+
             closure_time = now - self.CLOSURE_TIME_DELAY
 
             payments, rest = self.__get_next_batch(
                 self._awaiting.copy(),
                 closure_time)
+            if rest and self.__gnt_balance:
+                log.info(
+                    'Will convert %r GNT before sending out payments',
+                    self.__gnt_balance / denoms.ether,
+                )
+                self._gnt_converter.convert(self.__gnt_balance)
+                return False
             if not payments:
                 return False
             self._awaiting = rest
 
-        tx = self._sci.prepare_batch_transfer(
-            self.__privkey,
-            payments,
-            closure_time)
-        if not tx:
-            with self._awaiting_lock:
-                payments.extend(self._awaiting)
-                self._awaiting = payments
-            return False
-
-        tx.sign(self.__privkey)
         value = sum([p.value for p in payments])
-        h = tx.hash
-        log.info("Batch payments: {:.6}, value: {:.6f}"
-                 .format(encode_hex(h), value / denoms.ether))
+        log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
 
-        # If awaiting payments are not empty it means a new payment has been
-        # added between clearing the awaiting list and here. In that case
-        # we shouldn't update the deadline to sys.maxsize.
-        with self._awaiting_lock:
-            if not self._awaiting:
-                self.deadline = sys.maxsize
-
-        # Firstly write transaction hash to database. We need the hash to be
-        # remembered before sending the transaction to the Ethereum node in
-        # case communication with the node is interrupted and it will be not
-        # known if the transaction has been sent or not.
+        tx_hash = self._sci.batch_transfer(payments, closure_time)
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent
-                payment.details.tx = encode_hex(h)
+                payment.details.tx = tx_hash[2:]
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
                     payment.subtask,
                     encode_hex(payment.payee),
                     payment.value / denoms.ether))
 
-            tx_hash = self._sci.send_transaction(tx)
-            tx_hex = decode_hex(tx_hash)
-            if tx_hex != h:  # FIXME: Improve Client.
-                raise RuntimeError("Incorrect tx hash: {}, should be: {}"
-                                   .format(tx_hex, h))
-
-            self._inprogress[h] = payments
+            self._inprogress[tx_hash] = payments
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
-        self.__gnt_reserved -= value
+        self.__gntw_reserved -= value
         self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
 
@@ -265,8 +254,7 @@ class PaymentProcessor(LoopingCallService):
         failed = {}
         current_block = self._sci.get_block_number()
 
-        for h, payments in self._inprogress.items():
-            hstr = '0x' + encode_hex(h)
+        for hstr, payments in self._inprogress.items():
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self._sci.get_transaction_receipt(hstr)
             if not receipt:
@@ -288,7 +276,7 @@ class PaymentProcessor(LoopingCallService):
                     for p in payments:
                         p.status = PaymentStatus.awaiting
                         p.save()
-                failed[h] = payments
+                failed[hstr] = payments
                 log.warning("Failed transaction: {}".format(receipt))
                 continue
 
@@ -315,7 +303,7 @@ class PaymentProcessor(LoopingCallService):
                         p.subtask,
                         fee / denoms.ether
                     )
-            confirmed.append(h)
+            confirmed.append(hstr)
 
         for h in confirmed:
             del self._inprogress[h]
@@ -332,8 +320,7 @@ class PaymentProcessor(LoopingCallService):
 
         if self.__faucet and eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH")
-            addr = keys.privtoaddr(self.__privkey)
-            tETH_faucet_donate(addr)
+            tETH_faucet_donate(self._sci.get_eth_address())
             return False
         return True
 
@@ -344,7 +331,7 @@ class PaymentProcessor(LoopingCallService):
 
         if self.__faucet and gnt_balance < 100 * denoms.ether:
             log.info("Requesting GNT from faucet")
-            self._sci.request_gnt_from_faucet(self.__privkey)
+            self._sci.request_gnt_from_faucet()
             return False
         return True
 

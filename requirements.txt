@@ -48,4 +48,4 @@ pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
 Golem-Messages==1.7.0
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@8ab8dbbbd689fb5ba04914de5ec317607fd95fc9#egg=golem_sci
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@333c6c02281c5c6372e59caababee72d653a0e42#egg=golem_sci

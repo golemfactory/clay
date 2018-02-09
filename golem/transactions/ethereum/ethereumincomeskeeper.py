@@ -13,15 +13,14 @@ class EthereumIncomesKeeper(IncomesKeeper):
     BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
     BLOCK_NUMBER_BUFFER = 10
 
-    def __init__(self, eth_address: str, sci) -> None:
-        self.__eth_address = eth_address
+    def __init__(self, sci) -> None:
         self.__sci = sci
 
         values = GenericKeyValue.select().where(
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
         self.__sci.subscribe_to_incoming_batch_transfers(
-            eth_address,
+            self.__sci.get_eth_address(),
             from_block,
             self._on_batch_event,
             self.REQUIRED_CONFS,
