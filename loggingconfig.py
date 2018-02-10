@@ -95,7 +95,7 @@ LOGGING = {
             'propagate': True,
         },
         'twisted': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'propagate': True,
         },
         'golem.network': {'propagate': True},

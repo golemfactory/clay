@@ -26,14 +26,14 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-from . import taskresources
+from .server import resources
 
 logger = logging.getLogger('golem.task.taskserver')
 
 tmp_cycler = itertools.cycle(list(range(550)))
 
 
-class TaskServer(PendingConnectionsServer, taskresources.TaskResourcesMixin):
+class TaskServer(PendingConnectionsServer, resources.TaskResourcesMixin):
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor(),
