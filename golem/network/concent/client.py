@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import requests
 import golem_messages
 from golem_messages import message
+from golem_messages import datastructures as msg_datastructures
 
 from golem.core import variables
 from golem.network.concent import constants
@@ -102,22 +103,16 @@ class ConcentRequestStatus(Enum):
         return self in (self.TimedOut, self.Error)
 
 
-class ConcentRequest:
+class ConcentRequest(msg_datastructures.FrozenDict):
 
     __slots__ = ('key', 'msg', 'status', 'sent_at', 'deadline_at')
-
-    def __init__(self,
-                 key: Hashable,
-                 msg: message.Message,
-                 lifetime: datetime.timedelta) -> None:
-
-        self.key = key
-        self.msg = msg
-
-        self.status = ConcentRequestStatus.Initial
-
-        self.sent_at = None
-        self.deadline_at = datetime.datetime.now() + lifetime
+    ITEMS = {
+        'key': '',
+        'msg': None,
+        'status': ConcentRequestStatus.Initial,
+        'sent_at': None,
+        'deadline_at': None,
+    }
 
     @staticmethod
     def build_key(*args) -> str:
@@ -128,17 +123,6 @@ class ConcentRequest:
         :return: str
         """
         return '/'.join(str(a) for a in args)
-
-    def __repr__(self):
-        return (
-            "<ConcentRequest({}, {}, {}, sent_at={}, deadline_at={})>".format(
-                self.key,
-                self.msg,
-                self.status.name,
-                self.sent_at,
-                self.deadline_at
-            )
-        )
 
 
 class ConcentClientService(threading.Thread):
@@ -194,8 +178,12 @@ class ConcentClientService(threading.Thread):
         if delay is None:
             delay = constants.MSG_DELAYS[msg_cls]
 
-        req = ConcentRequest(key, msg, lifetime=lifetime)
-        req.status = ConcentRequestStatus.Waiting
+        req = ConcentRequest(
+            key=key,
+            msg=msg,
+            deadline_at=datetime.datetime.now() + lifetime,
+            status=ConcentRequestStatus.Waiting
+        )
 
         if delay:
             self._delayed[key] = reactor.callLater(
@@ -244,24 +232,24 @@ class ConcentClientService(threading.Thread):
 
         now = datetime.datetime.now()
 
-        if req.deadline_at < now:
+        if req['deadline_at'] < now:
             logger.debug('Concent request lifetime has ended: %r', req)
-            req.status = ConcentRequestStatus.TimedOut
+            req['status'] = ConcentRequestStatus.TimedOut
             return
 
         try:
-            req.sent_at = now
+            req['sent_at'] = now
             res = send_to_concent(
-                req.msg,
+                req['msg'],
                 self.keys_auth.ecc.raw_privkey,
                 self.keys_auth.ecc.raw_pubkey,
             )
         except Exception:  # pylint: disable=broad-except
-            logger.exception('send_to_concent(%r) failed', req.msg)
-            req.status = ConcentRequestStatus.Error
+            logger.exception('send_to_concent(%r) failed', req)
+            req['status'] = ConcentRequestStatus.Error
             self._grace_sleep()
         else:
-            req.status = ConcentRequestStatus.Success
+            req['status'] = ConcentRequestStatus.Success
             self._grace_time = self.MIN_GRACE_TIME
             self.react_to_concent_message(res)
 
@@ -289,5 +277,5 @@ class ConcentClientService(threading.Thread):
 
     def _enqueue(self, req):
         req.status = ConcentRequestStatus.Queued
-        self._delayed.pop(req.key, None)
+        self._delayed.pop(req['key'], None)
         self._queue.put(req)
