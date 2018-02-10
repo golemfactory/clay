@@ -1,60 +1,16 @@
 import calendar
 import functools
-import hashlib
 import logging
-import pathlib
-import queue
 import time
 
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
-from twisted.internet import defer
-from twisted.internet import threads
 
 from golem.network import history
 from golem.network.concent import exceptions
-from golem.network.concent.handlers_library import library
-from golem.task import taskbase
 
 
 logger = logging.getLogger(__name__)
-
-
-def compute_result_hash(task_result):
-    result_hash = hashlib.sha1()
-    if task_result.result_type == taskbase.ResultType.FILES:
-        # task_result.result is an array of filenames
-        for filename in task_result.result:
-            p = pathlib.Path(filename)
-            logger.info(
-                'Computing checksum (%.3fMB) of %s',
-                p.stat().st_size / 2**20,
-                p
-            )
-            with open(filename, 'rb') as f:
-                while True:
-                    chunk = f.read(2**20)  # 1MB
-                    if not chunk:
-                        break
-                    result_hash.update(chunk)
-
-    else:
-        logger.info('Computing checksum of single result')
-        result_hash.update(task_result.result.encode('utf-8'))
-    return result_hash
-
-
-def deferred_compute_result_hash(task_result):
-    # Import reactor only when it is necessary;
-    # otherwise process-wide signal handlers may be installed
-    from twisted.internet import reactor
-
-    if reactor.running:
-        execute = threads.deferToThread
-    else:
-        logger.debug('Reactor not running. Switching to blocking call')
-        execute = defer.execute
-    return execute(compute_result_hash, task_result)
 
 
 def process_report_computed_task(msg, task_session):
@@ -142,17 +98,3 @@ def process_report_computed_task(msg, task_session):
         subtask_id=msg.subtask_id,
         task_to_compute=msg.task_to_compute,
     ))
-
-
-def process_messages_received_from_concent(concent_service):
-    # Process first 50 messages only in one sync
-    for _ in range(50):
-        try:
-            msg = concent_service.received_messages.get_nowait()
-        except queue.Empty:
-            break
-        try:
-            library.interpret(msg)
-        except Exception:  # pylint: disable=broad-except
-            logger.exception('Problem interpreting: %r', msg)
-        concent_service.received_messages.task_done()

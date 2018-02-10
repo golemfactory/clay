@@ -11,7 +11,8 @@ from golem_messages import message
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.concent import helpers as concent_helpers
+from golem.network.concent import \
+    received_handler as concent_received_handler
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
@@ -22,11 +23,12 @@ from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from .server import resources
+from .server import concent
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-from .server import resources
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -95,10 +97,8 @@ class TaskServer(PendingConnectionsServer, resources.TaskResourcesMixin):
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
-        from golem.network.concent import \
-            received_handler as concent_received_handler
-        self.concent_received_message_handler = \
-            concent_received_handler.TaskServerMessageHandler(self)
+        # to register in golem.network.concent.handlers_library
+        concent_received_handler.TaskServerMessageHandler(self)
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
@@ -110,7 +110,7 @@ class TaskServer(PendingConnectionsServer, resources.TaskResourcesMixin):
         self.__remove_old_tasks()
         self.__remove_old_sessions()
         self._remove_old_listenings()
-        concent_helpers.process_messages_received_from_concent(
+        concent.process_messages_received_from_concent(
             concent_service=self.client.concent_service,
         )
         if next(tmp_cycler) == 0:
