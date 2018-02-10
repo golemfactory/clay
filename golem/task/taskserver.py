@@ -11,8 +11,6 @@ from golem_messages import message
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.concent import \
-    received_handler as concent_received_handler
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
@@ -98,6 +96,8 @@ class TaskServer(PendingConnectionsServer, resources.TaskResourcesMixin):
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
         # to register in golem.network.concent.handlers_library
+        from golem.network.concent import \
+            received_handler as concent_received_handler
         concent_received_handler.TaskServerMessageHandler(self)
 
     def sync_network(self):
