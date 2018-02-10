@@ -769,10 +769,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
         client.task_server = TaskServer(
-            Node(),
-            ClientConfigDescriptor(),
-            Mock(),
-            client,
+            node=Node(),
+            config_desc=ClientConfigDescriptor(),
+            client=client,
             use_docker_machine_manager=False
         )
         client.monitor = Mock()
