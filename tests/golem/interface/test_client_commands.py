@@ -4,10 +4,10 @@ import unittest
 import uuid
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import partial
 
 from ethereum.utils import denoms
 from mock import Mock, mock_open, patch
-from functools import partial
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
@@ -442,7 +442,7 @@ class TestTasks(TempDirFixture):
 
             with patch(patched_open, mock_open(
                     read_data='{"name": "Golem task name \
-                     has more than 24 character"}')):
+                has more than 24 character"}')):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
