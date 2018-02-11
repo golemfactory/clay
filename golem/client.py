@@ -222,11 +222,6 @@ class Client(HardwarePresetsMixin):
         self.rpc_publisher = Publisher(rpc_session)
         StatusPublisher.set_publisher(self.rpc_publisher)
 
-        if self.transaction_system:
-            self._services.append(BalancePublisherService(
-                self.rpc_publisher,
-                self.transaction_system))
-
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event == 'unreachable':
             self.node.port_status = kwargs.get('description', '')
@@ -310,13 +305,6 @@ class Client(HardwarePresetsMixin):
                     1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
-
-            if self.rpc_publisher:
-                tasks_publisher_service = TasksPublisherService(
-                    self.rpc_publisher,
-                    self.task_server.task_manager)
-                tasks_publisher_service.start()
-                self._services.append(tasks_publisher_service)
 
             clean_tasks_older_than = \
                 self.config_desc.clean_tasks_older_than_seconds
@@ -1263,22 +1251,6 @@ class NetworkConnectionPublisherService(LoopingCallService):
                               self._client.connection_status())
 
 
-class TasksPublisherService(LoopingCallService):
-    _rpc_publisher = None  # type: Publisher
-    _task_manager = None  # type: TaskManager
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 task_manager: TaskManager):
-        super().__init__(interval_seconds=int(PUBLISH_TASKS_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._task_manager = task_manager
-
-    def _run(self):
-        self._rpc_publisher.publish(Task.evt_task_list,
-                                    self._task_manager.get_tasks_dict())
-
-
 class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
@@ -1289,31 +1261,6 @@ class TaskArchiverService(LoopingCallService):
 
     def _run(self):
         self._task_archiver.do_maintenance()
-
-
-class BalancePublisherService(LoopingCallService):
-
-    _rpc_publisher = None  # type: Publisher
-    _transaction_system = None  # type: EthereumTransactionSystem
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 transaction_system: EthereumTransactionSystem):
-        super().__init__(interval_seconds=int(PUBLISH_BALANCE_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._transaction_system = transaction_system
-
-    def _run(self):
-        try:
-            gnt, av_gnt, eth = self._transaction_system.get_balance()
-        except Exception as exc:
-            log.debug('Error retrieving balance: %s', exc)
-        else:
-            self._rpc_publisher.publish(Payments.evt_balance, {
-                'GNT': str(gnt),
-                'GNT_available': str(av_gnt),
-                'ETH': str(eth)
-            })
 
 
 class ResourceCleanerService(LoopingCallService):
