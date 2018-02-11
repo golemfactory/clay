@@ -438,16 +438,16 @@ class TestTasks(TempDirFixture):
 
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(read_data='{}')):
-                self.assertRaises(SyntaxError, partial(tasks.create, "foo"))
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
                     read_data='{"name": "Golem task name \
                      has more than 24 character"}')):
-                self.assertRaises(SyntaxError, partial(tasks.create, "foo"))
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
                     read_data='{"name": "Golem task/"}')):
-                self.assertRaises(SyntaxError, partial(tasks.create, "foo"))
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
                     read_data='{"name": "Golem task"}')):

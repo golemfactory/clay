@@ -193,16 +193,16 @@ class Tasks:
         task_name = ""
         dictionary = json.loads(jsondata)
         if 'name' in dictionary.keys():
+            dictionary['name'] = dictionary['name'].strip()
             task_name = dictionary['name']
         if (len(task_name) < 4 or len(task_name) > 24):
-            raise SyntaxError(
-                "Length of task name cannot be less\
-                 than 4 or more than 24 characters.")
-        pattern = re.compile("^[a-zA-Z0-9_\-\.]+( [a-zA-Z0-9_\-\.]+)*$")
-        if not pattern.match(task_name):
-            raise SyntaxError(
-                "Task name can only contain letters, numbers,\
-                 spaces between characters, underline, dash or dot.")
+            raise ValueError(
+                "Length of task name cannot be less "
+                "than 4 or more than 24 characters.")
+        if not re.match(r"(\w|[\-\. ]){4,24}$", task_name, re.ASCII):
+            raise ValueError(
+                "Task name can only contain letters, numbers, "
+                "spaces, underline, dash or dot.")
         # FIXME CHANGE TASKI ID
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
