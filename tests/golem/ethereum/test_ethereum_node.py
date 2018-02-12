@@ -1,13 +1,12 @@
 import logging
-import unittest
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 from os import path
 
-from mock import patch, Mock
+from mock import patch
+from web3 import Web3, IPCProvider
 
-from golem.ethereum.node import log, NodeProcess, \
-    NODE_LIST, get_public_nodes
+from golem.ethereum.node import log, NodeProcess
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
@@ -18,7 +17,7 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = ["golem/ethereum/node.py"]
 
     def test_ethereum_node(self):
-        np = NodeProcess(self.tempdir, start_node=True)
+        np = NodeProcess(self.tempdir)
         assert np.is_running() is False
         np.start()
         assert np.is_running() is True
@@ -30,51 +29,25 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
 
         # Test different port option
         port = 8182
-        with self.assertLogs(log, level="INFO") as l:
+        with self.assertLogs(log, level="INFO") as logs:
             np.start(port)
-            assert any("--port=8182" in log for log in l.output)
+            assert any("--port=8182" in log for log in logs.output)
         assert np.is_running() is True
         np.stop()
         assert np.is_running() is False
 
     def test_ethereum_node_reuse(self):
-        np = NodeProcess(self.tempdir, start_node=True)
+        np = NodeProcess(self.tempdir)
         np.start()
 
         # Reuse but with different directory
         ndir = path.join(self.tempdir, "ndir")
-        np1 = NodeProcess(ndir, start_node=True)
+        np1 = NodeProcess(ndir)
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True
         np.stop()
         np1.stop()
-
-    def test_start_timed_out(self):
-        provider = Mock()
-        port = 3000
-
-        np = NodeProcess(self.tempdir)
-        np.start = Mock()
-        np.start_node = True
-
-        with self.assertRaises(OSError):
-            np._start_timed_out(provider, port)
-        assert not np.start.called
-
-        np.start_node = False
-        np._start_timed_out(provider, port)
-        assert np.start.called
-
-
-class TestPublicNodeList(unittest.TestCase):
-
-    def test_builtin_public_nodes(self):
-        with patch('requests.get', lambda *_: None):
-            public_nodes = get_public_nodes()
-
-        assert public_nodes is not NODE_LIST
-        assert all(n in NODE_LIST for n in public_nodes)
 
 
 class EthereumClientNodeTest(TempDirFixture):
@@ -82,9 +55,10 @@ class EthereumClientNodeTest(TempDirFixture):
         super().setUp()
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
-        self.node = NodeProcess(self.tempdir, start_node=True)
-        self.node.start()
-        self.client = Client(self.node.web3)
+        self.node = NodeProcess(self.tempdir)
+        ipc_path = self.node.start()
+        web3 = Web3(IPCProvider(ipc_path))
+        self.client = Client(web3)
 
     def tearDown(self):
         self.node.stop()

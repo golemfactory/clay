@@ -1,4 +1,5 @@
 import logging
+import random
 
 from ethereum.utils import privtoaddr
 from eth_utils import encode_hex
@@ -13,6 +14,20 @@ from golem.transactions.transactionsystem import TransactionSystem
 import golem_sci
 
 log = logging.getLogger('golem.pay')
+
+
+NODE_LIST = [
+    'http://188.165.227.180:55555',
+    'http://94.23.17.170:55555',
+    'http://94.23.57.58:55555',
+]
+
+
+def get_public_nodes():
+    """Returns public geth RPC addresses"""
+    addr_list = NODE_LIST[:]
+    random.shuffle(addr_list)
+    return addr_list
 
 
 class EthereumTransactionSystem(TransactionSystem):
@@ -39,21 +54,32 @@ class EthereumTransactionSystem(TransactionSystem):
 
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self._node = NodeProcess(datadir, start_geth, address)
-        self._node.start(start_port)
-        self._sci = golem_sci.new_sci(
-            self._node.web3,
-            encode_hex(privtoaddr(node_priv_key)),
-            lambda tx: tx.sign(node_priv_key),
-        )
-        self.payment_processor = PaymentProcessor(
-            sci=self._sci,
-            faucet=True
-        )
+        def tx_sign(tx):
+            tx.sign(node_priv_key)
+        eth_address = encode_hex(privtoaddr(node_priv_key))
 
-        super().__init__(
-            incomes_keeper=EthereumIncomesKeeper(self._sci),
-        )
+        self._node = None
+        if start_geth:
+            self._node = NodeProcess(datadir)
+            ipc_path = self._node.start(start_port)
+            sci = golem_sci.new_sci_ipc(ipc_path, eth_address, tx_sign)
+            log.info('Connected to local Geth')
+        else:
+            addresses = [address] if address else get_public_nodes()
+            sci = None
+            for addr in addresses:
+                try:
+                    sci = golem_sci.new_sci_rpc(addr, eth_address, tx_sign)
+                    log.info('Connected to remote Geth at %r', addr)
+                    break
+                except Exception as e:
+                    log.warning(e)
+            if sci is None:
+                raise Exception('Could not connect to remote Geth')
+
+        self.payment_processor = PaymentProcessor(sci=sci, faucet=True)
+
+        super().__init__(incomes_keeper=EthereumIncomesKeeper(sci))
 
         self.payment_processor.start()
 
@@ -61,13 +87,11 @@ class EthereumTransactionSystem(TransactionSystem):
         if self.payment_processor.running:
             self.payment_processor.stop()
         self.incomes_keeper.stop()
-        self._node.stop()
+        if self._node:
+            self._node.stop()
 
     def add_payment_info(self, *args, **kwargs):
-        payment = super(EthereumTransactionSystem, self).add_payment_info(
-            *args,
-            **kwargs
-        )
+        payment = super().add_payment_info(*args, **kwargs)
         self.payment_processor.add(payment)
         return payment
 

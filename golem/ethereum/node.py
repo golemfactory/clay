@@ -1,14 +1,11 @@
 import atexit
 import logging
 import os
-import random
 import subprocess
 import sys
 import tempfile
 import threading
 import time
-
-from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.environments.utils import find_program
@@ -17,20 +14,6 @@ from golem.utils import find_free_net_port
 from golem.utils import tee_target
 
 log = logging.getLogger('golem.ethereum')
-
-
-NODE_LIST = [
-    'http://188.165.227.180:55555',
-    'http://94.23.17.170:55555',
-    'http://94.23.57.58:55555',
-]
-
-
-def get_public_nodes():
-    """Returns public geth RPC addresses"""
-    addr_list = NODE_LIST[:]
-    random.shuffle(addr_list)
-    return addr_list
 
 
 class NodeProcess(object):
@@ -44,16 +27,11 @@ class NodeProcess(object):
         stdin=DEVNULL
     )
 
-    def __init__(self, datadir, addr=None, start_node=False):
+    def __init__(self, datadir):
         """
         :param datadir: working directory
-        :param addr: address of a geth instance to connect with
-        :param start_node: start a new geth node
         """
         self.datadir = datadir
-        self.start_node = start_node
-        self.web3 = None  # web3 client interface
-        self.addr_list = [addr] if addr else get_public_nodes()
 
         self.__ps = None  # child process
 
@@ -65,25 +43,9 @@ class NodeProcess(object):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
-        if self.start_node:
-            provider = self._create_local_ipc_provider(self.CHAIN, start_port)
-        else:
-            provider = self._create_remote_rpc_provider()
-
-        self.web3 = Web3(provider)
+        ipc_path = self._create_local_geth(self.CHAIN, start_port)
         atexit.register(lambda: self.stop())
-
-        started = time.time()
-        deadline = started + self.CONNECTION_TIMEOUT
-
-        while not self.is_connected():
-            if time.time() > deadline:
-                return self._start_timed_out(provider, start_port)
-            time.sleep(0.1)
-
-        log.info("Connected to node in %ss", time.time() - started)
-
-        return None
+        return ipc_path
 
     @report_calls(Component.ethereum, 'node.stop')
     def stop(self):
@@ -101,19 +63,7 @@ class NodeProcess(object):
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
 
-    def is_connected(self):
-        try:
-            return self.web3.isConnected()
-        except AssertionError:  # thrown if not all required APIs are available
-            return False
-
-    def _start_timed_out(self, provider, start_port):
-        if not self.start_node:
-            self.start_node = not self.addr_list
-            return self.start(start_port)
-        raise OSError("Cannot connect to geth: {}".format(provider))
-
-    def _create_local_ipc_provider(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
+    def _create_local_geth(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
         prog = self._find_geth()
 
         # Init geth datadir
@@ -134,7 +84,7 @@ class NodeProcess(object):
 
         if is_windows():
             # On Windows expand to full named pipe path.
-            ipc_path = r'\\.\pipe\{}'.format(self.start_node)
+            ipc_path = r'\\.\pipe\{}'.format(True)
 
         args = [
             prog,
@@ -171,12 +121,18 @@ class NodeProcess(object):
                                           kwargs=tee_kwargs)
             tee_thread.start()
 
-        return IPCProvider(ipc_path)
+        started = time.time()
+        deadline = started + self.CONNECTION_TIMEOUT
 
-    def _create_remote_rpc_provider(self):
-        addr = self.addr_list.pop()
-        log.info('GETH: connecting to remote RPC interface at %s', addr)
-        return HTTPProvider(addr)
+        while not os.path.exists(ipc_path) and time.time() < deadline:
+            time.sleep(0.2)
+        if not os.path.exists(ipc_path):
+            raise Exception(
+                'Local Geth error: {} does not exist'.format(ipc_path))
+
+        log.info('Connected to local Geth in %ss', time.time() - started)
+
+        return ipc_path
 
     def _find_geth(self):
         geth = find_program('geth')

@@ -1,11 +1,14 @@
 import mock
+import unittest
 from mock import patch, MagicMock
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
-    EthereumTransactionSystem
+    EthereumTransactionSystem,
+    NODE_LIST,
+    get_public_nodes,
 )
 
 PRIV_KEY = '07' * 32
@@ -53,14 +56,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         with patch('twisted.internet.task.LoopingCall.start'), \
             patch('twisted.internet.task.LoopingCall.stop'), \
-            patch('golem_sci.new_sci'), \
+            patch('golem_sci.new_sci_ipc'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
             patch(pkg + 'node.NodeProcess.__init__', _init), \
             patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
-            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY, start_geth=True)
             assert e.payment_processor._loopingCall.start.called
             assert e._node.start.called
 
@@ -72,3 +75,13 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             mock_is_service_running.return_value = True
             e.stop()
             assert e.payment_processor._loopingCall.stop.called
+
+
+class TestPublicNodeList(unittest.TestCase):
+
+    def test_builtin_public_nodes(self):
+        with patch('requests.get', lambda *_: None):
+            public_nodes = get_public_nodes()
+
+        assert public_nodes is not NODE_LIST
+        assert all(n in NODE_LIST for n in public_nodes)
