@@ -563,7 +563,6 @@ class TestResourceHandshakeShare(TempDirFixture):
         task_server = TaskServer(
             node=Mock(client=client, key=str(uuid.uuid4())),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
             client=client,
             use_docker_machine_manager=False
         )
