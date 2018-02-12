@@ -10,7 +10,7 @@ from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
-from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, sha3, \
+from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
         privtopub
 
 from .simpleenv import get_local_datadir
