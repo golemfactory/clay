@@ -491,6 +491,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
+                # for now, we're assuming the Concent
+                # is always in use
+                concent_enabled=True,
             )
             self.send(msg)
         elif wait:

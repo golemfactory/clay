@@ -130,7 +130,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['provider_public_key', provider_key],
             ['compute_task_def', ctd],
             ['package_hash', 'sha1:' + task_state.package_hash],
-            ['concent_enabled', None],
+            ['concent_enabled', True],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
