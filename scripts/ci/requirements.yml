@@ -2,3 +2,6 @@
 
 - name: "geerlingguy.homebrew"
 - name: "elliotweiser.osx-command-line-tools"
+- name: "golemfactory.golem-dev-linux"
+- name: "golemfactory.golem-dev-mac"
+- name: "golemfactory.golem-dev-windows"
