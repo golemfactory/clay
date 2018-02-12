@@ -47,5 +47,6 @@ scipy==0.19.1
 pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
-Golem-Messages==1.7.0
+#Golem-Messages==1.7.0
+-e git://github.com/golemfactory/golem-messages.git@v1.8.0#egg=golem_messages
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@96ac480fb8107c26d412b2691e264f233e3b9eda#egg=golem_sci
