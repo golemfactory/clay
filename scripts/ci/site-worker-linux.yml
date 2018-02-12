@@ -17,4 +17,4 @@
       worker_master_hostname: "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
       worker_name: "linux_0{{ play_hosts.index(inventory_hostname) + 1 }}"
       need_git: Yes
-    - golem-dev-linux
+    - golemfactory.golem-dev-linux

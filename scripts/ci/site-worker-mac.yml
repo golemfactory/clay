@@ -6,4 +6,4 @@
     - role: buildbot-worker-mac
       worker_master_hostname: "{{hostvars[groups['master'][0]]['ec2_public_ip_address']}}"
       worker_name: "macos_0{{ play_hosts.index(inventory_hostname) + 1 }}"
-    - golem-dev-mac
+    - golemfactory.golem-dev-mac
