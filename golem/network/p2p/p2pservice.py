@@ -133,7 +133,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             return
 
         for host in KnownHosts.select() \
-                .where(KnownHosts.is_seed == False):
+                .where(KnownHosts.is_seed == False):  # noqa
 
             ip_address = host.ip_address
             port = host.port
