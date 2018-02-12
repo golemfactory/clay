@@ -19,3 +19,12 @@ def process_messages_received_from_concent(concent_service):
         except Exception:  # pylint: disable=broad-except
             logger.exception('Problem interpreting: %r', msg)
         concent_service.received_messages.task_done()
+
+
+class ConcentMixin():
+    def concent_refused(self, subtask_id, reason):
+        logger.warning(
+            "Concent service refused for subtask_id:%r %s",
+            subtask_id,
+            reason
+        )

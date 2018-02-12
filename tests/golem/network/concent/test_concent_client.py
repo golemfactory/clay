@@ -8,6 +8,7 @@ import urllib
 from freezegun import freeze_time
 from golem_messages import message
 import golem_messages.cryptography
+import golem_messages.exceptions
 import requests
 from requests.exceptions import RequestException
 
@@ -180,7 +181,13 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service._loop()
             self.assertEqual(send_mock.call_count, 0)
 
-    def test_loop(self, send_mock, *_):
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_loop(self, react_mock, send_mock, *_):
+        data = object()
+        send_mock.return_value = data
         self.concent_service.submit(
             'key',
             self.msg,
@@ -192,6 +199,61 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.msg,
             self.concent_service.keys_auth._private_key,
             self.concent_service.keys_auth.public_key,
+        )
+        react_mock.assert_called_once_with(data)
+
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_ping(self, react_mock, send_mock, *_):
+        data = object()
+        constants.PING_TIMEOUT = 0
+        send_mock.return_value = data
+        self.assertTrue(self.concent_service._queue.empty())
+        self.concent_service._loop()
+        send_mock.assert_called_once_with(
+            None,
+            self.concent_service.keys_auth._private_key,
+            self.concent_service.keys_auth.public_key,
+        )
+        react_mock.assert_called_once_with(data)
+
+    def test_react_to_concent_message_none(self, *_):
+        result = self.concent_service.react_to_concent_message(None)
+        self.assertIsNone(result)
+
+    @mock.patch(
+        'golem_messages.load',
+        side_effect=golem_messages.exceptions.MessageError,
+    )
+    def test_react_to_concent_message_error(self, load_mock, *_):
+        self.concent_service.received_messages.put = mock.Mock()
+        data = object()
+        result = self.concent_service.react_to_concent_message(data)
+        self.assertIsNone(result)
+        self.assertEqual(
+            self.concent_service.received_messages.put.call_count,
+            0,
+        )
+        load_mock.assert_called_once_with(
+            data,
+            self.concent_service.keys_auth._private_key,
+            variables.CONCENT_PUBKEY,
+        )
+
+    @mock.patch('golem_messages.load')
+    def test_react_to_concent_message(self, load_mock, *_):
+        self.concent_service.received_messages.put = mock.Mock()
+        data = object()
+        load_mock.return_value = msg = mock.Mock()
+        result = self.concent_service.react_to_concent_message(data)
+        self.assertIsNone(result)
+        self.concent_service.received_messages.put.assert_called_once_with(msg)
+        load_mock.assert_called_once_with(
+            data,
+            self.concent_service.keys_auth._private_key,
+            variables.CONCENT_PUBKEY,
         )
 
 

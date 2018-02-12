@@ -1,6 +1,10 @@
+import logging
 import warnings
 
 from golem_messages import message
+
+
+logger = logging.getLogger(__name__)
 
 
 class DuplicatedHandler(UserWarning):

@@ -193,7 +193,7 @@ class ConcentClientService(threading.Thread):
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get(timeout=60)
+            req = self._queue.get(timeout=constants.PING_TIMEOUT)
         except queue.Empty:
             # Send empty "ping" message
             res = send_to_concent(
