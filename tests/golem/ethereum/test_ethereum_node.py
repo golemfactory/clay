@@ -1,6 +1,5 @@
 import logging
 import unittest
-from distutils.version import StrictVersion
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 from os import path
@@ -50,15 +49,6 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
         assert np1.is_running() is True
         np.stop()
         np1.stop()
-
-    @patch('golem.ethereum.node.NodeProcess.MIN_GETH_VERSION',
-           StrictVersion('0.1.0'))
-    @patch('golem.ethereum.node.NodeProcess.MAX_GETH_VERSION',
-           StrictVersion('0.2.0'))
-    def test_geth_version_check(self):
-        node = NodeProcess(self.tempdir, start_node=True)
-        with self.assertRaises(OSError):
-            node.start()
 
     def test_start_timed_out(self):
         provider = Mock()
