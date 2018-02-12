@@ -162,12 +162,18 @@ class BlenderVerifier(FrameRenderingVerifier):
                        host_config=None) as job:
             job.start()
             was_failure = job.wait()
-            with open(os.path.join(output_dir, "result.txt")) as json_data:
-                self.metrics[verification_context.crop_id] = json.load(
-                    json_data)
             stdout_file = os.path.join(logs_dir, "stdout.log")
             stderr_file = os.path.join(logs_dir, "stderr.log")
             job.dump_logs(stdout_file, stderr_file)
+            result_path = os.path.join(output_dir, "result.txt")
+            try:
+                with open(result_path) as json_data:
+                    self.metrics[
+                        verification_context.crop_id] = json.load(
+                        json_data)
+            except EnvironmentError as exc:
+                logger.error("Metrics not calculated %r", exc)
+                was_failure = -1
 
         with self.lock:
             if was_failure == -1:
@@ -220,6 +226,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       self._crop_rendered,
                                       self._crop_render_failure,
                                       self.subtask_info,
+                                      3,
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         else:
