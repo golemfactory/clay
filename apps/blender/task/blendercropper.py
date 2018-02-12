@@ -1,14 +1,16 @@
 import math
 import random
 import os
+import logging
 from copy import deepcopy
 from functools import partial
-import numpy as np
 
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 
+logger = logging.getLogger("blendercroppper")
 
+# FIXME #2086
 # pylint: disable=R0903
 class CropContext:
     def __init__(self, crops_position, crop_id, crops_path):
@@ -25,6 +27,8 @@ class BlenderCropper:
     def __init__(self):
         self.crop_counter = 0
         self.crop_size = ()
+        self.split_values = []
+        self.split_pixels = []
 
     def generate_split_data(self, resolution, image_border, splits_num,
                             crop_size=None):
@@ -54,12 +58,11 @@ class BlenderCropper:
         top = round(top, 3)
         bottom = round(bottom, 3)
 
+        logger.info("left=%r, right=%r, top=%r, bottom=%r", left, right, bottom, top)
+
         if crop_size is None:
             self.crop_size = (self._find_split_size(resolution[0]),
                               self._find_split_size(resolution[1]))
-
-        split_values = []
-        split_pixels = []
 
         # Randomisation cX and Y coordinate to render crop window
         # Blender cropping window from top left. Cropped window pixels
@@ -67,11 +70,11 @@ class BlenderCropper:
         for _ in range(splits_num):
             split_x = self._random_split(left, right, self.crop_size[0])
             split_y = self._random_split(bottom, top, self.crop_size[1])
-            split_values.append((split_x[0], split_x[1], split_y[0],
+            self.split_values.append((split_x[0], split_x[1], split_y[0],
                                  split_y[1]))
-            split_pixels.append(self._pixel(resolution, split_x[0], split_y[1],
+            self.split_pixels.append(self._pixel(resolution, split_x[0], split_y[1],
                                             top))
-        return split_values, split_pixels
+        return self.split_values, self.split_pixels
 
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
@@ -138,19 +141,20 @@ class BlenderCropper:
     @staticmethod
     def _random_split(min_, max_, size_):
         difference = (max_ - size_)
-        split_min = random.uniform(min_, difference)
-        split_max = split_min + size_
+        split_min = round(random.uniform(min_, difference), 3)
+        split_max = round(split_min + size_, 3)
+        logger.info("split_min=%r, split_max=%r", split_min, split_max)
         return split_min, split_max
 
     @staticmethod
     def _pixel(res, crop_x_min, crop_y_max, top):
         # In matrics calculation, y=0 is located on top. Where in blender in
         # bottom. Take then given top and substract it from y_max
-        y_p = round(crop_y_max * res[1], 2)
-        top_p = round(top * res[1], 2)
-        y = top_p - y_p
-        x = round(crop_x_min * res[0], 2)
-        # Should i substract -1 to get effective position in 0 indexed matrix?
+        y = crop_y_max * res[1]
+        top_p = top * res[1]
+        y = int(round(top_p - y))
+        x = int(round(crop_x_min * res[0]))
+        logger.info("X=%r, Y=%r", x, y)
         return x, y
 
     @staticmethod

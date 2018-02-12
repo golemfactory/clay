@@ -17,7 +17,7 @@ from golem.core.common import get_golem_path
 
 logger = logging.getLogger("apps.blender")
 
-
+#FIXME #2086
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
