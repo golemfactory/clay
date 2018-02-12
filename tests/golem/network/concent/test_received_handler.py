@@ -14,6 +14,9 @@ from tests.factories import messages as msg_factories
 
 
 class RegisterHandlersTestCase(unittest.TestCase):
+    def setUp(self):
+        library._handlers = {}
+
     def tearDown(self):
         library._handlers = {}
 
@@ -48,6 +51,9 @@ class TaskServerMessageHandlerTestCase(
             task_server=self.task_server,
         )
 
+    def tearDown(self):
+        library._handlers = {}
+
     @mock.patch("golem.task.taskserver.TaskServer.concent_refused")
     def test_concent_service_refused(self, refused_mock):
         msg = msg_factories.ServiceRefused()
@@ -66,7 +72,4 @@ class TaskServerMessageHandlerTestCase(
             msg=msg.task_to_compute,
             task_session=None,
         )
-
-    def tearDown(self):
-        library._handlers = {}
 # pylint: enable=no-self-use
