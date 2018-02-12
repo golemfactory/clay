@@ -17,8 +17,8 @@ import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
-    NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService, ResourceCleanerService, TaskArchiverService,\
+    NetworkConnectionPublisherService, \
+    ResourceCleanerService, TaskArchiverService, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
@@ -612,20 +612,6 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
         assert c._publish.call_count == 1
 
 
-class TestTasksPublisherService(TestWithReactor):
-
-    @patch('golem.client.log')
-    def test_run(self, log):
-        rpc_publisher = Mock()
-        task_manager = Mock()
-
-        service = TasksPublisherService(rpc_publisher, task_manager)
-        service._run()
-
-        assert not log.debug.called
-        assert rpc_publisher.publish.call_count == 1
-
-
 class TestTaskArchiverService(TestWithReactor):
 
     @patch('golem.client.log')
@@ -637,37 +623,6 @@ class TestTaskArchiverService(TestWithReactor):
 
         assert not log.debug.called
         assert task_archiver.do_maintenance.call_count == 1
-
-
-class TestBalancePublisherService(TestWithReactor):
-
-    @patch('golem.client.log')
-    def test_run(self, log):
-        rpc_publisher = Mock()
-        transaction_system = Mock()
-        transaction_system.get_balance = lambda: (1, 2, 3)
-
-        service = BalancePublisherService(rpc_publisher, transaction_system)
-        service._run()
-
-        assert not log.debug.called
-        assert rpc_publisher.publish.call_count == 1
-
-    @patch('golem.client.log')
-    def test_balance_exception(self, log):
-        rpc_publisher = Mock()
-        transaction_system = Mock()
-
-        def raise_exc(*_):
-            raise Exception('Test exception')
-
-        transaction_system.get_balance = raise_exc
-
-        service = BalancePublisherService(rpc_publisher, transaction_system)
-        service._run()
-
-        assert log.debug.called
-        assert rpc_publisher.publish.call_count == 0
 
 
 class TestResourceCleanerService(TestWithReactor):
