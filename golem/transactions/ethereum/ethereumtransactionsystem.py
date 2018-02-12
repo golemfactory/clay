@@ -41,7 +41,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
-        self._sci = golem_sci.new_testnet(
+        self._sci = golem_sci.new_sci(
             self._node.web3,
             encode_hex(privtoaddr(node_priv_key)),
             lambda tx: tx.sign(node_priv_key),
