@@ -101,6 +101,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                 resources, success, failure)
         except Exception as e:
             logger.error("Crop generation failed %r", e)
+            import traceback
+            traceback.print_exc()
             failure()
 
     # The verification function will generate three random crops, from results

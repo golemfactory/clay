@@ -47,7 +47,12 @@ class BlenderCropper:
         useful for cropping with blender, second one are corresponding
         pixels. Each list has splits_num elements, one for each split.
         """
-        left, right, top, bottom = image_border
+        left, right, bottom, top = image_border
+
+        left = round(left, 3)
+        right = round(right, 3)
+        top = round(top, 3)
+        bottom = round(bottom, 3)
 
         if crop_size is None:
             self.crop_size = (self._find_split_size(resolution[0]),
@@ -61,11 +66,11 @@ class BlenderCropper:
         # 0,0 are in top left
         for _ in range(splits_num):
             split_x = self._random_split(left, right, self.crop_size[0])
-            split_y = self._random_split(top, bottom, self.crop_size[1])
+            split_y = self._random_split(bottom, top, self.crop_size[1])
             split_values.append((split_x[0], split_x[1], split_y[0],
                                  split_y[1]))
             split_pixels.append(self._pixel(resolution, split_x[0], split_y[1],
-                                            left, bottom))
+                                            top))
         return split_values, split_pixels
 
     # pylint: disable-msg=too-many-arguments
@@ -132,20 +137,21 @@ class BlenderCropper:
 
     @staticmethod
     def _random_split(min_, max_, size_):
-        difference = round((max_ - size_) * 100, 2)
-        split_min = random.randint(int(round(min_ * 100)),
-                                   int(difference)) / 100
-        split_max = round(split_min + size_, 2)
+        difference = (max_ - size_)
+        split_min = random.uniform(min_, difference)
+        split_max = split_min + size_
         return split_min, split_max
 
     @staticmethod
-    def _pixel(res, crop_x_min, crop_y_max, xmin, ymax):
-        x_pixel_min = math.floor(np.float32(res[0]) * np.float32(crop_x_min))
-        x_pixel_min -= math.floor(np.float32(xmin) * np.float32(res[0]))
-        y_pixel_max = math.floor(np.float32(res[1]) * np.float32(crop_y_max))
-        y_pixel_min = math.floor(np.float32(ymax) * np.float32(res[1]))
-        y_pixel_min -= y_pixel_max
-        return x_pixel_min, y_pixel_min
+    def _pixel(res, crop_x_min, crop_y_max, top):
+        # In matrics calculation, y=0 is located on top. Where in blender in
+        # bottom. Take then given top and substract it from y_max
+        y_p = round(crop_y_max * res[1], 2)
+        top_p = round(top * res[1], 2)
+        y = top_p - y_p
+        x = round(crop_x_min * res[0], 2)
+        # Should i substract -1 to get effective position in 0 indexed matrix?
+        return x, y
 
     @staticmethod
     def _find_split_size(res):
