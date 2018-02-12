@@ -82,7 +82,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertCountEqual(msg.slots(), expected)
 
     def test_request_task(self):
-        conn = mock.Mock(server=mock.Mock())
+        conn = mock.Mock(
+            server=mock.Mock(task_manager=mock.Mock(tasks_states={}))
+        )
         ts = TaskSession(conn)
         ts._get_handshake = mock.Mock(return_value={})
         ts.verified = True
@@ -106,6 +108,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ctd = message.tasks.ComputeTaskDef()
         ctd['task_owner'] = Node().to_dict()
         ctd['task_owner']['key'] = requestor_key = 'req pubkey'
+        ctd['task_id'] = '42'
+
+        task_state = taskstate.TaskState()
+        task_state.package_hash = '667'
+        conn.server.task_manager.tasks_states[ctd['task_id']] = task_state
 
         ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
         ts2.interpret(mt)
@@ -122,6 +129,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['requestor_public_key', requestor_key],
             ['provider_public_key', provider_key],
             ['compute_task_def', ctd],
+            ['package_hash', 'sha1:' + task_state.package_hash],
+            ['concent_enabled', True],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
