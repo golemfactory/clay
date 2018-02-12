@@ -6,9 +6,11 @@
   set_fact:
     required_space: 35
 
+
 - name: Test if we have winrm connection
   win_ping:
 
+# FIXME: Use gather_facts: True and ansible_mounts for this. (Needs testing)
 - name: Run ps to get free disk space
   win_command:  powershell.exe "Get-PSDrive C | Select-Object Free | ConvertTo-Json"
   register: getpsdrive
@@ -17,12 +19,15 @@
   set_fact:
     freediskspace: "{{ (getpsdrive.stdout | from_json).Free // 1073741824 }}"
 
+# FIXME: This should not be taken into account if packages are already installed
+- name: Check if required disk space is available
+  assert:
+    that:
+      - "freediskspace | int > required_space"
 
 - name: Install python3
   win_chocolatey:
     name: python3
-    when:
-    - freediskspace | int > required_space
 
 - name: Install git
   win_chocolatey:
