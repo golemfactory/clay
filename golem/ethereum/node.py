@@ -2,13 +2,11 @@ import atexit
 import logging
 import os
 import random
-import re
 import subprocess
 import sys
 import tempfile
 import threading
 import time
-from distutils.version import StrictVersion
 
 from web3 import Web3, IPCProvider, HTTPProvider
 
@@ -37,8 +35,6 @@ def get_public_nodes():
 
 class NodeProcess(object):
 
-    MIN_GETH_VERSION = StrictVersion('1.7.2')
-    MAX_GETH_VERSION = StrictVersion('1.7.999')
     CONNECTION_TIMEOUT = 10
     CHAIN = 'rinkeby'
 
@@ -64,21 +60,6 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
-    def _check_geth_version(self):
-        version = self.web3.version.node.split("/")
-        if version[0] != "Geth":
-            raise Exception("Expected geth client, got {}".format(version[0]))
-        match = re.search("^v(\d+\.\d+\.\d+)", version[1]).group(1)
-
-        ver = StrictVersion(match)
-        log.info('Geth version: %s', ver)
-        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            self.stop()
-            raise OSError("Incompatible geth version: {}. "
-                          "Expected >= {} and <= {}"
-                          .format(ver, self.MIN_GETH_VERSION,
-                                  self.MAX_GETH_VERSION))
-
     @report_calls(Component.ethereum, 'node.start')
     def start(self, start_port=None):
         if self.__ps is not None:
@@ -99,20 +80,6 @@ class NodeProcess(object):
             if time.time() > deadline:
                 return self._start_timed_out(provider, start_port)
             time.sleep(0.1)
-
-        self._check_geth_version()
-
-        genesis_block = self.get_genesis_block()
-
-        while not genesis_block:
-            if time.time() > deadline:
-                return self._start_timed_out(provider, start_port)
-            time.sleep(0.5)
-            genesis_block = self.get_genesis_block()
-
-        identified_chain = self.identify_chain(genesis_block)
-        if identified_chain != self.CHAIN:
-            raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
         log.info("Connected to node in %ss", time.time() - started)
 
@@ -139,27 +106,6 @@ class NodeProcess(object):
             return self.web3.isConnected()
         except AssertionError:  # thrown if not all required APIs are available
             return False
-
-    def identify_chain(self, genesis_block):
-        """Check what chain the Ethereum node is running."""
-        GENESES = {
-        '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3':
-            'mainnet',  # noqa
-        '0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d':
-            'ropsten',  # noqa
-        '0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177':
-            'rinkeby',  # noqa
-        }
-        genesis = genesis_block['hash']
-        chain = GENESES.get(genesis, 'unknown')
-        log.info("{} chain ({})".format(chain, genesis))
-        return chain
-
-    def get_genesis_block(self):
-        try:
-            return self.web3.eth.getBlock(0)
-        except Exception:  # pylint:disable=broad-except
-            return None
 
     def _start_timed_out(self, provider, start_port):
         if not self.start_node:
