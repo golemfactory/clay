@@ -1,15 +1,15 @@
-from golem_messages import message
 import os
+import unittest
 from os import makedirs, path
 from random import random, randint
-import time
-import unittest
 from unittest.mock import patch
 
 from freezegun import freeze_time
+from golem.core.crypto import ECCx
+from golem_messages import message
+from golem_messages.cryptography import ECCx
 
 from golem import testutils
-from golem.core.crypto import ECCx
 from golem.core.keysauth import EllipticalKeysAuth, \
     get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
@@ -255,17 +255,15 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
         ek.key_id = encode_hex(ek.public_key)
-        ek.ecc = ECCx(None, ek._private_key)
+        ek.ecc = ECCx(ek._private_key)
 
-        msg = message.MessageWantToComputeTask(
-            node_name='node_name',
-            task_id='task_id',
-            perf_index=2200,
-            price=5 * 10 ** 18,
-            max_resource_size=250000000,
-            max_memory_size=300000000,
-            num_cores=4,
-            timestamp=time.time())
+        msg = message.WantToComputeTask(node_name='node_name',
+                                       task_id='task_id',
+                                       perf_index=2200,
+                                       price=5 * 10 ** 18,
+                                       max_resource_size=250000000,
+                                       max_memory_size=300000000,
+                                       num_cores=4)
 
         data = msg.get_short_hash()
         signature = ek.sign(data)

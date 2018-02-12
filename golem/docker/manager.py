@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from threading import Thread
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
-    DEVNULL, to_unicode
+    DEVNULL, to_unicode, SUBPROCESS_STARTUP_INFO
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 from golem.report import report_calls, Component
@@ -84,6 +84,7 @@ class DockerManager(DockerConfigManager):
             return XhyveHypervisor.instance(self)
         return None
 
+    @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
 
         if is_windows():
@@ -242,6 +243,7 @@ class DockerManager(DockerConfigManager):
             return [i.strip() for i in output.split("\n") if i]
         return []
 
+    @report_calls(Component.docker, 'instance.check')
     def docker_machine_running(self, name=None):
         if not self.docker_machine:
             raise EnvironmentError("No Docker VM available")
@@ -255,6 +257,7 @@ class DockerManager(DockerConfigManager):
             logger.debug("DockerMachine_output: %s", e.output)
         return False
 
+    @report_calls(Component.docker, 'instance.start')
     def start_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: starting {}".format(name))
@@ -264,7 +267,9 @@ class DockerManager(DockerConfigManager):
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to start the VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
+            raise
 
+    @report_calls(Component.docker, 'instance.stop')
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
         logger.info("DockerMachine: stopping '{}'".format(name))
@@ -296,6 +301,7 @@ class DockerManager(DockerConfigManager):
         params = dict(shell=shell, stdin=DEVNULL)
 
         output = subprocess.check_output(command, stderr=subprocess.STDOUT,
+                                         startupinfo=SUBPROCESS_STARTUP_INFO,
                                          **params)
         logger.debug('docker_machine_command_output: %s', output)
         return to_unicode(output)
@@ -322,7 +328,7 @@ class DockerManager(DockerConfigManager):
         cwd = os.getcwd()
 
         for entry in entries:
-            image, docker_file, tag = entry
+            image, docker_file, tag, build_dir = entry
             version = cls._image_version(entry)
 
             try:
@@ -331,7 +337,7 @@ class DockerManager(DockerConfigManager):
                             .format(version))
                 cls.command('build', args=['-t', image,
                                            '-f', docker_file,
-                                           '.'])
+                                           build_dir])
                 cls.command('tag', args=[image, version])
             finally:
                 os.chdir(cwd)
@@ -360,7 +366,7 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _image_version(cls, entry):
-        image, _, tag = entry
+        image, _, tag, _ = entry
         return '{}:{}'.format(image, tag)
 
     @classmethod
@@ -397,6 +403,7 @@ class DockerManager(DockerConfigManager):
         self._set_docker_machine_env()
         cb()
 
+    @report_calls(Component.docker, 'instance.env')
     def _set_docker_machine_env(self, retried=False):
         try:
             output = self.command('env', self.docker_machine,
@@ -417,7 +424,6 @@ Ensure that you try the following before reporting an issue:
     docker-machine.exe create --driver virtualbox golem
  4. Restart Windows machine"""
             logger.error(typical_solution_s)
-
             raise
 
         if output:

@@ -1,11 +1,8 @@
-from golem_messages.message import MessageWantToComputeTask, \
-    MessageResourceHandshakeVerdict, MessageResourceHandshakeNonce, \
-    MessageResourceHandshakeStart, MessageDisconnect
 import logging
 import os
 import uuid
 
-from golem.core.async import AsyncRequest, async_run
+from golem_messages import message
 
 logger = logging.getLogger('golem.resources')
 
@@ -15,11 +12,11 @@ class ResourceHandshake:
     __slots__ = ('nonce', 'file', 'hash', 'message',
                  'started', 'local_result', 'remote_result')
 
-    def __init__(self, message=None):
+    def __init__(self, message_=None):
         self.nonce = str(uuid.uuid4())
         self.file = None
         self.hash = None
-        self.message = message
+        self.message = message_
 
         self.started = False
         self.local_result = None
@@ -83,7 +80,7 @@ class ResourceHandshakeSessionMixin:
         """
 
         key_id = self.key_id
-        message = dict(
+        msg_d = dict(
             node_name=node_name,
             task_id=task_id,
             perf_index=perf_index,
@@ -97,11 +94,11 @@ class ResourceHandshakeSessionMixin:
             self._handshake_error(key_id, 'Peer blocked')
 
         elif self._handshake_required(key_id):
-            self._task_request_message = message
+            self._task_request_message = msg_d
             self._start_handshake(key_id)
 
         else:
-            self.send(MessageWantToComputeTask(**message))
+            self.send(message.WantToComputeTask(**msg_d))
 
     # ########################
     #     MESSAGE HANDLERS
@@ -118,7 +115,7 @@ class ResourceHandshakeSessionMixin:
         if not handshake:
             self._start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
-            self.send(MessageResourceHandshakeStart(handshake.hash))
+            self.send(message.ResourceHandshakeStart(resource=handshake.hash))
 
         self._download_handshake_nonce(key_id, msg.resource)
 
@@ -128,7 +125,10 @@ class ResourceHandshakeSessionMixin:
         accepted = handshake and handshake.verify_local(msg.nonce)
         nonce = handshake.nonce if handshake else None
 
-        self.send(MessageResourceHandshakeVerdict(msg.nonce, accepted))
+        self.send(message.ResourceHandshakeVerdict(
+            nonce=msg.nonce,
+            accepted=accepted,
+        ))
 
         if accepted:
             self._finalize_handshake(key_id)
@@ -145,7 +145,7 @@ class ResourceHandshakeSessionMixin:
             self._finalize_handshake(key_id)
         else:
             self._handshake_error(key_id, 'handshake not started')
-            self.disconnect(MessageDisconnect.REASON.ResourceHandshakeTimeout)
+            self.disconnect(message.Disconnect.REASON.ResourceHandshakeTimeout)
 
     # ########################
     #     START HANDSHAKE
@@ -208,7 +208,7 @@ class ResourceHandshakeSessionMixin:
         if handshake.finished():
             logger.info('Finished resource handshake with %r', key_id)
         if handshake.success() and handshake.message:
-            self.send(MessageWantToComputeTask(**handshake.message))
+            self.send(message.WantToComputeTask(**handshake.message))
 
     def _stop_handshake_timer(self):
         if self._handshake_timer:
@@ -220,27 +220,23 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        client_options = self.task_server.get_share_options(handshake.nonce,
-                                                            key_id)
-
-        async_req = AsyncRequest(self.resource_manager.add_file,
-                                 handshake.file,
-                                 self.NONCE_TASK,
-                                 absolute_path=True,
-                                 client_options=client_options)
-        async_run(async_req,
-                  success=lambda res: self._nonce_shared(key_id, res),
-                  error=lambda exc: self._handshake_error(key_id, exc))
+        deferred = self.resource_manager.add_file(handshake.file,
+                                                  self.NONCE_TASK,
+                                                  async_=True)
+        deferred.addCallbacks(
+            lambda res: self._nonce_shared(key_id, res),
+            lambda exc: self._handshake_error(key_id, exc)
+        )
 
     def _nonce_shared(self, key_id, result):
         handshake = self._get_handshake(key_id)
-        _, handshake.hash = result
+        handshake.hash, _ = result
 
         logger.debug("Resource handshake: sending resource hash: "
                      "%r to peer %r", handshake.hash, key_id)
 
         os.remove(handshake.file)
-        self.send(MessageResourceHandshakeStart(handshake.hash))
+        self.send(message.ResourceHandshakeStart(resource=handshake.hash))
 
     # ########################
     #      DOWNLOAD NONCE
@@ -253,7 +249,8 @@ class ResourceHandshakeSessionMixin:
             entry, self.NONCE_TASK,
             success=lambda res, files, _: self._nonce_downloaded(key_id, files),
             error=lambda exc, *_: self._handshake_error(key_id, exc),
-            client_options=self.task_server.get_download_options(key_id)
+            client_options=self.task_server.get_download_options(key_id,
+                                                                 self.address)
         )
 
     def _nonce_downloaded(self, key_id, files):
@@ -267,14 +264,14 @@ class ResourceHandshakeSessionMixin:
                                   .format(files, err))
         else:
             os.remove(path)
-            self.send(MessageResourceHandshakeNonce(nonce))
+            self.send(message.ResourceHandshakeNonce(nonce=nonce))
 
     # ########################
     #     ERROR HANDLERS
     # ########################
 
     def _handshake_error(self, key_id, error):
-        logger.error("Resource handshake error (%r): %r", key_id, error)
+        logger.info("Resource handshake error (%r): %r", key_id, error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
         self.task_server.task_computer.session_closed()
@@ -304,11 +301,11 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.deny_set.add(key_id)
+        self.task_server.acl.disallow(key_id)
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
-        return key_id in self.task_server.deny_set
+        return not self.task_server.acl.is_allowed(key_id)
 
     # ########################
     #         MESSAGES
@@ -316,10 +313,10 @@ class ResourceHandshakeSessionMixin:
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            MessageResourceHandshakeStart.TYPE:
+            message.ResourceHandshakeStart.TYPE:
                 self._react_to_resource_handshake_start,
-            MessageResourceHandshakeNonce.TYPE:
+            message.ResourceHandshakeNonce.TYPE:
                 self._react_to_resource_handshake_nonce,
-            MessageResourceHandshakeVerdict.TYPE:
+            message.ResourceHandshakeVerdict.TYPE:
                 self._react_to_resource_handshake_verdict
         })

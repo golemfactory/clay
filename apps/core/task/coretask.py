@@ -1,5 +1,6 @@
 import abc
-import copy
+import decimal
+import golem_messages.message
 import logging
 import os
 import uuid
@@ -9,20 +10,22 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.core.task.verifier import CoreVerifier
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
-from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import ComputerAdapter
+
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    ResourceType, ComputeTaskDef, TaskTypeInfo
+    TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -82,7 +85,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 
 class CoreTask(Task):
-    VERIFICATOR_CLASS = CoreVerificator  # type: Type[CoreVerificator]
+    VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -111,7 +114,8 @@ class CoreTask(Task):
         deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
-        self.task_resources = list(set(filter(os.path.isfile, task_definition.resources)))
+        self.task_resources = list(
+            set(filter(os.path.isfile, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -173,17 +177,17 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verificator = self.VERIFICATOR_CLASS()
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
         return hasattr(self.header, 'docker_images') \
-               and self.header.docker_images \
-               and len(self.header.docker_images) > 0
+            and self.header.docker_images \
+            and len(self.header.docker_images) > 0
 
-    def initialize(self, dir_manager):
-        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
-        self.verificator.tmp_dir = self.tmp_dir
+    def initialize(self, dir_manager: DirManager) -> None:
+        dir_manager.clear_temporary(self.header.task_id)
+        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id,
+                                                          create=True)
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
@@ -194,16 +198,33 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA,
+                             verification_finished_=None):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
-        ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
-                                            result_files, self)
-        if ver_state == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result_files)
+
+        def verification_finished(subtask_id, verdict, result):
+            self.verification_finished(subtask_id, verdict, result)
+            verification_finished_()
+
+        verifier = self.VERIFIER_CLASS(verification_finished)
+        verifier.computer = ComputerAdapter()
+        verifier.start_verification(
+            subtask_info=self.subtasks_given[subtask_id],
+            results=result_files,
+            resources=self.task_resources,
+            reference_data=self.get_reference_data())
+
+    def get_reference_data(self):
+        return []
+
+    def verification_finished(self, subtask_id, verdict, result):
+        if verdict == SubtaskVerificationState.VERIFIED:
+            self.accept_results(subtask_id, result['extra_data']['results'])
         # TODO Add support for different verification states
         else:
             self.computation_failed(subtask_id)
@@ -244,7 +265,7 @@ class CoreTask(Task):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
     def get_subtasks(self, part):
-        return []
+        return dict()
 
     def restart(self):
         for subtask_id in list(self.subtasks_given.keys()):
@@ -274,24 +295,6 @@ class CoreTask(Task):
             return 0.0
         return self.num_tasks_received / self.total_tasks
 
-    def get_resources(self, resource_header, resource_type=ResourceType.ZIP, tmp_dir=None):
-
-        dir_name = self._get_resources_root_dir()
-        if tmp_dir is None:
-            tmp_dir = self.tmp_dir
-
-        if os.path.exists(dir_name):
-            if resource_type == ResourceType.ZIP:
-                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
-
-            elif resource_type == ResourceType.PARTS:
-                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
-                                                                               dir_name,
-                                                                               self.res_files)
-            elif resource_type == ResourceType.HASHES:
-                return copy.copy(self.task_resources)
-
-        return None
 
     def update_task_state(self, task_state):
         pass
@@ -322,18 +325,22 @@ class CoreTask(Task):
         }
 
     def _new_compute_task_def(self, hash, extra_data, working_directory=".", perf_index=0):
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = hash
-        ctd.extra_data = extra_data
-        ctd.short_description = self.short_extra_data_repr(extra_data)
-        ctd.src_code = self.src_code
-        ctd.performance = perf_index
-        ctd.working_directory = working_directory
-        ctd.docker_images = self.header.docker_images
-        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
-        ctd.task_owner = self.header.task_owner
-        ctd.environment = self.header.environment
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['task_id'] = self.header.task_id
+        ctd['subtask_id'] = hash
+        ctd['extra_data'] = extra_data
+        ctd['short_description'] = self.short_extra_data_repr(extra_data)
+        ctd['src_code'] = self.src_code
+        ctd['performance'] = perf_index
+        ctd['working_directory'] = working_directory
+        if self.header.docker_images:
+            ctd['docker_images'] = [
+                di.to_dict() for di in self.header.docker_images
+            ]
+        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
+                              self.header.deadline)
+        ctd['task_owner'] = self.header.task_owner.to_dict()
+        ctd['environment'] = self.header.environment
 
         return ctd
 
@@ -354,19 +361,22 @@ class CoreTask(Task):
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        tr_files = self.load_task_results(task_results, result_type, subtask_id)
-        self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+        tr_files = self.load_task_results(
+            task_results, result_type, subtask_id)
+        self.results[subtask_id] = self.filter_task_results(
+            tr_files, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
+        self.counting_nodes[self.subtasks_given[
+            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     # TODO why is it here and not in the Task?
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
         pass  # Implement in derived methods
 
     def load_task_results(self, task_result, result_type: int, subtask_id):
@@ -386,8 +396,12 @@ class CoreTask(Task):
         elif result_type == ResultType.FILES:
             return task_result
         else:
-            logger.error("Task result type not supported {}".format(result_type))
-            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(result_type)
+            logger.error(
+                "Task result type not supported %r",
+                result_type,
+            )
+            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported" \
+                .format(result_type)
             return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
@@ -450,7 +464,8 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
+        self.counting_nodes[self.subtasks_given[
+            subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
@@ -458,6 +473,9 @@ class CoreTask(Task):
         with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
         return os.path.join(output_dir, tr[0])
+
+    def get_resources(self):
+        return self.task_resources
 
     def _get_resources_root_dir(self):
         task_resources = list(self.task_resources)
@@ -472,7 +490,7 @@ class CoreTask(Task):
         if client.rejected():
             return AcceptClientVerdict.REJECTED
         elif finishing >= max_finishing or \
-                                client.started() - finishing >= max_finishing:
+                client.started() - finishing >= max_finishing:
             return AcceptClientVerdict.SHOULD_WAIT
 
         client.start()
@@ -570,7 +588,8 @@ class CoreTaskBuilder(TaskBuilder):
     def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
-        definition.max_price = float(dictionary['bid']) * denoms.ether
+        definition.max_price = \
+            int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
         definition.full_task_timeout = string_to_timeout(
             dictionary['timeout'])
@@ -595,4 +614,50 @@ class CoreTaskBuilder(TaskBuilder):
         if definition.legacy:
             return options['output_path']
 
-        return os.path.join(options['output_path'], definition.task_name)
+        absolute_path = cls.get_nonexistant_path(
+            options['output_path'],
+            definition.task_name,
+            options.get('format', ''))
+
+        return absolute_path
+
+    @classmethod
+    def get_nonexistant_path(cls, path, name, extension=""):
+        """
+        Prevent overwriting with incremental filename
+        @ref https://stackoverflow.com/a/43167607/1763249
+
+        Example
+        --------
+
+        >>> get_nonexistant_path('/documents/golem/', 'task1', 'png')
+
+        # if path is not exist
+        '/documents/golem/task1'
+
+        # or if exist
+        '/documents/golem/task 1(1)'
+
+        # or even if still exist
+        '/documents/golem/task 1(2)'
+
+        ...
+        """
+        fname_path = os.path.join(path, name)
+
+        if extension:
+            extension = "." + extension
+
+        path_with_ext = os.path.join(path, name + extension)
+
+        if not os.path.exists(path_with_ext):
+            return fname_path
+
+        i = 1
+        new_fname = "{}({})".format(fname_path, i)
+
+        while os.path.exists(new_fname + extension):
+            i += 1
+            new_fname = "{}({})".format(fname_path, i)
+
+        return new_fname

@@ -1,14 +1,16 @@
-from datetime import datetime
 import logging
 import math
 import os
 from _pysha3 import sha3_256 as _sha3_256
+from abc import abstractmethod
+from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
 import bitcoin
+from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
+    privtopub
 
-from golem.core.crypto import ECCx, mk_privkey
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
@@ -119,6 +121,51 @@ class EllipticalKeysAuth:
             keys_dir, private_key_name)
         public_key_loc = EllipticalKeysAuth._get_key_loc(
             keys_dir, public_key_name)
+
+    @abstractmethod
+    def generate_new(self, difficulty):
+        """ Generate new pair of keys with given difficulty
+        :param int difficulty: desired key difficulty level
+        """
+        pass
+
+    @classmethod
+    def get_keys_dir(cls, datadir=None):
+        """ Path to the dir where keys files are stored."""
+        if not hasattr(cls, '_keys_dir'):
+            # TODO: Move keys to node's datadir.
+            if datadir is None:
+                datadir = get_local_datadir('default')
+            cls._keys_dir = os.path.join(datadir, 'keys')
+        if not os.path.isdir(cls._keys_dir):
+            os.makedirs(cls._keys_dir)
+        return cls._keys_dir
+
+    @classmethod
+    def set_keys_dir(cls, path):
+        if (not os.path.isdir(path)) and os.path.exists(path):
+            raise IOError("Path {} does not exists\n1){}\n2){}".format(path, os.path.isdir(path), os.path.exists(path)))
+        cls._keys_dir = path
+
+    @classmethod
+    def __get_key_loc(cls, file_name):
+        return os.path.join(cls.get_keys_dir(), file_name)
+
+    @classmethod
+    def _get_private_key_loc(cls, key_name):
+        return cls.__get_key_loc(key_name)
+
+    @classmethod
+    def _get_public_key_loc(cls, key_name):
+        return cls.__get_key_loc(key_name)
+
+    @abstractmethod
+    def _load_private_key(self):  # implement in derived classes
+        return
+
+    @abstractmethod
+    def _load_public_key(self):  # implement in derived classes
+        return
 
         loaded_keys = EllipticalKeysAuth._load_and_check_keys(
             private_key_loc, public_key_loc, difficulty)
@@ -237,7 +284,7 @@ class EllipticalKeysAuth:
         :param data: data to be signed
         :return: signed data
         """
-        return self.ecc.sign(sha3(data))
+        return self.ecc.sign(data)
 
     def verify(self, sig: bytes, data: bytes,
                public_key: Optional[bytes] = None) -> bool:
@@ -258,8 +305,7 @@ class EllipticalKeysAuth:
                 public_key = self.public_key
             if len(public_key) == EllipticalKeysAuth.HEX_PUB_KEY_LEN:
                 public_key = decode_hex(public_key)
-            ecc = ECCx(public_key)
-            return ecc.verify(sig, sha3(data))
+            return ecdsa_verify(public_key, sig, data)
         except AssertionError:
             logger.info("Wrong key format")
         except Exception as exc:

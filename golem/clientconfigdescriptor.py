@@ -19,6 +19,7 @@ class ClientConfigDescriptor(object):
         self.pings_interval = 0.0
         self.use_ipv6 = 0
         self.key_difficulty = 0
+        self.use_upnp = 0
 
         self.seed_host = ""
         self.seed_port = 0
@@ -27,7 +28,6 @@ class ClientConfigDescriptor(object):
         self.getting_peers_interval = 0.0
         self.getting_tasks_interval = 0.0
         self.task_request_interval = 0.0
-        self.use_waiting_for_task_timeout = 0
         self.waiting_for_task_timeout = 0.0
         self.waiting_for_task_session_timeout = 0.0
         self.forwarded_session_request_timeout = 0.0
@@ -35,6 +35,7 @@ class ClientConfigDescriptor(object):
         self.task_session_timeout = 0
         self.resource_session_timeout = 0
         self.clean_resources_older_than_seconds = 0
+        self.clean_tasks_older_than_seconds = 0
 
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
@@ -78,9 +79,9 @@ class ConfigApprover(object):
        """
 
     dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
-                       'use_distributed_resource_management',
-                       'use_waiting_for_task_timeout', 'send_pings',
-                       'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
+                       'use_distributed_resource_management', 'send_pings',
+                       'use_ipv6', 'use_upnp', 'eth_account', 'accept_tasks',
+                       'node_name']
     to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
                   'waiting_for_task_timeout', 'p2p_session_timeout',
                   'task_session_timeout', 'pings_interval',

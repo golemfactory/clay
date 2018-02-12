@@ -1,4 +1,4 @@
+-r requirements-test.txt
 PyInstaller
 pylint
 mypy
-pycodestyle

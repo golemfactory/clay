@@ -1,60 +1,27 @@
-from mock import patch, Mock, call
+from unittest.mock import patch, Mock
+
 from requests import ConnectionError
 
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
 
 
-@patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')
 @patch('atexit.register')
 class TestHyperdriveDaemonManager(TempDirFixture):
 
-    def test_start(self, register, *_):
-        def addresses(*_):
-            return dict(
-                uTP=('0.0.0.0', 3282),
-                TCP=('0.0.0.0', 3282)
-            )
+    @patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')
+    def setUp(self, *_):
+        super().setUp()
 
+        self.dm = HyperdriveDaemonManager(self.path)
+        self.monitor = self.dm._monitor
+
+    @patch('golem.network.hyperdrive.daemon_manager.'
+           'HyperdriveDaemonManager._wait')
+    def test_start_not_running(self, *_):
+        dm, monitor = self.dm, self.monitor
         process = Mock()
 
-        # initialization
-        dm = HyperdriveDaemonManager(self.path)
-        monitor = dm._monitor
-
-        monitor.add_callbacks.assert_called_with(dm._start)
-        register.assert_called_with(dm.stop)
-
-        # hyperdrive is running, no address response
-        process.poll.return_value = True
-        monitor.add_child_processes.called = False
-
-        with patch.object(dm, 'addresses', return_value=None), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
-
-            with self.assertRaises(RuntimeError):
-                dm.start()
-
-            assert monitor.start.called
-            assert not monitor.add_child_processes.called
-            assert makedirs.called
-
-        # hyperdrive is running, valid address response
-        process.poll.return_value = True
-        monitor.add_child_processes.called = False
-
-        with patch.object(dm, 'addresses', return_value=addresses), \
-             patch('subprocess.Popen', return_value=process), \
-             patch('os.makedirs') as makedirs:
-
-            dm.start()
-
-            assert monitor.start.called
-            assert not monitor.add_child_processes.called
-            assert not makedirs.called
-
-        # hyperdrive not running
         process.poll.return_value = None
         monitor.add_child_processes.called = False
 
@@ -68,9 +35,48 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             monitor.add_child_processes.assert_called_with(process)
             assert makedirs.called
 
-    def test_addresses_and_ports(self, *_):
-        to_patch = 'golem.network.hyperdrive.client.HyperdriveClient.addresses'
+    def test_start_running(self, *_):
+        dm, monitor = self.dm, self.monitor
+        process = Mock()
 
+        addresses = dict(
+            uTP=('0.0.0.0', 3282),
+            TCP=('0.0.0.0', 3282)
+        )
+
+        process.poll.return_value = True
+        monitor.add_child_processes.called = False
+
+        with patch.object(dm, 'addresses', return_value=addresses), \
+            patch('subprocess.Popen', return_value=process), \
+            patch('os.makedirs') as makedirs:
+
+            dm.start()
+            assert monitor.start.called
+            assert not monitor.add_child_processes.called
+            assert not makedirs.called
+
+    def test_start_invalid_response(self, *_):
+        dm, monitor = self.dm, self.monitor
+        process = Mock()
+
+        process.poll.return_value = True
+        monitor.add_child_processes.called = False
+
+        with patch.object(dm, 'addresses', return_value=None), \
+            patch('subprocess.Popen', return_value=process), \
+            patch('os.makedirs') as makedirs:
+
+            with self.assertRaises(RuntimeError):
+                dm.start()
+
+            assert monitor.start.called
+            assert not monitor.add_child_processes.called
+            assert makedirs.called
+
+    @patch('golem.network.hyperdrive.client.HyperdriveClient.addresses')
+    def test_addresses_and_ports(self, client_addresses, *_):
+        dm = self.dm
         public_ip = '1.2.3.4'
 
         addresses = {
@@ -82,22 +88,34 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             'uTP': (public_ip, 3283)
         }
 
-        def raise_exc():
-            raise ConnectionError()
+        client_addresses.return_value = addresses
+        assert dm.addresses() == addresses
 
-        dm = HyperdriveDaemonManager(self.path)
+        assert dm.public_addresses(public_ip) == expected_public
+        assert dm.public_addresses(public_ip, addresses) == expected_public
+        assert dm.public_addresses(public_ip, dict()) == dict()
 
-        with patch(to_patch, side_effect=raise_exc):
-            assert not dm.addresses()
+        assert dm.ports() == {3282, 3283}
+        assert dm.ports(addresses) == {3282, 3283}
+        assert dm.ports(dict()) == set()
 
-        with patch(to_patch, return_value=addresses):
-            assert dm.addresses() == addresses
+    @patch('golem.network.hyperdrive.client.HyperdriveClient.addresses')
+    def test_addresses_error(self, client_addresses, *_):
+        dm = self.dm
+        client_addresses.side_effect = ConnectionError
+        assert not dm.addresses()
 
-            assert dm.public_addresses(public_ip) == expected_public
-            assert dm.public_addresses(public_ip, addresses) == expected_public
-            assert dm.public_addresses(public_ip, dict()) == dict()
+    def test_wait(self, *_):
+        dm = self.dm
+        dm.addresses = Mock()
+        dm._critical_error = Mock()
 
-            assert dm.ports() == {3282, 3283}
-            assert dm.ports(addresses) == {3282, 3283}
-            assert dm.ports(dict()) == set()
+        dm.addresses.return_value = {'TCP': ('0.0.0.0', 3282)}
+        dm._wait(timeout=1)
+        assert not dm._critical_error.called
+
+        dm.addresses.return_value = None
+        dm._wait(timeout=1)
+        assert dm._critical_error.called
+
 

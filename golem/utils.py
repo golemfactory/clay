@@ -2,6 +2,8 @@ import logging
 import socket
 import sys
 
+from ethereum.utils import sha3
+
 import binascii
 
 
@@ -61,6 +63,10 @@ def encode_hex(b):
             b = b[2:]
         return str(binascii.hexlify(b), 'utf-8')
     raise TypeError('Value must be an instance of str or bytes')
+
+
+def pubkeytoaddr(pubkey: str) -> str:
+    return '0x' + encode_hex(sha3(decode_hex(pubkey))[12:])
 
 
 def tee_target(prefix, proc, input_stream, path, stream):

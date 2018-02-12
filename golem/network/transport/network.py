@@ -1,4 +1,5 @@
 import abc
+from twisted.internet.tcp import Client, Server
 from twisted.internet.protocol import Factory, Protocol, connectionDone
 
 
@@ -16,12 +17,32 @@ class Network(object, metaclass=abc.ABCMeta):
         return
 
 
-class SessionFactory(Factory):
+class SessionFactory(object):
     def __init__(self, session_class):
         self.session_class = session_class
 
     def get_session(self, conn):
         return self.session_class(conn)
+
+
+class IncomingSessionFactoryWrapper(object):
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
+
+    def get_session(self, conn):
+        session = self.session_factory.get_session(conn)
+        session.conn_type = Session.CONN_TYPE_SERVER
+        return session
+
+
+class OutgoingSessionFactoryWrapper(object):
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
+
+    def get_session(self, conn):
+        session = self.session_factory.get_session(conn)
+        session.conn_type = Session.CONN_TYPE_CLIENT
+        return session
 
 
 class ProtocolFactory(Factory):
@@ -32,6 +53,30 @@ class ProtocolFactory(Factory):
 
     def buildProtocol(self, addr):
         protocol = self.protocol_class(self.server)
+        protocol.set_session_factory(self.session_factory)
+        return protocol
+
+
+class IncomingProtocolFactoryWrapper(Factory):
+    def __init__(self, protocol_factory):
+        self.protocol_factory = protocol_factory
+        self.session_factory = IncomingSessionFactoryWrapper(
+            protocol_factory.session_factory)
+
+    def buildProtocol(self, addr):
+        protocol = self.protocol_factory.buildProtocol(addr)
+        protocol.set_session_factory(self.session_factory)
+        return protocol
+
+
+class OutgoingProtocolFactoryWrapper(Factory):
+    def __init__(self, protocol_factory):
+        self.protocol_factory = protocol_factory
+        self.session_factory = OutgoingSessionFactoryWrapper(
+            protocol_factory.session_factory)
+
+    def buildProtocol(self, addr):
+        protocol = self.protocol_factory.buildProtocol(addr)
         protocol.set_session_factory(self.session_factory)
         return protocol
 
@@ -66,8 +111,12 @@ class SessionProtocol(Protocol):
 
 
 class Session(object, metaclass=abc.ABCMeta):
+    CONN_TYPE_CLIENT = 1
+    CONN_TYPE_SERVER = 2
+
     @abc.abstractmethod
     def __init__(self, conn):
+        self.conn_type = None
         return
 
     @abc.abstractmethod

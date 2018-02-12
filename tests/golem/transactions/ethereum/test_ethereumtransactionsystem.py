@@ -19,6 +19,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
         assert type(e.get_payment_address()) is str
+        e.stop()
 
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
@@ -35,49 +36,12 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                                      "Invalid Ethereum address constructed"):
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
-    @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
-    def test_sync(self, sleep, *_):
-        switch_value = [True]
-
-        def false():
-            return False
-
-        def switch(*_):
-            switch_value[0] = not switch_value[0]
-            return not switch_value[0]
-
-        def error(*_):
-            raise Exception
-
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=false):
-            e.sync()
-            assert sleep.call_count == 1
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=switch):
-            e.sync()
-            assert sleep.call_count == 2
-
-        sleep.call_count = 0
-        with patch(
-                'golem.ethereum.paymentprocessor.PaymentProcessor.is_synchronized',
-                side_effect=error):
-            e.sync()
-            assert sleep.call_count == 0
-
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
+        e.stop()
 
-    @mock.patch('golem.core.service.Service.running',
+    @mock.patch('golem.core.service.LoopingCallService.running',
                 new_callable=mock.PropertyMock)
     def test_stop(self, mock_is_service_running):
         pkg = 'golem.ethereum.'
@@ -89,6 +53,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         with patch('twisted.internet.task.LoopingCall.start'), \
             patch('twisted.internet.task.LoopingCall.stop'), \
+            patch('golem_sci.new_sci'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
             patch(pkg + 'node.NodeProcess.__init__', _init), \
@@ -96,21 +61,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            assert e.incomes_keeper.processor. \
-                _loopingCall.start.called
-            assert e.incomes_keeper.processor \
-                ._PaymentProcessor__client.node.start.called
+            assert e.payment_processor._loopingCall.start.called
+            assert e._node.start.called
 
             mock_is_service_running.return_value = False
             e.stop()
-            assert not e.incomes_keeper.processor. \
-                _PaymentProcessor__client.node.stop.called
-            assert not e.incomes_keeper.processor. \
-                _loopingCall.stop.called
+            assert e._node.stop.called
+            assert not e.payment_processor._loopingCall.stop.called
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e.incomes_keeper.processor. \
-                _PaymentProcessor__client.node is None
-            assert e.incomes_keeper.processor. \
-                _loopingCall.stop.called
+            assert e.payment_processor._loopingCall.stop.called

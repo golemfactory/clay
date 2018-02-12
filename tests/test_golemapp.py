@@ -50,5 +50,4 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                       catch_exceptions=False)
 
         assert node_class.called
-        assert PROTOCOL_CONST.P2P_ID == custom_id \
-            and PROTOCOL_CONST.TASK_ID == custom_id
+        assert PROTOCOL_CONST.ID == custom_id

@@ -76,4 +76,4 @@ exe = EXE(pyz,
           strip=False,
           upx=False,
           icon=icon,
-          console=not is_windows)
+          console=True)

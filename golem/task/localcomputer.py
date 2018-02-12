@@ -5,76 +5,79 @@ from threading import Lock
 import time
 from typing import Callable
 
-from apps.core.task.coretaskstate import TaskDefinition
+from golem_messages.message import ComputeTaskDef
+
 from golem.core.common import to_unicode
+from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader, decompress_dir
-from golem.task.taskbase import Task, ResourceType, ComputeTaskDef
+from golem.resource.resource import (TaskResourceHeader, decompress_dir,
+                                     get_resources_for_task, ResourceType)
 
 logger = logging.getLogger("golem.task")
 
 
-class LocalComputer(object):
+class LocalComputer:
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
 
     def __init__(self,
-                 task: Task,
                  root_path: str,
-                 success_callback,
-                 error_callback,
-                 get_compute_task_def: Callable[[], ComputeTaskDef],
-                 check_mem=False,
-                 comp_failed_warning=DEFAULT_WARNING,
-                 comp_success_message=DEFAULT_SUCCESS,
-                 use_task_resources=True,
-                 additional_resources=None):
-        # TODO remove this isinstance
-        if not isinstance(task, Task):
-            raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
-        self.task = task
+                 success_callback: Callable,
+                 error_callback: Callable,
+                 get_compute_task_def: Callable[[], ComputeTaskDef] = None,
+                 compute_task_def: ComputeTaskDef = None,
+                 check_mem: bool = False,
+                 comp_failed_warning: str = DEFAULT_WARNING,
+                 comp_success_message: str = DEFAULT_SUCCESS,
+                 resources: list = None,
+                 additional_resources=None) -> None:
         self.res_path = None
         self.tmp_dir = None
         self.success = False
         self.lock = Lock()
         self.tt = None
         self.dir_manager = DirManager(root_path)
+        self.compute_task_def = compute_task_def
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
         self.success_callback = success_callback
         self.check_mem = check_mem
         self.comp_failed_warning = comp_failed_warning
         self.comp_success_message = comp_success_message
-        self.use_task_resources = use_task_resources
+        if resources is None:
+            resources = []
+        self.resources = resources
         if additional_resources is None:
             additional_resources = []
         self.additional_resources = additional_resources
-
         self.start_time = None
         self.end_time = None
+        self.test_task_res_path = None
 
-    def run(self):
+    def run(self) -> None:
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
-            self.__prepare_resources() # makes a copy
+            self.__prepare_resources(self.resources)  # makes a copy
 
-            ctd = self.get_compute_task_def()
+            if not self.compute_task_def:
+                ctd = self.get_compute_task_def()
+            else:
+                ctd = self.compute_task_def
 
             self.tt = self._get_task_thread(ctd)
             self.tt.start()
 
-        except Exception as exc:
-            logger.warning("{}: {}".format(self.comp_failed_warning, exc))
-            self.error_callback(to_unicode(exc))
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("%s", self.comp_failed_warning, exc_info=True)
+            self.error_callback(exc)
 
-    def end_comp(self):
+    def end_comp(self) -> bool:
         if self.tt:
             self.tt.end_comp()
             return True
-        else:
-            return False
+        return False
 
     def get_progress(self):
         if self.tt:
@@ -93,7 +96,10 @@ class LocalComputer(object):
             self.computation_failure(task_thread)
 
     def is_success(self, task_thread):
-        return not task_thread.error and task_thread.result and task_thread.result.get("data")
+        return \
+            not task_thread.error \
+            and task_thread.result \
+            and task_thread.result.get("data")
 
     def computation_success(self, task_thread):
         self.success_callback(task_thread.result, self._get_time_spent())
@@ -111,21 +117,21 @@ class LocalComputer(object):
         except TypeError:
             logger.error("Cannot measure execution time")
 
-    def __prepare_resources(self):
+    def __prepare_resources(self, resources):
 
-        self.test_task_res_path = self.dir_manager.get_task_test_dir("")#self.task.header.task_id)
-        #  get_test_task_path(self.root_path)
+        self.test_task_res_path = self.dir_manager.get_task_test_dir("")
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
         else:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        # self.test_task_res_dir = get_test_task_path(self.root_path)
-        if self.use_task_resources:
+        if resources:
             rh = TaskResourceHeader(self.test_task_res_path)
-            # rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(rh, ResourceType.ZIP, self.tmp_dir)
+            res_file = get_resources_for_task(resource_header=rh,
+                                              resource_type=ResourceType.ZIP,
+                                              tmp_dir=self.tmp_dir,
+                                              resources=resources)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
@@ -141,14 +147,44 @@ class LocalComputer(object):
         os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
-        return DockerTaskThread(self,
-                                ctd.subtask_id,
-                                ctd.docker_images,
-                                ctd.working_directory,
-                                ctd.src_code,
-                                ctd.extra_data,
-                                ctd.short_description,
-                                self.test_task_res_path,
-                                self.tmp_dir,
-                                0,
-                                check_mem=self.check_mem)
+        return DockerTaskThread(
+            self,
+            ctd['subtask_id'],
+            [DockerImage(**did) for did in ctd['docker_images']],
+            ctd['working_directory'],
+            ctd['src_code'],
+            ctd['extra_data'],
+            ctd['short_description'],
+            self.test_task_res_path,
+            self.tmp_dir,
+            0,
+            check_mem=self.check_mem,
+        )
+
+
+class ComputerAdapter(object):
+
+    def __init__(self):
+        self.computer = None
+
+    def start_computation(self, root_path, success_callback, error_callback,
+                          compute_task_def, resources, additional_resources):
+        self.computer = LocalComputer(root_path=root_path,
+                                      success_callback=success_callback,
+                                      error_callback=error_callback,
+                                      compute_task_def=compute_task_def,
+                                      resources=resources,
+                                      additional_resources=additional_resources)
+        self.computer.run()
+
+    def wait(self):
+        if self.computer.tt is not None:
+            self.computer.tt.join()
+            return True
+        return False
+
+    def get_result(self):
+        try:
+            return self.computer.tt.result
+        except AttributeError:
+            return None

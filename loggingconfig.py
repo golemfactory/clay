@@ -47,10 +47,18 @@ LOGGING = {
             'backupCount': 5,
             'encoding': 'utf-8',
         },
+        'error-file': {
+            'class': 'logging.FileHandler',
+            'level': 'WARNING',
+            'formatter': 'date',
+            # suffix is substituted in golem.core.common.config_logging()
+            'filename': '%(logdir)s/golem%(suffix)s.error.log',
+            'encoding': 'utf-8',
+        },
     },
     'root': {
         'level': 'WARNING',
-        'handlers': ['console', 'file', ],
+        'handlers': ['console', 'file', 'error-file'],
         'filters': [],
     },
     'loggers': {
@@ -62,7 +70,15 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.client': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.gnt_converter': {
             'level': 'INFO',
             'propagate': True,
         },
@@ -75,6 +91,10 @@ LOGGING = {
             'propagate': True,
         },
         'golem.resources': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.token': {
             'level': 'INFO',
             'propagate': True,
         },

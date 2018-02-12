@@ -1,0 +1,29 @@
+---
+
+- hosts: control_worker
+  remote_user: ubuntu
+  become: yes
+  gather_facts: False
+  vars:
+    - master_host: "{{hostvars[groups['master'][0]]['ec2_private_ip_address']}}"
+  pre_tasks:
+    - name: Install python for Ansible
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      changed_when: False
+  roles:
+    - role: buildbot-worker-linux
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 1 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 1 }}"
+      worker_master_hostname: "{{master_host}}"
+    - role: buildbot-worker-linux
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 2 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 2 }}"
+      worker_master_hostname: "{{master_host}}"
+    - role: buildbot-worker-linux
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 3 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 3 }}"
+      worker_master_hostname: "{{master_host}}"
+    - role: buildbot-worker-linux
+      worker_name: "control_0{{ play_hosts.index(inventory_hostname) * 4 + 4 }}"
+      worker_postfix: "_control_0{{ play_hosts.index(inventory_hostname) * 4 + 4 }}"
+      worker_master_hostname: "{{master_host}}"

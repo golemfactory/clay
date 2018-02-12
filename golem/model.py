@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import pickle
 from enum import Enum
 from os import path
 # Type is used for old-style (pre Python 3.6) type annotation
@@ -8,9 +9,11 @@ from typing import Optional, Type  # pylint: disable=unused-import
 
 
 from ethereum.utils import denoms
+from golem_messages import message
 from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
-                    SqliteDatabase, TextField)
+                    SqliteDatabase, TextField, BlobField)
+from playhouse.shortcuts import RetryOperationalError
 
 from golem.core.simpleserializer import DictSerializable
 from golem.network.p2p.node import Node
@@ -19,15 +22,25 @@ from golem.utils import decode_hex, encode_hex
 
 log = logging.getLogger('golem.db')
 
+
+class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
+
+    def sequence_exists(self, seq):
+        raise NotImplementedError()
+
+
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
-db = SqliteDatabase(None, threadlocals=True,
-                    pragmas=(('foreign_keys', True), ('busy_timeout', 30000)))
+db = GolemSqliteDatabase(None, threadlocals=True,
+                         pragmas=(
+                             ('foreign_keys', True),
+                             ('busy_timeout', 1000),
+                             ('journal_mode', 'WAL')))
 
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 5
+    SCHEMA_VERSION = 12
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -47,8 +60,8 @@ class Database:
     @staticmethod
     def create_database() -> None:
         tables = [
+            GenericKeyValue,
             Account,
-            ExpectedIncome,
             GlobalRank,
             HardwarePreset,
             Income,
@@ -59,6 +72,7 @@ class Database:
             Stats,
             TaskPreset,
             Performance,
+            NetworkMessage
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -79,6 +93,11 @@ class BaseModel(Model):
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
+
+
+class GenericKeyValue(BaseModel):
+    key = CharField(primary_key=True)
+    value = CharField(null=True)
 
 
 ##################
@@ -213,6 +232,7 @@ class Payment(BaseModel):
     payee = RawCharField()
     value = BigIntegerField()
     details = PaymentDetailsField()
+    processed_ts = IntegerField(null=True)
 
     def __init__(self, *args, **kwargs):
         super(Payment, self).__init__(*args, **kwargs)
@@ -223,54 +243,35 @@ class Payment(BaseModel):
     def __repr__(self) -> str:
         tx = self.details.tx
         bn = self.details.block_number
-        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
+        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r} ts:{!r}>"\
             .format(
                 self.subtask,
                 float(self.value) / denoms.ether,
                 self.status,
                 tx,
-                bn
+                bn,
+                self.processed_ts
             )
-
-    def get_sender_node(self) -> Optional[Node]:
-        return self.details.node_info
-
-
-class ExpectedIncome(BaseModel):
-    sender_node = CharField()
-    sender_node_details = NodeField()
-    task = CharField()
-    subtask = CharField()
-    value = BigIntegerField()
-
-    def __repr__(self):
-        return "<ExpectedIncome: {!r} v:{:.3f}>"\
-            .format(self.subtask, self.value)
-
-    def get_sender_node(self):
-        return self.sender_node_details
 
 
 class Income(BaseModel):
-    """Payments received from other nodes."""
     sender_node = CharField()
-    task = CharField()
     subtask = CharField()
-    transaction = CharField()
-    block_number = BigIntegerField()
     value = BigIntegerField()
+    accepted_ts = IntegerField(null=True)
+    transaction = CharField(null=True)
 
     class Meta:
         database = db
         primary_key = CompositeKey('sender_node', 'subtask')
 
     def __repr__(self):
-        return "<Income: {!r} v:{:.3f} tid:{!r} bn:{!r}>"\
+        return "<Income: {!r} v:{:.3f} accepted_ts:{!r} tid:{!r}>"\
             .format(
                 self.subtask,
                 self.value,
+                self.accepted_ts,
                 self.transaction,
-                self.block_number
             )
 
 
@@ -404,7 +405,7 @@ class Performance(BaseModel):
         database = db
 
     @classmethod
-    def update_or_create(cl, env_id, performance):
+    def update_or_create(cls, env_id, performance):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             perf.value = performance
@@ -412,3 +413,34 @@ class Performance(BaseModel):
         except Performance.DoesNotExist:
             perf = Performance(environment_id=env_id, value=performance)
             perf.save()
+
+
+##################
+# MESSAGE MODELS #
+##################
+
+
+class Actor(Enum):
+    Concent = "concent"
+    Requestor = "requestor"
+    Provider = "provider"
+
+
+class NetworkMessage(BaseModel):
+    local_role = EnumField(Actor, null=False)
+    remote_role = EnumField(Actor, null=False)
+
+    # The node on the other side of the communication.
+    # It can be a receiver or a sender, depending on local_role,
+    # remote_role and msg_cls.
+    node = CharField(null=False)
+    task = CharField(null=True, index=True)
+    subtask = CharField(null=True, index=True)
+
+    msg_date = DateTimeField(null=False)
+    msg_cls = CharField(null=False)
+    msg_data = BlobField(null=False)
+
+    def as_message(self) -> message.Message:
+        msg = pickle.loads(self.msg_data)
+        return msg

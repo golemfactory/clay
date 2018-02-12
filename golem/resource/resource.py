@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import string
@@ -11,7 +12,7 @@ from golem.resource.dirmanager import split_path
 logger = logging.getLogger(__name__)
 
 
-class TaskResourceHeader(object):
+class TaskResourceHeader():
     def __init__(self, dir_name):
         self.sub_dir_headers = []
         self.files_data = []
@@ -466,3 +467,29 @@ def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
     # delta_header = TaskResourceHeader.build_header_delta_from_header(header, root_dir, chosen_files)
     delta_header = TaskResourceHeader.build_header_delta_from_chosen(header, root_dir, chosen_files)
     return compress_dir(root_dir, delta_header, output_dir)
+
+
+class ResourceType(object):  # class ResourceType(Enum):
+    ZIP = 0
+    PARTS = 1
+    HASHES = 2
+
+
+def get_resources_for_task(resource_header, resources, tmp_dir,
+                           resource_type=ResourceType.ZIP):
+    dir_name = get_resources_root_dir(resources)
+
+    if os.path.exists(dir_name):
+        if resource_type == ResourceType.ZIP:
+            return prepare_delta_zip(dir_name, resource_header, tmp_dir,
+                                     resources)
+        elif resource_type == ResourceType.HASHES:
+            return copy.copy(resources)
+
+    return None
+
+
+def get_resources_root_dir(resources):
+    resources = list(resources)
+    prefix = os.path.commonprefix(resources)
+    return os.path.dirname(prefix)

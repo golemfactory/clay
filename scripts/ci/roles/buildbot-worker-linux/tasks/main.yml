@@ -2,168 +2,78 @@
     file: site_settings.yml
     name: site_settings
 
-
-- name: Install docker-ce dependencies
-  apt:
-    name: "{{ item }}"
-    update_cache: yes
-  with_items:
-    - software-properties-common
-    - apt-transport-https
-    - ca-certificates
-    - curl
-
-
-- name: Install docker-ce key
-  apt_key:
-    url: "https://download.docker.com/linux/ubuntu/gpg"
-
-
-- debug:
-    msg: "TODO purge all other docker repositories"
-
-
-- name: Add docker repo, 64bit ONLY!
-  apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb['codename'] }} stable"
-
-
-- name: Install docker-ce
-  apt:
-    name: docker-ce
-    update_cache: yes
-
-
-- name: Add GETH repo
-  apt_repository:
-    repo: "ppa:ethereum/ethereum"
-
-
-- name: Install GETH
-  apt:
-    name: ethereum
-    update_cache: yes
-
-
-- name: Install taskcollector dependencies
-  apt:
-    name: "{{item}}"
-  with_items:
-    - gcc-5 
-    - g++-5 
-    - libfreeimage3 
-    - libfreeimage-dev
-
-
-- name: Prepare hyperg directory
-  file:
-    dest: /opt
-    state: directory
-
-
-- name: Install hyperg
-  unarchive:
-    src: https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_linux-x64.tar.gz
-    dest: /opt
-    remote_src: yes
-  creates: /opt/hyperg
-
-
-- name: Link hyperg
-  file:
-    src: /opt/hyperg/hyperg
-    dest: /usr/local/bin/hyperg
-    state: link
-
-
-- name: Install ipfs
-  unarchive:
-    src: https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz
-    dest: /opt
-    remote_src: yes
-  creates: /opt/go-ipfs
-
-
-- name: Link ipfs
-  file:
-    src: /opt/go-ipfs/ipfs
-    dest: /usr/local/bin/ipfs
-    state: link
+- name: check mandatory input variables
+  assert:
+    that:
+      - "worker_name != ''"
+      - "worker_master_hostname != ''"
 
 
 - name: setup buildbot-worker group
   group:
-    name: buildbot-worker
+    name: "{{worker_group}}"
 
 
 - name: setup buildbot-worker user
   user:
-    name: buildbot-worker
-    group: buildbot-worker
-    groups: 
-      - docker
-    home: /home/buildbot-worker
+    name: "{{worker_user}}"
+    group: "{{worker_group}}"
+    home: "{{_worker_user_home}}"
 
 
-- name: Init ipfs
-  command: ipfs init
-  become_user: buildbot-worker
-  args:
-    creates: /home/buildbot-worker/.ipfs
-
-
-- name: install golemapp dependencies
+- name: install buildbot-worker dependencies
   apt:
     name: "{{ item }}"
   with_items:
-    - python-pip
-    - python-virtualenv
     - python3
     - python3-venv
-    - python3-dev
-    - openssl
-    - pkg-config
-    - libjpeg-dev
-    - libopenexr-dev
-    - libssl-dev
-    - autoconf
-    - libgmp-dev
-    - libtool
-    - qt5-default
-    - libffi-dev
-    - libgtk2.0-0
-    - libxss1
-    - libgconf-2-4
-    - libnss3
-    - libasound2
+    - python3-pip
 
-- name: install buildbot and its requirements
+
+- name: install buildbot-worker and its requirements
   pip:
+    executable: pip3
     name: buildbot-worker
-  become_user: buildbot-worker
+  become_user: "{{worker_user}}"
 
 
 # NOTE: master address will not be updated once configuration is generated
 - name: initialized workspace for the worker
-  command:
-    /home/buildbot-worker/.local/bin/buildbot-worker create-worker
-      /home/buildbot-worker/worker
-      {{hostvars[groups['master'][0]]['ec2_private_ip_address']}}
-      linux
+  command: >
+    {{_worker_service_bin}}
+      create-worker
+      {{_worker_service_dir}}
+      {{worker_master_hostname}}
+      {{worker_name}}
       {{site_settings.worker_pass}}
-    creates=/home/buildbot-worker/worker/
-  become_user: buildbot-worker
+    creates="{{_worker_service_dir}}"
+  become_user: "{{worker_user}}"
 
 
 - name: copy a systemd unit file
-  copy:
+  template:
     src: buildbot-worker.service
-    dest: /etc/systemd/system/buildbot-worker.service
+    dest: /etc/systemd/system/buildbot-worker{{worker_postfix}}.service
   notify: restart buildbot worker service
 
 
 - systemd:
-    name: buildbot-worker.service
+    name: buildbot-worker{{worker_postfix}}.service
     daemon_reload: yes
     enabled: yes
     state: started
+
+- git_config:
+    name: user.email
+    scope: global
+    value: "{{worker_name}}@buildbot.local"
+  become_user: "{{worker_user}}"
+  when: need_git
+
+- git_config:
+    name: user.name
+    scope: global
+    value: "{{worker_name}}"
+  become_user: "{{worker_user}}"
+  when: need_git
+

@@ -3,13 +3,21 @@ import logging
 import os
 import threading
 import time
-from threading import Thread, Lock
+import traceback
 
 
 logger = logging.getLogger("golem.task.taskthread")
 
 
-class TaskThread(Thread):
+class JobException(RuntimeError):
+    pass
+
+
+class TimeoutException(JobException):
+    pass
+
+
+class TaskThread(threading.Thread):
     def __init__(self, task_computer, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout=0):
         super(TaskThread, self).__init__()
@@ -26,7 +34,7 @@ class TaskThread(Thread):
         self.tmp_path = tmp_path
         self.working_directory = working_directory
         self.prev_working_directory = ""
-        self.lock = Lock()
+        self.lock = threading.Lock()
         self.error = False
         self.error_msg = ""
         self.start_time = time.time()
@@ -40,13 +48,16 @@ class TaskThread(Thread):
 
     def check_timeout(self):
         if not self._parent_thread.is_alive():
-            self._fail("Task terminated")
+            failure = JobException("Task terminated")
+            self._fail(failure)
         elif self.use_timeout:
             time_ = time.time()
             self.task_timeout -= time_ - self.last_time_checking
             self.last_time_checking = time_
             if self.task_timeout < 0:
-                self._fail("Task timed out {:.1f}s".format(self.time_to_compute))
+                failure = TimeoutException("Task timed out {:.1f}s"
+                                           .format(self.time_to_compute))
+                self._fail(failure)
 
     def get_subtask_id(self):
         return self.subtask_id
@@ -66,7 +77,7 @@ class TaskThread(Thread):
         logger.info("RUNNING ")
         try:
             self.__do_work()
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.exception("__do_work failed")
             self._fail(exc)
         else:
@@ -77,16 +88,18 @@ class TaskThread(Thread):
         if self.vm:
             self.vm.end_comp()
 
-    def _fail(self, error_obj):
+    def _fail(self, exception: Exception):
         # Preserves the original cause of failure
         if self.error:
             return
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.error("Task computing error: {}".format(error_obj))
+        logger.error("Task computing error: %s", exception)
+        logger.error("%r", traceback.format_tb(exception.__traceback__))
+
         self.error = True
-        self.error_msg = str(error_obj)
+        self.error_msg = str(exception)
         self.done = True
         self.task_computer.task_computed(self)
 
@@ -102,7 +115,10 @@ class TaskThread(Thread):
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
-            self.result, self.error_msg = self.vm.run_task(self.src_code, extra_data)
+            self.result, self.error_msg = self.vm.run_task(
+                self.src_code,
+                extra_data
+            )
         finally:
             self.end_time = time.time()
             os.chdir(self.prev_working_directory)

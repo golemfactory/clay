@@ -1,5 +1,7 @@
 freezegun
 mock
-pytest
+pytest==3.3.1
 pytest-cov
 codecov
+flake8
+factory-boy==2.9.2

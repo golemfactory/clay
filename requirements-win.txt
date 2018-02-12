@@ -2,3 +2,6 @@
 pywin32
 vboxapi
 pyvbox
+pyreadline
+# Fixed on buildbots, TODO: test and make issue?
+pyethash==0.1.23

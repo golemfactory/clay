@@ -4,14 +4,10 @@ from uuid import uuid4
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
-
 from golem.core.deferred import sync_wait
-from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
+from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
-
-# For type annotations:
-from golem.client import Client  # pylint: disable=unused-import
 
 
 class CommandAppLogic(AppLogic):
@@ -36,10 +32,12 @@ class CommandAppLogic(AppLogic):
 @group(help="Manage tasks")
 class Tasks:
 
-    client = None  # type: Client
+    client = None  # type: 'golem.rpc.session.Client'
 
     task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
+    unsupport_reasons_table_headers = ['reason', 'no of tasks',
+                                       'avg for all tasks']
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
@@ -70,6 +68,8 @@ class Tasks:
         default=False,
         help="Skip task testing phase"
     )
+    last_days = Argument('last_days', optional=True, default="0",
+                         help="Number of last days to compute statistics on")
 
     application_logic = None
 
@@ -157,6 +157,14 @@ class Tasks:
     def stats(self):
         deferred = Tasks.client.get_task_stats()
         return sync_wait(deferred)
+
+    @command(argument=last_days, help="Show statistics for unsupported tasks")
+    def unsupport(self, last_days):
+        deferred = Tasks.client.get_unsupport_reasons(int(last_days))
+        result = sync_wait(deferred)
+        values = [[r['reason'], r['ntasks'], r['avg']] for r in result]
+        return CommandResult.to_tabular(Tasks.unsupport_reasons_table_headers,
+                                        values)
 
     @staticmethod
     def __dump_dict(dictionary: dict, outfile: Optional[str]) -> None:

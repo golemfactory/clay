@@ -29,7 +29,6 @@ To apply the configuration:
 
     ansible-playbook --key-file=~/.ssh/your_ssh_key -i inventory/ site.yml
 
-
 # Note about HTTPS
 
 TLS certificate handling is not automated at the moment.  You will need

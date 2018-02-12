@@ -1,52 +1,63 @@
-from copy import copy
+import datetime
 import os
 import time
-import unittest
 import uuid
+import json
 
+from types import MethodType
+from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
+
+from freezegun import freeze_time
 from twisted.internet.defer import Deferred
 
+from apps.dummy.task.dummytask import DummyTask
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService, ResourceCleanerService
+    BalancePublisherService, ResourceCleanerService, TaskArchiverService,\
+    TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timestamp_to_datetime
+from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Payment, PaymentStatus, ExpectedIncome
+from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.rpceventnames import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, ResourceType
-from golem.task.taskcomputer import TaskComputer
+from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
-from golem.core.variables import APP_VERSION
-from apps.appsmanager import AppsManager
+from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
+
     try:
         result = req.method(*req.args, **req.kwargs)
-    # pylint: disable=broad-except
-    except Exception as e:
-        error(e)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
     else:
-        if success:
-            success(result)
+        deferred.callback(result)
+
+    return deferred
 
 
 def random_hex_str() -> str:
@@ -54,6 +65,7 @@ def random_hex_str() -> str:
 
 
 class TestCreateClient(TestDirFixture):
+
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
@@ -151,10 +163,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         n = 9
         incomes = [
-            ExpectedIncome(
+            Income.create(
                 sender_node=random_hex_str(),
-                sender_node_details=Node(),
-                task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
@@ -196,10 +206,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    @patch(
-        'golem.transactions.ethereum.ethereumtransactionsystem.'
-        'EthereumTransactionSystem.sync'
-    )
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+           'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -381,10 +389,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.environments.environmentsmanager.'
+           'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
-    @patch('golem.environments.environmentsmanager.EnvironmentsManager.load_config')
-    def test_start_stop(self, load_config, connect_to_network, *_):
+    def test_start_stop(self, connect_to_network, *_):
         self.client = Client(
             datadir=self.path,
             transaction_system=False,
@@ -411,8 +420,63 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
+    @patch('golem.network.concent.client.ConcentClientService.start')
+    @patch('golem.client.SystemMonitor')
+    @patch('golem.client.P2PService.connect_to_network')
+    def test_restart_task(self, connect_to_network, *_):
+        self.client = Client(
+            datadir=self.path,
+            transaction_system=False,
+            connect_to_known_hosts=False,
+            use_docker_machine_manager=False
+        )
+        deferred = Deferred()
+        connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.start()
+        sync_wait(deferred)
+
+        task_manager = self.client.task_server.task_manager
+
+        task_manager.listen_address = '127.0.0.1'
+        task_manager.listen_port = 40103
+
+        some_file_path = self.new_path / "foo"
+        # pylint thinks it's PurePath, but it's a concrete path
+        some_file_path.touch()  # pylint: disable=no-member
+
+        task_dict = {
+            'bid': 5.0,
+            'name': 'test task',
+            'options': {
+                'difficulty': 1337,
+                'output_path': '',
+            },
+            'resources': [str(some_file_path)],
+            'subtask_timeout': timeout_to_string(3),
+            'subtasks': 1,
+            'timeout': timeout_to_string(3),
+            'type': 'Dummy',
+        }
+
+        task_id = self.client.create_task(task_dict)
+
+        assert task_id is not None
+
+        new_task_id = self.client.restart_task(task_id)
+
+        assert task_id != new_task_id
+        assert task_manager.tasks_states[
+            task_id].status == TaskStatus.restarted
+        assert all(
+            ss.subtask_status == SubtaskStatus.restarted
+            for ss
+            in task_manager.tasks_states[task_id].subtask_states.values())
+        assert task_manager.tasks_states[new_task_id].status \
+            == TaskStatus.notStarted
+
 
 class TestDoWorkService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         c = Mock()
@@ -429,7 +493,6 @@ class TestDoWorkService(TestWithReactor):
         assert not c.p2pservice.ping_peers.called
         assert not log.exception.called
         assert c.p2pservice.sync_network.called
-        assert c.task_server.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
         assert c.check_payments.called
@@ -461,14 +524,69 @@ class TestDoWorkService(TestWithReactor):
         assert c.p2pservice.ping_peers.called
         assert log.exception.call_count == 5
 
+    @freeze_time("2018-01-01 00:00:00")
+    def test_time_for(self):
+        do_work_service = DoWorkService(Mock())
+
+        key = 'payments'
+        interval = 4.0
+
+        assert key not in do_work_service._check_ts
+        assert do_work_service._time_for(key, interval)
+        assert key in do_work_service._check_ts
+
+        next_check = do_work_service._check_ts[key]
+
+        with freeze_time("2018-01-01 00:00:01"):
+            assert not do_work_service._time_for(key, interval)
+            assert do_work_service._check_ts[key] == next_check
+
+        with freeze_time("2018-01-01 00:01:00"):
+            assert do_work_service._time_for(key, interval)
+            assert do_work_service._check_ts[key] == time.time() + interval
+
+    @freeze_time("2018-01-01 00:00:00")
+    def test_intervals(self):
+        client = Mock()
+        do_work_service = DoWorkService(client)
+
+        do_work_service._run()
+
+        assert client.p2pservice.sync_network.called
+        assert client.task_server.sync_network.called
+        assert client.resource_server.sync_network.called
+        assert client.ranking.sync_network.called
+        assert client.check_payments.called
+
+        client.reset_mock()
+
+        with freeze_time("2018-01-01 00:00:02"):
+            do_work_service._run()
+
+            assert client.p2pservice.sync_network.called
+            assert client.task_server.sync_network.called
+            assert client.resource_server.sync_network.called
+            assert client.ranking.sync_network.called
+            assert not client.check_payments.called
+
+        with freeze_time("2018-01-01 00:01:00"):
+            do_work_service._run()
+
+            assert client.p2pservice.sync_network.called
+            assert client.task_server.sync_network.called
+            assert client.resource_server.sync_network.called
+            assert client.ranking.sync_network.called
+            assert client.check_payments.called
+
 
 class TestMonitoringPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     @patch('golem.client.dispatcher.send')
     def test_run(self, send, log):
         task_server = Mock()
         task_server.task_keeper = Mock()
-        task_server.task_keeper.get_all_tasks = lambda: list()
+        task_server.task_keeper.get_all_tasks.return_value = list()
         task_server.task_keeper.supported_tasks = list()
         task_server.task_computer.stats = dict()
 
@@ -478,17 +596,16 @@ class TestMonitoringPublisherService(TestWithReactor):
         service._run()
 
         assert not log.debug.called
-        assert send.call_count == 2
+        assert send.call_count == 3
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         c = Mock()
 
-        service = NetworkConnectionPublisherService(
-            c,
-            interval_seconds=1)
+        service = NetworkConnectionPublisherService(c, interval_seconds=1)
         service._run()
 
         assert not log.debug.called
@@ -496,6 +613,7 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
 
 
 class TestTasksPublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         rpc_publisher = Mock()
@@ -508,7 +626,21 @@ class TestTasksPublisherService(TestWithReactor):
         assert rpc_publisher.publish.call_count == 1
 
 
+class TestTaskArchiverService(TestWithReactor):
+
+    @patch('golem.client.log')
+    def test_run(self, log):
+        task_archiver = Mock()
+
+        service = TaskArchiverService(task_archiver)
+        service._run()
+
+        assert not log.debug.called
+        assert task_archiver.do_maintenance.call_count == 1
+
+
 class TestBalancePublisherService(TestWithReactor):
+
     @patch('golem.client.log')
     def test_run(self, log):
         rpc_publisher = Mock()
@@ -539,6 +671,7 @@ class TestBalancePublisherService(TestWithReactor):
 
 
 class TestResourceCleanerService(TestWithReactor):
+
     def test_run(self):
         older_than_seconds = 5
 
@@ -555,9 +688,70 @@ class TestResourceCleanerService(TestWithReactor):
         c.remove_received_files.assert_called_with(older_than_seconds)
 
 
+class TestTaskCleanerService(TestWithReactor):
+
+    @freeze_time('2017-11-27 10:00:00.1')
+    @patch('golem.client.log')
+    def test_run_noop(self, log):
+        older_than_seconds = 5
+        now = time.time()
+        timeout_seconds = 3
+
+        c = Mock()
+        c.get_tasks = lambda: [{
+            'id': 'some_task_id',
+            'time_started': int(now),
+            'timeout': timeout_to_string(timeout_seconds)
+        }]
+
+        service = TaskCleanerService(
+            c,
+            interval_seconds=1,
+            older_than_seconds=older_than_seconds)
+        service._run()
+
+        c.delete_task.assert_not_called()
+        log.info.assert_not_called()
+
+    @patch('golem.client.log')
+    def test_run(self, log):
+        with freeze_time('2017-11-27 10:00:00.1') as frozen_time:
+
+            older_than_seconds = 5
+            task_id = 'some_task_id'
+            now = time.time()
+            timeout_seconds = 3
+
+            c = Mock()
+            c.get_tasks = lambda: [{
+                'id': task_id,
+                'time_started': int(now),
+                'timeout': timeout_to_string(timeout_seconds)
+            }]
+
+            service = TaskCleanerService(
+                c,
+                interval_seconds=1,
+                older_than_seconds=older_than_seconds)
+
+            frozen_time.tick(delta=datetime.timedelta(
+                seconds=older_than_seconds + timeout_seconds - 1))
+            service._run()
+
+            c.delete_task.assert_not_called()
+
+            frozen_time.tick()
+            service._run()
+
+            c.delete_task.assert_called_with(task_id)
+            # log.info.assert_called()  is since python 3.6
+            assert log.info.called
+
+
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
@@ -608,8 +802,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_directories(self, *_):
         c = self.client
 
-        c.resource_server = ResourceServer.__new__(ResourceServer)
-        c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
+        def unique_dir():
+            d = self.new_path / str(uuid.uuid4())
+            d.mkdir(exist_ok=True)
+            return d
+
+        c.resource_server = Mock()
+        c.resource_server.get_distributed_resource_root.return_value = \
+            unique_dir()
 
         self.assertIsInstance(c.get_datadir(), str)
         self.assertIsInstance(c.get_dir_manager(), DirManager)
@@ -646,6 +846,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.resource_server = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.dump_task = Mock()
         c.task_server.task_manager.listen_address = '127.0.0.1'
         c.task_server.task_manager.listen_port = 40103
         c.keys_auth = Mock()
@@ -654,16 +855,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock()
         task.header.max_price = 1 * 10**18
         task.header.task_id = str(uuid.uuid4())
+        task.get_resources.return_value = []
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, ResourceType.HASHES)
+        task.get_resources.assert_called_with()
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.start_task.called
 
         deferred = Deferred()
-        deferred.callback(True)
+        deferred.callback((['file_1', 'file_2'], 'hash'))
         c.task_server.task_manager.tasks.pop(task.header.task_id, None)
 
         c.resource_server.add_task.called = False
@@ -695,20 +896,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             }
         }
 
+        def add_new_task(instance, task, *_args, **_kwargs):
+            instance.tasks_states[task.header.task_id] = TaskState()
+
         c = self.client
         c.resource_server = Mock()
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-        c.task_server.task_manager.add_new_task = Mock()
         c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.add_new_task = MethodType(
+            add_new_task, c.task_server.task_manager)
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
         assert task.header.task_id
 
-        assert c.resource_server.resource_manager.build_client_options.called
         assert c.resource_server.add_task.called
-        assert c.task_server.task_manager.add_new_task.called
         assert not c.task_server.task_manager.start_task.called
 
         task_id = task.header.task_id
@@ -717,31 +920,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         frames = c.get_subtasks_frames(task_id)
         assert frames is not None
 
-    @patch('golem.client.async_run')
-    def test_get_balance(self, async_run, *_):
+    def test_get_balance(self, *_):
         c = self.client
 
         result = (None, None, None)
 
-        deferred = Deferred()
-        deferred.result = result
-        deferred.called = True
-
-        async_run.return_value = deferred
-
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = sync_wait(c.get_balance())
+        balance = yield sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (None, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
-        deferred.result = result
+        c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
         assert balance == ("1", "1", "None")
         assert all(isinstance(entry, str) for entry in balance)
@@ -781,6 +977,18 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
 
+    def test_run_benchmark_fail(self, *_):
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
+
+        def raise_exc(*_args, **_kwargs):
+            raise Exception('Test exception')
+
+        with patch("golem.docker.image.DockerImage.is_available",
+                   return_value=True), \
+                patch("golem.docker.job.DockerJob.__init__",
+                      side_effect=raise_exc), \
+                self.assertRaises(Exception):
+            sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
@@ -845,19 +1053,27 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
-    @patch.multiple(Task, __abstractmethods__=frozenset())
+    def test_test_status(self, *_):
+        c = self.client
+
+        result = c.check_test_status()
+        self.assertFalse(result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.started})
+        result = c.check_test_status()
+        print(result)
+        self.assertEqual(c.task_test_result, result)
+
+        c.task_test_result = json.dumps({"status": TaskTestStatus.success})
+        result = c.check_test_status()
+        self.assertEqual(c.task_test_result, None)
+
     def test_create_task(self, *_):
+        t = DummyTask(total_tasks=10, node_name="node_name",
+                      task_definition=DummyTaskDefinition())
+
         c = self.client
         c.enqueue_new_task = Mock()
-
-        # create a task
-        t = Task(TaskHeader("node_name", "task_id",
-                            "10.10.10.10", 123,
-                            "owner_id", "DEFAULT"),
-                 src_code="print('hello')",
-                 task_definition=Mock())
-
-
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
 
@@ -871,6 +1087,50 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+
+    def test_get_unsupport_reasons(self, *_):
+        c = self.client
+        c.task_server.task_keeper.get_unsupport_reasons = Mock()
+        c.task_server.task_keeper.get_unsupport_reasons.return_value = [
+            {'avg': '17.0.0', 'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+        c.task_archiver.get_unsupport_reasons = Mock()
+        c.task_archiver.get_unsupport_reasons.side_effect = lambda days: [
+            {'avg': str(days * 21) + '.0.0',
+             'reason': 'app_version', 'ntasks': 3},
+            {'avg': 7, 'reason': 'max_price', 'ntasks': 2},
+            {'avg': None, 'reason': 'environment_missing', 'ntasks': 1},
+            {'avg': None,
+             'reason': 'environment_not_accepting_tasks', 'ntasks': 1},
+            {'avg': None, 'reason': 'requesting_trust', 'ntasks': 0},
+            {'avg': None, 'reason': 'deny_list', 'ntasks': 0},
+            {'avg': None, 'reason': 'environment_unsupported', 'ntasks': 0}]
+
+        # get_unsupport_reasons(0) is supposed to read current stats from
+        # the task_keeper and should not look into archives
+        reasons = c.get_unsupport_reasons(0)
+        self.assertEqual(reasons[0]["avg"], "17.0.0")
+        c.task_server.task_keeper.get_unsupport_reasons.assert_called_with()
+        c.task_archiver.get_unsupport_reasons.assert_not_called()
+
+        c.task_server.task_keeper.get_unsupport_reasons.reset_mock()
+        c.task_archiver.get_unsupport_reasons.reset_mock()
+
+        # for more days it's the opposite
+        reasons = c.get_unsupport_reasons(2)
+        self.assertEqual(reasons[0]["avg"], "42.0.0")
+        c.task_archiver.get_unsupport_reasons.assert_called_with(2)
+        c.task_server.task_keeper.get_unsupport_reasons.assert_not_called()
+
+        # and for a negative number of days we should get an exception
+        with self.assertRaises(ValueError):
+            reasons = c.get_unsupport_reasons(-1)
 
     def test_task_preview(self, *_):
         task_id = str(uuid.uuid4())
@@ -934,7 +1194,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         )
 
     def test_golem_version(self, *_):
-        assert self.client.get_golem_version() == APP_VERSION
+        assert self.client.get_golem_version() == golem.__version__
 
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
@@ -989,9 +1249,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         return session
 
 
-class TestEventListener(unittest.TestCase):
-    def test_task_computer_event_listener(self):
+class TestEventListener(TestCase):
 
+    def test_task_computer_event_listener(self):
         client = Mock()
         listener = ClientTaskComputerEventListener(client)
 
@@ -1002,7 +1262,7 @@ class TestEventListener(unittest.TestCase):
         client.lock_config.assert_called_with(False)
 
 
-class TestClientPEP8(unittest.TestCase, testutils.PEP8MixIn):
+class TestClientPEP8(TestCase, testutils.PEP8MixIn):
     PEP8_FILES = [
         "golem/client.py",
     ]
