@@ -36,7 +36,7 @@ tmp_cycler = itertools.cycle(list(range(550)))
 class TaskServer(PendingConnectionsServer, resources.TaskResourcesMixin):
     def __init__(self,
                  node,
-                 config_desc: ClientConfigDescriptor(),
+                 config_desc: ClientConfigDescriptor,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True,
