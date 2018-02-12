@@ -44,17 +44,17 @@ class Database:
         self.db.execute_sql('PRAGMA user_version = {}'.format(version))
 
     def _drop_tables(self):
-        log.info("Removing database")
+        log.info("Removing tables")
         self.db.drop_tables(self.models, safe=True)
 
     def _create_tables(self) -> None:
-        log.info("Creating database, version %r", self.SCHEMA_VERSION)
+        log.info("Creating tables, schema version %r", self.SCHEMA_VERSION)
 
         self.db.create_tables(self.models, safe=True)
         self.set_user_version(self.SCHEMA_VERSION)
 
     def _migrate_schema(self, version, to_version) -> None:
-        log.info("Migrating database from version %r to %r",
+        log.info("Migrating database schema from version %r to %r",
                  version, to_version)
 
         try:
