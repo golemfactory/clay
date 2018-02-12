@@ -340,6 +340,8 @@ class Client(HardwarePresetsMixin):
             self.node.pub_addr)
         hyperdrive_ports = self.daemon_manager.ports()
 
+        self.node.hyperdrive_prv_port = next(iter(hyperdrive_ports))
+
         if not self.resource_server:
             resource_manager = HyperdriveResourceManager(dir_manager,
                                                          hyperdrive_addrs)
@@ -349,17 +351,25 @@ class Client(HardwarePresetsMixin):
             self.task_server.restore_resources()
 
         def connect(ports):
-            p2p_port, task_port = ports
-            all_ports = ports + list(hyperdrive_ports)
-
-            log.info('P2P server is listening on port %s', p2p_port)
-            log.info('Task server is listening on port %s', task_port)
+            log.info('P2P server is listening on port %s',
+                     self.node.p2p_prv_port)
+            log.info('Task server is listening on port %s',
+                     self.node.prv_port)
+            log.info('Hyperdrive is listening on port %r',
+                     self.node.hyperdrive_prv_port)
 
             if self.config_desc.use_upnp:
-                self.start_upnp(all_ports)
+                self.start_upnp(ports + list(hyperdrive_ports))
+            self.node.update_public_info()
+
+            public_ports = [
+                self.node.p2p_pub_port,
+                self.node.pub_port,
+                self.node.hyperdrive_pub_port
+            ]
 
             dispatcher.send(signal='golem.p2p', event='listening',
-                            port=all_ports)
+                            port=public_ports)
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
@@ -505,8 +515,11 @@ class Client(HardwarePresetsMixin):
                                        tmp_dir=tmp_dir,
                                        resources=task.get_resources())
 
-        def add_task(result):
-            task_state.resource_hash = result[0]
+        def add_task(resource_server_result):
+            resource_manager_result, package_hash = resource_server_result
+            task_state.package_hash = package_hash
+            task_state.resource_hash = resource_manager_result[0]
+
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
@@ -876,13 +889,6 @@ class Client(HardwarePresetsMixin):
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_server.change_timeouts(
-            task_id,
-            full_task_timeout,
-            subtask_timeout
-        )
-
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
         if state:
@@ -1236,6 +1242,14 @@ class MonitoringPublisherService(LoopingCallService):
             signal='golem.monitor',
             event='task_computer_snapshot',
             task_computer=self._task_server.task_computer,
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='requestor_stats_snapshot',
+            current_stats=(self._task_server.task_manager
+                           .requestor_stats_manager.get_current_stats()),
+            finished_stats=(self._task_server.task_manager
+                            .requestor_stats_manager.get_finished_stats())
         )
 
 

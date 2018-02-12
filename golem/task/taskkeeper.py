@@ -1,5 +1,4 @@
 import logging
-import math
 import pathlib
 import pickle
 import time
@@ -44,6 +43,12 @@ class CompTaskInfo:
             self.price,
             self.requests
         )
+
+    def check_deadline(self, deadline):
+        now_ = common.get_timestamp_utc()
+        if now_ > deadline or deadline > now_ + self.header.subtask_timeout:
+            return False
+        return True
 
 
 class CompSubtaskInfo:
@@ -133,16 +138,41 @@ class CompTaskKeeper:
     @handle_key_error
     def receive_subtask(self, comp_task_def):
         logger.debug('CT.receive_subtask()')
+        if not self.check_comp_task_def(comp_task_def):
+            return False
         task = self.active_tasks[comp_task_def['task_id']]
-        if not task.requests > 0:
-            return
-        if comp_task_def['subtask_id'] in task.subtasks:
-            return
         task.requests -= 1
         task.subtasks[comp_task_def['subtask_id']] = comp_task_def
         self.subtask_to_task[comp_task_def['subtask_id']] =\
             comp_task_def['task_id']
         self.dump()
+        return True
+
+    def check_comp_task_def(self, comp_task_def):
+        task = self.active_tasks[comp_task_def['task_id']]
+
+        not_accepted_message = "Cannot accept subtask %s for task %s. %s"
+        log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
+
+        if not task.requests > 0:
+            logger.info(not_accepted_message, *log_args,
+                        "Request for this task was not send.")
+
+            return False
+        if not task.check_deadline(comp_task_def['deadline']):
+            msg = "Request for this task has wrong deadline %r" % \
+                  comp_task_def['deadline']
+            logger.info(not_accepted_message, *log_args, msg)
+            return False
+        if comp_task_def['subtask_id'] in task.subtasks:
+            logger.info(not_accepted_message, *log_args,
+                        "Definition of this subtask was already received.")
+            return False
+        if comp_task_def['environment'] != task.header.environment:
+            msg = "Expected environment: %s, received: %s." % (
+                task.header.environment, comp_task_def['environment'])
+            logger.info(not_accepted_message, *log_args, msg)
+            return False
         return True
 
     def get_task_id_for_subtask(self, subtask_id):
@@ -458,9 +488,13 @@ class TaskHeaderKeeper:
         for tid in to_remove:
             self.remove_task_header(tid)
 
-    def remove_task_header(self, task_id):
+    def remove_task_header(self, task_id) -> bool:
         """ Removes task with given id from a list of known task headers.
+        return: False if task was already removed
         """
+        if task_id in self.removed_tasks:
+            return False
+
         if task_id in self.task_headers:
             owner_key_id = self.task_headers[task_id].task_owner_key_id
             del self.task_headers[task_id]
@@ -471,6 +505,7 @@ class TaskHeaderKeeper:
         if task_id in self.support_status:
             del self.support_status[task_id]
         self.removed_tasks[task_id] = time.time()
+        return True
 
     def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed

@@ -1,6 +1,7 @@
-from golem_messages.message import ComputeTaskDef
-from mock import Mock, patch
 from os import path
+import unittest.mock as mock
+
+from golem_messages.message import ComputeTaskDef
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
@@ -11,7 +12,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 
 
 @ci_skip
-@patch.multiple(Task, __abstractmethods__=frozenset())
+@mock.patch.multiple(Task, __abstractmethods__=frozenset())
 class TestLocalComputer(TestDirFixture):
     last_error = None
     last_result = None
@@ -27,7 +28,6 @@ class TestLocalComputer(TestDirFixture):
     def test_computer(self):
 
         files = self.additional_dir_content([1])
-        task = Task(Mock(), Mock(), Mock())
         lc = LocalComputer(root_path=self.path,
                            success_callback=self._success_callback,
                            error_callback=self._failure_callback,
@@ -83,7 +83,9 @@ class TestLocalComputer(TestDirFixture):
 
     def _get_better_task_def(self):
         ctd = ComputeTaskDef()
-        ctd['docker_images'] = BlenderEnvironment().docker_images
+        ctd['docker_images'] = [
+            di.to_dict() for di in BlenderEnvironment().docker_images
+        ]
         return ctd
 
     def _success_callback(self, result, time_spent):
@@ -93,4 +95,3 @@ class TestLocalComputer(TestDirFixture):
     def _failure_callback(self, error):
         self.last_error = error
         self.error_counter += 1
-

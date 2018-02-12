@@ -1,7 +1,11 @@
+from unittest import mock
+
 import os
 import shutil
 import time
 import uuid
+
+from twisted.internet.defer import Deferred
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -161,6 +165,17 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         self.resource_server.remove_task(self.task_id)
         assert not self.resource_manager.storage.get_resources(self.task_id)
 
+    def testPendingResources(self):
+        self.resource_manager.add_task(self.target_resources, self.task_id,
+                                       async_=False)
+
+        resources = self.resource_manager.storage.get_resources(self.task_id)
+        assert len(self.resource_server.pending_resources) == 0
+
+        self.resource_server.download_resources(resources, self.task_id)
+        pending = self.resource_server.pending_resources[self.task_id]
+        assert len(pending) == len(resources)
+
     def testGetResources(self):
         self.resource_manager.add_task(self.target_resources, self.task_id,
                                        async_=False)
@@ -168,22 +183,24 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         resources = self.resource_manager.storage.get_resources(self.task_id)
         relative = [[r.hash, r.files] for r in resources]
 
-        assert len(self.resource_server.pending_resources) == 0
-        self.resource_server.download_resources(resources, self.task_id)
-        pending = self.resource_server.pending_resources[self.task_id]
-        assert len(pending) == len(resources)
-
         new_server = BaseResourceServer(
             DummyResourceManager(self.dir_manager),
             DirManager(self.path, '2'),
             self.keys_auth,
             self.client
         )
+
         new_task_id = str(uuid.uuid4())
         new_task_path = new_server.resource_manager.storage.get_dir(new_task_id)
-
         new_server.download_resources(relative, new_task_id)
-        new_server._download_resources(async_=False)
+
+        def run(_, **_kwargs):
+            deferred = Deferred()
+            deferred.callback(True)
+            return deferred
+
+        with mock.patch('golem.resource.base.resourceserver.async_run', run):
+            new_server._download_resources(async_=False)
 
         for entry in relative:
             for f in entry[1]:

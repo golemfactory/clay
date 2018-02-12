@@ -4,14 +4,10 @@ from uuid import uuid4
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
-
 from golem.core.deferred import sync_wait
-from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
+from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
-
-# For type annotations:
-from golem.client import Client  # pylint: disable=unused-import
 
 
 class CommandAppLogic(AppLogic):
@@ -36,7 +32,7 @@ class CommandAppLogic(AppLogic):
 @group(help="Manage tasks")
 class Tasks:
 
-    client = None  # type: Client
+    client = None  # type: 'golem.rpc.session.Client'
 
     task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
