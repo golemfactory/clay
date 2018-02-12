@@ -11,7 +11,8 @@ from golem.resource.hyperdrive import resource as hpd_resource
 logger = logging.getLogger(__name__)
 
 
-class TaskResourcesMixin(object):
+class TaskResourcesMixin():
+    """Resource management functionality of TaskServer"""
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
