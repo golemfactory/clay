@@ -84,21 +84,20 @@ class TestHyperdriveClient(unittest.TestCase):
             assert client.cancel(content_hash) == response_hash
 
     @mock.patch('json.loads')
-    @mock.patch('requests.post')
-    def test_request(self, post, json_loads):
+    def test_request(self, json_loads):
         client = HyperdriveClient()
-        response = mock.Mock()
-        post.return_value = response
+        client._session = mock.Mock()
 
         client._request(key="value")
         assert json_loads.called
 
     @mock.patch('json.loads')
-    @mock.patch('requests.post')
-    def test_request_exception(self, post, json_loads):
+    def test_request_exception(self, json_loads):
         client = HyperdriveClient()
+        client._session = mock.Mock()
+
         response = mock.Mock()
-        post.return_value = response
+        client._session.post.return_value = response
 
         exception = Exception()
         response.raise_for_status.side_effect = exception
@@ -109,11 +108,12 @@ class TestHyperdriveClient(unittest.TestCase):
             assert not json_loads.called
 
     @mock.patch('json.loads')
-    @mock.patch('requests.post')
-    def test_request_http_error(self, post, json_loads):
+    def test_request_http_error(self, json_loads):
         client = HyperdriveClient()
+        client._session = mock.Mock()
+
         response = mock.Mock()
-        post.return_value = response
+        client._session.post.return_value = response
 
         exception = HTTPError()
         response.raise_for_status.side_effect = exception

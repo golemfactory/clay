@@ -37,6 +37,7 @@ class HyperdriveClient(IClient):
         # default POST request headers
         self._url = 'http://{}:{}/api'.format(self.host, self.port)
         self._headers = {'content-type': 'application/json'}
+        self._session = requests.Session()
 
     @classmethod
     def build_options(cls, peers=None, **kwargs):
@@ -103,10 +104,10 @@ class HyperdriveClient(IClient):
         return response['hash']
 
     def _request(self, **data):
-        response = requests.post(url=self._url,
-                                 headers=self._headers,
-                                 data=json.dumps(data),
-                                 timeout=self.timeout)
+        response = self._session.post(url=self._url,
+                                      headers=self._headers,
+                                      data=json.dumps(data),
+                                      timeout=self.timeout)
 
         try:
             response.raise_for_status()
