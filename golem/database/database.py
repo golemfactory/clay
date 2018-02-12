@@ -6,7 +6,7 @@ from playhouse.shortcuts import RetryOperationalError
 
 from golem.database.migration.migrate import migrate_schema, NoMigrationScripts
 
-log = logging.getLogger('golem.db')
+logger = logging.getLogger('golem.db')
 
 
 class GolemSqliteDatabase(RetryOperationalError, SqliteDatabase):
@@ -44,22 +44,22 @@ class Database:
         self.db.execute_sql('PRAGMA user_version = {}'.format(version))
 
     def _drop_tables(self):
-        log.info("Removing tables")
+        logger.info("Removing tables")
         self.db.drop_tables(self.models, safe=True)
 
     def _create_tables(self) -> None:
-        log.info("Creating tables, schema version %r", self.SCHEMA_VERSION)
+        logger.info("Creating tables, schema version %r", self.SCHEMA_VERSION)
 
         self.db.create_tables(self.models, safe=True)
         self.set_user_version(self.SCHEMA_VERSION)
 
     def _migrate_schema(self, version, to_version) -> None:
-        log.info("Migrating database schema from version %r to %r",
-                 version, to_version)
+        logger.info("Migrating database schema from version %r to %r",
+                    version, to_version)
 
         try:
             migrate_schema(self, version, to_version)
         except NoMigrationScripts as exc:
-            log.warning("Cannot migrate database schema: %s", exc)
+            logger.warning("Cannot migrate database schema: %s", exc)
             self._drop_tables()
             self._create_tables()

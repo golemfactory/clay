@@ -1,13 +1,8 @@
-import logging
-
 from peewee import DatabaseError
 from peewee_migrate import Migrator
 
 from golem.database.migration import default_migrate_dir, patch_peewee
 from golem.database.migration.router import Router
-
-
-log = logging.getLogger('golem.db')
 
 
 class MigrationError(DatabaseError):
