@@ -1,9 +1,10 @@
-from golem.decorators import log_error
 import logging
 from pydispatch import dispatcher
 import threading
 import queue
 
+from golem.decorators import log_error
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
@@ -168,6 +169,13 @@ class SystemMonitor(object):
 
     def on_task_computer_snapshot(self, task_computer):
         msg = TaskComputerSnapshotModel(self.meta_data, task_computer)
+        self.sender_thread.send(msg)
+
+    def on_requestor_stats_snapshot(self,
+                                    current_stats: CurrentStats,
+                                    finished_stats: FinishedTasksStats):
+        msg = statssnapshotmodel.RequestorStatsModel(
+            self.meta_data, current_stats, finished_stats)
         self.sender_thread.send(msg)
 
     def on_payment(self, addr, value):

@@ -26,7 +26,7 @@ from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Payment, PaymentStatus, ExpectedIncome
+from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -44,14 +44,20 @@ from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
+
     try:
         result = req.method(*req.args, **req.kwargs)
-    # pylint: disable=broad-except
-    except Exception as e:
-        error(e)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
     else:
-        if success:
-            success(result)
+        deferred.callback(result)
+
+    return deferred
 
 
 def random_hex_str() -> str:
@@ -157,9 +163,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         n = 9
         incomes = [
-            ExpectedIncome(
+            Income.create(
                 sender_node=random_hex_str(),
-                sender_node_details=Node(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
@@ -591,7 +596,7 @@ class TestMonitoringPublisherService(TestWithReactor):
         service._run()
 
         assert not log.debug.called
-        assert send.call_count == 2
+        assert send.call_count == 3
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):

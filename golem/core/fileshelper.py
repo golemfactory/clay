@@ -210,3 +210,16 @@ def format_cmd_line_path(path):
         return "{}".format(path)
     else:
         return '"{}"'.format(path)
+
+
+def relative_path(path, prefix):
+    if path.startswith(prefix):
+        return_path = path.replace(prefix, '', 1)
+    else:
+        return_path = path
+
+    if prefix:
+        while return_path and return_path.startswith(os.path.sep):
+            return_path = return_path[len(os.path.sep):]
+
+    return return_path

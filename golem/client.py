@@ -515,8 +515,11 @@ class Client(HardwarePresetsMixin):
                                        tmp_dir=tmp_dir,
                                        resources=task.get_resources())
 
-        def add_task(result):
-            task_state.resource_hash = result[0]
+        def add_task(resource_server_result):
+            resource_manager_result, package_hash = resource_server_result
+            task_state.package_hash = package_hash
+            task_state.resource_hash = resource_manager_result[0]
+
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
@@ -882,13 +885,6 @@ class Client(HardwarePresetsMixin):
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
-    def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_server.change_timeouts(
-            task_id,
-            full_task_timeout,
-            subtask_timeout
-        )
-
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
         if state:
@@ -1242,6 +1238,14 @@ class MonitoringPublisherService(LoopingCallService):
             signal='golem.monitor',
             event='task_computer_snapshot',
             task_computer=self._task_server.task_computer,
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='requestor_stats_snapshot',
+            current_stats=(self._task_server.task_manager
+                           .requestor_stats_manager.get_current_stats()),
+            finished_stats=(self._task_server.task_manager
+                            .requestor_stats_manager.get_finished_stats())
         )
 
 

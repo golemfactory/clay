@@ -1,5 +1,5 @@
 import os
-import mock
+from unittest import mock
 
 from golem.core.common import timeout_to_deadline
 

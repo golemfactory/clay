@@ -100,7 +100,7 @@ class MessageHistoryService(IService):
     @classmethod
     def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
         """
-        Returns Task-related messages
+        Returns Task-related messages synchronously
         :param task: Task id
         :param properties: Optional NetworkMessage properties
         :return: Collection of NetworkMessage
@@ -131,7 +131,7 @@ class MessageHistoryService(IService):
 
     def add_sync(self, msg_dict: dict) -> None:
         """
-        Saves a message in the database.
+        Saves a message in the database synchronously.
         :param msg_dict: Message to save
         """
         try:
