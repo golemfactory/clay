@@ -10,10 +10,9 @@ import threading
 import time
 from distutils.version import StrictVersion
 
-import requests
 from web3 import Web3, IPCProvider, HTTPProvider
 
-from golem.core.common import is_windows, DEVNULL
+from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import find_free_net_port
@@ -22,8 +21,7 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-NODE_LIST_URL = 'https://rinkeby.golem.network'
-FALLBACK_NODE_LIST = [
+NODE_LIST = [
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
@@ -32,12 +30,7 @@ FALLBACK_NODE_LIST = [
 
 def get_public_nodes():
     """Returns public geth RPC addresses"""
-    try:
-        return requests.get(NODE_LIST_URL).json()
-    except Exception as exc:
-        log.error("Error downloading node list: %s", exc)
-
-    addr_list = FALLBACK_NODE_LIST[:]
+    addr_list = NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
 
@@ -66,11 +59,25 @@ class NodeProcess(object):
         self.web3 = None  # web3 client interface
         self.addr_list = [addr] if addr else get_public_nodes()
 
-        self.__prog = None  # geth location
         self.__ps = None  # child process
 
     def is_running(self):
         return self.__ps is not None
+
+    def _check_geth_version(self):
+        version = self.web3.version.node.split("/")
+        if version[0] != "Geth":
+            raise Exception("Expected geth client, got {}".format(version[0]))
+        match = re.search("^v(\d+\.\d+\.\d+)", version[1]).group(1)
+
+        ver = StrictVersion(match)
+        log.info('Geth version: %s', ver)
+        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
+            self.stop()
+            raise OSError("Incompatible geth version: {}. "
+                          "Expected >= {} and <= {}"
+                          .format(ver, self.MIN_GETH_VERSION,
+                                  self.MAX_GETH_VERSION))
 
     @report_calls(Component.ethereum, 'node.start')
     def start(self, start_port=None):
@@ -92,6 +99,8 @@ class NodeProcess(object):
             if time.time() > deadline:
                 return self._start_timed_out(provider, start_port)
             time.sleep(0.1)
+
+        self._check_geth_version()
 
         genesis_block = self.get_genesis_block()
 
@@ -159,7 +168,7 @@ class NodeProcess(object):
         raise OSError("Cannot connect to geth: {}".format(provider))
 
     def _create_local_ipc_provider(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
-        self._find_geth()
+        prog = self._find_geth()
 
         # Init geth datadir
         geth_log_dir = os.path.join(self.datadir, "logs")
@@ -182,7 +191,7 @@ class NodeProcess(object):
             ipc_path = r'\\.\pipe\{}'.format(self.start_node)
 
         args = [
-            self.__prog,
+            prog,
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
@@ -196,7 +205,8 @@ class NodeProcess(object):
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
-                                     stdin=DEVNULL)
+                                     stdin=DEVNULL,
+                                     startupinfo=SUBPROCESS_STARTUP_INFO)
 
         tee_kwargs = {
             'proc': self.__ps,
@@ -227,20 +237,5 @@ class NodeProcess(object):
         if not geth:
             raise OSError("Ethereum client 'geth' not found")
 
-        output, _ = subprocess.Popen(
-            [geth, 'version'],
-            **self.SUBPROCESS_PIPES
-        ).communicate()
-
-        match = re.search("Version: (\d+\.\d+\.\d+)",
-                          str(output, 'utf-8')).group(1)
-
-        ver = StrictVersion(match)
-        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            raise OSError("Incompatible geth version: {}. "
-                          "Expected >= {} and <= {}"
-                          .format(ver, self.MIN_GETH_VERSION,
-                                  self.MAX_GETH_VERSION))
-
-        log.info("geth {}: {}".format(ver, geth))
-        self.__prog = geth
+        log.info("geth {}:".format(geth))
+        return geth

@@ -5,20 +5,23 @@ import unittest
 from unittest import mock
 
 from freezegun import freeze_time
+import golem_messages
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
+import semantic_version
 
 from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
 from golem.network.p2p.node import Node
+from golem.network.transport import tcpnetwork
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
                                                 EncryptFileProducer,
                                                 DecryptFileConsumer,
                                                 EncryptDataProducer,
                                                 DecryptDataConsumer,
-                                                BasicProtocol,
                                                 SafeProtocol,
                                                 SocketAddress,
                                                 MAX_MESSAGE_SIZE)
@@ -26,7 +29,11 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
+from tests.factories import messages as msg_factories
+from tests.factories import p2p as p2p_factories
+
 MagicMock = mock.MagicMock
+gm_version = semantic_version.Version(golem_messages.__version__)
 
 
 class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
@@ -235,80 +242,103 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
 
 class TestBasicProtocol(LogTestCase):
 
+    def setUp(self):
+        self.protocol = tcpnetwork.BasicProtocol()
+        self.protocol.session = mock.MagicMock()
+        self.protocol.session.my_private_key = None
+        self.protocol.session.theirs_public_key = None
+        self.protocol.transport = mock.MagicMock()
+
     def test_init(self):
-        protocol = BasicProtocol()
-        self.assertIsInstance(protocol, BasicProtocol)
-        self.assertFalse(protocol.opened)
+        self.assertFalse(self.protocol.opened)
 
     @mock.patch('golem_messages.load')
     def test_dataReceived(self, load_mock):
         data = b"abc"
-        protocol = BasicProtocol()
-        self.assertIsNone(protocol.dataReceived(data))
-        protocol.opened = True
-        self.assertIsNone(protocol.dataReceived(data))
-        protocol.session = mock.MagicMock()
-        protocol.session.my_private_key = None
-        protocol.session.theirs_public_key = None
-        self.assertIsNone(protocol.dataReceived(data))
-        protocol.db.clear_buffer()
+        self.assertIsNone(self.protocol.dataReceived(data))
+        self.protocol.opened = True
+        self.assertIsNone(self.protocol.dataReceived(data))
+        self.protocol.db.clear_buffer()
         self.assertEqual(load_mock.call_count, 0)
 
         m = message.Disconnect(reason=None)
         data = m.serialize()
         packed_data = struct.pack("!L", len(data)) + data
         load_mock.return_value = m
-        protocol.dataReceived(packed_data)
-        self.assertEqual(
-            protocol
-            .session
-            .interpret
-            .call_args[0][0].TYPE, m.TYPE)
-
-    @mock.patch('golem_messages.load')
-    def test_drop_set_task(self, load_mock):
-        protocol = SafeProtocol(MagicMock())
-        protocol.opened = True
-        protocol.session = mock.MagicMock()
-        protocol.session.my_private_key = None
-        protocol.session.theirs_public_key = None
-
-        with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
-            node = Node(
-                node_name='super_node',
-                key=str("key"),
-                pub_addr='1.2.3.4',
-                prv_addr='1.2.3.4',
-                pub_port=10000,
-                prv_port=10000)
-
-            msg = message.SetTaskSession(
-                key_id=None,
-                node_info=node,
-                conn_id=None,
-                super_node_info=None)
-            data = msg.serialize()
-            packed_data = struct.pack("!L", len(data)) + data
-            load_mock.return_value = msg
-            for _ in range(0, 100):
-                protocol.dataReceived(packed_data)
-            protocol.session.interpret.assert_called_once_with(msg)
-            frozen_datetime.move_to("2017-01-14 10:30:45")
-            protocol.session.interpret.reset_mock()
-            protocol.dataReceived(packed_data)
-            protocol.session.interpret.assert_called_once_with(msg)
+        self.protocol.dataReceived(packed_data)
+        self.assertEqual(self.protocol.session.interpret.call_args[0][0], m)
 
     @mock.patch(
         'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
     )
     def test_dataReceived_long(self, load_mock):
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
-        protocol = BasicProtocol()
-        protocol.transport = MagicMock()
-        protocol.opened = True
-        protocol.session = MagicMock()
-        self.assertIsNone(protocol.dataReceived(data))
+        self.protocol.opened = True
+        self.assertIsNone(self.protocol.dataReceived(data))
         self.assertEqual(load_mock.call_count, 0)
+
+    def hello(self, version=str(gm_version)):
+        msg = msg_factories.Hello()
+        msg._version = version
+        serialized = golem_messages.dump(msg, None, None)
+        self.protocol.db.append_len_prefixed_bytes(serialized)
+        self.protocol._data_to_messages()
+
+    @mock.patch('golem.network.transport.tcpnetwork.BasicProtocol.send_message')
+    @mock.patch('golem.network.transport.tcpnetwork.BasicProtocol.close')
+    @mock.patch('golem_messages.message.base.verify_version',
+                return_value=True)
+    def test_golem_messages_ok(self, check_mock, close_mock, send_mock):
+        version = "0.0.0"
+        self.hello(version)
+        check_mock.assert_called_once_with(version)
+        close_mock.assert_not_called()
+        send_mock.assert_not_called()
+
+    @mock.patch('golem.network.transport.tcpnetwork.BasicProtocol.send_message')
+    @mock.patch('golem.network.transport.tcpnetwork.BasicProtocol.close')
+    @mock.patch('golem_messages.message.base.verify_version',
+                side_effect=msg_exceptions.VersionMismatchError)
+    def test_golem_messages_failed(self, check_mock, close_mock, send_mock):
+        self.hello()
+        check_mock.assert_called_once_with(mock.ANY)
+        close_mock.assert_called_once_with()
+        send_mock.assert_called_once_with(mock.ANY)
+        self.assertEqual(
+            send_mock.call_args[0][0].reason,
+            message.Disconnect.REASON.ProtocolVersion,
+        )
+
+
+class SafeProtocolTestCase(unittest.TestCase):
+    def setUp(self):
+        self.protocol = SafeProtocol(MagicMock())
+        self.protocol.opened = True
+        self.protocol.session = mock.MagicMock()
+        self.protocol.session.my_private_key = None
+        self.protocol.session.theirs_public_key = None
+
+    @mock.patch('golem_messages.load')
+    def test_drop_set_task(self, load_mock):
+        with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
+            node = p2p_factories.Node()
+
+            msg = message.SetTaskSession(
+                key_id=None,
+                node_info=node.to_dict(),
+                conn_id=None,
+                super_node_info=None)
+            data = msg.serialize()
+            packed_data = struct.pack("!L", len(data)) + data
+            load_mock.return_value = msg
+            for _ in range(0, 100):
+                self.protocol.dataReceived(packed_data)
+            self.protocol.session.interpret.assert_called_once_with(msg)
+            frozen_datetime.move_to("2017-01-14 10:30:45")
+            self.protocol.session.interpret.reset_mock()
+            self.protocol.dataReceived(packed_data)
+            self.protocol.session.interpret.assert_called_once_with(msg)
+
 
 
 class TestSocketAddress(unittest.TestCase):

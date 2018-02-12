@@ -1,4 +1,5 @@
-import golem_messages
+# pylint: disable= protected-access
+import copy
 from golem_messages import message
 import ipaddress
 from pydispatch import dispatcher
@@ -9,6 +10,7 @@ import unittest
 import unittest.mock as mock
 
 import golem
+from golem import clientconfigdescriptor
 from golem import testutils
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
@@ -18,6 +20,7 @@ from golem.network.p2p.peersession import (PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.core.variables import TASK_HEADERS_LIMIT
+from tests.factories import p2p as p2p_factories
 
 
 def fill_slots(msg):
@@ -34,12 +37,24 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(mock.MagicMock())
+        node = p2p_factories.Node()
+        keys_auth = KeysAuth(self.path)
+        keys_auth.key = node.key
+        keys_auth.key_id = node.key
+        self.peer_session.conn.server = \
+            self.peer_session.p2p_service = P2PService(
+                node=node,
+                config_desc=clientconfigdescriptor.ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                connect_to_known_hosts=False,
+            )
 
     def __setup_handshake_server_test(self, send_mock):
-        self.peer_session.conn.server.node = node = 'node info'
-        self.peer_session.conn.server.node_name = node_name = 'node name'
-        self.peer_session.conn.server.keys_auth.get_key_id.return_value = \
+        self.peer_session.conn.server.node = node = p2p_factories.Node()
+        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
+        self.peer_session.conn.server.metadata_manager = mock.MagicMock()
         self.peer_session.conn.server.metadata_manager.\
             get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
@@ -52,7 +67,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             client_ver=golem.__version__,
             difficulty=None,
             metadata=metadata,
-            node_info=node,
+            node_info=node.to_dict(),
             node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
@@ -69,14 +84,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.enough_peers = lambda: False
 
-        client_peer_info = mock.MagicMock()
-        client_peer_info.key = 'client_key_id'
+        client_peer_info = p2p_factories.Node()
         client_hello = message.Hello(
             port=1,
             node_name='client',
             rand_val=random.random(),
             client_key_id=client_peer_info.key,
-            node_info=client_peer_info,
+            node_info=client_peer_info.to_dict(),
             proto_id=PROTOCOL_CONST.ID)
         fill_slots(client_hello)
         return client_hello
@@ -143,18 +157,18 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
                 reason=message.Disconnect.REASON.Unverified).slots())
 
     def __setup_handshake_client_test(self, send_mock):
-        self.peer_session.conn.server.node = node = 'node info'
-        self.peer_session.conn.server.node_name = node_name = 'node name'
-        self.peer_session.conn.server.keys_auth.get_key_id.return_value = \
-            key_id = 'client_key_id'
+        self.peer_session.conn.server.node = node = p2p_factories.Node()
+        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.keys_auth.key_id = \
+            key_id = node.key
+        self.peer_session.conn.server.metadata_manager = mock.MagicMock()
         self.peer_session.conn.server.metadata_manager.\
             get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_CLIENT
         self.peer_session.start()
         self.assertEqual(0, send_mock.call_count)
-        server_peer_info = mock.MagicMock()
-        server_peer_info.key = 'server_key_id'
+        server_peer_info = p2p_factories.Node()
 
         def find_peer(key):
             if key == key_id:
@@ -168,7 +182,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             node_name='server',
             rand_val=random.random(),
             client_key_id=server_peer_info.key,
-            node_info=server_peer_info,
+            node_info=server_peer_info.to_dict(),
             proto_id=PROTOCOL_CONST.ID)
         fill_slots(server_hello)
         expected = message.Hello(
@@ -177,7 +191,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             client_ver=golem.__version__,
             difficulty=None,
             metadata=metadata,
-            node_info=node,
+            node_info=node.to_dict(),
             node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
@@ -258,12 +272,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
             'solve_challenge': None,
             'challenge': None,
             'difficulty': None,
-            'golem_messages_version': golem_messages.__version__,
         }
-        for slot in message.Hello.__slots__:
-            if slot in msg_kwargs:
-                continue
-            msg_kwargs[slot] = None
 
         # Test not seed
         msg = message.Hello(**msg_kwargs)
@@ -423,6 +432,49 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         assert len(other_tasks) <= int(TASK_HEADERS_LIMIT / 2)
         assert len(sent_tasks) <= TASK_HEADERS_LIMIT
         assert len(sent_tasks) == len(set(sent_tasks))
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession._send_peers')
+    def test_react_to_get_peers(self, send_mock):
+        msg = message.p2p.GetPeers()
+        self.peer_session._react_to_get_peers(msg)
+        send_mock.assert_called_once_with()
+
+    @mock.patch('golem.network.p2p.p2pservice.P2PService.find_node')
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_send_peers(self, send_mock, find_mock):
+        node = p2p_factories.Node()
+        find_mock.return_value = [
+            {
+                'address': node.prv_addr,
+                'port': node.prv_port,
+                'node_name': node.node_name,
+                'node': node,
+            },
+        ]
+        self.peer_session._send_peers()
+        find_mock.assert_called_once_with(
+            node_key_id=None,
+            alpha=mock.ANY,
+        )
+        send_mock.assert_called_once_with(mock.ANY)
+        msg = send_mock.call_args[0][0]
+        self.assertEqual(msg.peers[0]['node'], node.to_dict())
+
+    @mock.patch('golem.network.p2p.p2pservice.P2PService.try_to_add_peer')
+    def test_react_to_peers(self, add_peer_mock):
+        node = p2p_factories.Node()
+        peers = [
+            {
+                'address': node.prv_addr,
+                'port': node.prv_port,
+                'node_name': node.node_name,
+                'node': node.to_dict(),
+            },
+        ]
+        msg = message.p2p.Peers(peers=copy.deepcopy(peers))
+        self.peer_session._react_to_peers(msg)
+        peers[0]['node'] = Node.from_dict(peers[0]['node'])
+        add_peer_mock.assert_called_once_with(peers[0])
 
 
 class TestPeerSessionInfo(unittest.TestCase):

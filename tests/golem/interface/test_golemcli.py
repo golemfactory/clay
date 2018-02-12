@@ -1,19 +1,15 @@
-import unittest
-
 import sys
-from mock import patch
+import unittest
+from unittest.mock import patch
 
 from golemcli import start
 
 
-def _nop(*a, **kw):
-    pass
-
-
 class TestGolemCLI(unittest.TestCase):
 
-    @patch('golem.interface.websockets.WebSocketCLI.execute', side_effect=_nop)
-    @patch('golem.core.common.config_logging', side_effect=_nop)
+    @patch('golemcli.install_reactor')
+    @patch('golem.interface.websockets.WebSocketCLI.execute')
+    @patch('golem.core.common.config_logging')
     def test_golem_cli(self, *_):
 
         with patch.object(sys, 'argv', ["program"]):
