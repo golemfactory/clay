@@ -372,27 +372,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
-        # we're preparing the `ForceReportComputedTask` here and
-        # scheduling the dispatch of that message for later
-        # (with an implicit delay in the concent service's `submit` method).
-        #
-        # though, should we receive the acknowledgement for
-        # the `ReportComputedTask` sent above before the delay elapses,
-        # the `ForceReportComputedTask` message to the Concent will be
-        # cancelled and thus, never sent to the Concent.
-        msg = message.ForceReportComputedTask(
-            task_to_compute=task_to_compute,
-            result_hash='sha1:' + task_result.package_sha1
-        )
-        logger.debug('[CONCENT] ForceReport: %s', msg)
+        if task_to_compute.concent_enabled:
+            # we're preparing the `ForceReportComputedTask` here and
+            # scheduling the dispatch of that message for later
+            # (with an implicit delay in the concent service's `submit` method).
+            #
+            # though, should we receive the acknowledgement for
+            # the `ReportComputedTask` sent above before the delay elapses,
+            # the `ForceReportComputedTask` message to the Concent will be
+            # cancelled and thus, never sent to the Concent.
+            msg = message.ForceReportComputedTask(
+                task_to_compute=task_to_compute,
+                result_hash='sha1:' + task_result.package_sha1
+            )
+            logger.debug('[CONCENT] ForceReport: %s', msg)
 
-        self.concent_service.submit(
-            ConcentRequest.build_key(
-                task_result.subtask_id,
-                msg.__class__.__name__,
-            ),
-            msg,
-        )
+            self.concent_service.submit(
+                ConcentRequest.build_key(
+                    task_result.subtask_id,
+                    msg.__class__.__name__,
+                ),
+                msg,
+            )
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation

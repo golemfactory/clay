@@ -695,6 +695,21 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         testutils.TempDirFixture.tearDown(self)
         history.MessageHistoryService.instance = None
 
+    def _mock_task_to_compute(self, task_id, subtask_id, node_id, **kwargs):
+        task_to_compute = message.TaskToCompute(**kwargs)
+        nmsg_dict = dict(
+            task=task_id,
+            subtask=subtask_id,
+            node=node_id,
+            msg_date=datetime.datetime.now(),
+            msg_cls='TaskToCompute',
+            msg_data=pickle.dumps(task_to_compute),
+            local_role=model.Actor.Provider,
+            remote_role=model.Actor.Requestor,
+        )
+        service = history.MessageHistoryService.instance
+        service.add_sync(nmsg_dict)
+
     def test_send_report_computed_task_concent_no_message(self):
         ts = TaskSession(mock.Mock())
         n = Node()
@@ -713,19 +728,9 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n, package_sha1="deadbeef")
-        task_to_compute = message.TaskToCompute()
-        nmsg_dict = dict(
-            task=task_id,
-            subtask=subtask_id,
-            node=node_id,
-            msg_date=datetime.datetime.now(),
-            msg_cls='TaskToCompute',
-            msg_data=pickle.dumps(task_to_compute),
-            local_role=model.Actor.Provider,
-            remote_role=model.Actor.Requestor,
-        )
-        service = history.MessageHistoryService.instance
-        service.add_sync(nmsg_dict)
+
+        self._mock_task_to_compute(task_id, subtask_id, node_id)
+
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ts.concent_service.submit.assert_called_once_with(
             concent_client.ConcentRequest.build_key(
@@ -755,19 +760,9 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n, package_sha1="deadbeef")
-        task_to_compute = message.TaskToCompute()
-        nmsg_dict = dict(
-            task=task_id,
-            subtask=subtask_id,
-            node=node_id,
-            msg_date=datetime.datetime.now(),
-            msg_cls='TaskToCompute',
-            msg_data=pickle.dumps(task_to_compute),
-            local_role=model.Actor.Provider,
-            remote_role=model.Actor.Requestor,
-        )
-        service = history.MessageHistoryService().instance
-        service.add_sync(nmsg_dict)
+
+        self._mock_task_to_compute(task_id, subtask_id, node_id)
+
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
         ts.concent_service.submit.assert_called_once_with(
             concent_client.ConcentRequest.build_key(
@@ -781,6 +776,23 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             msg.result_hash,
             'sha1:deadbeef',
         )
+
+    def test_send_report_computed_task_concent_disabled(self):
+        ts = TaskSession(mock.Mock())
+        n = Node()
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4())
+        wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
+                                13190, 10, 0, "10.10.10.10",
+                                30102, "key1", n, package_sha1="deadbeef")
+
+        self._mock_task_to_compute(task_id, subtask_id, node_id,
+                                   concent_enabled=False)
+
+        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
+        ts.concent_service.submit.assert_not_called()
+
 
 
 def executor_success(req, success, error):
