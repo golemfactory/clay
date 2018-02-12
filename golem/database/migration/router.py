@@ -7,7 +7,7 @@ from peewee_migrate import Router as _Router
 from golem.database.migration import default_migrate_dir
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class Router(_Router):
@@ -16,7 +16,7 @@ class Router(_Router):
 
         def __init__(self, migrate_dir: str = default_migrate_dir()):
             self._router = Router.__new__(Router)
-            self._router.logger = log
+            self._router.logger = logger
             self._router.migrate_dir = migrate_dir
             self._router.schema_version = None
             self._router.template = None
