@@ -10,6 +10,7 @@ from golem.core.common import timeout_to_deadline
 
 logger = logging.getLogger("blendercroppper")
 
+
 # FIXME #2086
 # pylint: disable=R0903
 class CropContext:
@@ -25,6 +26,12 @@ class BlenderCropper:
     CROP_STEP = 0.01
 
     def __init__(self):
+        self.crop_counter = 0
+        self.crop_size = ()
+        self.split_values = []
+        self.split_pixels = []
+
+    def clear(self):
         self.crop_counter = 0
         self.crop_size = ()
         self.split_values = []
@@ -53,27 +60,39 @@ class BlenderCropper:
         """
         left, right, bottom, top = image_border
 
-        left = round(left, 3)
-        right = round(right, 3)
-        top = round(top, 3)
-        bottom = round(bottom, 3)
+        left_p = math.ceil(left * resolution[0])
+        right_p = math.ceil(right * resolution[0])
+        top_p = math.ceil(top * resolution[1])
+        bottom_p = math.ceil(bottom * resolution[1])
 
-        logger.info("left=%r, right=%r, top=%r, bottom=%r", left, right, bottom, top)
+        logger.info("Values left=%r, right=%r, top=%r, bottom=%r", left, right,
+                    bottom, top)
+
+        logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
+                    right_p, bottom_p, top_p)
 
         if crop_size is None:
-            self.crop_size = (self._find_split_size(resolution[0]),
-                              self._find_split_size(resolution[1]))
+            crop_size = (self._find_split_size(resolution[0]),
+                         self._find_split_size(resolution[1]))
+        else:
+            crop_size = (int(crop_size[0] * resolution[0]),
+                         int(crop_size[1] * resolution[1]))
+
+        self.crop_size = (crop_size[0]/resolution[0],
+                          crop_size[1]/resolution[1])
 
         # Randomisation cX and Y coordinate to render crop window
         # Blender cropping window from top left. Cropped window pixels
         # 0,0 are in top left
         for _ in range(splits_num):
-            split_x = self._random_split(left, right, self.crop_size[0])
-            split_y = self._random_split(bottom, top, self.crop_size[1])
-            self.split_values.append((split_x[0], split_x[1], split_y[0],
-                                 split_y[1]))
-            self.split_pixels.append(self._pixel(resolution, split_x[0], split_y[1],
-                                            top))
+            split_x = self._random_split(left_p, right_p, crop_size[0])
+            split_y = self._random_split(bottom_p, top_p, crop_size[1])
+            self.split_values.append((
+                split_x[0]/resolution[0],
+                split_x[1]/resolution[0],
+                split_y[0]/resolution[1],
+                split_y[1]/resolution[1]))
+            self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
         return self.split_values, self.split_pixels
 
     # pylint: disable-msg=too-many-arguments
@@ -141,23 +160,23 @@ class BlenderCropper:
     @staticmethod
     def _random_split(min_, max_, size_):
         difference = (max_ - size_)
-        split_min = round(random.uniform(min_, difference), 3)
-        split_max = round(split_min + size_, 3)
+        split_min = random.randint(min_, difference)
+        split_max = split_min + size_
         logger.info("split_min=%r, split_max=%r", split_min, split_max)
         return split_min, split_max
 
     @staticmethod
-    def _pixel(res, crop_x_min, crop_y_max, top):
+    def _pixel(crop_x_min, crop_y_max, top):
         # In matrics calculation, y=0 is located on top. Where in blender in
         # bottom. Take then given top and substract it from y_max
-        y = crop_y_max * res[1]
-        top_p = top * res[1]
-        y = int(round(top_p - y))
-        x = int(round(crop_x_min * res[0]))
+        y = top - crop_y_max
+        x = crop_x_min
         logger.info("X=%r, Y=%r", x, y)
         return x, y
 
     @staticmethod
     def _find_split_size(res):
-        return max(math.ceil((BlenderCropper.MIN_CROP_RES / res) * 100) / 100,
-                   BlenderCropper.CROP_STEP)
+        #  Int rounding, this hasn't to be exact, since its only have to be
+        #  precise and constant
+        return int(
+            max(BlenderCropper.MIN_CROP_RES, BlenderCropper.CROP_STEP * res))

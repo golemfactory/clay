@@ -17,7 +17,8 @@ from golem.core.common import get_golem_path
 
 logger = logging.getLogger("apps.blender")
 
-#FIXME #2086
+
+# FIXME #2086
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
@@ -208,15 +209,14 @@ class BlenderVerifier(FrameRenderingVerifier):
         w_corr_min = 0.6
         w_ssim_min = 0.6
 
-        if avg_ssim > w_ssim and avg_corr > w_corr:
+        if avg_ssim > w_ssim:
             logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
             self.success()
-        elif avg_ssim < w_ssim and avg_corr < w_corr:
+        elif avg_ssim < w_ssim:
             logger.info("Subtask %r NOT verified",
                         self.subtask_info['subtask_id'])
             self.failure()
-        elif avg_ssim > w_ssim_min and avg_corr > w_corr_min and \
-                not self.additional_test:
+        elif avg_ssim > w_ssim_min and not self.additional_test:
             self.verified_crops_counter = 0
             self.metrics.clear()
             self.additional_test = True

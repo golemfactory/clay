@@ -12,11 +12,11 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
         self.cropper = BlenderCropper()
 
     def test_find_crop_size(self):
-        assert self.cropper._find_split_size(800) == 0.01
-        assert self.cropper._find_split_size(8000) == 0.01
-        assert self.cropper._find_split_size(400) == 0.02
-        assert self.cropper._find_split_size(799) == 0.02
-        assert self.cropper._find_split_size(399) == 0.03
+        assert self.cropper._find_split_size(800) == 8
+        assert self.cropper._find_split_size(8000) == 80
+        assert self.cropper._find_split_size(400) == 8
+        assert self.cropper._find_split_size(799) == 8
+        assert self.cropper._find_split_size(399) == 8
 
     def test_random_crop(self):
         def _test_crop(min_, max_, step):
@@ -25,18 +25,17 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
             assert round(crop_max, 2) <= round(max_, 2)
             assert abs(crop_max - crop_min - step) <= 0.01
 
-        _test_crop(0.0, 0.1, 0.01)
-        _test_crop(0.0, 0.5, 0.5)
-        _test_crop(0.0, 0.5, 0.02)
-        _test_crop(0.032, 0.42, 0.01)
+        _test_crop(40, 60, 8)
+        _test_crop(550, 570, 10)
 
     def test_pixel(self):
-        assert self.cropper._pixel((800, 600), 0.0, 1.0, 0.0, 1.0) == (0, 0)
-        assert self.cropper._pixel((800, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
-        assert self.cropper._pixel((799, 600), 0.6, 0.9, 0.5, 1.0) == (80, 60)
+        assert self.cropper._pixel(40, 20, 80) == (40, 60)
+        assert self.cropper._pixel(40, 30, 90) == (40, 60)
+        assert self.cropper._pixel(40, 10, 70) == (40, 60)
 
     def test_generate_crop(self):
         def _test_crop(resolution, crop, num, ncrop_size=None):
+            self.cropper.clear()
             if ncrop_size is None:
                 crops_info = self.cropper.generate_split_data(resolution, crop,
                                                               num)
