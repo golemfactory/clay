@@ -5,6 +5,7 @@ click>=4.0
 docker-py==1.7.2
 netifaces==0.10.4
 peewee<2.11,>=2.8
+peewee_migrate==0.14.0
 Pillow==4.2.1
 psutil==5.2.2
 pluggy==0.6.0

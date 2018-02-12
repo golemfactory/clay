@@ -3,29 +3,8 @@ from datetime import datetime
 from peewee import IntegrityError
 
 import golem.model as m
-
 from golem.network.p2p.node import Node
-from golem.testutils import DatabaseFixture, PEP8MixIn, TempDirFixture
-
-
-class TestDatabase(TempDirFixture, PEP8MixIn):
-    PEP8_FILES = ["golem/model.py"]
-
-    def test_init(self) -> None:
-        db = m.Database(self.path)
-        self.assertFalse(db.db.is_closed())
-        db.db.close()
-
-    def test_schema_version(self):
-        db = m.Database(self.path)
-        self.assertEqual(db._get_user_version(), db.SCHEMA_VERSION)
-        self.assertNotEqual(db.SCHEMA_VERSION, 0)
-
-        db._set_user_version(0)
-        self.assertEqual(db._get_user_version(), 0)
-        db = m.Database(self.path)
-        self.assertEqual(db._get_user_version(), db.SCHEMA_VERSION)
-        db.db.close()
+from golem.testutils import DatabaseFixture
 
 
 class TestPayment(DatabaseFixture):
@@ -36,7 +15,7 @@ class TestPayment(DatabaseFixture):
 
     def test_create(self):
         p = m.Payment(payee="DEF", subtask="xyz", value=5,
-                    status=m.PaymentStatus.awaiting)
+                      status=m.PaymentStatus.awaiting)
         self.assertEqual(p.save(force_insert=True), 1)
 
         with self.assertRaises(IntegrityError):
@@ -169,7 +148,7 @@ class TestPerformance(DatabaseFixture):
 
     def test_update_or_create(self):
         m.Performance.update_or_create("ENVX", 100)
-        env =  m.Performance.get(m.Performance.environment_id == "ENVX")
+        env = m.Performance.get(m.Performance.environment_id == "ENVX")
         assert env.value == 100
         m.Performance.update_or_create("ENVX", 200)
         env = m.Performance.get(m.Performance.environment_id == "ENVX")
