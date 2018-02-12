@@ -441,8 +441,7 @@ class TestTasks(TempDirFixture):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
-                    read_data='{"name": "Golem task name \
-                has more than 24 character"}')):
+                    read_data='{"name": "This name has 27 characters"}')):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
