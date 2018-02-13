@@ -159,10 +159,13 @@ class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
         k = EllipticalKeysAuth(self.path)
         e = urandom(20)
-        a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(), e)
-        b = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(), e)
+        a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
+                           e)
+        b = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
+                           e)
         self.assertEqual(a, b)
-        n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10", pub_port=1032)
+        n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10",
+                 pub_port=1032)
         c = EthAccountInfo(k.key_id, 5112, "10.0.0.2", "test-test2-test", n, e)
         self.assertEqual(a, c)
         k.generate_new(2)

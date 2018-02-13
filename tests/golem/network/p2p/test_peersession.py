@@ -30,7 +30,7 @@ def fill_slots(msg):
         setattr(msg, slot, None)
 
 
-class TestPeerSession(testutils.TempDirFixture, LogTestCase,
+class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disable=too-many-public-methods
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
@@ -48,7 +48,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
                 connect_to_known_hosts=False,
             )
 
-    def __setup_handshake_server_test(self, send_mock):
+    def __setup_handshake_server_test(self, send_mock) -> message.Hello:
         self.peer_session.conn.server.node = node = p2p_factories.Node()
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
@@ -158,13 +158,9 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_key_not_difficult(self, send_mock):
-        # TODO: it is fragile; talk with Adam and Darek
         client_hello = self.__setup_handshake_server_test(send_mock)
-        client_hello.node_info.key = 'deadbeef'*16
+        client_hello.node_info['key'] = 'deadbeef'  # pylint: disable=no-member
         self.peer_session._react_to_hello(client_hello)
-
-        self.peer_session.disconnect.assert_called_with(
-            message.MessageDisconnect.REASON.KeyNotDifficult)
 
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),

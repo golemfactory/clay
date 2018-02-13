@@ -149,7 +149,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         new_config_desc = MockConfig(new_path, node_name + "-new")
         self.resource_server.change_resource_dir(new_config_desc)
-        new_resources = self.resource_manager.storage.get_resources(self.task_id)
+        new_resources = self.resource_manager.storage.get_resources(
+            self.task_id)
 
         assert len(resources) == len(new_resources)
 
@@ -212,7 +213,9 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
     def testVerifySig(self):
         test_str = "A test string to sign"
         sig = self.resource_server.sign(test_str)
-        self.assertTrue(self.resource_server.verify_sig(sig, test_str, self.keys_auth.public_key))
+        self.assertTrue(self.resource_server.verify_sig(
+            sig, test_str,
+            self.keys_auth.public_key))
 
     def testAddFilesToGet(self):
         test_files = [
@@ -222,7 +225,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         assert not self.resource_server.pending_resources
         self.resource_server.download_resources(test_files, self.task_id)
-        assert len(self.resource_server.pending_resources[self.task_id]) == len(test_files)
+        assert len(self.resource_server.pending_resources[self.task_id]) == len(
+            test_files)
 
         return self.resource_server, test_files
 

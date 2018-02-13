@@ -49,5 +49,3 @@ enforce==0.3.4
 miniupnpc<2.1,>=2.0
 Golem-Messages==1.7.0
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@d131fc4fd9b542e4c6162370416b18663ecc5e4a#egg=golem_sci
-# TODO: revert this before merging
--e git://github.com/golemfactory/golem-messages.git@keysauth_difficulty#egg=golem_messages

@@ -1,15 +1,15 @@
 import logging
 import math
 import os
-from _pysha3 import sha3_256 as _sha3_256
 from abc import abstractmethod
 from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
-import bitcoin
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
+
+from _pysha3 import sha3_256 as _sha3_256
 
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from golem.utils import encode_hex, decode_hex
@@ -34,13 +34,6 @@ def sha2(seed: Union[str, bytes]) -> int:
     if isinstance(seed, str):
         seed = seed.encode()
     return int.from_bytes(sha256(seed).digest(), 'big')
-
-
-def privtopub(raw_privkey: bytes) -> bytes:
-    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey),
-                                       'bin_electrum')
-    assert len(raw_pubkey) == 64
-    return raw_pubkey
 
 
 def get_random(min_value: int = 0, max_value: int = None) -> int:
@@ -122,12 +115,25 @@ class EllipticalKeysAuth:
         public_key_loc = EllipticalKeysAuth._get_key_loc(
             keys_dir, public_key_name)
 
-    @abstractmethod
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        """
-        pass
+        loaded_keys = EllipticalKeysAuth._load_and_check_keys(
+            private_key_loc, public_key_loc, difficulty)
+        if loaded_keys:
+            priv_key, pub_key = loaded_keys
+        else:
+            logger.info("Backing up existing keys and creating new key pair.")
+            EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
+            priv_key, pub_key = \
+                EllipticalKeysAuth._generate_new_keys(difficulty)
+
+        # Everything is clear. Store gathered data in 'self'.
+
+        self._private_key_loc = private_key_loc
+        self._public_key_loc = public_key_loc
+        self._set_keys(priv_key, pub_key)
+        self.difficulty = difficulty
+
+        if not loaded_keys:
+            self._save_keys()
 
     @classmethod
     def get_keys_dir(cls, datadir=None):
@@ -144,7 +150,8 @@ class EllipticalKeysAuth:
     @classmethod
     def set_keys_dir(cls, path):
         if (not os.path.isdir(path)) and os.path.exists(path):
-            raise IOError("Path {} does not exists\n1){}\n2){}".format(path, os.path.isdir(path), os.path.exists(path)))
+            raise IOError("Path {} does not exists\n1){}\n2){}".format(
+                path, os.path.isdir(path), os.path.exists(path)))
         cls._keys_dir = path
 
     @classmethod
@@ -166,26 +173,6 @@ class EllipticalKeysAuth:
     @abstractmethod
     def _load_public_key(self):  # implement in derived classes
         return
-
-        loaded_keys = EllipticalKeysAuth._load_and_check_keys(
-            private_key_loc, public_key_loc, difficulty)
-        if loaded_keys:
-            priv_key, pub_key = loaded_keys
-        else:
-            logger.info("Backing up existing keys and creating new key pair.")
-            EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
-            priv_key, pub_key = \
-                EllipticalKeysAuth._generate_new_keys(difficulty)
-
-        # Everything is clear. Store gathered data in 'self'.
-
-        self._private_key_loc = private_key_loc
-        self._public_key_loc = public_key_loc
-        self._set_keys(priv_key, pub_key)
-        self.difficulty = difficulty
-
-        if not loaded_keys:
-            self._save_keys()
 
     @staticmethod
     def _backup_keys(
@@ -348,6 +335,7 @@ class EllipticalKeysAuth:
 
     def generate_new(self, difficulty: IntFloatT) -> None:
         """ Generate new pair of keys with given difficulty
+
         :param difficulty: see __init__
         :raise TypeError: in case of incorrect @difficulty type
         """

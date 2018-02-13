@@ -210,8 +210,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_react_to_hello(self):
         conn = mock.MagicMock()
 
-        node = Node(node_name='node', key='ffffffff')
-
         ts = TaskSession(conn)
         ts.task_server = mock.Mock()
         ts.disconnect = mock.Mock()

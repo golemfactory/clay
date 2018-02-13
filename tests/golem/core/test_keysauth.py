@@ -1,11 +1,9 @@
 import os
-import unittest
-from os import makedirs, path
 from random import random, randint
+from unittest import TestCase
 from unittest.mock import patch
 
 from freezegun import freeze_time
-from golem.core.crypto import ECCx
 from golem_messages import message
 from golem_messages.cryptography import ECCx
 
@@ -16,7 +14,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.utils import encode_hex, decode_hex
 
 
-class TestKeysAuth(unittest.TestCase, testutils.PEP8MixIn):
+class TestKeysAuth(TestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/core/keysauth.py']
 
     def test_sha(self):
@@ -49,8 +47,8 @@ class TestKeysAuth(unittest.TestCase, testutils.PEP8MixIn):
 class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     def test_init(self):
-        for i in range(100):
-            ek = EllipticalKeysAuth(path.join(self.path),
+        for _ in range(100):
+            ek = EllipticalKeysAuth(os.path.join(self.path),
                                     private_key_name=str(random()))
             self.assertEqual(len(ek._private_key),
                              EllipticalKeysAuth.PRIV_KEY_LEN)
@@ -59,14 +57,14 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     @patch('golem.core.keysauth.logger')
     def test_init_priv_key_wrong_length(self, logger):
-        keys_dir = path.join(self.path, 'keys')
+        keys_dir = os.path.join(self.path, 'keys')
         private_key_name = "priv_key"
-        private_key_path = path.join(keys_dir, private_key_name)
+        private_key_path = os.path.join(keys_dir, private_key_name)
         public_key_name = "pub_key"
-        public_key_path = path.join(keys_dir, public_key_name)
+        public_key_path = os.path.join(keys_dir, public_key_name)
 
         # given
-        makedirs(keys_dir)
+        os.makedirs(keys_dir)
         with open(private_key_path, 'wb') as f:
             f.write(b'123')
         with open(public_key_path, 'wb') as f:
@@ -85,14 +83,14 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     @patch('golem.core.keysauth.logger')
     def test_init_pub_key_wrong_length(self, logger):
-        keys_dir = path.join(self.path, 'keys')
+        keys_dir = os.path.join(self.path, 'keys')
         private_key_name = "priv_key"
-        private_key_path = path.join(keys_dir, private_key_name)
+        private_key_path = os.path.join(keys_dir, private_key_name)
         public_key_name = "pub_key"
-        public_key_path = path.join(keys_dir, public_key_name)
+        public_key_path = os.path.join(keys_dir, public_key_name)
 
         # given
-        makedirs(keys_dir)
+        os.makedirs(keys_dir)
         with open(private_key_path, 'wb') as f:
             f.write(b'#'*EllipticalKeysAuth.PRIV_KEY_LEN)
         with open(public_key_path, 'wb') as f:
@@ -149,8 +147,8 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys_with_no_keys(self):
-        private_key_loc = path.join(self.path, "priv")
-        public_key_loc = path.join(self.path, "pub")
+        private_key_loc = os.path.join(self.path, "priv")
+        public_key_loc = os.path.join(self.path, "pub")
 
         # given
         assert os.listdir(self.path) == []  # empty dir
@@ -163,8 +161,8 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys(self):
-        private_key_loc = path.join(self.path, "priv")
-        public_key_loc = path.join(self.path, "pub")
+        private_key_loc = os.path.join(self.path, "priv")
+        public_key_loc = os.path.join(self.path, "pub")
 
         # given
         with open(private_key_loc, 'w') as f:
@@ -187,7 +185,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         signature = ek.sign(data)
         self.assertTrue(ek.verify(signature, data))
         self.assertTrue(ek.verify(signature, data, ek.key_id))
-        ek2 = EllipticalKeysAuth(path.join(self.path, str(random())))
+        ek2 = EllipticalKeysAuth(os.path.join(self.path, str(random())))
         self.assertTrue(ek2.verify(signature, data, ek.key_id))
         data2 = b"23103"
         sig = ek2.sign(data2)
@@ -210,12 +208,10 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     def test_save_load_keys(self):
         """ Tests for saving and loading keys """
-        from os.path import join
-        from os import chmod
         from golem.core.common import is_windows
         ek = EllipticalKeysAuth(self.path)
-        pub_key_file = join(self.path, "pub.key")
-        priv_key_file = join(self.path, "priv.key")
+        pub_key_file = os.path.join(self.path, "pub.key")
+        priv_key_file = os.path.join(self.path, "priv.key")
         pub_key = ek.public_key
         priv_key = ek._private_key
         ek.save_to_files(priv_key_file, pub_key_file)
@@ -235,12 +231,12 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         if not is_windows():
             from os import getuid
             if getuid() != 0:
-                priv_key_file = join(self.path, "priv_incorrect.hey")
+                priv_key_file = os.path.join(self.path, "priv_incorrect.hey")
                 open(priv_key_file, 'w').close()
-                chmod(priv_key_file, 0x700)
-                pub_key_file = join(self.path, "pub_incorrect.hey")
+                os.chmod(priv_key_file, 0x700)
+                pub_key_file = os.path.join(self.path, "pub_incorrect.hey")
                 open(pub_key_file, 'w').close()
-                chmod(pub_key_file, 0x700)
+                os.chmod(pub_key_file, 0x700)
                 self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
 
     def test_fixed_sign_verify_elliptical(self):
@@ -292,16 +288,15 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     def test_encrypt_decrypt_elliptical(self):
         """ Test encryption and decryption with EllipticalKeysAuth """
-        from os import urandom
-        ek = EllipticalKeysAuth(path.join(self.path, str(random())))
+        ek = EllipticalKeysAuth(os.path.join(self.path, str(random())))
         data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
         enc = ek.encrypt(data)
         self.assertEqual(ek.decrypt(enc), data)
-        ek2 = EllipticalKeysAuth(path.join(self.path, str(random())))
+        ek2 = EllipticalKeysAuth(os.path.join(self.path, str(random())))
         self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
         data2 = b"23103"
         self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
-        data3 = b"\x00" + urandom(1024)
+        data3 = b"\x00" + os.urandom(1024)
         ek.generate_new(2)
         self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
         with self.assertRaises(TypeError):

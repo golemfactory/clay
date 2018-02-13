@@ -61,7 +61,7 @@ def get_mock_task(task_id, subtask_id):
     return task_mock
 
 
-class TestTaskServer(LogTestCase, testutils.DatabaseFixture):
+class TestTaskServer(LogTestCase, testutils.DatabaseFixture): # noqa pylint: disable=too-many-public-methods
 
     def setUp(self):
         for parent in self.__class__.__bases__:
@@ -837,8 +837,7 @@ class TestTaskServer2(TestDatabaseWithReactor):
         return ccd
 
 
-class TestRestoreResources(TestWithKeysAuth, LogTestCase,
-                           testutils.DatabaseFixture):
+class TestRestoreResources(LogTestCase, testutils.DatabaseFixture):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
