@@ -266,7 +266,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             payment = ts.task_server.accept_result(subtask_id,
                                                    ts.result_owner)
             ts.send(message.tasks.SubtaskResultsAccepted(
-                subtask_id=subtask_id,
+                factories.messages.TaskToCompute(
+                    compute_task_def__subtask_id=subtask_id),
                 payment_ts=payment.processed_ts))
             ts.dropped()
 
