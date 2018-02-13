@@ -1,4 +1,3 @@
-import atexit
 import logging
 import os
 import posixpath
@@ -308,10 +307,3 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
-
-    @staticmethod
-    @atexit.register
-    def kill_jobs():
-        for job in DockerJob.running_jobs:
-            logger.info("Killing job {}".format(job.container_id))
-            job.kill()
