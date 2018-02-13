@@ -1,4 +1,0 @@
-ansible>=2.4.1.0
-boto3
-pywinrm
-boto
