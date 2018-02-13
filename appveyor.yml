@@ -11,8 +11,8 @@ platform:
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python35-x64"
-      PYTHON_VERSION: "3.5.0"
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.0"
       PYTHON_ARCH: "64"
 
       VER_GETH: geth-windows-amd64-1.7.2-1db4ecdc
