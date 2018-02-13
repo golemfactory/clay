@@ -51,6 +51,26 @@ class TestSendToConcent(TestCase):
             headers=mock.ANY
         )
 
+     def test_none(self, post_mock):
+        response = requests.Response()
+        response.status_code = 200
+        post_mock.return_value = response
+
+        client.send_to_concent(
+            msg=None,
+            signing_key=self.private_key,
+            public_key=self.public_key,
+        )
+        api_send_url = urllib.parse.urljoin(
+            variables.CONCENT_URL,
+            '/api/v1/send/'
+        )
+        post_mock.assert_called_once_with(
+            api_send_url,
+            data=b'',
+            headers=mock.ANY
+        )
+
     def test_message_client_error(self, post_mock):
         response = requests.Response()
         response.status_code = 400

@@ -29,7 +29,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     """
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    if msg is None:
+    if msg is not None:
         data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
     else:
         data = b''
