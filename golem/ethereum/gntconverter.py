@@ -73,10 +73,10 @@ class GNTConverter:
             return True
 
         current_block = self._sci.get_block_number()
-        block_number = receipt['blockNumber']
+        block_number = receipt.block_number
         if current_block < block_number + self.REQUIRED_CONFS:
             return True
-        if receipt['status'] == '0x0':
+        if not receipt.status:
             log.warning('Unsuccessful transaction %r', self._tx_hash)
         self._tx_hash = None
         return False

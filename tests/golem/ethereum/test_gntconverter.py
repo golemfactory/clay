@@ -4,6 +4,13 @@ import unittest.mock as mock
 from golem.ethereum.gntconverter import GNTConverter
 
 
+def mock_receipt(block_number: int):
+    receipt = mock.Mock()
+    receipt.status = 1
+    receipt.block_number = block_number
+    return receipt
+
+
 class GNTConverterTest(unittest.TestCase):
     def setUp(self):
         self.sci = mock.Mock()
@@ -28,16 +35,14 @@ class GNTConverterTest(unittest.TestCase):
         self.sci.get_personal_deposit_slot.assert_called_once_with()
         self.sci.create_personal_deposit_slot.assert_called_once_with()
 
-        receipts[cpds_tx_hash] = {'blockNumber': block_number}
+        receipts[cpds_tx_hash] = mock_receipt(block_number)
         assert self.converter.is_converting()
         self.sci.get_transaction_receipt.assert_called_once_with(cpds_tx_hash)
         self.sci.get_transaction_receipt.reset_mock()
 
         # create personal deposit slot mined, transfer GNT
-        receipts[cpds_tx_hash] = {
-            'blockNumber': block_number - GNTConverter.REQUIRED_CONFS,
-            'status': '0x1',
-        }
+        receipts[cpds_tx_hash] = \
+            mock_receipt(block_number - GNTConverter.REQUIRED_CONFS)
         pda = '0xdddd'
         self.sci.get_personal_deposit_slot.return_value = pda
         transfer_tx_hash = '0xbeef'
@@ -48,7 +53,7 @@ class GNTConverterTest(unittest.TestCase):
         self.sci.transfer_gnt.assert_called_once_with(pda, gnt_amount)
         self.sci.get_transaction_receipt.reset_mock()
 
-        receipts[transfer_tx_hash] = {'blockNumber': block_number}
+        receipts[transfer_tx_hash] = mock_receipt(block_number)
         assert self.converter.is_converting()
         self.sci.get_transaction_receipt.assert_called_once_with(
             transfer_tx_hash,
@@ -56,10 +61,8 @@ class GNTConverterTest(unittest.TestCase):
         self.sci.get_transaction_receipt.reset_mock()
 
         # transfer GNT mined, process personal deposit
-        receipts[transfer_tx_hash] = {
-            'blockNumber': block_number - GNTConverter.REQUIRED_CONFS,
-            'status': '0x1',
-        }
+        receipts[transfer_tx_hash] = \
+            mock_receipt(block_number - GNTConverter.REQUIRED_CONFS)
         self.sci.get_gnt_balance.return_value = gnt_amount
         process_pd_tx_hash = '0xbad'
         self.sci.process_personal_deposit_slot.return_value = process_pd_tx_hash
@@ -70,7 +73,7 @@ class GNTConverterTest(unittest.TestCase):
         self.sci.get_transaction_receipt.reset_mock()
         self.sci.process_personal_deposit_slot.assert_called_once_with()
 
-        receipts[process_pd_tx_hash] = {'blockNumber': block_number}
+        receipts[process_pd_tx_hash] = mock_receipt(block_number)
         assert self.converter.is_converting()
         self.sci.get_transaction_receipt.assert_called_once_with(
             process_pd_tx_hash,
@@ -78,10 +81,8 @@ class GNTConverterTest(unittest.TestCase):
         self.sci.get_transaction_receipt.reset_mock()
 
         # process personal deposit mined, conversion done
-        receipts[process_pd_tx_hash] = {
-            'blockNumber': block_number - GNTConverter.REQUIRED_CONFS,
-            'status': '0x1',
-        }
+        receipts[process_pd_tx_hash] = \
+            mock_receipt(block_number - GNTConverter.REQUIRED_CONFS)
         assert not self.converter.is_converting()
         self.sci.get_transaction_receipt.assert_called_once_with(
             process_pd_tx_hash,
