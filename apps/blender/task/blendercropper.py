@@ -60,8 +60,8 @@ class BlenderCropper:
         """
         left_p = math.ceil(image_border[0] * resolution[0])
         right_p = math.ceil(image_border[1] * resolution[0])
-        bottom_p = math.ceil(image_border[3] * resolution[1])
-        top_p = math.ceil(image_border[4] * resolution[1])
+        bottom_p = math.ceil(image_border[2] * resolution[1])
+        top_p = math.ceil(image_border[3] * resolution[1])
 
         logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
                     right_p, bottom_p, top_p)
