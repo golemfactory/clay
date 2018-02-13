@@ -1,2 +1,5 @@
 roles/geerlingguy.homebrew
 roles/elliotweiser.osx-command-line-tools
+roles/golemfactory.golem-dev-linux
+roles/golemfactory.golem-dev-mac
+roles/golemfactory.golem-dev-windows
