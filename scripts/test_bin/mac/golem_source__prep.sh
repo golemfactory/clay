@@ -9,6 +9,11 @@ echo "Change to source directory"
 cd ${PROJECT_DIR}/golem
 
 echo "Load docker env"
-docker-machine restart golem || exit 1
+
+DOCKER_STATUS=$(docker-machine status golem)
+if [ "$DOCKER_STATUS" != "Running" ]
+then
+    docker-machine restart golem || exit 1
+fi
 eval $(docker-machine env golem)
 
