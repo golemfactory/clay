@@ -80,7 +80,7 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         signature = km.sign(data)
         self.assertTrue(km.verify(signature, data))
         self.assertTrue(km.verify(signature, data, km.public_key))
-        km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
+        km2 = RSAKeysAuth(self.path, "PRIVATE2")
         self.assertTrue(km2.verify(signature, data, km.public_key))
         data2 = b"ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
         signature2 = km2.sign(data2)
@@ -109,18 +109,15 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         if not path.isdir(self.path):
             mkdir(self.path)
         ek = RSAKeysAuth(self.path)
-        pub_key_file = join(self.path, "pub_rsa.key")
         priv_key_file = join(self.path, "priv_rsa.key")
         pub_key = ek.get_public_key().exportKey()
         priv_key = ek._private_key.exportKey()
-        self.assertTrue(ek.save_to_files(priv_key_file, pub_key_file))
+        self.assertTrue(ek.save_to_files(priv_key_file))
         with self.assertRaises(TypeError):
             ek.generate_new(None)
         ek.generate_new(5)
         self.assertNotEqual(ek.get_public_key(), pub_key)
         self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'rb') as f:
-            self.assertEqual(f.read(), pub_key)
         with open(priv_key_file, 'rb') as f:
             self.assertEqual(f.read(), priv_key)
         self.assertTrue(ek.load_from_file(priv_key_file))
@@ -133,10 +130,7 @@ class TestRSAKeysAuth(TestWithKeysAuth):
                 priv_key_file = join(self.path, "priv_rsa_incorrect.key")
                 open(priv_key_file, 'w').close()
                 chmod(priv_key_file, 0x700)
-                pub_key_file = join(self.path, "pub_rsa_incorrect.key")
-                open(pub_key_file, 'w').close()
-                chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
+                self.assertFalse(ek.save_to_files(priv_key_file))
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):
@@ -181,18 +175,15 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         from os import chmod
         from golem.core.common import is_windows
         ek = EllipticalKeysAuth(self.path)
-        pub_key_file = join(self.path, "pub.key")
         priv_key_file = join(self.path, "priv.key")
         pub_key = ek.get_public_key()
         priv_key = ek._private_key
-        ek.save_to_files(priv_key_file, pub_key_file)
+        ek.save_to_files(priv_key_file)
         with self.assertRaises(TypeError):
             ek.generate_new(None)
         ek.generate_new(5)
         self.assertNotEqual(ek.get_public_key(), pub_key)
         self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'rb') as f:
-            self.assertEqual(f.read(), pub_key)
         with open(priv_key_file, 'rb') as f:
             self.assertEqual(f.read(), priv_key)
         self.assertTrue(ek.load_from_file(priv_key_file))
@@ -205,10 +196,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
                 priv_key_file = join(self.path, "priv_incorrect.hey")
                 open(priv_key_file, 'w').close()
                 chmod(priv_key_file, 0x700)
-                pub_key_file = join(self.path, "pub_incorrect.hey")
-                open(pub_key_file, 'w').close()
-                chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
+                self.assertFalse(ek.save_to_files(priv_key_file))
 
     def test_fixed_sign_verify_elliptical(self):
         public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \
