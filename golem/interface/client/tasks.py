@@ -199,7 +199,7 @@ class Tasks:
             raise ValueError(
                 "Length of task name cannot be less "
                 "than 4 or more than 24 characters.")
-        if not re.match(r"(\w|[\-\. ]){4,24}$", task_name, re.ASCII):
+        if not re.match(r"(\w|[\-\. ])+$", task_name):
             raise ValueError(
                 "Task name can only contain letters, numbers, "
                 "spaces, underline, dash or dot.")
