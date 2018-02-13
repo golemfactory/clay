@@ -1,7 +1,0 @@
----
-- import_playbook: site-master.yml
-- import_playbook: site-worker-contol.yml
-- import_playbook: site-worker-linux.yml
-- import_playbook: site-worker-windows.yml
-- import_playbook: site-worker-mac.yml
-

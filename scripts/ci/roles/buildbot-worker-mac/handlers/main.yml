@@ -1,3 +1,0 @@
-- name: load buildbot worker service
-  become: yes
-  command: launchctl load /Library/LaunchDaemons/network.golem.buildbot-worker.plist
