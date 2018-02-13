@@ -47,8 +47,6 @@ class DockerJob(object):
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
-    running_jobs = []
-
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
                  host_config=None, container_log_level=None):
@@ -156,7 +154,6 @@ class DockerJob(object):
         if self.container_id is None:
             raise KeyError("container does not have key: Id")
 
-        self.running_jobs.append(self)
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
@@ -164,7 +161,6 @@ class DockerJob(object):
 
     def _cleanup(self):
         if self.container:
-            self.running_jobs.remove(self)
             client = local_client()
             self._host_dir_chmod(self.work_dir, self.work_dir_mod)
             self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
