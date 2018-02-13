@@ -6,6 +6,7 @@ import json
 from collections import Callable
 from threading import Lock
 from shutil import copy
+from typing import Dict, Any
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
@@ -24,7 +25,7 @@ class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
     DOCKER_TAG = '1.1'
 
-    def __init__(self, callback: Callable):
+    def __init__(self, callback: Callable) -> None:
         super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
@@ -35,7 +36,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             get_golem_path(), 'apps', 'rendering'), 'runner.py')
         self.wasFailure = False
         self.cropper = BlenderCropper()
-        self.metrics = dict()
+        self.metrics: Dict[int, Any] = {}
         self.subtask_info = None
         self.crops_size = ()
         self.additional_test = False
@@ -55,7 +56,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             res_y = int(math.floor(subtask_info['res_y'] / parts))
         return subtask_info['res_x'], res_y
 
-    def _get_part_size_from_subtask_number(self, subtask_info):
+    @staticmethod
+    def _get_part_size_from_subtask_number(subtask_info):
 
         if subtask_info['res_y'] % subtask_info['total_tasks'] == 0:
             res_y = int(subtask_info['res_y'] / subtask_info['total_tasks'])
@@ -100,6 +102,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                 results,
                 reference_data,
                 resources, success, failure)
+        # pylint: disable=W0703
         except Exception as e:
             logger.error("Crop generation failed %r", e)
             import traceback
@@ -171,7 +174,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                 with open(result_path) as json_data:
                     self.metrics[
                         verification_context.crop_id] = json.load(
-                        json_data)
+                            json_data)
             except EnvironmentError as exc:
                 logger.error("Metrics not calculated %r", exc)
                 was_failure = -1
@@ -203,10 +206,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         avg_ssim /= 3
 
         # These are empirically measured values by CP and GG
-        w_corr = 0.7
         w_ssim = 0.8
-
-        w_corr_min = 0.6
         w_ssim_min = 0.6
 
         if avg_ssim > w_ssim:

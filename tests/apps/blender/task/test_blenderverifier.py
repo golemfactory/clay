@@ -1,8 +1,6 @@
 import os
 from unittest import mock
 
-from golem.core.common import timeout_to_deadline
-
 from apps.blender.task.verifier import BlenderVerifier, logger
 from apps.blender.task.blendercropper import CropContext
 

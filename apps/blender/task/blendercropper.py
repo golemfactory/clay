@@ -58,15 +58,10 @@ class BlenderCropper:
         useful for cropping with blender, second one are corresponding
         pixels. Each list has splits_num elements, one for each split.
         """
-        left, right, bottom, top = image_border
-
-        left_p = math.ceil(left * resolution[0])
-        right_p = math.ceil(right * resolution[0])
-        top_p = math.ceil(top * resolution[1])
-        bottom_p = math.ceil(bottom * resolution[1])
-
-        logger.info("Values left=%r, right=%r, top=%r, bottom=%r", left, right,
-                    bottom, top)
+        left_p = math.ceil(image_border[0] * resolution[0])
+        right_p = math.ceil(image_border[1] * resolution[0])
+        bottom_p = math.ceil(image_border[3] * resolution[1])
+        top_p = math.ceil(image_border[4] * resolution[1])
 
         logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
                     right_p, bottom_p, top_p)
