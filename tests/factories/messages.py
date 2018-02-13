@@ -1,5 +1,7 @@
 # pylint: disable=too-few-public-methods
 import factory
+import time
+
 from golem_messages.message import base
 from golem_messages.message import tasks
 
@@ -82,3 +84,10 @@ class SubtaskResultsRejected(factory.Factory):
         model = tasks.SubtaskResultsRejected
 
     report_computed_task = factory.SubFactory(ReportComputedTask)
+
+class SubtaskResultsAcceptedFactory(factory.Factory):
+    class Meta:
+        model = tasks.SubtaskResultsAccepted
+
+    task_to_compute = factory.SubFactory(TaskToCompute)
+    payment_ts = factory.LazyFunction(lambda: int(time.time()))
