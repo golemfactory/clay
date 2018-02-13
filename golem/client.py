@@ -1,4 +1,3 @@
-import atexit
 import logging
 import sys
 import time
@@ -216,8 +215,6 @@ class Client(HardwarePresetsMixin):
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
-
-        atexit.register(self.quit)
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
@@ -482,6 +479,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
+        log.info('Shutting down ...')
         self.stop()
 
         if self.transaction_system:
