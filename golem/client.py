@@ -486,37 +486,49 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        task_manager = self.task_server.task_manager
+
         # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
-            task = self.task_server.task_manager.create_task(task_dict)
+            task = task_manager.create_task(task_dict)
         else:
             task = task_dict
 
         task_id = task.header.task_id
-
-        task_manager = self.task_server.task_manager
-        task_manager.add_new_task(task)
-        task_state = task_manager.tasks_states[task_id]
-
         tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
                                        tmp_dir=tmp_dir,
                                        resources=task.get_resources())
 
+        def package_created(packager_result):
+            package_path, package_sha1 = packager_result
+            task.header.resource_size = path.getsize(package_path)
+            task_manager.add_new_task(task)
+
+            _resources = self.resource_server.add_task_package(package_path,
+                                                               package_sha1,
+                                                               task_id)
+            _resources.addCallbacks(add_task, error)
+
         def add_task(resource_server_result):
             resource_manager_result, package_hash = resource_server_result
-            task_state.package_hash = package_hash
-            task_state.resource_hash = resource_manager_result[0]
+            task_state = task_manager.tasks_states[task_id]
+
+            if task_state:
+                task_state.package_hash = package_hash
+                task_state.resource_hash = resource_manager_result[0]
+            else:
+                return error("Task state removed unexpectedly")
 
             request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
         def error(e):
-            log.error("Task %s creation failed: %s", task_id, e)
+            log.error("Task '%s' creation failed: %s", task_id, e)
 
-        deferred = self.resource_server.add_task(files, task_id)
-        deferred.addCallbacks(add_task, error)
+        _package = self.resource_server.create_resource_package(files, task_id)
+        _package.addCallbacks(package_created, error)
         return task
 
     def task_resource_send(self, task_id):
