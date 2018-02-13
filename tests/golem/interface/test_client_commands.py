@@ -441,15 +441,18 @@ class TestTasks(TempDirFixture):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
-                read_data='{"name": "This name has 27 characters"}')):
+                    read_data='{"name": "This name has 27 characters"}'
+            )):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
-                read_data='{"name": "Golem task/"}')):
+                    read_data='{"name": "Golem task/"}'
+            )):
                 self.assertRaises(ValueError, partial(tasks.create, "foo"))
 
             with patch(patched_open, mock_open(
-                read_data='{"name": "Golem task"}')):
+                    read_data='{"name": "Golem task"}'
+            )):
                 tasks.create("foo")
                 task_def = json.loads(
                     '{"id": "new_uuid", "name": "Golem task"}')
