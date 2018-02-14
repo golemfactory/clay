@@ -90,11 +90,13 @@ class HyperdriveClient(IClient):
     @classmethod
     def _download_params(cls, content_hash, client_options, **kwargs):
         path = kwargs['filepath']
-        size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
-        timeout = timeout_from_size(size) if size else None
-        peers = None
+        peers, size, timeout = None, None, None
 
         if client_options:
+            size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
+            if size:
+                timeout = timeout_from_size(size) if size else None
+
             filtered = client_options.filtered(cls.CLIENT_ID, cls.VERSION)
             if filtered:
                 peers = filtered.options.get('peers')
