@@ -6,7 +6,6 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
 
 
-@patch('atexit.register')
 class TestHyperdriveDaemonManager(TempDirFixture):
 
     @patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')
@@ -16,6 +15,8 @@ class TestHyperdriveDaemonManager(TempDirFixture):
         self.dm = HyperdriveDaemonManager(self.path)
         self.monitor = self.dm._monitor
 
+    @patch('golem.network.hyperdrive.daemon_manager.'
+           'HyperdriveDaemonManager._check_version')
     @patch('golem.network.hyperdrive.daemon_manager.'
            'HyperdriveDaemonManager._wait')
     def test_start_not_running(self, *_):
@@ -56,6 +57,8 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             assert not monitor.add_child_processes.called
             assert not makedirs.called
 
+    @patch('golem.network.hyperdrive.daemon_manager.'
+           'HyperdriveDaemonManager._check_version')
     def test_start_invalid_response(self, *_):
         dm, monitor = self.dm, self.monitor
         process = Mock()
