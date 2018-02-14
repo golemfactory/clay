@@ -87,7 +87,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             self.ts.quit()
 
     @patch(
-        'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+        'golem.network.concent.handlers_library.HandlersLibrary'
+        '.register_handler',
     )
     @patch('golem.task.taskarchiver.TaskArchiver')
     def test_request(self, tar, *_):
