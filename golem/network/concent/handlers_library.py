@@ -1,6 +1,8 @@
 import logging
 import warnings
 
+from collections import Callable
+
 from golem_messages import message
 
 
@@ -19,8 +21,8 @@ class HandlersLibrary():
         # Messages handlers: msg_cls: handler callable
         self._handlers = {}
 
-    def register_handler(self, msg_cls: message.base.Message) -> None:
-        def _wrapped(f):
+    def register_handler(self, msg_cls: message.base.Message) -> Callable:
+        def _wrapped(f) -> Callable:
             if msg_cls in self._handlers:
                 warnings.warn(
                     "Duplicated handler for {msg_cls}."

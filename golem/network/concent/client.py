@@ -198,8 +198,8 @@ class ConcentClientService(threading.Thread):
             # Send empty "ping" message
             res = send_to_concent(
                 None,
-                self.keys_auth.ecc.raw_privkey,
-                self.keys_auth.ecc.raw_pubkey,
+                self.keys_auth._private_key,  # pylint: disable=protected-access
+                self.keys_auth.public_key,
             )
             self.react_to_concent_message(res)
             return

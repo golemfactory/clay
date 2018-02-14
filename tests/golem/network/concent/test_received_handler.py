@@ -47,9 +47,8 @@ class TaskServerMessageHandlerTestCase(
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
         )
-        received_handler.TaskServerMessageHandler(
-            task_server=self.task_server,
-        )
+        # received_handler.TaskServerMessageHandler is instantiated
+        # in TaskServer.__init__
 
     def tearDown(self):
         library._handlers = {}

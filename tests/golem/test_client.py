@@ -64,6 +64,9 @@ def random_hex_str() -> str:
     return str(uuid.uuid4()).replace('-', '')
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 class TestCreateClient(TestDirFixture):
 
     @patch('twisted.internet.reactor', create=True)
@@ -97,6 +100,9 @@ class TestCreateClient(TestDirFixture):
             )
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
@@ -748,6 +754,9 @@ class TestTaskCleanerService(TestWithReactor):
             assert log.info.called
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
