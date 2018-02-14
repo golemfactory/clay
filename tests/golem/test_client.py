@@ -447,14 +447,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task_package(*_args):
+        def add_task(*_args):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'package_hash'
             return done_deferred(result)
 
         self.client.resource_server = Mock(
             create_resource_package=Mock(side_effect=create_resource_package),
-            add_task_package=Mock(side_effect=add_task_package)
+            add_task=Mock(side_effect=add_task)
         )
 
         task_manager = self.client.task_server.task_manager
@@ -874,7 +874,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task_package(*_args):
+        def add_task(*_args):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'package_hash'
             return done_deferred(result)
@@ -889,14 +889,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.resource_server.create_resource_package = Mock(
             side_effect=create_resource_package)
-        c.resource_server.add_task_package = Mock(
-            side_effect=add_task_package)
+        c.resource_server.add_task = Mock(
+            side_effect=add_task)
 
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id
-        assert c.resource_server.add_task_package.called
+        assert c.resource_server.add_task.called
 
         task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task

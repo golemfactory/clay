@@ -7,6 +7,7 @@ import uuid
 
 from twisted.internet.defer import Deferred
 
+from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
@@ -112,7 +113,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         rm.storage.cache.clear()
 
         existing_paths = self._resources()
-        return rm, rs.add_task(existing_paths, self.task_id)
+
+        _deferred = rs.create_resource_package(existing_paths, self.task_id)
+        pkg_path, pkg_sha1 = sync_wait(_deferred)
+        return rm, rs.add_task(pkg_path, pkg_sha1, self.task_id)
 
     def testAddTask(self):
         rm, deferred = self._add_task()

@@ -60,27 +60,12 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, files, task_id) -> Deferred:
+    def add_task(self, pkg_path, pkg_sha1, task_id) -> Deferred:
         _result = Deferred()
         _result.addErrback(self._add_task_error)
 
-        def _add_task_resources(packager_result):
-            path, sha1 = packager_result
-            _deferred = self.resource_manager.add_task([path], task_id)
-            _deferred.addCallback(lambda r: _result.callback((r, sha1)))
-            _deferred.addErrback(_result.errback)
-
-        _package = self.create_resource_package(files, task_id)
-        _package.addCallbacks(_add_task_resources, _result.errback)
-
-        return _result
-
-    def add_task_package(self, path, sha1, task_id) -> Deferred:
-        _result = Deferred()
-        _result.addErrback(self._add_task_error)
-
-        _deferred = self.resource_manager.add_task([path], task_id)
-        _deferred.addCallback(lambda r: _result.callback((r, sha1)))
+        _deferred = self.resource_manager.add_task([pkg_path], task_id)
+        _deferred.addCallback(lambda r: _result.callback((r, pkg_sha1)))
         _deferred.addErrback(_result.errback)
 
         return _result

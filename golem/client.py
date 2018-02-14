@@ -506,9 +506,9 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
             task_manager.add_new_task(task)
 
-            _resources = self.resource_server.add_task_package(package_path,
-                                                               package_sha1,
-                                                               task_id)
+            _resources = self.resource_server.add_task(package_path,
+                                                       package_sha1,
+                                                       task_id)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
