@@ -72,6 +72,7 @@ class PaymentProcessor(LoopingCallService):
         self.__faucet = faucet
         self.deadline = sys.maxsize
         self.load_from_db()
+        self.last_update = None
         super().__init__(13)
 
     def balance_known(self):
@@ -113,7 +114,9 @@ class PaymentProcessor(LoopingCallService):
                     self.__gnt_balance / denoms.ether,
                     self.__gntw_balance / denoms.ether,
                 )
-        return self.__gnt_balance + self.__gntw_balance
+                self.last_update = datetime.now().timestamp()
+
+        return [self.__gnt_balance + self.__gntw_balance, self.last_update]
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
@@ -126,7 +129,8 @@ class PaymentProcessor(LoopingCallService):
         return self.__gntw_reserved
 
     def _gnt_available(self):
-        return self.gnt_balance() - self.__gntw_reserved
+        [gnt_balance, _] = self.gnt_balance()
+        return gnt_balance - self.__gntw_reserved
 
     def load_from_db(self):
         with db.atomic():
@@ -189,7 +193,7 @@ class PaymentProcessor(LoopingCallService):
 
         # we need to take either all payments with given processed_ts or none
         if ind < len(payments):
-            while ind > 0 and payments[ind-1].processed_ts == payments[ind].processed_ts:  # noqa
+            while ind > 0 and payments[ind - 1].processed_ts == payments[ind].processed_ts:  # noqa
                 ind -= 1
 
         return payments[:ind], payments[ind:]
@@ -321,7 +325,7 @@ class PaymentProcessor(LoopingCallService):
         return True
 
     def get_gnt_from_faucet(self):
-        gnt_balance = self.gnt_balance(True)
+        [gnt_balance, _] = self.gnt_balance(True)
         if gnt_balance is None:
             return False
 

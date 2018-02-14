@@ -10,8 +10,11 @@ from threading import Lock, Thread
 from typing import Dict, Hashable
 
 from pydispatch import dispatcher
-from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
-                                    Deferred)
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    gatherResults,
+    Deferred)
 
 import golem
 from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
@@ -802,10 +805,10 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = yield self.transaction_system.get_balance()
-            if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+            gnt, av_gnt, eth, date = yield self.transaction_system.get_balance()
+            if gnt is not None:
+                return str(gnt), str(av_gnt), str(eth), str(date)
+        return None, None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():

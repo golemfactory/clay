@@ -78,7 +78,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def get_balance(self):
         if not self.payment_processor.balance_known():
             return None, None, None
-        gnt = self.payment_processor.gnt_balance()
+        [gnt, last_update] = self.payment_processor.gnt_balance()
         av_gnt = self.payment_processor._gnt_available()
         eth = self.payment_processor.eth_balance()
-        return gnt, av_gnt, eth
+        return gnt, av_gnt, eth, last_update
