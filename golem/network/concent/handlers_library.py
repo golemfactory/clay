@@ -20,7 +20,7 @@ class HandlersLibrary():
     """Library of handlers for messages received from concent"""
     __slots__ = ('_handlers', )
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Messages handlers: msg_cls: weakref of handler callable
         # Can't use weakref.WeakValueDictionary() because it doesn't work
         # with methods.
@@ -42,6 +42,7 @@ class HandlersLibrary():
                     )
             except KeyError:
                 pass
+            ref: typing.Optional[weakref.ref] = None
             # It check wheter f is boundmethod not method/class function
             if inspect.ismethod(f):
                 ref = weakref.WeakMethod(f)
