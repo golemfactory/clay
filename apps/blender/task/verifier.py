@@ -6,7 +6,6 @@ import json
 from collections import Callable
 from threading import Lock
 from shutil import copy
-from typing import Dict, Any
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
@@ -36,7 +35,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             get_golem_path(), 'apps', 'rendering'), 'runner.py')
         self.wasFailure = False
         self.cropper = BlenderCropper()
-        self.metrics: Dict[int, Any] = {}
+        self.metrics = {}
         self.subtask_info = None
         self.crops_size = ()
         self.additional_test = False
