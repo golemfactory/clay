@@ -699,11 +699,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         testutils.DatabaseFixture.tearDown(self)
         testutils.TempDirFixture.tearDown(self)
         history.MessageHistoryService.instance = None
-        del self.ts
-        del self.n
-        del self.task_id
-        del self.subtask_id
-        del self.node_id
 
     def _mock_task_to_compute(self, task_id, subtask_id, node_id, **kwargs):
         task_to_compute = message.TaskToCompute(**kwargs)
@@ -721,7 +716,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         service.add_sync(nmsg_dict)
 
     def _waiting_task_result(self, task_id, subtask_id, node,
-                             result='result', result_type=ResultType.DATA):
+                             result='result', result_type=ResultType.DATA):  # noqa pylint:disable=too-many-arguments
         return WaitingTaskResult(
             task_id, subtask_id, result, result_type,
             13190, 10, 0, "10.10.10.10",
