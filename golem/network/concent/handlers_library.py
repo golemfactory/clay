@@ -1,5 +1,7 @@
+import inspect
 import logging
 import warnings
+import weakref
 
 from collections import Callable
 
@@ -18,28 +20,44 @@ class HandlersLibrary():
     __slots__ = ('_handlers', )
 
     def __init__(self):
-        # Messages handlers: msg_cls: handler callable
+        # Messages handlers: msg_cls: weakref of handler callable
+        # Can't use weakref.WeakValueDictionary() because it doesn't work
+        # with methods.
         self._handlers = {}
 
     def register_handler(self, msg_cls: message.base.Message) -> Callable:
         def _wrapped(f) -> Callable:
-            if msg_cls in self._handlers:
-                warnings.warn(
-                    "Duplicated handler for {msg_cls}."
-                    " Replacing {current_handler} with {new_handler}".format(
-                        msg_cls=msg_cls.__name__,
-                        current_handler=self._handlers[msg_cls],
-                        new_handler=f,
-                    ),
-                    DuplicatedHandler,
-                )
-            self._handlers[msg_cls] = f
+            try:
+                if self._handlers[msg_cls]() is not None:
+                    warnings.warn(
+                        "Duplicated handler for {msg_cls}."
+                        " Replacing {current_handler}"
+                        " with {new_handler}".format(
+                            msg_cls=msg_cls.__name__,
+                            current_handler=self._handlers[msg_cls](),
+                            new_handler=f,
+                        ),
+                        DuplicatedHandler,
+                    )
+            except KeyError:
+                pass
+            # It check wheter f is boundmethod not method/class function
+            if inspect.ismethod(f):
+                ref = weakref.WeakMethod(f)
+            else:
+                ref = weakref.ref(f)
+            self._handlers[msg_cls] = ref
             return f
         return _wrapped
 
     def interpret(self, msg) -> None:
         try:
-            handler = self._handlers[msg.__class__]
+            ref = self._handlers[msg.__class__]
+            handler = ref()
+            if handler is None:
+                raise KeyError(
+                    "Handler was defined but it has been garbage collected"
+                )
         except KeyError:
             logger.warning(
                 "I don't know how to handle %s. Ignoring %r",

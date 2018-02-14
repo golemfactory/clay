@@ -6,7 +6,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 class TestWithKeysAuth(TestDirFixture):
     def setUp(self):
-        super(TestWithKeysAuth, self).setUp()
+        super().setUp()
         self.client = Mock()
         type(self.client).datadir = path.join(self.path, "datadir")
 
@@ -16,4 +16,4 @@ class TestWithKeysAuth(TestDirFixture):
         if hasattr(EllipticalKeysAuth, '_keys_dir'):
             del EllipticalKeysAuth._keys_dir
 
-        super(TestWithKeysAuth, self).tearDown()
+        super().tearDown()

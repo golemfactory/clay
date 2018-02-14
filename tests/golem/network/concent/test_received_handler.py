@@ -1,6 +1,8 @@
 # pylint: disable=protected-access
+import gc
 import unittest
 import unittest.mock as mock
+import weakref
 
 from golem_messages import message
 
@@ -14,12 +16,6 @@ from tests.factories import messages as msg_factories
 
 
 class RegisterHandlersTestCase(unittest.TestCase):
-    def setUp(self):
-        library._handlers = {}
-
-    def tearDown(self):
-        library._handlers = {}
-
     def test_register_handlers(self):
         class MyHandler():
             def not_a_handler(self, msg):
@@ -32,7 +28,7 @@ class RegisterHandlersTestCase(unittest.TestCase):
         received_handler.register_handlers(instance)
         self.assertEqual(
             library._handlers,
-            {message.p2p.Ping: instance.ping_handler},
+            {message.p2p.Ping: weakref.WeakMethod(instance.ping_handler)},
         )
 
 
@@ -43,7 +39,6 @@ class TaskServerMessageHandlerTestCase(
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
-        library._handlers = {}
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
         )
@@ -51,7 +46,9 @@ class TaskServerMessageHandlerTestCase(
         # in TaskServer.__init__
 
     def tearDown(self):
-        library._handlers = {}
+        # Remove registered handlers
+        del self.task_server
+        gc.collect()
 
     @mock.patch("golem.task.taskserver.TaskServer.concent_refused")
     def test_concent_service_refused(self, refused_mock):
