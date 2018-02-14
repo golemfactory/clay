@@ -15,9 +15,7 @@ from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
                                     Deferred)
 
 import golem
-from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL,
-                             TASKARCHIVE_MAINTENANCE_INTERVAL,
+from golem.appconfig import (AppConfig, TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
@@ -55,11 +53,9 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
-    Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
