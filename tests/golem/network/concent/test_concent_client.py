@@ -116,7 +116,7 @@ class TestSendToConcent(TestCase):
 class TestConcentClientService(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
-        keys_auth = keysauth.EllipticalKeysAuth(datadir=self.path)
+        keys_auth = keysauth.EllipticalKeysAuth(data_dir=self.path)
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
             enabled=True,
@@ -281,7 +281,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.concent_service = client.ConcentClientService(
-            keys_auth=keysauth.EllipticalKeysAuth(datadir=self.path),
+            keys_auth=keysauth.EllipticalKeysAuth(data_dir=self.path),
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()
