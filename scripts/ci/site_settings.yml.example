@@ -1,8 +1,0 @@
-{
-  "worker_pass": "",
-  "host": "https://buildbot.golem.network",
-  "github_client_id": "",
-  "github_client_secret": "",
-  "github_api_token": "",
-  "github_webhook_secret": ""
-}

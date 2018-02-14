@@ -18,6 +18,7 @@ from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
 
 class TestP2PService(testutils.DatabaseFixture):
+
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
@@ -404,7 +405,7 @@ class TestP2PService(testutils.DatabaseFixture):
         SEEDS_NUM = 10
         seeds = set()
         for i in range(SEEDS_NUM):
-            seeds.add(('127.0.0.1', i+1))
+            seeds.add(('127.0.0.1', i + 1))
         self.service.seeds = seeds.copy()
         for i in range(SEEDS_NUM):
             seed = self.service._get_next_random_seed()
