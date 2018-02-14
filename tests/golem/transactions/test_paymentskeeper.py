@@ -16,7 +16,6 @@ from golem.utils import encode_hex
 from golem.tools.ci import ci_skip
 
 
-@ci_skip  # Windows gives random failures #1738
 class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
 
     def test_init(self):
@@ -108,7 +107,6 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         self.assertEqual(res[2].subtask, "xyz17")
 
 
-@ci_skip  # Windows gives random failures #1738
 class TestPaymentsKeeper(TestWithDatabase):
     def test_init(self):
         pk = PaymentsKeeper()
