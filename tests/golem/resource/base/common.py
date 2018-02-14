@@ -82,9 +82,12 @@ class AddGetResources(TempDirFixture, LogTestCase):
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
                                                     mock.Mock(), client)
-        client.task_server = TaskServer(mock.Mock(), mock.Mock(),
-                                        client.keys_auth, client,
-                                        use_docker_machine_manager=False)
+        client.task_server = TaskServer(
+            node=mock.Mock(),
+            config_desc=mock.Mock(),
+            client=client,
+            use_docker_machine_manager=False,
+        )
 
         client.start = mock.Mock()
         client.start_network = mock.Mock()

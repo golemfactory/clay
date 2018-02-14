@@ -70,6 +70,9 @@ def done_deferred(return_value=None):
     return deferred
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 class TestCreateClient(TestDirFixture):
 
     @patch('twisted.internet.reactor', create=True)
@@ -103,6 +106,9 @@ class TestCreateClient(TestDirFixture):
             )
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
@@ -726,6 +732,9 @@ class TestTaskCleanerService(TestWithReactor):
             assert log.info.called
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
@@ -745,9 +754,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.keys_auth = Mock(key_id=str(uuid.uuid4()))
         client.p2pservice = Mock(peers={})
         client.task_server = TaskServer(
-            Node(),
-            ClientConfigDescriptor(),
-            keys_auth=Mock(),
+            node=Node(),
+            config_desc=ClientConfigDescriptor(),
             client=client,
             use_docker_machine_manager=False
         )

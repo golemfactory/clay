@@ -85,7 +85,7 @@ class SystemMonitor(object):
 
     def ping_request(self, port):
         import requests
-        timeout = 1  # seconds
+        timeout = 2.5  # seconds
         try:
             response = requests.post(
                 '%sping-me' % (self.config['HOST'],),
