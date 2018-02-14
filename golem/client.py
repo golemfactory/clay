@@ -147,8 +147,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service = None
         self.concent_service = ConcentClientService(
             enabled=False,
-            signing_key=self.keys_auth._private_key,
-            public_key=self.keys_auth.public_key,
+            keys_auth=self.keys_auth,
         )
 
         self.task_server = None
@@ -294,7 +293,7 @@ class Client(HardwarePresetsMixin):
             self.task_server = TaskServer(
                 self.node,
                 self.config_desc,
-                self.keys_auth, self,
+                self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
                 task_archiver=self.task_archiver)
