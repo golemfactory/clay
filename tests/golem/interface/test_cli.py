@@ -3,7 +3,8 @@ import unittest
 from io import StringIO
 
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
-from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context
+from golem.interface.command import group, doc, argument,\
+    identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
 from mock import patch, Mock, mock
 from twisted.internet.defer import Deferred, TimeoutError
@@ -48,6 +49,7 @@ class TestCLI(unittest.TestCase):
     __input = 'builtins.input'
 
     class MockFormatter(Mock):
+
         def supports(self, *args, **kwargs):
             return True
 
@@ -139,6 +141,7 @@ class TestCLI(unittest.TestCase):
 
             @group("commands")
             class MockClass(object):
+
                 def command(self):
                     pass
 
@@ -159,6 +162,7 @@ class TestCLI(unittest.TestCase):
 
             @group("commands")
             class MockClass(object):
+
                 def command(self):
                     pass
 

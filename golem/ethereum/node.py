@@ -1,4 +1,3 @@
-import atexit
 import logging
 import os
 import random
@@ -71,7 +70,6 @@ class NodeProcess(object):
             provider = self._create_remote_rpc_provider()
 
         self.web3 = Web3(provider)
-        atexit.register(lambda: self.stop())
 
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT

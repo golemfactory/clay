@@ -8,24 +8,22 @@ from golem_messages import message
 from golem_messages.cryptography import ECCx
 
 from golem import testutils
-from golem.core.keysauth import EllipticalKeysAuth, \
-    get_random, get_random_float, sha2, sha3
+from golem.core.keysauth import EllipticalKeysAuth, get_random, \
+    get_random_float, sha2
 from golem.core.simpleserializer import CBORSerializer
-from golem.utils import encode_hex, decode_hex
+from golem.utils import decode_hex
+from golem.utils import encode_hex
 
 
 class TestKeysAuth(TestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/core/keysauth.py']
 
     def test_sha(self):
-        """ Test sha2 and sha3 methods """
+        """ Test sha2 function"""
         test_str = "qaz123WSX"
         expected_sha2 = int("0x47b151cede6e6a05140af0da56cb889c40adaf4fddd9f1"
                             "7435cdeb5381be0a62", 16)
-        expected_sha3 = ("a99ad773ebfc9712d00a9b9760b879a3aa05054a182d0ba41"
-                         "36c5252f5a85203")
         self.assertEqual(sha2(test_str), expected_sha2)
-        self.assertEqual(encode_hex(sha3(test_str)), expected_sha3)
 
     def test_random_number_generator(self):
         with self.assertRaises(ArithmeticError):
@@ -60,52 +58,20 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         keys_dir = os.path.join(self.path, 'keys')
         private_key_name = "priv_key"
         private_key_path = os.path.join(keys_dir, private_key_name)
-        public_key_name = "pub_key"
-        public_key_path = os.path.join(keys_dir, public_key_name)
 
         # given
         os.makedirs(keys_dir)
         with open(private_key_path, 'wb') as f:
             f.write(b'123')
-        with open(public_key_path, 'wb') as f:
-            f.write(b'123')
 
         # when
-        EllipticalKeysAuth(self.path,
-                           private_key_name=private_key_name,
-                           public_key_name=public_key_name)
+        EllipticalKeysAuth(self.path, private_key_name)
 
         # then
         assert logger.error.called
         with open(private_key_path, 'rb') as f:
             new_priv_key = f.read()
         assert len(new_priv_key) == EllipticalKeysAuth.PRIV_KEY_LEN
-
-    @patch('golem.core.keysauth.logger')
-    def test_init_pub_key_wrong_length(self, logger):
-        keys_dir = os.path.join(self.path, 'keys')
-        private_key_name = "priv_key"
-        private_key_path = os.path.join(keys_dir, private_key_name)
-        public_key_name = "pub_key"
-        public_key_path = os.path.join(keys_dir, public_key_name)
-
-        # given
-        os.makedirs(keys_dir)
-        with open(private_key_path, 'wb') as f:
-            f.write(b'#'*EllipticalKeysAuth.PRIV_KEY_LEN)
-        with open(public_key_path, 'wb') as f:
-            f.write(b'123')
-
-        # when
-        EllipticalKeysAuth(self.path,
-                           private_key_name=private_key_name,
-                           public_key_name=public_key_name)
-
-        # then
-        assert logger.error.called
-        with open(public_key_path, 'rb') as f:
-            new_pub_key = f.read()
-        assert len(new_pub_key) == EllipticalKeysAuth.PUB_KEY_LEN
 
     @patch('golem.core.keysauth.logger')
     def test_key_recreate_on_increased_difficulty(self, logger):
@@ -132,8 +98,8 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
     def test_key_successful_load(self, logger):
         # given
         ek = EllipticalKeysAuth(self.path)
-        priv_key = ek._private_key
-        pub_key = ek.public_key
+        private_key = ek._private_key
+        public_key = ek.public_key
         del ek
         logger.reset_mock()  # just in case
 
@@ -141,42 +107,41 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         ek2 = EllipticalKeysAuth(self.path)
 
         # then
-        assert priv_key == ek2._private_key
-        assert pub_key == ek2.public_key
+        assert private_key == ek2._private_key
+        assert public_key == ek2.public_key
         assert not logger.warning.called
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys_with_no_keys(self):
-        private_key_loc = os.path.join(self.path, "priv")
-        public_key_loc = os.path.join(self.path, "pub")
-
         # given
         assert os.listdir(self.path) == []  # empty dir
+        priv_key_name = 'priv'
 
         # when
-        EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
+        EllipticalKeysAuth(self.path, priv_key_name)
 
         # then
-        assert os.listdir(self.path) == []  # it stays empty
+        assert os.listdir(self.path) == ['keys']
+        assert os.listdir(os.path.join(self.path, 'keys')) == [priv_key_name]
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys(self):
-        private_key_loc = os.path.join(self.path, "priv")
-        public_key_loc = os.path.join(self.path, "pub")
-
         # given
-        with open(private_key_loc, 'w') as f:
+        priv_key_name = 'priv'
+        private_key_dir = os.path.join(self.path, 'keys')
+        os.mkdir(private_key_dir)
+        private_key_path = os.path.join(private_key_dir, priv_key_name)
+        with open(private_key_path, 'w') as f:
             f.write("foo")
-        with open(public_key_loc, 'w') as f:
-            f.write("bar")
 
         # when
-        EllipticalKeysAuth._backup_keys(private_key_loc, public_key_loc)
+        EllipticalKeysAuth(self.path, priv_key_name)
 
         # then
-        assert os.listdir(self.path) == [
-            "priv_2017-11-23_11-40-27_767804.bak",
-            "pub_2017-11-23_11-40-27_767804.bak",
+        assert os.listdir(self.path) == ['keys']
+        assert os.listdir(os.path.join(self.path, 'keys')) == [
+            "%s_2017-11-23_11-40-27_767804.bak" % priv_key_name,
+            priv_key_name,
         ]
 
     def test_sign_verify_elliptical(self):
@@ -206,39 +171,6 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         self.assertFalse(ek.verify(sig2, data1))
         self.assertFalse(ek.verify(None, data1))
 
-    def test_save_load_keys(self):
-        """ Tests for saving and loading keys """
-        from golem.core.common import is_windows
-        ek = EllipticalKeysAuth(self.path)
-        pub_key_file = os.path.join(self.path, "pub.key")
-        priv_key_file = os.path.join(self.path, "priv.key")
-        pub_key = ek.public_key
-        priv_key = ek._private_key
-        ek.save_to_files(priv_key_file, pub_key_file)
-        with self.assertRaises(TypeError):
-            ek.generate_new(None)
-        ek.generate_new(5)
-        self.assertNotEqual(ek.public_key, pub_key)
-        self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'rb') as f:
-            self.assertEqual(f.read(), pub_key)
-        with open(priv_key_file, 'rb') as f:
-            self.assertEqual(f.read(), priv_key)
-        self.assertTrue(ek.load_from_file(priv_key_file))
-        self.assertEqual(ek.public_key, pub_key)
-        self.assertEqual(ek._private_key, priv_key)
-
-        if not is_windows():
-            from os import getuid
-            if getuid() != 0:
-                priv_key_file = os.path.join(self.path, "priv_incorrect.hey")
-                open(priv_key_file, 'w').close()
-                os.chmod(priv_key_file, 0x700)
-                pub_key_file = os.path.join(self.path, "pub_incorrect.hey")
-                open(pub_key_file, 'w').close()
-                os.chmod(pub_key_file, 0x700)
-                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
-
     def test_fixed_sign_verify_elliptical(self):
         public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \
                      b"7ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934" \
@@ -254,12 +186,12 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         ek.ecc = ECCx(ek._private_key)
 
         msg = message.WantToComputeTask(node_name='node_name',
-                                       task_id='task_id',
-                                       perf_index=2200,
-                                       price=5 * 10 ** 18,
-                                       max_resource_size=250000000,
-                                       max_memory_size=300000000,
-                                       num_cores=4)
+                                        task_id='task_id',
+                                        perf_index=2200,
+                                        price=5 * 10 ** 18,
+                                        max_resource_size=250000000,
+                                        max_memory_size=300000000,
+                                        num_cores=4)
 
         data = msg.get_short_hash()
         signature = ek.sign(data)

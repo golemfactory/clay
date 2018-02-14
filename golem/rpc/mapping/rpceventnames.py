@@ -26,7 +26,6 @@ class Reputation:
 
 class Task:
 
-    evt_task_list           = 'evt.comp.task.list'
     evt_task_status         = 'evt.comp.task.status'
     evt_subtask_status      = 'evt.comp.subtask.status'
     evt_task_test_status    = 'evt.comp.task.test.status'
@@ -45,7 +44,6 @@ class Computation:
 
 class Payments:
 
-    evt_balance             = 'evt.pay.balance'
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 

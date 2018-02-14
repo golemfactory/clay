@@ -4,17 +4,16 @@ import struct
 import unittest
 from unittest import mock
 
-from freezegun import freeze_time
 import golem_messages
+import semantic_version
+from freezegun import freeze_time
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
-import semantic_version
 
 from golem import testutils
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem.network.p2p.node import Node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
@@ -27,7 +26,6 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
-
 from tests.factories import messages as msg_factories
 from tests.factories import p2p as p2p_factories
 
@@ -61,9 +59,11 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
 
         self.ek = EllipticalKeysAuth(self.path)
         for args in datas:
-            self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
-                                          data_consumer_cls=DecryptDataConsumer,
-                                          session=self.__make_encrypted_session_mock())
+            self.__producer_consumer_test(
+                *args,
+                data_producer_cls=EncryptDataProducer,
+                data_consumer_cls=DecryptDataConsumer,
+                session=self.__make_encrypted_session_mock())
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
@@ -89,7 +89,8 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
         min_num = len(data) // buff_size
 
         split = out.getvalue().strip().split("\r")
-        self.assertGreaterEqual(session.conn.transport.write.call_count, min_num)
+        self.assertGreaterEqual(
+            session.conn.transport.write.call_count, min_num)
         self.assertEqual(split[-1], producer_progress_value)
         self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
@@ -119,7 +120,8 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
 
     def setUp(self):
         testutils.TempDirFixture.setUp(self)
-        self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])
+        self.tmp_file1, self.tmp_file2, self.tmp_file3 \
+            = self.additional_dir_content([1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
         with open(self.tmp_file1, 'w') as f:
@@ -133,23 +135,42 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
         self.__producer_consumer_test([], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
+        self.__producer_consumer_test(
+            [self.tmp_file1, self.tmp_file3], session=MagicMock())
+        self.__producer_consumer_test(
+            [self.tmp_file1, self.tmp_file2, self.tmp_file3],
+            32,
+            session=MagicMock())
         self.ek = EllipticalKeysAuth(self.path)
-        self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file2], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], file_producer_cls=EncryptFileProducer,
-                                      file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32,
-                                      file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
-                                      session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file2],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1,
+             self.tmp_file3],
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
+        self.__producer_consumer_test(
+            [self.tmp_file1,
+             self.tmp_file2,
+             self.tmp_file3],
+            32,
+            file_producer_cls=EncryptFileProducer,
+            file_consumer_cls=DecryptFileConsumer,
+            session=self.__make_encrypted_session_mock())
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
@@ -157,8 +178,13 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
         session.decrypt.side_effect = self.ek.decrypt
         return session
 
-    def __producer_consumer_test(self, file_list, buff_size=None, file_producer_cls=FileProducer,
-                                 file_consumer_cls=FileConsumer, session=MagicMock()):
+    def __producer_consumer_test(
+            self,
+            file_list,
+            buff_size=None,
+            file_producer_cls=FileProducer,
+            file_consumer_cls=FileConsumer,
+            session=MagicMock()):
         producer_progress_value = "Sending progress 100 %"
         consumer_progress_value = "File data receiving 100 %"
         consumer_list = ["consumer{}".format(i + 1) for i in
@@ -210,6 +236,7 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
 
 
 class TestBasicProtocol(LogTestCase):
+
     def setUp(self):
         self.protocol = tcpnetwork.BasicProtocol()
         self.protocol.session = mock.MagicMock()
@@ -309,6 +336,7 @@ class SafeProtocolTestCase(unittest.TestCase):
 
 
 class TestSocketAddress(unittest.TestCase):
+
     def test_zone_index(self):
         base_address = "fe80::3"
         address = "fe80::3%eth0"

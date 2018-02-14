@@ -74,6 +74,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.db': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
             'level': 'INFO',
             'propagate': True,
@@ -99,7 +103,7 @@ LOGGING = {
             'propagate': True,
         },
         'twisted': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'propagate': True,
         },
         'golem.network': {'propagate': True},

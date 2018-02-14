@@ -1,4 +1,3 @@
-import atexit
 import logging
 import sys
 import time
@@ -30,11 +29,12 @@ from golem.core.service import LoopingCallService
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
+from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import Database
+from golem.model import DB_MODELS, db
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -128,7 +128,7 @@ class Client(HardwarePresetsMixin):
         )
 
         # Initialize database
-        self.db = Database(datadir)
+        self.db = Database(db, datadir, DB_MODELS)
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
@@ -148,8 +148,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service = None
         self.concent_service = ConcentClientService(
             enabled=False,
-            signing_key=self.keys_auth._private_key,
-            public_key=self.keys_auth.public_key,
+            keys_auth=self.keys_auth,
         )
 
         self.task_server = None
@@ -218,16 +217,9 @@ class Client(HardwarePresetsMixin):
             signal='golem.taskmanager'
         )
 
-        atexit.register(self.quit)
-
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
         StatusPublisher.set_publisher(self.rpc_publisher)
-
-        if self.transaction_system:
-            self._services.append(BalancePublisherService(
-                self.rpc_publisher,
-                self.transaction_system))
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event == 'unreachable':
@@ -300,7 +292,7 @@ class Client(HardwarePresetsMixin):
             self.task_server = TaskServer(
                 self.node,
                 self.config_desc,
-                self.keys_auth, self,
+                self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
                 task_archiver=self.task_archiver)
@@ -312,13 +304,6 @@ class Client(HardwarePresetsMixin):
                     1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
-
-            if self.rpc_publisher:
-                tasks_publisher_service = TasksPublisherService(
-                    self.rpc_publisher,
-                    self.task_server.task_manager)
-                tasks_publisher_service.start()
-                self._services.append(tasks_publisher_service)
 
             clean_tasks_older_than = \
                 self.config_desc.clean_tasks_older_than_seconds
@@ -483,6 +468,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
+        log.info('Shutting down ...')
         self.stop()
 
         if self.transaction_system:
@@ -688,14 +674,6 @@ class Client(HardwarePresetsMixin):
     def get_dir_manager(self):
         if self.task_server:
             return self.task_server.task_computer.dir_manager
-
-    def load_keys_from_file(self, file_name):
-        if file_name != "":
-            return self.keys_auth.load_from_file(file_name)
-        return False
-
-    def save_keys_to_files(self, private_key_path, public_key_path):
-        return self.keys_auth.save_to_files(private_key_path, public_key_path)
 
     def get_key_id(self):
         return self.keys_auth.key_id
@@ -1261,22 +1239,6 @@ class NetworkConnectionPublisherService(LoopingCallService):
                               self._client.connection_status())
 
 
-class TasksPublisherService(LoopingCallService):
-    _rpc_publisher = None  # type: Publisher
-    _task_manager = None  # type: TaskManager
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 task_manager: TaskManager):
-        super().__init__(interval_seconds=int(PUBLISH_TASKS_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._task_manager = task_manager
-
-    def _run(self):
-        self._rpc_publisher.publish(Task.evt_task_list,
-                                    self._task_manager.get_tasks_dict())
-
-
 class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
@@ -1287,31 +1249,6 @@ class TaskArchiverService(LoopingCallService):
 
     def _run(self):
         self._task_archiver.do_maintenance()
-
-
-class BalancePublisherService(LoopingCallService):
-
-    _rpc_publisher = None  # type: Publisher
-    _transaction_system = None  # type: EthereumTransactionSystem
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 transaction_system: EthereumTransactionSystem):
-        super().__init__(interval_seconds=int(PUBLISH_BALANCE_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._transaction_system = transaction_system
-
-    def _run(self):
-        try:
-            gnt, av_gnt, eth = self._transaction_system.get_balance()
-        except Exception as exc:
-            log.debug('Error retrieving balance: %s', exc)
-        else:
-            self._rpc_publisher.publish(Payments.evt_balance, {
-                'GNT': str(gnt),
-                'GNT_available': str(av_gnt),
-                'ETH': str(eth)
-            })
 
 
 class ResourceCleanerService(LoopingCallService):
