@@ -26,6 +26,7 @@ from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState
+from golem.testutils import TestWithClient
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -656,15 +657,13 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture):  # noqa pylint: di
         assert client_options.options.get('peers') == [forced_peer]
 
 
-class TestTaskServer2(TestDatabaseWithReactor):
+class TestTaskServer2(TestDatabaseWithReactor, TestWithClient):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
-        self.client = Mock()
-        self.client.datadir = os.path.join(self.path, "datadir")
         self.ts = TaskServer(
             node=Node(),
             config_desc=self.ccd,
