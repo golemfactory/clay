@@ -1,8 +1,8 @@
 import json
 import unittest
 import uuid
+from unittest import mock
 
-import mock
 from requests import HTTPError
 from twisted.internet.defer import Deferred
 from twisted.python import failure
@@ -129,7 +129,7 @@ class TestHyperdriveClientAsync(unittest.TestCase):
     @staticmethod
     def success(*_):
         d = Deferred()
-        d.callback(True)
+        d.callback(mock.Mock(code=200))
         return d
 
     @staticmethod
@@ -210,13 +210,14 @@ class TestHyperdriveClientAsync(unittest.TestCase):
             d.callback(b'{"hash": "0a0b0c0d"}')
             return d
 
+        files = {'path/to/file': 'file'}
+
         with mock.patch('golem.network.hyperdrive.client.readBody',
                         side_effect=body), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             client = HyperdriveAsyncClient()
-            files = {'path/to/file': 'file'}
             wrapper = client.add_async(files)
             assert wrapper.called
             assert isinstance(wrapper.result, str)

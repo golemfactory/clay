@@ -487,6 +487,7 @@ class Client(HardwarePresetsMixin):
 
     def enqueue_new_task(self, task_dict):
         task_manager = self.task_server.task_manager
+        _result = Deferred()
 
         # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
@@ -495,10 +496,9 @@ class Client(HardwarePresetsMixin):
             task = task_dict
 
         task_id = task.header.task_id
-        tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
-                                       tmp_dir=tmp_dir,
+                                       tmp_dir=getattr(task, 'tmp_dir', None),
                                        resources=task.get_resources())
 
         def package_created(packager_result):
@@ -509,27 +509,28 @@ class Client(HardwarePresetsMixin):
             _resources = self.resource_server.add_task_package(package_path,
                                                                package_sha1,
                                                                task_id)
-            _resources.addCallbacks(add_task, error)
+            _resources.addCallbacks(task_created, error)
 
-        def add_task(resource_server_result):
+        def task_created(resource_server_result):
             resource_manager_result, package_hash = resource_server_result
-            task_state = task_manager.tasks_states[task_id]
 
-            if task_state:
+            try:
+                task_state = task_manager.tasks_states[task_id]
                 task_state.package_hash = package_hash
                 task_state.resource_hash = resource_manager_result[0]
-            else:
-                return error("Task state removed unexpectedly")
+            except Exception as exc:  # pylint: disable=broad-except
+                return error(exc)
 
             request = AsyncRequest(task_manager.start_task, task_id)
-            async_run(request, None, error)
+            async_run(request, lambda _: _result.callback(task), error)
 
-        def error(e):
-            log.error("Task '%s' creation failed: %s", task_id, e)
+        def error(exception):
+            log.error("Task '%s' creation failed: %r", task_id, exception)
+            _result.errback(exception)
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
-        return task
+        return _result
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -612,10 +613,11 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
+    @inlineCallbacks
     def create_task(self, t_dict):
         try:
-            task = self.enqueue_new_task(t_dict)
-            return str(task.header.task_id)
+            task = yield self.enqueue_new_task(t_dict)
+            return task.header.task_id
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
