@@ -8,10 +8,10 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 
-from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
-from golem.utils import encode_hex, decode_hex
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
-        privtopub
+    privtopub
+from golem.core.variables import PRIVATE_KEY
+from golem.utils import encode_hex, decode_hex
 
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
@@ -57,7 +57,7 @@ def get_random_float():
 class KeysAuth(object):
     """ Cryptographic authorization manager. Create and keeps private and public keys."""
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
+    def __init__(self, datadir, private_key_name=PRIVATE_KEY):
         """
         Create new keys authorization manager, load or create keys
         :param prviate_key_name str: name of the file containing private key
@@ -65,9 +65,8 @@ class KeysAuth(object):
         """
         self.get_keys_dir(datadir)
         self.private_key_name = private_key_name
-        self.public_key_name = public_key_name
         self._private_key = self._load_private_key()
-        self.public_key = self._load_public_key()
+        self.public_key = self._privtopub()
         self.key_id = self.cnt_key_id(self.public_key)
 
     def get_difficulty(self, key_id=None):
@@ -144,10 +143,9 @@ class KeysAuth(object):
         """
 
     @abstractmethod
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
         :return boolean: return True if keys have been saved, False otherwise
         """
         pass
@@ -185,17 +183,15 @@ class KeysAuth(object):
     def _get_private_key_loc(cls, key_name):
         return cls.__get_key_loc(key_name)
 
-    @classmethod
-    def _get_public_key_loc(cls, key_name):
-        return cls.__get_key_loc(key_name)
-
     @abstractmethod
     def _load_private_key(self):  # implement in derived classes
         return
 
     @abstractmethod
-    def _load_public_key(self):  # implement in derived classes
-        return
+    def _privtopub(self):
+        """
+        :return public key to the associated private key
+        """
 
     @staticmethod
     def _count_min_hash(difficulty):
@@ -270,11 +266,8 @@ class RSAKeysAuth(KeysAuth):
             pub_key = str(priv_key.publickey().n)
         pub_key = priv_key.publickey()
         priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
         with open(priv_key_loc, 'wb') as f:
             f.write(priv_key.exportKey('PEM'))
-        with open(pub_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
         self.public_key = pub_key.exportKey()
         self._private_key = priv_key.exportKey('PEM')
 
@@ -288,16 +281,15 @@ class RSAKeysAuth(KeysAuth):
         if priv_key is None:
             return False
         try:
-            pub_key = priv_key.publickey()
+            priv_key.publickey()
         except (AssertionError, AttributeError):
             return False
-        self._set_and_save(priv_key, pub_key)
+        self._set_and_save(priv_key)
         return True
 
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
         :return boolean: return True if keys have been saved, False otherwise
         """
         from os.path import isdir, dirname
@@ -312,14 +304,12 @@ class RSAKeysAuth(KeysAuth):
                     return False
             return True
 
-        if not (make_dir(private_key_loc) and make_dir(public_key_loc)):
+        if not make_dir(private_key_loc):
             return False
 
         try:
             with open(private_key_loc, 'wb') as f:
                 f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key.exportKey())
                 return True
         except IOError:
             return False
@@ -337,62 +327,49 @@ class RSAKeysAuth(KeysAuth):
         return key
 
     def _load_private_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
+        private_key_loc = RSAKeysAuth._get_private_key_loc(
+            self.private_key_name)
+        if not os.path.isfile(private_key_loc):
+            RSAKeysAuth._generate_keys(private_key_loc)
         with open(private_key_loc) as f:
             key = f.read()
         key = RSA.importKey(key)
         return key
 
-    def _load_public_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(public_key_loc) as f:
-            key = f.read()
-        key = RSA.importKey(key)
-        return key
+    def _privtopub(self):
+        return self._private_key.publickey()
 
     @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
+    def _generate_keys(private_key_loc):
         key = RSA.generate(2048)
-        pub_key = key.publickey()
         with open(private_key_loc, 'wb') as f:
             f.write(key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
 
-    def _set_and_save(self, private_key, public_key):
+    def _set_and_save(self, private_key):
         self._private_key = private_key
-        self.public_key = public_key
+        self.public_key = self._privtopub()
         self.key_id = self.cnt_key_id(self.public_key)
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
+        private_key_loc = RSAKeysAuth._get_private_key_loc(
+            self.private_key_name)
         with open(private_key_loc, 'wb') as f:
             f.write(private_key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(public_key.exportKey())
 
 
 class EllipticalKeysAuth(KeysAuth):
     """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
     (curve secp256k1)."""
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
+    def __init__(self, datadir, private_key_name=PRIVATE_KEY):
         """
         Create new ECC keys authorization manager, load or create keys.
         :param uuid|None uuid: application identifier (to read keys)
         """
-        KeysAuth.__init__(self, datadir, private_key_name, public_key_name)
+        KeysAuth.__init__(self, datadir, private_key_name)
         try:
             self.ecc = ECCx(self._private_key)
         except AssertionError:
             private_key_loc = self._get_private_key_loc(private_key_name)
-            public_key_loc = self._get_public_key_loc(public_key_name)
-            self._generate_keys(private_key_loc, public_key_loc)
+            self._generate_keys(private_key_loc)
 
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key (in hex format).
@@ -459,14 +436,15 @@ class EllipticalKeysAuth(KeysAuth):
         :raise TypeError: in case of incorrect @difficulty type
         """
         if not isinstance(difficulty, int):
-            raise TypeError("Incorrect 'difficulty' type: {}".format(type(difficulty)))
+            raise TypeError("Incorrect 'difficulty' type: {}".format(
+                type(difficulty)))
         min_hash = self._count_min_hash(difficulty)
         priv_key = mk_privkey(str(get_random_float()))
         pub_key = privtopub(priv_key)
         while sha2(self.cnt_key_id(pub_key)) > min_hash:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
-        self._set_and_save(priv_key, pub_key)
+        self._set_and_save(priv_key)
 
     def load_from_file(self, file_name):
         """ Load private key from given file. If it's proper key, then generate public key and
@@ -478,34 +456,31 @@ class EllipticalKeysAuth(KeysAuth):
         if priv_key is None:
             return False
         try:
-            pub_key = privtopub(priv_key)
+            privtopub(priv_key)
         except AssertionError:
             return False
-        self._set_and_save(priv_key, pub_key)
+        self._set_and_save(priv_key)
         return True
 
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
+    def save_to_files(self, private_key_loc: str) -> bool:
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
         :return boolean: return True if keys have been saved, False otherwise
         """
         try:
             with open(private_key_loc, 'wb') as f:
                 f.write(self._private_key)
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key)
             return True
         except IOError:
             return False
 
-    def _set_and_save(self, priv_key, pub_key):
-        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        pub_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
+    def _set_and_save(self, priv_key):
+        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(
+            self.private_key_name)
         self._private_key = priv_key
-        self.public_key = pub_key
-        self.key_id = self.cnt_key_id(pub_key)
-        self.save_to_files(priv_key_loc, pub_key_loc)
+        self.public_key = self._privtopub()
+        self.key_id = self.cnt_key_id(self.public_key)
+        self.save_to_files(priv_key_loc)
         self.ecc = ECCx(self._private_key)
 
     @staticmethod
@@ -517,36 +492,24 @@ class EllipticalKeysAuth(KeysAuth):
         return key
 
     def _load_private_key(self):
-        private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
+        private_key_loc = EllipticalKeysAuth._get_private_key_loc(
+            self.private_key_name)
+        if not os.path.isfile(private_key_loc):
+            EllipticalKeysAuth._generate_keys(private_key_loc)
         with open(private_key_loc, 'rb') as f:
             key = f.read()
         return key
 
-    def _load_public_key(self):
-        private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(public_key_loc, 'rb') as f:
-            key = f.read()
-        return key
+    def _privtopub(self):
+        return privtopub(self._private_key)
 
     @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
+    def _generate_keys(private_key_loc):
         key = mk_privkey(str(get_random_float()))
-        pub_key = privtopub(key)
 
-        # Create dir for the keys.
-        # FIXME: It assumes private and public keys are stored in the same dir.
-        # FIXME: The same fix is needed for RSAKeysAuth.
         keys_dir = os.path.dirname(private_key_loc)
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir, 0o700)
 
         with open(private_key_loc, 'wb') as f:
             f.write(key)
-        with open(public_key_loc, 'wb') as f:
-            f.write(pub_key)

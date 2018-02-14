@@ -1,4 +1,3 @@
-import atexit
 import copy
 import logging
 import os
@@ -31,8 +30,6 @@ class HyperdriveDaemonManager(object):
         self._monitor.add_callbacks(self._start)
 
         self._dir = os.path.join(datadir, self._executable)
-
-        atexit.register(self.stop)
 
         logsdir = os.path.join(datadir, "logs")
         if not os.path.exists(logsdir):

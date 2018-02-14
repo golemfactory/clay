@@ -52,7 +52,8 @@ class Node(object):
 
     def run(self, use_rpc=False):
         from twisted.internet import reactor
-
+        reactor.addSystemEventTrigger("before", "shutdown",
+                                      self.client.quit)
         try:
             if use_rpc:
                 self._setup_rpc()
@@ -62,9 +63,7 @@ class Node(object):
 
             reactor.run()
         except Exception as exc:
-            self.logger.error("Application error: {}".format(exc))
-        finally:
-            self.client.quit()
+            self.logger.exception("Application error: %r", exc)
 
     def _run(self, *_):
         if self.client.use_docker_machine_manager:
@@ -111,12 +110,8 @@ class Node(object):
 
     def _start_rpc_router(self):
         from twisted.internet import reactor
-
-        reactor.addSystemEventTrigger("before", "shutdown",
-                                      self.client.quit)
         reactor.addSystemEventTrigger("before", "shutdown",
                                       self.rpc_router.stop)
-
         self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
 
     def _rpc_router_ready(self, *_):

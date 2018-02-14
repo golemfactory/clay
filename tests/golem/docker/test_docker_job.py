@@ -378,22 +378,3 @@ with open("../output/out.txt", "w") as f:
             job.kill()
             assert local_client.called
             assert client.kill.called
-
-    @patch('golem.docker.job.DockerJob.kill')
-    def test_kill_jobs(self, kill):
-
-        def create_job():
-            job = DockerJob.__new__(DockerJob)
-            job.container = mock.Mock()
-            job.container_id = str(uuid.uuid4())
-            return job
-
-        DockerJob.kill_jobs()
-        assert not kill.called
-
-        DockerJob.running_jobs = [
-            create_job(), create_job(),
-        ]
-
-        DockerJob.kill_jobs()
-        assert kill.call_count == 2
