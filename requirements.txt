@@ -37,7 +37,7 @@ scrypt
 packaging
 semantic_version
 pyOpenSSL==17.1.0
-requests==2.13.0
+requests==2.18.4
 Automat==0.6.0
 zope.interface==4.4.2
 incremental==17.5.0
