@@ -1,5 +1,6 @@
 import inspect
 import logging
+import typing
 import warnings
 import weakref
 
@@ -23,7 +24,7 @@ class HandlersLibrary():
         # Messages handlers: msg_cls: weakref of handler callable
         # Can't use weakref.WeakValueDictionary() because it doesn't work
         # with methods.
-        self._handlers = {}
+        self._handlers: typing.Dict[message.base.Message, weakref.ref] = {}
 
     def register_handler(self, msg_cls: message.base.Message) -> Callable:
         def _wrapped(f) -> Callable:
