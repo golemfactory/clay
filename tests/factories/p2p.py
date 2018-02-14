@@ -12,4 +12,5 @@ class Node(factory.Factory):
         model = node.Node
 
     node_name = factory.Faker('name')
-    key = factory.LazyAttribute(lambda o: format(fake.pyint(), '02x'))  # noqa pylint: disable=no-member
+    # considered as difficult by `keysauth.is_pubkey_difficult`
+    key = '00adbeef' + 'deadbeef' * 15

@@ -1,4 +1,5 @@
-# pylint: disable= protected-access
+# pylint: disable=protected-access,no-member
+
 import copy
 import ipaddress
 import random
@@ -30,7 +31,8 @@ def fill_slots(msg):
         setattr(msg, slot, None)
 
 
-class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disable=too-many-public-methods
+class TestPeerSession(testutils.TempDirFixture, LogTestCase,
+                      # noqa pylint: disable=too-many-public-methods
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
@@ -54,7 +56,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disa
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
         self.peer_session.conn.server.metadata_manager = mock.MagicMock()
-        self.peer_session.conn.server.metadata_manager.\
+        self.peer_session.conn.server.metadata_manager. \
             get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.key_difficulty = 2
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
@@ -81,6 +83,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disa
             if key == key_id:
                 return self.peer_session
             return None
+
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.enough_peers = lambda: False
 
@@ -159,7 +162,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disa
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_key_not_difficult(self, send_mock):
         client_hello = self.__setup_handshake_server_test(send_mock)
-        client_hello.node_info['key'] = 'deadbeef'  # pylint: disable=no-member
+        client_hello.node_info['key'] = 'deadbeef' * 16
         self.peer_session._react_to_hello(client_hello)
 
         self.assertEqual(
@@ -173,7 +176,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disa
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = node.key
         self.peer_session.conn.server.metadata_manager = mock.MagicMock()
-        self.peer_session.conn.server.metadata_manager.\
+        self.peer_session.conn.server.metadata_manager. \
             get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_CLIENT
@@ -185,6 +188,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase, # noqa pylint: disa
             if key == key_id:
                 return self.peer_session
             return None
+
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.should_solve_challenge = False
         self.peer_session.p2p_service.enough_peers = lambda: False
