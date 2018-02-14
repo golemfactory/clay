@@ -26,7 +26,6 @@ from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.service import LoopingCallService
-from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
 from golem.database import Database
@@ -87,7 +86,7 @@ class Client(HardwarePresetsMixin):
 
     def __init__(
             self,
-            datadir=None,
+            datadir,
             transaction_system=False,
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
@@ -96,9 +95,6 @@ class Client(HardwarePresetsMixin):
             start_geth_port=None,
             geth_address=None,
             **config_overrides):
-
-        if not datadir:
-            datadir = get_local_datadir('default')
 
         self.datadir = datadir
         self.__lock_datadir()
