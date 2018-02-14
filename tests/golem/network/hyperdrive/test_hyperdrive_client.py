@@ -1,7 +1,6 @@
 import json
-import unittest
 import uuid
-from unittest import mock
+from unittest import mock, TestCase, skip
 
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -11,7 +10,7 @@ from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions, HyperdriveAsyncClient
 
 
-class TestHyperdriveClient(unittest.TestCase):
+class TestHyperdriveClient(TestCase):
 
     def setUp(self):
         self.response = {
@@ -124,7 +123,7 @@ class TestHyperdriveClient(unittest.TestCase):
             assert not json_loads.called
 
 
-class TestHyperdriveClientAsync(unittest.TestCase):
+class TestHyperdriveClientAsync(TestCase):
 
     @staticmethod
     def success(*_):
@@ -223,7 +222,7 @@ class TestHyperdriveClientAsync(unittest.TestCase):
             assert isinstance(wrapper.result, str)
 
 
-class TestHyperdriveClientOptions(unittest.TestCase):
+class TestHyperdriveClientOptions(TestCase):
 
     def test_clone(self):
         peers = [
@@ -283,7 +282,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert filtered.options['peers'] == peers
         assert options.filtered('invalid client', version) is None
 
-    @unittest.skip('Private IP filtering is temporarily disabled')
+    @skip('Private IP filtering is temporarily disabled')
     def test_filter_peers(self):
         peers_local = [
             dict(

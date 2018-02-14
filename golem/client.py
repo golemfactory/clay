@@ -512,10 +512,10 @@ class Client(HardwarePresetsMixin):
                 task_state.package_hash = package_hash
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
-                return error(exc)
-
-            request = AsyncRequest(task_manager.start_task, task_id)
-            async_run(request, lambda _: _result.callback(task), error)
+                error(exc)
+            else:
+                request = AsyncRequest(task_manager.start_task, task_id)
+                async_run(request, lambda _: _result.callback(task), error)
 
         def error(exception):
             log.error("Task '%s' creation failed: %r", task_id, exception)

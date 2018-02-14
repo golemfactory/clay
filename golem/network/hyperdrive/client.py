@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_HYPERDRIVE_PORT = 3282
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
-DEFAULT_UPLOAD_RATE = 384 / 8  # kBps = kbps / 8
+DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
 
 
 def timeout_from_size(size: int, rate: int = DEFAULT_UPLOAD_RATE):
