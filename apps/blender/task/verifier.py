@@ -1,54 +1,44 @@
-from copy import deepcopy
 import logging
 import math
 import os
 import posixpath
+import json
 from collections import Callable
 from threading import Lock
-from functools import partial
 from shutil import copy
 
 from apps.rendering.task.verifier import FrameRenderingVerifier
-from apps.blender.resources.cropgenerator import generate_crops
 from apps.blender.resources.imgcompare import check_size
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.task.blendercropper import BlenderCropper
 from golem.docker.job import DockerJob
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import find_task_script
 from golem.core.common import get_golem_path
-from golem.core.common import timeout_to_deadline
 
 logger = logging.getLogger("apps.blender")
 
-NUM_CROPS = 3
 
-
-# pylint: disable=R0903
-class VerificationContext:
-    def __init__(self, crops_position, crop_id, crops_path):
-        self.crop_id = crop_id
-        self.crop_path = os.path.join(crops_path, str(crop_id))
-        self.crop_position_x = crops_position[crop_id][0]
-        self.crop_position_y = crops_position[crop_id][1]
-
-
+# FIXME #2086
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
-
     DOCKER_NAME = "golemfactory/image_metrics"
     DOCKER_TAG = '1.1'
 
-    def __init__(self, callback: Callable):
+    def __init__(self, callback: Callable) -> None:
         super().__init__(callback)
         self.lock = Lock()
         self.verified_crops_counter = 0
         self.success = None
         self.failure = None
-        self.crops_path = None
         self.current_results_file = None
         self.program_file = find_task_script(os.path.join(
             get_golem_path(), 'apps', 'rendering'), 'runner.py')
         self.wasFailure = False
+        self.cropper = BlenderCropper()
+        self.metrics = {}
+        self.subtask_info = None
+        self.crops_size = ()
+        self.additional_test = False
 
     def _get_part_img_size(self, subtask_info):
         x, y = self._get_part_size(subtask_info)
@@ -65,7 +55,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             res_y = int(math.floor(subtask_info['res_y'] / parts))
         return subtask_info['res_x'], res_y
 
-    def _get_part_size_from_subtask_number(self, subtask_info):
+    @staticmethod
+    def _get_part_size_from_subtask_number(subtask_info):
 
         if subtask_info['res_y'] % subtask_info['total_tasks'] == 0:
             res_y = int(subtask_info['res_y'] / subtask_info['total_tasks'])
@@ -91,73 +82,33 @@ class BlenderVerifier(FrameRenderingVerifier):
     # pylint: disable-msg=too-many-arguments
     def _verify_imgs(self, subtask_info, results, reference_data, resources,
                      success_=None, failure=None):
-        self.crops_path = os.path.join(subtask_info['tmp_dir'],
-                                       subtask_info['subtask_id'])
         self.current_results_file = results[0]
+        self.subtask_info = subtask_info
 
         try:
             def success():
                 self.success = success_
                 self.failure = failure
-                self._render_crops(subtask_info)
+                self.crops_size = self.cropper.render_crops(
+                    self.computer,
+                    self.resources,
+                    self._crop_rendered,
+                    self._crop_render_failure,
+                    subtask_info)
 
             super()._verify_imgs(
                 subtask_info,
                 results,
                 reference_data,
                 resources, success, failure)
+        # pylint: disable=W0703
         except Exception as e:
             logger.error("Crop generation failed %r", e)
+            import traceback
+            traceback.print_exc()
             failure()
 
-    def _render_crops(self, subtask_info,
-                      num_crops=NUM_CROPS, crop_size=None):
-        # pylint: disable=unused-argument
-        if not self._check_computer():
-            return False
-
-        crops_info = generate_crops((subtask_info['res_x'],
-                                     subtask_info['res_y']),
-                                    subtask_info['crop_window'], num_crops,
-                                    crop_size)
-        for num in range(num_crops):
-            verify_ctx = VerificationContext(crops_info[1], num,
-                                             self.crops_path)
-            self._render_one_crop(crops_info[0][num], subtask_info, verify_ctx)
-        return True
-
-    def _render_one_crop(self, crop, subtask_info, verify_ctx):
-        minx, maxx, miny, maxy = crop
-
-        script_src = generate_blender_crop_file(
-            resolution=(subtask_info['res_x'], subtask_info['res_y']),
-            borders_x=(minx, maxx),
-            borders_y=(miny, maxy),
-            use_compositing=False
-        )
-        ctd = self._generate_ctd(subtask_info, script_src)
-        # FIXME issue #1955
-        self.computer.start_computation(
-            root_path=verify_ctx.crop_path,
-            success_callback=partial(self._crop_rendered,
-                                     verification_context=verify_ctx),
-            error_callback=self._crop_render_failure,
-            compute_task_def=ctd,
-            resources=self.resources,
-            additional_resources=[]
-        )
-
-    @staticmethod
-    def _generate_ctd(subtask_info, script_src):
-        ctd = deepcopy(subtask_info['ctd'])
-
-        ctd['extra_data']['outfilebasename'] = \
-            "ref_" + subtask_info['outfilebasename']
-        ctd['extra_data']['script_src'] = script_src
-        ctd['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
-        return ctd
-
-    #  The verification function will generate three random crops, from results
+    # The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
     # pylint: disable=R0914
     def _crop_rendered(self, results, time_spend, verification_context):
@@ -217,6 +168,15 @@ class BlenderVerifier(FrameRenderingVerifier):
             stdout_file = os.path.join(logs_dir, "stdout.log")
             stderr_file = os.path.join(logs_dir, "stderr.log")
             job.dump_logs(stdout_file, stderr_file)
+            result_path = os.path.join(output_dir, "result.txt")
+            try:
+                with open(result_path) as json_data:
+                    self.metrics[
+                        verification_context.crop_id] = json.load(
+                            json_data)
+            except EnvironmentError as exc:
+                logger.error("Metrics not calculated %r", exc)
+                was_failure = -1
 
         with self.lock:
             if was_failure == -1:
@@ -224,8 +184,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                 self.failure()
             else:
                 self.verified_crops_counter += 1
-                if self.verified_crops_counter == NUM_CROPS:
-                    self.success()
+                if self.verified_crops_counter == 3:
+                    self.make_verdict()
 
     # One failure is enough to stop verification process, although this might
     #  change in future
@@ -233,4 +193,43 @@ class BlenderVerifier(FrameRenderingVerifier):
         logger.warning("Crop for verification render failure %r", error)
         with self.lock:
             self.wasFailure = True
+            self.failure()
+
+    def make_verdict(self):
+        avg_corr = 0
+        avg_ssim = 0
+        for _, metric in self.metrics.items():
+            avg_corr += metric['imgCorr']
+            avg_ssim += metric['SSIM_normal']
+        avg_corr /= 3
+        avg_ssim /= 3
+
+        # These are empirically measured values by CP and GG
+        w_ssim = 0.8
+        w_ssim_min = 0.6
+
+        if avg_ssim > w_ssim:
+            logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
+            self.success()
+        elif avg_ssim < w_ssim:
+            logger.info("Subtask %r NOT verified",
+                        self.subtask_info['subtask_id'])
+            self.failure()
+        elif avg_ssim > w_ssim_min and not self.additional_test:
+            self.verified_crops_counter = 0
+            self.metrics.clear()
+            self.additional_test = True
+            logger.info("Performing additional verification for subtask %r ",
+                        self.subtask_info['subtask_id'])
+            self.cropper.render_crops(self.computer, self.resources,
+                                      self._crop_rendered,
+                                      self._crop_render_failure,
+                                      self.subtask_info,
+                                      3,
+                                      (self.crops_size[0] + 0.01,
+                                       self.crops_size[1] + 0.01))
+        else:
+            logger.warning("Unexpected verification output for subtask %r,"
+                           " imgCorr = %r, ssim = %r",
+                           self.subtask_info['subtask_id'], avg_corr, avg_ssim)
             self.failure()

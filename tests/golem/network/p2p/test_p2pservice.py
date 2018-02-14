@@ -18,6 +18,7 @@ from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
 
 class TestP2PService(testutils.DatabaseFixture):
+
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
@@ -108,8 +109,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_remove_old_peers(self):
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                      "TESTPUB").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV").get_key_id()
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -130,14 +130,12 @@ class TestP2PService(testutils.DatabaseFixture):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                      "TESTPUB").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV").get_key_id()
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
-        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2",
-                                       "TESTPUB2").get_key_id()
+        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2").get_key_id()
         node2.key_id = node2.key
         node2.address = sa
 
@@ -161,8 +159,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = EllipticalKeysAuth(self.path, "TESTPRIV",
-                                    "TESTPUB").get_key_id()
+        key_id = EllipticalKeysAuth(self.path, "TESTPRIV").get_key_id()
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -220,8 +217,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_sync_free_peers(self):
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "PRIVTEST",
-                                      "PUBTEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "PRIVTEST").get_key_id()
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -324,8 +320,7 @@ class TestP2PService(testutils.DatabaseFixture):
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1",
-                                        "PUBTESTPATH2")
+        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1")
         ps2.key_id = keys_auth2.key_id
         self.service.add_peer(keys_auth2.key_id, ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
@@ -404,7 +399,7 @@ class TestP2PService(testutils.DatabaseFixture):
         SEEDS_NUM = 10
         seeds = set()
         for i in range(SEEDS_NUM):
-            seeds.add(('127.0.0.1', i+1))
+            seeds.add(('127.0.0.1', i + 1))
         self.service.seeds = seeds.copy()
         for i in range(SEEDS_NUM):
             seed = self.service._get_next_random_seed()

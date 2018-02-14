@@ -99,12 +99,17 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.start = Mock()
+        self.node.client.datadir = self.path
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
-                                 use_docker_machine_manager=False)
+        task_server = TaskServer(
+            node=Mock(),
+            config_desc=ccd,
+            client=self.node.client,
+            use_docker_machine_manager=False
+        )
         task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer

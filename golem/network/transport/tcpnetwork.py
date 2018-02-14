@@ -9,8 +9,8 @@ from threading import Lock
 import golem_messages
 from golem_messages import message
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, \
-    TCP6ServerEndpoint, TCP6ClientEndpoint
+from twisted.internet.endpoints import TCP4ServerEndpoint, \
+    TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
 from zope.interface import implementer
@@ -37,6 +37,7 @@ MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 
 class TCPNetwork(Network):
+
     def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
         """
         TCP network information
@@ -308,6 +309,7 @@ class BasicProtocol(SessionProtocol):
     """Connection-oriented basic protocol for twisted, supports message
        serialization
     """
+
     def __init__(self):
         self.opened = False
         self.db = DataBuffer()
@@ -364,7 +366,8 @@ class BasicProtocol(SessionProtocol):
         self.opened = True
 
     def dataReceived(self, data):
-        """Called when additional chunk of data is received from another peer"""
+        """Called when additional chunk of data
+            is received from another peer"""
         if not self._can_receive():
             return
 
@@ -461,6 +464,7 @@ class BasicProtocol(SessionProtocol):
 class ServerProtocol(BasicProtocol):
     """ Basic protocol connected to server instance
     """
+
     def __init__(self, server):
         """
         :param Server server: server instance
@@ -529,6 +533,7 @@ class FilesProtocol(SafeProtocol):
        (support for message serialization encryption, decryption and signing),
        files or stream data.i
     """
+
     def __init__(self, server=None):
         SafeProtocol.__init__(self, server)
 
@@ -932,7 +937,8 @@ class DataProducer(object):
         self.session.conn.transport.registerProducer(self, False)
 
     def end_producing(self):
-        """ Inform session about finished production and unregister producer """
+        """ Inform session about finished production
+            and unregister producer """
         self.session.data_sent(self.extra_data)
         self.session.conn.transport.unregisterProducer()
 
@@ -1090,6 +1096,7 @@ class EncryptDataProducer(DataProducer):
 
 class DecryptDataConsumer(DataConsumer):
     """ Data consumer that receives data in encrypted chunks """
+
     def __init__(self, session, extra_data):
         self.chunk_size = 0
         self.recv_chunk_size = 0

@@ -40,7 +40,7 @@ class TaskArchiver(object):
                 else:
                     log.info("Task archive not loaded: unsupported version: "
                              "%s", archive.class_version)
-            except (IOError, pickle.UnpicklingError) as e:
+            except (EOFError, IOError, pickle.UnpicklingError) as e:
                 log.info("Task archive not loaded: %s", str(e))
 
     def add_task(self, task_header):

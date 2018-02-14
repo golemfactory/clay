@@ -9,7 +9,6 @@ from unittest.mock import Mock, patch, ANY
 from golem_messages import message
 from twisted.internet.defer import Deferred
 
-from golem.model import Database
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient
 from golem.resource.dirmanager import DirManager
@@ -18,7 +17,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
 from golem.task.acl import get_acl
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, DatabaseFixture
 
 
 class TestResourceHandshake(TempDirFixture):
@@ -440,16 +439,11 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
-class TestResourceHandshakeShare(TempDirFixture):
+class TestResourceHandshakeShare(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-
-        self.db = Database(self.tempdir)
         self.key_id = str(uuid.uuid4())
-
-    def tearDown(self):
-        self.db.close()
 
     def test_flow(self, *_):
         local_dir = os.path.join(self.tempdir, 'local')
@@ -563,7 +557,6 @@ class TestResourceHandshakeShare(TempDirFixture):
         task_server = TaskServer(
             node=Mock(client=client, key=str(uuid.uuid4())),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
             client=client,
             use_docker_machine_manager=False
         )
