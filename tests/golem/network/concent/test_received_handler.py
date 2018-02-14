@@ -2,7 +2,6 @@
 import gc
 import unittest
 import unittest.mock as mock
-import weakref
 
 from golem_messages import message
 
@@ -16,6 +15,9 @@ from tests.factories import messages as msg_factories
 
 
 class RegisterHandlersTestCase(unittest.TestCase):
+    def setUp(self):
+        library._handlers = {}
+
     def test_register_handlers(self):
         class MyHandler():
             def not_a_handler(self, msg):
@@ -26,9 +28,10 @@ class RegisterHandlersTestCase(unittest.TestCase):
                 pass
         instance = MyHandler()
         received_handler.register_handlers(instance)
+        self.assertEqual(len(library._handlers), 1)
         self.assertEqual(
-            library._handlers,
-            {message.p2p.Ping: weakref.WeakMethod(instance.ping_handler)},
+            library._handlers[message.p2p.Ping](),
+            instance.ping_handler,
         )
 
 
