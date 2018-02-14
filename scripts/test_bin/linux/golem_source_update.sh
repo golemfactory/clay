@@ -8,5 +8,5 @@ pip install -r requirements.txt
 echo "Run setup.py develop"
 python setup.py develop
 
-read -n1 -r -p "Press any key to continue..." key
+read -p "Press any key to continue..."
 
