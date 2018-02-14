@@ -51,7 +51,7 @@ class TestSendToConcent(TestCase):
             headers=mock.ANY
         )
 
-     def test_none(self, post_mock):
+    def test_none(self, post_mock):
         response = requests.Response()
         response.status_code = 200
         post_mock.return_value = response
