@@ -3,6 +3,8 @@ import logging
 from ipaddress import AddressValueError, ip_address
 
 import collections
+
+import math
 import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -17,6 +19,13 @@ log = logging.getLogger(__name__)
 
 DEFAULT_HYPERDRIVE_PORT = 3282
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
+DEFAULT_UPLOAD_RATE = 384 / 8  # kBps = kbps / 8
+
+
+def timeout_from_size(size: int, rate: int = DEFAULT_UPLOAD_RATE):
+    bit_rate = rate * 10 ** 3
+    margin = 10
+    return margin + int(math.ceil(size / bit_rate))
 
 
 class HyperdriveClient(IClient):
@@ -81,6 +90,8 @@ class HyperdriveClient(IClient):
     @classmethod
     def _download_params(cls, content_hash, client_options, **kwargs):
         path = kwargs['filepath']
+        size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
+        timeout = timeout_from_size(size) if size else None
         peers = None
 
         if client_options:
@@ -92,7 +103,9 @@ class HyperdriveClient(IClient):
             command='download',
             hash=content_hash,
             dest=path,
-            peers=peers or []
+            peers=peers or [],
+            size=size,
+            timeout=timeout
         )
 
     def cancel(self, content_hash):
