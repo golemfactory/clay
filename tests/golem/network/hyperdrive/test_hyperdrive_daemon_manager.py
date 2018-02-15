@@ -125,26 +125,26 @@ class TestHyperdriveDaemonManager(TempDirFixture):
     def test_version_error(self):
         err = requests.ConnectionError
 
-        with patch('subprocess.check_output', side_effect=OSError), \
-             patch.object(self.dm._client, 'id', side_effect=err):
+        with patch('subprocess.check_output', side_effect=OSError):
+            with patch.object(self.dm._client, 'id', side_effect=err):
 
-            assert self.dm.version() is None
+                assert self.dm.version() is None
 
     def test_version_from_process(self):
         err = requests.ConnectionError
 
-        with patch('subprocess.check_output', return_value=b'0.2.5'), \
-             patch.object(self.dm._client, 'id', side_effect=err):
+        with patch('subprocess.check_output', return_value=b'0.2.5'):
+            with patch.object(self.dm._client, 'id', side_effect=err):
 
-            assert self.dm.version() == semantic_version.Version('0.2.5')
+                assert self.dm.version() == semantic_version.Version('0.2.5')
 
     def test_version_from_api(self):
         response = dict(id='id', version='0.2.4')
 
-        with patch('subprocess.check_output', return_value=b'0.2.5'), \
-             patch.object(self.dm._client, 'id', return_value=response):
+        with patch('subprocess.check_output', return_value=b'0.2.5'):
+            with patch.object(self.dm._client, 'id', return_value=response):
 
-            assert self.dm.version() == semantic_version.Version('0.2.4')
+                assert self.dm.version() == semantic_version.Version('0.2.4')
 
     def test_check_version_error(self):
 
