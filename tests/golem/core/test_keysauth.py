@@ -112,7 +112,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         assert not logger.warning.called
 
     @freeze_time("2017-11-23 11:40:27.767804")
-    def test_backup_keys_with_no_keys(self):
+    def test_backup_with_no_keys(self):
         # given
         assert os.listdir(self.path) == []  # empty dir
         priv_key_name = 'priv'
@@ -121,8 +121,9 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         EllipticalKeysAuth(self.path, priv_key_name)
 
         # then
-        assert os.listdir(self.path) == ['keys']
-        assert os.listdir(os.path.join(self.path, 'keys')) == [priv_key_name]
+        self.assertCountEqual(os.listdir(self.path), ['keys'])
+        self.assertCountEqual(os.listdir(os.path.join(self.path, 'keys')),
+                              [priv_key_name])
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys(self):
@@ -138,11 +139,11 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         EllipticalKeysAuth(self.path, priv_key_name)
 
         # then
-        assert os.listdir(self.path) == ['keys']
-        assert os.listdir(os.path.join(self.path, 'keys')) == [
-            "%s_2017-11-23_11-40-27_767804.bak" % priv_key_name,
+        self.assertCountEqual(os.listdir(self.path), ['keys'])
+        self.assertCountEqual(os.listdir(os.path.join(self.path, 'keys')), [
             priv_key_name,
-        ]
+            "%s_2017-11-23_11-40-27_767804.bak" % priv_key_name,
+        ])
 
     def test_sign_verify_elliptical(self):
         ek = EllipticalKeysAuth(self.path)
