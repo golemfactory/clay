@@ -48,7 +48,7 @@ class DummyTask(Task):
     did not pass verification
     """
 
-    ENVIRONMENT_NAME = "DUMMY"
+    TASK_TYPE = "Dummy"
 
     def __init__(self, client_id, params, num_subtasks, public_key):
         """Creates a new dummy task
@@ -60,10 +60,9 @@ class DummyTask(Task):
         owner_address = ''
         owner_port = 0
         owner_key_id = encode_hex(public_key)
-        environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             task_id,
-            environment,
+            self.TASK_TYPE,
             task_owner=Node(
                 node_name=client_id,
                 pub_addr=owner_address,
@@ -177,6 +176,7 @@ class DummyTask(Task):
         subtask_def = ComputeTaskDef()
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
+        subtask_def['task_type'] = self.TASK_TYPE
         subtask_def['src_code'] = self.src_code
         subtask_def['deadline'] = timeout_to_deadline(5 * 60)
         subtask_def['extra_data'] = {

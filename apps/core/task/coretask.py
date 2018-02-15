@@ -86,8 +86,6 @@ class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
     VERIFICATION_QUEUE = VerificationQueue()
 
-    ENVIRONMENT_CLASS = None  # type: Type[Environment]
-
     handle_key_error = HandleKeyError(log_key_error)
 
     ################
@@ -118,28 +116,17 @@ class CoreTask(Task):
         else:
             self.resource_size = resource_size
 
-        self.environment = self.ENVIRONMENT_CLASS()
-
-        # src_code stuff
-        self.main_program_file = self.environment.main_program_file
-        try:
-            with open(self.main_program_file, "r") as src_file:
-                src_code = src_file.read()
-        except Exception as err:
-            logger.warning("Wrong main program file: {}".format(err))
-            src_code = ""
-
-        # docker_images stuff
-        if task_definition.docker_images:
-            self.docker_images = task_definition.docker_images
-        elif isinstance(self.environment, DockerEnvironment):
-            self.docker_images = self.environment.docker_images
-        else:
-            self.docker_images = None
+        src_code = ""
+        if task_definition.main_program_file:
+            try:
+                with open(task_definition.main_program_file, "r") as src_file:
+                    src_code = src_file.read()
+            except OSError as err:
+                logger.warning("Wrong main program file: %s", err)
 
         th = TaskHeader(
+            task_type=task_definition.task_type,
             task_id=task_definition.task_id,
-            environment=self.environment.get_id(),
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
@@ -176,9 +163,6 @@ class CoreTask(Task):
 
     def create_subtask_id(self) -> str:
         return generate_new_id_from_id(self.header.task_id)
-
-    def is_docker_task(self):
-        return len(self.docker_images or ()) > 0
 
     def initialize(self, dir_manager: DirManager) -> None:
         dir_manager.clear_temporary(self.header.task_id)
@@ -334,12 +318,11 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
+        ctd['task_type'] = self.header.task_type
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         ctd['working_directory'] = working_directory
-        if self.docker_images:
-            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
                               self.header.deadline)
 
@@ -563,7 +546,6 @@ class CoreTaskBuilder(TaskBuilder):
         self.dir_manager = dir_manager
         self.owner = owner
         self.src_code = ""
-        self.environment = None
 
     def build(self):
         task = self.TASK_CLASS(**self.get_task_kwargs())

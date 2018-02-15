@@ -15,6 +15,9 @@ class DockerEnvironmentMock(DockerEnvironment):
     SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
+    def get_benchmark(self):
+        return None, None
+
 
 @ci_skip
 class TestDockerEnvironment(DockerTestCase):

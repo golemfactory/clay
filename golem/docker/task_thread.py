@@ -128,7 +128,7 @@ class DockerTaskThread(TaskThread):
             self._cleanup()
 
     def get_progress(self):
-        # TODO: make the container update some status file? Issue #56
+        # TODO: make the -container update some status file? Issue #56
         return 0.0
 
     def end_comp(self):

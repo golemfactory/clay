@@ -3,13 +3,12 @@ import sys
 import tempfile
 from os.path import dirname, join
 
-from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRendererOptions
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 
 
 class BlenderBenchmark(RenderingBenchmark):
-    def __init__(self):
+    def __init__(self, env):
         super(BlenderBenchmark, self).__init__()
         self._normalization_constant = 9360
         if hasattr(sys, 'frozen') and sys.frozen:
@@ -27,5 +26,5 @@ class BlenderBenchmark(RenderingBenchmark):
         main_scene_file = pathlib.Path(self.blender_task_path)
         main_scene_file /= "bmw27_cpu.blend"
         task_def.main_scene_file = str(main_scene_file)
-        task_def.main_program_file = BlenderEnvironment().main_program_file
+        task_def.main_program_file = env.main_program_file
         task_def.resources.add(str(main_scene_file.resolve()))

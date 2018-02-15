@@ -33,7 +33,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
     def test_init(self):
         task = Task(Mock(), Mock(), Mock())
         task.query_extra_data_for_test_task = Mock()
-        self.assertIsNotNone(TaskTester(task, self.path, None, None))
+        self.assertIsNotNone(TaskTester(task, Mock(), self.path, None, None))
 
     def test_task_computed(self):
         task = Task(Mock(), Mock(), Mock())
@@ -46,7 +46,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         task.after_test = lambda res, tmp_dir: {}
         task.query_extra_data_for_test_task = Mock()
 
-        tt = TaskTester(task, self.path, Mock(), Mock())
+        tt = TaskTester(task, Mock(), self.path, Mock(), Mock())
         tt.tmp_dir = self.path
         task_thread = TaskThread(result)
         tt.task_computed(task_thread)
@@ -76,7 +76,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         task.after_test = lambda res, tmp_dir: {"warnings": "bla ble"}
         task.query_extra_data_for_test_task = Mock()
 
-        tt = TaskTester(task, self.path, success_callback, None)
+        tt = TaskTester(task, Mock(), self.path, success_callback, None)
         tt.tmp_dir = self.path
         task_thread = TaskThread(result)
         tt.task_computed(task_thread)
@@ -87,7 +87,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         task = Task(Mock(), Mock(), Mock())
 
         task.query_extra_data_for_test_task = Mock()
-        tt = TaskTester(task, self.path, Mock(), Mock())
+        tt = TaskTester(task, Mock(), self.path, Mock(), Mock())
         task_thread = Mock()
 
         # Proper task

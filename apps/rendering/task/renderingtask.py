@@ -29,7 +29,6 @@ logger = logging.getLogger("apps.rendering")
 class RenderingTask(CoreTask):
 
     VERIFIER_CLASS = RenderingVerifier
-    ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
 
     @classmethod
     def _get_task_collector_path(cls):
@@ -54,9 +53,6 @@ class RenderingTask(CoreTask):
             owner=owner,
             root_path=root_path,
             total_tasks=total_tasks)
-
-        if task_definition.docker_images is None:
-            task_definition.docker_images = self.environment.docker_images
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
@@ -206,20 +202,11 @@ class RenderingTask(CoreTask):
         return self.__get_path(working_directory)
 
     def _get_scene_file_rel_path(self):
-        """Returns the path to the secene file relative to the directory where
-        the task srcipt is run.
+        """Returns the path to the scene file relative to the directory where
+        the task script is run.
         """
-        if self.is_docker_task():
-            # In a Docker container we know the absolute path:
-            # First compute the path relative to the resources root dir:
-            rel_scene_path = os.path.relpath(self.main_scene_file,
-                                             self._get_resources_root_dir())
-            # Then prefix with the resources dir in the container:
-            abs_scene_path = DockerJob.get_absolute_resource_path(
-                rel_scene_path)
-            return abs_scene_path
-        else:
-            return ''
+        return os.path.relpath(self.main_scene_file,
+                               self._get_resources_root_dir())
 
     def short_extra_data_repr(self, extra_data):
         l = extra_data

@@ -10,9 +10,11 @@ from time import sleep
 import ethereum.keys
 import pycodestyle
 
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
+from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.model import DB_MODELS, db, DB_FIELDS
 
 logger = logging.getLogger(__name__)
@@ -136,6 +138,13 @@ class TestWithClient(TempDirFixture):
         super(TestWithClient, self).setUp()
         self.client = unittest.mock.Mock()
         self.client.datadir = os.path.join(self.path, "datadir")
+        # client might be a Mock, but we will need real envs
+        # with Dummy one accepting tasks
+        self.client.environments_manager = EnvironmentsManager()
+        self.client.environments_manager.load_all_envs(None, False)
+        self.client.environments_manager \
+            .get_environment_by_id(DummyTaskEnvironment().get_id()) \
+            .accept_tasks = True
 
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.

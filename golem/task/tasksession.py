@@ -10,8 +10,6 @@ from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
-from golem.docker.environment import DockerEnvironment
-from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -855,16 +853,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
-        env = self.task_server.get_environment_by_id(environment)
+        env = self.task_server.get_environment_by_task_type(ctd['task_type'])
         reasons = message.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
             return False
-
-        if isinstance(env, DockerEnvironment):
-            if not self.__check_docker_images(ctd, env):
-                return False
 
         if not env.allow_custom_main_program_file:
             ctd['src_code'] = env.get_source_code()
@@ -874,18 +867,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
 
         return True
-
-    def __check_docker_images(self, ctd, env):
-        for image_dict in ctd['docker_images']:
-            image = DockerImage(**image_dict)
-            for env_image in env.docker_images:
-                if env_image.cmp_name_and_tag(image):
-                    ctd['docker_images'] = [image_dict]
-                    return True
-
-        reasons = message.CannotComputeTask.REASON
-        self.err_msg = reasons.WrongDockerImages
-        return False
 
     def __set_msg_interpretations(self):
         self._interpretation.update({

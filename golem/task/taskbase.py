@@ -44,7 +44,7 @@ class TaskHeader(object):
     """
     def __init__(self,  # pylint: disable=too-many-arguments
                  task_id: str,
-                 environment: str,  # environment.get_id()
+                 task_type: str,
                  task_owner: Node,
                  deadline=0.0,
                  subtask_timeout=0.0,
@@ -66,7 +66,7 @@ class TaskHeader(object):
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
         self.resource_size = resource_size
-        self.environment = environment
+        self.task_type = task_type
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.max_price = max_price
@@ -108,10 +108,6 @@ class TaskHeader(object):
                 cls._ordered(port_statuses)
 
         self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
-
-        if self_dict.get('docker_images'):
-            self_dict['docker_images'] = [cls._ordered(di) for di
-                                          in self_dict['docker_images']]
 
         return CBORSerializer.dumps(cls._ordered(self_dict))
 
@@ -158,13 +154,6 @@ class Task(abc.ABC):
 
             for key, value in kwargs.items():
                 setattr(self, key, value)
-
-    # TODO why do we need that instead of calling .build() directly? issue #2409
-    @classmethod
-    def build_task(cls, task_builder: TaskBuilder) -> 'Task':
-        if not isinstance(task_builder, TaskBuilder):
-            raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
-        return task_builder.build()
 
     def __init__(self, header: TaskHeader, src_code: str, task_definition):
         self.src_code = src_code

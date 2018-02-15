@@ -10,7 +10,6 @@ from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
-from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
@@ -33,7 +32,6 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
 
 @enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
-    ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFIER_CLASS = DummyTaskVerifier
 
     RESULT_EXT = ".result"

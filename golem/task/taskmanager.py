@@ -136,7 +136,7 @@ class TaskManager(TaskEventListener):
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         builder = builder_type(self.node, definition, self.dir_manager)
 
-        return Task.build_task(builder)
+        return builder.build()
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):

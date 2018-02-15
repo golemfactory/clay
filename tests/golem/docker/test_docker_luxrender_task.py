@@ -6,13 +6,15 @@ import shutil
 from typing import Tuple
 from unittest.mock import Mock, patch
 
+import unittest
 import pytest
 
+from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.core.fileshelper import find_file_with_ext
+from golem.docker.task_thread import DockerTaskThread
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType
-from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
 from .test_docker_task import DockerTaskTestCase
@@ -109,8 +111,12 @@ class TestDockerLuxrenderTask(
     def _test_luxrender_real_task(self, task: LuxTask):
         ctd = task.query_extra_data(10000).ctd
         # act
+        env_manager = Mock()
+        env_manager.get_environment_by_task_type.return_value = \
+            LuxRenderEnvironment()
         computer = LocalComputer(
             root_path=self.tempdir,
+            environments_manager=env_manager,
             success_callback=Mock(),
             error_callback=Mock(),
             compute_task_def=ctd,
@@ -150,7 +156,10 @@ class TestDockerLuxrenderTask(
     def test_luxrender_TaskTester_should_pass(self):
         task = self._get_test_task()
 
-        computer = TaskTester(task, self.tempdir, Mock(), Mock())
+        env_manager = Mock()
+        env_manager.get_environment_by_task_type.return_value = \
+            LuxRenderEnvironment()
+        computer = TaskTester(task, env_manager, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
 

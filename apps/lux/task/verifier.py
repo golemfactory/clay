@@ -111,6 +111,9 @@ class LuxRenderVerifier(RenderingVerifier):
         return filename.lower().endswith(ext.lower())
 
     def merge_flm_files(self, new_flm, subtask_info, output):
+        # a cyclic import, do not make it global
+        from apps.lux.luxenvironment import LuxRenderEnvironment
+
         if not self._check_computer():
             return False
 
@@ -122,6 +125,7 @@ class LuxRenderVerifier(RenderingVerifier):
             root_path=subtask_info["root_path"],
             success_callback=self._verify_flm_ready,
             error_callback=self._verify_flm_failure,
+            environment=LuxRenderEnvironment(),
             compute_task_def=ctd,
             resources=self.resources,
             additional_resources=[output, new_flm]

@@ -10,7 +10,6 @@ import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
-from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task import coretask
@@ -41,7 +40,6 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -318,12 +316,10 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
 class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
-        self.environment = BlenderEnvironment()
         self.compositing = False
 
 
 class BlenderRenderTask(FrameRenderingTask):
-    ENVIRONMENT_CLASS = BlenderEnvironment
     VERIFIER_CLASS = BlenderVerifier
 
     BLENDER_MIN_BOX = [8, 8]
@@ -696,6 +692,3 @@ def get_min_max_y(task_num, parts, res_y):
             max_y = max_y / res_y
     return min_y, max_y
 
-
-
-    

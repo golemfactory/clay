@@ -75,14 +75,13 @@ class TaskServer(
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager
         )
-        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        benchmarks = client.environments_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
                                                   client.datadir, benchmarks)
-        udmm = use_docker_manager
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_manager=udmm)
+            use_docker_manager=use_docker_manager)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -153,9 +152,9 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
-    def get_environment_by_id(self, env_id):
-        return self.task_keeper.environments_manager.get_environment_by_id(
-            env_id)
+    def get_environment_by_task_type(self, task_type):
+        manager = self.task_keeper.environments_manager
+        return manager.get_environment_by_task_type(task_type)
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
@@ -163,7 +162,7 @@ class TaskServer(
         if theader is None:
             return None
         try:
-            env = self.get_environment_by_id(theader.environment)
+            env = self.get_environment_by_task_type(theader.task_type)
             if env is not None:
                 performance = env.get_performance()
             else:

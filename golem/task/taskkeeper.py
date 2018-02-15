@@ -175,8 +175,8 @@ class CompTaskKeeper:
         self.dump()
 
     @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
+    def get_task_type(self, task_id):
+        return self.active_tasks[task_id].header.task_type
 
     @handle_key_error
     def get_task_header(self, task_id):
@@ -368,12 +368,19 @@ class TaskHeaderKeeper:
         :return SupportStatus: ok() if this node support environment for this
                                task, err() otherwise
         """
-        env = th_dict_repr.get("environment")
+        task_type = th_dict_repr.get("task_type")
+        env = self.environments_manager.get_environment_by_task_type(task_type)
         status = SupportStatus.ok()
-        if not self.environments_manager.accept_tasks(env):
+        if not env:
+            return SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_MISSING: task_type})
+
+        if not env.is_accepted():
             status = SupportStatus.err(
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
-        return self.environments_manager.get_support_status(env).join(status)
+        task_support_status = self.environments_manager.get_support_status(
+            env.get_id())
+        return task_support_status.join(status)
 
     def check_price(self, th_dict_repr) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum

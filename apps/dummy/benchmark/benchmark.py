@@ -3,7 +3,6 @@ from os.path import join
 from pathlib import Path
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
-from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
@@ -15,7 +14,7 @@ APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 
 
 class DummyTaskBenchmark(CoreBenchmark):
-    def __init__(self):
+    def __init__(self, env):
         self._normalization_constant = 1000  # TODO tweak that. issue #1356
         self.dummy_task_path = join(get_golem_path(),
                                     "apps", "dummy", "test_data")
@@ -27,7 +26,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.out_file_basename = td.out_file_basename
 
         td.task_id = str(uuid.uuid4())
-        td.main_program_file = DummyTaskEnvironment().main_program_file
+        td.main_program_file = env.main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
         self.verifier = DummyTaskVerifier(lambda **kwargs: None)

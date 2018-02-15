@@ -34,13 +34,6 @@ from apps.core.task.coretask import logger as logger_core
 from golem.verification.verifier import SubtaskVerificationState
 
 
-class TestBlenderDefaults(unittest.TestCase):
-
-    def test_init(self):
-        bd = BlenderDefaults()
-        self.assertTrue(path.isfile(bd.main_program_file))
-
-
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
     def test_compositing(self):
 

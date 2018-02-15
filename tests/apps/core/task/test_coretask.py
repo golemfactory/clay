@@ -560,12 +560,12 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             hash, extra_data, working_directory, perf_index)
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
+        assert ctd['task_type'] == c.header.task_type
         assert ctd['extra_data'] == extra_data
         assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['working_directory'] == working_directory
-        assert ctd['docker_images'] == c.docker_images
 
 
 class TestLogKeyError(LogTestCase):
