@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import enum
 import logging
 
@@ -53,7 +54,7 @@ class UnsupportReason(enum.Enum):
     NETWORK_REQUEST = 'cannot_perform_network_request'
 
 
-class Environment():
+class Environment(ABC):
 
     @classmethod
     def get_id(cls):
@@ -128,6 +129,13 @@ class Environment():
 
         return step * MinPerformanceMultiplier.get()
 
+    # pylint: disable=too-many-arguments
+    @abstractmethod
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        pass
+
     def description(self):
         """ Return long description of this environment
         :return str:
@@ -153,6 +161,14 @@ class Environment():
         if self.main_program_file and path.isfile(self.main_program_file):
             with open(self.main_program_file) as f:
                 return f.read()
+
+    @abstractmethod
+    def get_benchmark(self):
+        """
+        Should return a pair of benchmark and benchmark task builder.
+        :return:
+        """
+        pass
 
     @classmethod
     def run_default_benchmark(cls, save=False):

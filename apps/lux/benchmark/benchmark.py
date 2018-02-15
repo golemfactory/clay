@@ -3,7 +3,6 @@ import tempfile
 from os import walk
 from os.path import abspath, dirname, join
 
-from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderOptions
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from golem.core.common import get_golem_path
@@ -12,7 +11,7 @@ APP_DIR = join(get_golem_path(), 'apps', 'lux')
 
 
 class LuxBenchmark(RenderingBenchmark):
-    def __init__(self):
+    def __init__(self, env):
 
         RenderingBenchmark.__init__(self)
 
@@ -33,8 +32,7 @@ class LuxBenchmark(RenderingBenchmark):
         self.task_definition.options.halttime = 0
         self.task_definition.main_scene_file = join(self.lux_task_path,
                                                     "schoolcorridor.lxs")
-        self.task_definition.main_program_file =\
-            LuxRenderEnvironment().main_program_file
+        self.task_definition.main_program_file = env.main_program_file
         self.task_definition.resources = self.find_resources()
 
     def find_resources(self):

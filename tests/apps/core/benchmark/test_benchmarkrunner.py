@@ -12,8 +12,10 @@ class BenchmarkRunnerTest(TempDirFixture):
     def setUp(self):
         super(self.__class__, self).setUp()
         self.benchmark = mock.MagicMock()
+        self.environments_manager = mock.MagicMock()
         self.instance = benchmarkrunner.BenchmarkRunner(
             task=Task(None, None, None),
+            environments_manager=self.environments_manager,
             root_path=self.tempdir,
             success_callback=lambda: self._success(),
             error_callback=lambda *args: self._error(args),
@@ -179,8 +181,10 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
 
     def test_run_with_error(self):
         benchmark = mock.MagicMock()
+        environments_manager = mock.MagicMock()
         instance = benchmarkrunner.BenchmarkRunner(
             task=WrongTask(None, None, None),
+            environments_manager=environments_manager,
             root_path=self.tempdir,
             success_callback=mock.Mock(),
             error_callback=mock.Mock(),

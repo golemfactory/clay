@@ -28,7 +28,6 @@ class TestCoreTaskDefautls(TestCase):
 class TestOptions(TestCase):
     def test_option(self):
         opt = Options()
-        assert isinstance(opt.environment, Environment)
         assert opt.name == ""
         opt.add_to_resources([])
         opt.remove_from_resources([])

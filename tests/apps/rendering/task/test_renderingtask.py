@@ -24,7 +24,6 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 
-
 def _get_test_exr(alt=False):
     if not alt:
         filename = 'testfile.EXR'
@@ -35,18 +34,6 @@ def _get_test_exr(alt=False):
 
 
 class RenderingTaskMock(RenderingTask):
-
-    class ENVIRONMENT_CLASS(object):
-        main_program_file = None
-        docker_images = []
-
-        def get_id(self):
-            return "TEST"
-
-    def __init__(self, main_program_file, *args, **kwargs):
-        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
-        super(RenderingTaskMock, self).__init__(*args, **kwargs)
-
     def query_extra_data(*args, **kwargs):
         pass
 
@@ -56,13 +43,10 @@ class RenderingTaskMock(RenderingTask):
 
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
-        with self.assertLogs(logger_core, level="WARNING"):
-            rt = RenderingTaskMock(main_program_file="notexisting",
-                                   task_definition=RenderingTaskDefinition(),
-                                   owner=Node(node_name="ABC"),
-                                   total_tasks=10,
-                                   root_path=self.path
-                                   )
+        rt = RenderingTaskMock(task_definition=RenderingTaskDefinition(),
+                               owner=Node(node_name="ABC"),
+                               total_tasks=10,
+                               root_path=self.path)
         assert isinstance(rt, RenderingTask)
         assert rt.src_code == ""
 
@@ -83,7 +67,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.output_format = ".png"
 
         task = RenderingTaskMock(
-            main_program_file=files[0],
             task_definition=task_definition,
             total_tasks=100,
             root_path=self.path,
@@ -290,10 +273,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert not task._use_outer_task_collector()
         task.output_format = "TGA"
         assert not task._use_outer_task_collector()
-
-    def test_get_scene_file_path(self):
-        task = self.task
-        assert task._get_scene_file_rel_path() == ''
 
     def test_get_preview_file_path(self):
         assert self.task.get_preview_file_path() is None

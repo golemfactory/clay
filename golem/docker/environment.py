@@ -4,13 +4,14 @@ from typing import List
 import enforce
 
 from golem.docker.image import DockerImage
+from golem.docker.task_thread import DockerTaskThread
 from golem.environments.environment import (Environment, SupportStatus,
                                             UnsupportReason)
 from golem.resource.dirmanager import find_task_script
 
 
 @enforce.runtime_validation()
-class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
+class DockerEnvironment(Environment):
     def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
 
         if tag is None:
@@ -51,6 +52,27 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         descr += "\n"
 
         return descr
+
+    # pylint: disable=too-many-arguments
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        prepared_params = self.prepare_params(extra_data)
+        return DockerTaskThread(taskcomputer, subtask_id, self.docker_images,
+                                working_dir, src_code, prepared_params,
+                                short_desc, resource_dir, temp_dir,
+                                task_timeout, **kwargs)
+
+    # pylint: disable=no-self-use
+    def prepare_params(self, extra_data):
+        """
+        Prepare extra_data from CDT for docker execution. The way they
+        might be modified is depending on specifics on each docker job
+        implementation.
+        :param extra_data:
+        :return: modified extra_data
+        """
+        return extra_data
 
     @property
     @abc.abstractmethod

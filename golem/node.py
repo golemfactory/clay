@@ -358,7 +358,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("client", "Client is not available")
             return
 
-        self._setup_apps()
+        self._setup_apps_envs()
         self.client.sync()
 
         try:
@@ -368,16 +368,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
         except SystemExit:
             self._reactor.callFromThread(self._reactor.stop)
 
-    def _setup_apps(self) -> None:
-        if not self.client:
-            self._stop_on_error("client", "Client is not available")
-            return
-
+    def _setup_apps_envs(self):
         self.apps_manager.load_all_apps()
-
-        for env in self.apps_manager.get_env_list():
-            env.accept_tasks = True
-            self.client.environments_manager.add_environment(env)
+        self.client.environments_manager.load_all_envs(
+            self.client.datadir,
+            self._mainnet)
 
     def _error(self, msg: str) -> Callable:
         return functools.partial(self._stop_on_error, msg)

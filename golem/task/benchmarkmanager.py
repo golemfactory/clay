@@ -11,7 +11,6 @@ from golem.environments.environment import Environment as DefaultEnvironment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -63,8 +62,9 @@ class BenchmarkManager(object):
         builder = task_builder(Node(),
                                task_state.definition,
                                self.dir_manager)
-        t = Task.build_task(builder)
-        br = BenchmarkRunner(t, self.task_server.client.datadir,
+        t = builder.build()
+        br = BenchmarkRunner(t, self.task_server.client.environments_manager,
+                             self.task_server.client.datadir,
                              success_callback, error_callback,
                              benchmark)
         br.run()

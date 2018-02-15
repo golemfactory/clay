@@ -3,9 +3,9 @@ from os import path
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.testutils import DatabaseFixture
 
-from golem.environments.environment import Environment
 from golem.model import Performance
 from golem.testutils import PEP8MixIn
+from tests.golem.environments.test_environment_class import DummyTestEnvironment
 
 
 class EnvTest(DatabaseFixture, PEP8MixIn):
@@ -13,12 +13,12 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
 
     def setUp(self):
         super().setUp()
-        self.env = Environment()
+        self.env = DummyTestEnvironment()
 
     def test_get_performance(self):
         # given
         perf_value = 6666.6
-        perf = Performance(environment_id=Environment.get_id(),
+        perf = Performance(environment_id=DummyTestEnvironment.get_id(),
                            value=perf_value)
         perf.save()
 
@@ -62,9 +62,9 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
         assert self.env.check_software()
 
     def test_run_default_benchmark(self):
-        assert Environment.get_performance() == 0.0
-        assert Environment.run_default_benchmark(save=True) > 0.0
-        assert Environment.get_performance() > 0.0
+        assert DummyTestEnvironment.get_performance() == 0.0
+        assert DummyTestEnvironment.run_default_benchmark(save=True) > 0.0
+        assert DummyTestEnvironment.get_performance() > 0.0
 
     def test_get_min_accepted_performance_default(self):
         self.assertEqual(MinPerformanceMultiplier.get(), 0.0)
@@ -80,3 +80,4 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
         # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
+

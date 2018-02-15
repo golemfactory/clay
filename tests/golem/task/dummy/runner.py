@@ -27,6 +27,7 @@ from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.task.taskcomputer import PyTaskThread
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
@@ -196,12 +197,33 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
-    client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
+
+    class DummyEnvironment(Environment):
+        ENVIRONMENT_NAME = 'DUMMY'
+
+        @classmethod
+        def get_id(cls):
+            return cls.ENVIRONMENT_NAME
+
+        def __init__(self):
+            super(DummyEnvironment, self).__init__()
+            self.allow_custom_main_program_file = True
+
+        # pylint: disable=too-many-arguments
+        def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                            src_code, extra_data, task_timeout,
+                            working_dir, resource_dir, temp_dir, **kwargs):
+            return PyTaskThread(taskcomputer, subtask_id, working_dir,
+                                src_code, extra_data, short_desc,
+                                resource_dir, temp_dir, task_timeout)
+
+        def get_benchmark(self):
+            return None, None
 
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
-    client.environments_manager.add_environment(dummy_env)
+    client.environments_manager.add_environment(DummyTask.TASK_TYPE, dummy_env)
 
     report("Connecting to requesting node at {}:{} ..."
            .format(peer_address.address, peer_address.port))

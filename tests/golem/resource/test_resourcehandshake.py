@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch, ANY
 from golem_messages import message
 from twisted.internet.defer import Deferred
 
+from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
@@ -561,6 +562,9 @@ class TestResourceHandshakeShare(DatabaseFixture):
         from golem.task.taskserver import TaskServer
 
         client = Mock(datadir=session.data_dir)
+        client.environments_manager = EnvironmentsManager()
+        client.environments_manager.load_all_envs(None, False)
+
         dir_manager = DirManager(session.data_dir)
 
         resource_manager = HyperdriveResourceManager(dir_manager=dir_manager)

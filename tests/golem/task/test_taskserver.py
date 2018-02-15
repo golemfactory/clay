@@ -39,7 +39,7 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "task_id": generate_id(key_id),
-        "environment": "DEFAULT",
+        "task_type": "Dummy",
         "task_owner": dict(
             key=encode_hex(key_id)[2:],
             node_name="ABC",
@@ -826,6 +826,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = task_mock.header.task_id
         extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['task_type'] = "DEFAULT"
         extra_data.should_wait = False
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
@@ -864,6 +865,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['task_type'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")

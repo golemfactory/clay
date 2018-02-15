@@ -29,16 +29,17 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
-
-
-    def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
+    # pylint: disable=too-many-arguments
+    def __init__(self, task: Task, environments_manager,
+                 root_path, success_callback, error_callback,
+                 benchmark: CoreBenchmark) -> None:
         def get_compute_task_def():
             return task.query_extra_data(10000).ctd
 
         super().__init__(root_path=root_path,
+                         environments_manager=environments_manager,
                          success_callback=success_callback,
                          error_callback=error_callback,
-                         # ugly lambda, should think of something prettier
                          get_compute_task_def=get_compute_task_def,
                          check_mem=True,
                          comp_failed_warning=BenchmarkRunner.RUNNER_WARNING,
@@ -46,11 +47,6 @@ class BenchmarkRunner(LocalComputer):
                          resources=task.get_resources())
         # probably this could be done differently
         self.benchmark = benchmark
-
-    def _get_task_thread(self, ctd):
-        if not ctd['docker_images']:
-            raise Exception("No docker container found")
-        return super(BenchmarkRunner, self)._get_task_thread(ctd)
 
     def is_success(self, task_thread):
         if not task_thread.result:
