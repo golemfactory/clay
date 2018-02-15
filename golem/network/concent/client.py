@@ -93,10 +93,6 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     return response.content or None
 
 
-def receive_from_concent():
-    pass
-
-
 class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
