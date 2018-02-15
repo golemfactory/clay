@@ -107,12 +107,13 @@ class HyperdriveDaemonManager(object):
 
     @report_calls(Component.hyperdrive, 'instance.connect')
     def _start(self, *_):
+        self._check_version()
+
         # do not supervise already running processes
         addresses = self.addresses()
         if addresses:
             return
 
-        self._check_version()
         process = self._create_sub()
 
         if process.poll() is None:
