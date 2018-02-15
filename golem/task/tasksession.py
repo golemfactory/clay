@@ -372,6 +372,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
+        # if the Concent is not available in the context of this subtask
+        # we can only assume that `ReportComputedTask` above reaches
+        # the requestor safely
+        if not task_to_compute.concent_enabled:
+            return
+
         # we're preparing the `ForceReportComputedTask` here and
         # scheduling the dispatch of that message for later
         # (with an implicit delay in the concent service's `submit` method).
@@ -491,6 +497,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
+                # for now, we're assuming the Concent
+                # is always in use
+                concent_enabled=True,
             )
             self.send(msg)
         elif wait:
