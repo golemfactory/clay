@@ -15,7 +15,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         "golemapp.py",
     ]
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
@@ -39,7 +39,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                 assert '-u' not in sys.argv
 
     @patch('golem.core.common.config_logging')
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
 

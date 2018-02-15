@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
-from golem.node import OptNode
+from golem.node import Node
 
 from golem.task.taskbase import ResultType
 from golem.resource.dirmanager import DirManager
@@ -97,7 +97,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.start = Mock()
         self.node.client.datadir = self.path
         self.node._run()
