@@ -58,8 +58,11 @@ class HyperdriveDaemonManager(object):
 
     def version(self) -> Optional[semantic_version.Version]:
         try:
-            output = self._client.id().get('version')
-        except requests.ConnectionError:
+            output = self._client.id()['version']
+        except requests.ConnectionError:  # not running
+            output = None
+        except KeyError:  # API version too low - no version in response
+            # FIXME: return None after upgrading to 0.2.5
             output = None
 
         if not output:

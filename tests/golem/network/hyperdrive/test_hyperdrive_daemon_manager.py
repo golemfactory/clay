@@ -132,9 +132,15 @@ class TestHyperdriveDaemonManager(TempDirFixture):
 
     def test_version_from_process(self):
         err = requests.ConnectionError
+        response = dict(id='id')
 
         with patch('subprocess.check_output', return_value=b'0.2.5'):
             with patch.object(self.dm._client, 'id', side_effect=err):
+
+                assert self.dm.version() == semantic_version.Version('0.2.5')
+
+        with patch('subprocess.check_output', return_value=b'0.2.5'):
+            with patch.object(self.dm._client, 'id', return_value=response):
 
                 assert self.dm.version() == semantic_version.Version('0.2.5')
 
