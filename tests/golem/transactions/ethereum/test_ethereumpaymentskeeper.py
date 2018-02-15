@@ -2,9 +2,8 @@ from rlp.utils import decode_hex
 from sha3 import sha3_256
 
 from golem.transactions.paymentskeeper import PaymentsKeeper
-from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo,
-                                                                EthereumAddress,
-                                                                logger)
+from golem.transactions.ethereum.ethereumpaymentskeeper import (
+    EthAccountInfo, EthereumAddress, logger)
 from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.testutils import (TempDirFixture, PEP8MixIn)
@@ -51,6 +50,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
 
 
 class TestEthAccountInfo(TempDirFixture):
+
     def test_comparison(self):
         k = EllipticalKeysAuth(self.path)
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
@@ -75,6 +75,7 @@ class TestEthAccountInfo(TempDirFixture):
 
 
 class TestEthereumAddress(LogTestCase):
+
     def test_init(self):
         addr1 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
         e = EthereumAddress(addr1)

@@ -19,6 +19,7 @@ def mock_sci():
 
 
 class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
+
     def setUp(self):
         super(TestPaymentProcessorWithDB, self).setUp()
         random.seed()
@@ -26,8 +27,12 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
             sci=mock_sci()
         )
 
-    @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance", return_value=2**100)  # noqa
-    @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.gnt_balance", return_value=2**11)  # noqa
+    @mock.patch(
+        "golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance",
+        return_value=[2**100, 666174600])
+    @mock.patch(
+        "golem.ethereum.paymentprocessor.PaymentProcessor.gnt_balance",
+        return_value=[2**11, 666174600])
     def test_load_from_db(self, gnt_balance_mock, eth_balance_mock):
         self.assertEqual([], self.payment_processor._awaiting)
 

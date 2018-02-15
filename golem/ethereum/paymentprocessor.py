@@ -118,7 +118,10 @@ class PaymentProcessor(LoopingCallService):
                 )
                 self.last_gnt_update = datetime.now().timestamp()
 
-        return [self.__gnt_balance + self.__gntw_balance, self.last_gnt_update]
+        return [
+            self.__gnt_balance + self.__gntw_balance,
+            self.last_gnt_update
+        ]
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
@@ -197,7 +200,8 @@ class PaymentProcessor(LoopingCallService):
 
         # we need to take either all payments with given processed_ts or none
         if ind < len(payments):
-            while ind > 0 and payments[ind - 1].processed_ts == payments[ind].processed_ts:  # noqa
+            while ind > 0 and
+            payments[ind - 1].processed_ts == payments[ind].processed_ts:
                 ind -= 1
 
         return payments[:ind], payments[ind:]

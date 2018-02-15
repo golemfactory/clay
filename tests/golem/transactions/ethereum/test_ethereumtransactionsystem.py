@@ -18,7 +18,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_init(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
-        assert type(e.get_payment_address()) is str
+        assert isinstance(e.get_payment_address(), str)
         e.stop()
 
     def test_invalid_private_key(self):
@@ -38,7 +38,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (None, None, None)
+        assert e.get_balance() == (None, None, None, None, None)
         e.stop()
 
     @mock.patch('golem.core.service.LoopingCallService.running',
@@ -52,12 +52,12 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             self.web3 = MagicMock()
 
         with patch('twisted.internet.task.LoopingCall.start'), \
-            patch('twisted.internet.task.LoopingCall.stop'), \
-            patch('golem_sci.new_sci'), \
-            patch(pkg + 'node.NodeProcess.start'), \
-            patch(pkg + 'node.NodeProcess.stop'), \
-            patch(pkg + 'node.NodeProcess.__init__', _init), \
-            patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+                patch('twisted.internet.task.LoopingCall.stop'), \
+                patch('golem_sci.new_sci'), \
+                patch(pkg + 'node.NodeProcess.start'), \
+                patch(pkg + 'node.NodeProcess.stop'), \
+                patch(pkg + 'node.NodeProcess.__init__', _init), \
+                patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
