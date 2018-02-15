@@ -596,7 +596,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session._react_to_reject_report_computed_task(msg_ack)
         assert session.concent_service.cancel.called
 
-
     def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
@@ -689,31 +688,19 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         testutils.DatabaseFixture.setUp(self)
         testutils.TempDirFixture.setUp(self)
         history.MessageHistoryService()
+        self.ts = TaskSession(mock.Mock())
+        self.n = Node()
+        self.task_id = str(uuid.uuid4())
+        self.subtask_id = str(uuid.uuid4())
+        self.node_id = str(uuid.uuid4())
 
     def tearDown(self):
         testutils.DatabaseFixture.tearDown(self)
         testutils.TempDirFixture.tearDown(self)
         history.MessageHistoryService.instance = None
 
-    def test_send_report_computed_task_concent_no_message(self):
-        ts = TaskSession(mock.Mock())
-        n = Node()
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.DATA,
-                                13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n, package_sha1="deadbeef")
-        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-        ts.concent_service.submit.assert_not_called()
-
-    def test_send_report_computed_task_concent_success(self):
-        ts = TaskSession(mock.Mock())
-        n = Node()
-        task_id = str(uuid.uuid4())
-        subtask_id = str(uuid.uuid4())
-        node_id = str(uuid.uuid4())
-        wtr = WaitingTaskResult(task_id, subtask_id, "result", ResultType.DATA,
-                                13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n, package_sha1="deadbeef")
-        task_to_compute = message.TaskToCompute()
+    def _mock_task_to_compute(self, task_id, subtask_id, node_id, **kwargs):
+        task_to_compute = message.TaskToCompute(**kwargs)
         nmsg_dict = dict(
             task=task_id,
             subtask=subtask_id,
@@ -726,61 +713,72 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         )
         service = history.MessageHistoryService.instance
         service.add_sync(nmsg_dict)
-        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-        ts.concent_service.submit.assert_called_once_with(
+
+    def test_send_report_computed_task_concent_no_message(self):
+        wtr = factories.taskserver.WaitingTaskResultFactory(owner=self.n)
+        self.ts.send_report_computed_task(
+            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+        self.ts.concent_service.submit.assert_not_called()
+
+    def test_send_report_computed_task_concent_success(self):
+        wtr = factories.taskserver.WaitingTaskResultFactory(
+            task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n)
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+        self.ts.send_report_computed_task(
+            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+        self.ts.concent_service.submit.assert_called_once_with(
             concent_client.ConcentRequest.build_key(
-                subtask_id,
+                self.subtask_id,
                 'ForceReportComputedTask',
             ),
             mock.ANY,
         )
-        msg = ts.concent_service.submit.call_args[0][1]
+        msg = self.ts.concent_service.submit.call_args[0][1]
         self.assertEqual(
             msg.result_hash,
-            'sha1:deadbeef',
+            'sha1:' + wtr.package_sha1,
         )
 
     def test_send_report_computed_task_concent_success_many_files(self):
-        ts = TaskSession(mock.Mock())
-        n = Node()
-        task_id = str(uuid.uuid4())
-        subtask_id = str(uuid.uuid4())
-        node_id = str(uuid.uuid4())
         result = []
         for i in range(100, 300, 99):
             p = pathlib.Path(self.tempdir) / str(i)
             with p.open('wb') as f:
                 f.write(b'\0' * i * 2 ** 20)
             result.append(str(p))
-        wtr = WaitingTaskResult(task_id, subtask_id, result, ResultType.FILES,
-                                13190, 10, 0, "10.10.10.10",
-                                30102, "key1", n, package_sha1="deadbeef")
-        task_to_compute = message.TaskToCompute()
-        nmsg_dict = dict(
-            task=task_id,
-            subtask=subtask_id,
-            node=node_id,
-            msg_date=datetime.datetime.now(),
-            msg_cls='TaskToCompute',
-            msg_data=pickle.dumps(task_to_compute),
-            local_role=model.Actor.Provider,
-            remote_role=model.Actor.Requestor,
+
+        wtr = factories.taskserver.WaitingTaskResultFactory(
+            task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n,
+            result=result, result_type=ResultType.FILES
         )
-        service = history.MessageHistoryService().instance
-        service.add_sync(nmsg_dict)
-        ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
-        ts.concent_service.submit.assert_called_once_with(
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+
+        self.ts.send_report_computed_task(
+            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+
+        self.ts.concent_service.submit.assert_called_once_with(
             concent_client.ConcentRequest.build_key(
-                subtask_id,
+                self.subtask_id,
                 'ForceReportComputedTask',
             ),
             mock.ANY,
         )
-        msg = ts.concent_service.submit.call_args[0][1]
+        msg = self.ts.concent_service.submit.call_args[0][1]
         self.assertEqual(
             msg.result_hash,
-            'sha1:deadbeef',
+            'sha1:' + wtr.package_sha1,
         )
+
+    def test_send_report_computed_task_concent_disabled(self):
+        wtr = factories.taskserver.WaitingTaskResultFactory(
+            task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n)
+
+        self._mock_task_to_compute(
+            self.task_id, self.subtask_id, self.node_id, concent_enabled=False)
+
+        self.ts.send_report_computed_task(
+            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+        self.ts.concent_service.submit.assert_not_called()
 
 
 def executor_success(req, success, error):
