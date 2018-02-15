@@ -66,11 +66,13 @@ class HyperdriveDaemonManager(object):
             try:
                 command = [self._executable, '--version']
                 output = subprocess.check_output(command)
-                return semantic_version.Version(output.strip())
+                output = output.decode('utf-8')
             except (OSError, UnicodeDecodeError):
                 pass
 
-        return None
+        if not output:
+            return None
+        return semantic_version.Version(output.strip())
 
     def _get_addresses(self):
         if not self._addresses:
