@@ -14,11 +14,9 @@ from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
                                     Deferred)
 
 import golem
-from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL,
-                             TASKARCHIVE_MAINTENANCE_INTERVAL,
+from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL)
-from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.clientconfigdescriptor import ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
@@ -53,11 +51,9 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
-    Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -87,14 +83,14 @@ class Client(HardwarePresetsMixin):
     def __init__(
             self,
             datadir,
+            config_desc,
             transaction_system=False,
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
             start_geth=False,
             start_geth_port=None,
-            geth_address=None,
-            **config_overrides):
+            geth_address=None):
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -104,17 +100,7 @@ class Client(HardwarePresetsMixin):
         self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
-        config = AppConfig.load_config(datadir)
-        self.config_desc = ClientConfigDescriptor()
-        self.config_desc.init_from_app_config(config)
-
-        for key, val in list(config_overrides.items()):
-            if not hasattr(self.config_desc, key):
-                self.quit()  # quit only closes underlying services (for now)
-                raise AttributeError(
-                    "Can't override nonexistent config entry '{}'".format(key))
-            setattr(self.config_desc, key, val)
-
+        self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
         log.info(
@@ -168,8 +154,6 @@ class Client(HardwarePresetsMixin):
                     interval_seconds=max(
                         1, int(clean_resources_older_than / 10)),
                     older_than_seconds=clean_resources_older_than))
-
-        self.cfg = config
 
         self.ranking = Ranking(self)
 
@@ -854,7 +838,6 @@ class Client(HardwarePresetsMixin):
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.cfg.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:

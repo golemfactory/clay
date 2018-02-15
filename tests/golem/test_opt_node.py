@@ -1,8 +1,10 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
 
 import golem.argsparser as argsparser
+from golem.appconfig import AppConfig
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -54,7 +56,10 @@ class TestNode(TestWithDatabase):
         init_call_args = init_call[1]
         init_call_kwargs = init_call[2]
         self.assertEqual(init_call_args, ())
-        self.assertEqual(init_call_kwargs.get('node_address'), node_address)
+        self.assertEqual(
+            init_call_kwargs.get('config_desc').node_address,
+            node_address,
+        )
 
     @patch('golem.node.Node.run')
     @patch('golem.docker.manager.DockerManager')
@@ -72,13 +77,17 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_client.assert_called_with(datadir=self.path,
+                                       config_desc=ANY,
                                        geth_address=None,
-                                       node_address=node_address,
                                        start_geth=False,
                                        start_geth_port=None,
                                        transaction_system=True,
                                        use_docker_machine_manager=True,
                                        use_monitor=True)
+        self.assertEqual(
+            node_address,
+            mock_client.mock_calls[0][2]['config_desc'].node_address,
+        )
 
     def test_invalid_node_address_should_fail(self, *_):
         runner = CliRunner()
@@ -104,8 +113,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     config_desc=ANY,
                                      geth_address=geth_address,
-                                     node_address=None,
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
@@ -125,8 +134,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_client.assert_called_with(datadir=self.path,
+                                       config_desc=ANY,
                                        geth_address=geth_address,
-                                       node_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
                                        transaction_system=True,
@@ -178,8 +187,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     config_desc=ANY,
                                      geth_address=None,
-                                     node_address=None,
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
@@ -198,8 +207,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_client.assert_called_with(datadir=self.path,
+                                       config_desc=ANY,
                                        geth_address=None,
-                                       node_address=None,
                                        start_geth=True,
                                        start_geth_port=None,
                                        transaction_system=True,
@@ -232,8 +241,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     config_desc=ANY,
                                      geth_address=None,
-                                     node_address=None,
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
@@ -254,8 +263,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_client.assert_called_with(datadir=self.path,
+                                       config_desc=ANY,
                                        geth_address=None,
-                                       node_address=None,
                                        start_geth=True,
                                        start_geth_port=port,
                                        transaction_system=True,
@@ -330,6 +339,7 @@ class TestNode(TestWithDatabase):
         ]
 
         for address in ok_addresses + skip_addresses:
+            AppConfig._AppConfig__loaded_configs = set()
             return_value = runner.invoke(
                 start, self.args + address,
                 catch_exceptions=False
@@ -337,6 +347,7 @@ class TestNode(TestWithDatabase):
             assert return_value.exit_code == 0
 
         for address in bad_addresses:
+            AppConfig._AppConfig__loaded_configs = set()
             return_value = runner.invoke(
                 start, self.args + address,
                 catch_exceptions=False
@@ -364,11 +375,13 @@ class TestOptNode(TempDirFixture):
     def test_start_rpc_router(self, reactor, router, *_):
         from golem.rpc.session import WebSocketAddress
 
+        config_desc = ClientConfigDescriptor()
+        config_desc.rpc_address = '127.0.0.1'
+        config_desc.rpc_port = 12345
         self.node = Node(
             self.path,
+            config_desc,
             use_docker_machine_manager=False,
-            rpc_address='127.0.0.1',
-            rpc_port=12345,
         )
 
         config = self.node.client.config_desc
@@ -393,6 +406,7 @@ class TestOptNode(TempDirFixture):
         )
         self.node = Node(
             self.path,
+            ClientConfigDescriptor(),
             use_docker_machine_manager=False,
             peers=self.parsed_peer,
         )
@@ -412,7 +426,11 @@ class TestOptNode(TempDirFixture):
     def test_setup_with_docker(self, docker_manager, *_):
         docker_manager.return_value = docker_manager
 
-        self.node = Node(self.path, use_docker_machine_manager=True)
+        self.node = Node(
+            self.path,
+            ClientConfigDescriptor(),
+            use_docker_machine_manager=True,
+        )
 
         self.node._setup_docker = Mock()
         self.node.client.connect = Mock()
