@@ -13,7 +13,7 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.p2p.node import Node
@@ -281,7 +281,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_add_task_header(self, *_):
-        keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "2"))
+        keys_auth_2 = KeysAuth(os.path.join(self.path, "2"))
 
         ts = self.ts
 

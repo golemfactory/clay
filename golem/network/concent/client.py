@@ -108,7 +108,7 @@ class ConcentClientService(threading.Thread):
     MAX_GRACE_TIME = 5 * 60  # s
     GRACE_FACTOR = 2  # n times on each failure
 
-    def __init__(self, keys_auth: keysauth.EllipticalKeysAuth, enabled=True):
+    def __init__(self, keys_auth: keysauth.KeysAuth, enabled=True):
         super().__init__(daemon=True)
 
         self.keys_auth = keys_auth

@@ -7,7 +7,7 @@ import uuid
 
 from twisted.internet.defer import Deferred
 
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
@@ -65,7 +65,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        self.keys_auth = EllipticalKeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path)
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,

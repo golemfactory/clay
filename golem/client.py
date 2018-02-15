@@ -24,7 +24,7 @@ from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
@@ -131,7 +131,7 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = EllipticalKeysAuth(
+        self.keys_auth = KeysAuth(
             self.datadir,
             difficulty=self.config_desc.key_difficulty)
 

@@ -6,7 +6,7 @@ import uuid
 
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import MAX_STORED_HOSTS, KnownHosts
 from golem.network.p2p import peersession
@@ -22,7 +22,7 @@ class TestP2PService(testutils.DatabaseFixture):
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
-        self.keys_auth = EllipticalKeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path)
         self.service = P2PService(
             None,
             ClientConfigDescriptor(),
@@ -79,7 +79,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_add_to_peer_keeper(self):
         node = Node()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV").key_id
+        node.key = KeysAuth(self.path, "TESTPRIV").key_id
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
@@ -109,7 +109,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_remove_old_peers(self):
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV").key_id
+        node.key = KeysAuth(self.path, "TESTPRIV").key_id
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -130,12 +130,12 @@ class TestP2PService(testutils.DatabaseFixture):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV").key_id
+        node.key = KeysAuth(self.path, "TESTPRIV").key_id
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
-        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2").key_id
+        node2.key = KeysAuth(self.path, "TESTPRIV2").key_id
         node2.key_id = node2.key
         node2.address = sa
 
@@ -159,7 +159,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = EllipticalKeysAuth(self.path, "TESTPRIV").key_id
+        key_id = KeysAuth(self.path, "TESTPRIV").key_id
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -217,7 +217,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_sync_free_peers(self):
         node = mock.MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "PRIVTEST").key_id
+        node.key = KeysAuth(self.path, "PRIVTEST").key_id
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -320,7 +320,7 @@ class TestP2PService(testutils.DatabaseFixture):
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1")
+        keys_auth2 = KeysAuth(self.path, "PUBTESTPATH1")
         ps2.key_id = keys_auth2.key_id
         self.service.add_peer(keys_auth2.key_id, ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)

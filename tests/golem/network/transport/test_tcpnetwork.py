@@ -12,7 +12,7 @@ from golem_messages import message
 
 from golem import testutils
 from golem.core.common import config_logging
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import BUFF_SIZE
 from golem.network.transport import tcpnetwork
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
@@ -57,7 +57,7 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        self.ek = EllipticalKeysAuth(self.path)
+        self.ek = KeysAuth(self.path)
         for args in datas:
             self.__producer_consumer_test(
                 *args,
@@ -141,7 +141,7 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
             [self.tmp_file1, self.tmp_file2, self.tmp_file3],
             32,
             session=MagicMock())
-        self.ek = EllipticalKeysAuth(self.path)
+        self.ek = KeysAuth(self.path)
         self.__producer_consumer_test(
             [],
             file_producer_cls=EncryptFileProducer,

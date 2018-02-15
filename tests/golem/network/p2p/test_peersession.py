@@ -14,7 +14,7 @@ from pydispatch import dispatcher
 import golem
 from golem import clientconfigdescriptor
 from golem import testutils
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
 from golem.network.p2p.node import Node
@@ -41,7 +41,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         random.seed()
         self.peer_session = PeerSession(mock.MagicMock())
         node = p2p_factories.Node()
-        keys_auth = EllipticalKeysAuth(self.path)
+        keys_auth = KeysAuth(self.path)
         self.peer_session.conn.server = \
             self.peer_session.p2p_service = P2PService(
                 node=node,
@@ -356,7 +356,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = EllipticalKeysAuth(self.path)
+        keys_auth = KeysAuth(self.path)
 
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)

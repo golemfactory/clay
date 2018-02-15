@@ -12,8 +12,6 @@ from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 
-KEYS_SUBDIR = 'keys'
-
 logger = logging.getLogger(__name__)
 
 
@@ -52,11 +50,12 @@ def get_random_float() -> float:
     return float(result - 1) / float(10 ** len(str(result)))
 
 
-class EllipticalKeysAuth:
+class KeysAuth:
     """
-    Elliptical curves cryptographic authorization manager. Create and keeps
-    private and public keys based on ECC (curve secp256k1).
+    Elliptical curves cryptographic authorization manager. Generates
+    private and public keys based on ECC (curve secp256k1). Keeps only private.
     """
+    KEYS_SUBDIR = 'keys'
     PRIV_KEY_LEN = 32
     PUB_KEY_LEN = 64
     HEX_PUB_KEY_LEN = 128
@@ -79,38 +78,32 @@ class EllipticalKeysAuth:
         :param datadir where to store files
         :param private_key_name: name of the file containing private key
         :param difficulty:
-            desired key difficulty level.
-            It's a number of leading zeros in binary representation of
-            public key. Works with floats too.
-            Value in range <0, 256>. 0 is not difficult.
-            Maximum is impossible.
+            desired key difficulty level. It's a number of leading zeros in
+            binary representation of public key. Value in range <0, 255>.
+            0 accepts all keys, 255 is nearly impossible.
         """
 
-        keys_dir = EllipticalKeysAuth._get_or_create_keys_dir(datadir)
-        self._private_key_path = os.path.join(keys_dir, private_key_name)
+        keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
+        path = os.path.join(keys_dir, private_key_name)
 
-        loaded_keys = EllipticalKeysAuth._load_and_check_keys(
-            self._private_key_path, difficulty)
-
+        loaded_keys = KeysAuth._load_and_check_keys(path, difficulty)
         if loaded_keys:
             priv_key, pub_key = loaded_keys
         else:
-            priv_key, pub_key = self._generate_new_keys(difficulty)
+            priv_key, pub_key = KeysAuth._generate_keys(difficulty)
+            KeysAuth._save_private_key(priv_key, path)
 
-        self._setup_keys(priv_key, pub_key, difficulty)
-
-    def _setup_keys(self, priv_key: bytes, pub_key: bytes, difficulty: int):
-        self._private_key = priv_key
-        self.public_key = pub_key
         self.difficulty = difficulty
+        self._private_key = priv_key
+        self._private_key_path = path
+        self.public_key = pub_key
         self.key_id = encode_hex(pub_key)
-        self.ecc = ECCx(raw_privkey=priv_key)
-        self._save_private_key()
+        self.ecc = ECCx(priv_key)
 
     @staticmethod
     def _get_or_create_keys_dir(datadir):
         path = datadir or get_local_datadir('default')
-        keys_dir = os.path.join(path, KEYS_SUBDIR)
+        keys_dir = os.path.join(path, KeysAuth.KEYS_SUBDIR)
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir)
         return keys_dir
@@ -126,21 +119,20 @@ class EllipticalKeysAuth:
         except FileNotFoundError:
             return None
 
-        if not len(priv_key) == EllipticalKeysAuth.PRIV_KEY_LEN:
-            logger.error("Unexpected private key size: %d. "
-                         "Will create new keys.", len(priv_key))
+        if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
+            logger.error("Wrong loaded private key size: %d." % len(priv_key))
             return None
 
         pub_key = privtopub(priv_key)
 
-        if not EllipticalKeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            logger.warning("Current key is not difficult enough. "
-                           "Will create new keys.")
+        if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
+            logger.warning("Loaded key is not difficult enough.")
             return None
 
         return priv_key, pub_key
 
-    def _save_private_key(self):
+    @staticmethod
+    def _save_private_key(key, key_path):
         def backup_file(path):
             if os.path.exists(path):
                 logger.info("Backing up existing private key.")
@@ -149,65 +141,9 @@ class EllipticalKeysAuth:
                 filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
                 os.rename(path, os.path.join(dirname, filename_bak))
 
-        backup_file(self._private_key_path)
-        with open(self._private_key_path, 'wb') as f:
-            f.write(self._private_key)
-
-    def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
-        """ Encrypt given data with ECIES
-        :param data: data that should be encrypted
-        :param public_key: *Default: None* public key that should be used to
-                           encrypt data. Public key may be in digest (len == 64)
-                           or hexdigest (len == 128).
-        If public key is None then default public key will be used.
-        :return: encrypted data
-        """
-        if public_key is None:
-            public_key = self.public_key
-        if len(public_key) == EllipticalKeysAuth.HEX_PUB_KEY_LEN:
-            public_key = decode_hex(public_key)
-        return ECCx.ecies_encrypt(data, public_key)
-
-    def decrypt(self, data: bytes) -> bytes:
-        """ Decrypt given data with ECIES
-        :param data: encrypted data
-        :return: decrypted data
-        """
-        return self.ecc.ecies_decrypt(data)
-
-    def sign(self, data: bytes) -> bytes:
-        """ Sign given data with ECDSA
-        sha3 is used to shorten the data and speedup calculations
-        :param data: data to be signed
-        :return: signed data
-        """
-        return self.ecc.sign(data)
-
-    def verify(self, sig: bytes, data: bytes,
-               public_key: Optional[bytes] = None) -> bool:
-        """
-        Verify the validity of an ECDSA signature
-        sha3 is used to shorten the data and speedup calculations
-        :param sig: ECDSA signature
-        :param data: expected data
-        :param public_key: *Default: None* public key that should be used to
-                           verify signed data.
-        Public key may be in digest (len == 64) or hexdigest (len == 128).
-        If public key is None then default public key will be used.
-        :return bool: verification result
-        """
-
-        try:
-            if public_key is None:
-                public_key = self.public_key
-            if len(public_key) == EllipticalKeysAuth.HEX_PUB_KEY_LEN:
-                public_key = decode_hex(public_key)
-            return ecdsa_verify(public_key, sig, data)
-        except AssertionError:
-            logger.info("Wrong key format")
-        except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc))
-        return False
+        backup_file(key_path)
+        with open(key_path, 'wb') as f:
+            f.write(key)
 
     @staticmethod
     def _count_max_hash(difficulty: int) -> int:
@@ -218,36 +154,26 @@ class EllipticalKeysAuth:
                             difficulty: int) -> bool:
         if isinstance(pub_key, str):
             pub_key = decode_hex(pub_key)
-        return sha2(pub_key) < EllipticalKeysAuth._count_max_hash(difficulty)
+        return sha2(pub_key) < KeysAuth._count_max_hash(difficulty)
 
     def is_difficult(self, difficulty: int) -> bool:
         return self.is_pubkey_difficult(self.public_key, difficulty)
 
     @staticmethod
-    def _generate_new_keys(difficulty: int) -> Tuple[bytes, bytes]:
+    def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
         logger.info("Generating new key pair.")
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
-            if EllipticalKeysAuth.is_pubkey_difficult(pub_key, difficulty):
+            if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
         return priv_key, pub_key
-
-    # TODO: unused? remove!
-    def generate_new(self, difficulty: int) -> None:
-        """ Generate new pair of keys with given difficulty
-
-        :param difficulty: see __init__
-        :raise TypeError: in case of incorrect @difficulty type
-        """
-        priv_key, pub_key = self._generate_new_keys(difficulty)
-        self._setup_keys(priv_key, pub_key, difficulty)
 
     def get_difficulty(self, key_id: Optional[str] = None) -> float:
         """
         Calculate key's difficulty.
         This is more expensive to calculate than is_difficult, so use
-        the latter if you can.
+        the latter if possible.
 
         :param key_id: *Default: None* count difficulty of given key.
                        If key_id is None then use default key_id
@@ -257,3 +183,55 @@ class EllipticalKeysAuth:
             return self.difficulty
 
         return 256 - math.log2(sha2(decode_hex(key_id)))
+
+    def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
+        """ Encrypt given data with ECIES.
+
+        :param data: data that should be encrypted
+        :param public_key: *Default: None* public key that should be used to
+        encrypt data. Public key may be in digest (len == 64) or hexdigest (len
+        == 128). If public key is None then default public key will be used.
+        :return: encrypted data
+        """
+        if public_key is None:
+            public_key = self.public_key
+        if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
+            public_key = decode_hex(public_key)
+        return ECCx.ecies_encrypt(data, public_key)
+
+    def decrypt(self, data: bytes) -> bytes:
+        """ ecrypt given data with ECIES."""
+        return self.ecc.ecies_decrypt(data)
+
+    def sign(self, data: bytes) -> bytes:
+        """ Sign given data with ECDSA;
+        sha3 is used to shorten the data and speedup calculations.
+        """
+        return self.ecc.sign(data)
+
+    def verify(self, sig: bytes, data: bytes,
+               public_key: Optional[bytes] = None) -> bool:
+        """
+        Verify the validity of an ECDSA signature;
+        sha3 is used to shorten the data and speedup calculations.
+
+        :param sig: ECDSA signature
+        :param data: expected data
+        :param public_key: *Default: None* public key that should be used to
+            verify signed data. Public key may be in digest (len == 64) or
+            hexdigest (len == 128). If public key is None then default public
+            key will be used.
+        :return bool: verification result
+        """
+
+        try:
+            if public_key is None:
+                public_key = self.public_key
+            if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
+                public_key = decode_hex(public_key)
+            return ecdsa_verify(public_key, sig, data)
+        except AssertionError:
+            logger.info("Wrong key format")
+        except Exception as exc:
+            logger.error("Cannot verify signature: {}".format(exc))
+        return False
