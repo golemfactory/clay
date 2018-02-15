@@ -841,6 +841,7 @@ class GetTaskMessageTest(unittest.TestCase):
             msg = get_task_message('TaskToCompute', 'foo', 'bar')
             self.assertIsNone(msg)
 
+
 class SubtaskResultsAcceptedTest(unittest.TestCase):
     def setUp(self):
         self.task_session = TaskSession(mock.Mock())
@@ -876,6 +877,6 @@ class SubtaskResultsAcceptedTest(unittest.TestCase):
                         mock.Mock(return_value=ttc)):
             self.task_session.result_received(extra_data, decrypt=False)
 
-        self.task_session.send.assert_called()
+        assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0]
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)

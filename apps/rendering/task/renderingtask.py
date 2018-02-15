@@ -18,8 +18,8 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
-MIN_TIMEOUT = 2200.0
-SUBTASK_TIMEOUT = 220.0
+MIN_TIMEOUT = 60
+SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
@@ -323,6 +323,16 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
+        if definition.full_task_timeout < MIN_TIMEOUT:
+            logger.warning("Timeout %d too short for this task. "
+                           "Changing to %d" % (definition.full_task_timeout,
+                                               MIN_TIMEOUT))
+            definition.full_task_timeout = MIN_TIMEOUT
+        if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
+            logger.warning("Subtask timeout %d too short for this task. "
+                           "Changing to %d" % (definition.subtask_timeout,
+                                               SUBTASK_MIN_TIMEOUT))
+            definition.subtask_timeout = SUBTASK_MIN_TIMEOUT
         return definition
 
     @classmethod
