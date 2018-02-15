@@ -23,9 +23,9 @@ DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
 
 
 def timeout_from_size(size: int, rate: int = DEFAULT_UPLOAD_RATE):
-    bit_rate = rate * 10 ** 3
+    bytes_per_sec = rate * 10 ** 3
     margin = 10
-    return margin + int(math.ceil(size / bit_rate))
+    return margin + int(math.ceil(size / bytes_per_sec))
 
 
 class HyperdriveClient(IClient):
