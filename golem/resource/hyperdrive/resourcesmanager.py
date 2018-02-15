@@ -278,7 +278,7 @@ class HyperdriveResourceManager(ClientHandler):
             success(entry, files, task_id)
 
         def error_wrapper(exception, **_):
-            logger.error("Resource manager: error downloading %s (%s): %s",
+            logger.warning("Resource manager: error downloading %s (%s): %s",
                          resource.path, resource.hash, exception)
             error(exception, entry, task_id)
 
