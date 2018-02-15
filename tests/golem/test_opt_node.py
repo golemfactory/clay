@@ -1,10 +1,11 @@
 from click.testing import CliRunner
 from mock import patch, Mock
 
+import golem.argsparser as argsparser
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
-from golemapp import start, OptNode
+from golemapp import start, Node
 
 
 @ci_skip
@@ -37,7 +38,7 @@ class TestNode(TestWithDatabase):
         mock_reactor.run.assert_not_called()
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_node_address_should_be_passed_to_node(self, mock_node, *_):
         node_address = '1.2.3.4'
 
@@ -92,7 +93,7 @@ class TestNode(TestWithDatabase):
         self.assertIn('Error: --node-address', return_value.output)
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_geth_address_should_be_passed_to_node(self, mock_node, *_):
         geth_address = 'http://3.14.15.92:6535'
 
@@ -168,7 +169,7 @@ class TestNode(TestWithDatabase):
         self.assertIn('Error: --geth-address', return_value.output)
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_start_geth_should_be_passed_to_node(self, mock_node, *_):
         runner = CliRunner()
         args = self.args + ['--start-geth']
@@ -220,7 +221,7 @@ class TestNode(TestWithDatabase):
                       return_value.output)
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_start_geth_port_should_be_passed_to_node(self, mock_node, *_):
         port = 27182
 
@@ -260,7 +261,7 @@ class TestNode(TestWithDatabase):
                                        use_docker_machine_manager=True,
                                        use_monitor=True)
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_single_peer(self, mock_node, *_):
         mock_node.return_value = mock_node
         addr1 = '10.30.10.216:40111'
@@ -272,7 +273,7 @@ class TestNode(TestWithDatabase):
         # TODO: check peer == [addr1]
         mock_node.run.assert_called_once_with(use_rpc=True)
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_many_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
         addr1 = '10.30.10.216:40111'
@@ -286,7 +287,7 @@ class TestNode(TestWithDatabase):
         # TODO: check peer == [addr1, addr2]
         mock_node.run.assert_called_once_with(use_rpc=True)
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_bad_peer(self, *_):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
@@ -295,7 +296,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
         runner = CliRunner()
@@ -310,7 +311,7 @@ class TestNode(TestWithDatabase):
         # TODO: check peer == [addrs...]
         mock_node.run.assert_called_with(use_rpc=True)
 
-    @patch('golemapp.OptNode')
+    @patch('golemapp.Node')
     def test_rpc_address(self, *_):
         runner = CliRunner()
 
@@ -357,13 +358,17 @@ class TestOptNode(TempDirFixture):
     def tearDown(self):
         if hasattr(self, 'node'):
             self.node.client.quit()
-        super(TestOptNode, self).tearDown()
+        super().tearDown()
 
     def test_start_rpc_router(self, reactor, router, *_):
         from golem.rpc.session import WebSocketAddress
 
-        self.node = OptNode(self.path, use_docker_machine_manager=False,
-                            rpc_address='127.0.0.1', rpc_port=12345)
+        self.node = Node(
+            self.path,
+            use_docker_machine_manager=False,
+            rpc_address='127.0.0.1',
+            rpc_port=12345,
+        )
 
         config = self.node.client.config_desc
 
@@ -380,9 +385,16 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.docker.image.DockerImage')
     def test_setup_without_docker(self, *_):
-        self.parsed_peer = OptNode.parse_peer(None, None, ['10.0.0.10:40104'])
-        self.node = OptNode(self.path, use_docker_machine_manager=False,
-                            peers=self.parsed_peer)
+        self.parsed_peer = argsparser.parse_peer(
+            None,
+            None,
+            ['10.0.0.10:40104'],
+        )
+        self.node = Node(
+            self.path,
+            use_docker_machine_manager=False,
+            peers=self.parsed_peer,
+        )
 
         self.node._setup_docker = Mock()
         self.node.client.connect = Mock()
@@ -399,7 +411,7 @@ class TestOptNode(TempDirFixture):
     def test_setup_with_docker(self, docker_manager, *_):
         docker_manager.return_value = docker_manager
 
-        self.node = OptNode(self.path, use_docker_machine_manager=True)
+        self.node = Node(self.path, use_docker_machine_manager=True)
 
         self.node._setup_docker = Mock()
         self.node.client.connect = Mock()

@@ -6,10 +6,11 @@ import click
 from ethereum import slogging
 
 import golem
+import golem.argsparser as argsparser
 from golem.core.common import install_reactor
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import PROTOCOL_CONST
-from golem.node import OptNode
+from golem.node import Node
 
 
 # Monkey patch for ethereum.slogging.
@@ -46,21 +47,21 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                    "only inside sub-network with "
                    "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
-              callback=OptNode.parse_node_addr, metavar="<host>",
+              callback=argsparser.parse_node_addr, metavar="<host>",
               help="Network address to use for this node")
 @click.option('--rpc-address', '-r', multiple=False,
-              callback=OptNode.parse_rpc_address, metavar="<host>:<port>",
+              callback=argsparser.parse_rpc_address, metavar="<host>:<port>",
               help="RPC server address to use")
 @click.option('--peer', '-p', multiple=True,
-              callback=OptNode.parse_peer, metavar="<host>:<port>",
+              callback=argsparser.parse_peer, metavar="<host>:<port>",
               help="Connect with given peer")
 @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
               help="Start local geth node")
 @click.option('--start-geth-port', default=None, type=int,
-              callback=OptNode.enforce_start_geth_used, metavar="<port>",
+              callback=argsparser.enforce_start_geth_used, metavar="<port>",
               help="Port number to be used by locally started geth node")
 @click.option('--geth-address', default=None, metavar="http://<host>:<port>",
-              callback=OptNode.parse_http_addr,
+              callback=argsparser.parse_http_addr,
               help="Connect with given geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
@@ -109,7 +110,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         log_golem_version()
 
-        node = OptNode(
+        node = Node(
             datadir=datadir,
             transaction_system=payments,
             peers=peer,
