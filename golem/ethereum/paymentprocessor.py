@@ -200,8 +200,8 @@ class PaymentProcessor(LoopingCallService):
 
         # we need to take either all payments with given processed_ts or none
         if ind < len(payments):
-            while ind > 0 and
-            payments[ind - 1].processed_ts == payments[ind].processed_ts:
+            while ind > 0 and payments[
+                    ind - 1].processed_ts == payments[ind].processed_ts:
                 ind -= 1
 
         return payments[:ind], payments[ind:]
