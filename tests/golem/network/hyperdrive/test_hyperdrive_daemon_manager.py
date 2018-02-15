@@ -37,6 +37,8 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             monitor.add_child_processes.assert_called_with(process)
             assert makedirs.called
 
+    @patch('golem.network.hyperdrive.daemon_manager.'
+           'HyperdriveDaemonManager._check_version')
     def test_start_running(self, *_):
         dm, monitor = self.dm, self.monitor
         process = Mock()
