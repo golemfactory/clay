@@ -805,10 +805,13 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            gnt, av_gnt, eth, date = yield self.transaction_system.get_balance()
+            gnt, av_gnt, eth, \
+                last_gnt_update, \
+                last_eth_update = yield self.transaction_system.get_balance()
             if gnt is not None:
-                return str(gnt), str(av_gnt), str(eth), str(date)
-        return None, None, None, None
+                return str(gnt), str(av_gnt), str(eth), str(
+                    last_gnt_update), str(last_eth_update)
+        return None, None, None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
