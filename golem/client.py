@@ -24,7 +24,6 @@ from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.service import LoopingCallService
-from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
 from golem.database import Database
@@ -83,7 +82,7 @@ class Client(HardwarePresetsMixin):
 
     def __init__(
             self,
-            datadir=None,
+            datadir,
             transaction_system=False,
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
@@ -92,9 +91,6 @@ class Client(HardwarePresetsMixin):
             start_geth_port=None,
             geth_address=None,
             **config_overrides):
-
-        if not datadir:
-            datadir = get_local_datadir('default')
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -661,7 +657,9 @@ class Client(HardwarePresetsMixin):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
-        return list(self.p2pservice.peers.values())
+        if self.p2pservice:
+            return list(self.p2pservice.peers.values())
+        return list()
 
     def get_known_peers(self):
         peers = self.p2pservice.incoming_peers or dict()
@@ -748,9 +746,11 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_dict(task_id)
 
     def get_tasks(self, task_id=None):
-        if task_id:
-            return self.task_server.task_manager.get_task_dict(task_id)
-        return self.task_server.task_manager.get_tasks_dict()
+        if self.task_server:
+            if task_id:
+                return self.task_server.task_manager.get_task_dict(task_id)
+            return self.task_server.task_manager.get_tasks_dict()
+        return []
 
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
