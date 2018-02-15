@@ -655,8 +655,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.result_received(extra_data, decrypt=False)
 
         def on_error(exc, *args, **kwargs):
-            logger.error("Task result error: {} ({})"
-                         .format(subtask_id, exc or "unspecified"))
+            logger.warning("Task result error: {} ({})"
+                           .format(subtask_id, exc or "unspecified"))
 
             # in case of resources failure, we're sending the rejection
             # until we implement `ForceGetTaskResults` (pending)
