@@ -71,10 +71,8 @@ class HyperdriveDaemonManager(object):
                 output = subprocess.check_output(command)
                 output = output.decode('utf-8')
             except (OSError, UnicodeDecodeError):
-                pass
+                self._critical_error()
 
-        if not output:
-            return None
         return semantic_version.Version(output.strip())
 
     def _get_addresses(self):
@@ -125,7 +123,7 @@ class HyperdriveDaemonManager(object):
     @report_calls(Component.hyperdrive, 'instance.version')
     def _check_version(self):
         version = self.version()
-        if not version or version < self._min_version:
+        if version < self._min_version:
             raise RuntimeError('HyperG version {} is required'
                                .format(self._min_version))
 
