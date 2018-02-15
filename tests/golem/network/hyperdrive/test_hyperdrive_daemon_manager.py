@@ -129,8 +129,8 @@ class TestHyperdriveDaemonManager(TempDirFixture):
 
         with patch('subprocess.check_output', side_effect=OSError):
             with patch.object(self.dm._client, 'id', side_effect=err):
-
-                assert self.dm.version() is None
+                with self.assertRaises(SystemExit):
+                    assert self.dm.version() is None
 
     def test_version_from_process(self):
         err = requests.ConnectionError
@@ -157,10 +157,6 @@ class TestHyperdriveDaemonManager(TempDirFixture):
     def test_check_version_error(self):
 
         low_version = semantic_version.Version('0.0.1')
-
-        with patch.object(self.dm, 'version', return_value=None):
-            with self.assertRaises(RuntimeError):
-                self.dm._check_version()
 
         with patch.object(self.dm, 'version', return_value=low_version):
             with self.assertRaises(RuntimeError):
