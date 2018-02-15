@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class TestSendToConcent(TestCase):
     def setUp(self):
         self.msg = message.ForceReportComputedTask()
-        self.msg.task_to_compute = message.TaskToCompute()
+        self.msg.report_computed_task = message.ReportComputedTask()
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey

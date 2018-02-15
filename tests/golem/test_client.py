@@ -709,35 +709,37 @@ class TestTaskCleanerService(TestWithReactor):
             assert log.info.called
 
 
-@patch(
-    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
-)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
-
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
+        with patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            client = Client(
+                datadir=self.path,
+                transaction_system=False,
+                connect_to_known_hosts=False,
+                use_docker_machine_manager=False,
+                use_monitor=False
+            )
 
         client.sync = Mock()
         client.keys_auth = Mock()
         client.keys_auth.key_id = str(uuid.uuid4())
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
-        client.task_server = TaskServer(
-            node=Node(),
-            config_desc=ClientConfigDescriptor(),
-            client=client,
-            use_docker_machine_manager=False
-        )
+        with patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            client.task_server = TaskServer(
+                node=Node(),
+                config_desc=ClientConfigDescriptor(),
+                client=client,
+                use_docker_machine_manager=False
+            )
         client.monitor = Mock()
 
         self.client = client
