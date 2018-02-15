@@ -1,6 +1,9 @@
 # pylint: disable=too-few-public-methods
 import factory
+import time
+
 import factory.fuzzy
+
 from golem_messages.message import base
 from golem_messages.message import concents
 from golem_messages.message import tasks
@@ -85,6 +88,12 @@ class SubtaskResultsRejected(factory.Factory):
 
     report_computed_task = factory.SubFactory(ReportComputedTask)
 
+class SubtaskResultsAcceptedFactory(factory.Factory):
+    class Meta:
+        model = tasks.SubtaskResultsAccepted
+
+    task_to_compute = factory.SubFactory(TaskToCompute)
+    payment_ts = factory.LazyFunction(lambda: int(time.time()))
 
 class ServiceRefused(factory.Factory):
     class Meta:
@@ -100,4 +109,4 @@ class ForceReportComputedTask(factory.Factory):
         model = concents.ForceReportComputedTask
 
     result_hash = factory.Faker('text')
-    task_to_compute = factory.SubFactory(ComputeTaskDef)
+    report_computed_task = factory.SubFactory(ReportComputedTask)

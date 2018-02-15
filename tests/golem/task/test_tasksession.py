@@ -265,8 +265,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
             payment = ts.task_server.accept_result(subtask_id,
                                                    ts.result_owner)
-            ts.send(message.tasks.SubtaskResultsAccepted(
-                subtask_id=subtask_id,
+            ts.send(factories.messages.SubtaskResultsAcceptedFactory(
+                task_to_compute__compute_task_def__subtask_id=subtask_id,
                 payment_ts=payment.processed_ts))
             ts.dropped()
 
@@ -847,3 +847,42 @@ class GetTaskMessageTest(unittest.TestCase):
                         )):
             msg = get_task_message('TaskToCompute', 'foo', 'bar')
             self.assertIsNone(msg)
+
+class SubtaskResultsAcceptedTest(unittest.TestCase):
+    def setUp(self):
+        self.task_session = TaskSession(mock.Mock())
+        self.task_server = mock.Mock()
+        self.task_session.task_server = self.task_server
+
+    def test__react_to_subtask_result_accepted(self):
+        sra = factories.messages.SubtaskResultsAcceptedFactory()
+        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_server.subtask_accepted.assert_called_once_with(
+            sra.task_to_compute.compute_task_def.get('subtask_id'),
+            sra.payment_ts,
+        )
+
+    def test_result_received(self):
+        def computed_task_received(*args):
+            args[3]()
+
+        self.task_session.task_manager = mock.Mock()
+        self.task_session.task_manager.computed_task_received = \
+            computed_task_received
+
+        ttc = factories.messages.TaskToCompute()
+        extra_data = dict(
+            result=pickle.dumps({'stdout': 'xyz'}),
+            result_type=ResultType.DATA,
+            subtask_id=ttc.compute_task_def.get('subtask_id')
+        )
+
+        self.task_session.send = mock.Mock()
+
+        with mock.patch('golem.task.tasksession.get_task_message',
+                        mock.Mock(return_value=ttc)):
+            self.task_session.result_received(extra_data, decrypt=False)
+
+        self.task_session.send.assert_called()
+        sra = self.task_session.send.call_args[0][0]
+        self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
