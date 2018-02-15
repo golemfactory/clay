@@ -72,8 +72,8 @@ class PaymentProcessor(LoopingCallService):
         self.__faucet = faucet
         self.deadline = sys.maxsize
         self.load_from_db()
-        self.last_gnt_update = None
-        self.last_eth_update = None
+        self._last_gnt_update = None
+        self._last_eth_update = None
         super().__init__(13)
 
     def balance_known(self):
@@ -88,10 +88,10 @@ class PaymentProcessor(LoopingCallService):
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
-                self.last_eth_update = datetime.now().timestamp()
+                self._last_eth_update = datetime.now().timestamp()
             else:
                 log.warning("Failed to retrieve ETH balance")
-        return [self.__eth_balance, self.last_eth_update]
+        return (self.__eth_balance, self._last_eth_update)
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or self.__gntw_balance is None or refresh:
@@ -116,12 +116,10 @@ class PaymentProcessor(LoopingCallService):
                     self.__gnt_balance / denoms.ether,
                     self.__gntw_balance / denoms.ether,
                 )
-                self.last_gnt_update = datetime.now().timestamp()
+                self._last_gnt_update = datetime.now().timestamp()
 
-        return [
-            self.__gnt_balance + self.__gntw_balance,
-            self.last_gnt_update
-        ]
+        return (self.__gnt_balance + self.__gntw_balance,
+                self._last_gnt_update)
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
@@ -200,8 +198,8 @@ class PaymentProcessor(LoopingCallService):
 
         # we need to take either all payments with given processed_ts or none
         if ind < len(payments):
-            while ind > 0 and payments[
-                    ind - 1].processed_ts == payments[ind].processed_ts:
+            while ind > 0 and payments[ind - 1]\
+                    .processed_ts == payments[ind].processed_ts:
                 ind -= 1
 
         return payments[:ind], payments[ind:]
