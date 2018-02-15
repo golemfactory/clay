@@ -1,7 +1,6 @@
 # pylint: disable=protected-access
 import calendar
 import datetime
-import functools
 import os
 import pathlib
 import pickle
@@ -597,7 +596,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         session._react_to_reject_report_computed_task(msg_ack)
         assert session.concent_service.cancel.called
 
-
     def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
@@ -781,7 +779,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self.ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
         self.ts.concent_service.submit.assert_not_called()
-
 
 
 def executor_success(req, success, error):
