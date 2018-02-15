@@ -394,7 +394,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
         msg = message.ForceReportComputedTask(
-            task_to_compute=task_to_compute,
+            report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', msg)
