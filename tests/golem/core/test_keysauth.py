@@ -9,7 +9,7 @@ from golem_messages.cryptography import ECCx
 
 from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, get_random, \
-    get_random_float, sha2
+    get_random_float, sha2, KEYS_SUBDIR
 from golem.core.simpleserializer import CBORSerializer
 from golem.utils import decode_hex
 from golem.utils import encode_hex
@@ -55,7 +55,7 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
 
     @patch('golem.core.keysauth.logger')
     def test_init_priv_key_wrong_length(self, logger):
-        keys_dir = os.path.join(self.path, 'keys')
+        keys_dir = os.path.join(self.path, KEYS_SUBDIR)
         private_key_name = "priv_key"
         private_key_path = os.path.join(keys_dir, private_key_name)
 
@@ -121,29 +121,29 @@ class TestEllipticalKeysAuth(testutils.TempDirFixture):
         EllipticalKeysAuth(self.path, priv_key_name)
 
         # then
-        self.assertCountEqual(os.listdir(self.path), ['keys'])
-        self.assertCountEqual(os.listdir(os.path.join(self.path, 'keys')),
+        self.assertCountEqual(os.listdir(self.path), [KEYS_SUBDIR])
+        self.assertCountEqual(os.listdir(os.path.join(self.path, KEYS_SUBDIR)),
                               [priv_key_name])
 
     @freeze_time("2017-11-23 11:40:27.767804")
     def test_backup_keys(self):
         # given
-        priv_key_name = 'priv'
-        private_key_dir = os.path.join(self.path, 'keys')
+        key_name = 'priv'
+        private_key_dir = os.path.join(self.path, KEYS_SUBDIR)
         os.mkdir(private_key_dir)
-        private_key_path = os.path.join(private_key_dir, priv_key_name)
+        private_key_path = os.path.join(private_key_dir, key_name)
         with open(private_key_path, 'w') as f:
             f.write("foo")
 
         # when
-        EllipticalKeysAuth(self.path, priv_key_name)
+        EllipticalKeysAuth(self.path, key_name)
 
         # then
-        self.assertCountEqual(os.listdir(self.path), ['keys'])
-        self.assertCountEqual(os.listdir(os.path.join(self.path, 'keys')), [
-            priv_key_name,
-            "%s_2017-11-23_11-40-27_767804.bak" % priv_key_name,
-        ])
+        self.assertCountEqual(os.listdir(self.path), [KEYS_SUBDIR])
+        self.assertCountEqual(
+            os.listdir(os.path.join(self.path, KEYS_SUBDIR)),
+            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
+        )
 
     def test_sign_verify_elliptical(self):
         ek = EllipticalKeysAuth(self.path)

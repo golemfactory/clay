@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
-from _pysha3 import sha3_256 as _sha3_256
 
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
@@ -13,17 +12,9 @@ from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 
+KEYS_SUBDIR = 'keys'
+
 logger = logging.getLogger(__name__)
-
-
-def sha3(seed: Union[str, bytes]) -> bytes:
-    """ Return sha3-256 (NOT keccak) of seed in digest
-    :param seed: data that should be hashed
-    :return: binary hashed data
-    """
-    if isinstance(seed, str):
-        seed = seed.encode()
-    return _sha3_256(seed).digest()
 
 
 def sha2(seed: Union[str, bytes]) -> int:
@@ -95,13 +86,7 @@ class EllipticalKeysAuth:
             Maximum is impossible.
         """
 
-        if not datadir:
-            datadir = get_local_datadir('default')
-        keys_dir = os.path.join(datadir, 'keys')
-        if not os.path.isdir(keys_dir):
-            os.makedirs(keys_dir)
-
-        self.difficulty = difficulty
+        keys_dir = EllipticalKeysAuth._get_or_create_keys_dir(datadir)
         self._private_key_path = os.path.join(keys_dir, private_key_name)
 
         loaded_keys = EllipticalKeysAuth._load_and_check_keys(
@@ -110,22 +95,25 @@ class EllipticalKeysAuth:
         if loaded_keys:
             priv_key, pub_key = loaded_keys
         else:
-            logger.info("Backing up existing keys and creating new key pair.")
             priv_key, pub_key = self._generate_new_keys(difficulty)
 
-        self._setup_keys(priv_key, pub_key)
+        self._setup_keys(priv_key, pub_key, difficulty)
 
-    @classmethod
-    def get_keys_dir(cls, datadir=None):
-        """ Path to the dir where keys files are stored."""
-        if not hasattr(cls, '_keys_dir'):
-            # TODO: Move keys to node's datadir.
-            if datadir is None:
-                datadir = get_local_datadir('default')
-            cls._keys_dir = os.path.join(datadir, 'keys')
-        if not os.path.isdir(cls._keys_dir):
-            os.makedirs(cls._keys_dir)
-        return cls._keys_dir
+    def _setup_keys(self, priv_key: bytes, pub_key: bytes, difficulty: int):
+        self._private_key = priv_key
+        self.public_key = pub_key
+        self.difficulty = difficulty
+        self.key_id = encode_hex(pub_key)
+        self.ecc = ECCx(raw_privkey=priv_key)
+        self._save_private_key()
+
+    @staticmethod
+    def _get_or_create_keys_dir(datadir):
+        path = datadir or get_local_datadir('default')
+        keys_dir = os.path.join(path, KEYS_SUBDIR)
+        if not os.path.isdir(keys_dir):
+            os.makedirs(keys_dir)
+        return keys_dir
 
     @staticmethod
     def _load_and_check_keys(
@@ -152,16 +140,10 @@ class EllipticalKeysAuth:
 
         return priv_key, pub_key
 
-    def _setup_keys(self, priv_key: bytes, pub_key: bytes) -> None:
-        self._private_key = priv_key
-        self.public_key = pub_key
-        self.key_id = encode_hex(pub_key)
-        self.ecc = ECCx(raw_privkey=priv_key)
-        self._save_private_key()
-
     def _save_private_key(self):
         def backup_file(path):
             if os.path.exists(path):
+                logger.info("Backing up existing private key.")
                 dirname, filename = os.path.split(path)
                 date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
                 filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
@@ -243,6 +225,7 @@ class EllipticalKeysAuth:
 
     @staticmethod
     def _generate_new_keys(difficulty: int) -> Tuple[bytes, bytes]:
+        logger.info("Generating new key pair.")
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
@@ -250,6 +233,7 @@ class EllipticalKeysAuth:
                 break
         return priv_key, pub_key
 
+    # TODO: unused? remove!
     def generate_new(self, difficulty: int) -> None:
         """ Generate new pair of keys with given difficulty
 
@@ -257,7 +241,7 @@ class EllipticalKeysAuth:
         :raise TypeError: in case of incorrect @difficulty type
         """
         priv_key, pub_key = self._generate_new_keys(difficulty)
-        self._setup_keys(priv_key, pub_key)
+        self._setup_keys(priv_key, pub_key, difficulty)
 
     def get_difficulty(self, key_id: Optional[str] = None) -> float:
         """
@@ -269,5 +253,7 @@ class EllipticalKeysAuth:
                        If key_id is None then use default key_id
         :return: key_id difficulty
         """
-        pub_key = decode_hex(key_id) if key_id else self.public_key
-        return 256 - math.log2(sha2(pub_key))
+        if not key_id:
+            return self.difficulty
+
+        return 256 - math.log2(sha2(decode_hex(key_id)))
