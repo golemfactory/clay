@@ -7,6 +7,7 @@ from ethereum import slogging
 
 import golem
 from golem.core.common import install_reactor
+from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import PROTOCOL_CONST
 from golem.node import OptNode
 
@@ -31,10 +32,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.command()
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--datadir', '-d', type=click.Path(
-    file_okay=False,
-    writable=True
-))
+@click.option('--datadir', '-d',
+              default=get_local_datadir('default'),
+              type=click.Path(
+                  file_okay=False,
+                  writable=True
+              ))
 @click.option('--protocol_id', type=click.INT,
               callback=PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
@@ -91,7 +94,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    config = dict(datadir=datadir, transaction_system=payments)
+    config = dict()
 
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -106,10 +109,17 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         log_golem_version()
 
-        node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, start_geth=start_geth,
-                       start_geth_port=start_geth_port,
-                       geth_address=geth_address, **config)
+        node = OptNode(
+            datadir=datadir,
+            transaction_system=payments,
+            peers=peer,
+            node_address=node_address,
+            use_monitor=monitor,
+            start_geth=start_geth,
+            start_geth_port=start_geth_port,
+            geth_address=geth_address,
+            **config,
+        )
         node.run(use_rpc=True)
 
 

@@ -79,13 +79,13 @@ class EllipticalKeysAuth:
 
     def __init__(
             self,
-            data_dir: str,
+            datadir: str,
             private_key_name: str = PRIVATE_KEY,
             difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
 
-        :param data_dir where to store files
+        :param datadir where to store files
         :param private_key_name: name of the file containing private key
         :param difficulty:
             desired key difficulty level.
@@ -95,9 +95,9 @@ class EllipticalKeysAuth:
             Maximum is impossible.
         """
 
-        if not data_dir:
-            data_dir = get_local_datadir('default')
-        keys_dir = os.path.join(data_dir, 'keys')
+        if not datadir:
+            datadir = get_local_datadir('default')
+        keys_dir = os.path.join(datadir, 'keys')
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir)
 

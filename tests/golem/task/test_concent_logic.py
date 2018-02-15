@@ -29,7 +29,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.task_server.keys_auth = keys_auth = \
             keysauth.EllipticalKeysAuth(
-                data_dir=self.tempdir,
+                datadir=self.tempdir,
             )
 
         self.msg = factories.messages.ReportComputedTask()

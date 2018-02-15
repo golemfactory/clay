@@ -101,7 +101,8 @@ class TaskServer(
         # to register in golem.network.concent.handlers_library
         from golem.network.concent import \
             received_handler as concent_received_handler
-        concent_received_handler.TaskServerMessageHandler(self)
+        self.concent_handler = \
+            concent_received_handler.TaskServerMessageHandler(self)
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)

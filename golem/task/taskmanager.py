@@ -710,6 +710,10 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
+
+        if task is None:
+            return
+
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
         state = self.tasks_states.get(task.header.task_id)

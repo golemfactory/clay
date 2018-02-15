@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class TestSendToConcent(TestCase):
     def setUp(self):
         self.msg = message.ForceReportComputedTask()
-        self.msg.task_to_compute = message.TaskToCompute()
+        self.msg.report_computed_task = message.ReportComputedTask()
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey
@@ -116,7 +116,7 @@ class TestSendToConcent(TestCase):
 class TestConcentClientService(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
-        keys_auth = keysauth.EllipticalKeysAuth(data_dir=self.path)
+        keys_auth = keysauth.EllipticalKeysAuth(datadir=self.path)
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
             enabled=True,
@@ -281,7 +281,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.concent_service = client.ConcentClientService(
-            keys_auth=keysauth.EllipticalKeysAuth(data_dir=self.path),
+            keys_auth=keysauth.EllipticalKeysAuth(datadir=self.path),
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()

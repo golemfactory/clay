@@ -85,12 +85,9 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
 
 
 class ConcentRequest(msg_datastructures.FrozenDict):
-
-    __slots__ = ('key', 'msg', 'sent_at', 'deadline_at')
     ITEMS = {
         'key': '',
         'msg': None,
-        'sent_at': None,
         'deadline_at': None,
     }
 
@@ -196,13 +193,10 @@ class ConcentClientService(threading.Thread):
             req = self._queue.get(timeout=constants.PING_TIMEOUT)
         except queue.Empty:
             # Send empty "ping" message
-            res = send_to_concent(
-                None,
-                self.keys_auth._private_key,  # pylint: disable=protected-access
-                self.keys_auth.public_key,
+            req = ConcentRequest(
+                msg=None,
+                deadline_at=datetime.datetime.max,
             )
-            self.react_to_concent_message(res)
-            return
 
         # FIXME: remove
         if not self._enabled:
@@ -216,11 +210,10 @@ class ConcentClientService(threading.Thread):
             return
 
         try:
-            req['sent_at'] = now
             res = send_to_concent(
                 req['msg'],
-                self.keys_auth.ecc.raw_privkey,
-                self.keys_auth.ecc.raw_pubkey,
+                self.keys_auth._private_key,  # pylint: disable=protected-access
+                self.keys_auth.public_key,
             )
         except Exception:  # pylint: disable=broad-except
             logger.exception('send_to_concent(%r) failed', req)

@@ -118,7 +118,7 @@ class TestGenerateCrops(TempDirFixture):
             verifier._crop_render_failure,
             self.subtask_info)
 
-        sync_wait(d, 60)
+        sync_wait(d, 140)
 
     @ci_skip
     def test_good_image(self):
@@ -153,4 +153,4 @@ class TestGenerateCrops(TempDirFixture):
             verifier._crop_render_failure,
             self.subtask_info)
 
-        sync_wait(d, 90)
+        sync_wait(d, 140)
