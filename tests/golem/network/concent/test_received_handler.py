@@ -67,8 +67,7 @@ class TaskServerMessageHandlerTestCase(
         msg = msg_factories.ForceReportComputedTask()
         library.interpret(msg)
         process_mock.assert_called_once_with(
-            # FIXME https://github.com/golemfactory/golem-messages/issues/116
-            msg=msg.task_to_compute,
+            msg=msg.report_computed_task,
             task_session=None,
         )
 # pylint: enable=no-self-use

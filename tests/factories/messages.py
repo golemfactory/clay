@@ -109,4 +109,4 @@ class ForceReportComputedTask(factory.Factory):
         model = concents.ForceReportComputedTask
 
     result_hash = factory.Faker('text')
-    task_to_compute = factory.SubFactory(ComputeTaskDef)
+    report_computed_task = factory.SubFactory(ReportComputedTask)
