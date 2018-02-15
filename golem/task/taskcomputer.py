@@ -69,7 +69,6 @@ class TaskComputer(object):
         # Is there a time limit after which we don't wait for task timeout
         # anymore
         self.use_waiting_deadline = False
-        self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerManager.install()
@@ -95,8 +94,7 @@ class TaskComputer(object):
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
-        self.wait(ttl=min(self.waiting_for_task_timeout,
-                          deadline_to_timeout(ctd['deadline'])))
+        self.wait(ttl=deadline_to_timeout(ctd['deadline']))
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(
@@ -282,7 +280,6 @@ class TaskComputer(object):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
-        self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
         self.waiting_for_task_session_timeout = config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks
         self.change_docker_config(config_desc, run_benchmarks, in_background)
@@ -363,7 +360,7 @@ class TaskComputer(object):
             self.stats.increase_stat('tasks_requested')
 
     def __request_resource(self, task_id, subtask_id):
-        self.wait(ttl=self.waiting_for_task_timeout)
+        self.wait(False)
         if not self.task_server.request_resource(task_id, subtask_id):
             self.reset()
 
