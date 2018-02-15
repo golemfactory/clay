@@ -636,12 +636,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         return self.task_server.remove_task_header(task_id)
 
-    def remove_task(self, task_id):
+    def remove_task(self, task_id, signature):
         """ Ask all peers to remove information about given task
         :param str task_id: id of a task that should be removed
         """
         for p in list(self.peers.values()):
-            p.send_remove_task(task_id)
+            p.send_remove_task(task_id, signature)
 
     def want_to_start_task_session(
             self,

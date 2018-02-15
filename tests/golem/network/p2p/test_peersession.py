@@ -1,22 +1,26 @@
 # pylint: disable= protected-access
 import copy
-from golem_messages import message
 import ipaddress
-from pydispatch import dispatcher
 import random
-import semantic_version
 import sys
 import unittest
 import unittest.mock as mock
+import uuid
+
+from pydispatch import dispatcher
+import semantic_version
+
+from golem_messages import message
 
 import golem
 from golem import clientconfigdescriptor
 from golem import testutils
-from golem.core.keysauth import KeysAuth
+from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import (PeerSession, PeerSessionInfo)
+from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo,
+                                           remove_task_string)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.core.variables import TASK_HEADERS_LIMIT
@@ -476,6 +480,59 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peers[0]['node'] = Node.from_dict(peers[0]['node'])
         add_peer_mock.assert_called_once_with(peers[0])
 
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_send_remove_task(self, send_mock):
+        self.peer_session.send_remove_task("some random string", "signature")
+        send_mock.assert_called()
+        assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
+
+    def test_react_to_remove_task(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        previous_ka = self.peer_session.p2p_service.keys_auth
+        self.peer_session.p2p_service.keys_auth = keys_auth
+
+        # Unknown task owner
+        task_server = mock.MagicMock()
+        task_server.task_keeper.get_owner.return_value = None
+        task_server.remove_task_header.return_value = True
+        self.peer_session.p2p_service.task_server = task_server
+        peer_mock = mock.MagicMock()
+        self.peer_session.p2p_service.peers["ABC"] = peer_mock
+
+        task_id = "test_{}".format(uuid.uuid4())
+        owner_signature = keys_auth.sign(remove_task_string(task_id))
+        assert keys_auth.verify(owner_signature, remove_task_string(task_id),
+                                keys_auth.get_key_id())
+        msg = message.RemoveTask(task_id=task_id,
+                                 owner_signature=owner_signature)
+        with self.assertNoLogs(logger, level="WARNING"):
+            self.peer_session._react_to_remove_task(msg)
+
+        # Wrong task owner
+        task_server.task_keeper.get_owner.return_value = "UNKNOWNKEY"
+        with self.assertLogs(logger, level="WARNING") as log:
+            self.peer_session._react_to_remove_task(msg)
+        assert "Someone tries to remove task header: " in log.output[0]
+        assert task_id in log.output[0]
+        task_server.remove_task_header.assert_not_called()
+
+        # Proper task owner, sending message to peers
+        task_server.task_keeper.get_owner.return_value = keys_auth.get_key_id()
+        with self.assertNoLogs(logger, level="WARNING"):
+            self.peer_session._react_to_remove_task(msg)
+        task_server.remove_task_header.assert_called_once_with(task_id)
+        peer_mock.send_remove_task.assert_called_once_with(task_id,
+                                                           owner_signature)
+
+        # Do not broadast task
+        task_server.remove_task_header.return_value = False
+        with self.assertNoLogs(logger, level="WARNING"):
+            self.peer_session._react_to_remove_task(msg)
+        assert task_server.remove_task_header.call_count == 2
+        peer_mock.send_remove_task.assert_called_once_with(task_id,
+                                                           owner_signature)
+
+        self.peer_session.p2p_service.keys_auth = previous_ka
 
 class TestPeerSessionInfo(unittest.TestCase):
 
@@ -503,3 +560,8 @@ class TestPeerSessionInfo(unittest.TestCase):
             simplified[attr]
         with self.assertRaises(KeyError):
             simplified["node_id"]
+
+
+class TestFunctions(unittest.TestCase):
+    def test_remove_task_string(self):
+        assert remove_task_string("TASK1") == "REMOVE TASK1"

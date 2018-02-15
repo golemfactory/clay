@@ -507,6 +507,15 @@ class TaskHeaderKeeper:
         self.removed_tasks[task_id] = time.time()
         return True
 
+    def get_owner(self, task_id) -> Optional[str]:
+        """ Returns key_id of task owner or None if there is no information
+        about this task.
+        """
+        task = self.task_headers.get(task_id)
+        if task is None:
+            return None
+        return task.task_owner_key_id
+
     def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed
         :return TaskHeader|None: returns either None if there are no tasks

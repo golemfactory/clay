@@ -28,7 +28,7 @@ from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
-from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.peersession import PeerSessionInfo, remove_task_string
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
@@ -1048,10 +1048,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.remove_task = Mock()
         c.task_server = Mock()
 
-        c.delete_task(str(uuid.uuid4()))
+        task_id = str(uuid.uuid4())
+        c.delete_task(task_id)
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+
+        owner_signature = c.keys_auth.sign(remove_task_string(task_id))
+        c.remove_task.assert_called_with(task_id, owner_signature)
 
     def test_get_unsupport_reasons(self, *_):
         c = self.client
