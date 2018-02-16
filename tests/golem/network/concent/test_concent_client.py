@@ -5,7 +5,9 @@ import time
 from unittest import mock, TestCase
 import urllib
 
+
 from freezegun import freeze_time
+import golem_messages
 from golem_messages import message
 import golem_messages.cryptography
 import golem_messages.exceptions
@@ -33,6 +35,8 @@ class TestSendToConcent(TestCase):
 
     def test_message(self, post_mock):
         response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
         response.status_code = 200
         post_mock.return_value = response
 
@@ -53,6 +57,8 @@ class TestSendToConcent(TestCase):
 
     def test_none(self, post_mock):
         response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
         response.status_code = 200
         post_mock.return_value = response
 
@@ -73,10 +79,12 @@ class TestSendToConcent(TestCase):
 
     def test_message_client_error(self, post_mock):
         response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
         response.status_code = 400
         post_mock.return_value = response
 
-        with self.assertRaises(exceptions.ConcentRequestException):
+        with self.assertRaises(exceptions.ConcentRequestError):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
@@ -87,10 +95,12 @@ class TestSendToConcent(TestCase):
 
     def test_message_server_error(self, post_mock):
         response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
         response.status_code = 500
         post_mock.return_value = response
 
-        with self.assertRaises(exceptions.ConcentServiceException):
+        with self.assertRaises(exceptions.ConcentServiceError):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
@@ -101,7 +111,7 @@ class TestSendToConcent(TestCase):
 
     def test_message_exception(self, post_mock):
         post_mock.side_effect = RequestException
-        with self.assertRaises(exceptions.ConcentUnavailableException):
+        with self.assertRaises(exceptions.ConcentUnavailableError):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
@@ -109,6 +119,16 @@ class TestSendToConcent(TestCase):
             )
 
         self.assertEqual(post_mock.call_count, 1)
+
+    def test_version_mismatch(self, post_mock):
+        post_mock.return_value = response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = 'dummy'
+        with self.assertRaises(exceptions.ConcentVersionMismatchError):
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
 
 
 @mock.patch('twisted.internet.reactor', create=True)
@@ -168,7 +188,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             delay=0
         )
 
-        send_mock.side_effect = exceptions.ConcentRequestException
+        send_mock.side_effect = exceptions.ConcentRequestError
         mock_path = ("golem.network.concent.client.ConcentClientService"
                      "._grace_sleep")
         with mock.patch(mock_path) as sleep_mock:

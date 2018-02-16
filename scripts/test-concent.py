@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import hashlib
-
 from golem_messages import cryptography
 from golem_messages import message
 
 from golem.core import common
 from golem.network.concent import client
+
+from tests.factories import messages as msg_factories
 
 
 def main():
@@ -17,15 +17,7 @@ def main():
         'subtask_id': 'a1/1',
         'deadline': common.timeout_to_deadline(10),
     })
-    msg = message.ForceReportComputedTask()
-    msg.task_to_compute = task_to_compute
-    msg.result_hash = 'sha1:{}'.format(
-        hashlib.sha1(
-            'Gruba warstwa próchnicy świadczy o długiej działalności'
-            'organicznej. Panami rzeki są krokodyle i lwy, po lasach'
-            'krążą bez obawy jaguary, pekari, tapiry i małpy. Jest to'
-            'ich dziedzictwo.'.encode('utf-8', 'replace')).hexdigest(),
-    )
+    msg = msg_factories.ForceReportComputedTask()
     print('Prepared message:', msg)
     print('Sending to concent...')
     content = client.send_to_concent(msg, keys.raw_privkey, keys.raw_pubkey)
