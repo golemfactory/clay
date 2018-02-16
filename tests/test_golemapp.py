@@ -31,8 +31,12 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                 assert _run.called
                 assert '-m' not in sys.argv
 
+    def test_start_crossbar_worker_u(self):
+        runner = CliRunner()
+        args = ['--datadir', self.path, '-m', 'crossbar.worker.process', '-u']
+
         with mock.patch('crossbar.worker.process.run') as _run:
-            with mock.patch.object(sys, 'argv', list(args) + ['-u']):
+            with mock.patch.object(sys, 'argv', list(args)):
                 runner.invoke(start, sys.argv, catch_exceptions=False)
                 assert _run.called
                 assert '-m' not in sys.argv

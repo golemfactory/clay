@@ -7,6 +7,8 @@ from ethereum import slogging
 
 import golem
 import golem.argsparser as argsparser
+from golem.appconfig import AppConfig
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import install_reactor
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import PROTOCOL_CONST
@@ -95,11 +97,14 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    config = dict()
+    config_desc = ClientConfigDescriptor()
+    config_desc.init_from_app_config(AppConfig.load_config(datadir))
 
     if rpc_address:
-        config['rpc_address'] = rpc_address.address
-        config['rpc_port'] = rpc_address.port
+        config_desc.rpc_address = rpc_address.address
+        config_desc.rpc_port = rpc_address.port
+    if node_address:
+        config_desc.node_address = node_address
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
@@ -112,14 +117,13 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
         node = Node(
             datadir=datadir,
+            config_desc=config_desc,
             transaction_system=payments,
             peers=peer,
-            node_address=node_address,
             use_monitor=monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            **config,
         )
         node.run(use_rpc=True)
 

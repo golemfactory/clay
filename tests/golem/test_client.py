@@ -36,7 +36,6 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
@@ -67,42 +66,6 @@ def random_hex_str() -> str:
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
-class TestCreateClient(TestDirFixture):
-
-    @patch('twisted.internet.reactor', create=True)
-    def test_config_override_valid(self, *_):
-        self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
-        c = Client(
-            datadir=self.path,
-            node_address='1.0.0.0',
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
-        self.assertEqual(c.config_desc.node_address, '1.0.0.0')
-        c.quit()
-
-    @patch('twisted.internet.reactor', create=True)
-    def test_config_override_invalid(self, *_):
-        """Test that Client() does not allow to override properties
-        that are not in ClientConfigDescriptor.
-        """
-        self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
-        with self.assertRaises(AttributeError):
-            Client(
-                datadir=self.path,
-                node_colour='magenta',
-                transaction_system=False,
-                connect_to_known_hosts=False,
-                use_docker_machine_manager=False,
-                use_monitor=False
-            )
-
-
-@patch(
-    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
-)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
@@ -117,6 +80,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_get_payments(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -161,6 +125,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_get_incomes(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -202,6 +167,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_payment_address(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -217,6 +183,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_sync(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -229,6 +196,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -275,6 +243,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         datadir = os.path.join(self.path, "non-existing-dir")
         self.client = Client(
             datadir=datadir,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -283,11 +252,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
-            Client(datadir=datadir)
+            Client(datadir=datadir, config_desc=ClientConfigDescriptor())
 
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -322,13 +292,17 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIn("Not accepting tasks", status)
 
     def test_quit(self, *_):
-        self.client = Client(datadir=self.path)
+        self.client = Client(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+        )
         self.client.db = None
         self.client.quit()
 
     def test_collect_gossip(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -340,6 +314,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -362,6 +337,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_restart_by_frame(self, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False,
@@ -402,6 +378,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_start_stop(self, connect_to_network, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False
@@ -432,6 +409,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_restart_task(self, connect_to_network, *_):
         self.client = Client(
             datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_machine_manager=False
@@ -720,6 +698,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 '.register_handler',):
             client = Client(
                 datadir=self.path,
+                config_desc=ClientConfigDescriptor(),
                 transaction_system=False,
                 connect_to_known_hosts=False,
                 use_docker_machine_manager=False,

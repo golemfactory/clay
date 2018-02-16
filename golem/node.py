@@ -14,25 +14,25 @@ class Node(object):
 
     def __init__(  # pylint: disable=too-many-arguments
             self,
-            datadir=None,
+            datadir,
+            config_desc,
             peers=None,
             transaction_system=False,
             use_monitor=False,
             use_docker_machine_manager=True,
             start_geth=False,
             start_geth_port=None,
-            geth_address=None,
-            **config_overrides):
+            geth_address=None):
 
         self.client = Client(
             datadir=datadir,
+            config_desc=config_desc,
             transaction_system=transaction_system,
             use_docker_machine_manager=use_docker_machine_manager,
             use_monitor=use_monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            **config_overrides
         )
 
         self.rpc_router = None
