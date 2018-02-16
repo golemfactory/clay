@@ -24,7 +24,7 @@ from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
@@ -131,12 +131,14 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
+        self.keys_auth = KeysAuth(
+            self.datadir,
+            difficulty=self.config_desc.key_difficulty)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.get_key_id())
+                         key=self.keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
@@ -671,23 +673,11 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return self.task_server.task_computer.dir_manager
 
-    def load_keys_from_file(self, file_name):
-        if file_name != "":
-            return self.keys_auth.load_from_file(file_name)
-        return False
-
-    def save_keys_to_files(self, private_key_path, public_key_path):
-        return self.keys_auth.save_to_files(private_key_path, public_key_path)
-
     def get_key_id(self):
-        return self.get_client_id()
+        return self.keys_auth.key_id
 
     def get_difficulty(self):
         return self.keys_auth.get_difficulty()
-
-    def get_client_id(self):
-        key_id = self.keys_auth.get_key_id()
-        return str(key_id) if key_id else None
 
     def get_node_key(self):
         key = self.node.key
@@ -1053,7 +1043,7 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_client_id(),
+            self.get_key_id(),
             self.session_id,
             sys.platform,
             golem.__version__,

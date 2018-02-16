@@ -13,7 +13,7 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.p2p.node import Node
@@ -27,7 +27,6 @@ from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 
@@ -62,7 +61,8 @@ def get_mock_task(task_id, subtask_id):
     return task_mock
 
 
-class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
+class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: disable=too-many-public-methods
+                     testutils.TestWithClient):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
@@ -81,7 +81,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
     def tearDown(self):
         LogTestCase.tearDown(self)
-        TestWithKeysAuth.tearDown(self)
+        testutils.DatabaseFixture.tearDown(self)
 
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
@@ -281,7 +281,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_add_task_header(self, *_):
-        keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "2"))
+        keys_auth_2 = KeysAuth(os.path.join(self.path, "2"))
 
         ts = self.ts
 
@@ -648,7 +648,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         assert client_options.options.get('peers') == [forced_peer]
 
 
-class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
+class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
@@ -782,8 +782,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDatabaseWithReactor):
         return ccd
 
 
-class TestRestoreResources(TestWithKeysAuth, LogTestCase,
-                           testutils.DatabaseFixture):
+class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
+                           testutils.TestWithClient):
 
     def setUp(self):
         for parent in self.__class__.__bases__:
@@ -866,7 +866,7 @@ class TestRestoreResources(TestWithKeysAuth, LogTestCase,
         with patch.object(self.resource_manager, 'add_task',
                           side_effect=error_class):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == \
+            assert self.resource_manager.add_task.call_count ==\
                 self.task_count * 2
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
