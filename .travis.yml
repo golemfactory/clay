@@ -37,6 +37,7 @@ before_install:
   - sudo -HE pip3 install -r requirements-test.txt
   - sudo -HE python3 setup.py develop
 
+  - export PATH=$(pwd)/hyperg:$PATH
   # Slow tests only on branches and PRs with enough approvals
   - export ARG_RUNSLOW=$(python3 scripts/get-slow-argument.py ${TRAVIS_PULL_REQUEST})
 
