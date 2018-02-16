@@ -830,6 +830,12 @@ class TaskManager(TaskEventListener):
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)
 
+    @handle_subtask_key_error
+    def is_subtask_owner(self, subtask_id, node_id):
+        task_id = self.subtask2task_mapping[subtask_id]
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        return ss.computer.node_id == node_id
+
     @handle_task_key_error
     def notice_task_updated(self, task_id: str, subtask_id: str = None,
                             op: Operation = None, persist: bool = True):

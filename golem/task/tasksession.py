@@ -568,7 +568,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
+        if self.check_subtask_owner(msg):
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -585,8 +585,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
-            logger.warning('Received unknown subtask_id: %r', msg)
+        if not self.check_subtask_owner(msg):
             self.dropped()
             return
 
@@ -654,6 +653,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 "Task result received with unknown subtask_id: %r",
                 subtask_id
             )
+            return
+
+        if not self.check_subtask_owner(msg):
+            self.dropped()
             return
 
         logger.debug(
@@ -735,7 +738,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.dropped()
 
     def _react_to_task_failure(self, msg):
-        self.task_server.subtask_failure(msg.subtask_id, msg.err)
+        if self.check_subtask_owner(msg):
+            self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
     def _react_to_delta_parts(self, msg):
@@ -843,6 +847,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.address,
             self.port
         )
+
+    def check_subtask_owner(self, msg) -> bool:
+        if not self.task_manager.is_subtask_owner(msg.subtask_id, self.key_id):
+            logger.warning('Received subtask %r from diferrent node %r than '
+                           'expected', msg.subtask_id, self.key_id)
+            return False
+        return True
 
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON
