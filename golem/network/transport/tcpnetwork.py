@@ -311,10 +311,9 @@ class BasicProtocol(SessionProtocol):
     """
 
     def __init__(self):
+        super().__init__()
         self.opened = False
         self.db = DataBuffer()
-        self.lock = Lock()
-        super().__init__()
         self.spam_protector = SpamProtector()
 
     def send_message(self, msg):
@@ -393,14 +392,13 @@ class BasicProtocol(SessionProtocol):
         db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
-    def _can_receive(self):
+    def _can_receive(self) -> bool:
         return self.opened and isinstance(self.db, DataBuffer)
 
     def _interpret(self, data):
-        with self.lock:
-            self.db.append_bytes(data)
-            mess = self._data_to_messages()
-
+        self.session.last_message_time = time.time()
+        self.db.append_bytes(data)
+        mess = self._data_to_messages()
         for m in mess:
             self.session.interpret(m)
 
@@ -479,19 +477,15 @@ class ServerProtocol(BasicProtocol):
         BasicProtocol.connectionMade(self)
         self.server.new_connection(self.session)
 
-    def _can_receive(self):
+    def _can_receive(self) -> bool:
         if not self.opened:
-            raise IOError("Protocol is closed")
-        if not isinstance(self.db, DataBuffer):
-            raise TypeError(
-                "incorrect db type: {}. Should be: DataBuffer".format(
-                    type(self.db),
-                )
-            )
+            logger.warning("Protocol is closed")
+            return False
 
         if not self.session and self.server:
             self.opened = False
-            raise Exception('Peer for connection is None')
+            logger.warning('Peer for connection is None')
+            return False
 
         return True
 
@@ -567,8 +561,6 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol.close_now(self)
 
     def _interpret(self, data):
-        self.session.last_message_time = time.time()
-
         if self.stream_mode:
             self._stream_data_received(data)
             return
@@ -576,6 +568,8 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol._interpret(self, data)
 
     def _stream_data_received(self, data):
+        self.session.last_message_time = time.time()
+
         if self.consumer is None:
             raise ValueError("consumer is None")
         if self._check_stream(data):
