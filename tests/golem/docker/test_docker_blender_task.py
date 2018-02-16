@@ -1,10 +1,10 @@
+import json
+from os import makedirs, path
 import shutil
 import time
-from os import makedirs, path
+from unittest.mock import Mock
 
-import json
 import pytest
-from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor

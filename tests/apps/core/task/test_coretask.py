@@ -1,10 +1,9 @@
+from copy import copy
 import os
 import shutil
 import unittest
+from unittest.mock import MagicMock, Mock
 import zlib
-from copy import copy
-
-from mock import MagicMock, Mock
 
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path

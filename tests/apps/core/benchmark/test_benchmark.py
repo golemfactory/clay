@@ -1,4 +1,5 @@
-import mock
+import unittest.mock as mock
+
 from PIL import Image
 
 from apps.rendering.benchmark import renderingbenchmark

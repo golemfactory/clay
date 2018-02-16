@@ -1,7 +1,6 @@
 import os
+import unittest.mock as mock
 import zipfile
-
-import mock
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition

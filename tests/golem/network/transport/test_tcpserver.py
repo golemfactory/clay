@@ -1,6 +1,5 @@
 import unittest
-
-from mock import Mock
+from unittest.mock import Mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 
