@@ -19,7 +19,7 @@ from golem.core import variables
 from golem.network.concent import constants
 from golem.network.concent import exceptions
 
-logger = logging.getLogger("golem.network.concent.client")
+logger = logging.getLogger(__name__)
 
 
 def send_to_concent(msg: message.Message, signing_key, public_key) \

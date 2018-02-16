@@ -7,7 +7,7 @@ import semantic_version
 
 from ethereum.utils import sha3
 
-logger = logging.getLogger("golem.network.concent.client")
+logger = logging.getLogger(__name__)
 
 
 def find_free_net_port():
