@@ -1,9 +1,10 @@
 from multiprocessing import Process
 import os
-import psutil
 import subprocess
 import time
 from unittest.mock import Mock, patch
+
+import psutil
 
 from golem.core.processmonitor import ProcessMonitor
 from golem.tools.assertlogs import LogTestCase
