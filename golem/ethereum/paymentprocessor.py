@@ -331,9 +331,19 @@ class PaymentProcessor(LoopingCallService):
             return False
         return True
 
+    def _send_balance_snapshot(self):
+        dispatcher.send(
+            signal='golem.monitor',
+            event='balance_snapshot',
+            eth_balance=self.__eth_balance,
+            gnt_balance=self.__gnt_balance,
+            gntw_balance=self.__gntw_balance
+        )
+
     def _run(self):
         if self._sci.is_synchronized() and \
                 self.get_ether_from_faucet() and \
                 self.get_gnt_from_faucet():
             self.monitor_progress()
             self.sendout()
+            self._send_balance_snapshot()
