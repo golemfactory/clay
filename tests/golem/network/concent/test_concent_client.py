@@ -111,6 +111,12 @@ class TestSendToConcent(TestCase):
         self.assertEqual(post_mock.call_count, 1)
 
 
+class TestReceiveFromConcent(TestCase):
+    def setUp(self):
+        # TODO
+        pass
+
+
 @mock.patch('twisted.internet.reactor', create=True)
 @mock.patch('golem.network.concent.client.send_to_concent')
 class TestConcentClientService(testutils.TempDirFixture):

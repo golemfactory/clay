@@ -29,10 +29,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     """
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    if msg is not None:
-        data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
-    else:
-        data = b''
+    data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
     logger.debug('send_to_concent(): data: %r', data)
     concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
     headers = {
@@ -84,6 +81,38 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     return response.content or None
 
 
+def receive_from_concent(public_key) -> Optional[str]:
+    concent_receive_url = urljoin(variables.CONCENT_URL, '/api/v1/receive/')
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
+        'X-Golem-Messages': golem_messages.__version__,
+    }
+    try:
+        logger.debug(
+            'receive_from_concent(): GET %r hdr: %r',
+            concent_receive_url,
+            headers,
+        )
+        response = requests.post(
+            concent_receive_url,
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        raise exceptions.ConcentUnavailableException(
+            'Failed to receive_from_concent()',
+        ) from e
+    if response.status_code != 200:
+        raise exceptions.ConcentRequestException(
+            "Concent failed with status: {status} {text}".format(
+                status=response.status_code,
+                text=response.text,
+            ),
+        )
+
+    return response.content or None
+
+
 class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
@@ -126,6 +155,7 @@ class ConcentClientService(threading.Thread):
     def run(self) -> None:
         while not self._stop_event.isSet():
             self._loop()
+            self.receive()
             time.sleep(1)
 
     def stop(self) -> None:
@@ -192,11 +222,7 @@ class ConcentClientService(threading.Thread):
         try:
             req = self._queue.get(timeout=constants.PING_TIMEOUT)
         except queue.Empty:
-            # Send empty "ping" message
-            req = ConcentRequest(
-                msg=None,
-                deadline_at=datetime.datetime.max,
-            )
+            return
 
         # FIXME: remove
         if not self._enabled:
@@ -221,6 +247,19 @@ class ConcentClientService(threading.Thread):
         else:
             self._grace_time = self.MIN_GRACE_TIME
             self.react_to_concent_message(res)
+
+    def receive(self) -> None:
+        try:
+            res = receive_from_concent(self.keys_auth.public_key)
+        except exceptions.ConcentException as e:
+            logger.warning("Can't receive message from Concent: %s", e)
+            self._grace_sleep()
+            return
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('receive_from_concent() failed')
+            self._grace_sleep()
+            return
+        self.react_to_concent_message(res)
 
     def react_to_concent_message(self, data):
         if data is None:
