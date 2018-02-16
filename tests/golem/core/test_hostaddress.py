@@ -1,9 +1,11 @@
 import unittest
+from unittest.mock import patch
 
 import netifaces
-from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks, \
-                                   ip_addresses, get_host_address_from_connection, get_external_address
-from mock import patch
+
+from golem.core.hostaddress import get_host_address, ip_address_private, \
+    ip_network_contains, ipv4_networks, \
+    ip_addresses, get_host_address_from_connection, get_external_address
 
 
 def mock_ifaddresses(*args):

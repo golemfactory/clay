@@ -1,4 +1,4 @@
-from mock import Mock, patch
+from unittest.mock import Mock, patch
 
 from golem.task.taskbase import Task
 from golem.task.tasktester import TaskTester, logger

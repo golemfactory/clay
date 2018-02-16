@@ -1,5 +1,4 @@
-import mock
-from mock import patch, MagicMock
+import unittest.mock as mock
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
@@ -49,15 +48,15 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         def _init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
-            self.web3 = MagicMock()
+            self.web3 = mock.MagicMock()
 
-        with patch('twisted.internet.task.LoopingCall.start'), \
-            patch('twisted.internet.task.LoopingCall.stop'), \
-            patch('golem_sci.new_sci'), \
-            patch(pkg + 'node.NodeProcess.start'), \
-            patch(pkg + 'node.NodeProcess.stop'), \
-            patch(pkg + 'node.NodeProcess.__init__', _init), \
-            patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+        with mock.patch('twisted.internet.task.LoopingCall.start'), \
+                mock.patch('twisted.internet.task.LoopingCall.stop'), \
+                mock.patch('golem_sci.new_sci'), \
+                mock.patch(pkg + 'node.NodeProcess.start'), \
+                mock.patch(pkg + 'node.NodeProcess.stop'), \
+                mock.patch(pkg + 'node.NodeProcess.__init__', _init), \
+                mock.patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
