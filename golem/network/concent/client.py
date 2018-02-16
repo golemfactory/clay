@@ -90,7 +90,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     return response.content or None
 
 
-def receive_from_concent(public_key) -> Optional[str]:
+def receive_from_concent(public_key) -> typing.Optional[str]:
     concent_receive_url = urljoin(variables.CONCENT_URL, '/api/v1/receive/')
     headers = {
         'Content-Type': 'application/octet-stream',
@@ -108,11 +108,11 @@ def receive_from_concent(public_key) -> Optional[str]:
             headers=headers,
         )
     except requests.exceptions.RequestException as e:
-        raise exceptions.ConcentUnavailableException(
+        raise exceptions.ConcentUnavailableError(
             'Failed to receive_from_concent()',
         ) from e
     if response.status_code != 200:
-        raise exceptions.ConcentRequestException(
+        raise exceptions.ConcentRequestError(
             "Concent failed with status: {status} {text}".format(
                 status=response.status_code,
                 text=response.text,
@@ -263,7 +263,7 @@ class ConcentClientService(threading.Thread):
     def receive(self) -> None:
         try:
             res = receive_from_concent(self.keys_auth.public_key)
-        except exceptions.ConcentException as e:
+        except exceptions.ConcentError as e:
             logger.warning("Can't receive message from Concent: %s", e)
             self._grace_sleep()
             return
