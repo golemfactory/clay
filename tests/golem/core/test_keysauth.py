@@ -79,15 +79,17 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     def test_key_recreate_on_increased_difficulty(self, logger):
         # given
         old_difficulty = 0
-        new_difficulty = 8
+        new_difficulty = 7
 
         assert old_difficulty < new_difficulty  # just in case
 
+        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
         # create key that has difficulty lower than new_difficulty
         while True:
             ek = KeysAuth(self.path, difficulty=old_difficulty)
             if not ek.is_difficult(new_difficulty):
                 break
+            os.rmdir(keys_dir)  # to enable keys regeneration
 
         assert ek.get_difficulty() >= old_difficulty
         assert ek.get_difficulty() < new_difficulty

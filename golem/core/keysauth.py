@@ -132,6 +132,16 @@ class KeysAuth:
         return priv_key, pub_key
 
     @staticmethod
+    def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
+        logger.info("Generating new key pair.")
+        while True:
+            priv_key = mk_privkey(str(get_random_float()))
+            pub_key = privtopub(priv_key)
+            if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
+                break
+        return priv_key, pub_key
+
+    @staticmethod
     def _save_private_key(key, key_path):
         def backup_file(path):
             if os.path.exists(path):
@@ -158,16 +168,6 @@ class KeysAuth:
 
     def is_difficult(self, difficulty: int) -> bool:
         return self.is_pubkey_difficult(self.public_key, difficulty)
-
-    @staticmethod
-    def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
-        logger.info("Generating new key pair.")
-        while True:
-            priv_key = mk_privkey(str(get_random_float()))
-            pub_key = privtopub(priv_key)
-            if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-                break
-        return priv_key, pub_key
 
     def get_difficulty(self, key_id: Optional[str] = None) -> float:
         """
