@@ -53,7 +53,9 @@ def get_random_float() -> float:
 class KeysAuth:
     """
     Elliptical curves cryptographic authorization manager. Generates
-    private and public keys based on ECC (curve secp256k1). Keeps only private.
+    private and public keys based on ECC (curve secp256k1) with specified
+    difficulty. Private key is stored in file. When this file not exist, is
+    broken or contain key below requested difficulty new key is generated.
     """
     KEYS_SUBDIR = 'keys'
     PRIV_KEY_LEN = 32
@@ -61,17 +63,13 @@ class KeysAuth:
     HEX_PUB_KEY_LEN = 128
     KEY_ID_LEN = 128
 
-    _private_key_path = ""  # type: str
     _private_key = b''  # type: bytes
     public_key = b''  # type: bytes
     key_id = ""  # type: str
     ecc = None  # type: ECCx
 
-    def __init__(
-            self,
-            datadir: str,
-            private_key_name: str = PRIVATE_KEY,
-            difficulty: int = 0) -> None:
+    def __init__(self, datadir: str, private_key_name: str = PRIVATE_KEY,
+                 difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
 
@@ -83,25 +81,33 @@ class KeysAuth:
             0 accepts all keys, 255 is nearly impossible.
         """
 
-        keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
-        path = os.path.join(keys_dir, private_key_name)
+        prv, pub = KeysAuth._load_or_generate_keys(
+            datadir, private_key_name, difficulty)
 
-        loaded_keys = KeysAuth._load_and_check_keys(path, difficulty)
+        self._private_key = prv
+        self.ecc = ECCx(prv)
+        self.public_key = pub
+        self.key_id = encode_hex(pub)
+        self.difficulty = KeysAuth.get_difficulty(self.key_id)
+
+    @staticmethod
+    def _load_or_generate_keys(datadir: str, filename: str,
+                               difficulty: int) -> Tuple[bytes, bytes]:
+        keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
+        priv_key_path = os.path.join(keys_dir, filename)
+
+        loaded_keys = KeysAuth._load_and_check_keys(priv_key_path, difficulty)
+
         if loaded_keys:
             priv_key, pub_key = loaded_keys
         else:
             priv_key, pub_key = KeysAuth._generate_keys(difficulty)
-            KeysAuth._save_private_key(priv_key, path)
+            KeysAuth._save_private_key(priv_key, priv_key_path)
 
-        self._private_key = priv_key
-        self._private_key_path = path
-        self.public_key = pub_key
-        self.key_id = encode_hex(pub_key)
-        self.ecc = ECCx(priv_key)
-        self.difficulty = KeysAuth.get_difficulty(self.key_id)
+        return priv_key, pub_key
 
     @staticmethod
-    def _get_or_create_keys_dir(datadir):
+    def _get_or_create_keys_dir(datadir: str) -> str:
         path = datadir or get_local_datadir('default')
         keys_dir = os.path.join(path, KeysAuth.KEYS_SUBDIR)
         if not os.path.isdir(keys_dir):
@@ -109,12 +115,10 @@ class KeysAuth:
         return keys_dir
 
     @staticmethod
-    def _load_and_check_keys(
-            private_key_path: str,
-            difficulty: int) -> Optional[Tuple[bytes, bytes]]:
-
+    def _load_and_check_keys(priv_key_path: str,
+                             difficulty: int) -> Optional[Tuple[bytes, bytes]]:
         try:
-            with open(private_key_path, 'rb') as f:
+            with open(priv_key_path, 'rb') as f:
                 priv_key = f.read()
         except FileNotFoundError:
             return None
@@ -176,7 +180,7 @@ class KeysAuth:
         This is more expensive to calculate than is_difficult, so use
         the latter if possible.
         """
-        return math.floor(256 - math.log2(sha2(decode_hex(key_id))))
+        return int(math.floor(256 - math.log2(sha2(decode_hex(key_id)))))
 
     def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
         """ Encrypt given data with ECIES.
