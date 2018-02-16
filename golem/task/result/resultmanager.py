@@ -55,7 +55,6 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, content_hash, task_id, subtask_id)
-            os.remove(file_path)
 
         resource = content_hash, [file_name]
         self.resource_manager.pull_resource(resource, task_id,
@@ -76,17 +75,18 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(file_path)
 
         packager = self.package_class(key_or_secret)
-        path = packager.create(file_path,
-                               node=node,
-                               task_result=task_result)
+        path, sha1 = packager.create(file_path,
+                                     node=node,
+                                     task_result=task_result)
 
         self.resource_manager.add_file(path, task_id)
         for resource in self.resource_manager.get_resources(task_id):
             if file_name in resource.files:
-                return resource.hash, file_path
+                return resource.hash, file_path, sha1
 
         if os.path.exists(path):
-            raise EnvironmentError("Error creating package: 'add' command failed")
+            raise EnvironmentError("Error creating package: "
+                                   "'add' command failed")
         raise Exception("Error creating package: file not found")
 
     def extract(self, path, output_dir=None, key_or_secret=None, **kwargs):

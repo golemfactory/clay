@@ -12,7 +12,7 @@ from golem.resource.dirmanager import split_path
 logger = logging.getLogger(__name__)
 
 
-class TaskResourceHeader(object):
+class TaskResourceHeader():
     def __init__(self, dir_name):
         self.sub_dir_headers = []
         self.files_data = []

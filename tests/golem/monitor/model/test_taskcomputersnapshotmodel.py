@@ -1,8 +1,10 @@
-import mock
-from pydispatch import dispatcher
 import random
+import unittest.mock as mock
+
+from pydispatch import dispatcher
 
 from golem.monitor.test_helper import MonitorTestBaseClass
+
 
 class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
     def test_channel(self):

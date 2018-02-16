@@ -1,12 +1,15 @@
-from golem.core.common import timeout_to_deadline
+import os
+from unittest import mock
 
 from apps.blender.task.verifier import BlenderVerifier, logger
+from apps.blender.task.blendercropper import CropContext
 
-from golem.testutils import PEP8MixIn
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.ci import ci_skip
 
 
-class TestBlenderVerifier(LogTestCase, PEP8MixIn):
+class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = ["apps/blender/task/verifier.py"]
 
     def test_get_part_size_from_subtask_number(self):
@@ -50,40 +53,35 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn):
                    " 'There was a problem'"
                    in log for log in logs.output)
 
-    def test_crop_rendered(self):
+    @ci_skip
+    @mock.patch('golem.docker.job.DockerJob.start')
+    @mock.patch('golem.docker.job.DockerJob.wait')
+    def test_crop_rendered(self, wait_mock, start_mock):
         bv = BlenderVerifier(lambda: None)
+        verify_ctx = CropContext([[75, 34]], 0, self.tempdir)
+        crop_path = os.path.join(self.tempdir, str(0))
+        bv.current_results_file = os.path.join(self.tempdir, "none.png")
+        open(bv.current_results_file, mode='a').close()
+        if not os.path.exists(crop_path):
+            os.mkdir(crop_path)
+        output_dir = os.path.join(crop_path, "output")
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        f = open(os.path.join(output_dir, "result.txt"), mode='a')
+        f.write("{")
+        f.write("\"MSE_canny\": 2032.03125,")
+        f.write("\"MSE_normal\": 1.171875,")
+        f.write("\"MSE_wavelet\": 5080.765625,")
+        f.write("\"SSIM_canny\": 0.9377418556022814,")
+        f.write("\"SSIM_normal\": 0.9948028194990917,")
+        f.write("\"SSIM_wavelet\": 0.7995332835184454,")
+        f.write("\"crop_resolution\": \"8x8\",")
+        f.write("\"imgCorr\": 0.7342643964262355")
+        f.write("}")
+        f.close()
         with self.assertLogs(logger, level="INFO") as logs:
-            bv._crop_rendered({"abc": "def"}, 2913)
+            bv._crop_rendered({"data": ["def"]}, 2913, verify_ctx)
         assert any("Crop for verification rendered"
                    in log for log in logs.output)
         assert any("2913" in log for log in logs.output)
         assert any("def" in log for log in logs.output)
-
-    def test_generate_ctd(self):
-        bv = BlenderVerifier(lambda: None)
-        old_script = "print(str(2 + 3))"
-        ctd = {"extra_data": {"outfilebasename": "mytask",
-                              "script_src": old_script,
-                              "new_arg": "def"},
-               "deadline": timeout_to_deadline(1200)}
-
-        old_deadline = ctd["deadline"]
-        subtask_info = {"ctd": ctd,
-                        "deadline": timeout_to_deadline(1200),
-                        'new_arg': "abc",
-                        "outfilebasename": "mytask",
-                        'subtask_timeout': 700}
-        new_script = "print('hello world!)"
-        new_ctd = bv._generate_ctd(subtask_info, new_script)
-
-        assert ctd['extra_data']['script_src'] == old_script
-        assert new_ctd['extra_data']['script_src'] == new_script
-
-        assert ctd['extra_data']['new_arg'] == "def"
-        assert new_ctd['extra_data']['new_arg'] == "def"
-
-        assert ctd['extra_data']['outfilebasename'] == "mytask"
-        assert new_ctd['extra_data']['outfilebasename'] == "ref_mytask"
-
-        assert ctd['deadline'] == old_deadline
-        assert new_ctd['deadline'] != old_deadline

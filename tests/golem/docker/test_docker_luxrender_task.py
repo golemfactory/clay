@@ -3,8 +3,8 @@ import logging
 import os
 from os import makedirs, path, remove
 import shutil
+from unittest.mock import Mock
 
-from mock import Mock
 import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
-from golem.node import OptNode
+from golem.node import Node
 
 from golem.task.taskbase import ResultType
 from golem.resource.dirmanager import DirManager
@@ -97,14 +97,20 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.start = Mock()
+        self.node.client.datadir = self.path
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
-                                 use_docker_machine_manager=False)
+        task_server = TaskServer(
+            node=Mock(),
+            config_desc=ccd,
+            client=self.node.client,
+            use_docker_machine_manager=False
+        )
+        task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
 

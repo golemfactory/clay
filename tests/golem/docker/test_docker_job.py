@@ -6,10 +6,10 @@ import tempfile
 import time
 import uuid
 from os import path
+import unittest.mock as mock
 
 import docker.errors
 import requests
-from mock import patch, mock
 
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
@@ -349,7 +349,7 @@ with open("../output/out.txt", "w") as f:
             text = f.read()
         self.assertEqual(text, sample_text)
 
-    @patch('golem.docker.job.local_client')
+    @mock.patch('golem.docker.job.local_client')
     def test_kill(self, local_client):
 
         client = mock.Mock()
@@ -358,42 +358,23 @@ with open("../output/out.txt", "w") as f:
         def raise_exception(*_):
             raise Exception("Test exception")
 
-        with patch('golem.docker.job.DockerJob.get_status',
+        with mock.patch('golem.docker.job.DockerJob.get_status',
                    side_effect=raise_exception):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
-        with patch('golem.docker.job.DockerJob.get_status',
+        with mock.patch('golem.docker.job.DockerJob.get_status',
                    return_value=DockerJob.STATE_KILLED):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
-        with patch('golem.docker.job.DockerJob.get_status',
+        with mock.patch('golem.docker.job.DockerJob.get_status',
                    return_value=DockerJob.STATE_RUNNING):
             job = self._create_test_job("test_script")
             job.kill()
             assert local_client.called
             assert client.kill.called
-
-    @patch('golem.docker.job.DockerJob.kill')
-    def test_kill_jobs(self, kill):
-
-        def create_job():
-            job = DockerJob.__new__(DockerJob)
-            job.container = mock.Mock()
-            job.container_id = str(uuid.uuid4())
-            return job
-
-        DockerJob.kill_jobs()
-        assert not kill.called
-
-        DockerJob.running_jobs = [
-            create_job(), create_job(),
-        ]
-
-        DockerJob.kill_jobs()
-        assert kill.call_count == 2

@@ -4,7 +4,7 @@ import shutil
 from threading import Lock
 from typing import List
 
-from golem.core.fileshelper import copy_file_tree
+from golem.core.fileshelper import copy_file_tree, relative_path
 
 
 def split_path(path):
@@ -151,20 +151,9 @@ class ResourceStorage(object):
         return self.cache.has_resource(resource) and resource.exists
 
     def relative_path(self, path, task_id):
-
         path = norm_path(path)
         common_prefix = self.cache.get_prefix(task_id)
-
-        if path.startswith(common_prefix):
-            return_path = path.replace(common_prefix, '', 1)
-        else:
-            return_path = path
-
-        if common_prefix:
-            while return_path and return_path.startswith(os.path.sep):
-                return_path = return_path[len(os.path.sep):]
-
-        return return_path
+        return relative_path(path, common_prefix)
 
     def copy_dir(self, src_dir):
 

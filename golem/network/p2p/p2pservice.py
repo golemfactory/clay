@@ -1,10 +1,11 @@
-from collections import deque
-from golem_messages import message
 import ipaddress
 import logging
 import random
 import time
+from collections import deque
 from threading import Lock
+
+from golem_messages import message
 
 from golem.core import simplechallenge
 from golem.diag.service import DiagnosticsProvider
@@ -19,8 +20,6 @@ from .peerkeeper import PeerKeeper, key_distance
 logger = logging.getLogger(__name__)
 
 LAST_MESSAGE_BUFFER_LEN = 5  # How many last messages should we keep
-# How often should we disconnect with a random node
-REFRESH_PEERS_TIMEOUT = 1200
 # After how many seconds from the last try should we try to connect with seed?
 RECONNECT_WITH_SEED_THRESHOLD = 30
 # Should nodes that connects with us solve hashcash challenge?
@@ -75,7 +74,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.node = node
         self.keys_auth = keys_auth
-        self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
+        self.peer_keeper = PeerKeeper(keys_auth.key_id)
         self.task_server = None
         self.resource_server = None
         self.metadata_manager = None
@@ -91,12 +90,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_message_buffer_len = LAST_MESSAGE_BUFFER_LEN
         self.last_time_tried_connect_with_seed = 0
         self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
-        self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
         self.challenge_history = deque(maxlen=HISTORY_LEN)
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
+        self.key_difficulty = config_desc.key_difficulty
 
         # Peers options
         self.peers = {}  # active peers
@@ -132,7 +131,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select().where(KnownHosts.is_seed == False):  # noqa
+        for host in KnownHosts.select() \
+                .where(KnownHosts.is_seed == False):  # noqa
+
             ip_address = host.ip_address
             port = host.port
 
@@ -229,10 +230,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
            Remove excess information about peers
         """
         super().sync_network(timeout=self.last_message_time_threshold)
-        if self.task_server:
-            self.__send_message_get_tasks()
 
         now = time.time()
+
+        # We are given access to TaskServer by Client in start_network method.
+        # We don't want to send GetTasks messages, before we can handle them.
+        if self.task_server and now - self.last_tasks_request > TASK_INTERVAL:
+            self.last_tasks_request = now
+            self._send_get_tasks()
 
         if now - self.last_peers_request > PEERS_INTERVAL:
             self.last_peers_request = now
@@ -292,7 +297,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
-        # Timeouts of this session/peer will be hanled in sync_network()
+        # Timeouts of this session/peer will be handled in sync_network()
         try:
             self.pending_sessions.remove(peer)
         except KeyError:
@@ -321,7 +326,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param force: add or overwrite existing data
         """
         key_id = peer_info["node"].key
-        if force or self.__is_new_peer(key_id):
+        if ((force or self.__is_new_peer(key_id)) and
+            (peer_info["port"] > 0 and tcpnetwork.SocketAddress
+                .is_proper_address(peer_info["address"], peer_info["port"]))):
             logger.info(
                 "add peer to incoming %r %r %r (%r)",
                 peer_info["node_name"],
@@ -329,7 +336,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer_info["port"],
                 key_id
             )
-
             self.incoming_peers[key_id] = {"address": peer_info["address"],
                                            "port": peer_info["port"],
                                            "node": peer_info["node"],
@@ -433,8 +439,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         for peer in list(self.peers.values()):
-            if peer.port == self.config_desc.seed_port\
-                    and peer.address == self.config_desc.seed_host:
+            if (peer.port == self.config_desc.seed_port
+                    and peer.address == self.config_desc.seed_host):
                 return
 
         if self.config_desc.seed_host and self.config_desc.seed_port:
@@ -473,7 +479,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return boolean: true if challenge has been correctly solved,
                          false otherwise
         """
-        return simplechallenge.accept_challenge(challenge, solution, difficulty)
+        return simplechallenge.accept_challenge(
+            challenge,
+            solution,
+            difficulty)
 
     def solve_challenge(self, key_id, challenge, difficulty):
         """ Solve challenge with given difficulty for a node with key_id
@@ -527,7 +536,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param key_id: node's public key
         :return:
         """
-        socket_addresses = tcpserver.PendingConnectionsServer\
+        socket_addresses = tcpserver \
+            .PendingConnectionsServer \
             .get_socket_addresses(
                 self,
                 node_info,
@@ -621,11 +631,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         return self.task_server.add_task_header(th_dict_repr)
 
-    def remove_task_header(self, task_id):
+    def remove_task_header(self, task_id) -> bool:
         """ Remove header of a task with given id from a list of a known tasks
         :param str task_id: id of a task that should be removed
+        :return: False if task was already removed
         """
-        self.task_server.remove_task_header(task_id)
+        return self.task_server.remove_task_header(task_id)
 
     def remove_task(self, task_id):
         """ Ask all peers to remove information about given task
@@ -817,11 +828,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for p in list(self.peers.values()):
             p.send_get_peers()
 
-    def __send_message_get_tasks(self):
-        if time.time() - self.last_tasks_request > TASK_INTERVAL:
-            self.last_tasks_request = time.time()
-            for p in list(self.peers.values()):
-                p.send_get_tasks()
+    def _send_get_tasks(self):
+        for p in list(self.peers.values()):
+            p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
         peer_conn = session.conn.transport.getPeer()
@@ -856,18 +865,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.remove_peer(peer)
                 peer.disconnect(
                     message.Disconnect.REASON.Timeout
-                )
-
-    def __refresh_old_peers(self):
-        cur_time = time.time()
-        if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
-            self.last_refresh_peers = cur_time
-            if len(self.peers) > 1:
-                peer_id = random.choice(list(self.peers.keys()))
-                peer = self.peers[peer_id]
-                self.refresh_peer(peer)
-                peer.disconnect(
-                    message.Disconnect.REASON.Refresh
                 )
 
     def _sync_forward_requests(self):

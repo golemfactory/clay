@@ -1,8 +1,7 @@
-import unittest
 import time
+import unittest
+import unittest.mock as mock
 import uuid
-
-from mock import MagicMock
 
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
@@ -41,7 +40,7 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         nodeinfo = MockNodeInfo()
         nodeinfo2 = MockNodeInfo()
         tch = TaskConnectionsHelper()
-        tch.task_server = MagicMock()
+        tch.task_server = mock.MagicMock()
         self.assertIsNone(tch.conn_to_start.get("abc"))
         tch.want_to_start("abc", nodeinfo, "supernodeinfo")
         data = tch.conn_to_start.get("abc")
@@ -59,7 +58,7 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         nodeinfo1 = MockNodeInfo()
         nodeinfo2 = MockNodeInfo()
         tch = TaskConnectionsHelper()
-        tch.task_server = MagicMock()
+        tch.task_server = mock.MagicMock()
         tch.remove_old_interval = 1
         tch.sync()
         self.assertEqual(len(tch.conn_to_set), 0)
@@ -86,4 +85,3 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         tch.sync()
         self.assertEqual(len(tch.conn_to_start), 0)
         # self.assertEqual(len(tch.conn_to_set), 0)
-

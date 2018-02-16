@@ -17,16 +17,16 @@ import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
-    NetworkConnectionPublisherService, TasksPublisherService, \
-    BalancePublisherService, ResourceCleanerService, TaskArchiverService,\
+    NetworkConnectionPublisherService, \
+    ResourceCleanerService, TaskArchiverService, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Payment, PaymentStatus, ExpectedIncome
+from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -44,20 +44,29 @@ from golem.task.taskstate import TaskTestStatus
 
 
 def mock_async_run(req, success, error):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
+
     try:
         result = req.method(*req.args, **req.kwargs)
-    # pylint: disable=broad-except
-    except Exception as e:
-        error(e)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
     else:
-        if success:
-            success(result)
+        deferred.callback(result)
+
+    return deferred
 
 
 def random_hex_str() -> str:
     return str(uuid.uuid4()).replace('-', '')
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 class TestCreateClient(TestDirFixture):
 
     @patch('twisted.internet.reactor', create=True)
@@ -91,6 +100,9 @@ class TestCreateClient(TestDirFixture):
             )
 
 
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
@@ -157,10 +169,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         n = 9
         incomes = [
-            ExpectedIncome(
+            Income.create(
                 sender_node=random_hex_str(),
-                sender_node_details=Node(),
-                task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
@@ -592,7 +602,7 @@ class TestMonitoringPublisherService(TestWithReactor):
         service._run()
 
         assert not log.debug.called
-        assert send.call_count == 2
+        assert send.call_count == 3
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):
@@ -608,20 +618,6 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
         assert c._publish.call_count == 1
 
 
-class TestTasksPublisherService(TestWithReactor):
-
-    @patch('golem.client.log')
-    def test_run(self, log):
-        rpc_publisher = Mock()
-        task_manager = Mock()
-
-        service = TasksPublisherService(rpc_publisher, task_manager)
-        service._run()
-
-        assert not log.debug.called
-        assert rpc_publisher.publish.call_count == 1
-
-
 class TestTaskArchiverService(TestWithReactor):
 
     @patch('golem.client.log')
@@ -633,37 +629,6 @@ class TestTaskArchiverService(TestWithReactor):
 
         assert not log.debug.called
         assert task_archiver.do_maintenance.call_count == 1
-
-
-class TestBalancePublisherService(TestWithReactor):
-
-    @patch('golem.client.log')
-    def test_run(self, log):
-        rpc_publisher = Mock()
-        transaction_system = Mock()
-        transaction_system.get_balance = lambda: (1, 2, 3)
-
-        service = BalancePublisherService(rpc_publisher, transaction_system)
-        service._run()
-
-        assert not log.debug.called
-        assert rpc_publisher.publish.call_count == 1
-
-    @patch('golem.client.log')
-    def test_balance_exception(self, log):
-        rpc_publisher = Mock()
-        transaction_system = Mock()
-
-        def raise_exc(*_):
-            raise Exception('Test exception')
-
-        transaction_system.get_balance = raise_exc
-
-        service = BalancePublisherService(rpc_publisher, transaction_system)
-        service._run()
-
-        assert log.debug.called
-        assert rpc_publisher.publish.call_count == 0
 
 
 class TestResourceCleanerService(TestWithReactor):
@@ -747,30 +712,34 @@ class TestTaskCleanerService(TestWithReactor):
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
-
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        client = Client(
-            datadir=self.path,
-            transaction_system=False,
-            connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
-            use_monitor=False
-        )
+        with patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            client = Client(
+                datadir=self.path,
+                transaction_system=False,
+                connect_to_known_hosts=False,
+                use_docker_machine_manager=False,
+                use_monitor=False
+            )
 
         client.sync = Mock()
         client.keys_auth = Mock()
         client.keys_auth.key_id = str(uuid.uuid4())
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
-        client.task_server = TaskServer(
-            Node(),
-            ClientConfigDescriptor(),
-            Mock(),
-            client,
-            use_docker_machine_manager=False
-        )
+        with patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            client.task_server = TaskServer(
+                node=Node(),
+                config_desc=ClientConfigDescriptor(),
+                client=client,
+                use_docker_machine_manager=False
+            )
         client.monitor = Mock()
 
         self.client = client
@@ -780,7 +749,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = EllipticalKeysAuth(self.path)
+        c.keys_auth = KeysAuth(self.path)
 
         self.assertIsInstance(c.get_node(), dict)
 

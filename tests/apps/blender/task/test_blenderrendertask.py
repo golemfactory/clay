@@ -31,12 +31,64 @@ from apps.core.task.coretask import logger as logger_core
 from golem.verification.verifier import SubtaskVerificationState
 
 
+
 class TestBlenderDefaults(unittest.TestCase):
 
 
     def test_init(self):
         bd = BlenderDefaults()
         self.assertTrue(path.isfile(bd.main_program_file))
+
+
+class BlenderTaskInitTest(TempDirFixture, LogTestCase):
+    def test_compositing(self):
+
+        task_definition = RenderingTaskDefinition()
+        task_definition.options = BlenderRendererOptions()
+        task_definition.options.use_frames = True
+        task_definition.options.frames = [7, 8, 10]
+        task_definition.main_scene_file = self.temp_file_name("example.blend")
+        task_definition.output_file = self.temp_file_name('output')
+        task_definition.output_format = 'PNG'
+        task_definition.resolution = [2, 300]
+        task_definition.task_id = "ABC"
+
+        def _get_blender_task(task_definition, total_tasks=6):
+            return BlenderRenderTask(
+                node_name="exmaple-node-name",
+                task_definition=task_definition,
+                total_tasks=total_tasks,
+                root_path=self.tempdir,
+            )
+
+        # Compostiting set to False
+        task_definition.options.compositing = False
+        bt = _get_blender_task(task_definition)
+        assert not bt.compositing
+
+        # Compositing True, use frames, more subtasks than frames
+        task_definition.options.compositing = True
+        with self.assertLogs(logger, level="WARNING") as logs:
+            bt = _get_blender_task(task_definition)
+        assert not bt.compositing
+        assert any("ABC" in log for log in logs.output)
+        assert any("Compositing not supported" for log in logs.output)
+
+        # Compositing True, use frames, as many subtasks as frames
+        bt = _get_blender_task(task_definition, 3)
+        assert bt.compositing
+
+        # Compositing True, use frames, less subtasks than frames
+        bt = _get_blender_task(task_definition, 1)
+        assert bt.compositing
+
+        # Compositing True, use frames is False, as many subtask as frames
+        task_definition.options.use_frames = False
+        with self.assertLogs(logger, level="WARNING") as logs:
+            bt = _get_blender_task(task_definition, 3)
+        assert not bt.compositing
+        assert any("ABC" in log for log in logs.output)
+        assert any("Compositing not supported" for log in logs.output)
 
 
 class TestBlenderFrameTask(TempDirFixture):
