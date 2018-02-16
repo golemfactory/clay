@@ -93,12 +93,12 @@ class KeysAuth:
             priv_key, pub_key = KeysAuth._generate_keys(difficulty)
             KeysAuth._save_private_key(priv_key, path)
 
-        self.difficulty = difficulty
         self._private_key = priv_key
         self._private_key_path = path
         self.public_key = pub_key
         self.key_id = encode_hex(pub_key)
         self.ecc = ECCx(priv_key)
+        self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
     def _get_or_create_keys_dir(datadir):
@@ -120,7 +120,7 @@ class KeysAuth:
             return None
 
         if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
-            logger.error("Wrong loaded private key size: %d." % len(priv_key))
+            logger.error("Wrong loaded private key size: %d.", len(priv_key))
             return None
 
         pub_key = privtopub(priv_key)
@@ -169,20 +169,14 @@ class KeysAuth:
     def is_difficult(self, difficulty: int) -> bool:
         return self.is_pubkey_difficult(self.public_key, difficulty)
 
-    def get_difficulty(self, key_id: Optional[str] = None) -> float:
+    @staticmethod
+    def get_difficulty(key_id: str) -> int:
         """
-        Calculate key's difficulty.
+        Calculate given key difficulty.
         This is more expensive to calculate than is_difficult, so use
         the latter if possible.
-
-        :param key_id: *Default: None* count difficulty of given key.
-                       If key_id is None then use default key_id
-        :return: key_id difficulty
         """
-        if not key_id:
-            return self.difficulty
-
-        return 256 - math.log2(sha2(decode_hex(key_id)))
+        return math.floor(256 - math.log2(sha2(decode_hex(key_id))))
 
     def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
         """ Encrypt given data with ECIES.
@@ -230,8 +224,6 @@ class KeysAuth:
             if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
                 public_key = decode_hex(public_key)
             return ecdsa_verify(public_key, sig, data)
-        except AssertionError:
-            logger.info("Wrong key format")
-        except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc))
+        except Exception as e:
+            logger.error("Cannot verify signature: %s", e)
         return False

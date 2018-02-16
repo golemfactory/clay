@@ -65,8 +65,9 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
         # then
         assert logger.error.call_count == 1
-        assert logger.error.call_args[0][0] == \
-            'Wrong loaded private key size: 3.'
+        assert logger.error.call_args[0] == (
+            'Wrong loaded private key size: %d.', 3)
+
         with open(key_path, 'rb') as f:
             new_priv_key = f.read()
         assert len(new_priv_key) == KeysAuth.PRIV_KEY_LEN
@@ -74,6 +75,21 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             os.listdir(keys_dir),
             [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
         )
+
+    def test_difficulty(self):
+        difficulty = 5
+        ek = KeysAuth(self.path, difficulty=difficulty)
+        assert difficulty <= ek.difficulty
+        assert ek.difficulty == KeysAuth.get_difficulty(ek.key_id)
+
+    def test_get_difficulty(self):
+        difficulty = 8
+        ek = KeysAuth(self.path, difficulty=difficulty)
+        # first 8 bits of digest must be 0
+        assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
+        assert KeysAuth.get_difficulty(ek.key_id) >= difficulty
+        assert KeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
+        assert KeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
 
     @patch('golem.core.keysauth.logger')
     def test_key_recreate_on_increased_difficulty(self, logger):
@@ -91,15 +107,15 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
                 break
             os.rmdir(keys_dir)  # to enable keys regeneration
 
-        assert ek.get_difficulty() >= old_difficulty
-        assert ek.get_difficulty() < new_difficulty
+        assert KeysAuth.get_difficulty(ek.key_id) >= old_difficulty
+        assert KeysAuth.get_difficulty(ek.key_id) < new_difficulty
         logger.reset_mock()  # just in case
 
         # when
         ek = KeysAuth(self.path, difficulty=new_difficulty)
 
         # then
-        assert ek.get_difficulty() >= new_difficulty
+        assert KeysAuth.get_difficulty(ek.key_id) >= new_difficulty
         assert logger.warning.call_count == 1
         assert logger.warning.call_args[0][0] == \
             'Loaded key is not difficult enough.'
@@ -158,7 +174,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
         )
 
-    def test_sign_verify_elliptical(self):
+    def test_sign_verify(self):
         ek = KeysAuth(self.path)
         data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
         signature = ek.sign(data)
@@ -171,7 +187,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertTrue(ek.verify(sig, data2, ek2.key_id))
 
     @patch('golem.core.keysauth.logger')
-    def test_sign_fail_elliptical(self, logger):
+    def test_sign_verify_fail(self, logger):
         """ Test incorrect signature or data """
         # given
         data1 = b"qaz123WSX./;'[]"
@@ -194,7 +210,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         for args in logger.error.call_args_list:
             assert args[0][0].startswith('Cannot verify signature: ')
 
-    def test_fixed_sign_verify_elliptical(self):
+    def test_fixed_sign_verify(self):  # pylint: disable=too-many-locals
         public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \
                      b"7ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934" \
                      b"263cc00ed03f9a781444"
@@ -233,13 +249,13 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         loaded_k = CBORSerializer.loads(dumped_k)
 
         self.assertEqual(ek.key_id, loaded_k)
-        self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
+        self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
         dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
         loaded_l = message.Message.deserialize(dumped_l, ek.decrypt)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
-        self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), ek.key_id))
+        self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), public_key))
 
     def test_encrypt_decrypt(self):
         """ Test encryption and decryption with KeysAuth """
@@ -257,12 +273,3 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
         with self.assertRaises(TypeError):
             ek2.encrypt(None)
-
-    def test_difficulty(self):
-        difficulty = 8
-        ek = KeysAuth(self.path, difficulty=difficulty)
-        # first 8 bits of digest must be 0
-        assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
-        assert ek.get_difficulty() >= difficulty
-        assert KeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
-        assert KeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
