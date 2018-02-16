@@ -2,16 +2,17 @@
 import peewee as pw
 
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 8
 
 
 def migrate(migrator, _database, **_kwargs):
     """Write your migrations here."""
 
-    migrator.remove_fields('expectedincome', 'sender_node_details')
+    migrator.add_fields('expectedincome',
+                        accepted_ts=pw.IntegerField(null=True))
 
 
 def rollback(migrator, _database, **_kwargs):
     """Write your rollback migrations here."""
 
-    migrator.add_fields('expectedincome', sender_node_details=pw.NodeField())
+    migrator.remove_fields('expectedincome', 'accepted_ts')

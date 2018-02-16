@@ -291,11 +291,11 @@ class TestSavedMigrations(TempDirFixture):
             assert create_db.called
 
     @patch('golem.database.Database._create_tables')
-    def test_10_to_latest(self, _):
+    def test_all(self, _):
         with self.database_context() as database:
             assert all(not m.table_exists() for m in DB_MODELS)
 
-            database._migrate_schema(9, 10)
+            database._migrate_schema(6, 10)
             assert database.get_user_version() == 10
             database._migrate_schema(10, Database.SCHEMA_VERSION)
             assert database.get_user_version() == Database.SCHEMA_VERSION
