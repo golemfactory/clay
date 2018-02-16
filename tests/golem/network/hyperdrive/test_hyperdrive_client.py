@@ -1,8 +1,7 @@
 import json
-import uuid
-
 import unittest
-from unittest import mock
+import unittest.mock as mock
+import uuid
 
 from requests import HTTPError
 from twisted.internet.defer import Deferred

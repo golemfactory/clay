@@ -1,13 +1,13 @@
-import json
-import io
-import unittest
-import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
+import io
+import json
+import unittest
+from unittest.mock import Mock, mock_open, patch
+import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, mock_open, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE

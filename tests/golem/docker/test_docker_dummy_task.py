@@ -1,10 +1,9 @@
+import json
 import logging
 import os
-import shutil
 from os import makedirs, path, remove
-
-import json
-from mock import Mock
+import shutil
+from unittest.mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition

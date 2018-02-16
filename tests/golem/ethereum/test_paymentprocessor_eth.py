@@ -1,8 +1,7 @@
 import os
 import random
+import unittest.mock as mock
 import uuid
-
-import mock
 
 from golem import model
 from golem import testutils
