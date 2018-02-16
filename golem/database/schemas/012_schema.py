@@ -54,7 +54,6 @@ def rollback(migrator, _database, **_kwargs):
         created_date = pw.DateTimeField(default=dt.datetime.now)
         modified_date = pw.DateTimeField(default=dt.datetime.now)
         sender_node = pw.CharField(max_length=255)
-        sender_node_details = pw.NodeField()
         subtask = pw.CharField(max_length=255)
         value = pw.BigIntegerField()
         accepted_ts = pw.IntegerField(null=True)
