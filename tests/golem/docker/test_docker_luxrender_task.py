@@ -3,8 +3,8 @@ import logging
 import os
 from os import makedirs, path, remove
 import shutil
+from unittest.mock import Mock
 
-from mock import Mock
 import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask

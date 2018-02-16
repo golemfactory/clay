@@ -2,12 +2,13 @@ import json
 import io
 import unittest
 import uuid
+
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
+from unittest.mock import Mock, mock_open, patch
 
 from ethereum.utils import denoms
-from mock import Mock, mock_open, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE

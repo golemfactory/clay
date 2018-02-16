@@ -1,9 +1,10 @@
 import unittest
+
 from contextlib import contextmanager
+from unittest.mock import Mock, patch
 
 from golem.interface.websockets import WebSocketCLI
 from golem.rpc.session import Session, Client
-from mock import Mock, patch
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 

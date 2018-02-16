@@ -1,5 +1,6 @@
+from unittest.mock import patch, Mock
+
 from click.testing import CliRunner
-from mock import patch, Mock
 
 import golem.argsparser as argsparser
 from golem.testutils import TempDirFixture

@@ -1,10 +1,10 @@
 import logging
 import unittest
+
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 from os import path
-
-from mock import patch, Mock
+from unittest.mock import patch, Mock
 
 from golem.ethereum.node import log, NodeProcess, \
     NODE_LIST, get_public_nodes
