@@ -1,13 +1,14 @@
 import random
-import requests
 import time
 import unittest
+import unittest.mock as mock
 from os import urandom
 
-import mock
+import requests
+
 from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
-from mock import patch, Mock
+from golem_sci.interface import TransactionReceipt
 from twisted.internet.task import Clock
 
 from golem.core.common import timestamp_to_datetime
@@ -15,7 +16,6 @@ from golem.ethereum.paymentprocessor import PaymentProcessor, tETH_faucet_donate
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
-from golem_sci.interface import TransactionReceipt
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -111,7 +111,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         with self.assertRaises(RuntimeError):
             self.pp.add(p1)
 
-    @patch('golem.ethereum.paymentprocessor.tETH_faucet_donate')
+    @mock.patch('golem.ethereum.paymentprocessor.tETH_faucet_donate')
     def test_faucet(self, donate):
         self.pp._PaymentProcessor__faucet = True
         self.pp.get_ether_from_faucet()
@@ -339,36 +339,36 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(ts, p.processed_ts)
 
     def test_get_ether_and_gnt_failure(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=False)
-        self.pp.get_ether_from_faucet = Mock(return_value=False)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=False)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=False)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
     def test_get_gnt_failure(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=False)
-        self.pp.get_ether_from_faucet = Mock(return_value=True)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=False)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=True)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
     def test_get_ether(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=True)
-        self.pp.get_ether_from_faucet = Mock(return_value=True)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=True)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=True)
 
         self.pp._run()
         assert self.pp.monitor_progress.called
@@ -376,9 +376,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
     def test_get_ether_sci_failure(self):
         # given
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
         self.pp._PaymentProcessor__faucet = True
 
@@ -585,27 +585,27 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
 class FaucetTest(unittest.TestCase):
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_error_code(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 500
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_error_msg(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 200
         response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_success(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 200
         response.json.return_value = {'paydate': 1486605259,
                                       'amount': 999999999999999}

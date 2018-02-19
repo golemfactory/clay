@@ -5,6 +5,7 @@ from unittest import mock as mock
 from golem_messages import message
 
 from golem.client import Client
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
@@ -76,6 +77,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         resource_manager.__init__(dir_manager)
 
         client = Client(datadir=dir_manager.root_path,
+                        config_desc=ClientConfigDescriptor(),
                         connect_to_known_hosts=False,
                         use_docker_machine_manager=False,
                         use_monitor=False)

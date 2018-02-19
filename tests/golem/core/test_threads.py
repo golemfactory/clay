@@ -1,8 +1,7 @@
-import unittest
-
 import time
 import threading
-from mock import Mock
+import unittest
+from unittest.mock import Mock
 
 from golem.core.threads import ThreadQueueExecutor, QueueExecutor
 

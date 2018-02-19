@@ -1,17 +1,16 @@
+# pylint: disable=no-self-use
 from unittest import TestCase
-
-from mock import Mock, patch
+import unittest.mock as mock
 
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
-from golem.task.taskbase import (Task, TaskBuilder, TaskHeader,
-                                 TaskEventListener, logger)
+from golem.task.taskbase import Task, TaskBuilder, TaskHeader
 from golem.tools.assertlogs import LogTestCase
 
-@patch.multiple(Task, __abstractmethods__=frozenset())
-class TestTaskBase(LogTestCase):
 
+@mock.patch.multiple(Task, __abstractmethods__=frozenset())
+class TestTaskBase(LogTestCase):
     def test_header_serialization(self):
         node = Node(node_name="test node")
         docker_images = [

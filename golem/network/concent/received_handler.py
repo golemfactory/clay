@@ -44,7 +44,7 @@ class TaskServerMessageHandler():
     @handler_for(message.concents.ForceReportComputedTask)
     def on_concents_force_report_computed_task(self, msg):
         concent_helpers.process_report_computed_task(
-            msg=msg.task_to_compute,
+            msg=msg.report_computed_task,
             task_session=None,
         )
         # FIXME implement after
