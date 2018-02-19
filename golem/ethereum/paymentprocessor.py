@@ -88,7 +88,8 @@ class PaymentProcessor(LoopingCallService):
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
-                self._last_eth_update = datetime.now().timestamp()
+                self._last_eth_update = time.mktime(
+                    datetime.today().timetuple())
             else:
                 log.warning("Failed to retrieve ETH balance")
         return (self.__eth_balance, self._last_eth_update)
@@ -116,7 +117,8 @@ class PaymentProcessor(LoopingCallService):
                     self.__gnt_balance / denoms.ether,
                     self.__gntw_balance / denoms.ether,
                 )
-                self._last_gnt_update = datetime.now().timestamp()
+                self._last_gnt_update = time.mktime(
+                    datetime.today().timetuple())
 
         return (self.__gnt_balance + self.__gntw_balance,
                 self._last_gnt_update)
