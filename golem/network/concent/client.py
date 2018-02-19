@@ -36,6 +36,9 @@ def verify_response(response: requests.Response) -> None:
             ours=gconst.GOLEM_MESSAGES_VERSION,
             theirs=concent_version,
         )
+    if response.status_code == 200:
+        return
+
     if response.status_code % 500 < 100:
         raise exceptions.ConcentServiceError(
             "Concent service exception ({}): {}".format(
@@ -44,7 +47,7 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    elif response.status_code % 400 < 100:
+    if response.status_code % 400 < 100:
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
