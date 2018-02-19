@@ -47,6 +47,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
+
+        self.task_session.task_manager.is_subtask_owner.return_value = True
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
         subtask_state.deadline = now_ts + 60
@@ -64,7 +66,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
     def test_subtask_id_unknown(self, dropped_mock):
         "Drop if subtask is unknown"
-        self.task_session.task_manager.subtask2task_mapping = {}
+        self.task_session.task_manager.is_subtask_owner.return_value = False
         self.task_session._react_to_report_computed_task(self.msg)
         dropped_mock.assert_called_once_with()
 
