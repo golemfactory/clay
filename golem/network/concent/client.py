@@ -233,7 +233,6 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        # FIXME: remove
         if not self._enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
@@ -261,6 +260,10 @@ class ConcentClientService(threading.Thread):
             self.react_to_concent_message(res)
 
     def receive(self) -> None:
+        if not self._enabled:
+            logger.debug("Concent disabled. I'm not gonna ask for messages")
+            return
+
         try:
             res = receive_from_concent(self.keys_auth.public_key)
         except exceptions.ConcentError as e:
