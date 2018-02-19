@@ -34,6 +34,7 @@ class SenderThread(threading.Thread):
             try:
                 msg = self.queue.get(True, self.monitor_sender_thread_timeout)
                 self.sender.send(msg)
+                log.warning("active threads cnt: %r", threading.active_count())
             except queue.Empty:
                 # send ping message
                 self.sender.send(self.node_info)
