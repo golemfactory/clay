@@ -17,7 +17,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_init(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
-        assert type(e.get_payment_address()) is str
+        assert isinstance(e.get_payment_address(), str)
         e.stop()
 
     def test_invalid_private_key(self):
@@ -37,7 +37,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (None, None, None)
+        assert e.get_balance() == (None, None, None, None, None)
         e.stop()
 
     @mock.patch('golem.core.service.LoopingCallService.running',
