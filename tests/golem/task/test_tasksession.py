@@ -821,7 +821,7 @@ class TestCreatePackage(unittest.TestCase):
         ts.task_manager = mock.Mock()
         ts.key_id = "KEY_ID"
         tk = ts.task_manager.comp_task_keeper
-        tk.get_task_id_for_subtask.return_value = ts.key_id
+        tk.get_node_for_task_id.return_value = ts.key_id
         self.subtask_id = subtask_id
         self.ts = ts
         self.res = mock.Mock(subtask_id=subtask_id, package_sha1='deadbeef')
