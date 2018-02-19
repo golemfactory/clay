@@ -1,7 +1,7 @@
 import logging
 from os import path
 
-from typing import Set,Any
+from typing import Set, Any
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -28,7 +28,7 @@ RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
-KEY_DIFFICULTY = 10
+KEY_DIFFICULTY = 0  # todo: set to ~10 on next release
 
 USE_IP6 = 0
 USE_UPNP = 1

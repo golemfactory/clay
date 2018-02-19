@@ -293,8 +293,9 @@ class PeerSession(BasicSafeSession):
         if not self.p2p_service.keys_auth.is_pubkey_difficult(
                 self.node_info.key,
                 self.p2p_service.key_difficulty):
-            logger.info("Key from %r:%r is not difficult enough", self.address,
-                        self.port)
+            logger.info("Key from %r:%r is not difficult enough (needed: %r).",
+                        self.address, self.port,
+                        self.p2p_service.key_difficulty)
             self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
             return
 
