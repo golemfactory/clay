@@ -22,8 +22,45 @@ from golem.network.concent import exceptions
 logger = logging.getLogger(__name__)
 
 
+def verify_response(response: requests.Response) -> None:
+    if response is None:
+        raise exceptions.ConcentUnavailableError('response is None')
+
+    logger.debug('Headers received from Concent: %s', response.headers)
+    concent_version = response.headers['Concent-Golem-Messages-Version']
+    if not utils.is_version_compatible(
+            theirs=concent_version,
+            spec=gconst.GOLEM_MESSAGES_SPEC,):
+        raise exceptions.ConcentVersionMismatchError(
+            'Incompatible version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=concent_version,
+        )
+    if response.status_code == 200:
+        return
+
+    if response.status_code % 500 < 100:
+        raise exceptions.ConcentServiceError(
+            "Concent service exception ({}): {}".format(
+                response.status_code,
+                response.text
+            )
+        )
+
+    if response.status_code % 400 < 100:
+        logger.warning('Concent request failed with status %d and '
+                       'response: %r', response.status_code, response.text)
+
+        raise exceptions.ConcentRequestError(
+            "Concent request exception ({}): {}".format(
+                response.status_code,
+                response.text
+            )
+        )
+
+
 def send_to_concent(msg: message.Message, signing_key, public_key) \
-        -> typing.Optional[str]:
+        -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception
@@ -31,10 +68,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     """
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    if msg is not None:
-        data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
-    else:
-        data = b''
+    data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
     logger.debug('send_to_concent(): data: %r', data)
     concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
     headers = {
@@ -58,38 +92,33 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
         logger.warning('Concent RequestException %r', e)
         response = e.response
 
-    if response is None:
-        raise exceptions.ConcentUnavailableError('response is None')
+    verify_response(response)
+    return response.content or None
 
-    logger.debug('Headers received from Concent: %s', response.headers)
-    concent_version = response.headers['Concent-Golem-Messages-Version']
-    if not utils.is_version_compatible(
-            theirs=concent_version,
-            spec=gconst.GOLEM_MESSAGES_SPEC,):
-        raise exceptions.ConcentVersionMismatchError(
-            'Incompatible version in send_to_concent()',
-            ours=gconst.GOLEM_MESSAGES_VERSION,
-            theirs=concent_version,
+
+def receive_from_concent(public_key) -> typing.Optional[bytes]:
+    concent_receive_url = urljoin(variables.CONCENT_URL, '/api/v1/receive/')
+    headers = {
+        'Content-Type': 'application/octet-stream',
+        'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
+        'X-Golem-Messages': golem_messages.__version__,
+    }
+    try:
+        logger.debug(
+            'receive_from_concent(): GET %r hdr: %r',
+            concent_receive_url,
+            headers,
         )
-    if response.status_code % 500 < 100:
-        raise exceptions.ConcentServiceError(
-            "Concent service exception ({}): {}".format(
-                response.status_code,
-                response.text
-            )
+        response = requests.get(
+            concent_receive_url,
+            headers=headers,
         )
+    except requests.exceptions.RequestException as e:
+        raise exceptions.ConcentUnavailableError(
+            'Failed to receive_from_concent()',
+        ) from e
 
-    elif response.status_code % 400 < 100:
-        logger.warning('Concent request failed with status %d and '
-                       'response: %r', response.status_code, response.text)
-
-        raise exceptions.ConcentRequestError(
-            "Concent request exception ({}): {}".format(
-                response.status_code,
-                response.text
-            )
-        )
-
+    verify_response(response)
     return response.content or None
 
 
@@ -135,6 +164,7 @@ class ConcentClientService(threading.Thread):
     def run(self) -> None:
         while not self._stop_event.isSet():
             self._loop()
+            self.receive()
             time.sleep(1)
 
     def stop(self) -> None:
@@ -199,15 +229,10 @@ class ConcentClientService(threading.Thread):
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get(timeout=constants.PING_TIMEOUT)
+            req = self._queue.get_nowait()
         except queue.Empty:
-            # Send empty "ping" message
-            req = ConcentRequest(
-                msg=None,
-                deadline_at=datetime.datetime.max,
-            )
+            return
 
-        # FIXME: remove
         if not self._enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
@@ -234,7 +259,23 @@ class ConcentClientService(threading.Thread):
             self._grace_time = self.MIN_GRACE_TIME
             self.react_to_concent_message(res)
 
-    def react_to_concent_message(self, data):
+    def receive(self) -> None:
+        if not self._enabled:
+            return
+
+        try:
+            res = receive_from_concent(self.keys_auth.public_key)
+        except exceptions.ConcentError as e:
+            logger.warning("Can't receive message from Concent: %s", e)
+            self._grace_sleep()
+            return
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('receive_from_concent() failed')
+            self._grace_sleep()
+            return
+        self.react_to_concent_message(res)
+
+    def react_to_concent_message(self, data: bytes):
         if data is None:
             return
         try:
