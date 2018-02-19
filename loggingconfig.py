@@ -62,12 +62,12 @@ LOGGING = {
         'filters': [],
     },
     'loggers': {
-        'golem': {
-            'level': 'WARNING',
+        'golemapp': {
+            'level': 'INFO',
             'propagate': True,
         },
-        'golem.version': {
-            'level': 'INFO',
+        'golem': {
+            'level': 'WARNING',
             'propagate': True,
         },
         'golem.client': {

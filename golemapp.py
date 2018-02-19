@@ -19,7 +19,7 @@ from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import PROTOCOL_CONST
 from golem.node import Node
 
-log = logging.getLogger('golem.version')
+logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
 
 # Monkey patch for ethereum.slogging.
@@ -160,28 +160,28 @@ def log_golem_version():
     import golem_messages
     from golem.core.variables import PROTOCOL_CONST
 
-    log.info("GOLEM Version: %s", golem.__version__)
-    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
-    log.info("golem_messages Version: %s", golem_messages.__version__)
+    logger.info("GOLEM Version: %s", golem.__version__)
+    logger.info("Protocol Version: %s", PROTOCOL_CONST.ID)
+    logger.info("golem_messages Version: %s", golem_messages.__version__)
 
 
 def log_platform_info():
     # platform
-    log.info("system: %s, release: %s, version: %s, machine: %s",
-             platform.system(), platform.release(), platform.version(),
-             platform.machine())
+    logger.info("system: %s, release: %s, version: %s, machine: %s",
+                platform.system(), platform.release(), platform.version(),
+                platform.machine())
 
     # cpu
     cpuinfo = get_cpu_info()
-    log.info("cpu: %s %s, %s cores",
-             cpuinfo['vendor_id'], cpuinfo['brand'], cpuinfo['count'])
+    logger.info("cpu: %s %s, %s cores",
+                cpuinfo['vendor_id'], cpuinfo['brand'], cpuinfo['count'])
 
     # ram
     meminfo = psutil.virtual_memory()
     swapinfo = psutil.swap_memory()
-    log.info("memory: %s, swap: %s",
-             humanize.naturalsize(meminfo.total, binary=True),
-             humanize.naturalsize(swapinfo.total, binary=True))
+    logger.info("memory: %s, swap: %s",
+                humanize.naturalsize(meminfo.total, binary=True),
+                humanize.naturalsize(swapinfo.total, binary=True))
 
 
 if __name__ == '__main__':
