@@ -261,7 +261,6 @@ class ConcentClientService(threading.Thread):
 
     def receive(self) -> None:
         if not self._enabled:
-            logger.debug("Concent disabled. I'm not gonna ask for messages")
             return
 
         try:
