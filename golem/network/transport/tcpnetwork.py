@@ -324,7 +324,7 @@ class BasicProtocol(SessionProtocol):
         :return bool: return True if message has been send, False otherwise
         """
         if not self.opened:
-            logger.warning("Send messag %s failed - connection closed", msg)
+            logger.warning("Send message %s failed - connection closed", msg)
             return False
 
         try:
