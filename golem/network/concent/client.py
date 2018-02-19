@@ -32,7 +32,7 @@ def verify_response(response: requests.Response) -> None:
             theirs=concent_version,
             spec=gconst.GOLEM_MESSAGES_SPEC,):
         raise exceptions.ConcentVersionMismatchError(
-            'Incompatible version in send_to_concent()',
+            'Incompatible version',
             ours=gconst.GOLEM_MESSAGES_VERSION,
             theirs=concent_version,
         )
