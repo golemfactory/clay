@@ -211,10 +211,6 @@ class BlenderVerifier(FrameRenderingVerifier):
         if avg_ssim > w_ssim:
             logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
             self.success()
-        elif avg_ssim < w_ssim:
-            logger.info("Subtask %r NOT verified",
-                        self.subtask_info['subtask_id'])
-            self.failure()
         elif avg_ssim > w_ssim_min and not self.additional_test:
             self.verified_crops_counter = 0
             self.metrics.clear()
@@ -228,6 +224,10 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       3,
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
+        elif avg_ssim < w_ssim_min:
+            logger.info("Subtask %r NOT verified",
+                        self.subtask_info['subtask_id'])
+            self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"
                            " imgCorr = %r, ssim = %r",
