@@ -283,14 +283,24 @@ def record_history(local_role, remote_role):
 
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
-            service = MessageHistoryService.instance
-            model = self.message_to_model(msg, local_role, remote_role)
+            result = func(self, msg, *args, **kwargs)
 
-            if model and service:
-                service.add(model)
-            else:
-                logger.error("Cannot log message: %r", msg)
-            return func(self, msg, *args, **kwargs)
+            try:
+                service = MessageHistoryService.instance
+                model = self.message_to_model(msg, local_role, remote_role)
+                if model and service:
+                    service.add(model)
+                else:
+                    logger.error("Cannot log message: %r", msg)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "record_history(%r, %r, *%r, **%r) failed:",
+                    self,
+                    msg,
+                    args,
+                    kwargs,
+                )
+            return result
 
         return wrapper
     return decorator
