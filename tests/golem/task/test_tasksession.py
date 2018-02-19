@@ -136,14 +136,14 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
-        ts2.task_manager.is_subtask_owner.return_value = True
+        ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(
             reason=message.CannotComputeTask.REASON.WrongCTD,
             subtask_id=None,
         ))
         assert ts2.task_manager.task_computation_failure.called
         ts2.task_manager.task_computation_failure.called = False
-        ts2.task_manager.is_subtask_owner.return_value = False
+        ts2.task_manager.get_node_id_for_subtask.return_value = "___"
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(
             reason=message.CannotComputeTask.REASON.WrongCTD,
             subtask_id=None,
@@ -193,7 +193,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.task_manager.tasks_states = {
             "xyz": task_state,
         }
-
+        ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         get_mock.side_effect = history.MessageNotFound
 
         ts2.interpret(ms)
@@ -304,13 +304,26 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not ts.msgs_to_send
         assert conn.close.called
 
+    def test_result_rejected(self):
+        self._test_result_rejected()
+
+    def test_result_rejected_with_wrong_key(self):
+        self._test_result_rejected(key_id="ABC2", called=False)
+
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
-    def test_result_rejected(self, dropped_mock):
+    def _test_result_rejected(self, dropped_mock, key_id="ABC", called=True):
         msg = factories.messages.SubtaskResultsRejected()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = "ABC"
+        self.task_session.key_id = key_id
         self.task_session._react_to_subtask_results_rejected(msg)
-        self.task_session.task_server.subtask_rejected.assert_called_once_with(
-            subtask_id=msg.report_computed_task.subtask_id,
-        )
+        ts = self.task_session.task_server
+        if called:
+            ts.subtask_rejected.assert_called_once_with(
+                subtask_id=msg.report_computed_task.subtask_id,
+            )
+        else:
+            ts.subtask_rejected.assert_not_called()
         dropped_mock.assert_called_once_with()
 
     @mock.patch('golem.task.tasksession.get_task_message', mock.Mock())
@@ -330,6 +343,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts = TaskSession(conn)
         ts.result_received = mock.Mock()
         ts.task_manager.subtask2task_mapping = dict()
+        ts.task_manager.get_node_id_for_subtask.return_value = "ABC"
+        ts.key_id = "ABC"
 
         subtask_id = 'xxyyzz'
         secret = 'pass'
@@ -661,6 +676,13 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
 
     def test_react_to_cannot_assign_task(self):
+        self._test_react_to_cannot_assign_task()
+
+    def test_react_to_cannot_assign_task_with_wrong_sender(self):
+        self._test_react_to_cannot_assign_task("KEY_ID2", expected_requests=1)
+
+    def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
+                                          expected_requests=0):
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(TaskHeader(environment='DEFAULT',
                                            node_name="ABC",
@@ -671,9 +693,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
         msg_cat = message.CannotAssignTask(task_id="abc")
+        self.task_session.key_id = key_id
         self.task_session._react_to_cannot_assign_task(msg_cat)
-        assert task_keeper.active_tasks["abc"].requests == 0
-
+        assert task_keeper.active_tasks["abc"].requests == expected_requests
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
@@ -797,7 +819,9 @@ class TestCreatePackage(unittest.TestCase):
         ts.result_received = mock.Mock()
         ts.send = mock.Mock()
         ts.task_manager = mock.Mock()
-
+        ts.key_id = "KEY_ID"
+        tk = ts.task_manager.comp_task_keeper
+        tk.get_task_id_for_subtask.return_value = ts.key_id
         self.subtask_id = subtask_id
         self.ts = ts
         self.res = mock.Mock(subtask_id=subtask_id, package_sha1='deadbeef')
@@ -849,12 +873,25 @@ class SubtaskResultsAcceptedTest(unittest.TestCase):
         self.task_session.task_server = self.task_server
 
     def test__react_to_subtask_result_accepted(self):
+        self._test__react_to_subtask_result_accepted()
+
+    def test__react_to_subtask_result_accepted_with_wrong_key(self):
+        self._test__react_to_subtask_result_accepted("DEF", called=False)
+
+    def _test__react_to_subtask_result_accepted(self, key_id="ABC",
+                                                called=True):
         sra = factories.messages.SubtaskResultsAcceptedFactory()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = "ABC"
+        self.task_session.key_id = key_id
         self.task_session._react_to_subtask_result_accepted(sra)
-        self.task_server.subtask_accepted.assert_called_once_with(
-            sra.task_to_compute.compute_task_def.get('subtask_id'),
-            sra.payment_ts,
-        )
+        if called:
+            self.task_server.subtask_accepted.assert_called_once_with(
+                sra.task_to_compute.compute_task_def.get('subtask_id'),
+                sra.payment_ts,
+            )
+        else:
+            self.task_server.subtask_accepted.assert_not_called()
 
     def test_result_received(self):
         def computed_task_received(*args):
