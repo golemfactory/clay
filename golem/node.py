@@ -1,10 +1,15 @@
-"""Compute Node"""
+import logging
+from twisted.internet import reactor
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
+from golem.docker.manager import DockerManager
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session
+
+logger = logging.getLogger("app")
 
 
 class Node(object):
@@ -23,8 +28,11 @@ class Node(object):
             start_geth=False,
             start_geth_port=None,
             geth_address=None):
+        self._config_desc = config_desc
+        self._datadir = datadir
 
-        self.client = Client(
+        self.client = None
+        self._client_factory = lambda: Client(
             datadir=datadir,
             config_desc=config_desc,
             transaction_system=transaction_system,
@@ -41,23 +49,12 @@ class Node(object):
         self._peers = peers or []
         self._apps_manager = None
 
-        import logging
-        self.logger = logging.getLogger("app")
-
-    def run(self, use_rpc=False):
-        from twisted.internet import reactor
-        reactor.addSystemEventTrigger("before", "shutdown",
-                                      self.client.quit)
+    def run(self):
         try:
-            if use_rpc:
-                self._setup_rpc()
-                self._start_rpc_router()
-            else:
-                self._run()
-
+            self._setup_rpc()
             reactor.run()
         except Exception as exc:
-            self.logger.exception("Application error: %r", exc)
+            logger.exception("Application error: %r", exc)
 
     def _run(self, *_):
         if self.client.use_docker_machine_manager:
@@ -71,26 +68,22 @@ class Node(object):
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:
-            from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)
 
     def _setup_rpc(self):
-        from golem.rpc.router import CrossbarRouter
-
-        config = self.client.config_desc
-        methods = object_method_map(self.client, CORE_METHOD_MAP)
-
-        self.rpc_router = CrossbarRouter(host=config.rpc_address,
-                                         port=int(config.rpc_port),
-                                         datadir=self.client.datadir)
-        self.rpc_session = Session(self.rpc_router.address,
-                                   methods=methods)
-
-        self.client.configure_rpc(self.rpc_session)
+        self.rpc_router = CrossbarRouter(
+            host=self._config_desc.rpc_address,
+            port=self._config_desc.rpc_port,
+            datadir=self._datadir,
+        )
+        self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
+        reactor.addSystemEventTrigger(
+            "before",
+            "shutdown",
+            self.rpc_router.stop,
+        )
 
     def _setup_docker(self):
-        from golem.docker.manager import DockerManager
-
         docker_manager = DockerManager.install(self.client.config_desc)
         docker_manager.check_environment()
 
@@ -102,15 +95,15 @@ class Node(object):
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
 
-    def _start_rpc_router(self):
-        from twisted.internet import reactor
-        reactor.addSystemEventTrigger("before", "shutdown",
-                                      self.rpc_router.stop)
-        self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
-
     def _rpc_router_ready(self, *_):
+        self.client = self._client_factory()
+        reactor.addSystemEventTrigger("before", "shutdown", self.client.quit)
+
+        methods = object_method_map(self.client, CORE_METHOD_MAP)
+        self.rpc_session = Session(self.rpc_router.address, methods=methods)
+        self.client.configure_rpc(self.rpc_session)
         self.rpc_session.connect().addCallbacks(async_callback(self._run),
                                                 self._rpc_error)
 
     def _rpc_error(self, err):
-        self.logger.error("RPC error: %r", err)
+        logger.error("RPC error: %r", err)
