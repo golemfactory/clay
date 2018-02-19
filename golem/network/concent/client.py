@@ -4,7 +4,7 @@ import logging
 import queue
 import threading
 import time
-from typing import Optional, Hashable
+import typing
 from urllib.parse import urljoin
 
 import requests
@@ -12,16 +12,18 @@ import golem_messages
 from golem_messages import message
 from golem_messages import datastructures as msg_datastructures
 
+from golem import constants as gconst
+from golem import utils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import constants
 from golem.network.concent import exceptions
 
-logger = logging.getLogger("golem.network.concent.client")
+logger = logging.getLogger(__name__)
 
 
 def send_to_concent(msg: message.Message, signing_key, public_key) \
-        -> Optional[str]:
+        -> typing.Optional[str]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception
@@ -38,6 +40,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     headers = {
         'Content-Type': 'application/octet-stream',
         'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
+        'Concent-Other-Party-Public-Key': base64.standard_b64encode(b'dummy'),
         'X-Golem-Messages': golem_messages.__version__,
     }
     try:
@@ -56,14 +59,20 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
         response = e.response
 
     if response is None:
-        raise exceptions.ConcentUnavailableException()
+        raise exceptions.ConcentUnavailableError('response is None')
 
     logger.debug('Headers received from Concent: %s', response.headers)
+    concent_version = response.headers['Concent-Golem-Messages-Version']
+    if not utils.is_version_compatible(
+            theirs=concent_version,
+            spec=gconst.GOLEM_MESSAGES_SPEC,):
+        raise exceptions.ConcentVersionMismatchError(
+            'Incompatible version in send_to_concent()',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=concent_version,
+        )
     if response.status_code % 500 < 100:
-        logger.warning('Concent failed with status %d and body: %r',
-                       response.status_code, response.text)
-
-        raise exceptions.ConcentServiceException(
+        raise exceptions.ConcentServiceError(
             "Concent service exception ({}): {}".format(
                 response.status_code,
                 response.text
@@ -74,7 +83,7 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
-        raise exceptions.ConcentRequestException(
+        raise exceptions.ConcentRequestError(
             "Concent request exception ({}): {}".format(
                 response.status_code,
                 response.text
@@ -85,12 +94,9 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
 
 
 class ConcentRequest(msg_datastructures.FrozenDict):
-
-    __slots__ = ('key', 'msg', 'sent_at', 'deadline_at')
     ITEMS = {
         'key': '',
         'msg': None,
-        'sent_at': None,
         'deadline_at': None,
     }
 
@@ -138,9 +144,9 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit(self,
-               key: Hashable,
+               key: typing.Hashable,
                msg: message.Message,
-               delay: Optional[datetime.timedelta] = None) -> None:
+               delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
@@ -173,7 +179,7 @@ class ConcentClientService(threading.Thread):
         else:
             self._enqueue(req)
 
-    def cancel(self, key: Hashable) -> bool:
+    def cancel(self, key: typing.Hashable) -> bool:
         """
         Cancel a delayed Concent request.
 
@@ -196,13 +202,10 @@ class ConcentClientService(threading.Thread):
             req = self._queue.get(timeout=constants.PING_TIMEOUT)
         except queue.Empty:
             # Send empty "ping" message
-            res = send_to_concent(
-                None,
-                self.keys_auth._private_key,  # pylint: disable=protected-access
-                self.keys_auth.public_key,
+            req = ConcentRequest(
+                msg=None,
+                deadline_at=datetime.datetime.max,
             )
-            self.react_to_concent_message(res)
-            return
 
         # FIXME: remove
         if not self._enabled:
@@ -216,12 +219,14 @@ class ConcentClientService(threading.Thread):
             return
 
         try:
-            req['sent_at'] = now
             res = send_to_concent(
                 req['msg'],
-                self.keys_auth.ecc.raw_privkey,
-                self.keys_auth.ecc.raw_pubkey,
+                self.keys_auth._private_key,  # pylint: disable=protected-access
+                self.keys_auth.public_key,
             )
+        except exceptions.ConcentError as e:
+            logger.info('send_to_concent error: %s', e)
+            self._grace_sleep()
         except Exception:  # pylint: disable=broad-except
             logger.exception('send_to_concent(%r) failed', req)
             self._grace_sleep()

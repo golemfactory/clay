@@ -4,17 +4,16 @@ import struct
 import unittest
 from unittest import mock
 
-from freezegun import freeze_time
 import golem_messages
+import semantic_version
+from freezegun import freeze_time
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
-import semantic_version
 
 from golem import testutils
 from golem.core.common import config_logging
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem.network.p2p.node import Node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 FileProducer, FileConsumer,
@@ -27,8 +26,6 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 MAX_MESSAGE_SIZE)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
-from golem.tools.testwithappconfig import TestWithKeysAuth
-
 from tests.factories import messages as msg_factories
 from tests.factories import p2p as p2p_factories
 
@@ -43,7 +40,7 @@ class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
     ]
 
 
-class TestDataProducerAndConsumer(TestWithKeysAuth):
+class TestDataProducerAndConsumer(testutils.TempDirFixture):
 
     def test_progress(self):
 
@@ -60,7 +57,7 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        self.ek = EllipticalKeysAuth(self.path)
+        self.ek = KeysAuth(self.path)
         for args in datas:
             self.__producer_consumer_test(
                 *args,
@@ -111,7 +108,7 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         self.assertEqual(err.getvalue().strip(), "")
 
 
-class TestFileProducerAndConsumer(TestWithKeysAuth):
+class TestFileProducerAndConsumer(testutils.TempDirFixture):
 
     @classmethod
     def setUpClass(cls):
@@ -122,11 +119,9 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         logging.shutdown()
 
     def setUp(self):
-        TestWithKeysAuth.setUp(self)
-        self.tmp_file1, \
-            self.tmp_file2, \
-            self.tmp_file3 = self.additional_dir_content([
-                1, [2]])
+        testutils.TempDirFixture.setUp(self)
+        self.tmp_file1, self.tmp_file2, self.tmp_file3 \
+            = self.additional_dir_content([1, [2]])
 
         long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
         with open(self.tmp_file1, 'w') as f:
@@ -146,7 +141,7 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
             [self.tmp_file1, self.tmp_file2, self.tmp_file3],
             32,
             session=MagicMock())
-        self.ek = EllipticalKeysAuth(self.path)
+        self.ek = KeysAuth(self.path)
         self.__producer_consumer_test(
             [],
             file_producer_cls=EncryptFileProducer,
@@ -338,7 +333,6 @@ class SafeProtocolTestCase(unittest.TestCase):
             self.protocol.session.interpret.reset_mock()
             self.protocol.dataReceived(packed_data)
             self.protocol.session.interpret.assert_called_once_with(msg)
-
 
 
 class TestSocketAddress(unittest.TestCase):

@@ -5,7 +5,7 @@ from golem.transactions.paymentskeeper import PaymentsKeeper
 from golem.transactions.ethereum.ethereumpaymentskeeper import (
     EthAccountInfo, EthereumAddress, logger)
 from golem.transactions.paymentskeeper import PaymentInfo
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.testutils import (TempDirFixture, PEP8MixIn)
 
 from golem.tools.assertlogs import LogTestCase
@@ -52,20 +52,20 @@ class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
 class TestEthAccountInfo(TempDirFixture):
 
     def test_comparison(self):
-        k = EllipticalKeysAuth(self.path)
+        k = KeysAuth(self.path)
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
-        a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+        a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            Node(), addr1)
-        b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+        b = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            Node(), addr1)
         self.assertEqual(a, b)
         n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10",
                  pub_port=1032)
-        c = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test",
+        c = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            n, addr1)
         self.assertEqual(a, c)
-        k.generate_new(2)
-        c.key_id = k.get_key_id()
+        k = KeysAuth("%s_other" % self.path, difficulty=2)
+        c.key_id = k.key_id
         self.assertNotEqual(a, c)
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
         b.eth_account = EthereumAddress(addr2)

@@ -1,14 +1,8 @@
 """Compute Node"""
 
-import ipaddress
-
-import click
-
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.async import async_callback
-from golem.core.common import to_unicode
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
 
@@ -20,25 +14,25 @@ class Node(object):
 
     def __init__(  # pylint: disable=too-many-arguments
             self,
-            datadir=None,
+            datadir,
+            config_desc,
             peers=None,
             transaction_system=False,
             use_monitor=False,
             use_docker_machine_manager=True,
             start_geth=False,
             start_geth_port=None,
-            geth_address=None,
-            **config_overrides):
+            geth_address=None):
 
         self.client = Client(
             datadir=datadir,
+            config_desc=config_desc,
             transaction_system=transaction_system,
             use_docker_machine_manager=use_docker_machine_manager,
             use_monitor=use_monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            **config_overrides
         )
 
         self.rpc_router = None
@@ -119,67 +113,4 @@ class Node(object):
                                                 self._rpc_error)
 
     def _rpc_error(self, err):
-        self.logger.error("RPC error: {}".format(err))
-
-
-class OptNode(Node):
-
-    @staticmethod
-    def enforce_start_geth_used(ctx, param, value):
-        del param
-        if value and not ctx.params.get('start_geth', False):
-            raise click.BadParameter(
-                "it makes sense only together with --start-geth")
-        return value
-
-    @staticmethod
-    def parse_http_addr(ctx, param, value):
-        del ctx, param
-        if value:
-            try:
-                http_prefix = 'http://'
-                if not value.startswith(http_prefix):
-                    raise click.BadParameter(
-                        "Address without http:// prefix"
-                        "specified: {}".format(value))
-                SocketAddress.parse(value[len(http_prefix):])
-                return value
-            except ipaddress.AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid network address specified: {}".format(e))
-        return None
-
-    @staticmethod
-    def parse_node_addr(ctx, param, value):
-        del ctx, param
-        if value:
-            try:
-                SocketAddress(value, 1)
-                return value
-            except ipaddress.AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid network address specified: {}".format(e))
-        return None
-
-    @staticmethod
-    def parse_rpc_address(ctx, param, value):
-        del ctx, param
-        value = to_unicode(value)
-        if value:
-            try:
-                return SocketAddress.parse(value)
-            except ipaddress.AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid RPC address specified: {}".format(e))
-
-    @staticmethod
-    def parse_peer(ctx, param, value):
-        del ctx, param
-        addresses = []
-        for arg in value:
-            try:
-                addresses.append(SocketAddress.parse(arg))
-            except ipaddress.AddressValueError as e:
-                raise click.BadParameter(
-                    "Invalid peer address specified: {}".format(e))
-        return addresses
+        self.logger.error("RPC error: %r", err)

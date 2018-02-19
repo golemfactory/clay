@@ -501,7 +501,8 @@ class CoreTask(Task):
 # some of the tests are in the test_luxrendertask.py
 def accepting(query_extra_data_func):
     """
-    A decorator for query_extra_data - it wraps the function with verification code
+    A function decorator which wraps given function with a verification code.
+
     :param query_extra_data_func: query_extra_data function from Task
     :return:
     """
@@ -516,11 +517,12 @@ def accepting(query_extra_data_func):
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
             if should_wait:
-                logger.warning("Waiting for results from {} on {}"
-                               .format(node_name, self.task_definition.task_id))
+                logger.warning("Waiting for results from %s on %s", node_name,
+                               self.task_definition.task_id)
             else:
-                logger.warning("Client {} banned from {} task"
-                               .format(node_name, self.task_definition.task_id))
+                logger.warning("Client %s has failed on subtask within task %s"
+                               " and is banned from it", node_name,
+                               self.task_definition.task_id)
 
             return self.ExtraData(should_wait=should_wait)
 
@@ -528,7 +530,8 @@ def accepting(query_extra_data_func):
             logger.error("Task already computed")
             return self.ExtraData()
 
-        return query_extra_data_func(self, perf_index, num_cores, node_id, node_name)
+        return query_extra_data_func(self, perf_index, num_cores,
+                                     node_id, node_name)
 
     return accepting_qed
 

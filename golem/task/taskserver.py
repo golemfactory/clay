@@ -101,7 +101,8 @@ class TaskServer(
         # to register in golem.network.concent.handlers_library
         from golem.network.concent import \
             received_handler as concent_received_handler
-        concent_received_handler.TaskServerMessageHandler(self)
+        self.concent_handler = \
+            concent_received_handler.TaskServerMessageHandler(self)
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
@@ -304,7 +305,7 @@ class TaskServer(
         return self.config_desc.node_name
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def encrypt(self, message, public_key):
         if public_key == 0:
