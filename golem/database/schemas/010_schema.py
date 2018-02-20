@@ -18,4 +18,4 @@ def rollback(migrator, _database, **_kwargs):
 
     migrator.add_fields('expectedincome', task=pw.CharField(max_length=255))
     migrator.add_fields('income', task=pw.CharField(max_length=255))
-    migrator.add_fields('income', block_number=pw.BigIntegerField())
+    migrator.add_fields('income', block_number=pw.HexIntegerField())

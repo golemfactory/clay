@@ -56,7 +56,7 @@ def migrate(migrator, _database, **_kwargs):
         sender_node_details = pw.NodeField()
         task = pw.CharField(max_length=255)
         subtask = pw.CharField(max_length=255)
-        value = pw.BigIntegerField()
+        value = pw.HexIntegerField()
 
         class Meta:
             db_table = "expectedincome"
@@ -94,8 +94,8 @@ def migrate(migrator, _database, **_kwargs):
         task = pw.CharField(max_length=255)
         subtask = pw.CharField(max_length=255)
         transaction = pw.CharField(max_length=255)
-        block_number = pw.BigIntegerField()
-        value = pw.BigIntegerField()
+        block_number = pw.HexIntegerField()
+        value = pw.HexIntegerField()
 
         class Meta:
             db_table = "income"
@@ -170,7 +170,7 @@ def migrate(migrator, _database, **_kwargs):
         status = pw.EnumField(PaymentStatus, default=PaymentStatus.awaiting,
                               index=True)
         payee = pw.RawCharField()
-        value = pw.BigIntegerField()
+        value = pw.HexIntegerField()
         details = pw.PaymentDetailsField()
         processed_ts = pw.IntegerField(null=True)
 
