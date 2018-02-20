@@ -30,8 +30,7 @@ class Node(object):
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
-        # and will install the default version of the reactor
-        # instead of the desired one
+        # and will prevent the IOCP / kqueue reactors from being installed.
         from twisted.internet import reactor
 
         self._reactor = reactor
