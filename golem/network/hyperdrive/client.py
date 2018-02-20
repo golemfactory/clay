@@ -53,8 +53,7 @@ class HyperdriveClient(IClient):
                                        options=dict(peers=peers))
 
     def id(self, client_options=None, *args, **kwargs):
-        response = self._request(command='id')
-        return response['id']
+        return self._request(command='id')
 
     def addresses(self):
         response = self._request(command='addresses')
