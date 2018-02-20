@@ -754,7 +754,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address)
+                                                               self.address,
+                                                               self.task_id)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,

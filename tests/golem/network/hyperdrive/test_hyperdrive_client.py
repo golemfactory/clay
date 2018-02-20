@@ -1,7 +1,6 @@
 import json
-import unittest
-import unittest.mock as mock
 import uuid
+from unittest import mock, TestCase, skip
 
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -11,7 +10,7 @@ from golem.network.hyperdrive.client import HyperdriveClient, \
     HyperdriveClientOptions, HyperdriveAsyncClient
 
 
-class TestHyperdriveClient(unittest.TestCase):
+class TestHyperdriveClient(TestCase):
 
     def setUp(self):
         self.response = {
@@ -124,12 +123,12 @@ class TestHyperdriveClient(unittest.TestCase):
             assert not json_loads.called
 
 
-class TestHyperdriveClientAsync(unittest.TestCase):
+class TestHyperdriveClientAsync(TestCase):
 
     @staticmethod
     def success(*_):
         d = Deferred()
-        d.callback(True)
+        d.callback(mock.Mock(code=200))
         return d
 
     @staticmethod
@@ -210,19 +209,20 @@ class TestHyperdriveClientAsync(unittest.TestCase):
             d.callback(b'{"hash": "0a0b0c0d"}')
             return d
 
+        files = {'path/to/file': 'file'}
+
         with mock.patch('golem.network.hyperdrive.client.readBody',
                         side_effect=body), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             client = HyperdriveAsyncClient()
-            files = {'path/to/file': 'file'}
             wrapper = client.add_async(files)
             assert wrapper.called
             assert isinstance(wrapper.result, str)
 
 
-class TestHyperdriveClientOptions(unittest.TestCase):
+class TestHyperdriveClientOptions(TestCase):
 
     def test_clone(self):
         peers = [
@@ -282,7 +282,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert filtered.options['peers'] == peers
         assert options.filtered('invalid client', version) is None
 
-    @unittest.skip('Private IP filtering is temporarily disabled')
+    @skip('Private IP filtering is temporarily disabled')
     def test_filter_peers(self):
         peers_local = [
             dict(
