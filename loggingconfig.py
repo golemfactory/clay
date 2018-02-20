@@ -74,6 +74,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.core.hardware': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.db': {
             'level': 'INFO',
             'propagate': True,
