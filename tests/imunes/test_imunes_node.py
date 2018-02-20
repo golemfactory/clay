@@ -1,6 +1,6 @@
 import unittest
+from unittest.mock import patch
 
-from mock import patch
 from click.testing import CliRunner
 
 from golem.testutils import DatabaseFixture

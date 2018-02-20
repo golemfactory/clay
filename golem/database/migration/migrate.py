@@ -42,10 +42,9 @@ def migrate_schema(database: 'Database',
         for script in to_run:
             router.run_one(script, migrator, fake=False, downgrade=downgrade)
 
-    last_version = environment.version_from_name(to_run[-1])
-    last_version -= 1 if downgrade else 0
-
-    database.set_user_version(last_version)
+            version = environment.version_from_name(script)
+            version -= 1 if downgrade else 0
+            database.set_user_version(version)
 
 
 def choose_scripts(scripts, from_version, to_version):

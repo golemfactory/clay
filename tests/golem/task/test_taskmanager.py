@@ -13,7 +13,7 @@ from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, TaskHeader, \
@@ -797,7 +797,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                "key_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
-        self.tm.keys_auth = EllipticalKeysAuth(self.path)
+        self.tm.keys_auth = KeysAuth(self.path)
         self.tm.add_new_task(task)
         sig = task.header.signature
 
