@@ -20,7 +20,7 @@ from pydispatch import dispatcher
 import golem
 from golem import clientconfigdescriptor
 from golem import testutils
-from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
 from golem.network.p2p.node import Node
@@ -29,6 +29,7 @@ from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo,
                                            remove_task_string)
 from golem.tools.assertlogs import LogTestCase
 from tests.factories import p2p as p2p_factories
+from tests.factories import taskserver as task_server_factory
 
 
 def fill_slots(msg):
@@ -38,7 +39,7 @@ def fill_slots(msg):
         setattr(msg, slot, None)
 
 
-class TestPeerSession(testutils.TempDirFixture, LogTestCase,
+class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                       # noqa pylint: disable=too-many-public-methods
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
@@ -503,14 +504,14 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
 
     def test_react_to_remove_task(self):
-        keys_auth = EllipticalKeysAuth(self.path)
+        keys_auth = KeysAuth(self.path)
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
 
         # Unknown task owner
-        task_server = mock.MagicMock()
-        task_server.task_keeper.get_owner.return_value = None
-        task_server.remove_task_header.return_value = True
+        client=mock.MagicMock()
+        client.datadir = self.path
+        task_server = task_server_factory.TaskServer(client=client,)
         self.peer_session.p2p_service.task_server = task_server
         peer_mock = mock.MagicMock()
         self.peer_session.p2p_service.peers["ABC"] = peer_mock
@@ -518,33 +519,33 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         task_id = "test_{}".format(uuid.uuid4())
         owner_signature = keys_auth.sign(remove_task_string(task_id))
         assert keys_auth.verify(owner_signature, remove_task_string(task_id),
-                                keys_auth.get_key_id())
+                                keys_auth.key_id)
         msg = message.RemoveTask(task_id=task_id,
                                  owner_signature=owner_signature)
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
 
         # Wrong task owner
-        task_server.task_keeper.get_owner.return_value = "UNKNOWNKEY"
+        th_mock = mock.MagicMock()
+        th_mock.task_owner_key_id = "UNKNOWNKEY"
+        task_server.task_keeper.task_headers[task_id] = th_mock
         with self.assertLogs(logger, level="WARNING") as log:
             self.peer_session._react_to_remove_task(msg)
         assert "Someone tries to remove task header: " in log.output[0]
         assert task_id in log.output[0]
-        task_server.remove_task_header.assert_not_called()
+        assert task_server.task_keeper.task_headers[task_id] == th_mock
 
         # Proper task owner, sending message to peers
-        task_server.task_keeper.get_owner.return_value = keys_auth.get_key_id()
+        th_mock.task_owner_key_id = keys_auth.key_id
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
-        task_server.remove_task_header.assert_called_once_with(task_id)
+        assert task_server.task_keeper.task_headers.get(task_id) is None
         peer_mock.send_remove_task.assert_called_once_with(task_id,
                                                            owner_signature)
 
         # Do not broadast task
-        task_server.remove_task_header.return_value = False
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
-        assert task_server.remove_task_header.call_count == 2
         peer_mock.send_remove_task.assert_called_once_with(task_id,
                                                            owner_signature)
 
