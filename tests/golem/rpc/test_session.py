@@ -1,8 +1,9 @@
+# pylint: disable=protected-access,no-self-use
+import collections
 import unittest
-from collections import OrderedDict
+from unittest.mock import Mock, patch
 
 import autobahn
-from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
 from golem.rpc.session import (
@@ -10,7 +11,6 @@ from golem.rpc.session import (
     object_method_map, logger
 )
 from golem.tools.assertlogs import LogTestCase
-import collections
 
 
 class TestRPCAddress(unittest.TestCase):
@@ -48,7 +48,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_valid_method_map(self):
 
         obj = self.MockObject()
-        valid_method_map = OrderedDict([
+        valid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_2', 'alias_2')
         ])
@@ -62,7 +62,7 @@ class TestObjectMethodMap(unittest.TestCase):
     def test_invalid_method_map(self):
 
         obj = self.MockObject()
-        invalid_method_map = OrderedDict([
+        invalid_method_map = collections.OrderedDict([
             ('method_1', 'alias_1'),
             ('method_x', 'alias_x')
         ])
@@ -125,7 +125,7 @@ class TestClient(unittest.TestCase):
         self.session.is_attached.return_value = True
         self.session.call.return_value = Deferred()
         self.session.is_closing = lambda *_: self.session._goodbye_sent or \
-                                             self.session._transport_is_closing
+            self.session._transport_is_closing
         self.method_map = dict(
             method_1='alias_1',
             method_2='alias_2'

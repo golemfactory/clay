@@ -1,9 +1,10 @@
-from golem_messages import message
 import logging
-from pydispatch import dispatcher
-import semantic_version
-import time
 import random
+import time
+
+import semantic_version
+from golem_messages import message
+from pydispatch import dispatcher
 
 import golem
 from golem.appconfig import SEND_PEERS_NUM
@@ -292,8 +293,17 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
-        self.node_name = msg.node_name
         self.node_info = Node.from_dict(msg.node_info)
+
+        if not self.p2p_service.keys_auth.is_pubkey_difficult(
+                self.node_info.key,
+                self.p2p_service.key_difficulty):
+            logger.info("Key from %r:%r is not difficult enough", self.address,
+                        self.port)
+            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            return
+
+        self.node_name = msg.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
         self.key_id = msg.client_key_id
@@ -451,7 +461,7 @@ class PeerSession(BasicSafeSession):
 
     def __send_hello(self):
         self.solve_challenge = self.key_id and \
-            self.p2p_service.should_solve_challenge or False
+                               self.p2p_service.should_solve_challenge or False
         challenge_kwargs = {}
         if self.solve_challenge:
             challenge = self.p2p_service._get_challenge(self.key_id)
@@ -462,7 +472,7 @@ class PeerSession(BasicSafeSession):
             proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.get_key_id(),
+            client_key_id=self.p2p_service.keys_auth.key_id,
             node_info=self.p2p_service.node.to_dict(),
             client_ver=golem.__version__,
             rand_val=self.rand_val,
@@ -549,7 +559,8 @@ class PeerSession(BasicSafeSession):
             message.RemoveTask.TYPE: self._react_to_remove_task,
             message.FindNode.TYPE: self._react_to_find_node,
             message.RandVal.TYPE: self._react_to_rand_val,
-            message.WantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,  # noqa
+            message.WantToStartTaskSession.TYPE:
+                self._react_to_want_to_start_task_session,
             message.SetTaskSession.TYPE: self._react_to_set_task_session,
         })
 

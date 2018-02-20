@@ -14,7 +14,6 @@ from golem_messages import message
 
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
-from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -30,7 +29,6 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
-
 from tests import factories
 from tests.factories import p2p as p2p_factories
 
@@ -221,11 +219,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
     def test_react_to_hello(self):
         conn = mock.MagicMock()
 
-        node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
-
         ts = TaskSession(conn)
         ts.task_server = mock.Mock()
         ts.disconnect = mock.Mock()
@@ -363,7 +356,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert ts.task_manager.task_computation_failure.called
 
         msg.subtask_id = "UNKNOWN"
-        with self.assertLogs(logger, level="ERROR"):
+        with self.assertLogs(logger, level="WARNING"):
             ts._react_to_task_result_hash(msg)
 
     def test_react_to_task_to_compute(self):

@@ -8,10 +8,8 @@ from golem_messages import message
 from golem import testutils
 from golem.network.concent import received_handler
 from golem.network.concent.handlers_library import library
-from golem.tools import testwithappconfig
-
-from tests.factories import taskserver as taskserver_factories
 from tests.factories import messages as msg_factories
+from tests.factories import taskserver as taskserver_factories
 
 
 class RegisterHandlersTestCase(unittest.TestCase):
@@ -26,6 +24,7 @@ class RegisterHandlersTestCase(unittest.TestCase):
             @received_handler.handler_for(message.p2p.Ping)
             def ping_handler(self, msg):
                 pass
+
         instance = MyHandler()
         received_handler.register_handlers(instance)
         self.assertEqual(len(library._handlers), 1)
@@ -37,8 +36,7 @@ class RegisterHandlersTestCase(unittest.TestCase):
 
 # pylint: disable=no-self-use
 class TaskServerMessageHandlerTestCase(
-        testutils.DatabaseFixture,
-        testwithappconfig.TestWithKeysAuth):
+        testutils.DatabaseFixture, testutils.TestWithClient):
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)

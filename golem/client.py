@@ -10,21 +10,22 @@ from threading import Lock, Thread
 from typing import Dict, Hashable
 
 from pydispatch import dispatcher
-from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
-                                    Deferred)
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    gatherResults,
+    Deferred)
 
 import golem
-from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL,
-                             TASKARCHIVE_MAINTENANCE_INTERVAL,
+from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL)
-from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.clientconfigdescriptor import ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
@@ -53,11 +54,9 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
-    Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -87,14 +86,14 @@ class Client(HardwarePresetsMixin):
     def __init__(
             self,
             datadir,
+            config_desc,
             transaction_system=False,
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
             start_geth=False,
             start_geth_port=None,
-            geth_address=None,
-            **config_overrides):
+            geth_address=None):
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -104,17 +103,7 @@ class Client(HardwarePresetsMixin):
         self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
-        config = AppConfig.load_config(datadir)
-        self.config_desc = ClientConfigDescriptor()
-        self.config_desc.init_from_app_config(config)
-
-        for key, val in list(config_overrides.items()):
-            if not hasattr(self.config_desc, key):
-                self.quit()  # quit only closes underlying services (for now)
-                raise AttributeError(
-                    "Can't override nonexistent config entry '{}'".format(key))
-            setattr(self.config_desc, key, val)
-
+        self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
         log.info(
@@ -131,12 +120,14 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
+        self.keys_auth = KeysAuth(
+            self.datadir,
+            difficulty=self.config_desc.key_difficulty)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.get_key_id())
+                         key=self.keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
@@ -168,8 +159,6 @@ class Client(HardwarePresetsMixin):
                     interval_seconds=max(
                         1, int(clean_resources_older_than / 10)),
                     older_than_seconds=clean_resources_older_than))
-
-        self.cfg = config
 
         self.ranking = Ranking(self)
 
@@ -672,23 +661,11 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return self.task_server.task_computer.dir_manager
 
-    def load_keys_from_file(self, file_name):
-        if file_name != "":
-            return self.keys_auth.load_from_file(file_name)
-        return False
-
-    def save_keys_to_files(self, private_key_path, public_key_path):
-        return self.keys_auth.save_to_files(private_key_path, public_key_path)
-
     def get_key_id(self):
-        return self.get_client_id()
+        return self.keys_auth.key_id
 
     def get_difficulty(self):
         return self.keys_auth.get_difficulty()
-
-    def get_client_id(self):
-        key_id = self.keys_auth.get_key_id()
-        return str(key_id) if key_id else None
 
     def get_node_key(self):
         key = self.node.key
@@ -803,10 +780,13 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = yield self.transaction_system.get_balance()
-            if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+            gnt, av_gnt, eth, \
+                last_gnt_update, \
+                last_eth_update = yield self.transaction_system.get_balance()
+            if gnt is not None:
+                return str(gnt), str(av_gnt), str(eth), str(
+                    last_gnt_update), str(last_eth_update)
+        return None, None, None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -855,7 +835,6 @@ class Client(HardwarePresetsMixin):
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.cfg.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:
@@ -1054,7 +1033,7 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_client_id(),
+            self.get_key_id(),
             self.session_id,
             sys.platform,
             golem.__version__,

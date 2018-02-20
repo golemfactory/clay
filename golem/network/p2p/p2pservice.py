@@ -1,10 +1,11 @@
-from collections import deque
-from golem_messages import message
 import ipaddress
 import logging
 import random
 import time
+from collections import deque
 from threading import Lock
+
+from golem_messages import message
 
 from golem.core import simplechallenge
 from golem.diag.service import DiagnosticsProvider
@@ -73,7 +74,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.node = node
         self.keys_auth = keys_auth
-        self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
+        self.peer_keeper = PeerKeeper(keys_auth.key_id)
         self.task_server = None
         self.resource_server = None
         self.metadata_manager = None
@@ -94,6 +95,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
+        self.key_difficulty = config_desc.key_difficulty
 
         # Peers options
         self.peers = {}  # active peers
@@ -295,7 +297,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             self.peers[key_id] = peer
             self.peer_order.append(key_id)
-        # Timeouts of this session/peer will be hanled in sync_network()
+        # Timeouts of this session/peer will be handled in sync_network()
         try:
             self.pending_sessions.remove(peer)
         except KeyError:

@@ -72,6 +72,8 @@ class PaymentProcessor(LoopingCallService):
         self.__faucet = faucet
         self.deadline = sys.maxsize
         self.load_from_db()
+        self._last_gnt_update = None
+        self._last_eth_update = None
         super().__init__(13)
 
     def balance_known(self):
@@ -86,9 +88,11 @@ class PaymentProcessor(LoopingCallService):
             if balance is not None:
                 self.__eth_balance = balance
                 log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
+                self._last_eth_update = time.mktime(
+                    datetime.today().timetuple())
             else:
                 log.warning("Failed to retrieve ETH balance")
-        return self.__eth_balance
+        return (self.__eth_balance, self._last_eth_update)
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or self.__gntw_balance is None or refresh:
@@ -113,20 +117,26 @@ class PaymentProcessor(LoopingCallService):
                     self.__gnt_balance / denoms.ether,
                     self.__gntw_balance / denoms.ether,
                 )
-        return self.__gnt_balance + self.__gntw_balance
+                self._last_gnt_update = time.mktime(
+                    datetime.today().timetuple())
+
+        return (self.__gnt_balance + self.__gntw_balance,
+                self._last_gnt_update)
 
     def _eth_reserved(self):
         return self.__eth_reserved + self.ETH_BATCH_PAYMENT_BASE
 
     def _eth_available(self):
         """ Returns available ETH balance for new payments fees."""
-        return self.eth_balance() - self._eth_reserved()
+        eth_balance, _ = self.eth_balance()
+        return eth_balance - self._eth_reserved()
 
     def _gnt_reserved(self):
         return self.__gntw_reserved
 
     def _gnt_available(self):
-        return self.gnt_balance() - self.__gntw_reserved
+        gnt_balance, _ = self.gnt_balance()
+        return gnt_balance - self.__gntw_reserved
 
     def load_from_db(self):
         with db.atomic():
@@ -176,7 +186,8 @@ class PaymentProcessor(LoopingCallService):
             closure_time: int) -> Tuple[List[Payment], List[Payment]]:
         payments.sort(key=lambda p: p.processed_ts)
         gntw_balance = self.__gntw_balance
-        eth_balance = self.eth_balance() - self.ETH_BATCH_PAYMENT_BASE
+        eth_balance, _ = self.eth_balance()
+        eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
         for p in payments:
             if p.processed_ts > closure_time:
@@ -189,7 +200,8 @@ class PaymentProcessor(LoopingCallService):
 
         # we need to take either all payments with given processed_ts or none
         if ind < len(payments):
-            while ind > 0 and payments[ind-1].processed_ts == payments[ind].processed_ts:  # noqa
+            while ind > 0 and payments[ind - 1]\
+                    .processed_ts == payments[ind].processed_ts:
                 ind -= 1
 
         return payments[:ind], payments[ind:]
@@ -310,7 +322,7 @@ class PaymentProcessor(LoopingCallService):
                 self.add(p)
 
     def get_ether_from_faucet(self):
-        eth_balance = self.eth_balance(True)
+        eth_balance, _ = self.eth_balance(True)
         if eth_balance is None:
             return False
 
@@ -321,7 +333,7 @@ class PaymentProcessor(LoopingCallService):
         return True
 
     def get_gnt_from_faucet(self):
-        gnt_balance = self.gnt_balance(True)
+        gnt_balance, _ = self.gnt_balance(True)
         if gnt_balance is None:
             return False
 
@@ -331,9 +343,19 @@ class PaymentProcessor(LoopingCallService):
             return False
         return True
 
+    def _send_balance_snapshot(self):
+        dispatcher.send(
+            signal='golem.monitor',
+            event='balance_snapshot',
+            eth_balance=self.__eth_balance,
+            gnt_balance=self.__gnt_balance,
+            gntw_balance=self.__gntw_balance
+        )
+
     def _run(self):
         if self._sci.is_synchronized() and \
                 self.get_ether_from_faucet() and \
                 self.get_gnt_from_faucet():
             self.monitor_progress()
             self.sendout()
+            self._send_balance_snapshot()

@@ -1,7 +1,7 @@
 import sys
+import unittest.mock as mock
 
 from click.testing import CliRunner
-from mock import patch
 
 from golem.core.variables import PROTOCOL_CONST
 from golem.testutils import TempDirFixture, PEP8MixIn
@@ -15,7 +15,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         "golemapp.py",
     ]
 
-    @patch('golemapp.Node')
+    @mock.patch('golemapp.Node')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
@@ -25,21 +25,25 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         runner = CliRunner()
         args = ['--datadir', self.path, '-m', 'crossbar.worker.process']
 
-        with patch('crossbar.worker.process.run') as _run:
-            with patch.object(sys, 'argv', list(args)):
+        with mock.patch('crossbar.worker.process.run') as _run:
+            with mock.patch.object(sys, 'argv', list(args)):
                 runner.invoke(start, sys.argv, catch_exceptions=False)
                 assert _run.called
                 assert '-m' not in sys.argv
 
-        with patch('crossbar.worker.process.run') as _run:
-            with patch.object(sys, 'argv', list(args) + ['-u']):
+    def test_start_crossbar_worker_u(self):
+        runner = CliRunner()
+        args = ['--datadir', self.path, '-m', 'crossbar.worker.process', '-u']
+
+        with mock.patch('crossbar.worker.process.run') as _run:
+            with mock.patch.object(sys, 'argv', list(args)):
                 runner.invoke(start, sys.argv, catch_exceptions=False)
                 assert _run.called
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
-    @patch('golem.core.common.config_logging')
-    @patch('golemapp.Node')
+    @mock.patch('golem.core.common.config_logging')
+    @mock.patch('golemapp.Node')
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
 

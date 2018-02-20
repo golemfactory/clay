@@ -272,8 +272,7 @@ function install_golem()
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
-        fi
-        if [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
+        elif [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
             ask_user "Newer version ($CURRENT_VERSION) of Golem detected. Downgrade to version $PACKAGE_VERSION? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi

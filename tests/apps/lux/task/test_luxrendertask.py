@@ -1,12 +1,12 @@
-from golem_messages.message import ComputeTaskDef
 import os
+from pathlib import Path
 import pickle
 import unittest
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 from PIL import Image
 from ethereum.utils import denoms
-from mock import Mock, patch
+from golem_messages.message import ComputeTaskDef
 
 from apps.core.task.coretask import AcceptClientVerdict, CoreTaskTypeInfo
 from apps.lux.task.luxrendertask import (

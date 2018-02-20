@@ -1,6 +1,6 @@
 import inspect
 import logging
-# import typing
+import typing
 import warnings
 import weakref
 
@@ -26,8 +26,7 @@ class HandlersLibrary():
         # with methods.
 
         # Once in python3.6:
-        #: typing.Dict[message.base.Message, weakref.ref]
-        self._handlers = {}
+        self._handlers: typing.Dict[message.base.Message, weakref.ref] = {}
 
     def register_handler(self, msg_cls: message.base.Message) -> Callable:
         def _wrapped(f) -> Callable:
@@ -46,10 +45,8 @@ class HandlersLibrary():
             except KeyError:
                 pass
 
-            # Enable mypy quirk once in python3.6
-            # ref: typing.Optional[weakref.ref] = None
-
             # It check wheter f is boundmethod not method/class function
+            ref: typing.Optional[weakref.ref] = None
             if inspect.ismethod(f):
                 ref = weakref.WeakMethod(f)
             else:
