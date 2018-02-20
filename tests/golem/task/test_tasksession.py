@@ -305,9 +305,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert conn.close.called
 
     def test_result_rejected(self):
+        # pylint: disable=no-value-for-parameter
         self._test_result_rejected()
 
     def test_result_rejected_with_wrong_key(self):
+        # pylint: disable=no-value-for-parameter
         self._test_result_rejected(key_id="ABC2", called=False)
 
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
