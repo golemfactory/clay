@@ -83,17 +83,10 @@ class ClientTaskComputerEventListener(object):
 class Client(HardwarePresetsMixin):
     _services = []  # type: List[IService]
 
-    def __init__(
-            self,
-            datadir,
-            config_desc,
-            transaction_system=False,
-            connect_to_known_hosts=True,
-            use_docker_machine_manager=True,
-            use_monitor=True,
-            start_geth=False,
-            start_geth_port=None,
-            geth_address=None):
+    def __init__(self, datadir, config_desc, keys_auth,  # noqa pylint: disable=too-many-arguments
+                 transaction_system=False, connect_to_known_hosts=True,
+                 use_docker_manager=True, use_monitor=True,
+                 start_geth=False, start_geth_port=None, geth_address=None):
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -106,11 +99,8 @@ class Client(HardwarePresetsMixin):
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
-        log.info(
-            'Client "%s", datadir: %s',
-            self.config_desc.node_name,
-            datadir
-        )
+        log.info('Client "%s", datadir: %s', self.config_desc.node_name,
+                 datadir)
 
         # Initialize database
         self.db = Database(db, datadir, DB_MODELS)
@@ -120,21 +110,16 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = KeysAuth(
-            self.datadir,
-            difficulty=self.config_desc.key_difficulty)
+        self.keys_auth = keys_auth
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.key_id)
+                         key=keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
-        self.concent_service = ConcentClientService(
-            enabled=False,
-            keys_auth=self.keys_auth,
-        )
+        self.concent_service = ConcentClientService(keys_auth, enabled=False)
 
         self.task_server = None
         self.port_mapper = None
@@ -143,22 +128,18 @@ class Client(HardwarePresetsMixin):
 
         self._services = [
             NetworkConnectionPublisherService(
-                self,
-                int(self.config_desc.network_check_interval)),
+                self, int(self.config_desc.network_check_interval)),
             TaskArchiverService(self.task_archiver),
-            MessageHistoryService(),
-            DoWorkService(self),
+            MessageHistoryService(), DoWorkService(self),
         ]
 
         clean_resources_older_than = \
             self.config_desc.clean_resources_older_than_seconds
         if clean_resources_older_than > 0:
-            self._services.append(
-                ResourceCleanerService(
-                    self,
-                    interval_seconds=max(
-                        1, int(clean_resources_older_than / 10)),
-                    older_than_seconds=clean_resources_older_than))
+            self._services.append(ResourceCleanerService(
+                self,
+                interval_seconds=max(1, int(clean_resources_older_than / 10)),
+                older_than_seconds=clean_resources_older_than))
 
         self.ranking = Ranking(self)
 
@@ -172,12 +153,11 @@ class Client(HardwarePresetsMixin):
                 self.keys_auth._private_key,
                 start_geth=start_geth,
                 start_port=start_geth_port,
-                address=geth_address,
-            )
+                address=geth_address, )
         else:
             self.transaction_system = None
 
-        self.use_docker_machine_manager = use_docker_machine_manager
+        self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
         self.daemon_manager = None
@@ -191,14 +171,9 @@ class Client(HardwarePresetsMixin):
         self.monitor = None
         self.session_id = str(uuid.uuid4())
 
-        dispatcher.connect(
-            self.p2p_listener,
-            signal='golem.p2p'
-        )
-        dispatcher.connect(
-            self.taskmanager_listener,
-            signal='golem.taskmanager'
-        )
+        dispatcher.connect(self.p2p_listener, signal='golem.p2p')
+        dispatcher.connect(self.taskmanager_listener,
+                           signal='golem.taskmanager')
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
@@ -209,10 +184,7 @@ class Client(HardwarePresetsMixin):
             self.node.port_status = kwargs.get('description', '')
             return
         if event == 'new_version':
-            log.warning(
-                'New version of golem available: %s',
-                kwargs['version']
-            )
+            log.warning('New version of golem available: %s', kwargs['version'])
             self._publish(Network.new_version, str(kwargs['version']))
             return
 
@@ -265,26 +237,19 @@ class Client(HardwarePresetsMixin):
 
         if not self.p2pservice:
             self.p2pservice = P2PService(
-                self.node,
-                self.config_desc,
-                self.keys_auth,
-                connect_to_known_hosts=self.connect_to_known_hosts
-            )
+                self.node, self.config_desc, self.keys_auth,
+                connect_to_known_hosts=self.connect_to_known_hosts)
 
         if not self.task_server:
             self.task_server = TaskServer(
-                self.node,
-                self.config_desc,
-                self,
+                self.node, self.config_desc, self,
                 use_ipv6=self.config_desc.use_ipv6,
-                use_docker_machine_manager=self.use_docker_machine_manager,
+                use_docker_manager=self.use_docker_manager,
                 task_archiver=self.task_archiver)
 
             monitoring_publisher_service = MonitoringPublisherService(
-                self.task_server,
-                interval_seconds=max(
-                    int(self.config_desc.node_snapshot_interval),
-                    1))
+                self.task_server, interval_seconds=max(
+                    int(self.config_desc.node_snapshot_interval), 1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
 
@@ -323,8 +288,7 @@ class Client(HardwarePresetsMixin):
         def connect(ports):
             log.info('P2P server is listening on port %s',
                      self.node.p2p_prv_port)
-            log.info('Task server is listening on port %s',
-                     self.node.prv_port)
+            log.info('Task server is listening on port %s', self.node.prv_port)
             log.info('Hyperdrive is listening on port %r',
                      self.node.hyperdrive_prv_port)
 
@@ -332,11 +296,8 @@ class Client(HardwarePresetsMixin):
                 self.start_upnp(ports + list(hyperdrive_ports))
             self.node.update_public_info()
 
-            public_ports = [
-                self.node.p2p_pub_port,
-                self.node.pub_port,
-                self.node.hyperdrive_pub_port
-            ]
+            public_ports = [self.node.p2p_pub_port, self.node.pub_port,
+                            self.node.hyperdrive_pub_port]
 
             dispatcher.send(signal='golem.p2p', event='listening',
                             port=public_ports)
@@ -350,8 +311,7 @@ class Client(HardwarePresetsMixin):
                                            self.monitor.on_peer_snapshot)
                 self.monitor.on_login()
 
-            StatusPublisher.publish(Component.client, 'start',
-                                    stage=Stage.post)
+            StatusPublisher.publish(Component.client, 'start', stage=Stage.post)
 
         def terminate(*exceptions):
             log.error("Golem cannot listen on ports: %s", exceptions)
@@ -425,10 +385,8 @@ class Client(HardwarePresetsMixin):
         self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
-        self.diag_service.register(
-            VMDiagnosticsProvider(),
-            self.monitor.on_vm_snapshot
-        )
+        self.diag_service.register(VMDiagnosticsProvider(),
+                                   self.monitor.on_vm_snapshot)
         self.diag_service.start()
 
     def stop_monitor(self):
@@ -437,16 +395,11 @@ class Client(HardwarePresetsMixin):
 
     def connect(self, socket_address):
         if isinstance(socket_address, Iterable):
-            socket_address = SocketAddress(
-                socket_address[0],
-                int(socket_address[1])
-            )
+            socket_address = SocketAddress(socket_address[0],
+                                           int(socket_address[1]))
 
-        log.debug(
-            "P2pservice connecting to %s on port %s",
-            socket_address.address,
-            socket_address.port
-        )
+        log.debug("P2pservice connecting to %s on port %s",
+                  socket_address.address, socket_address.port)
         self.p2pservice.connect(socket_address)
 
     @report_calls(Component.client, 'quit', once=True)
@@ -518,20 +471,11 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.resources_send(task_id)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+        self.task_server.task_computer.task_resource_collected(task_id,
+                                                               unpack_delta)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
-
-    def set_resource_port(self, resource_port):
-        self.resource_port = resource_port
-        self.p2pservice.set_resource_peer(
-            self.node.prv_addr,
-            self.resource_port
-        )
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
@@ -540,11 +484,9 @@ class Client(HardwarePresetsMixin):
             return True
 
         if not self.task_test_result:
-            self.task_test_result = json.dumps(
-                {
-                    "status": TaskTestStatus.error,
-                    "error": "Another test is running"
-                })
+            self.task_test_result = json.dumps({
+                "status": TaskTestStatus.error,
+                "error": "Another test is running"})
         return False
 
     def _run_test_task(self, t_dict):
@@ -552,11 +494,8 @@ class Client(HardwarePresetsMixin):
         def on_success(*args, **kwargs):
             self.task_tester = None
             self.task_test_result = json.dumps(
-                {
-                    "status": TaskTestStatus.success,
-                    "error": args,
-                    "more": kwargs
-                })
+                {"status": TaskTestStatus.success, "error": args,
+                 "more": kwargs})
 
         def on_error(*args, **kwargs):
             self.task_tester = None
@@ -566,8 +505,7 @@ class Client(HardwarePresetsMixin):
         try:
             dictionary = DictSerializer.load(t_dict)
             task = self.task_server.task_manager.create_task(
-                dictionary=dictionary, minimal=True
-            )
+                dictionary=dictionary, minimal=True)
         except Exception as e:
             return on_error(to_unicode(e))
 
@@ -616,8 +554,7 @@ class Client(HardwarePresetsMixin):
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
         task_dict = deepcopy(
-            task_manager.get_task_definition_dict(
-                task_manager.tasks[task_id]))
+            task_manager.get_task_definition_dict(task_manager.tasks[task_id]))
         del task_dict['id']
 
         return self.create_task(task_dict)
@@ -658,8 +595,7 @@ class Client(HardwarePresetsMixin):
         peers = self.p2pservice.incoming_peers or dict()
         return [
             DictSerializer.dump(p['node'], typed=False)
-            for p in list(peers.values())
-        ]
+            for p in list(peers.values())]
 
     def get_connected_peers(self):
         peers = self.get_peers() or []
@@ -737,8 +673,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
-        return self.task_server.task_manager.get_subtasks_borders(task_id,
-                                                                  part)
+        return self.task_server.task_manager.get_subtasks_borders(task_id, part)
 
     def get_subtasks_frames(self, task_id):
         return self.task_server.task_manager.get_output_states(task_id)
@@ -751,13 +686,11 @@ class Client(HardwarePresetsMixin):
                                                               single=single)
 
     def get_task_stats(self) -> Dict[str, int]:
-        return {
-            'in_network': self.get_task_count(),
-            'supported': self.get_supported_task_count(),
-            'subtasks_computed': self.get_computed_task_count(),
-            'subtasks_with_errors': self.get_error_task_count(),
-            'subtasks_with_timeout': self.get_timeout_task_count()
-        }
+        return {'in_network': self.get_task_count(),
+                'supported': self.get_supported_task_count(),
+                'subtasks_computed': self.get_computed_task_count(),
+                'subtasks_with_errors': self.get_error_task_count(),
+                'subtasks_with_timeout': self.get_timeout_task_count()}
 
     def get_supported_task_count(self) -> int:
         if self.task_server:
@@ -855,11 +788,8 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
-        dispatcher.send(
-            signal='golem.monitor',
-            event='config_update',
-            meta_data=self.__get_nodemetadatamodel()
-        )
+        dispatcher.send(signal='golem.monitor', event='config_update',
+                        meta_data=self.__get_nodemetadatamodel())
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -870,11 +800,8 @@ class Client(HardwarePresetsMixin):
             return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, resources, client_options=None):
-        self.resource_server.download_resources(
-            resources,
-            task_id,
-            client_options=client_options
-        )
+        self.resource_server.download_resources(resources, task_id,
+                                                client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(
@@ -923,8 +850,7 @@ class Client(HardwarePresetsMixin):
 
     def remove_computed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(
-            self.get_computed_files_dir(), older_than_seconds)
+        dir_manager.clear_dir(self.get_computed_files_dir(), older_than_seconds)
 
     def remove_distributed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
@@ -933,8 +859,7 @@ class Client(HardwarePresetsMixin):
 
     def remove_received_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(
-            self.get_received_files_dir(), older_than_seconds)
+        dir_manager.clear_dir(self.get_received_files_dir(), older_than_seconds)
 
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
@@ -944,7 +869,8 @@ class Client(HardwarePresetsMixin):
 
     def get_known_tasks(self):
         headers = {}
-        for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
+        for key, header in list(
+                self.task_server.task_keeper.task_headers.items()):
             headers[str(key)] = DictSerializer.dump(header)
         return headers
 
@@ -1045,31 +971,9 @@ class Client(HardwarePresetsMixin):
         self._publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
-        return NodeMetadataModel(
-            self.get_key_id(),
-            self.session_id,
-            sys.platform,
-            golem.__version__,
-            self.config_desc
-        )
-
-    def __try_to_change_to_number(
-        self,
-        old_value,
-        new_value,
-        to_int=False,
-        to_float=False,
-        name="Config"
-    ):
-        try:
-            if to_int:
-                new_value = int(new_value)
-            elif to_float:
-                new_value = float(new_value)
-        except ValueError:
-            log.warning("%s value '%s' is not a number", name, new_value)
-            new_value = old_value
-        return new_value
+        return NodeMetadataModel(self.get_key_id(), self.session_id,
+                                 sys.platform, golem.__version__,
+                                 self.config_desc)
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
@@ -1120,10 +1024,8 @@ class Client(HardwarePresetsMixin):
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks
-            )
+            self.task_server.change_config(self.config_desc,
+                                           run_benchmarks=run_benchmarks)
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
@@ -1135,8 +1037,8 @@ class Client(HardwarePresetsMixin):
         try:
             filelock.lock(self.__datadir_lock, flags)
         except IOError:
-            raise IOError("Data dir {} used by other Golem instance"
-                          .format(self.datadir))
+            raise IOError(
+                "Data dir {} used by other Golem instance".format(self.datadir))
 
     def _unlock_datadir(self):
         # solves locking issues on OS X
@@ -1199,9 +1101,7 @@ class DoWorkService(LoopingCallService):
 class MonitoringPublisherService(LoopingCallService):
     _task_server = None  # type: TaskServer
 
-    def __init__(self,
-                 task_server: TaskServer,
-                 interval_seconds: int):
+    def __init__(self, task_server: TaskServer, interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._task_server = task_server
 
@@ -1211,29 +1111,24 @@ class MonitoringPublisherService(LoopingCallService):
             event='stats_snapshot',
             known_tasks=len(self._task_server.task_keeper.get_all_tasks()),
             supported_tasks=len(self._task_server.task_keeper.supported_tasks),
-            stats=self._task_server.task_computer.stats,
-        )
+            stats=self._task_server.task_computer.stats, )
         dispatcher.send(
             signal='golem.monitor',
             event='task_computer_snapshot',
-            task_computer=self._task_server.task_computer,
-        )
+            task_computer=self._task_server.task_computer, )
         dispatcher.send(
             signal='golem.monitor',
             event='requestor_stats_snapshot',
             current_stats=(self._task_server.task_manager
                            .requestor_stats_manager.get_current_stats()),
             finished_stats=(self._task_server.task_manager
-                            .requestor_stats_manager.get_finished_stats())
-        )
+                            .requestor_stats_manager.get_finished_stats()))
 
 
 class NetworkConnectionPublisherService(LoopingCallService):
     _client = None  # type: Client
 
-    def __init__(self,
-                 client: Client,
-                 interval_seconds: int):
+    def __init__(self, client: Client, interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
 
@@ -1245,8 +1140,7 @@ class NetworkConnectionPublisherService(LoopingCallService):
 class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
-    def __init__(self,
-                 task_archiver: TaskArchiver):
+    def __init__(self, task_archiver: TaskArchiver) -> None:
         super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
         self._task_archiver = task_archiver
 
@@ -1258,10 +1152,8 @@ class ResourceCleanerService(LoopingCallService):
     _client = None  # type: Client
     older_than_seconds = 0  # type: int
 
-    def __init__(self,
-                 client: Client,
-                 interval_seconds: int,
-                 older_than_seconds: int):
+    def __init__(self, client: Client, interval_seconds: int,
+                 older_than_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self.older_than_seconds = older_than_seconds
@@ -1277,10 +1169,8 @@ class TaskCleanerService(LoopingCallService):
     _client = None  # type: Client
     older_than_seconds = 0  # type: int
 
-    def __init__(self,
-                 client: Client,
-                 interval_seconds: int,
-                 older_than_seconds: int):
+    def __init__(self, client: Client, interval_seconds: int,
+                 older_than_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self.older_than_seconds = older_than_seconds
@@ -1288,9 +1178,8 @@ class TaskCleanerService(LoopingCallService):
     def _run(self):
         now = time.time()
         for task in self._client.get_tasks():
-            deadline = task['time_started'] \
-                + string_to_timeout(task['timeout'])\
-                + self.older_than_seconds
+            deadline = task['time_started'] + string_to_timeout(
+                task['timeout']) + self.older_than_seconds
             if deadline <= now:
                 log.info('Task %s got too old. Deleting.', task['id'])
                 self._client.delete_task(task['id'])
