@@ -30,6 +30,3 @@ MSG_DELAYS = collections.defaultdict(
 # A valid period of time for sending a message
 MSG_LIFETIMES = {
 }
-
-# After what time, send empty ping to concent
-PING_TIMEOUT = 60  # seconds

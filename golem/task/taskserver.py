@@ -305,7 +305,7 @@ class TaskServer(
         return self.config_desc.node_name
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def encrypt(self, message, public_key):
         if public_key == 0:

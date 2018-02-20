@@ -1,13 +1,14 @@
 import random
-import requests
 import time
 import unittest
+import unittest.mock as mock
 from os import urandom
 
-import mock
+import requests
+
 from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
-from mock import patch, Mock
+from golem_sci.interface import TransactionReceipt
 from twisted.internet.task import Clock
 
 from golem.core.common import timestamp_to_datetime
@@ -15,7 +16,6 @@ from golem.ethereum.paymentprocessor import PaymentProcessor, tETH_faucet_donate
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
-from golem_sci.interface import TransactionReceipt
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -31,6 +31,7 @@ def check_deadline(deadline, expected):
 
 
 class PaymentStatusTest(unittest.TestCase):
+
     def test_status(self):
         s = PaymentStatus(1)
         assert s == PaymentStatus.awaiting
@@ -65,9 +66,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.sci.get_eth_balance.return_value = expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
         self.sci.get_eth_balance.assert_called_once_with(self.addr)
 
@@ -75,20 +76,20 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         expected_balance = 13
         self.sci.get_gnt_balance.return_value = expected_balance
         self.sci.get_gntw_balance.return_value = 0
-        b = self.pp.gnt_balance()
+        b, _ = self.pp.gnt_balance()
         assert b == expected_balance
         self.sci.get_gnt_balance.return_value = 16
-        b = self.pp.gnt_balance()
+        b, _ = self.pp.gnt_balance()
         assert b == expected_balance
         self.sci.get_gnt_balance.assert_called_once()
 
     def test_eth_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.sci.get_eth_balance.return_value = expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
         self.sci.get_eth_balance.assert_called_once_with(self.addr)
-        b = self.pp.eth_balance(refresh=True)
+        b, _ = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.sci.get_eth_balance.call_count == 2
 
@@ -110,7 +111,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         with self.assertRaises(RuntimeError):
             self.pp.add(p1)
 
-    @patch('golem.ethereum.paymentprocessor.tETH_faucet_donate')
+    @mock.patch('golem.ethereum.paymentprocessor.tETH_faucet_donate')
     def test_faucet(self, donate):
         self.pp._PaymentProcessor__faucet = True
         self.pp.get_ether_from_faucet()
@@ -132,16 +133,31 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
         assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
-        self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
+        self.pp.add(
+            Payment.create(
+                subtask="p3",
+                payee=a2,
+                value=1),
+            deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
         self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
         assert check_deadline(self.pp.deadline, now + 1)
 
-        self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
+        self.pp.add(
+            Payment.create(
+                subtask="p5",
+                payee=a3,
+                value=1),
+            deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
-        self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
+        self.pp.add(
+            Payment.create(
+                subtask="p6",
+                payee=a3,
+                value=1),
+            deadline=0)
         assert check_deadline(self.pp.deadline, now)
 
         self.pp.add(
@@ -215,8 +231,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert len(inprogress) == 1
         assert tx_hash in inprogress
         assert inprogress[tx_hash] == [p]
-        assert self.pp.gnt_balance(True) == balance_gntw - gnt_value
-        assert self.pp.eth_balance(True) == balance_eth_after_sendout
+        gb, _ = self.pp.gnt_balance(True)
+        assert gb == balance_gntw - gnt_value
+        eb, _ = self.pp.eth_balance(True)
+        assert eb == balance_eth_after_sendout
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gntw - gnt_value
         assert self.pp._eth_reserved() == \
@@ -236,6 +254,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
@@ -280,6 +299,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
@@ -321,36 +341,36 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(ts, p.processed_ts)
 
     def test_get_ether_and_gnt_failure(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=False)
-        self.pp.get_ether_from_faucet = Mock(return_value=False)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=False)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=False)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
     def test_get_gnt_failure(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=False)
-        self.pp.get_ether_from_faucet = Mock(return_value=True)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=False)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=True)
 
         self.pp._run()
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
     def test_get_ether(self):
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
-        self.pp.get_gnt_from_faucet = Mock(return_value=True)
-        self.pp.get_ether_from_faucet = Mock(return_value=True)
+        self.pp.get_gnt_from_faucet = mock.Mock(return_value=True)
+        self.pp.get_ether_from_faucet = mock.Mock(return_value=True)
 
         self.pp._run()
         assert self.pp.monitor_progress.called
@@ -358,9 +378,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
     def test_get_ether_sci_failure(self):
         # given
-        self.pp.monitor_progress = Mock()
+        self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
-        self.pp.sendout = Mock()
+        self.pp.sendout = mock.Mock()
 
         self.pp._PaymentProcessor__faucet = True
 
@@ -566,27 +586,28 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
 
 class FaucetTest(unittest.TestCase):
-    @patch('requests.get')
+
+    @mock.patch('requests.get')
     def test_error_code(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 500
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_error_msg(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 200
         response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
-    @patch('requests.get')
+    @mock.patch('requests.get')
     def test_success(self, get):
         addr = urandom(20)
-        response = Mock(spec=requests.Response)
+        response = mock.Mock(spec=requests.Response)
         response.status_code = 200
         response.json.return_value = {'paydate': 1486605259,
                                       'amount': 999999999999999}

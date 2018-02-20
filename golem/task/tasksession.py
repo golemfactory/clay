@@ -187,6 +187,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
         elif local_role == Actor.Requestor:
             return self.task_manager.subtask2task_mapping.get(sid)
+        return None
 
     #######################
     # FileSession methods #
@@ -508,6 +509,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 # is always in use
                 concent_enabled=True,
             )
+            history_service = history.MessageHistoryService.instance
+            history_dict = self.message_to_model(
+                msg=msg,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
+            if not (history_service and history_dict):
+                logger.error(
+                    "Can't remember %s. history_service: %r history_dict: %r",
+                    msg,
+                    history_service,
+                    history_dict,
+                )
+                return
+            history_service.add(history_dict)
             self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
@@ -699,6 +715,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
+        if msg.task_to_compute is None:
+            logger.info(
+                'Empty task_to_compute in %s. Disconnecting: %r',
+                msg,
+                self.key_id,
+            )
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            return
         subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
         self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
         self.dropped()

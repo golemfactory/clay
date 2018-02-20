@@ -2,9 +2,9 @@
 
 import os
 import unittest
+from unittest.mock import patch, ANY
 from unittest import TestCase
 
-from mock import patch, ANY
 
 from golem.core.common import to_unicode
 from golem.core.common import HandleKeyError, HandleAttributeError, \

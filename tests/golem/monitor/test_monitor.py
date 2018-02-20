@@ -2,10 +2,12 @@ import random
 from unittest import TestCase
 from unittest import mock
 
+import requests
+
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
-from golem.monitor.monitor import SystemMonitor
+from golem.monitor.monitor import SystemMonitor, SenderThread
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
@@ -108,3 +110,27 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                                          'port': port})])
         # we keep active reference for dispatcher not to remove it
         del monitor
+
+
+class TestSenderThread(TestCase):
+    def test_run_exception(self):
+        node_info = mock.Mock()
+        node_info.dict_repr.return_value = dict()
+        sender = SenderThread(
+            node_info=node_info,
+            monitor_host=None,
+            monitor_request_timeout=0,
+            monitor_sender_thread_timeout=0,
+            proto_ver=None
+        )
+        sender.stop_request.isSet = mock.Mock(side_effect=[False, True])
+        with mock.patch('requests.post',
+                        side_effect=requests.exceptions.RequestException(
+                            "request failed")), \
+                self.assertLogs() as logs:
+            sender.run()
+
+        # make sure we're not spitting out stack traces
+        assert len(logs.output) == 1
+        output_lines = logs.output[0].split('\n')
+        assert len(output_lines) == 1

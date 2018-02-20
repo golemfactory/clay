@@ -28,7 +28,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         super().setUp()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.task_server.keys_auth = keys_auth = \
-            keysauth.EllipticalKeysAuth(
+            keysauth.KeysAuth(
                 datadir=self.tempdir,
             )
 

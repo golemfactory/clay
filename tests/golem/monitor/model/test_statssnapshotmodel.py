@@ -1,9 +1,10 @@
 import json
-import mock
-from pydispatch import dispatcher
 import random
+import unittest.mock as mock
 from unittest import TestCase
 from uuid import uuid4
+
+from pydispatch import dispatcher
 
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider

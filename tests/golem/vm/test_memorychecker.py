@@ -1,7 +1,6 @@
 import time
 from unittest import TestCase
-
-from mock import patch
+from unittest.mock import patch
 
 from golem.vm.memorychecker import MemoryChecker
 
