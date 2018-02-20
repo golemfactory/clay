@@ -254,6 +254,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
@@ -298,6 +299,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
