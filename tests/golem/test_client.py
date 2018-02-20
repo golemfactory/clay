@@ -89,7 +89,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -134,7 +134,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -176,7 +176,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -192,7 +192,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=True,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
         self.client.sync()
@@ -205,7 +205,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -252,7 +252,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -266,7 +266,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
         c = self.client
@@ -311,7 +311,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
         self.client.start_network()
@@ -323,7 +323,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -346,7 +346,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
             use_monitor=False
         )
 
@@ -387,7 +387,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False
+            use_docker_manager=False
         )
 
         deferred = Deferred()
@@ -420,7 +420,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             transaction_system=False,
             connect_to_known_hosts=False,
-            use_docker_machine_manager=False
+            use_docker_manager=False
         )
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
@@ -724,7 +724,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 config_desc=ClientConfigDescriptor(),
                 transaction_system=False,
                 connect_to_known_hosts=False,
-                use_docker_machine_manager=False,
+                use_docker_manager=False,
                 use_monitor=False
             )
 
@@ -738,7 +738,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=client,
-                use_docker_machine_manager=False
+                use_docker_manager=False
             )
         client.monitor = Mock()
 

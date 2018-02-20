@@ -90,7 +90,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        transaction_system=True,
-                                       use_docker_machine_manager=True,
+                                       use_docker_manager=True,
                                        use_monitor=True)
         self.assertEqual(
             node_address,
@@ -155,7 +155,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        transaction_system=True,
-                                       use_docker_machine_manager=True,
+                                       use_docker_manager=True,
                                        use_monitor=True)
 
     def test_geth_address_wo_http_should_fail(self, *_):
@@ -235,7 +235,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=None,
                                        transaction_system=True,
-                                       use_docker_machine_manager=True,
+                                       use_docker_manager=True,
                                        use_monitor=True)
 
     def test_start_geth_port_wo_param_should_fail(self, *_):
@@ -298,7 +298,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=port,
                                        transaction_system=True,
-                                       use_docker_machine_manager=True,
+                                       use_docker_manager=True,
                                        use_monitor=True)
 
     @patch('golemapp.Node')
@@ -408,11 +408,8 @@ class TestOptNode(TempDirFixture):
         config_desc = ClientConfigDescriptor()
         config_desc.rpc_address = '127.0.0.1'
         config_desc.rpc_port = 12345
-        self.node = Node(
-            self.path,
-            config_desc,
-            use_docker_machine_manager=False,
-        )
+        self.node = Node(self.path, config_desc,
+                         use_docker_manager=False)
 
         router.return_value = router
         router.address = WebSocketAddress(config_desc.rpc_address,
@@ -431,12 +428,9 @@ class TestOptNode(TempDirFixture):
             None,
             ['10.0.0.10:40104'],
         )
-        self.node = Node(
-            self.path,
-            ClientConfigDescriptor(),
-            use_docker_machine_manager=False,
-            peers=self.parsed_peer,
-        )
+        self.node = Node(self.path, ClientConfigDescriptor(),
+                         peers=self.parsed_peer,
+                         use_docker_manager=False)
 
         self.node._setup_docker = Mock()
         self.node.client = self.node._client_factory()
@@ -454,11 +448,8 @@ class TestOptNode(TempDirFixture):
     def test_setup_with_docker(self, docker_manager, *_):
         docker_manager.return_value = docker_manager
 
-        self.node = Node(
-            self.path,
-            ClientConfigDescriptor(),
-            use_docker_machine_manager=True,
-        )
+        self.node = Node(self.path, ClientConfigDescriptor(),
+                         use_docker_manager=True)
 
         self.node._setup_docker = Mock()
         self.node.client = self.node._client_factory()

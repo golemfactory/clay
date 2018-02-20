@@ -42,7 +42,7 @@ class TaskServer(
                  config_desc: ClientConfigDescriptor,
                  client,
                  use_ipv6=False,
-                 use_docker_machine_manager=True,
+                 use_docker_manager=True,
                  task_archiver=None):
         self.client = client
         self.keys_auth = client.keys_auth
@@ -65,11 +65,11 @@ class TaskServer(
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
                                                   client.datadir, benchmarks)
-        udmm = use_docker_machine_manager
+        udmm = use_docker_manager
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_machine_manager=udmm)
+            use_docker_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
