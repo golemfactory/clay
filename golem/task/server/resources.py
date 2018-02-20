@@ -85,7 +85,7 @@ class TaskResourcesMixin():
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def get_download_options(self, key_id, address=None):
+    def get_download_options(self, key_id, address=None, task_id=None):
         resource_manager = self._get_resource_manager()
         peers = []
 
@@ -95,7 +95,13 @@ class TaskResourcesMixin():
             peer = self.get_resource_peer(key_id)
             if peer:
                 peers.append(peer)
-        return resource_manager.build_client_options(peers=peers)
+
+        client_options = resource_manager.build_client_options(peers=peers)
+
+        task_header = self.task_keeper.task_headers.get(task_id)
+        if task_header:
+            client_options.set(size=task_header.resource_size)
+        return client_options
 
     def get_share_options(self, task_id, key_id):
         resource_manager = self._get_resource_manager()

@@ -9,7 +9,8 @@ from golem.network.concent import client
 from tests.factories import messages as msg_factories
 
 
-def main():
+def main_send():
+    print('#' * 80)
     keys = cryptography.ECCx(None)
     task_to_compute = message.TaskToCompute()
     task_to_compute.compute_task_def = message.ComputeTaskDef({
@@ -25,6 +26,16 @@ def main():
     print(content)
 
 
+def main_receive():
+    print('#' * 80)
+    keys = cryptography.ECCx(None)
+    print('Receiving from concent...')
+    content = client.receive_from_concent(keys.raw_pubkey)
+    print('-' * 80)
+    print(content)
+
+
 if __name__ == '__main__':
     common.config_logging(suffix='_concent')
-    main()
+    main_receive()
+    main_send()

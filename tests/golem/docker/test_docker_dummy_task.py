@@ -123,9 +123,13 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = Node(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+            use_docker_machine_manager=False,
+        )
+        self.node.client = self.node._client_factory()
         self.node.client.start = Mock()
-        self.node.client.datadir = self.path
         self.node._run()
 
         ccd = ClientConfigDescriptor()

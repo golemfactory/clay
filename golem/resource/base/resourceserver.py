@@ -60,23 +60,21 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, files, task_id):
+    def add_task(self, pkg_path, pkg_sha1, task_id) -> Deferred:
         _result = Deferred()
         _result.addErrback(self._add_task_error)
 
-        resource_dir = self.resource_manager.storage.get_dir(task_id)
-        package_path = os.path.join(resource_dir, task_id)
-
-        def _add_task_resources(packager_result):
-            path, sha1 = packager_result
-            _deferred = self.resource_manager.add_task([path], task_id)
-            _deferred.addCallback(lambda r: _result.callback((r, sha1)))
-            _deferred.addErrback(_result.errback)
-
-        async_req = AsyncRequest(self.packager.create, package_path, files)
-        async_run(async_req, _add_task_resources, _result.errback)
+        _deferred = self.resource_manager.add_task([pkg_path], task_id)
+        _deferred.addCallback(lambda r: _result.callback((r, pkg_sha1)))
+        _deferred.addErrback(_result.errback)
 
         return _result
+
+    def create_resource_package(self, files, task_id) -> Deferred:
+        resource_dir = self.resource_manager.storage.get_dir(task_id)
+        package_path = os.path.join(resource_dir, task_id)
+        request = AsyncRequest(self.packager.create, package_path, files)
+        return async_run(request)
 
     @staticmethod
     def _add_task_error(error):
@@ -168,7 +166,7 @@ class BaseResourceServer(object):
         )
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def encrypt(self, message, public_key):
         if public_key == 0:

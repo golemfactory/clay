@@ -1,10 +1,14 @@
-from copy import copy
 import os
 import shutil
-import unittest
-from unittest.mock import MagicMock, Mock
 import zlib
+from copy import copy
+from unittest import TestCase
+from unittest.mock import MagicMock, Mock, patch
 
+from apps.core.task.coretask import (
+    accepting, CoreTask, logger, log_key_error,
+    CoreTaskTypeInfo, CoreTaskBuilder, AcceptClientVerdict)
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
@@ -14,10 +18,6 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.core.task.coretask import (CoreTask, logger, log_key_error, CoreTaskTypeInfo,
-                                     CoreTaskBuilder, AcceptClientVerdict)
-from apps.core.task.coretaskstate import TaskDefinition
-
 
 class TestCoreTask(LogTestCase, TestDirFixture):
 
@@ -25,9 +25,11 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     # we have to override some stuff
     class CoreTaskDeabstracted(CoreTask):
         ENVIRONMENT_CLASS = MagicMock()
+        EXTRA_DATA = CoreTask.ExtraData(sth="sth")
 
+        @accepting
         def query_extra_data(self, *args, **kwargs):
-            pass
+            return self.EXTRA_DATA
 
         def short_extra_data_repr(self, extra_data):
             pass
@@ -406,6 +408,78 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_rejected(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.REJECTED
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result.ctd is None
+        assert not result.should_wait
+        assert logg.warning.call_count == 1
+        assert logg.warning.call_args[0] == (
+            "Client %s has failed on subtask within task %s and is banned"
+            " from it", node_name, c.task_definition.task_id
+        )
+
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_should_wait(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.SHOULD_WAIT
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result.ctd is None
+        assert result.should_wait
+        assert logg.warning.call_count == 1
+        assert logg.warning.call_args[0] == (
+            "Waiting for results from %s on %s",
+            node_name, c.task_definition.task_id
+        )
+
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_already_computed(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        c.get_progress = 1.0
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result.ctd is None
+        assert not result.should_wait
+        assert logg.error.call_count == 1
+        assert logg.error.call_args[0] == ("Task already computed", )
+
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_normal(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result == c.EXTRA_DATA
+        assert not logg.called
 
     def test_result_incoming(self):
         c = self._get_core_task()
@@ -481,7 +555,7 @@ class TestLogKeyError(LogTestCase):
         assert "131" in l.output[0]
 
 
-class TestTaskTypeInfo(unittest.TestCase):
+class TestTaskTypeInfo(TestCase):
 
     def test_init(self):
         tti = CoreTaskTypeInfo("Name1", "Definition1",
@@ -509,7 +583,7 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 
-class TestCoreTaskBuilder(unittest.TestCase):
+class TestCoreTaskBuilder(TestCase):
 
     def _get_core_task_builder(self):
         return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())

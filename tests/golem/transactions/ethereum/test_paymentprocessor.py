@@ -31,6 +31,7 @@ def check_deadline(deadline, expected):
 
 
 class PaymentStatusTest(unittest.TestCase):
+
     def test_status(self):
         s = PaymentStatus(1)
         assert s == PaymentStatus.awaiting
@@ -65,9 +66,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.sci.get_eth_balance.return_value = expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
         self.sci.get_eth_balance.assert_called_once_with(self.addr)
 
@@ -75,20 +76,20 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         expected_balance = 13
         self.sci.get_gnt_balance.return_value = expected_balance
         self.sci.get_gntw_balance.return_value = 0
-        b = self.pp.gnt_balance()
+        b, _ = self.pp.gnt_balance()
         assert b == expected_balance
         self.sci.get_gnt_balance.return_value = 16
-        b = self.pp.gnt_balance()
+        b, _ = self.pp.gnt_balance()
         assert b == expected_balance
         self.sci.get_gnt_balance.assert_called_once()
 
     def test_eth_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.sci.get_eth_balance.return_value = expected_balance
-        b = self.pp.eth_balance()
+        b, _ = self.pp.eth_balance()
         assert b == expected_balance
         self.sci.get_eth_balance.assert_called_once_with(self.addr)
-        b = self.pp.eth_balance(refresh=True)
+        b, _ = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.sci.get_eth_balance.call_count == 2
 
@@ -132,16 +133,31 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
         assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
-        self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
+        self.pp.add(
+            Payment.create(
+                subtask="p3",
+                payee=a2,
+                value=1),
+            deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
         self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
         assert check_deadline(self.pp.deadline, now + 1)
 
-        self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
+        self.pp.add(
+            Payment.create(
+                subtask="p5",
+                payee=a3,
+                value=1),
+            deadline=1)
         assert check_deadline(self.pp.deadline, now + 1)
 
-        self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
+        self.pp.add(
+            Payment.create(
+                subtask="p6",
+                payee=a3,
+                value=1),
+            deadline=0)
         assert check_deadline(self.pp.deadline, now)
 
         self.pp.add(
@@ -215,8 +231,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert len(inprogress) == 1
         assert tx_hash in inprogress
         assert inprogress[tx_hash] == [p]
-        assert self.pp.gnt_balance(True) == balance_gntw - gnt_value
-        assert self.pp.eth_balance(True) == balance_eth_after_sendout
+        gb, _ = self.pp.gnt_balance(True)
+        assert gb == balance_gntw - gnt_value
+        eb, _ = self.pp.eth_balance(True)
+        assert eb == balance_eth_after_sendout
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gntw - gnt_value
         assert self.pp._eth_reserved() == \
@@ -236,6 +254,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
@@ -280,6 +299,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         receipt = TransactionReceipt({
+            'transactionHash': tx_hash,
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
@@ -566,6 +586,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
 
 class FaucetTest(unittest.TestCase):
+
     @mock.patch('requests.get')
     def test_error_code(self, get):
         addr = urandom(20)

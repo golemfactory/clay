@@ -1,3 +1,4 @@
+# pylint: disable= no-self-use,protected-access
 import datetime
 import queue
 import uuid
@@ -258,16 +259,14 @@ class TestMessageHistoryProvider(DatabaseFixture):
         MessageHistoryService.instance = None
 
     def test_invalid_class(self):
-        with self.assertRaises(AttributeError):
+        class Invalid:
+            @record_history(local_role=Actor.Provider,
+                            remote_role=Actor.Requestor)
+            def method(self, msg):
+                print('Got', msg)
 
-            class Invalid:
-                @record_history(local_role=Actor.Provider,
-                                remote_role=Actor.Requestor)
-                def method(self, msg):
-                    print('Got', msg)
-
-            invalid = Invalid()
-            invalid.method(None)
+        invalid = Invalid()
+        invalid.method(None)
 
     def test_record_history(self):
         service = MessageHistoryService().instance
