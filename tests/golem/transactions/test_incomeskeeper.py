@@ -14,7 +14,7 @@ from golem.utils import pubkeytoaddr
 #  2^63-1 (9,223,372,036,854,775,807)
 
 MAX_INT = 2 ** 63
-# this proves that Golem's BigIntegerField wrapper does not
+# this proves that Golem's HexIntegerField wrapper does not
 # overflows in contrast to standard SQL implementation
 
 
