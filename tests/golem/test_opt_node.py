@@ -394,7 +394,7 @@ def mock_async_callback(call):
 
 @patch('golem.node.async_callback', mock_async_callback)
 @patch('golem.node.CrossbarRouter', create=True)
-@patch('golem.node.reactor', create=True)
+@patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
     def tearDown(self):

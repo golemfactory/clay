@@ -1,5 +1,4 @@
 import logging
-from twisted.internet import reactor
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -28,6 +27,14 @@ class Node(object):
             start_geth=False,
             start_geth_port=None,
             geth_address=None):
+
+        # DO NOT MAKE THIS IMPORT GLOBAL
+        # otherwise, reactor will install global signal handlers on import
+        # and will install the default version of the reactor
+        # instead of the desired one
+        from twisted.internet import reactor
+
+        self._reactor = reactor
         self._config_desc = config_desc
         self._datadir = datadir
 
@@ -52,7 +59,7 @@ class Node(object):
     def run(self):
         try:
             self._setup_rpc()
-            reactor.run()
+            self._reactor.run()
         except Exception as exc:
             logger.exception("Application error: %r", exc)
 
@@ -68,7 +75,7 @@ class Node(object):
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:
-            reactor.callFromThread(reactor.stop)
+            self._reactor.callFromThread(self._reactor.stop)
 
     def _setup_rpc(self):
         self.rpc_router = CrossbarRouter(
@@ -76,8 +83,9 @@ class Node(object):
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
         )
-        self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
-        reactor.addSystemEventTrigger(
+        self.rpc_router.start(self._reactor, self._rpc_router_ready,
+                              self._rpc_error)
+        self._reactor.addSystemEventTrigger(
             "before",
             "shutdown",
             self.rpc_router.stop,
@@ -97,7 +105,8 @@ class Node(object):
 
     def _rpc_router_ready(self, *_):
         self.client = self._client_factory()
-        reactor.addSystemEventTrigger("before", "shutdown", self.client.quit)
+        self._reactor.addSystemEventTrigger("before", "shutdown",
+                                            self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
         self.rpc_session = Session(self.rpc_router.address, methods=methods)
