@@ -18,6 +18,7 @@ from zope.interface import implementer
 from golem.core.databuffer import DataBuffer
 from golem.core.hostaddress import get_host_addresses
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
+from golem.network.transport.limiter import ConnectionRateLimiter
 from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
     OutgoingProtocolFactoryWrapper
 from .spamprotector import SpamProtector
@@ -38,7 +39,8 @@ MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 class TCPNetwork(Network):
 
-    def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
+    def __init__(self, protocol_factory, use_ipv6=False, timeout=5,
+                 limit_connection_rate=False):
         """
         TCP network information
         :param ProtocolFactory protocol_factory: Protocols should be at least
@@ -58,6 +60,11 @@ class TCPNetwork(Network):
         self.timeout = timeout
         self.active_listeners = {}
         self.host_addresses = get_host_addresses()
+
+        if limit_connection_rate:
+            self.rate_limiter = ConnectionRateLimiter()
+        else:
+            self.rate_limiter = None
 
     def connect(self, connect_info, **kwargs):
         """
@@ -154,16 +161,23 @@ class TCPNetwork(Network):
         address = addresses[0].address
         port = addresses[0].port
 
-        self.__try_to_connect_to_address(
-            address,
-            port,
+        _args = (
+            address, port,
             self.__connection_to_address_established,
             self.__connection_to_address_failure,
+        )
+        _kwargs = dict(
             addresses_to_arg=addresses,
             established_callback_to_arg=established_callback,
             failure_callback_to_arg=failure_callback,
-            **kwargs,
+            **kwargs
         )
+
+        if self.rate_limiter:
+            self.rate_limiter.run(self.__try_to_connect_to_address, *_args,
+                                  **_kwargs)
+        else:
+            self.__try_to_connect_to_address(*_args, **_kwargs)
 
     def __try_to_connect_to_address(self, address, port, established_callback,
                                     failure_callback, **kwargs):
