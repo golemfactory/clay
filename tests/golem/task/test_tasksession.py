@@ -356,7 +356,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert ts.task_manager.task_computation_failure.called
 
         msg.subtask_id = "UNKNOWN"
-        with self.assertLogs(logger, level="ERROR"):
+        with self.assertLogs(logger, level="WARNING"):
             ts._react_to_task_result_hash(msg)
 
     def test_react_to_task_to_compute(self):
