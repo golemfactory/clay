@@ -84,9 +84,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.client.quit()
 
     def test_get_payments(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -129,9 +132,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             )
 
     def test_get_incomes(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -171,9 +177,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             )
 
     def test_payment_address(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -187,9 +196,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
            'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -203,6 +215,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -250,6 +263,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client = Client(
             datadir=datadir,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -258,12 +272,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
-            Client(datadir=datadir, config_desc=ClientConfigDescriptor())
+            Client(datadir=datadir,
+                   config_desc=ClientConfigDescriptor(),
+                   keys_auth=Mock())
 
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -301,14 +318,18 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
         )
         self.client.db = None
         self.client.quit()
 
     def test_collect_gossip(self, *_):
+        keys_auth = Mock()
+        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -321,6 +342,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -344,6 +366,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
@@ -382,9 +405,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_start_stop(self, connect_to_network, *_):
+        keys_auth = Mock()
+        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False
@@ -415,9 +441,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
+        keys_auth = Mock()
+        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
             transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False
@@ -722,6 +751,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             client = Client(
                 datadir=self.path,
                 config_desc=ClientConfigDescriptor(),
+                keys_auth=Mock(),
                 transaction_system=False,
                 connect_to_known_hosts=False,
                 use_docker_manager=False,

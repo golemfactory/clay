@@ -7,8 +7,7 @@ def key_gen(d: int):
     return KeysAuth._generate_keys(difficulty=d)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("d", [10, 11, 12, 13, 14, 15, 16])
 def test_key_gen_speed(benchmark, d):
-    result = benchmark(key_gen, d)
-
-    assert KeysAuth.is_difficult(result, d)
+    benchmark(key_gen, d)

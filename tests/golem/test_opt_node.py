@@ -5,6 +5,7 @@ from click.testing import CliRunner
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.docker.manager import DockerManager
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -421,8 +422,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
 
-    @patch('golem.docker.image.DockerImage')
-    def test_setup_without_docker(self, docker_image, *_):
+    def test_run(self, *_):
         self.parsed_peer = argsparser.parse_peer(
             None,
             None,
@@ -432,7 +432,7 @@ class TestOptNode(TempDirFixture):
                          peers=self.parsed_peer,
                          use_docker_manager=False)
 
-        self.node._setup_docker = Mock()
+        self.node.keys_auth = Mock()
         self.node.client = self.node._client_factory()
         self.node.client.connect = Mock()
         self.node.client.start = Mock()
@@ -441,23 +441,82 @@ class TestOptNode(TempDirFixture):
 
         assert self.node.client.start.called
         assert self.node._apps_manager is not None
-        assert not self.node._setup_docker.called
         self.node.client.connect.assert_called_with(self.parsed_peer[0])
 
-    @patch('golem.docker.image.DockerImage')
-    def test_setup_with_docker(self, docker_manager, *_):
-        docker_manager.return_value = docker_manager
-
+    def test_key_auth_faster_than_rpc_with_docker(self, *_):
+        # given
+        DockerManager.install = Mock()
         self.node = Node(self.path, ClientConfigDescriptor(),
                          use_docker_manager=True)
+        self.node._setup_client = Mock()
 
-        self.node._setup_docker = Mock()
-        self.node.client = self.node._client_factory()
-        self.node.client.connect = Mock()
-        self.node.client.start = Mock()
-        self.node.client.environments_manager = Mock()
-        self.node._run()
+        # when
+        self.node._key_auth_ready(keys_auth=Mock())
+        # then
+        assert not self.node._setup_client.called
+        assert not DockerManager.install.called
 
-        assert self.node.client.start.called
-        assert self.node._apps_manager is not None
-        assert self.node._setup_docker.called
+        # when
+        self.node._rpc_router_ready()
+        # then
+        assert self.node._setup_client.called
+        assert DockerManager.install.called
+
+    def test_key_auth_faster_than_rpc_without_docker(self, *_):
+        # given
+        DockerManager.install = Mock()
+        self.node = Node(self.path, ClientConfigDescriptor(),
+                         use_docker_manager=False)
+        self.node._setup_client = Mock()
+
+        # when
+        self.node._key_auth_ready(keys_auth=Mock())
+        # then
+        assert not self.node._setup_client.called
+        assert not DockerManager.install.called
+
+        # when
+        self.node._rpc_router_ready()
+        # then
+        assert self.node._setup_client.called
+        assert not DockerManager.install.called
+
+    def test_key_auth_slower_than_rpc_with_docker(self, *_):
+        # given
+        DockerManager.install = Mock()
+        self.node = Node(self.path, ClientConfigDescriptor(),
+                         use_docker_manager=True)
+        self.node._setup_client = Mock()
+
+        # when
+        self.node._rpc_router_ready()
+        # then
+        assert not self.node._setup_client.called
+        assert DockerManager.install.called
+
+        # when
+        self.node._key_auth_ready(keys_auth=Mock())
+        # then
+        assert self.node._setup_client.called
+        assert DockerManager.install.called
+
+    def test_key_auth_slower_than_rpc_without_docker(self, *_):
+        # given
+        DockerManager.install = Mock()
+        self.node = Node(self.path, ClientConfigDescriptor(),
+                         use_docker_manager=False)
+        self.node._setup_client = Mock()
+
+        # when
+        self.node._rpc_router_ready()
+        # then
+        assert not self.node._setup_client.called
+        assert not DockerManager.install.called
+
+        # when
+        self.node._key_auth_ready(keys_auth=Mock())
+        # then
+        assert self.node._setup_client.called
+        assert not DockerManager.install.called
+
+    # todo: tests with callbacks needed
