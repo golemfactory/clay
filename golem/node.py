@@ -8,9 +8,10 @@ from golem.core.async import async_callback, AsyncRequest, async_run
 from golem.core.keysauth import KeysAuth
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
+from golem.report import StatusPublisher
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import object_method_map, Session
+from golem.rpc.session import object_method_map, Session, Publisher
 
 logger = logging.getLogger("app")
 
@@ -27,7 +28,7 @@ class Node(object):
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
                  config_desc: ClientConfigDescriptor,
-                 peers: Optional[List[SocketAddress]] = None,
+                 peers: List[SocketAddress] = [],
                  transaction_system: bool = False,
                  use_monitor: bool = False,
                  use_docker_manager: bool = True,
@@ -50,7 +51,7 @@ class Node(object):
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
 
-        self._peers: List[SocketAddress] = peers or []
+        self._peers: List[SocketAddress] = peers
         self._apps_manager: Optional[AppsManager] = None
 
         self.client: Optional[Client] = None
@@ -90,6 +91,7 @@ class Node(object):
     def _rpc_router_ready(self, *_):
         logger.info("RPC ready")
         self._rpc_ready = True
+        self._setup_session()
         if self.keys_auth:
             self._setup_client()
         else:
@@ -103,6 +105,10 @@ class Node(object):
             logger.info("setting up docker")
             docker_manager = DockerManager.install(self._config_desc)
             docker_manager.check_environment()  # pylint: disable=no-member
+
+    def _setup_session(self):
+        self.rpc_session = Session(self.rpc_router.address)
+        StatusPublisher.set_publisher(Publisher(self.rpc_session))
 
     def _setup_keys_auth(self):
         async_constructor = AsyncRequest(
@@ -124,9 +130,8 @@ class Node(object):
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
-        methods = object_method_map(self.client, CORE_METHOD_MAP)
-        self.rpc_session = Session(self.rpc_router.address, methods=methods)
-        self.client.configure_rpc(self.rpc_session)
+        self.rpc_session.methods = object_method_map(self.client,
+                                                     CORE_METHOD_MAP)
         self.rpc_session.connect().addCallbacks(
             async_callback(self._run), _error('RPC'))
 
