@@ -204,17 +204,27 @@ class Client(HardwarePresetsMixin):
         self.rpc_publisher = Publisher(rpc_session)
         StatusPublisher.set_publisher(self.rpc_publisher)
 
-    def p2p_listener(self, sender, signal, event='default', **kwargs):
+    def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':
-            self.node.port_status = kwargs.get('description', '')
-            return
-        if event == 'new_version':
-            log.warning(
-                'New version of golem available: %s',
-                kwargs['version']
-            )
-            self._publish(Network.new_version, str(kwargs['version']))
-            return
+            self.on_unreachable(**kwargs)
+        elif event == 'unsynchronized':
+            self.on_unsynchronized(**kwargs)
+        elif event == 'new_version':
+            self.on_new_version(**kwargs)
+
+    def on_unreachable(self, port, description, **_):
+        log.warning('Port %d unreachable: %s', port, description)
+        self.node.port_statuses[port] = description
+
+    @staticmethod
+    def on_unsynchronized(time_diff, **_):
+        log.warning(
+            'Node time unsynchronized with monitor. Time diff: %f (s)',
+            time_diff)
+
+    def on_new_version(self, version, **_):
+        log.warning('New version of golem available: %s', version)
+        self._publish(Network.new_version, str(version))
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
@@ -338,8 +348,10 @@ class Client(HardwarePresetsMixin):
                 self.node.hyperdrive_pub_port
             ]
 
-            dispatcher.send(signal='golem.p2p', event='listening',
-                            port=public_ports)
+            dispatcher.send(
+                signal='golem.p2p',
+                event='listening',
+                ports=public_ports)
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
@@ -1080,10 +1092,11 @@ class Client(HardwarePresetsMixin):
 
         messages = []
 
-        if self.node.port_status:
-            statuses = self.node.port_status.split('\n')
-            failures = [e for e in statuses if e.find('open') == -1]
-            messages.append("Port " + ", ".join(failures) + ".")
+        if self.node.port_statuses:
+            status = ", ".join(
+                "{}: {}".format(port, status)
+                for port, status in self.node.port_statuses.items())
+            messages.append("Port {}.".format(status))
 
         if self.get_connected_peers():
             messages.append("Connected")

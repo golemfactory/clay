@@ -1,14 +1,15 @@
 import datetime
+import json
 import os
 import time
 import uuid
-import json
-
+from random import Random
 from types import MethodType
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
 from freezegun import freeze_time
+from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
@@ -34,12 +35,14 @@ from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
+    TaskTestStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
-from golem.task.taskstate import TaskTestStatus
+
+random = Random(__name__)
 
 
 def mock_async_run(req, success, error):
@@ -716,9 +719,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler', ):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler', ):
             client = Client(
                 datadir=self.path,
                 config_desc=ClientConfigDescriptor(),
@@ -731,9 +733,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.sync = Mock()
         client.keys_auth = Mock(key_id=str(uuid.uuid4()))
         client.p2pservice = Mock(peers={})
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler', ):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler', ):
             client.task_server = TaskServer(
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
@@ -1185,26 +1186,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert self.client.get_golem_status() == status
 
     def test_port_status(self, *_):
-        from pydispatch import dispatcher
-        import random
-        random.seed()
+        port = random.randint(1, 65535)
+        self.assertIsNone(self.client.node.port_statuses.get(port))
 
-        port = random.randint(1, 50000)
-        self.assertFalse(self.client.node.port_status)
         dispatcher.send(
             signal="golem.p2p",
             event="no event at all",
             port=port,
-            description="port 1234: closed"
+            description="timeout"
         )
-        self.assertFalse(self.client.node.port_status)
+        self.assertIsNone(self.client.node.port_statuses.get(port))
+
         dispatcher.send(
             signal="golem.p2p",
             event="unreachable",
             port=port,
-            description="port 1234: closed"
+            description="timeout"
         )
-        self.assertTrue(self.client.node.port_status)
+        self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
 
     def test_get_performance_values(self, *_):
         expected_perf = {DefaultEnvironment.get_id(): 0.0}

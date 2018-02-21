@@ -6,7 +6,7 @@ MONITOR_CONFIG = {
 
     # Increase this number every time any change is made to the protocol
     # (e.g. message object representation changes)
-    'PROTO_VERSION': 0,
+    'PROTO_VERSION': 1,
 }
 
 # so that the queue will not get filled up
