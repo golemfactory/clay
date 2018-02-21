@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import sys
 import logging
 from multiprocessing import freeze_support
@@ -14,6 +15,8 @@ from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import PROTOCOL_CONST
 from golem.node import Node
 
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
 
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import argparse
 import sys
 
@@ -14,6 +15,10 @@ from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings
 from golem.interface.client.tasks import Tasks, Subtasks
 from golem.interface.websockets import WebSocketCLI
+
+
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
 
 # prevent 'unused' warnings
 _ = {
