@@ -55,6 +55,7 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
                 assert crop[0] <= ncrop[0] <= crop[1]
                 assert crop[0] <= ncrop[1] <= crop[1]
                 assert ncrop[0] <= ncrop[1]
+
                 assert crop[2] <= ncrop[2] <= crop[3]
                 assert crop[2] <= ncrop[3] <= crop[3]
                 assert ncrop[2] <= ncrop[2]
@@ -75,4 +76,9 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
             _test_crop([800, 600], (numpy.float32(0.0),
                                     numpy.float32(0.1),
                                     numpy.float32(0.0),
-                                    numpy.float32(0.1)), 3, (0.04, 0.1))
+                                    numpy.float32(0.4)), 3, (0.04, 0.1))
+            with self.assertRaises(Exception):
+                _test_crop([800, 600], (numpy.float32(0.0),
+                                        numpy.float32(0.1),
+                                        numpy.float32(0.0),
+                                        numpy.float32(0.1)), 3, (0.04, 0.1))

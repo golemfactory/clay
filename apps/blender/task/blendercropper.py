@@ -183,7 +183,12 @@ class BlenderCropper:
 
     @staticmethod
     def _random_split(min_, max_, size_):
+        # survive in edge cases
+        max_ -= 1
+        min_ += 1
         difference = (max_ - size_)
+        if difference < 0:
+            raise Exception("Subtask is to small to reliable verifcation")
         split_min = random.randint(min_, difference)
         split_max = split_min + size_
         logger.info("split_min=%r, split_max=%r", split_min, split_max)
