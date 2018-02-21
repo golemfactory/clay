@@ -97,10 +97,7 @@ class Node(object):
         else:
             logger.info("waiting for KeysAuth")
 
-        # lets setup docker, especially when keys generation takes little longer
-        self._setup_docker()
-
-    def _setup_docker(self):
+    def _setup_docker(self, *_):
         if self._use_docker_manager:
             logger.info("setting up docker")
             docker_manager = DockerManager.install(self._config_desc)
@@ -109,6 +106,9 @@ class Node(object):
     def _setup_session(self):
         self.rpc_session = Session(self.rpc_router.address)
         StatusPublisher.set_publisher(Publisher(self.rpc_session))
+        # lets setup docker, especially when keys generation takes little longer
+        self.rpc_session.connect().addCallback(
+            async_callback(self._setup_docker), _error('RPC'))
 
     def _setup_keys_auth(self):
         async_constructor = AsyncRequest(
@@ -132,8 +132,7 @@ class Node(object):
 
         self.rpc_session.methods = object_method_map(self.client,
                                                      CORE_METHOD_MAP)
-        self.rpc_session.connect().addCallbacks(
-            async_callback(self._run), _error('RPC'))
+        self._run()
 
     def _run(self, *_):
         self._setup_apps()
