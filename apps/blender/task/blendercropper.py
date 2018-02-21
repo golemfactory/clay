@@ -2,6 +2,7 @@ import math
 import random
 import os
 import logging
+import numpy
 from copy import deepcopy
 from functools import partial
 
@@ -58,13 +59,25 @@ class BlenderCropper:
         useful for cropping with blender, second one are corresponding
         pixels. Each list has splits_num elements, one for each split.
         """
-        left_p = math.ceil(image_border[0] * resolution[0])
-        right_p = math.ceil(image_border[1] * resolution[0])
-        bottom_p = math.ceil(image_border[2] * resolution[1])
-        top_p = math.ceil(image_border[3] * resolution[1])
+        logger.info("Values left=%r, right=%r, top=%r, bottom=%r", image_border[0],
+                    image_border[1], image_border[3], image_border[2])
+
+        #  This is how Blender is calculating pixel check
+        #  BlenderSync::get_buffer_params in blender_camers.cpp file
+        #  BoundBox2D border = cam->border.clamp();
+		#  params.full_x = (int)(border.left * (float)width);
+        #
+        #  NOTE BLENDER IS USING FLOATS FALUES
+        #  that means single precision 4 bytes floats, python is not
+        #  it is using double precision values. Here numpy is used to emulate
+        #  that loss of precision when assigning double to float.
+        left_p = math.floor(numpy.float32(image_border[0]) * numpy.float32(resolution[0]))
+        right_p = math.floor(numpy.float32(image_border[1]) * numpy.float32(resolution[0]))
+        bottom_p = math.floor(numpy.float32(image_border[2]) * numpy.float32(resolution[1]))
+        top_p = math.floor(numpy.float32(image_border[3]) * numpy.float32(resolution[1]))
 
         logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
-                    right_p, bottom_p, top_p)
+                    right_p, top_p, bottom_p)
 
         if crop_size is None:
             crop_size = (self._find_split_size(resolution[0]),
@@ -82,11 +95,18 @@ class BlenderCropper:
         for _ in range(splits_num):
             split_x = self._random_split(left_p, right_p, crop_size[0])
             split_y = self._random_split(bottom_p, top_p, crop_size[1])
-            self.split_values.append((
-                split_x[0]/resolution[0],
-                split_x[1]/resolution[0],
-                split_y[0]/resolution[1],
-                split_y[1]/resolution[1]))
+
+            # Here another conversion from double to float
+            x_f = numpy.float32(split_x[0] / resolution[0])
+            y_f = numpy.float32(split_x[1] / resolution[0])
+            right_f = numpy.float32(split_y[0] / resolution[1])
+            bottom_f = numpy.float32(split_y[1] / resolution[1])
+
+            # Recalculate pixel after converting to float
+            split_x[0] = math.floor(x_f * numpy.float32(resolution[0]))
+            split_y[1] = math.floor(bottom_f * numpy.float32(resolution[1]))
+
+            self.split_values.append((x_f, y_f, right_f, bottom_f))
             self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
         return self.split_values, self.split_pixels
 
@@ -158,7 +178,7 @@ class BlenderCropper:
         split_min = random.randint(min_, difference)
         split_max = split_min + size_
         logger.info("split_min=%r, split_max=%r", split_min, split_max)
-        return split_min, split_max
+        return [split_min, split_max]
 
     @staticmethod
     def _pixel(crop_x_min, crop_y_max, top):
