@@ -11,6 +11,9 @@ from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
 
 
+CREATE_TASK_TIMEOUT = 300  # s
+
+
 class CommandAppLogic(AppLogic):
 
     def __init__(self, client, datadir):
@@ -204,7 +207,7 @@ class Tasks:
             print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
-        return sync_wait(deferred)
+        return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 
 
 @group(help="Manage subtasks")
