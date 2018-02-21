@@ -30,7 +30,6 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         self.assertTrue(return_value.output.startswith('Usage'))
-        mock_reactor.run.assert_not_called()
 
     @patch('twisted.internet.reactor', create=True)
     def test_wrong_option_should_fail(self, mock_reactor, *_):
@@ -39,7 +38,6 @@ class TestNode(TestWithDatabase):
                                      catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue(return_value.output.startswith('Error'))
-        mock_reactor.run.assert_not_called()
 
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.Node')
@@ -51,7 +49,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        self.assertEqual(len(mock_node.mock_calls), 2)
+        self.assertEqual(len(mock_node.mock_calls), 1)
         init_call = mock_node.mock_calls[0]
         self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
         init_call_args = init_call[1]
@@ -67,7 +65,7 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.delete_reactor')
     @patch('golem.node.CrossbarRouter')
     @patch('golem.node.Client')
-    def test_node_address_should_be_passed_to_client(
+    def test_config_should_be_passed_to_client(
             self,
             mock_client,
             mock_rpc_router,
@@ -79,14 +77,25 @@ class TestNode(TestWithDatabase):
             lambda _, on_ready, on_err: on_ready()
         mock_rpc_router.return_value = mock_rpc_router
 
-        node_address = '1.2.3.4'
-        runner = CliRunner()
-        args = self.args + ['--node-address', node_address]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
+        cfg = ClientConfigDescriptor()
+        cfg.node_address = '1.2.3.4'
+        DockerManager.install = Mock()
+
+        node = Node(
+            datadir=self.path,
+            config_desc=cfg,
+            geth_address=None,
+            start_geth=False,
+            start_geth_port=None,
+            transaction_system=True,
+            use_monitor=True)
+
+        node.keys_auth = Mock()
+        node._client_factory()
 
         mock_client.assert_called_with(datadir=self.path,
-                                       config_desc=ANY,
+                                       config_desc=cfg,
+                                       keys_auth=ANY,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -94,7 +103,7 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        use_monitor=True)
         self.assertEqual(
-            node_address,
+            cfg.node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
         )
 
@@ -143,15 +152,24 @@ class TestNode(TestWithDatabase):
         mock_rpc_router.start.side_effect = \
             lambda _, on_ready, on_err: on_ready()
         mock_rpc_router.return_value = mock_rpc_router
-
+        DockerManager.install = Mock()
         geth_address = 'http://3.14.15.92:6535'
-        runner = CliRunner()
-        args = self.args + ['--geth-address', geth_address]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
+
+        node = Node(
+            datadir=self.path,
+            config_desc=Mock(),
+            geth_address=geth_address,
+            start_geth=False,
+            start_geth_port=None,
+            transaction_system=True,
+            use_monitor=True)
+
+        node.keys_auth = Mock()
+        node._client_factory()
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
+                                       keys_auth=ANY,
                                        geth_address=geth_address,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -225,13 +243,23 @@ class TestNode(TestWithDatabase):
         mock_rpc_router.start.side_effect = \
             lambda _, on_ready, on_err: on_ready()
         mock_rpc_router.return_value = mock_rpc_router
-        runner = CliRunner()
-        args = self.args + ['--start-geth']
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
+        DockerManager.install = Mock()
+
+        node = Node(
+            datadir=self.path,
+            config_desc=Mock(),
+            geth_address=None,
+            start_geth=True,
+            start_geth_port=None,
+            transaction_system=True,
+            use_monitor=True)
+
+        node.keys_auth = Mock()
+        node._client_factory()
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
+                                       keys_auth=ANY,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=None,
@@ -287,14 +315,23 @@ class TestNode(TestWithDatabase):
             lambda _, on_ready, on_err: on_ready()
         mock_rpc_router.return_value = mock_rpc_router
         port = 27182
+        DockerManager.install = Mock()
 
-        runner = CliRunner()
-        args = self.args + ['--start-geth-port', port, '--start-geth']
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
+        node = Node(
+            datadir=self.path,
+            config_desc=Mock(),
+            geth_address=None,
+            start_geth=True,
+            start_geth_port=port,
+            transaction_system=True,
+            use_monitor=True)
+
+        node.keys_auth = Mock()
+        node._client_factory()
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
+                                       keys_auth=ANY,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=port,
@@ -312,7 +349,6 @@ class TestNode(TestWithDatabase):
                                      catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         # TODO: check peer == [addr1]
-        mock_node.run.assert_called_once_with()
 
     @patch('golemapp.Node')
     def test_many_peers(self, mock_node, *_):
@@ -326,7 +362,6 @@ class TestNode(TestWithDatabase):
 
         self.assertEqual(return_value.exit_code, 0)
         # TODO: check peer == [addr1, addr2]
-        mock_node.run.assert_called_once_with()
 
     @patch('golemapp.Node')
     def test_bad_peer(self, *_):
@@ -350,7 +385,6 @@ class TestNode(TestWithDatabase):
         )
         self.assertEqual(return_value.exit_code, 0)
         # TODO: check peer == [addrs...]
-        mock_node.run.assert_called_with()
 
     @patch('golemapp.Node')
     def test_rpc_address(self, *_):

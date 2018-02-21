@@ -15,6 +15,7 @@ import tempfile
 import time
 from os import path
 from threading import Thread
+from unittest.mock import Mock
 
 from twisted.internet import reactor
 
@@ -56,8 +57,11 @@ def create_client(datadir):
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
 
+    keys_auth = Mock()
+    keys_auth.key_id = "a" * 64
     return Client(datadir=datadir,
                   config_desc=config_desc,
+                  keys_auth=keys_auth,
                   use_monitor=False,
                   transaction_system=False,
                   connect_to_known_hosts=False,
