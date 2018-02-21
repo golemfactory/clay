@@ -68,7 +68,7 @@ class BlenderCropper:
         #  BoundBox2D border = cam->border.clamp();
         #  params.full_x = (int)(border.left * (float)width);
         #
-        #  NOTE BLENDER IS USING FLOATS FALUES
+        #  NOTE BLENDER IS USING FLOATS Vgit stALUES
         #  that means single precision 4 bytes floats, python is not
         #  it is using double precision values. Here numpy is used to emulate
         #  that loss of precision when assigning double to float.
