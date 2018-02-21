@@ -18,10 +18,6 @@ MAX_CPU_WINDOWS = 32
 MAX_CPU_MACOS = 16
 
 ALLOWED_LOGLEVELS = [
-    'ERROR',
-    'WARNING',
-    'INFO',
-    'DEBUG'
 ]
 
 
@@ -181,11 +177,6 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
-    wrong_loglevel = None
-    if loglevel and loglevel not in ALLOWED_LOGLEVELS:
-        wrong_loglevel = loglevel
-        loglevel = None
-
     for handler in LOGGING.get('handlers', {}).values():
         if loglevel:
             handler['level'] = loglevel
@@ -212,11 +203,6 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         )
         return  # Avoid consequent errors
     logging.captureWarnings(True)
-
-    logger = logging.getLogger(__name__)
-    if wrong_loglevel is not None:
-        logger.warning('Invalid log level "%r", reset to default.',
-                       wrong_loglevel)
 
     import txaio
     txaio.use_twisted()
