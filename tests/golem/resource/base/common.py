@@ -78,6 +78,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         client = Client(datadir=dir_manager.root_path,
                         config_desc=ClientConfigDescriptor(),
+                        keys_auth=mock.Mock(),
                         connect_to_known_hosts=False,
                         use_docker_manager=False,
                         use_monitor=False)
