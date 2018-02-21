@@ -6,6 +6,7 @@ from threading import Lock
 
 from pydispatch import dispatcher
 
+
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
@@ -15,6 +16,7 @@ from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.network.p2p.node import Node as P2PNode
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
+
 from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
@@ -38,8 +40,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server,
-                 use_docker_manager=True) -> None:
+    def __init__(self, node_name, task_server, use_docker_manager=True) -> None:
         """ Create new task computer instance
         :param node_name:
         :param task_server:

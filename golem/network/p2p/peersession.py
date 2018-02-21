@@ -300,7 +300,6 @@ class PeerSession(BasicSafeSession):
             return
 
         self.node_name = msg.node_name
-
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
         self.key_id = msg.client_key_id
@@ -368,7 +367,9 @@ class PeerSession(BasicSafeSession):
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
-                self.disconnect(message.Disconnect.REASON.BadProtocol)
+                self.disconnect(
+                    message.Disconnect.REASON.BadProtocol
+                )
 
     def _react_to_remove_task(self, msg):
         removed = self.p2p_service.remove_task_header(msg.task_id)
@@ -400,11 +401,15 @@ class PeerSession(BasicSafeSession):
         if self.rand_val == msg.rand_val:
             self.__set_verified_conn()
         else:
-            self.disconnect(message.Disconnect.REASON.Unverified)
+            self.disconnect(
+                message.Disconnect.REASON.Unverified
+            )
 
     def _react_to_challenge_solution(self, msg):
         if not self.solve_challenge:
-            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            self.disconnect(
+                message.Disconnect.REASON.BadProtocol
+            )
             return
         good_solution = self.p2p_service.check_solution(
             msg.solution,
@@ -415,7 +420,9 @@ class PeerSession(BasicSafeSession):
             self.__set_verified_conn()
             self.solve_challenge = False
         else:
-            self.disconnect(message.Disconnect.REASON.Unverified)
+            self.disconnect(
+                message.Disconnect.REASON.Unverified
+            )
 
     def _react_to_want_to_start_task_session(self, msg):
         self.p2p_service.peer_want_task_session(

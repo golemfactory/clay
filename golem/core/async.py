@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncHTTPRequest:
+
     agent = None
     timeout = 5
 
@@ -49,6 +50,7 @@ class AsyncHTTPRequest:
 
 
 class AsyncRequest(object):
+
     """ Deferred job descriptor """
 
     def __init__(self, method, *args, **kwargs):
@@ -60,7 +62,8 @@ class AsyncRequest(object):
 def async_run(deferred_call: AsyncRequest, success: Optional[Callable] = None,
               error: Optional[Callable] = None):
     """Execute a deferred job in a separate thread (Twisted)"""
-    deferred = threads.deferToThread(deferred_call.method, *deferred_call.args,
+    deferred = threads.deferToThread(deferred_call.method,
+                                     *deferred_call.args,
                                      **deferred_call.kwargs)
     if error is None:
         error = default_errback
@@ -73,7 +76,6 @@ def async_run(deferred_call: AsyncRequest, success: Optional[Callable] = None,
 def async_callback(func):
     def callback(result):
         return async_run(AsyncRequest(func, result))
-
     return callback
 
 
@@ -92,11 +94,12 @@ def deferred_run():
             if reactor.running:
                 execute = threads.deferToThread
             else:
-                logger.debug('Reactor not running.'
-                             ' Switching to blocking call for %r', f, )
+                logger.debug(
+                    'Reactor not running.'
+                    ' Switching to blocking call for %r',
+                    f,
+                )
                 execute = defer.execute
             return execute(f, *args, **kwargs)
-
         return curry
-
     return wrapped
