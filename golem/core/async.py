@@ -79,6 +79,7 @@ def async_callback(func):
 
 def default_errback(failure):
     logger.error('Caught async exception:\n%s', failure.getTraceback())
+    return failure  # return the failure to continue with the errback chain
 
 
 def deferred_run():
