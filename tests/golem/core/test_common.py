@@ -87,14 +87,6 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
                            loglevel=t_lvl)
             self.assertEqual(m_dconfig.call_args[0][0]['root']['level'], t_lvl)
 
-            # test with wrong level
-            m_dconfig.reset_mock()
-            t_lvl = 'BANANAS'
-            config_logging(suffix, datadir=datadir,
-                           loglevel=t_lvl)
-            self.assertNotEqual(m_dconfig.call_args[0][0]['root']['level'],
-                                t_lvl)
-
         self.assertTrue(os.path.exists(logsdir))
 
 
