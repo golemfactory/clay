@@ -17,9 +17,6 @@ DEVNULL = open(os.devnull, 'wb')
 MAX_CPU_WINDOWS = 32
 MAX_CPU_MACOS = 16
 
-ALLOWED_LOGLEVELS = [
-]
-
 
 def is_frozen():
     """
