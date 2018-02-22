@@ -18,7 +18,7 @@ from zope.interface import implementer
 from golem.core.databuffer import DataBuffer
 from golem.core.hostaddress import get_host_addresses
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
-from golem.network.transport.limiter import ConnectionRateLimiter
+from golem.network.transport.limiter import CallRateLimiter
 from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
     OutgoingProtocolFactoryWrapper
 from .spamprotector import SpamProtector
@@ -62,7 +62,7 @@ class TCPNetwork(Network):
         self.host_addresses = get_host_addresses()
 
         if limit_connection_rate:
-            self.rate_limiter = ConnectionRateLimiter()
+            self.rate_limiter = CallRateLimiter()
         else:
             self.rate_limiter = None
 
@@ -174,8 +174,8 @@ class TCPNetwork(Network):
         )
 
         if self.rate_limiter:
-            self.rate_limiter.run(self.__try_to_connect_to_address, *_args,
-                                  **_kwargs)
+            self.rate_limiter.call(self.__try_to_connect_to_address, *_args,
+                                   **_kwargs)
         else:
             self.__try_to_connect_to_address(*_args, **_kwargs)
 
