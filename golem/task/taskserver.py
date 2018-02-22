@@ -557,12 +557,12 @@ class TaskServer(
             self, session, conn_id, node_name, key_id, task_id,
             estimated_performance, price, max_resource_size, max_memory_size,
             num_cores):
-        self.remove_forwarded_session_request(key_id)
-        session.task_id = task_id
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[task_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=task_id,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
                              max_resource_size, max_memory_size, num_cores)
@@ -591,10 +591,12 @@ class TaskServer(
     def __connection_for_task_result_established(self, session, conn_id,
                                                  waiting_task_result):
         self.remove_forwarded_session_request(waiting_task_result.owner_key_id)
-        session.key_id = waiting_task_result.owner_key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[waiting_task_result.subtask_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=waiting_task_result.subtask_id,
+            key_id=waiting_task_result.owner_key_id,
+            conn_id=conn_id,
+        )
 
         session.send_hello()
         payment_addr = (self.client.transaction_system.get_payment_address()
@@ -625,10 +627,12 @@ class TaskServer(
     def __connection_for_task_failure_established(self, session, conn_id,
                                                   key_id, subtask_id, err_msg):
         self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=subtask_id,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.send_task_failure(subtask_id, err_msg)
 
@@ -654,9 +658,12 @@ class TaskServer(
             self, session, conn_id, key_id, node_info, super_node_info,
             ans_conn_id):
         self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
+        self.new_session_prepare(
+            session=session,
+            subtask_id=None,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.send_start_session_response(ans_conn_id)
 
