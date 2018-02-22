@@ -1,7 +1,7 @@
-import atexit
 import logging
 import os
 import random
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -11,7 +11,6 @@ import time
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
-from golem.environments.utils import find_program
 from golem.report import report_calls, Component
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
@@ -71,7 +70,6 @@ class NodeProcess(object):
             provider = self._create_remote_rpc_provider()
 
         self.web3 = Web3(provider)
-        atexit.register(lambda: self.stop())
 
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
@@ -179,7 +177,7 @@ class NodeProcess(object):
         return HTTPProvider(addr)
 
     def _find_geth(self):
-        geth = find_program('geth')
+        geth = shutil.which('geth')
         if not geth:
             raise OSError("Ethereum client 'geth' not found")
 

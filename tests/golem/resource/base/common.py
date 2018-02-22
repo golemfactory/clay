@@ -5,6 +5,7 @@ from unittest import mock as mock
 from golem_messages import message
 
 from golem.client import Client
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
@@ -76,15 +77,19 @@ class AddGetResources(TempDirFixture, LogTestCase):
         resource_manager.__init__(dir_manager)
 
         client = Client(datadir=dir_manager.root_path,
+                        config_desc=ClientConfigDescriptor(),
                         connect_to_known_hosts=False,
                         use_docker_machine_manager=False,
                         use_monitor=False)
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
                                                     mock.Mock(), client)
-        client.task_server = TaskServer(mock.Mock(), mock.Mock(),
-                                        client.keys_auth, client,
-                                        use_docker_machine_manager=False)
+        client.task_server = TaskServer(
+            node=mock.Mock(),
+            config_desc=mock.Mock(),
+            client=client,
+            use_docker_machine_manager=False,
+        )
 
         client.start = mock.Mock()
         client.start_network = mock.Mock()

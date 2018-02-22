@@ -187,6 +187,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
         elif local_role == Actor.Requestor:
             return self.task_manager.subtask2task_mapping.get(sid)
+        return None
 
     #######################
     # FileSession methods #
@@ -284,11 +285,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 self.dropped()
                 return
 
-            payment = self.task_server.accept_result(subtask_id,
-                                                     self.result_owner)
+            task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
+
+            task_to_compute = get_task_message(
+                'TaskToCompute', task_id, subtask_id)
+
+            payment = self.task_server.accept_result(
+                subtask_id, self.result_owner)
+
             self.send(message.tasks.SubtaskResultsAccepted(
-                subtask_id=subtask_id,
-                payment_ts=payment.processed_ts))
+                task_to_compute=task_to_compute,
+                payment_ts=payment.processed_ts
+            ))
             self.dropped()
 
         self.task_manager.computed_task_received(
@@ -372,6 +380,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
+        # if the Concent is not available in the context of this subtask
+        # we can only assume that `ReportComputedTask` above reaches
+        # the requestor safely
+        if not task_to_compute.concent_enabled:
+            return
+
         # we're preparing the `ForceReportComputedTask` here and
         # scheduling the dispatch of that message for later
         # (with an implicit delay in the concent service's `submit` method).
@@ -381,7 +395,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
         msg = message.ForceReportComputedTask(
-            task_to_compute=task_to_compute,
+            report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', msg)
@@ -491,7 +505,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
+                # for now, we're assuming the Concent
+                # is always in use
+                concent_enabled=True,
             )
+            history_service = history.MessageHistoryService.instance
+            history_dict = self.message_to_model(
+                msg=msg,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
+            if not (history_service and history_dict):
+                logger.error(
+                    "Can't remember %s. history_service: %r history_dict: %r",
+                    msg,
+                    history_service,
+                    history_dict,
+                )
+                return
+            history_service.add(history_dict)
             self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
@@ -639,8 +671,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.result_received(extra_data, decrypt=False)
 
         def on_error(exc, *args, **kwargs):
-            logger.error("Task result error: {} ({})"
-                         .format(subtask_id, exc or "unspecified"))
+            logger.warning("Task result error: %s (%s)", subtask_id,
+                           exc or "unspecified")
 
             # in case of resources failure, we're sending the rejection
             # until we implement `ForceGetTaskResults` (pending)
@@ -683,7 +715,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_subtask_result_accepted(self, msg):
-        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
+        if msg.task_to_compute is None:
+            logger.info(
+                'Empty task_to_compute in %s. Disconnecting: %r',
+                msg,
+                self.key_id,
+            )
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            return
+        subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
+        self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
         self.dropped()
 
     @history.provider_history
@@ -713,7 +754,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address)
+                                                               self.address,
+                                                               self.task_id)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,

@@ -1,15 +1,22 @@
 #!/usr/bin/env python
+import os
 import sys
 import logging
 from multiprocessing import freeze_support
 import click
 from ethereum import slogging
 
-import golem
-from golem.core.common import install_reactor
-from golem.core.variables import PROTOCOL_CONST
-from golem.node import OptNode
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
 
+import golem  # noqa
+import golem.argsparser as argsparser  # noqa
+from golem.appconfig import AppConfig  # noqa
+from golem.clientconfigdescriptor import ClientConfigDescriptor  # noqa
+from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
+from golem.core.variables import PROTOCOL_CONST  # noqa
+from golem.node import Node  # noqa
 
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.
@@ -31,10 +38,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.command()
 @click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--datadir', '-d', type=click.Path(
-    file_okay=False,
-    writable=True
-))
+@click.option('--datadir', '-d',
+              default=get_local_datadir('default'),
+              type=click.Path(
+                  file_okay=False,
+                  writable=True
+              ))
 @click.option('--protocol_id', type=click.INT,
               callback=PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
@@ -43,21 +52,21 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                    "only inside sub-network with "
                    "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
-              callback=OptNode.parse_node_addr, metavar="<host>",
+              callback=argsparser.parse_node_addr, metavar="<host>",
               help="Network address to use for this node")
 @click.option('--rpc-address', '-r', multiple=False,
-              callback=OptNode.parse_rpc_address, metavar="<host>:<port>",
+              callback=argsparser.parse_rpc_address, metavar="<host>:<port>",
               help="RPC server address to use")
 @click.option('--peer', '-p', multiple=True,
-              callback=OptNode.parse_peer, metavar="<host>:<port>",
+              callback=argsparser.parse_peer, metavar="<host>:<port>",
               help="Connect with given peer")
 @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
               help="Start local geth node")
 @click.option('--start-geth-port', default=None, type=int,
-              callback=OptNode.enforce_start_geth_used, metavar="<port>",
+              callback=argsparser.enforce_start_geth_used, metavar="<port>",
               help="Port number to be used by locally started geth node")
 @click.option('--geth-address', default=None, metavar="http://<host>:<port>",
-              callback=OptNode.parse_http_addr,
+              callback=argsparser.parse_http_addr,
               help="Connect with given geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
@@ -91,11 +100,14 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    config = dict(datadir=datadir, transaction_system=payments)
+    config_desc = ClientConfigDescriptor()
+    config_desc.init_from_app_config(AppConfig.load_config(datadir))
 
     if rpc_address:
-        config['rpc_address'] = rpc_address.address
-        config['rpc_port'] = rpc_address.port
+        config_desc.rpc_address = rpc_address.address
+        config_desc.rpc_port = rpc_address.port
+    if node_address:
+        config_desc.node_address = node_address
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
@@ -106,11 +118,17 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         log_golem_version()
 
-        node = OptNode(peers=peer, node_address=node_address,
-                       use_monitor=monitor, start_geth=start_geth,
-                       start_geth_port=start_geth_port,
-                       geth_address=geth_address, **config)
-        node.run(use_rpc=True)
+        node = Node(
+            datadir=datadir,
+            config_desc=config_desc,
+            transaction_system=payments,
+            peers=peer,
+            use_monitor=monitor,
+            start_geth=start_geth,
+            start_geth_port=start_geth_port,
+            geth_address=geth_address,
+        )
+        node.run()
 
 
 def delete_reactor():

@@ -6,28 +6,23 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
-from typing import Iterable, Optional
 
 from golem_messages import message
-from requests import HTTPError
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-
 from golem.environments.environment import SupportStatus, UnsupportReason
-
-from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, FilesProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
-from golem.resource.hyperdrive.resource import ResourceError
-from golem.resource.resource import ResourceType, get_resources_for_task
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from .server import resources
+from .server import concent
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -38,127 +33,19 @@ logger = logging.getLogger('golem.task.taskserver')
 tmp_cycler = itertools.cycle(list(range(550)))
 
 
-class TaskResourcesMixin(object):
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
-
-    def get_resource_peer(self, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get(key_id)
-        return None
-
-    def get_resource_peers(self, task_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get_for_task(task_id)
-        return []
-
-    def remove_resource_peer(self, task_id, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.remove(task_id, key_id)
-        return None
-
-    def get_resources(self, task_id):
-        resource_manager = self._get_resource_manager()
-        resources = resource_manager.get_resources(task_id)
-        return resource_manager.to_wire(resources)
-
-    def restore_resources(self) -> None:
-
-        if not self.task_manager.task_persistence:
-            return
-
-        states = dict(self.task_manager.tasks_states)
-
-        for task_id, task_state in states.items():
-            task = self.task_manager.tasks[task_id]
-            files = get_resources_for_task(None,
-                                           resources=task.get_resources(),
-                                           tmp_dir=task.tmp_dir,
-                                           resource_type=ResourceType.HASHES)
-
-            logger.info("Restoring task '%s' resources", task_id)
-            self._restore_resources(files, task_id, task_state.resource_hash)
-
-    def _restore_resources(self,
-                           files: Iterable[str],
-                           task_id: str,
-                           resource_hash: Optional[str] = None):
-
-        resource_manager = self._get_resource_manager()
-
-        try:
-            resource_hash, _ = resource_manager.add_task(
-                files, task_id, resource_hash=resource_hash, async_=False
-            )
-        except ConnectionError as exc:
-            self._restore_resources_error(task_id, exc)
-        except (ResourceError, HTTPError) as exc:
-            if resource_hash:
-                return self._restore_resources(files, task_id)
-            self._restore_resources_error(task_id, exc)
-        else:
-            task_state = self.task_manager.tasks_states[task_id]
-            task_state.resource_hash = resource_hash
-            self.task_manager.notify_update_task(task_id)
-
-    def _restore_resources_error(self, task_id, error):
-        logger.error("Cannot restore task '%s' resources: %r", task_id, error)
-        self.task_manager.delete_task(task_id)
-
-    def get_download_options(self, key_id, address=None):
-        resource_manager = self._get_resource_manager()
-        peers = []
-
-        if address:
-            peers.append({'TCP': [address, DEFAULT_HYPERDRIVE_PORT]})
-        else:
-            peer = self.get_resource_peer(key_id)
-            if peer:
-                peers.append(peer)
-        return resource_manager.build_client_options(peers=peers)
-
-    def get_share_options(self, task_id, key_id):
-        resource_manager = self._get_resource_manager()
-        peers = self.get_resource_peers(task_id)
-        return resource_manager.build_client_options(peers=peers)
-
-    def request_resource(self, task_id, subtask_id):
-        if subtask_id not in self.task_sessions:
-            logger.error("Cannot map subtask_id {} to session"
-                         .format(subtask_id))
-            return False
-
-        session = self.task_sessions[subtask_id]
-        session.request_resource(task_id)
-        return True
-
-    def pull_resources(self, task_id, resources, client_options=None):
-        self.client.pull_resources(
-            task_id, resources, client_options=client_options)
-
-    def _get_resource_manager(self):
-        resource_server = self.client.resource_server
-        return resource_server.resource_manager
-
-    def _get_peer_manager(self):
-        resource_manager = self._get_resource_manager()
-        return getattr(resource_manager, 'peer_manager', None)
-
-
-class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
+class TaskServer(
+        PendingConnectionsServer,
+        resources.TaskResourcesMixin,
+        concent.ConcentMixin):
     def __init__(self,
                  node,
-                 config_desc: ClientConfigDescriptor(),
-                 keys_auth,
+                 config_desc: ClientConfigDescriptor,
                  client,
                  use_ipv6=False,
                  use_docker_machine_manager=True,
                  task_archiver=None):
         self.client = client
-        self.keys_auth = keys_auth
+        self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
         self.node = node
@@ -210,6 +97,12 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
             ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
+        # instantiate ReceivedMessageHandler connected to self
+        # to register in golem.network.concent.handlers_library
+        from golem.network.concent import \
+            received_handler as concent_received_handler
+        self.concent_handler = \
+            concent_received_handler.TaskServerMessageHandler(self)
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
@@ -221,6 +114,9 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         self.__remove_old_tasks()
         self.__remove_old_sessions()
         self._remove_old_listenings()
+        concent.process_messages_received_from_concent(
+            concent_service=self.client.concent_service,
+        )
         if next(tmp_cycler) == 0:
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r',
@@ -409,7 +305,7 @@ class TaskServer(PendingConnectionsServer, TaskResourcesMixin):
         return self.config_desc.node_name
 
     def get_key_id(self):
-        return self.keys_auth.get_key_id()
+        return self.keys_auth.key_id
 
     def encrypt(self, message, public_key):
         if public_key == 0:

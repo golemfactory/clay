@@ -64,12 +64,6 @@ class Settings(object):
             _int,
             lambda x: x > 0
         ),
-        'waiting_for_task_timeout': Setting(
-            'Timeout value to use when waiting for task',
-            'int > 0 [s]',
-            _int,
-            lambda x: x > 0
-        ),
         'getting_tasks_interval': Setting(
             'Interval between task requests',
             'int > 0 [s]',

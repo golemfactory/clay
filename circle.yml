@@ -2,11 +2,11 @@ machine:
   node:
     version: 6.9.5
   python:
-    version: 3.5.2
+    version: 3.6.3
   services:
     - docker
   post:
-    - pyenv global 3.5.2
+    - pyenv global 3.6.3
 
 checkout:
   post:
@@ -32,9 +32,10 @@ dependencies:
 
 
      # golem-hyperdrive
-    - wget https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.1/hyperg_0.2.1_linux-x64.tar.gz
-    - tar xvf hyperg_0.2.1_linux-x64.tar.gz
-    - ./hyperg/hyperg:
+    - wget https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.2.4/hyperg_0.2.4_linux-x64.tar.gz
+    - tar xvf hyperg_0.2.4_linux-x64.tar.gz
+    - ln -s $(pwd)/hyperg/hyperg $HOME/bin/hyperg
+    - hyperg:
         background: true
 
 test:

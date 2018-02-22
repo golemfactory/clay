@@ -1,13 +1,16 @@
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = collect_submodules('golem') + \
-                collect_submodules('apps') + ['Cryptodome', 'xml', 'scrypt']
+                collect_submodules('apps') + \
+                ['Cryptodome', 'xml', 'scrypt', 'mock']
 
 datas = [
     ('loggingconfig.py', '.'),
     ('apps/*.ini', 'apps'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
      'apps/rendering/benchmark/minilight'),
+    ('apps/rendering/resources/scripts/runner.py',
+     'apps/rendering/resources/scripts/'),
     ('apps/blender/resources/scripts/blendercrop.py.template',
      'apps/blender/resources/scripts/'),
     ('apps/blender/resources/scripts/docker_blendertask.py',

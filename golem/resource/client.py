@@ -70,6 +70,11 @@ class ClientOptions(object):
                               .format(version, self.version))
         return self.options.get(option, None)
 
+    def set(self, **options):
+        if not self.options:
+            self.options = {}
+        self.options.update(options)
+
     def filtered(self, client_id, version):
         if self.client_id != client_id:
             logger.warning('Resource client: invalid client id: %s',

@@ -1,4 +1,3 @@
-import atexit
 import logging
 import sys
 import time
@@ -11,23 +10,23 @@ from threading import Lock, Thread
 from typing import Dict, Hashable
 
 from pydispatch import dispatcher
-from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
-                                    Deferred)
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    gatherResults,
+    Deferred)
 
 import golem
-from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
-                             PUBLISH_TASKS_INTERVAL,
-                             TASKARCHIVE_MAINTENANCE_INTERVAL,
+from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL)
-from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.clientconfigdescriptor import ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
-from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import callback_wrapper
 from golem.database import Database
@@ -55,11 +54,9 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
-from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI, \
-    Payments
+from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -88,18 +85,15 @@ class Client(HardwarePresetsMixin):
 
     def __init__(
             self,
-            datadir=None,
+            datadir,
+            config_desc,
             transaction_system=False,
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
             start_geth=False,
             start_geth_port=None,
-            geth_address=None,
-            **config_overrides):
-
-        if not datadir:
-            datadir = get_local_datadir('default')
+            geth_address=None):
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -109,17 +103,7 @@ class Client(HardwarePresetsMixin):
         self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
-        config = AppConfig.load_config(datadir)
-        self.config_desc = ClientConfigDescriptor()
-        self.config_desc.init_from_app_config(config)
-
-        for key, val in list(config_overrides.items()):
-            if not hasattr(self.config_desc, key):
-                self.quit()  # quit only closes underlying services (for now)
-                raise AttributeError(
-                    "Can't override nonexistent config entry '{}'".format(key))
-            setattr(self.config_desc, key, val)
-
+        self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
         log.info(
@@ -136,19 +120,20 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
+        self.keys_auth = KeysAuth(
+            self.datadir,
+            difficulty=self.config_desc.key_difficulty)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.get_key_id())
+                         key=self.keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
         self.concent_service = ConcentClientService(
             enabled=False,
-            signing_key=self.keys_auth._private_key,
-            public_key=self.keys_auth.public_key,
+            keys_auth=self.keys_auth,
         )
 
         self.task_server = None
@@ -174,8 +159,6 @@ class Client(HardwarePresetsMixin):
                     interval_seconds=max(
                         1, int(clean_resources_older_than / 10)),
                     older_than_seconds=clean_resources_older_than))
-
-        self.cfg = config
 
         self.ranking = Ranking(self)
 
@@ -217,16 +200,9 @@ class Client(HardwarePresetsMixin):
             signal='golem.taskmanager'
         )
 
-        atexit.register(self.quit)
-
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
         StatusPublisher.set_publisher(self.rpc_publisher)
-
-        if self.transaction_system:
-            self._services.append(BalancePublisherService(
-                self.rpc_publisher,
-                self.transaction_system))
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event == 'unreachable':
@@ -299,7 +275,7 @@ class Client(HardwarePresetsMixin):
             self.task_server = TaskServer(
                 self.node,
                 self.config_desc,
-                self.keys_auth, self,
+                self,
                 use_ipv6=self.config_desc.use_ipv6,
                 use_docker_machine_manager=self.use_docker_machine_manager,
                 task_archiver=self.task_archiver)
@@ -311,13 +287,6 @@ class Client(HardwarePresetsMixin):
                     1))
             monitoring_publisher_service.start()
             self._services.append(monitoring_publisher_service)
-
-            if self.rpc_publisher:
-                tasks_publisher_service = TasksPublisherService(
-                    self.rpc_publisher,
-                    self.task_server.task_manager)
-                tasks_publisher_service.start()
-                self._services.append(tasks_publisher_service)
 
             clean_tasks_older_than = \
                 self.config_desc.clean_tasks_older_than_seconds
@@ -482,6 +451,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
+        log.info('Shutting down ...')
         self.stop()
 
         if self.transaction_system:
@@ -498,38 +468,51 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        task_manager = self.task_server.task_manager
+        _result = Deferred()
+
         # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
-            task = self.task_server.task_manager.create_task(task_dict)
+            task = task_manager.create_task(task_dict)
         else:
             task = task_dict
 
         task_id = task.header.task_id
-
-        task_manager = self.task_server.task_manager
-        task_manager.add_new_task(task)
-        task_state = task_manager.tasks_states[task_id]
-
-        tmp_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
-                                       tmp_dir=tmp_dir,
+                                       tmp_dir=getattr(task, 'tmp_dir', None),
                                        resources=task.get_resources())
 
-        def add_task(resource_server_result):
+        def package_created(packager_result):
+            package_path, package_sha1 = packager_result
+            task.header.resource_size = path.getsize(package_path)
+            task_manager.add_new_task(task)
+
+            _resources = self.resource_server.add_task(package_path,
+                                                       package_sha1,
+                                                       task_id)
+            _resources.addCallbacks(task_created, error)
+
+        def task_created(resource_server_result):
             resource_manager_result, package_hash = resource_server_result
-            task_state.package_hash = package_hash
-            task_state.resource_hash = resource_manager_result[0]
 
-            request = AsyncRequest(task_manager.start_task, task_id)
-            async_run(request, None, error)
+            try:
+                task_state = task_manager.tasks_states[task_id]
+                task_state.package_hash = package_hash
+                task_state.resource_hash = resource_manager_result[0]
+            except Exception as exc:  # pylint: disable=broad-except
+                error(exc)
+            else:
+                request = AsyncRequest(task_manager.start_task, task_id)
+                async_run(request, lambda _: _result.callback(task), error)
 
-        def error(e):
-            log.error("Task %s creation failed: %s", task_id, e)
+        def error(exception):
+            log.error("Task '%s' creation failed: %r", task_id, exception)
+            _result.errback(exception)
 
-        deferred = self.resource_server.add_task(files, task_id)
-        deferred.addCallbacks(add_task, error)
-        return task
+        _package = self.resource_server.create_resource_package(files, task_id)
+        _package.addCallbacks(package_created, error)
+        return _result
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -612,10 +595,11 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
+    @inlineCallbacks
     def create_task(self, t_dict):
         try:
-            task = self.enqueue_new_task(t_dict)
-            return str(task.header.task_id)
+            task = yield self.enqueue_new_task(t_dict)
+            return task.header.task_id
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
@@ -666,7 +650,9 @@ class Client(HardwarePresetsMixin):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
-        return list(self.p2pservice.peers.values())
+        if self.p2pservice:
+            return list(self.p2pservice.peers.values())
+        return list()
 
     def get_known_peers(self):
         peers = self.p2pservice.incoming_peers or dict()
@@ -688,23 +674,11 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return self.task_server.task_computer.dir_manager
 
-    def load_keys_from_file(self, file_name):
-        if file_name != "":
-            return self.keys_auth.load_from_file(file_name)
-        return False
-
-    def save_keys_to_files(self, private_key_path, public_key_path):
-        return self.keys_auth.save_to_files(private_key_path, public_key_path)
-
     def get_key_id(self):
-        return self.get_client_id()
+        return self.keys_auth.key_id
 
     def get_difficulty(self):
         return self.keys_auth.get_difficulty()
-
-    def get_client_id(self):
-        key_id = self.keys_auth.get_key_id()
-        return str(key_id) if key_id else None
 
     def get_node_key(self):
         key = self.node.key
@@ -753,9 +727,11 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_dict(task_id)
 
     def get_tasks(self, task_id=None):
-        if task_id:
-            return self.task_server.task_manager.get_task_dict(task_id)
-        return self.task_server.task_manager.get_tasks_dict()
+        if self.task_server:
+            if task_id:
+                return self.task_server.task_manager.get_task_dict(task_id)
+            return self.task_server.task_manager.get_tasks_dict()
+        return []
 
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
@@ -817,10 +793,13 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = yield self.transaction_system.get_balance()
-            if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+            gnt, av_gnt, eth, \
+                last_gnt_update, \
+                last_eth_update = yield self.transaction_system.get_balance()
+            if gnt is not None:
+                return str(gnt), str(av_gnt), str(eth), str(
+                    last_gnt_update), str(last_eth_update)
+        return None, None, None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -869,7 +848,6 @@ class Client(HardwarePresetsMixin):
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.cfg.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:
@@ -1068,7 +1046,7 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_client_id(),
+            self.get_key_id(),
             self.session_id,
             sys.platform,
             golem.__version__,
@@ -1264,22 +1242,6 @@ class NetworkConnectionPublisherService(LoopingCallService):
                               self._client.connection_status())
 
 
-class TasksPublisherService(LoopingCallService):
-    _rpc_publisher = None  # type: Publisher
-    _task_manager = None  # type: TaskManager
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 task_manager: TaskManager):
-        super().__init__(interval_seconds=int(PUBLISH_TASKS_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._task_manager = task_manager
-
-    def _run(self):
-        self._rpc_publisher.publish(Task.evt_task_list,
-                                    self._task_manager.get_tasks_dict())
-
-
 class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
@@ -1290,31 +1252,6 @@ class TaskArchiverService(LoopingCallService):
 
     def _run(self):
         self._task_archiver.do_maintenance()
-
-
-class BalancePublisherService(LoopingCallService):
-
-    _rpc_publisher = None  # type: Publisher
-    _transaction_system = None  # type: EthereumTransactionSystem
-
-    def __init__(self,
-                 rpc_publisher: Publisher,
-                 transaction_system: EthereumTransactionSystem):
-        super().__init__(interval_seconds=int(PUBLISH_BALANCE_INTERVAL))
-        self._rpc_publisher = rpc_publisher
-        self._transaction_system = transaction_system
-
-    def _run(self):
-        try:
-            gnt, av_gnt, eth = self._transaction_system.get_balance()
-        except Exception as exc:
-            log.debug('Error retrieving balance: %s', exc)
-        else:
-            self._rpc_publisher.publish(Payments.evt_balance, {
-                'GNT': str(gnt),
-                'GNT_available': str(av_gnt),
-                'ETH': str(eth)
-            })
 
 
 class ResourceCleanerService(LoopingCallService):

@@ -1,10 +1,9 @@
+import json
 import logging
 import os
-import shutil
 from os import makedirs, path, remove
-
-import json
-from mock import Mock
+import shutil
+from unittest.mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -12,7 +11,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
-from golem.node import OptNode
+from golem.node import Node
 from golem.resource.dirmanager import DirManager, symlink_or_copy, \
     rmlink_or_rmtree
 from golem.task.localcomputer import LocalComputer
@@ -124,14 +123,23 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+            use_docker_machine_manager=False,
+        )
+        self.node.client = self.node._client_factory()
         self.node.client.start = Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
-                                 use_docker_machine_manager=False)
+        task_server = TaskServer(
+            node=Mock(),
+            config_desc=ccd,
+            client=self.node.client,
+            use_docker_machine_manager=False
+        )
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 

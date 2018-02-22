@@ -7,7 +7,8 @@ import uuid
 
 from twisted.internet.defer import Deferred
 
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.deferred import sync_wait
+from golem.core.keysauth import KeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
@@ -65,7 +66,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        self.keys_auth = EllipticalKeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path)
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,
@@ -90,7 +91,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         to_encrypt = "test string to enc"
         encrypted = self.resource_server.encrypt(
             to_encrypt,
-            self.keys_auth.get_public_key()
+            self.keys_auth.public_key
         )
         decrypted = self.resource_server.decrypt(encrypted)
 
@@ -112,7 +113,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         rm.storage.cache.clear()
 
         existing_paths = self._resources()
-        return rm, rs.add_task(existing_paths, self.task_id)
+
+        _deferred = rs.create_resource_package(existing_paths, self.task_id)
+        pkg_path, pkg_sha1 = sync_wait(_deferred)
+        return rm, rs.add_task(pkg_path, pkg_sha1, self.task_id)
 
     def testAddTask(self):
         rm, deferred = self._add_task()
@@ -149,7 +153,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         new_config_desc = MockConfig(new_path, node_name + "-new")
         self.resource_server.change_resource_dir(new_config_desc)
-        new_resources = self.resource_manager.storage.get_resources(self.task_id)
+        new_resources = self.resource_manager.storage.get_resources(
+            self.task_id)
 
         assert len(resources) == len(new_resources)
 
@@ -212,7 +217,9 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
     def testVerifySig(self):
         test_str = "A test string to sign"
         sig = self.resource_server.sign(test_str)
-        self.assertTrue(self.resource_server.verify_sig(sig, test_str, self.keys_auth.get_public_key()))
+        self.assertTrue(self.resource_server.verify_sig(
+            sig, test_str,
+            self.keys_auth.public_key))
 
     def testAddFilesToGet(self):
         test_files = [
@@ -222,7 +229,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         assert not self.resource_server.pending_resources
         self.resource_server.download_resources(test_files, self.task_id)
-        assert len(self.resource_server.pending_resources[self.task_id]) == len(test_files)
+        assert len(self.resource_server.pending_resources[self.task_id]) == len(
+            test_files)
 
         return self.resource_server, test_files
 

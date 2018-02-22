@@ -21,7 +21,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def __init__(self, datadir, node_priv_key, start_geth=False,  # noqa pylint: disable=too-many-arguments
                  start_port=None, address=None):
         """ Create new transaction system instance for node with given id
-        :param node_priv_key str: node's private key for Ethereum account (32b)
+        :param node_priv_key str: node's private key for Ethereum account(32b)
         """
 
         # FIXME: Passing private key all around might be a security issue.
@@ -61,6 +61,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if self.payment_processor.running:
             self.payment_processor.stop()
         self.incomes_keeper.stop()
+        self._sci.stop()
         self._node.stop()
 
     def add_payment_info(self, *args, **kwargs):
@@ -77,8 +78,8 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_balance(self):
         if not self.payment_processor.balance_known():
-            return None, None, None
-        gnt = self.payment_processor.gnt_balance()
+            return None, None, None, None, None
+        gnt, last_gnt_update = self.payment_processor.gnt_balance()
         av_gnt = self.payment_processor._gnt_available()
-        eth = self.payment_processor.eth_balance()
-        return gnt, av_gnt, eth
+        eth, last_eth_update = self.payment_processor.eth_balance()
+        return gnt, av_gnt, eth, last_gnt_update, last_eth_update

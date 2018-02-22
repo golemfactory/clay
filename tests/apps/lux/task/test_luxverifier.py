@@ -1,5 +1,6 @@
+# pylint: disable=protected-access
 import os
-from mock import Mock
+import unittest.mock as mock
 
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -23,10 +24,10 @@ class TestLuxRenderVerifier(TempDirFixture, LogTestCase, PEP8MixIn):
                         'root_path': self.path}
         assert not lrv.merge_flm_files("flm_file", subtask_info, "flm_output")
         assert lrv.state == SubtaskVerificationState.NOT_SURE
-        lrv.computer = Mock()
+        lrv.computer = mock.Mock()
         lrv.computer.wait.return_value = None
         assert not lrv.merge_flm_files("flm_file", subtask_info, "flm_output")
-        lrv.computer.wait.return_value = Mock()
+        lrv.computer.wait.return_value = mock.Mock()
         lrv.verification_error = True
         assert not lrv.merge_flm_files("flm_file", subtask_info, "flm_output")
         lrv.verification_error = False

@@ -1,12 +1,13 @@
+import functools
 import logging
 
+from twisted.internet import defer
 from twisted.internet import threads
-from twisted.internet.defer import succeed
 from twisted.web.client import Agent
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implementer
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class AsyncHTTPRequest:
@@ -23,7 +24,7 @@ class AsyncHTTPRequest:
 
         def startProducing(self, consumer):
             consumer.write(self.body)
-            return succeed(None)
+            return defer.succeed(None)
 
         def pauseProducing(self):
             pass
@@ -69,7 +70,7 @@ def async_run(deferred_call, success=None, error=None):
     deferred.addErrback(error)
     return deferred
 
-  
+
 def async_callback(func):
     def callback(result):
         return async_run(AsyncRequest(func, result))
@@ -77,4 +78,26 @@ def async_callback(func):
 
 
 def default_errback(failure):
-    log.error('Caught async exception:\n%s', failure.getTraceback())
+    logger.error('Caught async exception:\n%s', failure.getTraceback())
+    return failure  # return the failure to continue with the errback chain
+
+
+def deferred_run():
+    def wrapped(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            # Import reactor only when it is necessary;
+            # otherwise process-wide signal handlers may be installed
+            from twisted.internet import reactor
+            if reactor.running:
+                execute = threads.deferToThread
+            else:
+                logger.debug(
+                    'Reactor not running.'
+                    ' Switching to blocking call for %r',
+                    f,
+                )
+                execute = defer.execute
+            return execute(f, *args, **kwargs)
+        return curry
+    return wrapped

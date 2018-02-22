@@ -1,12 +1,13 @@
-import json
-import io
-import unittest
-import uuid
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import partial
+import io
+import json
+import unittest
+from unittest.mock import Mock, mock_open, patch
+import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, mock_open, patch
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
@@ -36,6 +37,7 @@ def assert_client_method(instance, name):
 
 
 class TestAccount(unittest.TestCase):
+
     def test(self):
 
         node = dict(node_name='node1', key='deadbeef')
@@ -70,6 +72,7 @@ class TestAccount(unittest.TestCase):
 
 
 class TestEnvironments(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
 
@@ -137,6 +140,7 @@ class TestEnvironments(unittest.TestCase):
 
 
 class TestNetwork(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
 
@@ -233,6 +237,7 @@ class TestNetwork(unittest.TestCase):
 
 
 class TestPayments(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
 
@@ -289,6 +294,7 @@ class TestPayments(unittest.TestCase):
 
 
 class TestResources(unittest.TestCase):
+
     def setUp(self):
         super(TestResources, self).setUp()
         self.client = Mock()
@@ -346,6 +352,7 @@ def _has_subtask(id):
 
 
 class TestTasks(TempDirFixture):
+
     @classmethod
     def setUpClass(cls):
         super(TestTasks, cls).setUpClass()
@@ -419,7 +426,7 @@ class TestTasks(TempDirFixture):
         mock_uuid.return_value = "new_uuid"
 
         definition = TaskDefinition()
-        definition.task_name = "The greatest task ever!"
+        definition.task_name = "The greatest task ever"
         def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):
@@ -431,8 +438,24 @@ class TestTasks(TempDirFixture):
 
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(read_data='{}')):
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
+
+            with patch(patched_open, mock_open(
+                read_data='{"name": "This name has 27 characters"}'
+            )):
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
+
+            with patch(patched_open, mock_open(
+                read_data='{"name": "Golem task/"}'
+            )):
+                self.assertRaises(ValueError, partial(tasks.create, "foo"))
+
+            with patch(patched_open, mock_open(
+                read_data='{"name": "Golem task"}'
+            )):
                 tasks.create("foo")
-                task_def = json.loads('{"id": "new_uuid"}')
+                task_def = json.loads(
+                    '{"id": "new_uuid", "name": "Golem task"}')
                 client.create_task.assert_called_with(task_def)
 
     def test_template(self) -> None:
@@ -520,6 +543,7 @@ class TestTasks(TempDirFixture):
 
 
 class TestSubtasks(unittest.TestCase):
+
     def setUp(self):
         super(TestSubtasks, self).setUp()
 
@@ -552,6 +576,7 @@ class TestSubtasks(unittest.TestCase):
 
 
 class TestSettings(TempDirFixture):
+
     def setUp(self):
         super(TestSettings, self).setUp()
 
@@ -608,7 +633,6 @@ class TestSettings(TempDirFixture):
             'node_name': Values(['node'], ['', None, 12, lambda x: x]),
             'accept_tasks': _bool,
             'max_resource_size': _int_gt0,
-            'waiting_for_task_timeout': _int_gt0,
             'getting_tasks_interval': _int_gt0,
             'getting_peers_interval': _int_gt0,
             'task_session_timeout': _int_gt0,
@@ -663,6 +687,7 @@ class TestSettings(TempDirFixture):
 
 
 class TestDebug(unittest.TestCase):
+
     def setUp(self):
         super(TestDebug, self).setUp()
 

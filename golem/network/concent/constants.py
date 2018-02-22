@@ -29,5 +29,4 @@ MSG_DELAYS = collections.defaultdict(
 
 # A valid period of time for sending a message
 MSG_LIFETIMES = {
-
 }

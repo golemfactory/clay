@@ -37,7 +37,7 @@ scrypt
 packaging
 semantic_version
 pyOpenSSL==17.1.0
-requests==2.13.0
+requests==2.18.4
 Automat==0.6.0
 zope.interface==4.4.2
 incremental==17.5.0
@@ -48,5 +48,5 @@ scipy==0.19.1
 pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
-Golem-Messages==1.8.1
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@d131fc4fd9b542e4c6162370416b18663ecc5e4a#egg=golem_sci
+Golem-Messages==1.9.0
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@78ed01b0b2a8467570a28a407d1634f20baf43de#egg=golem_sci

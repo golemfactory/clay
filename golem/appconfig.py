@@ -28,6 +28,7 @@ RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
+KEY_DIFFICULTY = 10
 
 USE_IP6 = 0
 USE_UPNP = 1
@@ -56,7 +57,6 @@ TASKARCHIVE_MAX_TASKS = 10000000
 P2P_SESSION_TIMEOUT = 240
 TASK_SESSION_TIMEOUT = 900
 RESOURCE_SESSION_TIMEOUT = 600
-WAITING_FOR_TASK_TIMEOUT = 720  # 36000
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
 CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
@@ -116,6 +116,7 @@ class AppConfig:
             seed_port=START_PORT,
             seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
+            key_difficulty=KEY_DIFFICULTY,
             # flags
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
@@ -138,7 +139,6 @@ class AppConfig:
             p2p_session_timeout=P2P_SESSION_TIMEOUT,
             task_session_timeout=TASK_SESSION_TIMEOUT,
             resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
-            waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,

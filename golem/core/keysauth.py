@@ -1,31 +1,27 @@
 import logging
+import math
 import os
-from abc import abstractmethod
+from datetime import datetime
 from hashlib import sha256
+from typing import Optional, Tuple, Union
 
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
-from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
+    privtopub
 
-from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
+from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
-from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, sha3, \
-        privtopub
-
 from .simpleenv import get_local_datadir
-from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
 
-def sha2(seed):
+def sha2(seed: Union[str, bytes]) -> int:
     if isinstance(seed, str):
         seed = seed.encode()
-    return int("0x" + sha256(seed).hexdigest(), 16)
+    return int.from_bytes(sha256(seed).digest(), 'big')
 
 
-def get_random(min_value=0, max_value=None):
+def get_random(min_value: int = 0, max_value: Optional[int] = None) -> int:
     """
     Get cryptographically secure random integer in range
     :param min_value: Minimal value
@@ -45,7 +41,7 @@ def get_random(min_value=0, max_value=None):
     return randrange(min_value, max_value)
 
 
-def get_random_float():
+def get_random_float() -> float:
     """
     Get random number in range (0, 1)
     :return: Random number in range (0, 1)
@@ -54,499 +50,184 @@ def get_random_float():
     return float(result - 1) / float(10 ** len(str(result)))
 
 
-class KeysAuth(object):
-    """ Cryptographic authorization manager. Create and keeps private and public keys."""
+class KeysAuth:
+    """
+    Elliptical curves cryptographic authorization manager. Generates
+    private and public keys based on ECC (curve secp256k1) with specified
+    difficulty. Private key is stored in file. When this file not exist, is
+    broken or contain key below requested difficulty new key is generated.
+    """
+    KEYS_SUBDIR = 'keys'
+    PRIV_KEY_LEN = 32
+    PUB_KEY_LEN = 64
+    HEX_PUB_KEY_LEN = 128
+    KEY_ID_LEN = 128
 
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
-        """
-        Create new keys authorization manager, load or create keys
-        :param prviate_key_name str: name of the file containing private key
-        :param public_key_name str: name of the file containing public key
-        """
-        self.get_keys_dir(datadir)
-        self.private_key_name = private_key_name
-        self.public_key_name = public_key_name
-        self._private_key = self._load_private_key()
-        self.public_key = self._load_public_key()
-        self.key_id = self.cnt_key_id(self.public_key)
+    _private_key = b''  # type: bytes
+    public_key = b''  # type: bytes
+    key_id = ""  # type: str
+    ecc = None  # type: ECCx
 
-    def get_difficulty(self, key_id=None):
-        """ Count key_id difficulty in hashcash-like puzzle
-        :param str|None key_id: *Default: None* count difficulty of given key. If key_id is None then
-        use default key_id
-        :return int: key_id difficulty
-        """
-        difficulty = 0
-        if key_id is None:
-            key_id = self.key_id
-        min_hash = KeysAuth._count_min_hash(difficulty)
-        while sha2(key_id) <= min_hash:
-            difficulty += 1
-            min_hash = KeysAuth._count_min_hash(difficulty)
-
-        return difficulty - 1
-
-    def get_public_key(self):
-        """ Return public key """
-        return self.public_key
-
-    def get_key_id(self):
-        """ Return id generated with public key """
-        return self.key_id
-
-    def cnt_key_id(self, public_key):
-        """ Return id generated from given public key
-        :param public_key: public key that will be used to generate id
-        :return str: new id
-        """
-        return str(public_key)
-
-    @abstractmethod
-    def encrypt(self, data, public_key=None):
-        """ Encrypt given data
-        :param str data: data that should be encrypted
-        :param public_key: *Default: None* public key that should be used to encrypt data. If public key is None than
-         default public key will be used
-        :return str: encrypted data
-        """
-
-    @abstractmethod
-    def decrypt(self, data):
-        """ Decrypt given data with default private key
-        :param str data: encrypted data
-        :return str: decrypted data
-        """
-
-    @abstractmethod
-    def sign(self, data):
-        """ Sign given data with default private key
-        :param str data: data to be signed
-        :return: signed data
-        """
-
-    def verify(self, sig, data, public_key=None):
-        """
-        Verify signature
-        :param str sig: signed data
-        :param str data: data before signing
-        :param public_key: *Default: None* public key that should be used to verify signed data. If public key is None
-        then default public key will be used
-        :return bool: verification result
-        """
-        return sig == data
-
-    @abstractmethod
-    def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
-        :param str file_name: file containing private key
-        :return bool: information if keys have been changed
-        """
-
-    @abstractmethod
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
-        """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        """
-        pass
-
-    @classmethod
-    def get_keys_dir(cls, datadir=None):
-        """ Path to the dir where keys files are stored."""
-        if not hasattr(cls, '_keys_dir'):
-            # TODO: Move keys to node's datadir.
-            if datadir is None:
-                datadir = get_local_datadir('default')
-            cls._keys_dir = os.path.join(datadir, 'keys')
-        if not os.path.isdir(cls._keys_dir):
-            os.makedirs(cls._keys_dir)
-        return cls._keys_dir
-
-    @classmethod
-    def set_keys_dir(cls, path):
-        if (not os.path.isdir(path)) and os.path.exists(path):
-            raise IOError("Path {} does not exists\n1){}\n2){}".format(path, os.path.isdir(path), os.path.exists(path)))
-        cls._keys_dir = path
-
-    @classmethod
-    def __get_key_loc(cls, file_name):
-        return os.path.join(cls.get_keys_dir(), file_name)
-
-    @classmethod
-    def _get_private_key_loc(cls, key_name):
-        return cls.__get_key_loc(key_name)
-
-    @classmethod
-    def _get_public_key_loc(cls, key_name):
-        return cls.__get_key_loc(key_name)
-
-    @abstractmethod
-    def _load_private_key(self):  # implement in derived classes
-        return
-
-    @abstractmethod
-    def _load_public_key(self):  # implement in derived classes
-        return
-
-    @staticmethod
-    def _count_min_hash(difficulty):
-        return pow(2, 256 - difficulty)
-
-
-class RSAKeysAuth(KeysAuth):
-    """RSA Cryptographic authorization manager. Create and keeps private and public keys based on RSA."""
-
-    def cnt_key_id(self, public_key):
-        """ Return id generated from given public key (sha1 hexdigest of openssh format).
-        :param public_key: public key that will be used to generate id
-        :return str: new id
-        """
-        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:]).encode()
-
-    def encrypt(self, data, public_key=None):
-        """ Encrypt given data with RSA
-        :param str data: data that should be encrypted
-        :param None|_RSAobj public_key: *Default: None* public key that should be used to encrypt data.
-            If public key is None than default public key will be used
-        :return str: encrypted data
-        """
-        if public_key is None:
-            public_key = self.public_key
-        return PKCS1_OAEP.new(public_key).encrypt(data)
-
-    def decrypt(self, data):
-        """ Decrypt given data with RSA
-        :param str data: encrypted data
-        :return str: decrypted data
-        """
-        return PKCS1_OAEP.new(self._private_key).decrypt(data)
-
-    def sign(self, data):
-        """ Sign given data with RSA
-        :param str data: data to be signed
-        :return: signed data
-        """
-        scheme = PKCS115_SigScheme(self._private_key)
-        if scheme.can_sign():
-            return scheme.sign(SHA256.new(data))
-        raise RuntimeError("Cannot sign data")
-
-    def verify(self, sig, data, public_key=None):
-        """
-        Verify the validity of an RSA signature
-        :param str sig: RSA signature
-        :param str data: expected data
-        :param None|_RSAobj public_key: *Default: None* public key that should be used to verify signed data.
-            If public key is None then default public key will be used
-        :return bool: verification result
-        """
-        if public_key is None:
-            public_key = self.public_key
-        try:
-            PKCS115_SigScheme(public_key).verify(SHA256.new(data), sig)
-            return True
-        except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc))
-        return False
-
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        """
-        min_hash = self._count_min_hash(difficulty)
-        priv_key = RSA.generate(2048)
-        pub_key = str(priv_key.publickey().n)
-        while sha2(pub_key) > min_hash:
-            priv_key = RSA.generate(2048)
-            pub_key = str(priv_key.publickey().n)
-        pub_key = priv_key.publickey()
-        priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(priv_key_loc, 'wb') as f:
-            f.write(priv_key.exportKey('PEM'))
-        with open(pub_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
-        self.public_key = pub_key.exportKey()
-        self._private_key = priv_key.exportKey('PEM')
-
-    def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
-        :param str file_name: file containing private key
-        :return bool: information if keys have been changed
-        """
-        priv_key = RSAKeysAuth._load_private_key_from_file(file_name)
-        if priv_key is None:
-            return False
-        try:
-            pub_key = priv_key.publickey()
-        except (AssertionError, AttributeError):
-            return False
-        self._set_and_save(priv_key, pub_key)
-        return True
-
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
-        """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
-        """
-        from os.path import isdir, dirname
-        from os import mkdir
-
-        def make_dir(file_path):
-            dir_name = dirname(file_path)
-            if not isdir(dir_name):
-                try:
-                    mkdir(dir_name)
-                except OSError:
-                    return False
-            return True
-
-        if not (make_dir(private_key_loc) and make_dir(public_key_loc)):
-            return False
-
-        try:
-            with open(private_key_loc, 'wb') as f:
-                f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key.exportKey())
-                return True
-        except IOError:
-            return False
-
-    @staticmethod
-    def _load_private_key_from_file(file_name):
-        if not os.path.isfile(file_name):
-            return None
-        try:
-            with open(file_name) as f:
-                key = f.read()
-            key = RSA.importKey(key)
-        except (ValueError, IndexError, TypeError, IOError):
-            return None
-        return key
-
-    def _load_private_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(private_key_loc) as f:
-            key = f.read()
-        key = RSA.importKey(key)
-        return key
-
-    def _load_public_key(self):
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            RSAKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(public_key_loc) as f:
-            key = f.read()
-        key = RSA.importKey(key)
-        return key
-
-    @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
-        key = RSA.generate(2048)
-        pub_key = key.publickey()
-        with open(private_key_loc, 'wb') as f:
-            f.write(key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(pub_key.exportKey())
-
-    def _set_and_save(self, private_key, public_key):
-        self._private_key = private_key
-        self.public_key = public_key
-        self.key_id = self.cnt_key_id(self.public_key)
-        private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(private_key_loc, 'wb') as f:
-            f.write(private_key.exportKey('PEM'))
-        with open(public_key_loc, 'wb') as f:
-            f.write(public_key.exportKey())
-
-
-class EllipticalKeysAuth(KeysAuth):
-    """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
-    (curve secp256k1)."""
-
-    def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
+    def __init__(self, datadir: str, private_key_name: str = PRIVATE_KEY,
+                 difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
-        :param uuid|None uuid: application identifier (to read keys)
+
+        :param datadir where to store files
+        :param private_key_name: name of the file containing private key
+        :param difficulty:
+            desired key difficulty level. It's a number of leading zeros in
+            binary representation of public key. Value in range <0, 255>.
+            0 accepts all keys, 255 is nearly impossible.
         """
-        KeysAuth.__init__(self, datadir, private_key_name, public_key_name)
+
+        prv, pub = KeysAuth._load_or_generate_keys(
+            datadir, private_key_name, difficulty)
+
+        self._private_key = prv
+        self.ecc = ECCx(prv)
+        self.public_key = pub
+        self.key_id = encode_hex(pub)
+        self.difficulty = KeysAuth.get_difficulty(self.key_id)
+
+    @staticmethod
+    def _load_or_generate_keys(datadir: str, filename: str,
+                               difficulty: int) -> Tuple[bytes, bytes]:
+        keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
+        priv_key_path = os.path.join(keys_dir, filename)
+
+        loaded_keys = KeysAuth._load_and_check_keys(priv_key_path, difficulty)
+
+        if loaded_keys:
+            priv_key, pub_key = loaded_keys
+        else:
+            priv_key, pub_key = KeysAuth._generate_keys(difficulty)
+            KeysAuth._save_private_key(priv_key, priv_key_path)
+
+        return priv_key, pub_key
+
+    @staticmethod
+    def _get_or_create_keys_dir(datadir: str) -> str:
+        path = datadir or get_local_datadir('default')
+        keys_dir = os.path.join(path, KeysAuth.KEYS_SUBDIR)
+        if not os.path.isdir(keys_dir):
+            os.makedirs(keys_dir)
+        return keys_dir
+
+    @staticmethod
+    def _load_and_check_keys(priv_key_path: str,
+                             difficulty: int) -> Optional[Tuple[bytes, bytes]]:
         try:
-            self.ecc = ECCx(self._private_key)
-        except AssertionError:
-            private_key_loc = self._get_private_key_loc(private_key_name)
-            public_key_loc = self._get_public_key_loc(public_key_name)
-            self._generate_keys(private_key_loc, public_key_loc)
+            with open(priv_key_path, 'rb') as f:
+                priv_key = f.read()
+        except FileNotFoundError:
+            return None
 
-    def cnt_key_id(self, public_key):
-        """ Return id generated from given public key (in hex format).
-        :param public_key: public key that will be used to generate id
-        :return str: new id
+        if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
+            logger.error("Wrong loaded private key size: %d.", len(priv_key))
+            return None
+
+        pub_key = privtopub(priv_key)
+
+        if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
+            logger.warning("Loaded key is not difficult enough.")
+            return None
+
+        return priv_key, pub_key
+
+    @staticmethod
+    def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
+        logger.info("Generating new key pair.")
+        while True:
+            priv_key = mk_privkey(str(get_random_float()))
+            pub_key = privtopub(priv_key)
+            if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
+                break
+        return priv_key, pub_key
+
+    @staticmethod
+    def _save_private_key(key, key_path):
+        def backup_file(path):
+            if os.path.exists(path):
+                logger.info("Backing up existing private key.")
+                dirname, filename = os.path.split(path)
+                date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
+                filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
+                os.rename(path, os.path.join(dirname, filename_bak))
+
+        backup_file(key_path)
+        with open(key_path, 'wb') as f:
+            f.write(key)
+
+    @staticmethod
+    def _count_max_hash(difficulty: int) -> int:
+        return 2 << (256 - difficulty - 1)
+
+    @staticmethod
+    def is_pubkey_difficult(pub_key: Union[bytes, str],
+                            difficulty: int) -> bool:
+        if isinstance(pub_key, str):
+            pub_key = decode_hex(pub_key)
+        return sha2(pub_key) < KeysAuth._count_max_hash(difficulty)
+
+    def is_difficult(self, difficulty: int) -> bool:
+        return self.is_pubkey_difficult(self.public_key, difficulty)
+
+    @staticmethod
+    def get_difficulty(key_id: str) -> int:
         """
-        return encode_hex(public_key)
+        Calculate given key difficulty.
+        This is more expensive to calculate than is_difficult, so use
+        the latter if possible.
+        """
+        return int(math.floor(256 - math.log2(sha2(decode_hex(key_id)))))
 
-    def encrypt(self, data, public_key=None):
-        """ Encrypt given data with ECIES
-        :param str data: data that should be encrypted
-        :param None|str public_key: *Default: None* public key that should be used to encrypt data. Public key may by
-        in digest (len == 64) or hexdigest (len == 128). If public key is None than default public key will be used
-        :return str: encrypted data
+    def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
+        """ Encrypt given data with ECIES.
+
+        :param data: data that should be encrypted
+        :param public_key: *Default: None* public key that should be used to
+        encrypt data. Public key may be in digest (len == 64) or hexdigest (len
+        == 128). If public key is None then default public key will be used.
+        :return: encrypted data
         """
         if public_key is None:
             public_key = self.public_key
-        if len(public_key) == 128:
+        if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
             public_key = decode_hex(public_key)
         return ECCx.ecies_encrypt(data, public_key)
 
-    def decrypt(self, data):
-        """ Decrypt given data with ECIES
-        :param str data: encrypted data
-        :return str: decrypted data
-        """
+    def decrypt(self, data: bytes) -> bytes:
+        """ ecrypt given data with ECIES."""
         return self.ecc.ecies_decrypt(data)
 
-    def sign(self, data):
-        """ Sign given data with ECDSA
-        sha3 is used to shorten the data and speedup calculations
-        :param str data: data to be signed
-        :return: signed data
+    def sign(self, data: bytes) -> bytes:
+        """ Sign given data with ECDSA;
+        sha3 is used to shorten the data and speedup calculations.
         """
         return self.ecc.sign(data)
 
-    def verify(self, sig, data, public_key=None):
+    def verify(self, sig: bytes, data: bytes,
+               public_key: Optional[bytes] = None) -> bool:
         """
-        Verify the validity of an ECDSA signature
-        sha3 is used to shorten the data and speedup calculations
-        :param str sig: ECDSA signature
-        :param str data: expected data
-        :param None|str public_key: *Default: None* public key that should be used to verify signed data.
-        Public key may be in digest (len == 64) or hexdigest (len == 128).
-        If public key is None then default public key will be used.
+        Verify the validity of an ECDSA signature;
+        sha3 is used to shorten the data and speedup calculations.
+
+        :param sig: ECDSA signature
+        :param data: expected data
+        :param public_key: *Default: None* public key that should be used to
+            verify signed data. Public key may be in digest (len == 64) or
+            hexdigest (len == 128). If public key is None then default public
+            key will be used.
         :return bool: verification result
         """
 
         try:
             if public_key is None:
                 public_key = self.public_key
-            if len(public_key) == 128:
+            if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
                 public_key = decode_hex(public_key)
             return ecdsa_verify(public_key, sig, data)
-        except AssertionError:
-            logger.info("Wrong key format")
-        except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc))
+        except Exception as e:
+            logger.error("Cannot verify signature: %s", e)
         return False
-
-    def generate_new(self, difficulty):
-        """ Generate new pair of keys with given difficulty
-        :param int difficulty: desired key difficulty level
-        :raise TypeError: in case of incorrect @difficulty type
-        """
-        if not isinstance(difficulty, int):
-            raise TypeError("Incorrect 'difficulty' type: {}".format(type(difficulty)))
-        min_hash = self._count_min_hash(difficulty)
-        priv_key = mk_privkey(str(get_random_float()))
-        pub_key = privtopub(priv_key)
-        while sha2(self.cnt_key_id(pub_key)) > min_hash:
-            priv_key = mk_privkey(str(get_random_float()))
-            pub_key = privtopub(priv_key)
-        self._set_and_save(priv_key, pub_key)
-
-    def load_from_file(self, file_name):
-        """ Load private key from given file. If it's proper key, then generate public key and
-        save both in default files
-        :param str file_name: file containing private key
-        :return bool: information if keys have been changed
-        """
-        priv_key = EllipticalKeysAuth._load_private_key_from_file(file_name)
-        if priv_key is None:
-            return False
-        try:
-            pub_key = privtopub(priv_key)
-        except AssertionError:
-            return False
-        self._set_and_save(priv_key, pub_key)
-        return True
-
-    def save_to_files(self, private_key_loc: str, public_key_loc: str) -> bool:
-        """ Save current pair of keys in given locations
-        :param str private_key_loc: where should private key be saved
-        :param str public_key_loc: where should public key be saved
-        :return boolean: return True if keys have been saved, False otherwise
-        """
-        try:
-            with open(private_key_loc, 'wb') as f:
-                f.write(self._private_key)
-            with open(public_key_loc, 'wb') as f:
-                f.write(self.public_key)
-            return True
-        except IOError:
-            return False
-
-    def _set_and_save(self, priv_key, pub_key):
-        priv_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        pub_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
-        self._private_key = priv_key
-        self.public_key = pub_key
-        self.key_id = self.cnt_key_id(pub_key)
-        self.save_to_files(priv_key_loc, pub_key_loc)
-        self.ecc = ECCx(self._private_key)
-
-    @staticmethod
-    def _load_private_key_from_file(file_name):
-        if not os.path.isfile(file_name):
-            return None
-        with open(file_name, 'rb') as f:
-            key = f.read()
-        return key
-
-    def _load_private_key(self):
-        private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(private_key_loc, 'rb') as f:
-            key = f.read()
-        return key
-
-    def _load_public_key(self):
-        private_key_loc = EllipticalKeysAuth._get_private_key_loc(self.private_key_name)
-        public_key_loc = EllipticalKeysAuth._get_public_key_loc(self.public_key_name)
-        if not os.path.isfile(private_key_loc) or not os.path.isfile(public_key_loc):
-            EllipticalKeysAuth._generate_keys(private_key_loc, public_key_loc)
-        with open(public_key_loc, 'rb') as f:
-            key = f.read()
-        return key
-
-    @staticmethod
-    def _generate_keys(private_key_loc, public_key_loc):
-        key = mk_privkey(str(get_random_float()))
-        pub_key = privtopub(key)
-
-        # Create dir for the keys.
-        # FIXME: It assumes private and public keys are stored in the same dir.
-        # FIXME: The same fix is needed for RSAKeysAuth.
-        keys_dir = os.path.dirname(private_key_loc)
-        if not os.path.isdir(keys_dir):
-            os.makedirs(keys_dir, 0o700)
-
-        with open(private_key_loc, 'wb') as f:
-            f.write(key)
-        with open(public_key_loc, 'wb') as f:
-            f.write(pub_key)

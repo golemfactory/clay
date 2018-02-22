@@ -1,6 +1,7 @@
 import json
 from typing import Any, Optional
 from uuid import uuid4
+import re
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
@@ -8,6 +9,9 @@ from golem.core.deferred import sync_wait
 from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
+
+
+CREATE_TASK_TIMEOUT = 300  # s
 
 
 class CommandAppLogic(AppLogic):
@@ -34,7 +38,8 @@ class Tasks:
 
     client = None  # type: 'golem.rpc.session.Client'
 
-    task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
+    task_table_headers = ['id', 'remaining',
+                          'subtasks', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
@@ -184,13 +189,25 @@ class Tasks:
         return '{:.2f} %'.format(progress * 100.0)
 
     def __create_from_json(self, jsondata: str) -> Any:
+        task_name = ""
         dictionary = json.loads(jsondata)
+        if 'name' in dictionary.keys():
+            dictionary['name'] = dictionary['name'].strip()
+            task_name = dictionary['name']
+        if (len(task_name) < 4 or len(task_name) > 24):
+            raise ValueError(
+                "Length of task name cannot be less "
+                "than 4 or more than 24 characters.")
+        if not re.match(r"(\w|[\-\. ])+$", task_name):
+            raise ValueError(
+                "Task name can only contain letters, numbers, "
+                "spaces, underline, dash or dot.")
         # FIXME CHANGE TASKI ID
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())
         deferred = Tasks.client.create_task(dictionary)
-        return sync_wait(deferred)
+        return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 
 
 @group(help="Manage subtasks")

@@ -2,9 +2,10 @@
 import logging
 
 from ethereum.utils import denoms
+from pydispatch import dispatcher
 
 from golem.model import Income
-from golem.utils import pubkeytoaddr
+from golem.utils import encode_hex, pubkeytoaddr
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
 
@@ -52,6 +53,13 @@ class IncomesKeeper:
             e.transaction = tx_hash[2:]
             e.value = value  # TODO don't change the value, wait for Concent
             e.save()
+
+        dispatcher.send(
+            signal='golem.monitor',
+            event='income',
+            addr=encode_hex(sender),
+            value=amount
+        )
 
     def expect(self, sender_node_id, subtask_id, value):
         logger.debug(

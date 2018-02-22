@@ -5,12 +5,13 @@ import queue
 
 from golem.decorators import log_error
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
-from .model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
+from .model import statssnapshotmodel
+from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
+from .model.nodemetadatamodel import NodeInfoModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .model.paymentmodel import ExpenditureModel, IncomeModel
 from .transport.sender import DefaultJSONSender as Sender
-from .model import statssnapshotmodel
 
 log = logging.getLogger('golem.monitor')
 
@@ -85,7 +86,7 @@ class SystemMonitor(object):
 
     def ping_request(self, port):
         import requests
-        timeout = 1  # seconds
+        timeout = 2.5  # seconds
         try:
             response = requests.post(
                 '%sping-me' % (self.config['HOST'],),
@@ -195,3 +196,14 @@ class SystemMonitor(object):
             value
         )
         self.sender_thread.send(msg)
+
+    def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
+                            gntw_balance: int):
+        self.sender_thread.send(
+            BalanceModel(
+                self.meta_data,
+                eth_balance,
+                gnt_balance,
+                gntw_balance
+            )
+        )
