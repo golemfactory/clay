@@ -354,7 +354,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(degrees) == 2
         assert p.key_id in degrees
 
-        self.service.remove_task('task_id', "signature")
+        self.service.remove_task('task_id')
         assert p.send_remove_task.called
 
         self.service.send_stop_gossip()
