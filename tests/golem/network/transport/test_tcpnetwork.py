@@ -23,7 +23,7 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 DecryptDataConsumer,
                                                 SafeProtocol,
                                                 SocketAddress,
-                                                MAX_MESSAGE_SIZE)
+                                                MAX_MESSAGE_SIZE, TCPNetwork)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from tests.factories import messages as msg_factories
@@ -362,3 +362,41 @@ class TestSocketAddress(unittest.TestCase):
         assert not SocketAddress.is_proper_address("127.0.0.1", 0)
         assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
         assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)
+
+
+class TestTCPNetworkConnections(unittest.TestCase):
+
+    def setUp(self):
+        self.addresses = [
+            SocketAddress('192.168.0.1', 40102),
+            SocketAddress('192.168.0.2', 40104),
+        ]
+
+    def test_without_rate_limiter(self):
+        self.factory = mock.Mock()
+        self.network = TCPNetwork(self.factory)
+        assert not self.network.rate_limiter
+
+        connect = mock.Mock()
+        connect_all = self.network._TCPNetwork__try_to_connect_to_addresses
+        self.network._TCPNetwork__try_to_connect_to_address = connect
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert connect.called
+
+    def test_with_rate_limiter(self):
+        self.factory = mock.Mock()
+        self.network = TCPNetwork(self.factory, limit_connection_rate=True)
+
+        assert self.network.rate_limiter
+
+        call = mock.Mock()
+        connect = mock.Mock()
+        connect_all = self.network._TCPNetwork__try_to_connect_to_addresses
+
+        self.network._TCPNetwork__try_to_connect_to_address = connect
+        self.network.rate_limiter.call = call
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert not connect.called
+        assert call.called
