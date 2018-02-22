@@ -503,7 +503,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         send_mock.assert_called()
         assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
 
-    def test_react_to_remove_task(self):
+    def _gen_data_for_test_react_to_remove_task(self):
         keys_auth = KeysAuth(self.path)
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
@@ -522,32 +522,52 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                                 keys_auth.key_id)
         msg = message.RemoveTask(task_id=task_id,
                                  owner_signature=owner_signature)
+        return msg, task_id, previous_ka, owner_signature
+
+    def test_react_to_remove_task_unknown_task_owner(self):
+        msg, task_id, previous_ka, _ = \
+            self._gen_data_for_test_react_to_remove_task()
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
+        self.peer_session.p2p_service.keys_auth = previous_ka
 
-        # Wrong task owner
+    def test_react_to_remove_task_wrong_task_owner(self):
+        msg, task_id, previous_ka, _ = \
+            self._gen_data_for_test_react_to_remove_task()
         th_mock = mock.MagicMock()
         th_mock.task_owner_key_id = "UNKNOWNKEY"
+        task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
         with self.assertLogs(logger, level="WARNING") as log:
             self.peer_session._react_to_remove_task(msg)
         assert "Someone tries to remove task header: " in log.output[0]
         assert task_id in log.output[0]
         assert task_server.task_keeper.task_headers[task_id] == th_mock
+        self.peer_session.p2p_service.keys_auth = previous_ka
 
-        # Proper task owner, sending message to peers
+    def test_react_to_remove_task_broadcast(self):
+        msg, task_id, previous_ka, owner_signature = \
+            self._gen_data_for_test_react_to_remove_task()
+        th_mock = mock.MagicMock()
+        keys_auth =  self.peer_session.p2p_service.keys_auth
         th_mock.task_owner_key_id = keys_auth.key_id
+        task_server = self.peer_session.p2p_service.task_server
+        task_server.task_keeper.task_headers[task_id] = th_mock
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
         assert task_server.task_keeper.task_headers.get(task_id) is None
+        peer_mock = self.peer_session.p2p_service.peers["ABC"]
         peer_mock.send_remove_task.assert_called_once_with(task_id,
                                                            owner_signature)
+        self.peer_session.p2p_service.keys_auth = previous_ka
 
-        # Do not broadast task
+    def test_react_to_remove_task_no_broadcast(self):
+        msg, task_id, previous_ka, owner_signature = \
+            self._gen_data_for_test_react_to_remove_task()
         with self.assertNoLogs(logger, level="WARNING"):
             self.peer_session._react_to_remove_task(msg)
-        peer_mock.send_remove_task.assert_called_once_with(task_id,
-                                                           owner_signature)
+        peer_mock = self.peer_session.p2p_service.peers["ABC"]
+        peer_mock.send_remove_task.assert_not_called()
 
         self.peer_session.p2p_service.keys_auth = previous_ka
 
