@@ -1,19 +1,22 @@
 #!/usr/bin/env python
+import os
 import sys
 import logging
 from multiprocessing import freeze_support
 import click
 from ethereum import slogging
 
-import golem
-import golem.argsparser as argsparser
-from golem.appconfig import AppConfig
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import install_reactor
-from golem.core.simpleenv import get_local_datadir
-from golem.core.variables import PROTOCOL_CONST
-from golem.node import Node
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
 
+import golem  # noqa
+import golem.argsparser as argsparser  # noqa
+from golem.appconfig import AppConfig  # noqa
+from golem.clientconfigdescriptor import ClientConfigDescriptor  # noqa
+from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
+from golem.core.variables import PROTOCOL_CONST  # noqa
+from golem.node import Node  # noqa
 
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.
