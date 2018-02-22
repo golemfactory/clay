@@ -502,8 +502,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
                 requestor_public_key=ctd['task_owner']['key'],
+                requestor_ethereum_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
+                provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
