@@ -16,12 +16,13 @@ pytz
 six==1.10.0
 Twisted==17.9.0
 cffi==1.10.0
-web3==3.8.0
 ethereum==1.6.1
-ethereum-abi-utils==0.4.0
-#Newer version contains no code. Only deprecation warning.
-#https://pypi.python.org/pypi/ethereum-utils
-ethereum-utils==0.5.1
+eth-abi==0.5.0
+eth-keyfile==0.4.1
+eth-keys==0.1.0b4
+eth-utils==0.7.4
+eth-tester==0.1.0b15
+web3==3.16.4
 autobahn==17.10.1
 cbor2==3.0.4
 base58
@@ -51,4 +52,4 @@ miniupnpc<2.1,>=2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 Golem-Messages==1.12.2
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@78ed01b0b2a8467570a28a407d1634f20baf43de#egg=golem_sci
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@384ba463c198efbe450b8432fb6a54bcb6558e3b#egg=golem_sci
