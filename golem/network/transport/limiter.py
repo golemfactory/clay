@@ -1,5 +1,7 @@
 import logging
 
+from types import FunctionType
+
 from token_bucket import Limiter, MemoryStorage
 
 logger = logging.getLogger(__name__)
@@ -7,12 +9,19 @@ logger = logging.getLogger(__name__)
 
 class CallRateLimiter:
 
-    KEY = b'connect'
+    KEY = b'default'
 
     def __init__(self,
                  rate: float = 5.,
                  capacity_factor: float = 1.5,
-                 delay_factor: float = 1.5):
+                 delay_factor: float = 1.5) -> None:
+
+        """
+        :param rate: Tokens to consume per time window (per sec)
+        :param capacity_factor: Used for capacity calculation, based on rate
+        :param delay_factor: Function call delay is multiplied by this value
+        on each next delayed call
+        """
 
         from twisted.internet import reactor
 
@@ -22,11 +31,27 @@ class CallRateLimiter:
                                 capacity=int(capacity_factor * rate),
                                 storage=MemoryStorage())
 
-    def call(self, fn,
+    @property
+    def delay_factor(self) -> float:
+        return self._delay_factor
+
+    def call(self,
+             fn: FunctionType,
              *args,
              __key__: bytes = KEY,
-             __delay__: int = 1.0,
-             **kwargs):
+             __delay__: float = 1.0,
+             **kwargs) -> None:
+
+        """
+        Call the function if there are enough tokens in the bucket. Delay
+        the call otherwise.
+        :param fn: Function to call
+        :param args: Function's positional arguments
+        :param __key__: Bucket key
+        :param __delay__: Function call delay in seconds
+        :param kwargs: Function's keyword arguments
+        :return: None
+        """
 
         if self._limiter.consume(__key__):
             fn(*args, **kwargs)

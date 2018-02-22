@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 import logging
 import os
 import struct
@@ -373,29 +374,29 @@ class TestTCPNetworkConnections(unittest.TestCase):
         ]
 
     def test_without_rate_limiter(self):
-        self.factory = mock.Mock()
-        self.network = TCPNetwork(self.factory)
-        assert not self.network.rate_limiter
+        factory = mock.Mock()
+        network = TCPNetwork(factory)
+        assert not network.rate_limiter
 
         connect = mock.Mock()
-        connect_all = self.network._TCPNetwork__try_to_connect_to_addresses
-        self.network._TCPNetwork__try_to_connect_to_address = connect
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
+        network._TCPNetwork__try_to_connect_to_address = connect
 
         connect_all(self.addresses, mock.Mock(), mock.Mock())
         assert connect.called
 
     def test_with_rate_limiter(self):
-        self.factory = mock.Mock()
-        self.network = TCPNetwork(self.factory, limit_connection_rate=True)
+        factory = mock.Mock()
+        network = TCPNetwork(factory, limit_connection_rate=True)
 
-        assert self.network.rate_limiter
+        assert network.rate_limiter
 
         call = mock.Mock()
         connect = mock.Mock()
-        connect_all = self.network._TCPNetwork__try_to_connect_to_addresses
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
 
-        self.network._TCPNetwork__try_to_connect_to_address = connect
-        self.network.rate_limiter.call = call
+        network._TCPNetwork__try_to_connect_to_address = connect
+        network.rate_limiter.call = call
 
         connect_all(self.addresses, mock.Mock(), mock.Mock())
         assert not connect.called
