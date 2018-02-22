@@ -1,8 +1,8 @@
-import json
 import logging
 import sys
 import time
 import uuid
+import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
@@ -54,6 +54,7 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
+from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
@@ -119,7 +120,7 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth: KeysAuth = keys_auth
+        self.keys_auth = keys_auth
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
@@ -196,6 +197,10 @@ class Client(HardwarePresetsMixin):
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
+
+    def configure_rpc(self, rpc_session):
+        self.rpc_publisher = Publisher(rpc_session)
+        StatusPublisher.set_publisher(self.rpc_publisher)
 
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event == 'unreachable':
