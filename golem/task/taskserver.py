@@ -590,7 +590,6 @@ class TaskServer(
 
     def __connection_for_task_result_established(self, session, conn_id,
                                                  waiting_task_result):
-        self.remove_forwarded_session_request(waiting_task_result.owner_key_id)
         self.new_session_prepare(
             session=session,
             subtask_id=waiting_task_result.subtask_id,
@@ -626,7 +625,6 @@ class TaskServer(
 
     def __connection_for_task_failure_established(self, session, conn_id,
                                                   key_id, subtask_id, err_msg):
-        self.remove_forwarded_session_request(key_id)
         self.new_session_prepare(
             session=session,
             subtask_id=subtask_id,
@@ -657,7 +655,6 @@ class TaskServer(
     def __connection_for_start_session_established(
             self, session, conn_id, key_id, node_info, super_node_info,
             ans_conn_id):
-        self.remove_forwarded_session_request(key_id)
         self.new_session_prepare(
             session=session,
             subtask_id=None,
@@ -717,6 +714,7 @@ class TaskServer(
         self.remove_responses(ans_conn_id)
 
     def new_session_prepare(self, session, subtask_id, key_id, conn_id):
+        self.remove_forwarded_session_request(key_id)
         session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
