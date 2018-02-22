@@ -26,4 +26,5 @@ datas = [
     ('apps/dummy/test_data/in.data',
      'apps/dummy/test_data/'),
     ('golem/RELEASE-VERSION', 'golem/'),
+    ('golem/database/schemas/*.py', 'golem/database/schemas'),
 ]
