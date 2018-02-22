@@ -6,7 +6,7 @@ import numpy
 from collections import OrderedDict
 from copy import copy
 import time
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageFile
 
 from apps.core.task import coretask
 from golem.core.common import to_unicode
@@ -26,6 +26,9 @@ from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRend
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
+# Allow loading truncated images.
+# https://github.com/golemfactory/golem/issues/2059
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger("apps.blender")
 
