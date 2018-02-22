@@ -502,8 +502,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
                 requestor_public_key=ctd['task_owner']['key'],
+                requestor_ethereum_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
+                provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
@@ -568,7 +570,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
+        if self.check_provider_for_subtask(msg.subtask_id):
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -577,6 +579,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
+        if not self.check_requestor_for_task(msg.task_id):
+            self.dropped()
+            return
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
@@ -585,8 +590,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
-            logger.warning('Received unknown subtask_id: %r', msg)
+        if not self.check_provider_for_subtask(msg.subtask_id):
             self.dropped()
             return
 
@@ -620,6 +624,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_get_task_result(self, msg) -> None:
+        if not self.check_requestor_for_subtask(msg.subtask_id):
+            self.dropped()
+            return
         wtr = self.task_server.get_waiting_task_result(msg.subtask_id)
         if wtr is None:
             logger.warning("Result was requested for an unknown subtask "
@@ -654,6 +661,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 "Task result received with unknown subtask_id: %r",
                 subtask_id
             )
+            return
+
+        if not self.check_provider_for_subtask(msg.subtask_id):
+            self.dropped()
             return
 
         logger.debug(
@@ -724,21 +735,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
         subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
+        if not self.check_requestor_for_subtask(subtask_id):
+            self.dropped()
+            return
         self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
         self.dropped()
 
     @history.provider_history
     def _react_to_subtask_results_rejected(self, msg):
+        subtask_id = msg.report_computed_task.subtask_id
+        if not self.check_requestor_for_subtask(subtask_id):
+            self.dropped()
+            return
         self.task_server.subtask_rejected(
-            subtask_id=msg.report_computed_task.subtask_id,
+            subtask_id=subtask_id,
         )
         self.dropped()
 
     def _react_to_task_failure(self, msg):
-        self.task_server.subtask_failure(msg.subtask_id, msg.err)
+        if self.check_provider_for_subtask(msg.subtask_id):
+            self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
     def _react_to_delta_parts(self, msg):
+        if not self.check_requestor_for_task(self.task_id):
+            self.dropped()
+            return
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(
@@ -754,7 +776,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address)
+                                                               self.address,
+                                                               self.task_id)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
@@ -843,6 +866,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.address,
             self.port
         )
+
+    def check_provider_for_subtask(self, subtask_id) -> bool:
+        node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
+        if node_id != self.key_id:
+            logger.warning('Received message about subtask %r from diferrent '
+                           'node %r than expected %r', subtask_id,
+                           self.key_id, node_id)
+            return False
+        return True
+
+    def check_requestor_for_task(self, task_id, additional_msg="") -> bool:
+        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
+            task_id)
+        if node_id != self.key_id:
+            logger.warning('Received message about task %r from diferrent '
+                           'node %r than expected %r. %s', task_id,
+                           self.key_id, node_id, additional_msg)
+            return False
+        return True
+
+    def check_requestor_for_subtask(self, subtask_id) -> bool:
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
+            subtask_id)
+        return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON

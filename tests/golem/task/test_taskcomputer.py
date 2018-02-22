@@ -37,7 +37,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def test_run(self):
         task_server = self.task_server
         task_server.config_desc.task_request_interval = 0.5
-        task_server.config_desc.waiting_for_task_timeout = 1
         task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)

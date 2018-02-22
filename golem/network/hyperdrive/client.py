@@ -3,6 +3,8 @@ import logging
 from ipaddress import AddressValueError, ip_address
 
 import collections
+
+import math
 import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -17,6 +19,13 @@ log = logging.getLogger(__name__)
 
 DEFAULT_HYPERDRIVE_PORT = 3282
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
+DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
+
+
+def timeout_from_size(size: int, rate: int = DEFAULT_UPLOAD_RATE):
+    bytes_per_sec = rate * 10 ** 3
+    margin = 10
+    return margin + int(math.ceil(size / bytes_per_sec))
 
 
 class HyperdriveClient(IClient):
@@ -44,8 +53,7 @@ class HyperdriveClient(IClient):
                                        options=dict(peers=peers))
 
     def id(self, client_options=None, *args, **kwargs):
-        response = self._request(command='id')
-        return response['id']
+        return self._request(command='id')
 
     def addresses(self):
         response = self._request(command='addresses')
@@ -81,9 +89,13 @@ class HyperdriveClient(IClient):
     @classmethod
     def _download_params(cls, content_hash, client_options, **kwargs):
         path = kwargs['filepath']
-        peers = None
+        peers, size, timeout = None, None, None
 
         if client_options:
+            size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
+            if size:
+                timeout = timeout_from_size(size) if size else None
+
             filtered = client_options.filtered(cls.CLIENT_ID, cls.VERSION)
             if filtered:
                 peers = filtered.options.get('peers')
@@ -92,7 +104,9 @@ class HyperdriveClient(IClient):
             command='download',
             hash=content_hash,
             dest=path,
-            peers=peers or []
+            peers=peers or [],
+            size=size,
+            timeout=timeout
         )
 
     def cancel(self, content_hash):
@@ -178,23 +192,34 @@ class HyperdriveAsyncClient(HyperdriveClient):
     def _async_request(self, params, response_parser):
         serialized_params = json.dumps(params)
         encoded_params = serialized_params.encode('utf-8')
-        result = Deferred()
+        _result = Deferred()
 
         def on_response(response):
-            readBody(response).addCallbacks(on_body, on_error)
+            _body = readBody(response)
+            _body.addErrback(on_error)
 
-        def on_body(body):
+            if response.code == 200:
+                _body.addCallback(on_success)
+            else:
+                _body.addCallback(on_error)
+
+        def on_success(body):
             try:
                 decoded = body.decode('utf-8')
                 deserialized = json.loads(decoded)
                 parsed = response_parser(deserialized)
             except Exception as exc:  # pylint: disable=broad-except
-                on_error(exc)
+                _result.errback(exc)
             else:
-                result.callback(parsed)
+                _result.callback(parsed)
 
-        def on_error(err):
-            result.errback(HTTPError(err))
+        def on_error(body):
+            try:
+                decoded = body.decode('utf-8')
+            except Exception as exc:  # pylint: disable=broad-except
+                _result.errback(exc)
+            else:
+                _result.errback(HTTPError(decoded))
 
         deferred = AsyncHTTPRequest.run(
             b'POST',
@@ -202,9 +227,9 @@ class HyperdriveAsyncClient(HyperdriveClient):
             self._headers_obj,
             encoded_params
         )
-        deferred.addCallbacks(on_response, on_error)
+        deferred.addCallbacks(on_response, _result.errback)
 
-        return result
+        return _result
 
 
 class HyperdriveClientOptions(ClientOptions):

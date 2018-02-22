@@ -28,7 +28,6 @@ class ClientConfigDescriptor(object):
         self.getting_peers_interval = 0.0
         self.getting_tasks_interval = 0.0
         self.task_request_interval = 0.0
-        self.waiting_for_task_timeout = 0.0
         self.waiting_for_task_session_timeout = 0.0
         self.forwarded_session_request_timeout = 0.0
         self.p2p_session_timeout = 0
@@ -83,9 +82,9 @@ class ConfigApprover(object):
                        'use_ipv6', 'use_upnp', 'eth_account', 'accept_tasks',
                        'node_name']
     to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
-                  'waiting_for_task_timeout', 'p2p_session_timeout',
-                  'task_session_timeout', 'pings_interval',
-                  'max_results_sending_delay', 'min_price', 'max_price']
+                  'p2p_session_timeout', 'task_session_timeout',
+                  'pings_interval', 'max_results_sending_delay', 'min_price',
+                  'max_price']
     to_float_opt = ['getting_peers_interval', 'getting_tasks_interval',
                     'computing_trust', 'requesting_trust']
 
