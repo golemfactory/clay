@@ -2,6 +2,7 @@ import logging
 import math
 import os
 import random
+import numpy
 from collections import OrderedDict
 from copy import copy
 import time
@@ -396,6 +397,11 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             min_y = 0.0
             max_y = 1.0
+
+        #  Blender is using single precision math, we use numpy to emulate this.
+        #  Send already converted values to blender.
+        min_y = numpy.float32(min_y)
+        max_y = numpy.float32(max_y)
 
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
