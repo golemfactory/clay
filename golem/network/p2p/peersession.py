@@ -383,8 +383,8 @@ class PeerSession(BasicSafeSession):
         data = remove_task_string(msg.task_id)
         if not self.p2p_service.keys_auth.verify(msg.owner_signature, data,
                                                  task_owner):
-            logger.warning("Someone tries to remove task header: %s without "
-                           "proper signature" % msg.task_id)
+            logger.info("Someone tries to remove task header: %s without "
+                        "proper signature" % msg.task_id)
             return
         removed = self.p2p_service.remove_task_header(msg.task_id)
         if removed:  # propagate the message

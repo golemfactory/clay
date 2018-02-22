@@ -527,7 +527,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     def test_react_to_remove_task_unknown_task_owner(self):
         msg, task_id, previous_ka, _ = \
             self._gen_data_for_test_react_to_remove_task()
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger, level="INFO"):
             self.peer_session._react_to_remove_task(msg)
         self.peer_session.p2p_service.keys_auth = previous_ka
 
@@ -538,7 +538,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         th_mock.task_owner_key_id = "UNKNOWNKEY"
         task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
-        with self.assertLogs(logger, level="WARNING") as log:
+        with self.assertLogs(logger, level="INFO") as log:
             self.peer_session._react_to_remove_task(msg)
         assert "Someone tries to remove task header: " in log.output[0]
         assert task_id in log.output[0]
@@ -553,7 +553,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         th_mock.task_owner_key_id = keys_auth.key_id
         task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger, level="INFO"):
             self.peer_session._react_to_remove_task(msg)
         assert task_server.task_keeper.task_headers.get(task_id) is None
         peer_mock = self.peer_session.p2p_service.peers["ABC"]
@@ -564,7 +564,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     def test_react_to_remove_task_no_broadcast(self):
         msg, task_id, previous_ka, owner_signature = \
             self._gen_data_for_test_react_to_remove_task()
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger, level="INFO"):
             self.peer_session._react_to_remove_task(msg)
         peer_mock = self.peer_session.p2p_service.peers["ABC"]
         peer_mock.send_remove_task.assert_not_called()
