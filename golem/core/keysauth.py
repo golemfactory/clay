@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import time
 from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
@@ -137,12 +138,15 @@ class KeysAuth:
 
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
-        logger.info("Generating new key pair.")
+        logger.info("Generating new key pair")
+        started = time.time()
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
+
+        logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
 
     @staticmethod

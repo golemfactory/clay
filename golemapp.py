@@ -118,7 +118,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         log_golem_version()
 
-        Node(
+        node = Node(
             datadir=datadir,
             config_desc=config_desc,
             transaction_system=payments,
@@ -127,6 +127,8 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address)
+
+        node.start()
 
 
 def delete_reactor():

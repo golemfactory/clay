@@ -49,7 +49,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        self.assertEqual(len(mock_node.mock_calls), 1)
+        self.assertEqual(len(mock_node.mock_calls), 2)
         init_call = mock_node.mock_calls[0]
         self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
         init_call_args = init_call[1]
@@ -90,8 +90,7 @@ class TestNode(TestWithDatabase):
             transaction_system=True,
             use_monitor=True)
 
-        node.keys_auth = Mock()
-        node._client_factory()
+        node._client_factory(Mock())
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=cfg,
@@ -164,8 +163,7 @@ class TestNode(TestWithDatabase):
             transaction_system=True,
             use_monitor=True)
 
-        node.keys_auth = Mock()
-        node._client_factory()
+        node._client_factory(Mock())
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
@@ -254,8 +252,7 @@ class TestNode(TestWithDatabase):
             transaction_system=True,
             use_monitor=True)
 
-        node.keys_auth = Mock()
-        node._client_factory()
+        node._client_factory(Mock())
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
@@ -326,8 +323,7 @@ class TestNode(TestWithDatabase):
             transaction_system=True,
             use_monitor=True)
 
-        node.keys_auth = Mock()
-        node._client_factory()
+        node._client_factory(Mock())
 
         mock_client.assert_called_with(datadir=self.path,
                                        config_desc=ANY,
@@ -450,10 +446,10 @@ class TestOptNode(TempDirFixture):
         router.address = WebSocketAddress(config_desc.rpc_address,
                                           config_desc.rpc_port,
                                           realm='test_realm')
-        self.node._setup_rpc()
+        self.node._start_rpc()
 
         assert self.node.rpc_router
-        assert self.node.rpc_router.start.called
+        assert self.node.rpc_router._start_node.called  # noqa pylint: disable=no-member
         assert reactor.addSystemEventTrigger.called
 
     def test_run(self, *_):
@@ -466,91 +462,15 @@ class TestOptNode(TempDirFixture):
                          peers=self.parsed_peer,
                          use_docker_manager=False)
 
-        self.node.keys_auth = Mock()
-        self.node.client = self.node._client_factory()
+        self.node.client = self.node._client_factory(Mock())
+        self.node._setup_apps = Mock()
         self.node.client.connect = Mock()
         self.node.client.start = Mock()
         self.node.client.environments_manager = Mock()
         self.node._run()
 
         assert self.node.client.start.called
-        assert self.node._apps_manager is not None
+        assert self.node._setup_apps.called
         self.node.client.connect.assert_called_with(self.parsed_peer[0])
-
-    def test_key_auth_faster_than_rpc_with_docker(self, *_):
-        # given
-        DockerManager.install = Mock()
-        self.node = Node(self.path, ClientConfigDescriptor(),
-                         use_docker_manager=True)
-        self.node._setup_client = Mock()
-
-        # when
-        self.node._key_auth_ready(keys_auth=Mock())
-        # then
-        assert not self.node._setup_client.called
-        assert not DockerManager.install.called
-
-        # when
-        self.node._rpc_router_ready()
-        # then
-        assert self.node._setup_client.called
-        assert DockerManager.install.called
-
-    def test_key_auth_faster_than_rpc_without_docker(self, *_):
-        # given
-        DockerManager.install = Mock()
-        self.node = Node(self.path, ClientConfigDescriptor(),
-                         use_docker_manager=False)
-        self.node._setup_client = Mock()
-
-        # when
-        self.node._key_auth_ready(keys_auth=Mock())
-        # then
-        assert not self.node._setup_client.called
-        assert not DockerManager.install.called
-
-        # when
-        self.node._rpc_router_ready()
-        # then
-        assert self.node._setup_client.called
-        assert not DockerManager.install.called
-
-    def test_key_auth_slower_than_rpc_with_docker(self, *_):
-        # given
-        DockerManager.install = Mock()
-        self.node = Node(self.path, ClientConfigDescriptor(),
-                         use_docker_manager=True)
-        self.node._setup_client = Mock()
-
-        # when
-        self.node._rpc_router_ready()
-        # then
-        assert not self.node._setup_client.called
-        assert DockerManager.install.called
-
-        # when
-        self.node._key_auth_ready(keys_auth=Mock())
-        # then
-        assert self.node._setup_client.called
-        assert DockerManager.install.called
-
-    def test_key_auth_slower_than_rpc_without_docker(self, *_):
-        # given
-        DockerManager.install = Mock()
-        self.node = Node(self.path, ClientConfigDescriptor(),
-                         use_docker_manager=False)
-        self.node._setup_client = Mock()
-
-        # when
-        self.node._rpc_router_ready()
-        # then
-        assert not self.node._setup_client.called
-        assert not DockerManager.install.called
-
-        # when
-        self.node._key_auth_ready(keys_auth=Mock())
-        # then
-        assert self.node._setup_client.called
-        assert not DockerManager.install.called
 
     # todo: tests with callbacks needed
