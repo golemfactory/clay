@@ -62,15 +62,19 @@ LOGGING = {
         'filters': [],
     },
     'loggers': {
+        'golemapp': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem': {
             'level': 'WARNING',
             'propagate': True,
         },
-        'golem.version': {
+        'golem.client': {
             'level': 'INFO',
             'propagate': True,
         },
-        'golem.client': {
+        'golem.core.hardware': {
             'level': 'INFO',
             'propagate': True,
         },

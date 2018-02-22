@@ -1,7 +1,10 @@
+import logging
+
+import humanize
 import psutil
 from psutil import virtual_memory
 
-from golem.appconfig import logger,\
+from golem.appconfig import \
     MIN_MEMORY_SIZE,\
     MIN_DISK_SPACE,\
     MIN_CPU_CORES,\
@@ -11,6 +14,8 @@ from golem.core.common import get_cpu_count, is_osx, is_windows,\
     MAX_CPU_MACOS, MAX_CPU_WINDOWS
 from golem.core.fileshelper import free_partition_space
 from golem.model import HardwarePreset
+
+logger = logging.getLogger(__name__)
 
 
 def cpu_cores_available():
@@ -65,6 +70,11 @@ class HardwarePresets(object):
     @classmethod
     def update_config(cls, preset_or_name, config):
         name, values = cls.values(preset_or_name)
+        logger.info("updating config: name: %s, num_cores: %s, "
+                    "max_memory_size: %s, max_resource_size: %s",
+                    name, values['cpu_cores'],
+                    humanize.naturalsize(values['memory'], binary=True),
+                    humanize.naturalsize(values['disk'], binary=True))
         setattr(config, 'hardware_preset_name', name)
         setattr(config, 'num_cores', values['cpu_cores'])
         setattr(config, 'max_memory_size', values['memory'])
