@@ -6,9 +6,9 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = [
     ('loggingconfig.py', '.'),
-    ('apps/*.ini', 'apps'),
+    ('apps/*.ini', 'apps/'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
-     'apps/rendering/benchmark/minilight'),
+     'apps/rendering/benchmark/minilight/'),
     ('apps/rendering/resources/scripts/runner.py',
      'apps/rendering/resources/scripts/'),
     ('apps/blender/resources/scripts/blendercrop.py.template',
@@ -26,4 +26,5 @@ datas = [
     ('apps/dummy/test_data/in.data',
      'apps/dummy/test_data/'),
     ('golem/RELEASE-VERSION', 'golem/'),
+    ('golem/database/schemas/*.py', 'golem/database/schemas/'),
 ]
