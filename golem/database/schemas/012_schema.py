@@ -17,11 +17,11 @@ def migrate(migrator, _database, **_kwargs):
 
     migrator.add_fields('income', accepted_ts=pw.IntegerField(null=True))
 
-    migrator.change_fields('income', value=pw.BigIntegerField())
+    migrator.change_fields('income', value=pw.HexIntegerField())
 
     migrator.drop_not_null('income', 'transaction')
 
-    migrator.change_fields('payment', value=pw.BigIntegerField())
+    migrator.change_fields('payment', value=pw.HexIntegerField())
 
     migrator.drop_index('performance', 'environment_id')
 
@@ -37,11 +37,11 @@ def rollback(migrator, _database, **_kwargs):
 
     migrator.add_index('performance', 'environment_id', unique=True)
 
-    migrator.change_fields('payment', value=pw.BigIntegerField())
+    migrator.change_fields('payment', value=pw.HexIntegerField())
 
     migrator.remove_fields('income', 'accepted_ts')
 
-    migrator.change_fields('income', value=pw.BigIntegerField())
+    migrator.change_fields('income', value=pw.HexIntegerField())
 
     migrator.add_not_null('income', 'transaction')
 
@@ -55,7 +55,7 @@ def rollback(migrator, _database, **_kwargs):
         modified_date = pw.DateTimeField(default=dt.datetime.now)
         sender_node = pw.CharField(max_length=255)
         subtask = pw.CharField(max_length=255)
-        value = pw.BigIntegerField()
+        value = pw.HexIntegerField()
         accepted_ts = pw.IntegerField(null=True)
 
         class Meta:

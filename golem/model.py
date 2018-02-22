@@ -58,7 +58,7 @@ class RawCharField(CharField):
         return decode_hex(value)
 
 
-class BigIntegerField(CharField):
+class HexIntegerField(CharField):
     """ Standard Integer field is limited to 2^63-1. This field extends the
         range by storing the numbers as hex-encoded char strings.
     """
@@ -202,7 +202,7 @@ class Payment(BaseModel):
     subtask = CharField(primary_key=True)
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
-    value = BigIntegerField()
+    value = HexIntegerField()
     details = PaymentDetailsField()
     processed_ts = IntegerField(null=True)
 
@@ -229,7 +229,7 @@ class Payment(BaseModel):
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
-    value = BigIntegerField()
+    value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
 

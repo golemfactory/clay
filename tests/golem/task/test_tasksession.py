@@ -125,7 +125,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ['requestor_id', requestor_key],
             ['provider_id', provider_key],
             ['requestor_public_key', requestor_key],
+            ['requestor_ethereum_public_key', requestor_key],
             ['provider_public_key', provider_key],
+            ['provider_ethereum_public_key', provider_key],
             ['compute_task_def', ctd],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', True],
@@ -356,7 +358,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert ts.task_manager.task_computation_failure.called
 
         msg.subtask_id = "UNKNOWN"
-        with self.assertLogs(logger, level="ERROR"):
+        with self.assertLogs(logger, level="WARNING"):
             ts._react_to_task_result_hash(msg)
 
     def test_react_to_task_to_compute(self):

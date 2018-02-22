@@ -502,8 +502,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
                 requestor_public_key=ctd['task_owner']['key'],
+                requestor_ethereum_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
+                provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
@@ -671,8 +673,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.result_received(extra_data, decrypt=False)
 
         def on_error(exc, *args, **kwargs):
-            logger.error("Task result error: {} ({})"
-                         .format(subtask_id, exc or "unspecified"))
+            logger.warning("Task result error: %s (%s)", subtask_id,
+                           exc or "unspecified")
 
             # in case of resources failure, we're sending the rejection
             # until we implement `ForceGetTaskResults` (pending)
@@ -754,7 +756,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address)
+                                                               self.address,
+                                                               self.task_id)
 
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,

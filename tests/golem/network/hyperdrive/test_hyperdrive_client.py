@@ -1,135 +1,119 @@
 import json
-import unittest
-import unittest.mock as mock
 import uuid
+from unittest import mock, TestCase, skip
 
 from requests import HTTPError
 from twisted.internet.defer import Deferred
 from twisted.python import failure
 
-from golem.network.hyperdrive.client import HyperdriveClient, \
-    HyperdriveClientOptions, HyperdriveAsyncClient
+from golem.network.hyperdrive.client import HyperdriveAsyncClient, \
+    HyperdriveClient, HyperdriveClientOptions
+
+response = {
+    'id': str(uuid.uuid4()),
+    'version': '0.2.4',
+    'files': ['file1', 'file2'],
+    'hash': str(uuid.uuid4()),
+    'addresses': dict(
+        TCP=dict(address='0.0.0.0', port=3282)
+    )
+}
+response_str = json.dumps(response)
 
 
-class TestHyperdriveClient(unittest.TestCase):
+@mock.patch('golem.network.hyperdrive.client.requests.post',
+            return_value=mock.Mock(text=response_str,
+                                   content=response_str.encode()))
+class TestHyperdriveClient(TestCase):
 
-    def setUp(self):
-        self.response = {
-            'id': str(uuid.uuid4()),
-            'files': ['file1', 'file2'],
-            'hash': str(uuid.uuid4()),
-            'addresses': dict(
-                TCP=dict(address='0.0.0.0', port=3282)
-            )
-        }
-
-    def test_build_options(self):
+    def test_build_options(self, _):
         options = HyperdriveClient.build_options()
         assert options.client_id == HyperdriveClient.CLIENT_ID
         assert options.version == HyperdriveClient.VERSION
         assert options.options['peers'] is None
 
-    def test_id(self):
+    def test_id(self, _):
         client = HyperdriveClient()
+        result = client.id()
+        assert result['id'] == response['id']
+        assert result['version'] == response['version']
 
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-            assert client.id() == self.response['id']
-
-    def test_addresses(self):
+    def test_addresses(self, _):
         client = HyperdriveClient()
+        assert client.addresses() == dict(TCP=('0.0.0.0', 3282))
 
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-            assert client.addresses() == dict(TCP=('0.0.0.0', 3282))
-
-    def test_add(self):
+    def test_add(self, _):
         client = HyperdriveClient()
+        assert client.add(response['files']) == response['hash']
 
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-            assert client.add(self.response['files']) == self.response['hash']
-
-    def test_restore(self):
+    def test_restore(self, _):
         client = HyperdriveClient()
+        assert client.restore(response['files']) == response['hash']
 
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-            assert client.restore(self.response['files']) == \
-                   self.response['hash']
-
-    def test_get(self):
+    def test_get(self, _):
         client = HyperdriveClient()
         content_hash = str(uuid.uuid4())
         filepath = str(uuid.uuid4())
 
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
+        with self.assertRaises(KeyError):
+            client.get(content_hash)
 
-            with self.assertRaises(KeyError):
-                client.get(content_hash)
+        assert client.get(content_hash, client_options=None, filepath=filepath)\
+            == [(filepath, content_hash, response['files'])]
 
-            assert client.get(content_hash,
-                              client_options=None,
-                              filepath=filepath) == \
-                [(filepath, content_hash, self.response['files'])]
-
-    def test_cancel(self):
+    def test_cancel(self, _):
         client = HyperdriveClient()
         content_hash = str(uuid.uuid4())
-        with mock.patch.object(HyperdriveClient, '_request',
-                               return_value=self.response):
-
-            response_hash = self.response['hash']
-            assert client.cancel(content_hash) == response_hash
+        response_hash = response['hash']
+        assert client.cancel(content_hash) == response_hash
 
     @mock.patch('json.loads')
     @mock.patch('requests.post')
-    def test_request(self, post, json_loads):
+    def test_request(self, post, json_loads, _):
         client = HyperdriveClient()
-        response = mock.Mock()
-        post.return_value = response
+        resp = mock.Mock()
+        post.return_value = resp
 
         client._request(key="value")
         assert json_loads.called
 
     @mock.patch('json.loads')
-    @mock.patch('requests.post')
-    def test_request_exception(self, post, json_loads):
+    def test_request_exception(self, json_loads, post):
         client = HyperdriveClient()
-        response = mock.Mock()
-        post.return_value = response
+        resp = mock.Mock()
+        post.return_value = resp
 
         exception = Exception()
-        response.raise_for_status.side_effect = exception
+        resp.raise_for_status.side_effect = exception
 
         with self.assertRaises(Exception) as exc:
             client._request(key="value")
-            assert exc is exception
-            assert not json_loads.called
+
+        assert exc.exception is exception
+        assert not json_loads.called
 
     @mock.patch('json.loads')
-    @mock.patch('requests.post')
-    def test_request_http_error(self, post, json_loads):
+    def test_request_http_error(self, json_loads, post):
         client = HyperdriveClient()
-        response = mock.Mock()
-        post.return_value = response
+        resp = mock.Mock()
+        post.return_value = resp
 
         exception = HTTPError()
-        response.raise_for_status.side_effect = exception
+        resp.raise_for_status.side_effect = exception
 
         with self.assertRaises(HTTPError) as exc:
             client._request(key="value")
-            assert exc is not exception
-            assert not json_loads.called
+
+        assert exc.exception is not exception
+        assert not json_loads.called
 
 
-class TestHyperdriveClientAsync(unittest.TestCase):
+class TestHyperdriveClientAsync(TestCase):
 
     @staticmethod
     def success(*_):
         d = Deferred()
-        d.callback(True)
+        d.callback(mock.Mock(code=200))
         return d
 
     @staticmethod
@@ -210,19 +194,20 @@ class TestHyperdriveClientAsync(unittest.TestCase):
             d.callback(b'{"hash": "0a0b0c0d"}')
             return d
 
+        files = {'path/to/file': 'file'}
+
         with mock.patch('golem.network.hyperdrive.client.readBody',
                         side_effect=body), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             client = HyperdriveAsyncClient()
-            files = {'path/to/file': 'file'}
             wrapper = client.add_async(files)
             assert wrapper.called
             assert isinstance(wrapper.result, str)
 
 
-class TestHyperdriveClientOptions(unittest.TestCase):
+class TestHyperdriveClientOptions(TestCase):
 
     def test_clone(self):
         peers = [
@@ -282,7 +267,7 @@ class TestHyperdriveClientOptions(unittest.TestCase):
         assert filtered.options['peers'] == peers
         assert options.filtered('invalid client', version) is None
 
-    @unittest.skip('Private IP filtering is temporarily disabled')
+    @skip('Private IP filtering is temporarily disabled')
     def test_filter_peers(self):
         peers_local = [
             dict(

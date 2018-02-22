@@ -63,6 +63,12 @@ def random_hex_str() -> str:
     return str(uuid.uuid4()).replace('-', '')
 
 
+def done_deferred(return_value=None):
+    deferred = Deferred()
+    deferred.callback(return_value)
+    return deferred
+
+
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
@@ -403,6 +409,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert self.client.p2pservice.disconnect.called
         assert self.client.task_server.disconnect.called
 
+    @patch('golem.client.path')
+    @patch('golem.client.async_run', mock_async_run)
     @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
@@ -419,8 +427,23 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start()
         sync_wait(deferred)
 
+        def create_resource_package(*_args):
+            result = 'package_path', 'package_sha1'
+            return done_deferred(result)
+
+        def add_task(*_args):
+            resource_manager_result = 'res_hash', ['res_file_1']
+            result = resource_manager_result, 'package_hash'
+            return done_deferred(result)
+
+        self.client.resource_server = Mock(
+            create_resource_package=Mock(side_effect=create_resource_package),
+            add_task=Mock(side_effect=add_task)
+        )
+
         task_manager = self.client.task_server.task_manager
 
+        task_manager.dump_task = Mock()
         task_manager.listen_address = '127.0.0.1'
         task_manager.listen_port = 40103
 
@@ -442,11 +465,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        task_id = self.client.create_task(task_dict)
+        task_id = sync_wait(self.client.create_task(task_dict))
 
         assert task_id is not None
 
-        new_task_id = self.client.restart_task(task_id)
+        new_task_id = sync_wait(self.client.restart_task(task_id))
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[
@@ -456,7 +479,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             for ss
             in task_manager.tasks_states[task_id].subtask_states.values())
         assert task_manager.tasks_states[new_task_id].status \
-            == TaskStatus.notStarted
+            == TaskStatus.waiting
 
 
 class TestDoWorkService(TestWithReactor):
@@ -695,7 +718,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+                '.register_handler', ):
             client = Client(
                 datadir=self.path,
                 config_desc=ClientConfigDescriptor(),
@@ -706,13 +729,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             )
 
         client.sync = Mock()
-        client.keys_auth = Mock()
-        client.keys_auth.key_id = str(uuid.uuid4())
-        client.p2pservice = Mock()
-        client.p2pservice.peers = {}
+        client.keys_auth = Mock(key_id=str(uuid.uuid4()))
+        client.p2pservice = Mock(peers={})
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+                '.register_handler', ):
             client.task_server = TaskServer(
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
@@ -784,41 +805,33 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
              "num_subtasks": 5}
         ) == 1875
 
+    @patch('golem.client.get_resources_for_task')
+    def test_enqueue_new_task_from_type(self, *_):
+        c = self.client
+        c.resource_server = Mock()
+        c.task_server = Mock()
+
+        task_header = Mock(
+            max_price=1 * 10**18,
+            task_id=str(uuid.uuid4())
+        )
+        task = Mock(
+            header=task_header,
+            get_resources=Mock(return_value=[])
+        )
+
+        c.enqueue_new_task(task)
+        assert not c.task_server.task_manager.create_task.called
+
+        c.enqueue_new_task(dict(
+            max_price=1 * 10**18,
+            task_id=str(uuid.uuid4())
+        ))
+        assert c.task_server.task_manager.create_task.called
+
+    @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
-        c = self.client
-
-        c.resource_server = Mock()
-        c.task_server.task_manager.start_task = Mock()
-        c.task_server.task_manager.dump_task = Mock()
-        c.task_server.task_manager.listen_address = '127.0.0.1'
-        c.task_server.task_manager.listen_port = 40103
-        c.keys_auth = Mock()
-        c.keys_auth.key_id = str(uuid.uuid4())
-
-        task = Mock()
-        task.header.max_price = 1 * 10**18
-        task.header.task_id = str(uuid.uuid4())
-        task.get_resources.return_value = []
-
-        c.enqueue_new_task(task)
-        task.get_resources.assert_called_with()
-
-        assert c.resource_server.add_task.called
-        assert not c.task_server.task_manager.start_task.called
-
-        deferred = Deferred()
-        deferred.callback((['file_1', 'file_2'], 'hash'))
-        c.task_server.task_manager.tasks.pop(task.header.task_id, None)
-
-        c.resource_server.add_task.called = False
-        c.resource_server.add_task.return_value = deferred
-
-        c.enqueue_new_task(task)
-        assert c.task_server.task_manager.start_task.called
-
-    @patch('golem.client.async_run', side_effect=mock_async_run)
-    def test_enqueue_new_task_dict(self, *_):
         t_dict = {
             'resources': [
                 '/Users/user/Desktop/folder/texture.tex',
@@ -840,23 +853,39 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             }
         }
 
+        def start_task(_, tid):
+            return tid
+
         def add_new_task(instance, task, *_args, **_kwargs):
             instance.tasks_states[task.header.task_id] = TaskState()
 
+        def create_resource_package(*_args):
+            result = 'package_path', 'package_sha1'
+            return done_deferred(result)
+
+        def add_task(*_args):
+            resource_manager_result = 'res_hash', ['res_file_1']
+            result = resource_manager_result, 'package_hash'
+            return done_deferred(result)
+
         c = self.client
         c.resource_server = Mock()
-        c.keys_auth = Mock()
-        c.keys_auth.key_id = str(uuid.uuid4())
-        c.task_server.task_manager.start_task = Mock()
+
+        c.task_server.task_manager.start_task = MethodType(
+            start_task, c.task_server.task_manager)
         c.task_server.task_manager.add_new_task = MethodType(
             add_new_task, c.task_server.task_manager)
 
-        task = c.enqueue_new_task(t_dict)
+        c.resource_server.create_resource_package = Mock(
+            side_effect=create_resource_package)
+        c.resource_server.add_task = Mock(
+            side_effect=add_task)
+
+        deferred = c.enqueue_new_task(t_dict)
+        task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id
-
         assert c.resource_server.add_task.called
-        assert not c.task_server.task_manager.start_task.called
 
         task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task

@@ -270,14 +270,12 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ccd2.use_distributed_resource_management = 0
         ccd2.task_request_interval = 31
         # ccd2.use_waiting_ttl = False
-        ccd2.waiting_for_task_timeout = 90
         ts.change_config(ccd2)
         self.assertEqual(ts.config_desc, ccd2)
         self.assertEqual(ts.last_message_time_threshold, 124)
         self.assertEqual(ts.task_keeper.min_price, 0.0057)
         self.assertEqual(ts.task_manager.use_distributed_resources, False)
         self.assertEqual(ts.task_computer.task_request_frequency, 31)
-        self.assertEqual(ts.task_computer.waiting_for_task_timeout, 90)
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_add_task_header(self, *_):

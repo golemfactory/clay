@@ -16,7 +16,7 @@ environment:
       PYTHON_ARCH: "64"
 
       VER_GETH: geth-windows-amd64-1.7.2-1db4ecdc
-      VER_HYPERG: 0.2.1
+      VER_HYPERG: 0.2.4
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
