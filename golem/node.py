@@ -1,8 +1,8 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults
+from twisted.internet.defer import gatherResults, Deferred
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -16,10 +16,6 @@ from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session
 
 logger = logging.getLogger("app")
-
-
-def _error(msg: str):
-    return lambda err: logger.error("%s error: %r", msg, err)
 
 
 class Node(object):
@@ -65,18 +61,18 @@ class Node(object):
             geth_address=geth_address,
         )
 
-    def start(self):
+    def start(self) -> None:
         try:
             rpc = self._start_rpc()
             keys = self._start_keys_auth()
             docker = self._start_docker()
             gatherResults([rpc, keys, docker], consumeErrors=True).addCallbacks(
-                self._setup_client, _error('rpc, keys or docker'))
+                self._setup_client, self._error('rpc, keys or docker'))
             self._reactor.run()
         except Exception as exc:
             logger.exception("Application error: %r", exc)
 
-    def _start_rpc(self):
+    def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
             host=self._config_desc.rpc_address,
             port=self._config_desc.rpc_port,
@@ -86,22 +82,24 @@ class Node(object):
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
         return deferred
 
-    def _start_keys_auth(self):
+    def _start_keys_auth(self) -> Deferred:
         return threads.deferToThread(
             KeysAuth,
             datadir=self._datadir,
             difficulty=self._config_desc.key_difficulty
         )
 
-    def _start_docker(self):
-        if self._use_docker_manager:
-            def start_docker():
-                docker: DockerManager = DockerManager.install(self._config_desc)
-                docker.check_environment()  # pylint: disable=no-member
-            return threads.deferToThread(start_docker)
-        return None
+    def _start_docker(self) -> Deferred:
+        if not self._use_docker_manager:
+            return None
 
-    def _setup_client(self, gathered_results: List):
+        def start_docker():
+            docker: DockerManager = DockerManager.install(self._config_desc)
+            docker.check_environment()  # pylint: disable=no-member
+
+        return threads.deferToThread(start_docker)
+
+    def _setup_client(self, gathered_results: List) -> None:
         keys_auth = gathered_results[1]
         self.client = self._client_factory(keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
@@ -112,9 +110,9 @@ class Node(object):
                               methods=methods)
         self.client.configure_rpc(rpc_session)
         rpc_session.connect().addCallbacks(
-            async_callback(self._run), _error('Session connect'))
+            async_callback(self._run), self._error('session connect'))
 
-    def _run(self, *_):
+    def _run(self, *_) -> None:
         self._setup_apps()
         self.client.sync()
 
@@ -125,10 +123,17 @@ class Node(object):
         except SystemExit:
             self._reactor.callFromThread(self._reactor.stop)
 
-    def _setup_apps(self):
+    def _setup_apps(self) -> None:
         apps_manager = AppsManager()
         apps_manager.load_apps()
 
         for env in apps_manager.get_env_list():
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
+
+    def _error(self, msg: str) -> Callable:
+        def log_error_and_stop_reactor(err):
+            logger.error("Stopping because of %s error: %r", msg, err)
+            self._reactor.callFromThread(self._reactor.stop)
+
+        return log_error_and_stop_reactor
