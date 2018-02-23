@@ -6,9 +6,8 @@ import json
 from collections import Callable
 from threading import Lock
 from shutil import copy
-
-from twisted.internet import reactor
 from functools import partial
+from twisted.internet import reactor
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.task.blendercropper import BlenderCropper
