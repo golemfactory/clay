@@ -40,7 +40,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server: 'TaskServer', use_docker_machine_manager=True):
+    def __init__(self, node_name, task_server, use_docker_manager=True) -> None:
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -72,10 +72,10 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerManager.install()
-        if use_docker_machine_manager:
+        if use_docker_manager:
             self.docker_manager.check_environment()
 
-        self.use_docker_machine_manager = use_docker_machine_manager
+        self.use_docker_manager = use_docker_manager
         run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
         self.change_config(task_server.config_desc, in_background=False,
                            run_benchmarks=run_benchmarks)
@@ -297,7 +297,7 @@ class TaskComputer(object):
             self.task_server.benchmark_manager.run_all_benchmarks()
             return
 
-        if dm.docker_machine and self.use_docker_machine_manager:
+        if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
 
             self.lock_config(True)
 
