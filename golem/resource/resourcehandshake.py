@@ -118,7 +118,7 @@ class ResourceHandshakeSessionMixin:
             options = self.task_server.get_share_options(handshake.nonce,
                                                          key_id)
             self.send(message.ResourceHandshakeStart(resource=handshake.hash,
-                                                     options=options))
+                                                     options=options.__dict__))
 
         self._download_handshake_nonce(key_id, msg.resource, msg.options)
 
@@ -241,7 +241,7 @@ class ResourceHandshakeSessionMixin:
 
         os.remove(handshake.file)
         self.send(message.ResourceHandshakeStart(resource=handshake.hash,
-                                                 options=options))
+                                                 options=options.__dict__))
 
     # ########################
     #      DOWNLOAD NONCE
