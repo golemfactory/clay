@@ -18,7 +18,7 @@ from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verifier import LuxRenderVerifier
 from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
-from apps.rendering.resources.utils import save_image_or_log_error
+from apps.rendering.resources.utils import handle_image_error
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
@@ -494,48 +494,49 @@ class LuxTask(renderingtask.RenderingTask):
         for f in preview_files:
             self._update_preview(f, None)
         if len(preview_files) == 0:
-            img = self._open_preview()
-            img.close()
+            with handle_image_error(logger), \
+                    self._open_preview():
+                pass  # just create the image
 
+    @handle_image_error(logger)
     def __update_preview_from_pil_file(self, new_chunk_file_path):
-        img = Image.open(new_chunk_file_path)
-        scaled = img.resize((int(round(self.scale_factor * self.res_x)),
-                             int(round(self.scale_factor * self.res_y))),
-                            resample=Image.BILINEAR)
-        img.close()
-
-        img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, scaled, 1.0 / self.num_add)
-        save_image_or_log_error(img_current, self.preview_file_path,
-                                PREVIEW_EXT)
-        img.close()
-        scaled.close()
-        img_current.close()
+        with Image.open(new_chunk_file_path) as img, \
+                img.resize((int(round(self.scale_factor * self.res_x)),
+                            int(round(self.scale_factor * self.res_y))),
+                           resample=Image.BILINEAR) as scaled, \
+                self._open_preview() as img_current, \
+                ImageChops.blend(img_current,
+                                 scaled, 1.0 / self.num_add) as img_blended:
+            img_blended.save(self.preview_file_path, PREVIEW_EXT)
 
     def _update_preview_from_exr(self, new_chunk_file):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
-            self.preview_exr = blend(
-                self.preview_exr,
-                load_img(new_chunk_file),
-                1.0 / self.num_add
-            )
+            new_preview_exr = load_img(new_chunk_file)
+            if new_preview_exr is not None:
+                self.preview_exr = blend(
+                    self.preview_exr,
+                    new_preview_exr,
+                    1.0 / self.num_add
+                )
 
-        img_current = self._open_preview()
-        img = self.preview_exr.to_pil()
-        scaled = ImageOps.fit(
-            img,
-            (
-                int(round(self.scale_factor * self.res_x)),
-                int(round(self.scale_factor * self.res_y))
-            ),
-            method=Image.BILINEAR
-        )
-        save_image_or_log_error(scaled, self.preview_file_path, PREVIEW_EXT)
-        img.close()
-        scaled.close()
-        img_current.close()
+        if self.preview_exr is None:
+            return
+
+        # self._open_preview() is just to properly initalize some variables
+        with handle_image_error(logger), \
+                self._open_preview(), \
+                self.preview_exr.to_pil() as img, \
+                ImageOps.fit(
+                    img,
+                    (
+                        int(round(self.scale_factor * self.res_x)),
+                        int(round(self.scale_factor * self.res_y))
+                    ),
+                    method=Image.BILINEAR
+                ) as scaled:
+            scaled.save(self.preview_file_path, PREVIEW_EXT)
 
     def create_reference_data_for_task_validation(self):
         for i in range(0, self.reference_runs):

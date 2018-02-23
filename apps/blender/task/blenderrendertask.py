@@ -21,7 +21,7 @@ from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.utils import save_image_or_log_error
+from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
@@ -69,13 +69,15 @@ class PreviewUpdater(object):
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
-        
-        try:
-            img = load_as_pil(subtask_path)
+
+        with handle_image_error(logger) as handler_result, \
+                handle_none(load_as_pil(subtask_path),
+                            raise_if_none=IOError("load_as_pil failed")) \
+                as subtask_img:
 
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
-                _, img_y = img.size
+                _, img_y = subtask_img.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
 
@@ -86,27 +88,23 @@ class PreviewUpdater(object):
             else:
                 height = self.expected_offsets[subtask_number + 1] - \
                          self.expected_offsets[subtask_number]
-            
-            img = img.resize((self.preview_res_x, height),
-                             resample=Image.BILINEAR)
 
-            if not os.path.exists(self.preview_file_path) \
-               or len(self.chunks) == 1:
-                img_offset = Image.new("RGB", (self.preview_res_x,
-                                               self.preview_res_y))
-                img_offset.paste(img, (0, offset))
-                save_image_or_log_error(img_offset, self.preview_file_path,
-                                        PREVIEW_EXT)
-                img_offset.close()
-            else:
-                img_current = Image.open(self.preview_file_path)
-                img_current.paste(img, (0, offset))
-                save_image_or_log_error(img_current, self.preview_file_path,
-                                        PREVIEW_EXT)
-                img_current.close()
-            img.close()
-        except Exception:
-            logger.exception("Error in Blender update preview:")
+            with subtask_img.resize((self.preview_res_x, height),
+                                    resample=Image.BILINEAR) \
+                    as subtask_img_resized:
+                def open_or_create_image():
+                    if not os.path.exists(self.preview_file_path) \
+                            or len(self.chunks) == 1:
+                        return Image.new("RGB", (self.preview_res_x,
+                                                 self.preview_res_y))
+                    else:
+                        return Image.open(self.preview_file_path)
+
+                with open_or_create_image() as preview_img:
+                    preview_img.paste(subtask_img_resized, (0, offset))
+                    preview_img.save(self.preview_file_path, PREVIEW_EXT)
+
+        if not handler_result.success:
             return
 
         if subtask_number == self.perfectly_placed_subtasks and \
@@ -119,9 +117,10 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
-            img = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
-            save_image_or_log_error(img, self.preview_file_path, PREVIEW_EXT)
-            img.close()
+            with handle_image_error(logger), \
+                    Image.new("RGB", (self.preview_res_x, self.preview_res_y)) \
+                    as img:
+                img.save(self.preview_file_path, PREVIEW_EXT)
 
 
 class BlenderTaskTypeInfo(CoreTaskTypeInfo):
@@ -537,20 +536,19 @@ class BlenderRenderTask(FrameRenderingTask):
                               final=False):
         num = self.frames.index(frame_num)
         if final:
-            img = load_as_pil(new_chunk_file_path)
-            scaled = img.resize((int(round(self.res_x * self.scale_factor)),
-                                 int(round(self.res_y * self.scale_factor))),
-                                resample=Image.BILINEAR)
+            with handle_image_error(logger), \
+                    handle_none(load_as_pil(new_chunk_file_path),
+                                raise_if_none=IOError("load_as_pil failed")) \
+                    as img, \
+                    img.resize((int(round(self.res_x * self.scale_factor)),
+                                int(round(self.res_y * self.scale_factor))),
+                               resample=Image.BILINEAR) as scaled:
 
-            preview_task_file_path = self._get_preview_task_file_path(num)
-            self.last_preview_path = preview_task_file_path
+                preview_task_file_path = self._get_preview_task_file_path(num)
+                self.last_preview_path = preview_task_file_path
 
-            save_image_or_log_error(scaled, preview_task_file_path, PREVIEW_EXT)
-            save_image_or_log_error(scaled, self._get_preview_file_path(num),
-                                    PREVIEW_EXT)
-
-            scaled.close()
-            img.close()
+                scaled.save(preview_task_file_path, PREVIEW_EXT)
+                scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
         else:
             self.preview_updaters[num].update_preview(new_chunk_file_path, part)
             self._update_frame_task_preview()
@@ -563,9 +561,9 @@ class BlenderRenderTask(FrameRenderingTask):
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-            image = collector.finalize()
-            save_image_or_log_error(image, output_file_name, self.output_format)
-            image.close()
+            with handle_image_error(logger), \
+                    collector.finalize() as image:
+                image.save(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -601,9 +599,9 @@ class BlenderRenderTask(FrameRenderingTask):
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
-            image = collector.finalize()
-            save_image_or_log_error(image, output_file_name, self.output_format)
-            image.close()
+            with handle_image_error(logger), \
+                    collector.finalize() as image:
+                image.save(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
         self.collected_file_names[frame_num] = output_file_name
@@ -641,14 +639,14 @@ class CustomCollector(RenderingTaskCollector):
         self.current_offset = 0
     
     def _paste_image(self, final_img, new_part, num):
-        img_offset = Image.new("RGB", (self.width, self.height))
-        offset = self.current_offset
-        _, new_img_res_y = new_part.size
-        self.current_offset += new_img_res_y
-        img_offset.paste(new_part, (0, offset))
-        result = ImageChops.add(final_img, img_offset)
-        img_offset.close()
-        return result
+        with handle_image_error(logger), \
+                Image.new("RGB", (self.width, self.height)) as img_offset:
+            offset = self.current_offset
+            _, new_img_res_y = new_part.size
+            self.current_offset += new_img_res_y
+            img_offset.paste(new_part, (0, offset))
+            result = ImageChops.add(final_img, img_offset)
+            return result
 
 
 def generate_expected_offsets(parts, res_x, res_y):

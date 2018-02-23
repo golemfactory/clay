@@ -2,6 +2,8 @@ import os
 import abc
 import logging
 from copy import deepcopy
+from typing import Optional
+
 import OpenEXR
 import Imath
 from PIL import Image
@@ -146,11 +148,11 @@ class EXRImgRepr(ImgRepr):
         return e
 
 
-def load_img(file_):
+def load_img(file_: str) -> Optional[ImgRepr]:
     """
     Load image from file path and return ImgRepr
-    :param str file_: path to the file
-    :return ImgRepr | None: Return ImgRepr for special file type or None
+    :param file_: path to the file
+    :return: Return ImgRepr for special file type or None
     if there was an error
     """
     try:
@@ -166,10 +168,10 @@ def load_img(file_):
         return None
 
 
-def load_as_pil(file_):
+def load_as_pil(file_: str) -> Optional[Image.Image]:
     """ Load image from file path and retun PIL Image representation
-     :param str file_: path to the file
-     :return Image.Image | None: return PIL Image represantion or None
+     :param file_: path to the file
+     :return : return PIL Image represantion or None
      if there was an error
     """
 
@@ -178,7 +180,7 @@ def load_as_pil(file_):
         return img.to_pil()
 
 
-def load_as_PILImgRepr(file_) -> PILImgRepr:
+def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:
     img = load_img(file_)
 
     if isinstance(img, EXRImgRepr):
