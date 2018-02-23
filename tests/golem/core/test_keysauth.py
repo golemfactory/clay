@@ -139,8 +139,9 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         private_key = ek._private_key
         public_key = ek.public_key
         del ek
-        assert logger.info.call_count == 1
-        assert logger.info.call_args[0][0] == 'Generating new key pair.'
+        assert logger.info.call_count == 2
+        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
+        assert logger.info.call_args_list[1][0][0] == 'Keys generated in %.2fs'
         logger.reset_mock()  # just in case
 
         # when

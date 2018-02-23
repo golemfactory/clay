@@ -7,7 +7,7 @@ from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from threading import Lock, Thread
-from typing import Dict, Hashable
+from typing import Dict, Hashable, Optional
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -19,7 +19,7 @@ from twisted.internet.defer import (
 import golem
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL)
-from golem.clientconfigdescriptor import ConfigApprover
+from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode, string_to_timeout
@@ -51,16 +51,15 @@ from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
-# noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
+from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
-from golem.task.taskarchiver import TaskArchiver
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
@@ -83,17 +82,18 @@ class ClientTaskComputerEventListener(object):
 class Client(HardwarePresetsMixin):
     _services = []  # type: List[IService]
 
-    def __init__(
+    def __init__(  # noqa pylint: disable=too-many-arguments
             self,
-            datadir,
-            config_desc,
-            transaction_system=False,
-            connect_to_known_hosts=True,
-            use_docker_machine_manager=True,
-            use_monitor=True,
-            start_geth=False,
-            start_geth_port=None,
-            geth_address=None):
+            datadir: str,
+            config_desc: ClientConfigDescriptor,
+            keys_auth: KeysAuth,
+            transaction_system: bool = False,
+            connect_to_known_hosts: bool = True,
+            use_docker_manager: bool = True,
+            use_monitor: bool = True,
+            start_geth: bool = False,
+            start_geth_port: Optional[int] = None,
+            geth_address: Optional[str] = None) -> None:
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -120,9 +120,7 @@ class Client(HardwarePresetsMixin):
         HardwarePresets.update_config(self.config_desc.hardware_preset_name,
                                       self.config_desc)
 
-        self.keys_auth = KeysAuth(
-            self.datadir,
-            difficulty=self.config_desc.key_difficulty)
+        self.keys_auth = keys_auth
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
@@ -177,7 +175,7 @@ class Client(HardwarePresetsMixin):
         else:
             self.transaction_system = None
 
-        self.use_docker_machine_manager = use_docker_machine_manager
+        self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
         self.daemon_manager = None
@@ -277,7 +275,7 @@ class Client(HardwarePresetsMixin):
                 self.config_desc,
                 self,
                 use_ipv6=self.config_desc.use_ipv6,
-                use_docker_machine_manager=self.use_docker_machine_manager,
+                use_docker_manager=self.use_docker_manager,
                 task_archiver=self.task_archiver)
 
             monitoring_publisher_service = MonitoringPublisherService(
@@ -525,13 +523,6 @@ class Client(HardwarePresetsMixin):
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
-
-    def set_resource_port(self, resource_port):
-        self.resource_port = resource_port
-        self.p2pservice.set_resource_peer(
-            self.node.prv_addr,
-            self.resource_port
-        )
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
@@ -1052,24 +1043,6 @@ class Client(HardwarePresetsMixin):
             golem.__version__,
             self.config_desc
         )
-
-    def __try_to_change_to_number(
-        self,
-        old_value,
-        new_value,
-        to_int=False,
-        to_float=False,
-        name="Config"
-    ):
-        try:
-            if to_int:
-                new_value = int(new_value)
-            elif to_float:
-                new_value = float(new_value)
-        except ValueError:
-            log.warning("%s value '%s' is not a number", name, new_value)
-            new_value = old_value
-        return new_value
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
