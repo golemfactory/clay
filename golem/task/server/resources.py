@@ -6,7 +6,6 @@ import requests
 from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT, \
     HyperdriveClientOptions
 from golem.resource import resource
-from golem.resource.client import ClientOptions
 from golem.resource.hyperdrive import resource as hpd_resource
 
 
@@ -88,7 +87,7 @@ class TaskResourcesMixin():
         self.task_manager.delete_task(task_id)
 
     def get_download_options(self,
-                             received_options: ClientOptions,
+                             received_options: HyperdriveClientOptions,
                              address: Optional[str] = None,
                              task_id: Optional[str] = None):
 
