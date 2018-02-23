@@ -1,350 +1,374 @@
+# pylint: disable=protected-access, no-self-use
+import datetime
 import logging
 import time
 from unittest import mock, TestCase
+import urllib
 
+
+from freezegun import freeze_time
+import golem_messages
 from golem_messages import message
+import golem_messages.cryptography
+import golem_messages.exceptions
+import requests
 from requests.exceptions import RequestException
 
-from golem.core.variables import CONCENT_URL
-from golem.network.concent.client import ConcentClient, ConcentRequestStatus, \
-    ConcentClientService, ConcentRequest
-from golem.network.concent.exceptions import ConcentUnavailableException, \
-    ConcentServiceException, ConcentRequestException
+from golem import testutils
+from golem.core import keysauth
+from golem.core import variables
+from golem.network.concent import client
+from golem.network.concent import constants
+from golem.network.concent import exceptions
+
+from tests.factories import messages as msg_factories
 
 logger = logging.getLogger(__name__)
 
 
-def mock_sign(*_):
-    return b'0' * message.Message.SIG_LEN
+class TestVerifyResponse(TestCase):
+    def setUp(self):
+        self.response = requests.Response()
+        self.response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+
+    def test_message_client_error(self):
+        self.response.status_code = 400
+        with self.assertRaises(exceptions.ConcentRequestError):
+            client.verify_response(self.response)
+
+    def test_message_server_error(self):
+        self.response.status_code = 500
+        with self.assertRaises(exceptions.ConcentServiceError):
+            client.verify_response(self.response)
+
+    def test_version_mismatch(self):
+        self.response.headers['Concent-Golem-Messages-Version'] = 'dummy'
+        with self.assertRaises(exceptions.ConcentVersionMismatchError):
+            client.verify_response(self.response)
 
 
-def mock_encrypt(source):
-    return source
+@mock.patch('requests.post')
+class TestSendToConcent(TestCase):
+    def setUp(self):
+        self.msg = msg_factories.ForceReportComputedTask()
+        node_keys = golem_messages.cryptography.ECCx(None)
+        self.private_key = node_keys.raw_privkey
+        self.public_key = node_keys.raw_pubkey
+
+    def test_message(self, post_mock):
+        response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+        response.status_code = 200
+        post_mock.return_value = response
+
+        client.send_to_concent(
+            msg=self.msg,
+            signing_key=self.private_key,
+            public_key=self.public_key,
+        )
+        api_send_url = urllib.parse.urljoin(
+            variables.CONCENT_URL,
+            '/api/v1/send/'
+        )
+        post_mock.assert_called_once_with(
+            api_send_url,
+            data=mock.ANY,
+            headers=mock.ANY
+        )
+
+    def test_request_exception(self, post_mock):
+        post_mock.side_effect = RequestException
+        with self.assertRaises(exceptions.ConcentUnavailableError):
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
+
+        self.assertEqual(post_mock.call_count, 1)
+
+    @mock.patch('golem.network.concent.client.verify_response')
+    def test_verify_response(self, verify_mock, post_mock):
+        response = requests.Response()
+        post_mock.return_value = response
+        client.send_to_concent(
+            msg=self.msg,
+            signing_key=self.private_key,
+            public_key=self.public_key,
+        )
+        verify_mock.assert_called_once_with(response)
 
 
-mock_msg = message.ForceReportComputedTask('subtask_id')
-mock_msg_data = mock_msg.serialize(
-    sign_func=mock_sign,
-    encrypt_func=mock_encrypt
-)
+@mock.patch('requests.get')
+class TestReceiveFromConcent(TestCase):
+    def setUp(self):
+        self.msg = msg_factories.ForceReportComputedTask()
+        node_keys = golem_messages.cryptography.ECCx(None)
+        self.private_key = node_keys.raw_privkey
+        self.public_key = node_keys.raw_pubkey
 
-# Succesfull mock
-mock_success = mock.MagicMock()
-mock_success.status_code = 200
-mock_success.content = mock_msg_data
+    def test_empty_content(self, get_mock):
+        response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+        response._content = b''
+        response.status_code = 200
+        get_mock.return_value = response
+        result = client.receive_from_concent(
+            public_key=self.public_key,
+        )
+        self.assertIsNone(result)
 
-# Succesfull empty mock
-mock_empty = mock.MagicMock()
-mock_empty.status_code = 200
-mock_empty.content = ""
+    def test_content(self, get_mock):
+        response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+        response._content = content = object()
+        response.status_code = 200
+        get_mock.return_value = response
+        result = client.receive_from_concent(
+            public_key=self.public_key,
+        )
+        self.assertIs(result, content)
 
-# Client error mock
-mock_client_error = mock.MagicMock()
-mock_client_error.status_code = 400
-mock_client_error.content = mock_msg_data
+    def test_request_exception(self, get_mock):
+        get_mock.side_effect = RequestException
+        with self.assertRaises(exceptions.ConcentUnavailableError):
+            client.receive_from_concent(
+                public_key=self.public_key,
+            )
 
-# Server error mock
-mock_server_error = mock.MagicMock()
-mock_server_error.status_code = 500
-mock_server_error.content = mock_msg_data
+        self.assertEqual(get_mock.call_count, 1)
 
-
-# Exception mock
-def connection_error(*args, **kwargs):
-    response = mock.MagicMock()
-    response.status_code = 500
-    response.content = b"ERROR"
-    kwargs['response'] = response
-    raise RequestException(args, kwargs)
-
-
-class TestConcentClient(TestCase):
-
-    @mock.patch('requests.post', return_value=mock_success)
-    def test_message(self, mock_requests_post):
-
-        client = ConcentClient()
-        response = client.send(data=mock_msg_data)
-
-        self.assertEqual(response, mock_msg_data)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('requests.post', return_value=mock_empty)
-    def test_message_empty(self, mock_requests_post):
-
-        client = ConcentClient()
-        response = client.send(data=mock_msg_data)
-
-        self.assertEqual(response, None)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('requests.post', return_value=mock_client_error)
-    def test_message_client_error(self, mock_requests_post):
-
-        client = ConcentClient()
-
-        with self.assertRaises(ConcentRequestException):
-            client.send(data=mock_msg_data)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('requests.post', return_value=mock_server_error)
-    def test_message_server_error(self, mock_requests_post):
-
-        client = ConcentClient()
-
-        with self.assertRaises(ConcentServiceException):
-            client.send(data=mock_msg_data)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('requests.post', side_effect=RequestException)
-    def test_message_exception(self, mock_requests_post):
-
-        client = ConcentClient()
-
-        with self.assertRaises(ConcentUnavailableException):
-            client.send(data=mock_msg_data)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('requests.post', side_effect=connection_error)
-    def test_message_exception_data(self, mock_requests_post):
-
-        client = ConcentClient()
-
-        with self.assertRaises(ConcentUnavailableException):
-            client.send(data=mock_msg_data)
-
-        mock_requests_post.assert_called_with(CONCENT_URL, data=mock_msg_data)
-
-    @mock.patch('golem.network.concent.client.logger')
-    @mock.patch('time.time', side_effect=[time.time(), (time.time()+(6*60)),
-                                          time.time()])
-    @mock.patch('requests.post', return_value=mock_server_error)
-    def test_message_error_repeat_retry(self, mock_requests_post,
-                                        mock_time, *_):
-
-        client = ConcentClient()
-
-        self.assertRaises(ConcentServiceException, client.send, mock_msg_data)
-        self.assertEqual(mock_time.call_count, 0)
-        self.assertRaises(ConcentServiceException, client.send, mock_msg_data)
-        self.assertEqual(mock_time.call_count, 0)
-        self.assertEqual(mock_requests_post.call_count, 2)
+    @mock.patch('golem.network.concent.client.verify_response')
+    def test_verify_response(self, verify_mock, get_mock):
+        response = requests.Response()
+        get_mock.return_value = response
+        client.receive_from_concent(
+            public_key=self.public_key,
+        )
+        verify_mock.assert_called_once_with(response)
 
 
 @mock.patch('twisted.internet.reactor', create=True)
-@mock.patch('golem.network.concent.client.ConcentClientService.QUEUE_TIMEOUT',
-            0.1)
-@mock.patch('golem.network.concent.client.ConcentClient')
-class TestConcentClientService(TestCase):
+@mock.patch('golem.network.concent.client.receive_from_concent')
+@mock.patch('golem.network.concent.client.send_to_concent')
+class TestConcentClientService(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        keys_auth = keysauth.KeysAuth(datadir=self.path)
+        self.concent_service = client.ConcentClientService(
+            keys_auth=keys_auth,
+            enabled=True,
+        )
+        self.msg = message.ForceReportComputedTask()
 
-    def test_start_stop(self, *_):
-        concent_service = ConcentClientService(enabled=False)
-        concent_service._loop = mock.MagicMock()
+    def tarDown(self):
+        self.assertFalse(self.concent_service.isAlive())
 
-        concent_service.start()
-        time.sleep(1.)
-        concent_service.stop()
-        concent_service.join(timeout=3)
+    @mock.patch('golem.network.concent.client.ConcentClientService.receive')
+    @mock.patch('golem.network.concent.client.ConcentClientService._loop')
+    def test_start_stop(self, loop_mock, receive_mock, *_):
+        self.concent_service.start()
+        time.sleep(.5)
+        self.concent_service.stop()
+        self.concent_service.join(timeout=3)
 
-        assert concent_service._loop.called
+        loop_mock.assert_called_once_with()
+        receive_mock.assert_called_once_with()
 
     def test_submit(self, *_):
-        concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
-
-        concent_service.submit(
+        self.concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            self.msg,
             delay=0
         )
 
-        assert 'key' not in concent_service._delayed
-        assert 'key' in concent_service._history
+        assert 'key' not in self.concent_service._delayed
 
-        assert not concent_service.cancel('key')
-        assert concent_service.result('key')
+        assert not self.concent_service.cancel('key')
 
-        assert 'key' not in concent_service._delayed
-        assert 'key' not in concent_service._history
+        assert 'key' not in self.concent_service._delayed
 
     def test_delayed_submit(self, *_):
-        concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
-
-        concent_service.submit(
+        self.concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
-            delay=60
+            self.msg,
+            delay=datetime.timedelta(seconds=60)
         )
 
-        assert 'key' in concent_service._delayed
-        assert 'key' not in concent_service._history
+        assert 'key' in self.concent_service._delayed
 
-        assert concent_service.cancel('key')
-        assert not concent_service.result('key')
+        assert self.concent_service.cancel('key')
 
-        assert 'key' not in concent_service._delayed
-        assert 'key' not in concent_service._history
+        assert 'key' not in self.concent_service._delayed
 
-    # FIXME: remove when 'enabled' property is dropped
-    def test_disabled(self, *_):
-        concent_service = ConcentClientService(enabled=False)
-        msg = message.ForceReportComputedTask('id')
-
-        concent_service.submit(
+    def test_loop_exception(self, send_mock, *_):
+        self.concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            self.msg,
             delay=0
         )
 
-        concent_service._loop()
-        assert not concent_service._client.send.called
+        send_mock.side_effect = exceptions.ConcentRequestError
+        mock_path = ("golem.network.concent.client.ConcentClientService"
+                     "._grace_sleep")
+        with mock.patch(mock_path) as sleep_mock:
+            self.concent_service._loop()
+            sleep_mock.assert_called_once_with()
+        send_mock.assert_called_once_with(
+            self.msg,
+            self.concent_service.keys_auth._private_key,
+            self.concent_service.keys_auth.public_key,
+        )
 
-    # FIXME: remove when 'enabled' property is dropped
-    def test_enabled(self, *_):
-        concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+        assert not self.concent_service._delayed
 
-        concent_service.submit(
+    def test_loop_request_timeout(self, send_mock, *_):
+        self.assertFalse(self.concent_service.isAlive())
+        delta = constants.MSG_LIFETIMES.get(
+            self.msg.__class__,
+            constants.DEFAULT_MSG_LIFETIME,
+        )
+        with freeze_time(datetime.datetime.now()) as frozen_time:
+            self.concent_service.submit(
+                'key',
+                self.msg,
+                delay=0
+            )
+
+            self.assertEqual(send_mock.call_count, 0)
+            frozen_time.tick(delta=delta)
+            frozen_time.tick()  # on second more
+            self.concent_service._loop()
+            self.assertEqual(send_mock.call_count, 0)
+
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_loop(self, react_mock, send_mock, *_):
+        data = object()
+        send_mock.return_value = data
+        self.concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
+            self.msg,
             delay=0
         )
 
-        concent_service._loop()
-        assert concent_service._client.send.called
+        self.concent_service._loop()
+        send_mock.assert_called_once_with(
+            self.msg,
+            self.concent_service.keys_auth._private_key,
+            self.concent_service.keys_auth.public_key,
+        )
+        react_mock.assert_called_once_with(data)
 
-    @mock.patch('time.sleep')
-    def test_loop_exception(self, sleep, *_):
-        concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_receive(self, react_mock, _send_mock, receive_mock, *_):
+        receive_mock.return_value = content = object()
+        self.concent_service.receive()
+        receive_mock.assert_called_once_with(
+            self.concent_service.keys_auth.public_key,
+        )
+        react_mock.assert_called_once_with(content)
 
-        concent_service.submit(
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '._grace_sleep'
+    )
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_receive_concent_error(self,
+                                   react_mock,
+                                   sleep_mock,
+                                   _send_mock,
+                                   receive_mock,
+                                   *_):
+        receive_mock.side_effect = exceptions.ConcentError
+        self.concent_service.receive()
+        receive_mock.assert_called_once_with(mock.ANY)
+        sleep_mock.assert_called_once_with()
+        react_mock.assert_not_called()
+
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '._grace_sleep'
+    )
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.react_to_concent_message'
+    )
+    def test_receive_exception(self,
+                               react_mock,
+                               sleep_mock,
+                               _send_mock,
+                               receive_mock,
+                               *_):
+        receive_mock.side_effect = Exception
+        self.concent_service.receive()
+        receive_mock.assert_called_once_with(mock.ANY)
+        sleep_mock.assert_called_once_with()
+        react_mock.assert_not_called()
+
+    def test_react_to_concent_message_none(self, *_):
+        result = self.concent_service.react_to_concent_message(None)
+        self.assertIsNone(result)
+
+    @mock.patch(
+        'golem_messages.load',
+        side_effect=golem_messages.exceptions.MessageError,
+    )
+    def test_react_to_concent_message_error(self, load_mock, *_):
+        self.concent_service.received_messages.put = mock.Mock()
+        data = object()
+        result = self.concent_service.react_to_concent_message(data)
+        self.assertIsNone(result)
+        self.assertEqual(
+            self.concent_service.received_messages.put.call_count,
+            0,
+        )
+        load_mock.assert_called_once_with(
+            data,
+            self.concent_service.keys_auth._private_key,
+            variables.CONCENT_PUBKEY,
+        )
+
+    @mock.patch('golem_messages.load')
+    def test_react_to_concent_message(self, load_mock, *_):
+        self.concent_service.received_messages.put = mock.Mock()
+        data = object()
+        load_mock.return_value = msg = mock.Mock()
+        result = self.concent_service.react_to_concent_message(data)
+        self.assertIsNone(result)
+        self.concent_service.received_messages.put.assert_called_once_with(msg)
+        load_mock.assert_called_once_with(
+            data,
+            self.concent_service.keys_auth._private_key,
+            variables.CONCENT_PUBKEY,
+        )
+
+
+class ConcentCallLaterTestCase(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.concent_service = client.ConcentClientService(
+            keys_auth=keysauth.KeysAuth(datadir=self.path),
+            enabled=True,
+        )
+        self.msg = message.ForceReportComputedTask()
+
+    def test_submit(self):
+        # Shouldn't fail
+        self.concent_service.submit(
             'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
-            delay=0
+            self.msg,
+            datetime.timedelta(seconds=1)
         )
-
-        def raise_exc(*_a, **_kw):
-            raise ConcentRequestException()
-
-        concent_service._client.send.side_effect = raise_exc
-        concent_service._loop()
-        assert concent_service._client.send.called
-        assert sleep.called
-
-        req = concent_service.result('key')
-        assert req.status == ConcentRequestStatus.Error
-        assert isinstance(req.content, ConcentRequestException)
-
-        assert not concent_service._delayed
-        assert not concent_service._history
-
-    @mock.patch.dict('golem.network.concent.constants.MSG_LIFETIMES', {
-        message.ForceReportComputedTask: -10
-    })
-    def test_loop_request_timeout(self, *_):
-        concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
-
-        concent_service.submit(
-            'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
-            delay=0
-        )
-
-        concent_service._loop()
-        req = concent_service.result('key')
-        assert not concent_service._client.send.called
-        assert req.status == ConcentRequestStatus.TimedOut
-
-    def test_loop(self, *_):
-        concent_service = ConcentClientService(enabled=True)
-        msg = message.ForceReportComputedTask('id')
-
-        concent_service.submit(
-            'key',
-            msg.serialize(mock_sign),
-            msg.__class__,
-            delay=0
-        )
-
-        concent_service._loop()
-        req = concent_service.result('key')
-        assert concent_service._client.send.called
-        assert req.status == ConcentRequestStatus.Success
-
-
-class TestConcentRequest(TestCase):
-
-    def test(self):
-        key = ConcentRequest.build_key(
-            'subtask_id',
-            message.ForceReportComputedTask
-        )
-
-        msg = message.ForceReportComputedTask('id')
-        msg_data = msg.serialize(mock_sign)
-        msg_cls = msg.__class__
-
-        lifetime = 10.5
-
-        req = ConcentRequest(key, msg_data, msg_cls, lifetime)
-
-        assert isinstance(key, str)
-        assert req.key is key
-        assert req.msg_data is msg_data
-        assert req.msg_cls is msg_cls
-        assert req.status == ConcentRequestStatus.Initial
-        assert req.sent_ts is None
-        assert req.deadline_ts > time.time()
-
-
-class TestConcentRequestStatus(TestCase):
-
-    def test_initial(self):
-        status = ConcentRequestStatus.Initial
-        assert not status.completed()
-        assert not status.success()
-        assert not status.error()
-
-    def test_waiting(self):
-        status = ConcentRequestStatus.Waiting
-        assert not status.completed()
-        assert not status.success()
-        assert not status.error()
-
-    def test_queued(self):
-        status = ConcentRequestStatus.Queued
-        assert not status.completed()
-        assert not status.success()
-        assert not status.error()
-
-    def test_success(self):
-        status = ConcentRequestStatus.Success
-        assert status.completed()
-        assert status.success()
-        assert not status.error()
-
-    def test_timed_out(self):
-        status = ConcentRequestStatus.TimedOut
-        assert status.completed()
-        assert not status.success()
-        assert status.error()
-
-    def test_error(self):
-        status = ConcentRequestStatus.Error
-        assert status.completed()
-        assert not status.success()
-        assert status.error()

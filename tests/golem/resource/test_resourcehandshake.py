@@ -1,29 +1,23 @@
-from golem_messages import message
+# pylint: disable=protected-access
 import os
 import types
-from unittest.mock import Mock, patch, ANY
 import uuid
 
-from golem.model import Database
+from pathlib import Path
+from unittest.mock import Mock, patch, ANY
+
+from golem_messages import message
+from twisted.internet.defer import Deferred
+
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient
-from golem.resource.base.resourcesmanager import ResourceStorage
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
-from golem.testutils import TempDirFixture
-
-
-def mock_async_run(async_request, success, error):
-    m, a, k = async_request.method, async_request.args, async_request.kwargs
-
-    try:
-        result = m(*a, **k)
-    except Exception as exc:
-        error(exc)
-    else:
-        success(result)
+from golem.task.acl import get_acl
+from golem.testutils import TempDirFixture, DatabaseFixture
 
 
 class TestResourceHandshake(TempDirFixture):
@@ -75,7 +69,6 @@ class TestResourceHandshake(TempDirFixture):
         assert handshake.finished()
 
 
-@patch('golem.resource.resourcehandshake.async_run', side_effect=mock_async_run)
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
 class TestResourceHandshakeSessionMixin(TempDirFixture):
@@ -142,7 +135,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._handshake_error = Mock()
 
         resource = str(uuid.uuid4())
-        msg = message.ResourceHandshakeStart(resource)
+        msg = message.ResourceHandshakeStart(resource=resource)
         session._react_to_resource_handshake_start(msg)
 
         assert session._start_handshake.called
@@ -155,7 +148,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
         session._block_peer(session.key_id)
         session._react_to_resource_handshake_start(msg)
 
@@ -168,7 +161,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._download_handshake_nonce = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
 
         session._react_to_resource_handshake_start(msg)
 
@@ -180,7 +173,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         session._start_handshake = Mock()
         session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
         handshake = ResourceHandshake(self.key_id)
 
         session._set_handshake(session.key_id, handshake)
@@ -196,7 +189,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
 
         session._set_handshake(session.key_id, handshake)
         session._react_to_resource_handshake_nonce(msg)
@@ -212,14 +205,14 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(handshake.nonce)
+        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeNonce(str(uuid.uuid4()))
+        msg = message.ResourceHandshakeNonce(nonce=str(uuid.uuid4()))
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -233,14 +226,20 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=True)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=handshake.nonce,
+            accepted=True,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=str(uuid.uuid4()),
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -254,14 +253,20 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(handshake.nonce, accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=handshake.nonce,
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
         assert session._handshake_error.called
 
         session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(str(uuid.uuid4()), accepted=False)
+        msg = message.ResourceHandshakeVerdict(
+            nonce=str(uuid.uuid4()),
+            accepted=False,
+        )
         session._react_to_resource_handshake_nonce(msg)
 
         assert not session._finalize_handshake.called
@@ -432,19 +437,13 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert session._is_peer_blocked(key_id)
 
 
-@patch('golem.resource.resourcehandshake.async_run', side_effect=mock_async_run)
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
-class TestResourceHandshakeShare(TempDirFixture):
+class TestResourceHandshakeShare(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-
-        self.db = Database(self.tempdir)
         self.key_id = str(uuid.uuid4())
-
-    def tearDown(self):
-        self.db.close()
 
     def test_flow(self, *_):
         local_dir = os.path.join(self.tempdir, 'local')
@@ -484,7 +483,6 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session.send.reset_mock()
 
         # Download nonces on both sides
-
         local_session._download_handshake_nonce(local_session.key_id,
                                                 remote_hash, options)
         assert not local_session._handshake_error.called
@@ -508,11 +506,11 @@ class TestResourceHandshakeShare(TempDirFixture):
         remote_session._react_to_resource_handshake_nonce(msg_from_local)
 
         local_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(remote_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(nonce=remote_nonce, accepted=True)
         )
 
         remote_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(local_nonce, accepted=True)
+            message.ResourceHandshakeVerdict(nonce=local_nonce, accepted=True)
         )
 
         assert local_session._finalize_handshake.called
@@ -538,24 +536,31 @@ class TestResourceHandshakeShare(TempDirFixture):
         msg = session.send.call_args[0][0]
         assert isinstance(msg, message.ResourceHandshakeStart)
 
-    def __create_task_server(self, session):
+    @staticmethod
+    def __create_task_server(session):
         from golem.clientconfigdescriptor import ClientConfigDescriptor
         from golem.task.taskserver import TaskServer
 
         client = Mock(datadir=session.data_dir)
+        dir_manager = DirManager(session.data_dir)
 
-        resource_manager = HyperdriveResourceManager(
-            dir_manager=DirManager(session.data_dir)
-        )
+        resource_manager = HyperdriveResourceManager(dir_manager=dir_manager)
+        resource_manager.successful_uploads = True
+        resource_manager.successful_downloads = True
+
+        resource_manager.add_file_org = resource_manager.add_file
+        resource_manager.add_file = types.MethodType(_add_file,
+                                                     resource_manager)
+        resource_manager.pull_resource_org = resource_manager.pull_resource
+        resource_manager.pull_resource = types.MethodType(_pull_resource,
+                                                          resource_manager)
 
         task_server = TaskServer(
             node=Mock(client=client, key=str(uuid.uuid4())),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
             client=client,
             use_docker_machine_manager=False
         )
-
         task_server.task_manager = Mock(
             task_result_manager=Mock(
                 resource_manager=resource_manager
@@ -575,26 +580,15 @@ class TestResourceHandshakeShare(TempDirFixture):
         task_server.get_share_options = Mock(return_value=client_options)
         task_server.get_download_options = Mock(return_value=client_options)
 
-        original_pull = resource_manager.pull_resource
-
-        def pull_resource(*args, **kwargs):
-            kwargs['async'] = False
-            original_pull(*args[1:], **kwargs)
-
-        resource_manager.pull_resource = types.MethodType(pull_resource,
-                                                          resource_manager)
         session.task_server = task_server
 
 
 class MockTaskSession(ResourceHandshakeSessionMixin):
 
     def __init__(self, data_dir,
-                 successful_downloads=True, successful_uploads=True, **kwargs):
+                 successful_downloads=True, successful_uploads=True, **_kwargs):
 
         ResourceHandshakeSessionMixin.__init__(self)
-
-        dir_manager = DirManager(data_dir)
-        get_dir = dir_manager.get_task_resource_dir
 
         self.send = Mock()
         self.disconnect = Mock()
@@ -606,40 +600,60 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
 
         self.address = "192.168.0.11"
         self.key_id = str(uuid.uuid4())
+        self.address = '1.2.3.4'
         self.data_dir = data_dir
+
+        dir_manager = DirManager(data_dir)
+        storage = ResourceStorage(dir_manager,
+                                  dir_manager.get_task_resource_dir)
+        resource_manager = Mock(
+            storage=storage,
+            content_to_pull=str(uuid.uuid4()).replace('-', ''),
+            successful_uploads=successful_uploads,
+            successful_downloads=successful_downloads,
+        )
+        resource_manager.add_file = types.MethodType(_add_file,
+                                                     resource_manager)
+        resource_manager.add_file_org = types.MethodType(
+            HyperdriveResourceManager.add_file,
+            resource_manager
+        )
+        resource_manager.pull_resource = types.MethodType(_pull_resource,
+                                                          resource_manager)
+        resource_manager.pull_resource_org = types.MethodType(
+            HyperdriveResourceManager.pull_resource,
+            resource_manager
+        )
+
         self.task_server = Mock(
             client=Mock(datadir=data_dir),
             node=Mock(key=str(uuid.uuid4())),
-            deny_set=set(),
+            acl=get_acl(Path(data_dir)),
             resource_handshakes=dict(),
             task_manager=Mock(
                 task_result_manager=Mock(
-                    resource_manager=Mock(
-                        storage=ResourceStorage(dir_manager, get_dir),
-                        add_file=self.__add_file,
-                        pull_resource=self.__pull_resource
-                    )
+                    resource_manager=resource_manager
                 )
             )
         )
 
-    def __add_file(self, path, task_id, absolute_path=False, client=None,
-                   client_options=None):
 
-        if not self.successful_uploads:
-            raise RuntimeError('Test exception')
-        return path, str(uuid.uuid4())
+def _pull_resource(self, entry, task_id, success, error, **kwargs):
+    if not self.successful_downloads:
+        return error(RuntimeError('Test exception'))
 
-    def __pull_resource(self, entry, task_id, success, error, **kwargs):
-        file_resource = entry[0]
+    kwargs['async_'] = False
+    return self.pull_resource_org(entry, task_id, success, error, **kwargs)
 
-        if not self.successful_downloads:
-            return error(RuntimeError('Test exception'))
 
-        directory = self.resource_manager.storage.get_dir(task_id)
-        path = os.path.join(directory, file_resource.file_name)
+def _add_file(self, path, task_id, **kwargs):
+    deferred = Deferred()
+    kwargs['async_'] = False
 
-        with open(path, 'w') as f:
-            f.write(self.content_to_pull)
+    if self.successful_uploads:
+        result = self.add_file_org(path, task_id, **kwargs)
+        deferred.callback(result)
+    else:
+        deferred.errback(RuntimeError('Test exception'))
 
-        return success((file_resource.file_name, file_resource.hash))
+    return deferred

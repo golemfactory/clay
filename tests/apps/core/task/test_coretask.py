@@ -1,26 +1,22 @@
 import os
 import shutil
-import unittest
-import zipfile
 import zlib
-from copy import copy, deepcopy
+from copy import copy
+from unittest import TestCase
+from unittest.mock import MagicMock, Mock, patch
 
-from mock import MagicMock, Mock
-
-from golem.core.common import is_linux, timeout_to_deadline
+from apps.core.task.coretask import (
+    accepting, CoreTask, logger, log_key_error,
+    CoreTaskTypeInfo, CoreTaskBuilder, AcceptClientVerdict)
+from apps.core.task.coretaskstate import TaskDefinition
+from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import TaskResourceHeader
-from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType
+from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
-from apps.core.task.coretask import (CoreTask, logger, log_key_error, CoreTaskTypeInfo,
-                                     CoreTaskBuilder, AcceptClientVerdict)
-from apps.core.task.coretaskstate import TaskDefinition
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
@@ -29,10 +25,15 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     # we have to override some stuff
     class CoreTaskDeabstracted(CoreTask):
         ENVIRONMENT_CLASS = MagicMock()
+        EXTRA_DATA = CoreTask.ExtraData(sth="sth")
+
+        @accepting
         def query_extra_data(self, *args, **kwargs):
-            pass
+            return self.EXTRA_DATA
+
         def short_extra_data_repr(self, extra_data):
             pass
+
         def query_extra_data_for_test_task(self):
             pass
 
@@ -54,8 +55,10 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             CoreTask(task_def, "node_name")
 
         class CoreTaskDeabstacted(CoreTask):
+
             def query_extra_data(self, *args, **kwargs):
                 pass
+
             def short_extra_data_repr(self, extra_data):
                 pass
 
@@ -65,10 +68,13 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         class CoreTaskDeabstractedEnv(CoreTask):
             ENVIRONMENT_CLASS = MagicMock()
+
             def query_extra_data(self, *args, **kwargs):
                 pass
+
             def short_extra_data_repr(self, extra_data):
                 pass
+
             def query_extra_data_for_test_task(self):
                 pass
 
@@ -125,6 +131,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert len(task.listeners) == 0
 
         class TestListener(TaskEventListener):
+
             def __init__(self):
                 super(TestListener, self).__init__()
                 self.notify_called = False
@@ -169,7 +176,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[1] = outer_dir_path(files[1])
         files[4] = outer_dir_path(files[4])
 
-        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
+        self.assertEqual(task.results[subtask_id], [
+                         files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -177,15 +185,18 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             with open(f, 'w'):
                 pass
 
-        task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
-        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
+        task.interpret_task_results(
+            subtask_id, files_copy, ResultType.FILES, False)
+        self.assertEqual(task.results[subtask_id], [
+                         files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
                 pass
         os.remove(files[0])
         os.makedirs(files[0])
         with self.assertLogs(logger, level="WARNING"):
-            task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
+            task.interpret_task_results(
+                subtask_id, files_copy, ResultType.FILES, False)
         assert task.results[subtask_id] == [files[1], files[4]]
 
         os.removedirs(files[0])
@@ -216,12 +227,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[1] = outer_dir_path(files[1])
         files[4] = outer_dir_path(files[4])
 
-        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
+        self.assertEqual(task.results[subtask_id], [
+                         files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
         for f in [files[0], files[1], files[4]]:
-            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, os.path.basename(f))))
+            self.assertTrue(os.path.isfile(
+                os.path.join(task.tmp_dir, os.path.basename(f))))
 
         for f in [files[2], files[3]]:
             self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, subtask_id,
@@ -230,7 +243,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         subtask_id = "112233"
         task.interpret_task_results(subtask_id, res, 58, False)
         self.assertEqual(task.results[subtask_id], [])
-        self.assertEqual(task.stderr[subtask_id], "[GOLEM] Task result 58 not supported")
+        self.assertEqual(task.stderr[subtask_id],
+                         "[GOLEM] Task result 58 not supported")
         self.assertEqual(task.stdout[subtask_id], "")
 
     def test_interpret_task_results_with_sorting(self):
@@ -254,7 +268,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         sorted_files[1] = outer_dir_path(sorted_files[1])
         sorted_files[2] = outer_dir_path(sorted_files[2])
 
-        assert task.results[subtask_id] == [sorted_files[0], sorted_files[1], sorted_files[2]]
+        assert task.results[subtask_id] == [
+            sorted_files[0], sorted_files[1], sorted_files[2]]
         assert task.stderr[subtask_id] == files[3]
         assert task.stdout[subtask_id] == files[2]
 
@@ -393,41 +408,78 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
-    def test_get_resources(self):
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_rejected(self, logg):
+        # given
         c = self._get_core_task()
-        th = TaskResourceHeader(self.path)
-        assert c.get_resources(th) is None
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.REJECTED
+        node_name = "client name"
 
-        files = self.additional_dir_content([[1], [[1], [2, [3]]]])
-        c.task_resources = files[1:]
-        resource = c.get_resources(th)
-        assert os.path.isfile(resource)
-        assert zipfile.is_zipfile(resource)
-        z = zipfile.ZipFile(resource)
-        in_z = z.namelist()
-        assert len(in_z) == 6
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
 
-        assert c.get_resources(th, ResourceType.HASHES) == files[1:]
+        # then
+        assert result.ctd is None
+        assert not result.should_wait
+        assert logg.warning.call_count == 1
+        assert logg.warning.call_args[0] == (
+            "Client %s has failed on subtask within task %s and is banned"
+            " from it", node_name, c.task_definition.task_id
+        )
 
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert p == []
-        assert th2.files_data == []
-        assert th2.sub_dir_headers == []
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_should_wait(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.SHOULD_WAIT
+        node_name = "client name"
 
-        with open(files[0], 'w') as f:
-            f.write("ABCD")
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
 
-        drm = DistributedResourceManager(os.path.dirname(files[0]))
-        res_files = drm.split_file(files[0])
-        c.add_resources({files[0]: res_files})
-        th2, p = c.get_resources(th, ResourceType.PARTS)
-        assert len(p) == 1
-        assert len(th2.files_data) == 1
-        assert th2.sub_dir_headers == []
+        # then
+        assert result.ctd is None
+        assert result.should_wait
+        assert logg.warning.call_count == 1
+        assert logg.warning.call_args[0] == (
+            "Waiting for results from %s on %s",
+            node_name, c.task_definition.task_id
+        )
 
-        assert c.get_resources(th, 3) is None
-        assert c.get_resources(th, "aaa") is None
-        assert c.get_resources(th, None) is None
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_already_computed(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        c.get_progress = 1.0
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result.ctd is None
+        assert not result.should_wait
+        assert logg.error.call_count == 1
+        assert logg.error.call_args[0] == ("Task already computed", )
+
+    @patch('apps.core.task.coretask.logger')
+    def test_accepting_wrapper_on_query_extra_data_normal(self, logg):
+        # given
+        c = self._get_core_task()
+        c._accept_client = Mock()
+        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        node_name = "client name"
+
+        # when
+        result = c.query_extra_data(0, node_name=node_name)
+
+        # then
+        assert result == c.EXTRA_DATA
+        assert not logg.called
 
     def test_result_incoming(self):
         c = self._get_core_task()
@@ -480,7 +532,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         working_directory = "."
         perf_index = 0
 
-        ctd = c._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = c._new_compute_task_def(
+            hash, extra_data, working_directory, perf_index)
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
@@ -489,20 +542,24 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['performance'] == perf_index
         assert ctd['working_directory'] == working_directory
         assert ctd['docker_images'] == c.header.docker_images
-        assert ctd['task_owner'] == c.header.task_owner
+        assert ctd['task_owner'] == c.header.task_owner.to_dict()
         assert ctd['environment'] == c.header.environment
 
 
 class TestLogKeyError(LogTestCase):
+
     def test_log_key_error(self):
         with self.assertLogs(logger, level="WARNING") as l:
-            assert not log_key_error("arg1", 131, "arg31380", [], arg="31", kwarg=231)
+            assert not log_key_error(
+                "arg1", 131, "arg31380", [], arg="31", kwarg=231)
         assert "131" in l.output[0]
 
 
-class TestTaskTypeInfo(unittest.TestCase):
+class TestTaskTypeInfo(TestCase):
+
     def test_init(self):
-        tti = CoreTaskTypeInfo("Name1", "Definition1", "Defaults", "Options", "builder")
+        tti = CoreTaskTypeInfo("Name1", "Definition1",
+                               "Defaults", "Options", "builder")
         assert tti.name == "Name1"
         assert tti.defaults == "Defaults"
         assert tti.options == "Options"
@@ -526,7 +583,8 @@ class TestTaskTypeInfo(unittest.TestCase):
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 
-class TestCoreTaskBuilder(unittest.TestCase):
+class TestCoreTaskBuilder(TestCase):
+
     def _get_core_task_builder(self):
         return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())
 
@@ -558,3 +616,19 @@ class TestCoreTaskBuilder(unittest.TestCase):
         # CoreTask is now abstract
         with self.assertRaises(TypeError):
             builder.build()
+
+    def test_get_output_path(self):
+        builder = self._get_core_task_builder()
+        mockDict = {}
+        mockDict['options'] = dict(
+            [("output_path", os.getcwd()), ("format", "py")])
+
+        class Definition:
+            task_name = "test_file"  # something doesn't exist
+            legacy = None
+
+        definition = Definition()
+        absolute_path = builder.get_output_path(mockDict, definition)
+        assert absolute_path == os.path.join(os.getcwd(), definition.task_name)
+        definition.task_name = "test_coretask"  # something already exist
+        assert absolute_path != os.path.join(os.getcwd(), definition.task_name)

@@ -1,6 +1,6 @@
 # Ethereum Subsystem
 
-## Introducing nodes
+## Introduction notes
 
 1. Only public data is taken from Ethereum nodes. Private keys are kept and
    transactions are signed by Golem.

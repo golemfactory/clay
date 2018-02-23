@@ -1,9 +1,10 @@
-import abc
 import logging
+
+import abc
 import os
 
-from golem.core.fileencrypt import FileEncryptor
 from golem.core.async import AsyncRequest, async_run
+from golem.core.fileencrypt import FileEncryptor
 from .resultpackage import EncryptingTaskResultPackager
 
 logger = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ class TaskResultPackageManager(object, metaclass=abc.ABCMeta):
         self.resource_manager = resource_manager
 
     @abc.abstractmethod
-    def create(self, node, task_result, client_options=None, **kwargs):
+    def create(self, node, task_result, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -36,8 +37,8 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
 
     # Using a temp path
-    def pull_package(self, multihash, task_id, subtask_id, key_or_secret,
-                     success, error, async=True, client_options=None, output_dir=None):
+    def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
+                     success, error, async_=True, client_options=None, output_dir=None):
 
         file_name = task_id + "." + subtask_id
         file_path = self.resource_manager.storage.get_path(file_name, task_id)
@@ -53,18 +54,16 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             async_run(request, package_extracted, error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
-            success(extracted_pkg, multihash, task_id, subtask_id)
-            os.remove(file_path)
+            success(extracted_pkg, content_hash, task_id, subtask_id)
 
-        resource = self.resource_manager.wrap_file((file_name, multihash))
+        resource = content_hash, [file_name]
         self.resource_manager.pull_resource(resource, task_id,
                                             client_options=client_options,
                                             success=package_downloaded,
                                             error=error,
-                                            async=async,
-                                            pin=False)
+                                            async_=async_)
 
-    def create(self, node, task_result, client_options=None, key_or_secret=None):
+    def create(self, node, task_result, key_or_secret=None):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
@@ -76,19 +75,18 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(file_path)
 
         packager = self.package_class(key_or_secret)
-        path = packager.create(file_path,
-                               node=node,
-                               task_result=task_result)
+        path, sha1 = packager.create(file_path,
+                                     node=node,
+                                     task_result=task_result)
 
-        self.resource_manager.add_file(path, task_id,
-                                       client_options=client_options)
-
+        self.resource_manager.add_file(path, task_id)
         for resource in self.resource_manager.get_resources(task_id):
-            if resource.contains_file(file_name):
-                return file_path, resource.hash
+            if file_name in resource.files:
+                return resource.hash, file_path, sha1
 
         if os.path.exists(path):
-            raise EnvironmentError("Error creating package: 'add' command failed")
+            raise EnvironmentError("Error creating package: "
+                                   "'add' command failed")
         raise Exception("Error creating package: file not found")
 
     def extract(self, path, output_dir=None, key_or_secret=None, **kwargs):

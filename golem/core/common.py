@@ -1,13 +1,16 @@
-from calendar import timegm
 import collections
-from datetime import datetime
 import logging.config
-from multiprocessing import cpu_count
 import os
+import subprocess
 import sys
+from calendar import timegm
+from datetime import datetime
+from multiprocessing import cpu_count
+
 import pytz
 
 from golem.core import simpleenv
+from golem.core.variables import REACTOR_THREAD_POOL_SIZE
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -171,11 +174,6 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
-    wrong_loglevel = None
-    if loglevel and loglevel not in ['WARNING', 'INFO', 'DEBUG']:
-        wrong_loglevel = loglevel
-        loglevel = None
-
     for handler in LOGGING.get('handlers', {}).values():
         if loglevel:
             handler['level'] = loglevel
@@ -202,11 +200,6 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         )
         return  # Avoid consequent errors
     logging.captureWarnings(True)
-
-    logger = logging.getLogger(__name__)
-    if wrong_loglevel is not None:
-        logger.warning('Invalid log level "%r", reset to default.',
-                       wrong_loglevel)
 
     import txaio
     txaio.use_twisted()
@@ -237,3 +230,24 @@ def get_cpu_count():
     if is_osx():
         return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
     return cpu_count()  # No limitatons on Linux
+
+
+def install_reactor():
+
+    if is_windows():
+        from twisted.internet import iocpreactor
+        iocpreactor.install()
+    elif is_osx():
+        from twisted.internet import kqreactor
+        kqreactor.install()
+
+    from twisted.internet import reactor
+    reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
+    return reactor
+
+
+if is_windows():
+    SUBPROCESS_STARTUP_INFO = subprocess.STARTUPINFO()
+    SUBPROCESS_STARTUP_INFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    SUBPROCESS_STARTUP_INFO = None

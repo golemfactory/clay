@@ -48,12 +48,6 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('Docker');
 
-; Add OpenSSL to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('OpenSSL');
-
-; Add HyperG to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
-
 [Setup]
 AlwaysRestart = yes
 
@@ -66,12 +60,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "{#Repository}\dist\golem-{#MyAppNumber}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\dist\golem-{#MyAppVersion}\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#BuildResources}\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#BuildResources}\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#BuildResources}\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
-Source: "{#BuildResources}\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#BuildResources}\hyperg\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]

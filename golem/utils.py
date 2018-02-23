@@ -1,8 +1,13 @@
+import binascii
 import logging
 import socket
 import sys
 
-import binascii
+import semantic_version
+
+from ethereum.utils import sha3
+
+logger = logging.getLogger(__name__)
 
 
 def find_free_net_port():
@@ -63,6 +68,10 @@ def encode_hex(b):
     raise TypeError('Value must be an instance of str or bytes')
 
 
+def pubkeytoaddr(pubkey: str) -> str:
+    return '0x' + encode_hex(sha3(decode_hex(pubkey))[12:])
+
+
 def tee_target(prefix, proc, input_stream, path, stream):
     """tee emulation for use with threading
 
@@ -83,3 +92,24 @@ def tee_target(prefix, proc, input_stream, path, stream):
                     line += '\n'
                 stream.write(prefix + line)
                 log_f.write(prefix + line)
+
+
+def get_version_spec(ours_v: semantic_version.Version) \
+        -> semantic_version.Spec:
+    spec_str = '>={major}.{minor}.0,<{next_minor}'.format(
+        major=ours_v.major,
+        minor=ours_v.minor,
+        next_minor=ours_v.next_minor(),
+    )
+    spec = semantic_version.Spec(spec_str)
+    return spec
+
+
+def is_version_compatible(theirs: str,
+                          spec: semantic_version.Spec) -> bool:
+    try:
+        theirs_v = semantic_version.Version(theirs)
+    except ValueError as e:
+        logger.debug("Can't parse version: %r -> %s", theirs, e)
+        return False
+    return theirs_v in spec

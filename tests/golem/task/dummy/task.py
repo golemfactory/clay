@@ -8,8 +8,7 @@ from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, \
-                                ResourceType, ResultType
+from golem.task.taskbase import Task, TaskHeader, ResultType
 
 
 class DummyTaskParameters(object):
@@ -77,7 +76,10 @@ class DummyTask(Task):
             src_code += '\noutput = run_dummy_task(' \
                         'data_file, subtask_data, difficulty, result_size)'
 
-        Task.__init__(self, header, src_code, None)
+        from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+        from apps.dummy.task.dummytaskstate import DummyTaskDefaults
+        task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        Task.__init__(self, header, src_code, task_definition)
 
         self.task_id = task_id
         self.task_params = params
@@ -167,7 +169,7 @@ class DummyTask(Task):
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
         subtask_def['src_code'] = self.src_code
-        subtask_def['task_owner'] = self.header.task_owner
+        subtask_def['task_owner'] = self.header.task_owner.to_dict()
         subtask_def['environment'] = self.header.environment
         subtask_def['return_address'] = self.header.task_owner_address
         subtask_def['return_port'] = self.header.task_owner_port
@@ -207,7 +209,8 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA):
+                             result_type=ResultType.DATA,
+                             verification_finished=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
@@ -217,8 +220,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, resource_header, resource_type=ResourceType.ZIP,
-                      tmp_dir=None):
+    def get_resources(self):
         return self.task_resources
 
     def add_resources(self, resource_parts):
@@ -248,3 +250,9 @@ class DummyTask(Task):
 
     def get_progress(self):
         return 0
+
+    def to_dictionary(self):
+        return {
+            'task_id': self.task_id,
+            'task_params': self.task_params.__dict__
+        }

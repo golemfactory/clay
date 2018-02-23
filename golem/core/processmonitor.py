@@ -1,4 +1,3 @@
-import atexit
 import subprocess
 import time
 from multiprocessing import Process
@@ -19,7 +18,6 @@ class ProcessMonitor(Thread):
         self.daemon = True
         self.working = False
 
-        atexit.register(self.exit)
         self.add_child_processes(*child_processes)
 
     def _start(self):

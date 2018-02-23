@@ -1,21 +1,14 @@
-import os
 import uuid
+import os
 
-from golem.resource.base import resourcesmanager
+from unittest.mock import Mock, patch
+
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
 from golem.task.taskbase import ResultType
 from golem.tools.testdirfixture import TestDirFixture
-
-
-class MockNode:
-    def __init__(self, name, key=None):
-        if not key:
-            key = uuid.uuid4()
-
-        self.node_name = name
-        self.key = key
 
 
 class MockTaskResult:
@@ -37,46 +30,49 @@ class MockTaskResult:
         self.owner = owner
 
 
+def create_package(result_manager, node_name, task_id):
+    rm = result_manager.resource_manager
+
+    res_dir = rm.storage.get_dir(task_id)
+    out_dir = os.path.join(res_dir, 'out_dir')
+    out_dir_file = os.path.join(out_dir, 'dir_file')
+    out_file = os.path.join(res_dir, 'out_file')
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(out_file, 'w') as f:
+        f.write("File contents")
+    with open(out_dir_file, 'w') as f:
+        f.write("Dir file contents")
+
+    files = [out_file, out_dir_file]
+    rm.add_files(files, task_id)
+
+    secret = result_manager.gen_secret()
+    result = result_manager.create(
+        node=Mock(
+            node_name=node_name,
+            key=str(uuid.uuid4())
+        ),
+        task_result=MockTaskResult(
+            task_id,
+            [rm.storage.relative_path(f, task_id) for f in files]
+        ),
+        key_or_secret=secret
+    )
+
+    return result, secret
+
+
 class TestEncryptedResultPackageManager(TestDirFixture):
 
     node_name = 'test_suite'
-
-    class TestPackageCreator(object):
-        @staticmethod
-        def create(result_manager, node_name, task_id):
-            rm = result_manager.resource_manager
-            res_dir = rm.storage.get_dir(task_id)
-
-            out_file = os.path.join(res_dir, 'out_file')
-            out_dir = os.path.join(res_dir, 'out_dir')
-            out_dir_file = os.path.join(out_dir, 'dir_file')
-            files = [out_file, out_dir_file]
-
-            with open(out_file, 'w') as f:
-                f.write("File contents")
-
-            if not os.path.isdir(out_dir):
-                os.makedirs(out_dir)
-
-            with open(out_dir_file, 'w') as f:
-                f.write("Dir file contents")
-
-            rm.add_files(files, task_id)
-
-            secret = result_manager.gen_secret()
-            mock_node = MockNode(node_name)
-            mock_task_result = MockTaskResult(task_id, files)
-
-            return result_manager.create(mock_node,
-                                         mock_task_result,
-                                         key_or_secret=secret), secret
 
     def setUp(self):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path)
-        self.resource_manager = resourcesmanager.TestResourceManager(
+        self.resource_manager = DummyResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_output_dir
         )
@@ -93,36 +89,48 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
     def testCreate(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        path, multihash = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, sha1 = data
 
+        self.assertIsNotNone(sha1)
+        self.assertIsInstance(sha1, str)
         self.assertIsInstance(path, str)
         self.assertTrue(os.path.isfile(path))
 
+    def testCreateEnvironmentError(self):
+        manager = EncryptedResultPackageManager(self.resource_manager)
+        manager.resource_manager.add_file = Mock()
+
+        with self.assertRaises(EnvironmentError):
+            create_package(manager, self.node_name, self.task_id)
+
+    def testCreateUnexpectedError(self):
+        manager = EncryptedResultPackageManager(self.resource_manager)
+        manager.resource_manager.add_file = Mock()
+
+        with patch('os.path.exists', return_value=False):
+            with self.assertRaises(Exception) as exc:
+                assert not isinstance(exc, EnvironmentError)
+                create_package(manager, self.node_name, self.task_id)
+
     def testExtract(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        path, multihash = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, _ = data
 
         extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)
 
         for f in extracted.files:
-            self.assertTrue(os.path.exists(os.path.join(extracted.files_dir, f)))
+            assert os.path.exists(os.path.join(extracted.files_dir, f))
 
     def testPullPackage(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
-        data, secret = self.TestPackageCreator.create(manager,
-                                                      self.node_name,
-                                                      self.task_id)
-        path, multihash = data
+        data, secret = create_package(manager, self.node_name, self.task_id)
+        content_hash, path, _ = data
 
         assert os.path.exists(path)
-        assert multihash
+        assert content_hash
 
         def success(*args, **kwargs):
             pass
@@ -131,14 +139,14 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             self.fail("Error downloading package: {}".format(exc))
 
         dir_manager = DirManager(self.path)
-        resource_manager = resourcesmanager.TestResourceManager(
+        resource_manager = DummyResourceManager(
             dir_manager,
             resource_dir_method=dir_manager.get_task_temporary_dir
         )
 
         new_manager = EncryptedResultPackageManager(resource_manager)
-        new_manager.pull_package(multihash, self.task_id, self.task_id,
+        new_manager.pull_package(content_hash, self.task_id, self.task_id,
                                  secret,
                                  success=success,
                                  error=error,
-                                 async=False)
+                                 async_=False)

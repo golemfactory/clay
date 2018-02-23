@@ -47,22 +47,46 @@ LOGGING = {
             'backupCount': 5,
             'encoding': 'utf-8',
         },
+        'error-file': {
+            'class': 'logging.FileHandler',
+            'level': 'WARNING',
+            'formatter': 'date',
+            # suffix is substituted in golem.core.common.config_logging()
+            'filename': '%(logdir)s/golem%(suffix)s.error.log',
+            'encoding': 'utf-8',
+        },
     },
     'root': {
         'level': 'WARNING',
-        'handlers': ['console', 'file', ],
+        'handlers': ['console', 'file', 'error-file'],
         'filters': [],
     },
     'loggers': {
+        'golemapp': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem': {
             'level': 'WARNING',
             'propagate': True,
         },
-        'golem.version': {
+        'golem.client': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.core.hardware': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.db': {
             'level': 'INFO',
             'propagate': True,
         },
         'golem.pay': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.gnt_converter': {
             'level': 'INFO',
             'propagate': True,
         },
@@ -78,8 +102,12 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'twisted': {
+        'golem.token': {
             'level': 'INFO',
+            'propagate': True,
+        },
+        'twisted': {
+            'level': 'WARNING',
             'propagate': True,
         },
         'golem.network': {'propagate': True},

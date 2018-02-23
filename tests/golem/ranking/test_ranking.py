@@ -1,6 +1,5 @@
 from threading import Thread
-
-from mock import MagicMock
+from unittest.mock import MagicMock
 
 from golem.client import Client
 from golem.ranking.helper.trust import Trust

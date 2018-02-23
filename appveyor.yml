@@ -11,19 +11,19 @@ platform:
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python35-x64"
-      PYTHON_VERSION: "3.5.0"
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.0"
       PYTHON_ARCH: "64"
 
       VER_GETH: geth-windows-amd64-1.7.2-1db4ecdc
-      VER_HYPERG: 0.2.1
+      VER_HYPERG: 0.2.4
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
       DIR_HYPERG: C:\hyperg
       DIR_WHEELS: C:\wheels
 
-      PYWIN32: pywin32-221.win-amd64-py3.5.exe
+      PYWIN32: pywin32-221.win-amd64-py3.6.exe
 
       WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
 

@@ -1,18 +1,18 @@
 import logging
 import os
 import os.path
-import pycodestyle
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from time import sleep
-from unittest.mock import MagicMock
+
+import pycodestyle
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
-from golem.ethereum import Client
-from golem.model import Database
+from golem.database import Database
+from golem.model import DB_MODELS, db
 
 
 class TempDirFixture(unittest.TestCase):
@@ -50,9 +50,6 @@ class TempDirFixture(unittest.TestCase):
 
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
-        # FIXME: This is temporary solution. Ethereum node should always be
-        #        the explicit dependency and users should close it correctly.
-        Client._kill_node()
         try:
             self.__remove_files()
         except OSError:
@@ -111,12 +108,19 @@ class DatabaseFixture(TempDirFixture):
 
     def setUp(self):
         super(DatabaseFixture, self).setUp()
-        self.database = Database(self.tempdir)
+        self.database = Database(db, self.tempdir, DB_MODELS)
 
     def tearDown(self):
         self.database.db.close()
         super(DatabaseFixture, self).tearDown()
 
+
+class TestWithClient(TempDirFixture):
+
+    def setUp(self):
+        super(TestWithClient, self).setUp()
+        self.client = unittest.mock.Mock()
+        self.client.datadir = os.path.join(self.path, "datadir")
 
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.
@@ -130,7 +134,6 @@ class PEP8MixIn(object):
     Afterwards your test case will perform conformance test on files mentioned
     in this attribute.
     """
-
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""

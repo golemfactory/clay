@@ -7,6 +7,7 @@ from abc import abstractmethod, ABC
 from functools import reduce, wraps
 from typing import List
 
+from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
                     NotSupportedError, Field, IntegrityError)
 
@@ -14,6 +15,10 @@ from golem.core.service import IService
 from golem.model import NetworkMessage, Actor
 
 logger = logging.getLogger('golem.network.history')
+
+
+class MessageNotFound(Exception):
+    pass
 
 
 class MessageHistoryService(IService):
@@ -95,7 +100,7 @@ class MessageHistoryService(IService):
     @classmethod
     def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
         """
-        Returns Task-related messages
+        Returns Task-related messages synchronously
         :param task: Task id
         :param properties: Optional NetworkMessage properties
         :return: Collection of NetworkMessage
@@ -108,6 +113,14 @@ class MessageHistoryService(IService):
 
         return list(result)
 
+    @classmethod
+    def get_sync_as_message(cls, *args, **kwargs) -> message.Message:
+        db_result = cls.get_sync(*args, **kwargs)
+        if not db_result:
+            raise MessageNotFound()
+        db_msg = db_result[0]
+        return db_msg.as_message()
+
     def add(self, msg_dict: dict) -> None:
         """
         Appends the dict message representation to the save queue.
@@ -118,7 +131,7 @@ class MessageHistoryService(IService):
 
     def add_sync(self, msg_dict: dict) -> None:
         """
-        Saves a message in the database.
+        Saves a message in the database synchronously.
         :param msg_dict: Message to save
         """
         try:
@@ -217,7 +230,6 @@ class MessageHistoryService(IService):
         else:
             self.add_sync(msg_dict)
 
-
     def _sweep(self) -> None:
         """
         Removes messages older than MESSAGE_LIFETIME.
@@ -271,14 +283,24 @@ def record_history(local_role, remote_role):
 
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
-            service = MessageHistoryService.instance
-            model = self.message_to_model(msg, local_role, remote_role)
+            result = func(self, msg, *args, **kwargs)
 
-            if model and service:
-                service.add(model)
-            else:
-                logger.error("Cannot log message: %r", msg)
-            return func(self, msg, *args, **kwargs)
+            try:
+                service = MessageHistoryService.instance
+                model = self.message_to_model(msg, local_role, remote_role)
+                if model and service:
+                    service.add(model)
+                else:
+                    logger.error("Cannot log message: %r", msg)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    "record_history(%r, %r, *%r, **%r) failed:",
+                    self,
+                    msg,
+                    args,
+                    kwargs,
+                )
+            return result
 
         return wrapper
     return decorator

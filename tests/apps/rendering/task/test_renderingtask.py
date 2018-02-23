@@ -8,10 +8,10 @@ from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
-from apps.rendering.task.renderingtask import (RenderingTask,
+from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
+                                               RenderingTask,
                                                RenderingTaskBuilder,
-                                               PREVIEW_EXT, PREVIEW_Y,
-                                               PREVIEW_X)
+                                               SUBTASK_MIN_TIMEOUT)
 from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
@@ -218,44 +218,49 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
 
-    def test_put_collected_files_together(self):
+    def test_put_collected_files_together_exec_windows(self):
 
         output_file_name = "out.exr"
         files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
         arg = 'EXR'
 
-        def assert_command_line(exec_cmd):
-            args = exec_cmd.call_args[0][0]
-            assert args[1] == arg
-            assert args[2] == str(self.task.res_x)
-            assert args[3] == str(self.task.res_y)
-            assert args[4] == '"{}"'.format(output_file_name)
-            assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
+        with patch('apps.rendering.task.renderingtask.is_windows',
+                   return_value=True), \
+                patch('golem.core.fileshelper.is_windows', return_value=True), \
+                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(output_file_name, files, arg)
-
-            assert exec_cmd.call_args[0][0][0].endswith('.exe')
-            exec_cmd.assert_called_with([ANY, arg,
-                                         str(self.task.res_x), str(self.task.res_y),
-                                         output_file_name] + files)
-
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(output_file_name, files, arg)
+            self.task._put_collected_files_together(
+                output_file_name, files, arg)
 
             args = exec_cmd.call_args[0][0]
-            assert args[0].startswith('"') and args[0].endswith('"')
-            assert args[1] == arg
-            assert args[2] == str(self.task.res_x)
-            assert args[3] == str(self.task.res_y)
-            assert args[4] == '"{}"'.format(output_file_name)
-            assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
+            assert not args[0].startswith('"')
+            assert not args[0].endswith('.exe"')
+            assert args[0].endswith('.exe')
+            exec_cmd.assert_called_with(
+                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
+                 '{}'.format(output_file_name)] +
+                ['{}'.format(f) for f in files])
+
+    def test_put_collected_files_together_exec_unix(self):
+        output_file_name = "out.exr"
+        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
+        arg = 'EXR'
+
+        with patch('apps.rendering.task.renderingtask.is_windows',
+                   return_value=False), \
+                patch('golem.core.fileshelper.is_windows', return_value=False),\
+                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+
+            self.task._put_collected_files_together(
+                output_file_name, files, arg)
+
+            args = exec_cmd.call_args[0][0]
             assert not args[0].endswith('.exe"')
             assert not args[0].endswith('.exe')
+            exec_cmd.assert_called_with(
+                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
+                 '"{}"'.format(output_file_name)] +
+                ['"{}"'.format(f) for f in files])
 
     def test_get_outer_task(self):
         task = self.task
@@ -375,20 +380,60 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
                                Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
-        definition = RenderingTaskBuilder.build_definition(
-            tti,
-            {
+        task_dict = {
                 'resources': {"file1.png", "file2.txt", 'file3.jpg',
                               'file4.txt'},
                 'task_type': 'TESTTASK',
                 'subtasks': 1
-            },
+        }
+        definition = RenderingTaskBuilder.build_definition(
+            tti,
+            task_dict,
             minimal=True
         )
         assert definition.main_scene_file in ['file2.txt', 'file4.txt']
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',
                                         'file3.jpg', 'file4.txt'}
+
+        # Build full definition
+        task_dict['options'] = {'output_path': self.path,
+                                'format': 'PNG',
+                                'resolution': [800, 600]}
+        task_dict['name'] = "NAME OF THE TASK"
+        task_dict['bid'] = 0.25
+        task_dict['timeout'] = "01:00:00"
+        task_dict['subtask_timeout'] = "00:25:00"
+
+        definition = RenderingTaskBuilder.build_definition(
+            tti,
+            task_dict,
+            minimal=False
+        )
+        assert definition.task_name == "NAME OF THE TASK"
+        assert definition.max_price == 250000000000000000
+        assert definition.full_task_timeout == 3600
+        assert definition.subtask_timeout == 1500
+        output_file = task_dict['name'] + "." + task_dict['options']['format']
+        assert definition.output_file == self.path + os.sep + output_file
+
+        # Timeout too short
+        task_dict['timeout'] = "00:00:02"
+        task_dict['subtask_timeout'] = "00:00:01"
+
+        with self.assertLogs(logger_render, level="WARNING") as log_:
+            definition = RenderingTaskBuilder.build_definition(
+                tti,
+                task_dict,
+                minimal=False
+            )
+
+        assert "Timeout 2 too short for this task. Changing to %d" % \
+               MIN_TIMEOUT in log_.output[0]
+        assert "Subtask timeout 1 too short for this task. Changing to %d" % \
+               SUBTASK_MIN_TIMEOUT in log_.output[1]
+        assert definition.full_task_timeout == MIN_TIMEOUT
+        assert definition.subtask_timeout == SUBTASK_MIN_TIMEOUT
 
     def test_get_output_path(self):
         td = TaskDefinition()

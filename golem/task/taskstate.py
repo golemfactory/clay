@@ -1,3 +1,5 @@
+from enum import Enum
+
 from golem.core.common import to_unicode
 
 
@@ -14,7 +16,7 @@ class TaskState(object):
         self.total_subtasks = 0
         self.subtask_states = {}
         self.resource_hash = None
-
+        self.package_hash = None
         self.extra_data = {}
 
     def __repr__(self):
@@ -87,6 +89,10 @@ class TaskStatus(object):
     timeout = "Timeout"
     restarted = "Restart"
 
+    @classmethod
+    def is_completed(cls, status):
+        return status in [cls.finished, cls.aborted, cls.timeout]
+
 
 class SubtaskStatus(object):
     starting = "Starting"
@@ -105,3 +111,57 @@ class TaskTestStatus(object):
     started = 'Started'
     success = 'Success'
     error = 'Error'
+
+
+class Operation(Enum):
+    def task_related(self) -> bool:  # pylint: disable=no-self-use
+        return False
+
+    def subtask_related(self) -> bool:  # pylint: disable=no-self-use
+        return False
+
+    def unnoteworthy(self) -> bool:  # pylint: disable=no-self-use
+        return False
+
+
+class TaskOp(Operation):
+    """Ops that result in storing of task level information"""
+
+    def task_related(self) -> bool:
+        return True
+
+    WORK_OFFER_RECEIVED = object()
+    CREATED = object()
+    STARTED = object()
+    FINISHED = object()
+    NOT_ACCEPTED = object()
+    TIMEOUT = object()
+    RESTARTED = object()
+    ABORTED = object()
+    RESTORED = object()
+
+
+class SubtaskOp(Operation):
+    """Ops that result in storing of subtask level information;
+    subtask_id needs to be set for them"""
+
+    def subtask_related(self) -> bool:
+        return True
+
+    ASSIGNED = object()
+    RESULT_DOWNLOADING = object()
+    NOT_ACCEPTED = object()
+    FINISHED = object()
+    FAILED = object()
+    TIMEOUT = object()
+    RESTARTED = object()
+
+
+class OtherOp(Operation):
+    """Ops that are not really interesting; for statistics anyway"""
+
+    def unnoteworthy(self) -> bool:
+        return True
+
+    UNEXPECTED = object()
+    FRAME_RESTARTED = object()

@@ -8,6 +8,8 @@ datas = [
     ('apps/*.ini', 'apps'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
      'apps/rendering/benchmark/minilight'),
+    ('apps/rendering/resources/scripts/runner.py',
+     'apps/rendering/resources/scripts/'),
     ('apps/blender/resources/scripts/blendercrop.py.template',
      'apps/blender/resources/scripts/'),
     ('apps/blender/resources/scripts/docker_blendertask.py',
@@ -22,4 +24,5 @@ datas = [
      'apps/dummy/resources/code_dir/'),
     ('apps/dummy/test_data/in.data',
      'apps/dummy/test_data/'),
+    ('golem/RELEASE-VERSION', 'golem/'),
 ]

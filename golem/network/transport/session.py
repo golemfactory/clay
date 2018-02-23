@@ -1,8 +1,10 @@
 import abc
-from golem_messages import message
 import logging
 import time
 
+from golem_messages import message
+
+from golem import utils
 from golem.core.keysauth import get_random_float
 from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
@@ -10,30 +12,9 @@ from .network import Session
 logger = logging.getLogger(__name__)
 
 
-class SafeSession(Session, metaclass=abc.ABCMeta):
-    """ Abstract class that represents session interface with additional opperations for cryptographic
-    operations (signing, veryfing, encrypting and decrypting data). """
-
-    @abc.abstractmethod
-    def sign(self, msg):
-        return
-
-    @abc.abstractmethod
-    def verify(self, msg):
-        return
-
-    @abc.abstractmethod
-    def encrypt(self, data):
-        return
-
-    @abc.abstractmethod
-    def decrypt(self, data):
-        return
-
-
 class FileSession(Session, metaclass=abc.ABCMeta):
-    """ Abstract class that represents session interface with additional operations for
-    receiving files """
+    """Abstract class that represents session interface with additional
+       operations for receiving files"""
 
     @abc.abstractmethod
     def data_sent(self, extra_data=None):
@@ -49,14 +30,15 @@ class FileSession(Session, metaclass=abc.ABCMeta):
 
 
 class BasicSession(FileSession):
-    """ Basic session responsible for managing the connection and reacting to different types
-    of messages.
+    """Basic session responsible for managing the connection and reacting
+       to different types of messages.
     """
 
     def __init__(self, conn):
         """
         Create new Session
-        :param Protocol conn: connection protocol implementation that this session should enhance.
+        :param Protocol conn: connection protocol implementation that
+                              this session should enhance.
         """
         Session.__init__(self, conn)
         self.conn = conn
@@ -69,14 +51,17 @@ class BasicSession(FileSession):
         self._disconnect_sent = False
         self._interpretation = {
             message.Disconnect.TYPE: self._react_to_disconnect,
+            message.Hello.TYPE: self._react_to_hello,
         }
-        # Message interpretation - dictionary where keys are messages' types and values are functions that should
+        # Message interpretation - dictionary where keys are message types
+        # and values are functions that should
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
 
     def interpret(self, msg):
         """
-        React to specific message. Disconnect, if message type is unknown for that session.
+        React to specific message. Disconnect, if message type is unknown
+        for that session.
         :param Message msg: Message to interpret and react to.
         :return None:
         """
@@ -100,7 +85,9 @@ class BasicSession(FileSession):
             pass
 
     def close_now(self):
-        """ Close connection quickly without flushing buffors or waiting for producents. """
+        """Close connection quickly without flushing buffors or waiting
+           for producents.
+        """
         self.conn.close_now()
         try:
             self.conn.server.pending_sessions.remove(self)
@@ -109,20 +96,23 @@ class BasicSession(FileSession):
 
     def disconnect(self, reason):
         """ Send "disconnect" message to the peer and drop the connection.
-        :param string reason: Reason for disconnecting. Should use global class disconnect reasons, eg. DCRBadProtocol
+        :param string reason: Reason for disconnecting.
         """
-        logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
+        logger.info(
+            "Disconnecting %r:%r reason: %r",
+            self.address,
+            self.port,
+            reason,
+        )
         if self.conn.opened:
             self._send_disconnect(reason)
             self.dropped()
 
-    def send(self, message):
+    def send(self, msg):
         """ Send given message.
         :param Message message: message to be sent.
         """
-        # print "Sending to {}:{}: {}".format(self.address, self.port, message)
-
-        if not self.conn.send_message(message):
+        if not self.conn.send_message(msg):
             self.dropped()
             return
 
@@ -155,61 +145,67 @@ class BasicSession(FileSession):
             return False
         return True
 
+    def _react_to_hello(self, msg):
+        pass
+
     def _react_to_disconnect(self, msg):
-        logger.info("Disconnect reason: {}".format(msg.reason))
-        logger.info("Closing {} : {}".format(self.address, self.port))
+        logger.info("Disconnect reason: %r", msg.reason)
+        logger.info("Closing %s:%s", self.address, self.port)
         self.dropped()
 
 
-class BasicSafeSession(BasicSession, SafeSession):
-    """ Enhance BasicSession with cryptographic operations logic (eg. accepting only encrypted or signed messages)
-    and connection verifications logic.
+class BasicSafeSession(BasicSession):
+    """Enhance BasicSession with cryptographic operations logic (eg. accepting
+    only encrypted or signed messages) and connection verifications logic.
     Cryptographic operation should be implemented in descendant class.
     """
 
     def __init__(self, conn):
-        BasicSession.__init__(self, conn)
+        super().__init__(conn)
         self.key_id = 0
-        self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
+        # how many unverified messages can be stored before dropping connection
+        self.unverified_cnt = UNVERIFIED_CNT
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
         # React to message even if it's self.verified is set to False
         self.can_be_unverified = [message.Disconnect.TYPE]
-        # React to message even if it's not signed.
-        self.can_be_unsigned = [message.Disconnect.TYPE]
         # React to message even if it's not encrypted.
         self.can_be_not_encrypted = [message.Disconnect.TYPE]
 
-    # Simple session with no encryption and no signing
-    def sign(self, msg):
-        return msg
+    @property
+    def theirs_public_key(self):
+        if not self.key_id:
+            return None
+        return utils.decode_hex(self.key_id)
 
-    def verify(self, msg):
-        return True
+    def send(self, msg, send_unverified=False):  # noqa pylint: disable=arguments-differ
+        """Send given message if connection was verified or send_unverified
+           option is set to True.
 
-    def encrypt(self, data):
-        return data
-
-    def decrypt(self, data):
-        return data
-
-    def send(self, message, send_unverified=False):
-        """ Send given message if connection was verified or send_unverified option is set to True.
-        :param Message message: message to be sent.
-        :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
+        :param Message msg: message to be sent.
+        :param boolean send_unverified: should message be sent even
+                                        if the connection hasn't been
+                                        verified yet?
         """
-        if not self._can_send(message, send_unverified):
-            logger.info("Connection hasn't been verified yet, not sending message {} to {} {}"
-                        .format(message, self.address, self.port))
+        if not self._can_send(msg, send_unverified):
+            logger.info(
+                "Connection hasn't been verified yet,"
+                " not sending %r to %r:%r",
+                msg,
+                self.address,
+                self.port,
+            )
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
                 self.disconnect(message.Disconnect.REASON.Unverified)
             return
 
-        BasicSession.send(self, message)
+        BasicSession.send(self, msg)
 
     def _can_send(self, msg, send_unverified):
-        return self.verified or send_unverified or msg.TYPE in self.can_be_unverified
+        return self.verified \
+            or send_unverified \
+            or msg.TYPE in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):
@@ -225,11 +221,4 @@ class BasicSafeSession(BasicSession, SafeSession):
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
 
-        if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.info("Failed to verify message signature ({} from {}:{})"
-                         .format(msg, self.address, self.port))
-            self.disconnect(message.Disconnect.REASON.Unverified)
-            return False
-
         return True
-

@@ -1,5 +1,3 @@
-
-
 import logging
 import math
 import os
@@ -18,7 +16,7 @@ from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
-from apps.rendering.task.verificator import FrameRenderingVerificator
+from apps.rendering.task.verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
@@ -49,7 +47,7 @@ class FrameState(object):
 
 class FrameRenderingTask(RenderingTask):
 
-    VERIFICATOR_CLASS = FrameRenderingVerificator
+    VERIFIER_CLASS = FrameRenderingVerifier
 
     ################
     # Task methods #
@@ -79,9 +77,6 @@ class FrameRenderingTask(RenderingTask):
             self.preview_task_file_path = [None] * len(self.frames)
         self.last_preview_path = None
 
-        self.verificator.use_frames = self.use_frames
-        self.verificator.frames = self.frames
-
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         CoreTask.computation_failed(self, subtask_id)
@@ -92,10 +87,18 @@ class FrameRenderingTask(RenderingTask):
             self._update_task_preview()
 
     @CoreTask.handle_key_error
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
-        super(FrameRenderingTask, self).computation_finished(subtask_id,
-                                                             task_result,
-                                                             result_type)
+    def computation_finished(self, subtask_id, task_result,
+                             result_type=ResultType.DATA,
+                             verification_finished_=None):
+        super(FrameRenderingTask, self).computation_finished(
+            subtask_id,
+            task_result,
+            result_type,
+            verification_finished_)
+
+    def verification_finished(self, subtask_id, verdict, result):
+        super(FrameRenderingTask, self).verification_finished(subtask_id,
+                                                              verdict, result)
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 
@@ -268,7 +271,7 @@ class FrameRenderingTask(RenderingTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        for sub in self.subtasks_given.values():
+        for sub in list(self.subtasks_given.values()):
             if SubtaskStatus.is_computed(sub['status']):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)

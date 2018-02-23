@@ -1,10 +1,6 @@
-
-
 import logging
 import math
 import os
-from abc import abstractproperty, abstractmethod
-from copy import deepcopy
 from typing import Type
 
 from PIL import Image, ImageChops
@@ -14,16 +10,16 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.utils import save_image_or_log_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.verificator import RenderingVerificator
-from golem.core.common import get_golem_path, timeout_to_deadline
+from apps.rendering.task.verifier import RenderingVerifier
+from golem.core.common import get_golem_path
 from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
-MIN_TIMEOUT = 2200.0
-SUBTASK_TIMEOUT = 220.0
+MIN_TIMEOUT = 60
+SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
@@ -32,7 +28,7 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingTask(CoreTask):
 
-    VERIFICATOR_CLASS = RenderingVerificator
+    VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
 
     @classmethod
@@ -92,11 +88,6 @@ class RenderingTask(CoreTask):
 
         self.test_task_res_path = None
 
-        self.verificator.res_x = self.res_x
-        self.verificator.res_y = self.res_y
-        self.verificator.total_tasks = self.total_tasks
-        self.verificator.root_path = self.root_path
-
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         super().computation_failed(subtask_id)
@@ -127,9 +118,6 @@ class RenderingTask(CoreTask):
         in order to obtain reference results.
         The reference results will be used to validate the output given by providers.
         """
-        pass
-
-    def get_subtasks(self, part):
         pass
 
     def get_preview_file_path(self):
@@ -289,10 +277,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
                            .format(total, defaults.default_subtasks))
             return defaults.default_subtasks
 
-    def _set_verification_options(self, new_task):
-        new_task.verificator.set_verification_options(
-            self.task_definition.verification_options)
-
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
@@ -311,7 +295,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     def build(self):
         task = super(RenderingTaskBuilder, self).build()
-        self._set_verification_options(task)
         return task
 
     @classmethod
@@ -340,6 +323,16 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
+        if definition.full_task_timeout < MIN_TIMEOUT:
+            logger.warning("Timeout %d too short for this task. "
+                           "Changing to %d" % (definition.full_task_timeout,
+                                               MIN_TIMEOUT))
+            definition.full_task_timeout = MIN_TIMEOUT
+        if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
+            logger.warning("Subtask timeout %d too short for this task. "
+                           "Changing to %d" % (definition.subtask_timeout,
+                                               SUBTASK_MIN_TIMEOUT))
+            definition.subtask_timeout = SUBTASK_MIN_TIMEOUT
         return definition
 
     @classmethod

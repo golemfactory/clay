@@ -3,8 +3,8 @@ import logging
 import os
 from os import makedirs, path, remove
 import shutil
+from unittest.mock import Mock
 
-from mock import Mock
 import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleserializer import DictSerializer
-from golem.node import OptNode
+from golem.node import Node
 
 from golem.task.taskbase import ResultType
 from golem.resource.dirmanager import DirManager
@@ -97,14 +97,24 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
+        self.node = Node(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+            use_docker_machine_manager=False,
+        )
+        self.node.client = self.node._client_factory()
         self.node.client.start = Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
-                                 use_docker_machine_manager=False)
+        task_server = TaskServer(
+            node=Mock(),
+            config_desc=ccd,
+            client=self.node.client,
+            use_docker_machine_manager=False
+        )
+        task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
 
@@ -206,7 +216,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return new_flm_file, new_file
 
-    @pytest.mark.slow
+    # @pytest.mark.slow
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
@@ -238,11 +248,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(10000).ctd
         # act
         computer = LocalComputer(
-            task,
-            self.tempdir,
-            Mock(),
-            Mock(),
-            lambda: ctd,
+            root_path=self.tempdir,
+            success_callback=Mock(),
+            error_callback=Mock(),
+            compute_task_def=ctd,
+            resources=task.task_resources
         )
 
         computer.run()
@@ -257,7 +267,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd['subtask_id'],
                                   [new_flm_file, new_preview_file],
-                                  result_type=ResultType.FILES)
+                                  result_type=ResultType.FILES,
+                                  verification_finished_=lambda: None)
 
 
         is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
@@ -269,7 +280,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = task.query_extra_data(10000).ctd
         task.computation_finished(ctd['subtask_id'],
                                   [bad_flm_file, new_preview_file],
-                                  result_type=ResultType.FILES)
+                                  result_type=ResultType.FILES,
+                                  verification_finished_=lambda: None)
 
         self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)
@@ -294,11 +306,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
             # act
             computer = LocalComputer(
-                task,
-                self.tempdir,
-                Mock(),
-                Mock(),
-                lambda: ctd,
+                root_path=self.tempdir,
+                success_callback=Mock(),
+                error_callback=Mock(),
+                compute_task_def=ctd,
+                resources=task.task_resources
             )
 
             computer.run()

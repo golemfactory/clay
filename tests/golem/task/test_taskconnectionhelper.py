@@ -1,13 +1,15 @@
-import unittest
 import time
-
-from mock import MagicMock
+import unittest
+import unittest.mock as mock
+import uuid
 
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 
 
 class MockNodeInfo(object):
-    pass
+
+    def __init__(self):
+        self.key = str(uuid.uuid4())
 
 
 class TestTaskConnectionsHelper(unittest.TestCase):
@@ -20,27 +22,25 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         nodeinfo1 = MockNodeInfo()
         nodeinfo3 = MockNodeInfo()
         tch = TaskConnectionsHelper()
-        self.assertTrue(tch.is_new_conn_request("abc", "ABC", nodeinfo, "supernodeinfo"))
-        self.assertTrue(tch.is_new_conn_request("def", "ABC", nodeinfo, "supernodeinfo"))
-        self.assertFalse(tch.is_new_conn_request("abc", "ABC", nodeinfo, "supernodeinfo"))
-        self.assertFalse(tch.is_new_conn_request("abc", "DEF", nodeinfo1, "supernodeinfo2"))
-        self.assertFalse(tch.is_new_conn_request("def", "DEF", nodeinfo3, "supernodeinfo3"))
-        data = tch.conn_to_set.get("abc")
-        self.assertEqual(data[0], "ABC")
-        self.assertEqual(data[1](), nodeinfo)
-        self.assertEqual(data[2], "supernodeinfo")
-        self.assertLessEqual(data[3], time.time())
-        data = tch.conn_to_set.get("def")
-        self.assertEqual(data[0], "ABC")
-        self.assertEqual(data[1](), nodeinfo)
-        self.assertEqual(data[2], "supernodeinfo")
-        self.assertLessEqual(data[3], time.time())
+
+        self.assertTrue(tch.is_new_conn_request("ABC", nodeinfo))
+        self.assertFalse(tch.is_new_conn_request("ABC", nodeinfo))
+
+        timestamp = tch.conn_to_set.get(("ABC", nodeinfo.key))
+        self.assertLessEqual(timestamp, time.time())
+
+        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo1))
+
+        timestamp = tch.conn_to_set.get(("ABC", nodeinfo.key))
+        self.assertLessEqual(timestamp, time.time())
+
+        self.assertTrue(tch.is_new_conn_request("DEF", nodeinfo3))
 
     def test_want_to_start(self):
         nodeinfo = MockNodeInfo()
         nodeinfo2 = MockNodeInfo()
         tch = TaskConnectionsHelper()
-        tch.task_server = MagicMock()
+        tch.task_server = mock.MagicMock()
         self.assertIsNone(tch.conn_to_start.get("abc"))
         tch.want_to_start("abc", nodeinfo, "supernodeinfo")
         data = tch.conn_to_start.get("abc")
@@ -58,18 +58,18 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         nodeinfo1 = MockNodeInfo()
         nodeinfo2 = MockNodeInfo()
         tch = TaskConnectionsHelper()
-        tch.task_server = MagicMock()
+        tch.task_server = mock.MagicMock()
         tch.remove_old_interval = 1
         tch.sync()
         self.assertEqual(len(tch.conn_to_set), 0)
         self.assertEqual(len(tch.conn_to_start), 0)
         tch.want_to_start("abc", nodeinfo, "supernodeinfo")
         tch.want_to_start("def", nodeinfo1, "supernodeinfo1")
-        tch.is_new_conn_request("ABC", "ABCK", nodeinfo, "supernodeinfo")
-        tch.is_new_conn_request("DEF", "DEFK", nodeinfo1, "supernodeinfo1")
+        tch.is_new_conn_request("ABCK", nodeinfo)
+        tch.is_new_conn_request("DEFK", nodeinfo1)
         time.sleep(2)
         tch.want_to_start("ghi", nodeinfo1, "supernodeinfo1")
-        tch.is_new_conn_request("GHI", "GHIK", nodeinfo2, "supernodeinfo2")
+        tch.is_new_conn_request("GHIK", nodeinfo2)
         self.assertEqual(len(tch.conn_to_start), 3)
         self.assertEqual(len(tch.conn_to_set), 3)
         tch.sync()
@@ -79,13 +79,9 @@ class TestTaskConnectionsHelper(unittest.TestCase):
         self.assertEqual(data[0], nodeinfo1)
         self.assertEqual(data[1], "supernodeinfo1")
         self.assertLessEqual(data[2], time.time())
-        data = tch.conn_to_set["GHI"]
-        self.assertEqual(data[0], "GHIK")
-        self.assertEqual(data[1](), nodeinfo2)
-        self.assertEqual(data[2], "supernodeinfo2")
-        self.assertLessEqual(data[3], time.time())
+        timestamp = tch.conn_to_set[("GHIK", nodeinfo2.key)]
+        self.assertLessEqual(timestamp, time.time())
         time.sleep(1.5)
         tch.sync()
         self.assertEqual(len(tch.conn_to_start), 0)
         # self.assertEqual(len(tch.conn_to_set), 0)
-

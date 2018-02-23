@@ -6,6 +6,7 @@ difficulty is configurable, see comments in DummyTaskParameters.
 import atexit
 import logging
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -17,6 +18,8 @@ from threading import Thread
 
 from twisted.internet import reactor
 
+from golem.appconfig import AppConfig
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -50,7 +53,11 @@ def create_client(datadir):
     pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
+    config_desc = ClientConfigDescriptor()
+    config_desc.init_from_app_config(AppConfig.load_config(datadir))
+
     return Client(datadir=datadir,
+                  config_desc=config_desc,
                   use_monitor=False,
                   transaction_system=False,
                   connect_to_known_hosts=False,
@@ -176,6 +183,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Start the requesting node in a separate process
     reqdir = path.join(datadir, REQUESTING_NODE_KIND)
+    reqdir_path = pathlib.Path(reqdir)
+    (reqdir_path / 'logs').mkdir(parents=True)
     requesting_proc = subprocess.Popen(
         [sys.executable, "-u", __file__, REQUESTING_NODE_KIND, reqdir,
          str(num_subtasks)],

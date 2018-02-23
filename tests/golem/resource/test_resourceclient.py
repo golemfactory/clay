@@ -1,71 +1,146 @@
 import time
-import unittest
-import uuid
+from unittest import TestCase
+from unittest.mock import Mock
 
-import twisted
-from mock import Mock
+import requests
+from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 
 from golem.core.async import AsyncRequest, async_run
-from golem.resource.client import ClientHandler, ClientCommands, ClientError, \
+from golem.resource.client import ClientHandler, ClientError, \
     ClientOptions, ClientConfig
 from golem.tools.testwithreactor import TestWithReactor
 
 
-class MockClientHandler(ClientHandler):
-    def __init__(self, commands_class, config):
-        super(MockClientHandler, self).__init__(commands_class, config)
+class TestClientHandler(TestCase):
 
-    def command_failed(self, exc, cmd, obj_id):
-        pass
+    class State:
+        def __init__(self):
+            self.counter = 0
+            self.failure = None
 
-    def new_client(self):
-        return Mock()
+        def verify(self, test_case):
+            if self.failure:
+                test_case.fail(self.failure)
 
+        def increment(self):
+            self.counter += 1
 
-class MockClientConfig(ClientConfig):
-    def __init__(self, max_concurrent_downloads=3, max_retries=8, timeout=None):
-        super(MockClientConfig, self).__init__(max_concurrent_downloads, max_retries, timeout)
+    def setUp(self):
+        config = ClientConfig(max_retries=3)
+        self.handler = ClientHandler(config)
+        self.state = self.State()
 
+    def test_retry(self):
+        valid_exceptions = filter(lambda t: t is not Failure,
+                                  ClientHandler.retry_exceptions)
+        value_exc = list(valid_exceptions)[0]()
 
-class TestClientHandler(unittest.TestCase):
-
-    def test_can_retry(self):
-        valid_exceptions = ClientHandler.timeout_exceptions
-        config = MockClientConfig()
-        handler = MockClientHandler(ClientCommands, config)
-        value_exc = valid_exceptions[0]()
+        def func(e):
+            self.state.increment()
+            raise e
 
         for exc_class in valid_exceptions:
-            try:
-                exc = exc_class(value_exc)
-            except:
-                exc = exc_class.__new__(exc_class)
+            self.state.counter = 0
+            self.handler._retry(func, exc_class(value_exc), raise_exc=False)
 
-            assert handler._can_retry(exc, ClientCommands.get, str(uuid.uuid4()))
-        assert not handler._can_retry(Exception(value_exc), ClientCommands.get, str(uuid.uuid4()))
+            # All retries spent
+            assert self.state.counter == self.handler.config.max_retries
 
-        obj_id = str(uuid.uuid4())
-        exc = valid_exceptions[0]()
+    def test_retry_unsupported_exception(self):
 
-        for i in range(0, config.max_retries):
-            can_retry = handler._can_retry(exc, ClientCommands.get, obj_id)
-            assert can_retry
-        assert not handler._can_retry(exc, ClientCommands.get, obj_id)
+        with self.assertRaises(ArithmeticError):
+            def func():
+                self.state.increment()
+                raise ArithmeticError()
 
-    def test_exception_type(self):
+            self.handler._retry(func, raise_exc=False)
 
-        valid_exceptions = ClientHandler.timeout_exceptions
-        exc = valid_exceptions[0]()
-        failure_exc = twisted.python.failure.Failure(exc_value=exc)
+        # Exception was raised on first retry
+        assert self.state.counter == 1
 
-        def is_class(object):
-            return isinstance(object, type)
+    def test_retry_async(self):
 
-        assert is_class(ClientHandler._exception_type(failure_exc))
-        assert is_class(ClientHandler._exception_type(exc))
+        def func():
+            self.state.increment()
+            deferred = Deferred()
+            deferred.callback(42)
+            return deferred
+
+        def success(*_a, **_k):
+            pass
+
+        def error(err):
+            self.state.failure = "Error encountered: " + str(err)
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_unsupported_exception(self):
+
+        def func():
+            self.state.increment()
+            deferred = Deferred()
+            deferred.errback(ArithmeticError())
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(*_a):
+            if self.state.counter != 1:
+                self.state.failure = "Counter error: {} != 1".format(
+                    self.state.counter)
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_unwrap_failure(self):
+
+        def func():
+            self.state.increment()
+
+            deferred = Deferred()
+            timeout = requests.exceptions.Timeout()
+            deferred.errback(Failure(timeout))
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(err):
+            if isinstance(err, Failure) and \
+               isinstance(err.value, requests.exceptions.Timeout):
+                return
+
+            instance = str(type(err))
+            self.state.failure = "Invalid error instance: " + instance
+
+        self._run_and_verify_state(func, success, error)
+
+    def test_retry_async_max_retries(self):
+
+        def func():
+            self.state.increment()
+
+            deferred = Deferred()
+            deferred.errback(requests.exceptions.Timeout())
+            return deferred
+
+        def success(*_a, **_k):
+            self.state.failure = "Success shouldn't have fired"
+
+        def error(*_a):
+            if self.state.counter != self.handler.config.max_retries:
+                self.state.failure = "Invalid retry counter"
+
+        self._run_and_verify_state(func, success, error)
+
+    def _run_and_verify_state(self, func, success, error):
+        self.handler._retry_async(func) \
+            .addCallbacks(success, error)
+        self.state.verify(self)
 
 
-class TestClientOptions(unittest.TestCase):
+class TestClientOptions(TestCase):
 
     def test_init(self):
         with self.assertRaises(AssertionError):
@@ -115,28 +190,42 @@ class TestClientOptions(unittest.TestCase):
 
 class TestAsyncRequest(TestWithReactor):
 
-    def test_callbacks(self):
-        done = [False]
+    @staticmethod
+    def test_initialization():
+        request = AsyncRequest(lambda x: x)
+        assert request.args == []
+        assert request.kwargs == {}
 
+        request = AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
+        assert request.args == ("arg",)
+        assert request.kwargs == {"kwarg": "kwarg"}
+
+    def test_callbacks(self):
         method = Mock()
-        req = AsyncRequest(method)
+        request = AsyncRequest(method)
+        result = Mock(value=None)
 
         def success(*_):
-            done[0] = True
+            result.value = True
 
         def error(*_):
-            done[0] = True
+            result.value = False
 
-        done[0] = False
-        method.called = False
-        async_run(req, success, error)
-        time.sleep(1)
+        async_run(request)
+        time.sleep(0.5)
 
-        assert method.called
+        assert method.call_count == 1
+        assert result.value is None
 
-        done[0] = False
-        method.called = False
-        async_run(req)
-        time.sleep(1)
+        async_run(request, success)
+        time.sleep(0.5)
 
-        assert method.called
+        assert method.call_count == 2
+        assert result.value is True
+
+        method.side_effect = Exception
+        async_run(request, success, error)
+        time.sleep(0.5)
+
+        assert method.call_count == 3
+        assert result.value is False

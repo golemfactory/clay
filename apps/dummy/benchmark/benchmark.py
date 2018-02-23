@@ -1,13 +1,14 @@
-import os
 from os.path import join
+from pathlib import Path
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
-from apps.dummy.task.verificator import DummyTaskVerificator
+from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
+from golem.verification.verifier import SubtaskVerificationState
 
 APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 
@@ -28,11 +29,11 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
-        v = self.verificator = DummyTaskVerificator()
-        v.verification_options = {"difficulty": td.options.difficulty,
-                                  "shared_data_files": td.shared_data_files,
-                                  "result_size": td.result_size,
-                                  "result_extension": DummyTask.RESULT_EXT}
+        self.verifier = DummyTaskVerifier(lambda **kwargs: None)
+        self.verification_options = {"difficulty": td.options.difficulty,
+                                     "shared_data_files": td.shared_data_files,
+                                     "result_size": td.result_size,
+                                     "result_extension": DummyTask.RESULT_EXT}
         self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
 
     @property
@@ -44,11 +45,17 @@ class DummyTaskBenchmark(CoreBenchmark):
         return self._task_definition
 
     def verify_result(self, result):
-        for filepath in result:
-            root, ext = os.path.splitext(filepath)
-            ext = ext.lower()
-            sd = {"subtask_data": self.subtask_data}
-            if ext == '.result' and \
-                    self.verificator._verify_result(None, sd, filepath, None):
-                return True
-        return False
+        sd = self.verification_options.copy()
+        sd["subtask_data"] = self.subtask_data
+        sd["subtask_id"] = "DummyBenchmark"
+
+        results = [filepath for filepath in result
+                   if Path(filepath).suffix.lower() == '.result']
+
+        self.verifier.start_verification(
+            subtask_info=sd,
+            reference_data=[],
+            resources=[],
+            results=results)
+
+        return self.verifier.state == SubtaskVerificationState.VERIFIED

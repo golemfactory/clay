@@ -52,10 +52,10 @@ for scene in bpy.data.scenes:
     scene.render.resolution_percentage = 100
     scene.render.use_border = True
     scene.render.use_crop_to_border = True
-    scene.render.border_max_x = %(border_max_x).3f
-    scene.render.border_min_x = %(border_min_x).3f
-    scene.render.border_min_y = %(border_min_y).3f
-    scene.render.border_max_y = %(border_max_y).3f
+    scene.render.border_max_x = %(border_max_x)r
+    scene.render.border_min_x = %(border_min_x)r
+    scene.render.border_min_y = %(border_min_y)r
+    scene.render.border_max_y = %(border_max_y)r
     scene.render.use_compositing = bool(%(use_compositing)r)
 
 #and check if additional files aren't missing

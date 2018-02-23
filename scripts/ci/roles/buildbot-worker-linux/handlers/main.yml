@@ -1,5 +1,0 @@
-- name: restart buildbot worker service
-  systemd:
-    name: buildbot-worker.service
-    daemon_reload: yes
-    state: restarted
