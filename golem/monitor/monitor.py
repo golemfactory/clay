@@ -81,8 +81,8 @@ class SystemMonitor(object):
                     port=kwargs['port'],
                     description=result['description']
                 )
-        except Exception:
-            log.exception('Port reachability check error')
+        except Exception as exc:  # pylint: disable=broad-except
+            log.warning('Port reachability check error: %r', exc)
 
     def ping_request(self, port):
         import requests
