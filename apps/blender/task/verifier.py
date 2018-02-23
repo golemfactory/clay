@@ -7,7 +7,6 @@ from collections import Callable
 from threading import Lock
 from shutil import copy
 from functools import partial
-from twisted.internet import reactor
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from apps.blender.resources.imgcompare import check_size
 from apps.blender.task.blendercropper import BlenderCropper
@@ -88,6 +87,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         try:
             def success():
+                from twisted.internet import reactor
                 self.success = partial(reactor.callFromThread, success_)
                 self.failure = partial(reactor.callFromThread, failure)
                 self.crops_size = self.cropper.render_crops(
