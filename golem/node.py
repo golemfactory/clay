@@ -18,7 +18,7 @@ from golem.rpc.session import object_method_map, Session
 logger = logging.getLogger("app")
 
 
-class Node(object):
+class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
@@ -33,6 +33,7 @@ class Node(object):
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None) -> None:
+        # pylint: disable=too-many-instance-attributes
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -48,7 +49,7 @@ class Node(object):
 
         self._peers: List[SocketAddress] = peers or []
 
-        self.client: Optional[Client] = None
+        self.client = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             config_desc=config_desc,
@@ -69,7 +70,7 @@ class Node(object):
             gatherResults([rpc, keys, docker], consumeErrors=True).addCallbacks(
                 self._setup_client, self._error('rpc, keys or docker'))
             self._reactor.run()
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Application error: %r", exc)
 
     def _start_rpc(self) -> Deferred:
@@ -78,6 +79,7 @@ class Node(object):
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
         )
+        # pylint: disable=protected-access
         deferred = rpc._start_node(rpc.options, self._reactor)
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
         return deferred

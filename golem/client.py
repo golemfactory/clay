@@ -1174,7 +1174,7 @@ class MonitoringPublisherService(LoopingCallService):
 
     def __init__(self,
                  task_server: TaskServer,
-                 interval_seconds: int):
+                 interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._task_server = task_server
 
@@ -1206,7 +1206,7 @@ class NetworkConnectionPublisherService(LoopingCallService):
 
     def __init__(self,
                  client: Client,
-                 interval_seconds: int):
+                 interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
 
@@ -1219,7 +1219,7 @@ class TaskArchiverService(LoopingCallService):
     _task_archiver = None  # type: TaskArchiver
 
     def __init__(self,
-                 task_archiver: TaskArchiver):
+                 task_archiver: TaskArchiver) -> None:
         super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
         self._task_archiver = task_archiver
 
@@ -1234,7 +1234,7 @@ class ResourceCleanerService(LoopingCallService):
     def __init__(self,
                  client: Client,
                  interval_seconds: int,
-                 older_than_seconds: int):
+                 older_than_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self.older_than_seconds = older_than_seconds
@@ -1253,7 +1253,7 @@ class TaskCleanerService(LoopingCallService):
     def __init__(self,
                  client: Client,
                  interval_seconds: int,
-                 older_than_seconds: int):
+                 older_than_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self.older_than_seconds = older_than_seconds
