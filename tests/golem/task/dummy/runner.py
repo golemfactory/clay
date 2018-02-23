@@ -15,7 +15,6 @@ import tempfile
 import time
 from os import path
 from threading import Thread
-from unittest.mock import Mock
 
 from twisted.internet import reactor
 
@@ -56,9 +55,11 @@ def create_client(datadir):
     from golem.client import Client
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.key_difficulty = 0
 
-    keys_auth = Mock()
-    keys_auth.key_id = "a" * 64
+    from golem.core.keysauth import KeysAuth
+    keys_auth = KeysAuth(datadir=datadir, difficulty=config_desc.key_difficulty)
+
     return Client(datadir=datadir,
                   config_desc=config_desc,
                   keys_auth=keys_auth,
