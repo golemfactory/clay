@@ -9,6 +9,7 @@ from ethereum import slogging
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
+# pylint: disable=wrong-import-position
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
 from golem.appconfig import AppConfig  # noqa
