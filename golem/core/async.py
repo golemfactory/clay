@@ -4,7 +4,6 @@ from typing import Callable, Optional
 
 from twisted.internet import defer
 from twisted.internet import threads
-from twisted.web.client import Agent
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implementer
 
@@ -46,6 +45,7 @@ class AsyncHTTPRequest:
     @classmethod
     def create_agent(cls):
         from twisted.internet import reactor
+        from twisted.web.client import Agent  # imports reactor
         return Agent(reactor, connectTimeout=cls.timeout)
 
 
