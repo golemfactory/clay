@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import time
 from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
@@ -8,7 +9,6 @@ from typing import Optional, Tuple, Union
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
 
-from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 
@@ -68,7 +68,7 @@ class KeysAuth:
     key_id = ""  # type: str
     ecc = None  # type: ECCx
 
-    def __init__(self, datadir: str, private_key_name: str = PRIVATE_KEY,
+    def __init__(self, datadir: str, private_key_name: str,
                  difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
@@ -137,12 +137,15 @@ class KeysAuth:
 
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
-        logger.info("Generating new key pair.")
+        logger.info("Generating new key pair")
+        started = time.time()
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
+
+        logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
 
     @staticmethod

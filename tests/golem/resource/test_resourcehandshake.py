@@ -558,7 +558,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
             node=Mock(client=client, key=str(uuid.uuid4())),
             config_desc=ClientConfigDescriptor(),
             client=client,
-            use_docker_machine_manager=False
+            use_docker_manager=False
         )
         task_server.task_manager = Mock(
             task_result_manager=Mock(

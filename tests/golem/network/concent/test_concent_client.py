@@ -158,7 +158,10 @@ class TestReceiveFromConcent(TestCase):
 class TestConcentClientService(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
-        keys_auth = keysauth.KeysAuth(datadir=self.path)
+        keys_auth = keysauth.KeysAuth(
+            datadir=self.path,
+            private_key_name='priv_key',
+        )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
             enabled=True,
@@ -360,7 +363,10 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.concent_service = client.ConcentClientService(
-            keys_auth=keysauth.KeysAuth(datadir=self.path),
+            keys_auth=keysauth.KeysAuth(
+                datadir=self.path,
+                private_key_name='priv_key',
+            ),
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()

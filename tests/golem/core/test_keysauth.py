@@ -17,6 +17,15 @@ from golem.utils import encode_hex
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     PEP8_FILES = ['golem/core/keysauth.py']
 
+    def _create_keysauth(self, difficulty=0, key_name=None) -> KeysAuth:
+        if key_name is None:
+            key_name = str(random())
+        return KeysAuth(
+            datadir=self.path,
+            private_key_name=key_name,
+            difficulty=difficulty,
+        )
+
     def test_sha(self):
         """ Test sha2 function"""
         test_str = "qaz123WSX"
@@ -78,13 +87,13 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
     def test_difficulty(self):
         difficulty = 5
-        ek = KeysAuth(self.path, difficulty=difficulty)
+        ek = self._create_keysauth(difficulty)
         assert difficulty <= ek.difficulty
         assert ek.difficulty == KeysAuth.get_difficulty(ek.key_id)
 
     def test_get_difficulty(self):
         difficulty = 8
-        ek = KeysAuth(self.path, difficulty=difficulty)
+        ek = self._create_keysauth(difficulty)
         # first 8 bits of digest must be 0
         assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
         assert KeysAuth.get_difficulty(ek.key_id) >= difficulty
@@ -96,13 +105,14 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         # given
         old_difficulty = 0
         new_difficulty = 7
+        priv_key = str(random())
 
         assert old_difficulty < new_difficulty  # just in case
 
         keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
         # create key that has difficulty lower than new_difficulty
         while True:
-            ek = KeysAuth(self.path, difficulty=old_difficulty)
+            ek = self._create_keysauth(old_difficulty, priv_key)
             if not ek.is_difficult(new_difficulty):
                 break
             os.rmdir(keys_dir)  # to enable keys regeneration
@@ -112,7 +122,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         logger.reset_mock()  # just in case
 
         # when
-        ek = KeysAuth(self.path, difficulty=new_difficulty)
+        ek = self._create_keysauth(new_difficulty, priv_key)
 
         # then
         assert KeysAuth.get_difficulty(ek.key_id) >= new_difficulty
@@ -135,16 +145,18 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     @patch('golem.core.keysauth.logger')
     def test_key_successful_load(self, logger):
         # given
-        ek = KeysAuth(self.path)
+        priv_key = str(random())
+        ek = self._create_keysauth(key_name=priv_key)
         private_key = ek._private_key
         public_key = ek.public_key
         del ek
-        assert logger.info.call_count == 1
-        assert logger.info.call_args[0][0] == 'Generating new key pair.'
+        assert logger.info.call_count == 2
+        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
+        assert logger.info.call_args_list[1][0][0] == 'Keys generated in %.2fs'
         logger.reset_mock()  # just in case
 
         # when
-        ek2 = KeysAuth(self.path)
+        ek2 = self._create_keysauth(key_name=priv_key)
 
         # then
         assert private_key == ek2._private_key
@@ -175,12 +187,12 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         )
 
     def test_sign_verify(self):
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
         data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
         signature = ek.sign(data)
         self.assertTrue(ek.verify(signature, data))
         self.assertTrue(ek.verify(signature, data, ek.key_id))
-        ek2 = KeysAuth(os.path.join(self.path, str(random())))
+        ek2 = self._create_keysauth()
         self.assertTrue(ek2.verify(signature, data, ek.key_id))
         data2 = b"23103"
         sig = ek2.sign(data2)
@@ -194,7 +206,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         data2 = b"qaz123WSY./;'[]"
 
         # when
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
         sig1 = ek.sign(data1)
         sig2 = ek.sign(data2)
 
@@ -217,7 +229,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
                       b"3b4ac6ef078"
 
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
 
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
@@ -259,17 +271,16 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
     def test_encrypt_decrypt(self):
         """ Test encryption and decryption with KeysAuth """
-        path = os.path.join(self.path, str(random()))
-        ek = KeysAuth(path)
+        ek = self._create_keysauth()
         data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
         enc = ek.encrypt(data)
         self.assertEqual(ek.decrypt(enc), data)
-        ek2 = KeysAuth(os.path.join(self.path, str(random())))
+        ek2 = self._create_keysauth()
         self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
         data2 = b"23103"
         self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
         data3 = b"\x00" + os.urandom(1024)
-        ek2 = KeysAuth(path, difficulty=2)
+        ek2 = self._create_keysauth(difficulty=2)
         self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
         with self.assertRaises(TypeError):
             ek2.encrypt(None)

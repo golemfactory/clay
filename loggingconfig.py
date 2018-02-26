@@ -78,6 +78,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.core.keysauth': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.db': {
             'level': 'INFO',
             'propagate': True,
