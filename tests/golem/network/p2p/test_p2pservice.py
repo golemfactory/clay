@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from os import urandom
 import random
 import time
 import unittest.mock as mock
@@ -15,6 +16,7 @@ from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.utils import encode_hex
 
 
 class TestP2PService(testutils.DatabaseFixture):
@@ -22,7 +24,9 @@ class TestP2PService(testutils.DatabaseFixture):
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
-        self.keys_auth = KeysAuth(self.path, 'priv_key')
+        # Mock saving keys as it takes long to compute and isn't needed here
+        KeysAuth._save_private_key = mock.Mock()
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.service = P2PService(
             None,
             ClientConfigDescriptor(),
@@ -79,7 +83,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_add_to_peer_keeper(self):
         node = Node()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
@@ -109,7 +113,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_remove_old_peers(self):
         node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -130,12 +134,12 @@ class TestP2PService(testutils.DatabaseFixture):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
-        node2.key = KeysAuth(self.path, "TESTPRIV2").key_id
+        node2.key = encode_hex(urandom(64))
         node2.key_id = node2.key
         node2.address = sa
 
@@ -159,7 +163,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = KeysAuth(self.path, "TESTPRIV").key_id
+        key_id = encode_hex(urandom(64))
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -217,7 +221,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_sync_free_peers(self):
         node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "PRIVTEST").key_id
+        node.key = encode_hex(urandom(64))
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -320,8 +324,8 @@ class TestP2PService(testutils.DatabaseFixture):
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        keys_auth2 = KeysAuth(self.path, "PUBTESTPATH1")
-        ps2.key_id = keys_auth2.key_id
+        key_id2 = encode_hex(urandom(64))
+        ps2.key_id = key_id2
         self.service.add_peer(ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
 
