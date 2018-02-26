@@ -382,7 +382,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
-        # the requestor safely
+        # the Requestor safely
         if not task_to_compute.concent_enabled:
             return
 
@@ -399,14 +399,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', msg)
-
-        self.concent_service.submit(
-            ConcentRequest.build_key(
-                task_result.subtask_id,
-                msg.__class__.__name__,
-            ),
-            msg,
-        )
+        self.concent_service.submit_task_message(task_result.subtask_id, msg)
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -666,6 +659,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             client_options
         )
 
+        task_to_compute = get_task_message(
+            'TaskToCompute',
+            task_id,
+            subtask_id,
+        )
+
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
             logger.debug("Task result extracted {}"
@@ -676,18 +675,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning("Task result error: %s (%s)", subtask_id,
                            exc or "unspecified")
 
-            # in case of resources failure, we're sending the rejection
-            # until we implement `ForceGetTaskResults` (pending)
-            self._reject_subtask_result(
-                subtask_id,
-                reason=message.tasks.SubtaskResultsRejected.REASON
-                .ResourcesFailure
-            )
+            if not task_to_compute or not task_to_compute.concent_enabled:
+                # in case of resources failure, if we're not using the Concent
+                # we're immediately sending a rejection message to the Provider
+                self._reject_subtask_result(
+                    subtask_id,
+                    reason=message.tasks.SubtaskResultsRejected.REASON
+                    .ResourcesFailure
+                )
 
-            self.task_manager.task_computation_failure(
-                subtask_id,
-                'Error downloading task result'
-            )
+                self.task_manager.task_computation_failure(
+                    subtask_id,
+                    'Error downloading task result'
+                )
+            else:
+                # otherwise, we're resorting to mediation through the Concent
+                # to obtain the task results
+                rct = get_task_message(
+                    'ReportComputedTask', task_id, subtask_id
+                )
+                if not rct:
+                    logger.error(
+                        "[CONCENT] Can't construct ForceGetTaskResult message")
+                else:
+                    msg = message.concents.ForceGetTaskResult(
+                        report_computed_task=rct
+                    )
+                    logger.debug('[CONCENT] ForceGetTaskResult: %s', msg)
+                    self.concent_service.submit_task_message(subtask_id, msg)
+
             self.dropped()
 
         self.task_manager.task_result_incoming(subtask_id)
