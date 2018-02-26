@@ -683,7 +683,7 @@ class Client(HardwarePresetsMixin):
             raise KeyError("Unknown setting: {}".format(key))
 
         value = getattr(self.config_desc, key)
-        if key in ConfigApprover.numeric_opt:
+        if ConfigApprover.is_numeric(key):
             return str(value)
         return value
 

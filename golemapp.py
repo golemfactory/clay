@@ -9,10 +9,12 @@ from ethereum import slogging
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
+# pylint: disable=wrong-import-position
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
 from golem.appconfig import AppConfig  # noqa
-from golem.clientconfigdescriptor import ClientConfigDescriptor  # noqa
+from golem.clientconfigdescriptor import ClientConfigDescriptor, \
+    ConfigApprover  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.core.variables import PROTOCOL_CONST  # noqa
@@ -102,6 +104,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc = ConfigApprover(config_desc).approve()
 
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
