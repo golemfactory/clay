@@ -60,21 +60,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             f.write(b'123')
         assert os.listdir(keys_dir) == [key_name]
 
-        # when
-        KeysAuth(self.path, key_name)
-
-        # then
-        assert logger.error.call_count == 1
-        assert logger.error.call_args[0] == (
-            'Wrong loaded private key size: %d.', 3)
-
-        with open(key_path, 'rb') as f:
-            new_priv_key = f.read()
-        assert len(new_priv_key) == KeysAuth.PRIV_KEY_LEN
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
-        )
+        with self.assertRaisesRegexp(Exception, 'Wrong loaded private key'):
+            KeysAuth(self.path, key_name)
 
     def test_difficulty(self):
         difficulty = 5
@@ -111,14 +98,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         assert KeysAuth.get_difficulty(ek.key_id) < new_difficulty
         logger.reset_mock()  # just in case
 
-        # when
-        ek = KeysAuth(self.path, difficulty=new_difficulty)
-
-        # then
-        assert KeysAuth.get_difficulty(ek.key_id) >= new_difficulty
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args[0][0] == \
-            'Loaded key is not difficult enough.'
+        with self.assertRaisesRegexp(Exception, 'Loaded key is not difficult'):
+            KeysAuth(self.path, difficulty=new_difficulty)
 
     def test_save_keys(self):
         # given
@@ -163,17 +144,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             f.write("f" * 32)  # binary all ones
         assert os.listdir(keys_dir) == [key_name]
 
-        # when
-        KeysAuth(self.path, key_name, difficulty=1)
-
-        # then
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args[0][0] == \
-            'Loaded key is not difficult enough.'
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
-        )
+        with self.assertRaisesRegexp(Exception, 'Loaded key is not difficult'):
+            KeysAuth(self.path, key_name, difficulty=1)
 
     def test_sign_verify(self):
         ek = KeysAuth(self.path)
