@@ -8,8 +8,6 @@ import math
 import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
-from twisted.web.client import readBody
-from twisted.web.http_headers import Headers
 
 from golem.core.async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
@@ -138,6 +136,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
 
     def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT, host='localhost',
                  timeout=None):
+        from twisted.web.http_headers import Headers  # imports reactor
 
         super().__init__(port, host, timeout)
 
@@ -190,6 +189,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
         )
 
     def _async_request(self, params, response_parser):
+        from twisted.web.client import readBody  # imports reactor
+
         serialized_params = json.dumps(params)
         encoded_params = serialized_params.encode('utf-8')
         _result = Deferred()
