@@ -11,7 +11,6 @@ from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
 
 from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
-from .simpleenv import get_local_datadir
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +108,7 @@ class KeysAuth:
 
     @staticmethod
     def _get_or_create_keys_dir(datadir: str) -> str:
-        path = datadir or get_local_datadir('default')
-        keys_dir = os.path.join(path, KeysAuth.KEYS_SUBDIR)
+        keys_dir = os.path.join(datadir, KeysAuth.KEYS_SUBDIR)
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir)
         return keys_dir
@@ -125,14 +123,13 @@ class KeysAuth:
             return None
 
         if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
-            logger.error("Wrong loaded private key size: %d.", len(priv_key))
-            return None
+            raise Exception(
+                "Wrong loaded private key size: {}".format(len(priv_key)))
 
         pub_key = privtopub(priv_key)
 
         if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            logger.warning("Loaded key is not difficult enough.")
-            return None
+            raise Exception("Loaded key is not difficult enough")
 
         return priv_key, pub_key
 
