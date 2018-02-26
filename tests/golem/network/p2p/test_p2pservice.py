@@ -22,7 +22,7 @@ class TestP2PService(testutils.DatabaseFixture):
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
-        self.keys_auth = KeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path, 'priv_key')
         self.service = P2PService(
             None,
             ClientConfigDescriptor(),

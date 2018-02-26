@@ -779,7 +779,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path)
+        c.keys_auth = KeysAuth(self.path, 'priv_key')
 
         self.assertIsInstance(c.get_node(), dict)
 

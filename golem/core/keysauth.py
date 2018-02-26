@@ -9,7 +9,6 @@ from typing import Optional, Tuple, Union
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
 
-from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 
@@ -69,7 +68,7 @@ class KeysAuth:
     key_id = ""  # type: str
     ecc = None  # type: ECCx
 
-    def __init__(self, datadir: str, private_key_name: str = PRIVATE_KEY,
+    def __init__(self, datadir: str, private_key_name: str,
                  difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.

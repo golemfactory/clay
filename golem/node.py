@@ -9,6 +9,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.async import async_callback
 from golem.core.keysauth import KeysAuth
+from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
@@ -86,6 +87,7 @@ class Node(object):
         return threads.deferToThread(
             KeysAuth,
             datadir=self._datadir,
+            private_key_name=PRIVATE_KEY,
             difficulty=self._config_desc.key_difficulty
         )
 
