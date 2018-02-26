@@ -38,7 +38,7 @@ class Node(DictSerializable):
         self.hyperdrive_prv_port = hyperdrive_prv_port
         self.hyperdrive_pub_port = hyperdrive_pub_port
 
-        self.port_status = None
+        self.port_statuses = {}  # type: dict
 
         self.nat_type = nat_type  # Please do not remove the nat_type property,
         # it's still useful for stats / debugging connectivity.

@@ -1,16 +1,22 @@
-import random
-from unittest import TestCase
-from unittest import mock
+from random import Random
+import time
+from unittest import mock, TestCase
+from urllib.parse import urljoin
 
+from freezegun import freeze_time
+from pydispatch import dispatcher
 import requests
 
 from golem import testutils
+from golem.core import variables
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor, SenderThread
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
+
+random = Random(__name__)
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
@@ -19,23 +25,26 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
     )
 
     def setUp(self):
-        random.seed()
+        meta_data = NodeMetadataModel(
+            'cliid', 'sessid', 'os', 'ver', ClientConfigDescriptor())
+        config = MONITOR_CONFIG.copy()
+        config['HOST'] = 'http://localhost/88881'
+        self.monitor = SystemMonitor(meta_data, config)
 
-    @staticmethod
-    def test_monitor_messages():
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3",
-                                ClientConfigDescriptor())
-        m = MONITOR_CONFIG.copy()
-        m['HOST'] = "http://localhost/88881"
-        monitor = SystemMonitor(nmm, m)
-        monitor.start()
-        monitor.on_login()
+    def tearDown(self):
+        del self.monitor
 
-        monitor.on_payment(addr="some address", value=30139019301)
-        monitor.on_income("different address", 319031904194810)
-        monitor.on_peer_snapshot([{"node_id": "firt node", "port": 19301},
-                                  {"node_id": "second node", "port": 3193}])
-        monitor.on_requestor_stats_snapshot(
+    def test_monitor_messages(self):
+        """Just check if all signal handlers run without errors"""
+        self.monitor.start()
+        self.monitor.on_login()
+
+        self.monitor.on_payment(addr="some address", value=30139019301)
+        self.monitor.on_income("different address", 319031904194810)
+        self.monitor.on_peer_snapshot([
+            {"node_id": "first node", "port": 19301},
+            {"node_id": "second node", "port": 3193}])
+        self.monitor.on_requestor_stats_snapshot(
             CurrentStats(1, 0, 1, 0, 0, 0, 0, 0, 1),
             FinishedTasksStats(
                 EMPTY_FINISHED_SUMMARY,
@@ -43,17 +52,14 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                 EMPTY_FINISHED_SUMMARY))
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ccd)
-        monitor.on_config_update(nmm)
-        monitor.on_logout()
-        monitor.shut_down()
+        new_meta_data = NodeMetadataModel(
+            "CLIID", "SESSID", "win32", "1.3", ccd)
+        self.monitor.on_config_update(new_meta_data)
+        self.monitor.on_logout()
+        self.monitor.shut_down()
 
     def test_protocol_versions(self):
         """Test whether correct protocol versions were sent."""
-        from golem.core.variables import PROTOCOL_CONST
-        monitor = SystemMonitor(
-            NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337",
-                              ClientConfigDescriptor()), MONITOR_CONFIG)
 
         def check(f, msg_type):
             with mock.patch('golem.monitor.monitor.SenderThread.send') \
@@ -66,50 +72,103 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                 expected_d = {
                     'type': msg_type,
                     'protocol_versions': {
-                        'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-                        'p2p': PROTOCOL_CONST.ID,
-                        'task': PROTOCOL_CONST.ID,
+                        'monitor': self.monitor.config['PROTO_VERSION'],
+                        'p2p': variables.PROTOCOL_CONST.ID,
+                        'task': variables.PROTOCOL_CONST.ID,
                     },
                 }
                 self.assertEqual(expected_d, result)
 
-        check(monitor.on_login, "Login")
-        check(monitor.on_logout, "Logout")
+        check(self.monitor.on_login, "Login")
+        check(self.monitor.on_logout, "Logout")
 
-    def test_ping_request(self):
-        from pydispatch import dispatcher
-        monitor = SystemMonitor(
-            NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337",
-                              ClientConfigDescriptor()), MONITOR_CONFIG)
-        port = random.randint(20, 50000)
-        with mock.patch('requests.post') as post_mock:
-            post_mock.return_value = response_mock = mock.MagicMock()
-            response_mock.json = mock.MagicMock(return_value={'success': True})
-            dispatcher.send(signal='golem.p2p', event='no event at all',
-                            port=port)
-            self.assertEqual(post_mock.call_count, 0)
-            dispatcher.send(signal='golem.p2p', event='listening', port=port)
-            post_mock.assert_called_once_with(
-                '%sping-me' % (MONITOR_CONFIG['HOST'],),
-                data={'port': port},
-                timeout=mock.ANY,
-            )
+    @mock.patch('requests.post')
+    def test_ping_request_wrong_signal(self, post_mock):
+        dispatcher.send(
+            signal='golem.p2p',
+            event='no event at all',
+            ports=[])
+        self.assertEqual(post_mock.call_count, 0)
 
-            signals = []
+    @freeze_time()
+    @mock.patch('requests.post')
+    def test_ping_request_success(self, post_mock):
+        port = random.randint(1, 65535)
+        post_mock.return_value.json.return_value = {
+            'success': True,
+            'time_diff': 0
+        }
 
-            def l(sender, signal, event, **kwargs):  # noqa pylint: disable=unused-argument
-                signals.append((signal, event, kwargs))
+        def listener(event, *_, **__):
+            if event == 'unreachable':
+                self.fail()
+        dispatcher.connect(listener, signal='golem.p2p')
 
-            dispatcher.connect(l, signal="golem.p2p")
-            response_mock.json = mock.MagicMock(
-                return_value={'success': False, 'description': 'failure'})
-            dispatcher.send(signal='golem.p2p', event='listening', port=port)
-            signals = [s for s in signals if s[1] != 'listening']
-            self.assertEqual(signals, [('golem.p2p', 'unreachable',
-                                        {'description': 'failure',
-                                         'port': port})])
-        # we keep active reference for dispatcher not to remove it
-        del monitor
+        dispatcher.send(
+            signal='golem.p2p',
+            event='listening',
+            ports=[port])
+        post_mock.assert_called_once_with(
+            urljoin(self.monitor.config['HOST'], 'ping-me'),
+            data={
+                'ports': [port],
+                'timestamp': time.time()
+            },
+            timeout=mock.ANY,
+        )
+
+    @mock.patch('requests.post')
+    def test_ping_request_port_unreachable(self, post_mock):
+        port = random.randint(1, 65535)
+        post_mock.return_value.json.return_value = {
+            'success': False,
+            'port_statuses': [{
+                'port': port,
+                'is_open': False,
+                'description': 'timeout'
+            }],
+            'description': 'whatever',
+            'time_diff': 0
+        }
+
+        listener = mock.MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+
+        dispatcher.send(
+            signal='golem.p2p',
+            event='listening',
+            ports=[port])
+
+        listener.assert_any_call(
+            sender=mock.ANY,
+            signal='golem.p2p',
+            event='unreachable',
+            port=port,
+            description='timeout'
+        )
+
+    @mock.patch('requests.post')
+    def test_ping_request_time_diff_too_big(self, post_mock):
+        time_diff = variables.MAX_TIME_DIFF + 5
+        post_mock.return_value.json.return_value = {
+            'success': True,
+            'time_diff': time_diff
+        }
+
+        listener = mock.MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+
+        dispatcher.send(
+            signal='golem.p2p',
+            event='listening',
+            ports=[])
+
+        listener.assert_any_call(
+            sender=mock.ANY,
+            signal='golem.p2p',
+            event='unsynchronized',
+            time_diff=time_diff
+        )
 
 
 class TestSenderThread(TestCase):
