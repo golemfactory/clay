@@ -10,7 +10,7 @@ from golem.network.transport.limiter import CallRateLimiter
 class TestCallRateLimiter(TestCase):
 
     def test_init(self, _):
-        rate = 10.
+        rate = 10
         capacity_factor = 2.
         delay_factor = 3.
 

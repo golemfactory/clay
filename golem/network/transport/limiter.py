@@ -12,7 +12,7 @@ class CallRateLimiter:
     KEY = b'default'
 
     def __init__(self,
-                 rate: float = 5.,
+                 rate: int = 5,
                  capacity_factor: float = 1.5,
                  delay_factor: float = 1.5) -> None:
 
