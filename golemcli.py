@@ -4,6 +4,7 @@ import os
 import argparse
 import sys
 
+from multiprocessing import freeze_support
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
@@ -29,6 +30,9 @@ _ = {
 
 
 def start():
+    freeze_support()
+    delete_reactor()
+
     flags = dict(
         interactive=('-i', '--interactive'),
         address=('-a', '--address'),
@@ -67,6 +71,11 @@ def start():
     install_reactor()
     ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
+
+
+def delete_reactor():
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
 
 
 if __name__ == '__main__':
