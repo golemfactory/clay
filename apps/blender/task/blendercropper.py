@@ -104,9 +104,9 @@ class BlenderCropper:
             # Here another conversion from double to float
             x_f = numpy.float32(numpy.float32(split_x[0])
                                 / numpy.float32(resolution[0]))
-            y_f = numpy.float32(numpy.float32(split_x[1]) /
+            right_f = numpy.float32(numpy.float32(split_x[1]) /
                                 numpy.float32(resolution[0]))
-            right_f = numpy.float32(numpy.float32(split_y[0])
+            y_f = numpy.float32(numpy.float32(split_y[0])
                                     / numpy.float32(resolution[1]))
             bottom_f = numpy.float32(numpy.float32(split_y[1])
                                      / numpy.float32(resolution[1]))
@@ -115,7 +115,7 @@ class BlenderCropper:
             split_x[0] = math.floor(x_f * numpy.float32(resolution[0]))
             split_y[1] = math.floor(bottom_f * numpy.float32(resolution[1]))
 
-            self.split_values.append((x_f, y_f, right_f, bottom_f))
+            self.split_values.append((x_f, right_f, y_f, bottom_f))
             self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
         return self.split_values, self.split_pixels
 

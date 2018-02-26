@@ -1,7 +1,10 @@
 import time
 import os
+import numpy
+import math
 from twisted.internet.defer import Deferred
 from apps.blender.task.blendercropper import BlenderCropper
+from apps.blender.task.blenderrendertask import get_min_max_y
 from apps.blender.task.verifier import BlenderVerifier
 from golem.core.common import get_golem_path
 from golem.core.deferred import sync_wait
@@ -154,3 +157,39 @@ class TestGenerateCrops(TempDirFixture):
             self.subtask_info)
 
         sync_wait(d, 140)
+
+    def test_strange_resolutions(self):
+
+        strange_res = [313, 317, 953, 967, 1949, 1951, 3319, 3323, 9949, 9967]
+        for l in range(0, 8):
+            subtasks = 13
+            res_y = strange_res[l]
+            res_x = strange_res[l+1]
+            for i in range(1, subtasks+1):
+                min_y, max_y = get_min_max_y(i, subtasks, res_y)
+                min_y = numpy.float32(min_y)
+                max_y = numpy.float32(max_y)
+                crop_window = (0.0, 1.0, min_y, max_y)
+                left_p = math.floor(numpy.float32(crop_window[0]) *
+                                    numpy.float32(res_x))
+                right_p = math.floor(numpy.float32(crop_window[1]) *
+                                     numpy.float32(res_x))
+                bottom_p = math.floor(numpy.float32(crop_window[2]) *
+                                      numpy.float32(res_y))
+                top_p = math.floor(numpy.float32(crop_window[3]) *
+                                   numpy.float32(res_y))
+                cropper = BlenderCropper()
+                values, pixels = cropper.generate_split_data(
+                    (res_x, res_y), crop_window, 3)
+                for j in range(0, 3):
+                    crop = values[j]
+                    width = crop[1] - crop[0]
+                    height = crop[3] - crop[2]
+                    height_p = math.floor(numpy.float32(height) *
+                                          numpy.float32(res_y))
+                    width_p = math.floor(numpy.float32(width) *
+                                       numpy.float32(res_x))
+                    assert left_p < pixels[j][0] < right_p
+                    assert bottom_p < top_p - pixels[j][1] < top_p
+                    assert left_p < pixels[j][0] + width_p < right_p
+                    assert bottom_p < top_p - pixels[j][1] - height_p < top_p
