@@ -173,9 +173,10 @@ class ConcentClientService(threading.Thread):
         self.received_messages.join()
         logger.info('%s stopped', self)
 
-    def submit_task_message(self, subtask_id: str, msg: message.Message,
-                            delay: typing.Optional[datetime.timedelta] = None
-                            ) -> None:
+    def submit_task_message(
+            self, subtask_id: str, msg: message.Message,
+            delay: typing.Optional[datetime.timedelta] = None
+    ) -> None:
         """
         Submit a subtask-related message to the Concent.
         Wrapper for `ConcentClientService.submit` that accepts a
