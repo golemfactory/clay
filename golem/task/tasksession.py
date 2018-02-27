@@ -668,12 +668,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             client_options
         )
 
-        task_to_compute = get_task_message(
-            'TaskToCompute',
-            task_id,
-            subtask_id,
-        )
-
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
             logger.debug("Task result extracted {}"
@@ -684,7 +678,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning("Task result error: %s (%s)", subtask_id,
                            exc or "unspecified")
 
-            if not task_to_compute or not task_to_compute.concent_enabled:
+            ttc = get_task_message('TaskToCompute', task_id, subtask_id)
+            if not ttc or not ttc.concent_enabled:
                 # in case of resources failure, if we're not using the Concent
                 # we're immediately sending a rejection message to the Provider
                 self._reject_subtask_result(
@@ -705,7 +700,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 )
                 if not rct:
                     logger.error(
-                        "[CONCENT] Can't construct ForceGetTaskResult message")
+                        "[CONCENT] Can't construct ForceGetTaskResult message"
+                        "for task %s, subtask %s", task_id, subtask_id)
                 else:
                     msg = message.concents.ForceGetTaskResult(
                         report_computed_task=rct

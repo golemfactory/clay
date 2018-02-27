@@ -890,7 +890,6 @@ class TaskResultHashTest(LogTestCase):
         }
         self.ts = ts
 
-    @patch('golem.task.tasksession.get_task_message', Mock())
     def test_result_received(self):
         msg = factories.messages.TaskResultHashFactory(
             subtask_id=self.subtask_id)
@@ -971,5 +970,8 @@ class TaskResultHashTest(LogTestCase):
 
         with patch('golem.task.tasksession.get_task_message',
                    get_task_message_mock):
-            self.ts._react_to_task_result_hash(msg)
-            self.ts.concent_service.submit_task_message.assert_not_called()
+            with self.assertLogs(logger, level="ERROR") as log:
+                self.ts._react_to_task_result_hash(msg)
+                self.ts.concent_service.submit_task_message.assert_not_called()
+                self.assertIn('ForceGetTaskResult', log.output[0])
+                self.assertIn(self.subtask_id, log.output[0])
