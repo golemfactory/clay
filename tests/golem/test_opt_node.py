@@ -359,6 +359,23 @@ class TestNode(TestWithDatabase):
             assert return_value.exit_code != 0
 
 
+def mock_async_run(req, success=None, error=None):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
+
+    try:
+        result = req.method(*req.args, **req.kwargs)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
+    else:
+        deferred.callback(result)
+
+    return deferred
+
+
 def done_deferred(*_):
     deferred = Deferred()
     deferred.callback(True)
@@ -374,8 +391,9 @@ def chain_function(_, fn, *args, **kwargs):
 
 @patch('golem.node.Node._start_keys_auth')
 @patch('golem.node.Node._start_docker')
-@patch('golem.node.chain_function', side_effect=chain_function)
-@patch('golem.node.threads.deferToThread', side_effect=done_deferred)
+@patch('golem.node.async_run', mock_async_run)
+@patch('golem.node.chain_function', chain_function)
+@patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
 @patch('golem.node.Session', Mock(connect=done_deferred))
 @patch('golem.node.gatherResults')
