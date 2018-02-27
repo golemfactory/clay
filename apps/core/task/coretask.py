@@ -1,12 +1,17 @@
 import abc
 import decimal
+import queue
+import threading
+from collections import namedtuple
+
 import golem_messages.message
 import logging
 import os
 import uuid
 from enum import Enum
-from typing import Type
+from typing import Type, Optional
 
+import time
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
@@ -84,8 +89,80 @@ class CoreTaskTypeInfo(TaskTypeInfo):
         return {}
 
 
+class VerificationQueue:
+
+    Entry = namedtuple('Entry', ['created', 'params', 'cb'])
+
+    def __init__(self, verifier_class, concurrency=2):
+        self._verifier_class = verifier_class
+        self._concurrency = concurrency
+        self._queue = queue.Queue()
+
+        self._lock = threading.Lock()
+        self._running = 0
+
+    def submit(self, subtask_info, results, resources,
+               reference_data, cb) -> None:
+
+        params = dict(
+            subtask_info=subtask_info,
+            results=results,
+            resources=resources,
+            reference_data=reference_data
+        )
+
+        entry = self.Entry(time.time(), params, cb)
+
+        self._queue.put(entry)
+        self._process_queue()
+
+    @property
+    def can_run(self) -> bool:
+        with self._lock:
+            return self._running < self._concurrency
+
+    def _process_queue(self) -> None:
+        if self.can_run:
+            entry = self._next()
+            if entry:
+                self._run(entry)
+
+    def _next(self) -> Optional[Entry]:
+        try:
+            return self._queue.get()
+        except queue.Empty:
+            return None
+
+    def _run(self, entry: Entry) -> None:
+        with self._lock:
+            self._running += 1
+
+        subtask_info = entry.params['subtask_info']
+        logger.info("Running verification for subtask %r", subtask_info)
+
+        def callback(*args, **kwargs):
+            with self._lock:
+                self._running -= 1
+
+            logger.info("Verification ended for subtask %r",
+                        subtask_info)
+            entry.cb(*args, **kwargs)
+
+        try:
+            verifier = self._verifier_class(callback)
+            verifier.computer = ComputerAdapter()
+            verifier.start_verification(**entry.params)
+        except Exception as exc:  # pylint: disable=broad-except
+            with self._lock:
+                self._running -= 1
+
+            logger.error("Failed to start verification for subtask %r: %r",
+                         subtask_info, exc)
+
+
 class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
+    VERIFICATION_QUEUE = VerificationQueue(VERIFIER_CLASS)
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -211,13 +288,13 @@ class CoreTask(Task):
             self.verification_finished(subtask_id, verdict, result)
             verification_finished_()
 
-        verifier = self.VERIFIER_CLASS(verification_finished)
-        verifier.computer = ComputerAdapter()
-        verifier.start_verification(
+        self.VERIFICATION_QUEUE.submit(
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data())
+            reference_data=self.get_reference_data(),
+            cb=verification_finished
+        )
 
     def get_reference_data(self):
         return []
