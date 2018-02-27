@@ -25,7 +25,7 @@ class Account:
         if any(b is None for b in balance):
             balance = 0, 0, 0
 
-        gnt_balance, gnt_available, eth_balance = balance
+        gnt_balance, gnt_available, eth_balance = balance[:3]
         gnt_balance = float(gnt_balance)
         gnt_available = float(gnt_available)
         eth_balance = float(eth_balance)
