@@ -38,8 +38,8 @@ class CallRateLimiter:
     def call(self,
              fn: FunctionType,
              *args,
-             __key__: bytes = KEY,
-             __delay__: float = 1.0,
+             _limiter_key: bytes = KEY,
+             _limiter_delay: float = 1.0,
              **kwargs) -> None:
 
         """
@@ -47,24 +47,21 @@ class CallRateLimiter:
         the call otherwise.
         :param fn: Function to call
         :param args: Function's positional arguments
-        :param __key__: Bucket key
-        :param __delay__: Function call delay in seconds
+        :param _limiter_key: Bucket key
+        :param _limiter_delay: Function call delay in seconds
         :param kwargs: Function's keyword arguments
         :return: None
         """
 
-        if self._limiter.consume(__key__):
+        if self._limiter.consume(_limiter_key):
             fn(*args, **kwargs)
         else:
             logger.debug('Delaying function call by %r s: %r(%r, %r)',
-                         __delay__, fn, args, kwargs)
+                         _limiter_delay, fn, args, kwargs)
 
             self._reactor.callLater(
-                __delay__,
-                self.call,
-                fn,
-                *args,
-                __key__=__key__,
-                __delay__=__delay__ * self._delay_factor,
-                **kwargs
+                _limiter_delay,
+                self.call, fn, *args, **kwargs,
+                _limiter_key=_limiter_key,
+                _limiter_delay=_limiter_delay * self._delay_factor
             )
