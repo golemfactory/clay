@@ -1,9 +1,10 @@
 import logging
 from contextlib import contextmanager
+from typing import Optional
 
 
 @contextmanager
-def handle_image_error(logger: logging.Logger = None):
+def handle_image_error(logger: Optional[logging.Logger] = None):
     """
     This context manager will catch exceptions that might be thrown by PIL and
     write them to log.
@@ -29,7 +30,7 @@ def handle_image_error(logger: logging.Logger = None):
     if logger is None:
         logger = logging.getLogger("apps.rendering")
 
-    class Result:
+    class Result:  # pylint: disable=too-few-public-methods
         def __init__(self):
             self.success = False
 
@@ -44,7 +45,7 @@ def handle_image_error(logger: logging.Logger = None):
 
 
 @contextmanager
-def handle_none(opt_context, raise_if_none: Exception = None):
+def handle_none(opt_context, raise_if_none: Optional[Exception] = None):
     """
     The purpose of this context manager is to handle such situation:
 
@@ -73,5 +74,6 @@ def handle_none(opt_context, raise_if_none: Exception = None):
             yield opt_context
     else:
         if raise_if_none is not None:
-            raise raise_if_none
+            # pylint thinks we're raising None here
+            raise raise_if_none  # pylint: disable=raising-bad-type
         yield None

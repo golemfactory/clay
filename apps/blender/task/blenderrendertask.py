@@ -97,8 +97,7 @@ class PreviewUpdater(object):
                             or len(self.chunks) == 1:
                         return Image.new("RGB", (self.preview_res_x,
                                                  self.preview_res_y))
-                    else:
-                        return Image.open(self.preview_file_path)
+                    return Image.open(self.preview_file_path)
 
                 with open_or_create_image() as preview_img:
                     preview_img.paste(subtask_img_resized, (0, offset))

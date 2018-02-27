@@ -176,8 +176,9 @@ def load_as_pil(file_: str) -> Optional[Image.Image]:
     """
 
     img = load_img(file_)
-    if img:
-        return img.to_pil()
+    if img is None:
+        return None
+    return img.to_pil()
 
 
 def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:

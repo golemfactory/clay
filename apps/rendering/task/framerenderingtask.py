@@ -208,8 +208,9 @@ class FrameRenderingTask(RenderingTask):
 
             if not final:
                 with self._paste_new_chunk(
-                        img, self._get_preview_file_path(num), part,
-                        int(self.total_tasks / len(self.frames))) as img_pasted:
+                    img, self._get_preview_file_path(num), part,
+                    int(self.total_tasks / len(self.frames))
+                ) as img_pasted:
                     resize_and_save(img_pasted)
             else:
                 resize_and_save(img)
