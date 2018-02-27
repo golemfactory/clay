@@ -55,7 +55,7 @@ def decode_hex(s):
         if s[0] == b'0' and s[1] == b'x':
             s = s[2:]
         return binascii.unhexlify(s)
-    raise TypeError('Value must be an instance of str or bytes')
+    raise TypeError(f'Value {s} must be an instance of str or bytes: {type(s)}')
 
 
 def encode_hex(b):

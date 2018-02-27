@@ -66,7 +66,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        self.keys_auth = KeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,

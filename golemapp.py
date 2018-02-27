@@ -137,9 +137,9 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             use_monitor=monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
-            geth_address=geth_address,
-        )
-        node.run()
+            geth_address=geth_address)
+
+        node.start()
 
 
 def delete_reactor():

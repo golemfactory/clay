@@ -8,7 +8,7 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-PRIVATE_KEY = "golem_private_key.peb"
+PRIVATE_KEY = "golem_wallet_const_password.json"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
 
@@ -30,6 +30,9 @@ CONCENT_PUBKEY = b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x8
 
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
+
+# Maximum acceptable difference between node time and monitor time (seconds)
+MAX_TIME_DIFF = 10
 
 
 ###############

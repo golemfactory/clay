@@ -32,7 +32,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         task_server.get_task_computer_root.return_value = \
             task_server.client.datadir
         task_computer = TaskComputer("node", task_server,
-                                     use_docker_machine_manager=False)
+                                     use_docker_manager=False)
         image = DockerImage("golemfactory/base", tag="1.2")
 
         with self.assertRaises(AttributeError):
