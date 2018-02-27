@@ -26,8 +26,11 @@ class TestCallRateLimiter(TestCase):
     def test_call(self, reactor):
         limiter = CallRateLimiter()
         fn = mock.Mock(return_value=True)
+        # Call count is equal to current rate
+        # and less than capacity (defaults)
+        n = limiter._limiter._rate
 
-        for _ in range(5):
+        for _ in range(n):
             limiter.call(fn)
         assert not reactor.callLater.called
 
@@ -35,6 +38,7 @@ class TestCallRateLimiter(TestCase):
     def test_delay(self, reactor):
         limiter = CallRateLimiter()
         fn = mock.Mock(return_value=True)
+        # Call count exceeds the current capacity
         n = int(limiter._limiter._capacity * 1.5)
 
         for _ in range(n):
