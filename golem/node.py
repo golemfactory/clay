@@ -9,6 +9,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth
+from golem.core.async import async_run, AsyncRequest
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher
@@ -126,7 +127,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_session.register_methods(methods)
         self.client.configure_rpc(self.rpc_session)
 
-        self._run()
+        async_run(AsyncRequest(self._run))
 
     def _run(self, *_) -> None:
         self._setup_apps()
