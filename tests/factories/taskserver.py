@@ -15,7 +15,7 @@ class TaskServer(factory.Factory):
 
     node = p2p_factory.Node()
     config_desc = clientconfigdescriptor.ClientConfigDescriptor()
-    use_docker_machine_manager = False
+    use_docker_manager = False
 
 
 class WaitingTaskResultFactory(factory.Factory):

@@ -1,5 +1,6 @@
 import functools
 import logging
+from typing import Callable, Optional
 
 from twisted.internet import defer
 from twisted.internet import threads
@@ -58,7 +59,8 @@ class AsyncRequest(object):
         self.kwargs = kwargs or {}
 
 
-def async_run(deferred_call, success=None, error=None):
+def async_run(deferred_call: AsyncRequest, success: Optional[Callable] = None,
+              error: Optional[Callable] = None):
     """Execute a deferred job in a separate thread (Twisted)"""
     deferred = threads.deferToThread(deferred_call.method,
                                      *deferred_call.args,
