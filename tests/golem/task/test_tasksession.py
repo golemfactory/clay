@@ -19,7 +19,6 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
-from golem.network.concent import client as concent_client
 from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
@@ -857,7 +856,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             self.task_session.result_received(extra_data, decrypt=False)
 
         assert self.task_session.send.called
-        sra = self.task_session.send.call_args[0][0]
+        sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
 
 
@@ -939,6 +938,7 @@ class TaskResultHashTest(LogTestCase):
                 return factories.messages.TaskToCompute(concent_enabled=True)
             elif args[0] == 'ReportComputedTask':
                 return factories.messages.ReportComputedTask()
+            return None
 
         msg = factories.messages.TaskResultHashFactory(
             subtask_id=self.subtask_id)
@@ -961,6 +961,7 @@ class TaskResultHashTest(LogTestCase):
         def get_task_message_mock(*args, **__):
             if args[0] == 'TaskToCompute':
                 return factories.messages.TaskToCompute(concent_enabled=True)
+            return None
 
         msg = factories.messages.TaskResultHashFactory(
             subtask_id=self.subtask_id)

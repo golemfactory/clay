@@ -1,6 +1,6 @@
 # pylint: disable=too-few-public-methods
-import mock
 import time
+import mock
 
 import factory
 
@@ -121,4 +121,4 @@ class TaskResultHashFactory(factory.Factory):
     subtask_id = factory.Faker('uuid4')
     multihash = factory.Faker('text')
     secret = factory.Faker('text')
-    options = factory.LazyFunction(lambda: mock.Mock())
+    options = factory.LazyFunction(mock.Mock)
