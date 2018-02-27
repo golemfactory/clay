@@ -113,6 +113,7 @@ class ForceReportComputedTask(factory.Factory):
     result_hash = factory.Faker('text')
     report_computed_task = factory.SubFactory(ReportComputedTask)
 
+
 class TaskResultHashFactory(factory.Factory):
     class Meta:
         model = tasks.TaskResultHash

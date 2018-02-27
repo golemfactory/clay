@@ -48,8 +48,10 @@ class DockerEnvironmentMock(DockerEnvironment):
     SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
+
 class TestTaskSessionPep8(testutils.PEP8MixIn, TestCase):
     PEP8_FILES = ['golem/task/tasksession.py', ]
+
 
 class TestTaskSession(LogTestCase, testutils.TempDirFixture):
     def setUp(self):
@@ -858,6 +860,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         sra = self.task_session.send.call_args[0][0]
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
 
+
 class TaskResultHashTest(LogTestCase):
 
     @staticmethod
@@ -916,18 +919,18 @@ class TaskResultHashTest(LogTestCase):
 
     def test_subtask_unknown(self):
         msg = factories.messages.TaskResultHashFactory()
-        with self.assertLogs(logger, level="ERROR") as l:
+        with self.assertLogs(logger, level="ERROR") as log:
             self.ts._react_to_task_result_hash(msg)
             self.assertIn('Task result received with unknown subtask_id',
-                          l.output[0])
+                          log.output[0])
 
     def test_provider_mismatch(self):
         msg = factories.messages.TaskResultHashFactory(
             subtask_id=self.subtask_id)
         self.ts.key_id = '3v1l'
-        with self.assertLogs(logger, level="WARNING") as l:
+        with self.assertLogs(logger, level="WARNING") as log:
             self.ts._react_to_task_result_hash(msg)
-            self.assertIn('from diferrent node', l.output[0])
+            self.assertIn('from diferrent node', log.output[0])
 
     def test_reject_result_pull_failed_with_concent(self):
         def get_task_message(*args, **kwargs):
