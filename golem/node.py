@@ -7,13 +7,14 @@ from twisted.internet.defer import gatherResults, Deferred
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.async import async_callback
+from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
+from golem.report import StatusPublisher
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import object_method_map, Session
+from golem.rpc.session import object_method_map, Session, Publisher
 
 logger = logging.getLogger("app")
 
@@ -46,10 +47,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._use_docker_manager = use_docker_manager
 
         self.rpc_router: Optional[CrossbarRouter] = None
+        self.rpc_session: Optional[Session] = None
 
         self._peers: List[SocketAddress] = peers or []
 
-        self.client = None
+        self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             config_desc=config_desc,
@@ -63,12 +65,19 @@ class Node(object):  # pylint: disable=too-few-public-methods
         )
 
     def start(self) -> None:
-        try:
-            rpc = self._start_rpc()
+        def _start(_):
+            publisher = Publisher(self.rpc_session)
+            StatusPublisher.set_publisher(publisher)
+
             keys = self._start_keys_auth()
             docker = self._start_docker()
-            gatherResults([rpc, keys, docker], consumeErrors=True).addCallbacks(
-                self._setup_client, self._error('rpc, keys or docker'))
+            gatherResults([keys, docker], consumeErrors=True).addCallbacks(
+                self._setup_client,
+                self._error('keys or docker')
+            )
+
+        try:
+            self._start_rpc().addCallbacks(_start, self._error('rpc'))
             self._reactor.run()
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Application error: %r", exc)
@@ -79,10 +88,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
         )
+        self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
+
         # pylint: disable=protected-access
         deferred = rpc._start_node(rpc.options, self._reactor)
-        self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
-        return deferred
+        return chain_function(deferred, self._start_session)
+
+    def _start_session(self) -> Deferred:
+        self.rpc_session = Session(self.rpc_router.address)  # type: ignore
+        return self.rpc_session.connect()
 
     def _start_keys_auth(self) -> Deferred:
         return threads.deferToThread(
@@ -102,17 +116,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return threads.deferToThread(start_docker)
 
     def _setup_client(self, gathered_results: List) -> None:
-        keys_auth = gathered_results[1]
+        keys_auth = gathered_results[0]
         self.client = self._client_factory(keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
-        rpc_session = Session(self.rpc_router.address,  # type: ignore
-                              methods=methods)
-        self.client.configure_rpc(rpc_session)
-        rpc_session.connect().addCallbacks(
-            async_callback(self._run), self._error('session connect'))
+        self.rpc_session.methods = methods
+        self.rpc_session.register_methods(methods)
+        self.client.configure_rpc(self.rpc_session)
+
+        self._run()
 
     def _run(self, *_) -> None:
         self._setup_apps()
