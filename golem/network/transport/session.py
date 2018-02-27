@@ -1,6 +1,7 @@
 import abc
 import logging
 import time
+from typing import Optional
 
 from golem_messages import message
 
@@ -160,9 +161,10 @@ class BasicSafeSession(BasicSession):
     Cryptographic operation should be implemented in descendant class.
     """
 
+    key_id: Optional[str] = None
+
     def __init__(self, conn):
         super().__init__(conn)
-        self.key_id = 0
         # how many unverified messages can be stored before dropping connection
         self.unverified_cnt = UNVERIFIED_CNT
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash

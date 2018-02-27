@@ -395,6 +395,11 @@ class PeerSession(BasicSafeSession):
         self._send_peers(node_key_id=msg.node_key_id)
 
     def _react_to_rand_val(self, msg):
+        # If we disconnect in react_to_hello, we still might get the RandVal
+        # message
+        if self.key_id is None:
+            return
+
         # if self.solve_challenge:
         #    return
         if self.rand_val == msg.rand_val:
@@ -405,6 +410,11 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_challenge_solution(self, msg):
+        # If we disconnect in react_to_hello, we still might get the
+        # ChallengeSolution message
+        if self.key_id is None:
+            return
+
         if not self.solve_challenge:
             self.disconnect(
                 message.Disconnect.REASON.BadProtocol
