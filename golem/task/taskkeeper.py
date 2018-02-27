@@ -13,6 +13,7 @@ from semantic_version import Version
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
+from golem.core.variables import MAX_TIME_DIFF
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -46,13 +47,13 @@ class CompTaskInfo:
 
     def check_deadline(self, deadline):
         now_ = common.get_timestamp_utc()
-        # FIXME: create a proper deadline check for 0.12.1
-        if now_ > deadline:  # or deadline > now_ + self.header.subtask_timeout:
-            logger.debug('check_deadline failed: (now: %r, deadline: %r, '
-                         'timeout: %r)', now_, deadline,
-                         self.header.subtask_timeout)
-            return False
-        return True
+        expected_deadline = now_ + self.header.subtask_timeout
+        if now_ < deadline < expected_deadline + MAX_TIME_DIFF:
+            return True
+        logger.debug('check_deadline failed: (now: %r, deadline: %r, '
+                     'timeout: %r)', now_, deadline,
+                     self.header.subtask_timeout)
+        return False
 
 
 class CompSubtaskInfo:
