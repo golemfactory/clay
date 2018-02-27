@@ -503,7 +503,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
 
     def _gen_data_for_test_react_to_remove_task(self):
-        keys_auth = KeysAuth(self.path)
+        keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
 
@@ -558,7 +558,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         peer_mock = self.peer_session.p2p_service.peers["ABC"]
         arg = peer_mock.send.call_args[0][0]
         assert isinstance(arg, message.RemoveTaskContainer)
-        assert arg.remove_task == msg
+        assert arg.remove_tasks == [msg]
         self.peer_session.p2p_service.keys_auth = previous_ka
 
     def test_react_to_remove_task_no_broadcast(self):

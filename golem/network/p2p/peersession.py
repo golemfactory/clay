@@ -397,7 +397,8 @@ class PeerSession(BasicSafeSession):
             self.p2p_service.send_remove_task_container(msg)
 
     def _react_to_remove_task_container(self, msg):
-        self._react_to_remove_task(msg.remove_task)
+        for remove_task in msg.remove_tasks:
+            self._react_to_remove_task(remove_task)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree
