@@ -284,15 +284,15 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         return self.peers
 
-    def add_peer(self, key_id, peer):
+    def add_peer(self, peer: PeerSession):
         """ Add a new open connection with a peer to the list of peers
-        :param str key_id: peer id
-        :param PeerSession peer: peer session with given peer
+        :param peer: peer session with given peer
         """
+        key_id = peer.key_id
         logger.info(
             "Adding peer %r, key id difficulty: %r",
             key_id,
-            self.keys_auth.get_difficulty(peer.key_id)
+            self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:
             self.peers[key_id] = peer
