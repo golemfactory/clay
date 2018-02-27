@@ -1,21 +1,17 @@
 import abc
 import decimal
-import queue
-import threading
-from collections import namedtuple
 
 import golem_messages.message
 import logging
 import os
 import uuid
 from enum import Enum
-from typing import Type, Optional
+from typing import Type
 
-import time
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verifier import CoreVerifier
+from apps.core.task.verifier import CoreVerifier, VerificationQueue
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -24,7 +20,6 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.localcomputer import ComputerAdapter
 
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
@@ -87,79 +82,6 @@ class CoreTaskTypeInfo(TaskTypeInfo):
             else:
                 return {'1': result}
         return {}
-
-
-class VerificationQueue:
-
-    Entry = namedtuple('Entry', ['created', 'params', 'cb'])
-
-    def __init__(self, verifier_class, concurrency=2):
-        self._verifier_class = verifier_class
-        self._concurrency = concurrency
-        self._queue = queue.Queue()
-
-        self._lock = threading.Lock()
-        self._running = 0
-
-    def submit(self, subtask_info, results, resources,
-               reference_data, cb) -> None:
-
-        params = dict(
-            subtask_info=subtask_info,
-            results=results,
-            resources=resources,
-            reference_data=reference_data
-        )
-
-        entry = self.Entry(time.time(), params, cb)
-
-        self._queue.put(entry)
-        self._process_queue()
-
-    @property
-    def can_run(self) -> bool:
-        with self._lock:
-            return self._running < self._concurrency
-
-    def _process_queue(self) -> None:
-        if self.can_run:
-            entry = self._next()
-            if entry:
-                self._run(entry)
-
-    def _next(self) -> Optional[Entry]:
-        try:
-            return self._queue.get()
-        except queue.Empty:
-            return None
-
-    def _run(self, entry: Entry) -> None:
-        with self._lock:
-            self._running += 1
-
-        subtask_info = entry.params['subtask_info']
-        logger.info("Running verification for subtask %r", subtask_info)
-
-        def callback(*args, **kwargs):
-            with self._lock:
-                self._running -= 1
-
-            logger.info("Verification ended for subtask %r",
-                        subtask_info)
-            entry.cb(*args, **kwargs)
-            self._process_queue()
-
-        try:
-            verifier = self._verifier_class(callback)
-            verifier.computer = ComputerAdapter()
-            verifier.start_verification(**entry.params)
-        except Exception as exc:  # pylint: disable=broad-except
-            with self._lock:
-                self._running -= 1
-
-            logger.error("Failed to start verification for subtask %r: %r",
-                         subtask_info, exc)
-            self._process_queue()
 
 
 class CoreTask(Task):
