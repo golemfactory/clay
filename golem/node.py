@@ -88,6 +88,8 @@ class Node(object):
             KeysAuth,
             datadir=self._datadir,
             private_key_name=PRIVATE_KEY,
+            # TODO: user provided password
+            password='verystrongpasswodmuchsecurity',
             difficulty=self._config_desc.key_difficulty
         )
 

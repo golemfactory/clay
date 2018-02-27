@@ -161,6 +161,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         keys_auth = keysauth.KeysAuth(
             datadir=self.path,
             private_key_name='priv_key',
+            password='password',
         )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
@@ -366,6 +367,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
             keys_auth=keysauth.KeysAuth(
                 datadir=self.path,
                 private_key_name='priv_key',
+                password='password',
             ),
             enabled=True,
         )

@@ -61,6 +61,7 @@ def create_client(datadir):
     keys_auth = KeysAuth(
         datadir=datadir,
         private_key_name='priv_key',
+        password='password',
         difficulty=config_desc.key_difficulty,
     )
 

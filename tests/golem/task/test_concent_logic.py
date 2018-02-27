@@ -31,6 +31,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             keysauth.KeysAuth(
                 datadir=self.tempdir,
                 private_key_name='priv_key',
+                password='password',
             )
         self.task_session.key_id = "KEY_ID"
         self.msg = factories.messages.ReportComputedTask()
