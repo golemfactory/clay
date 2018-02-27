@@ -63,27 +63,13 @@ class VerificationQueue:
 
         self._verifier_class = verifier_class
         self._concurrency = concurrency
-        self._queue = queue.Queue()
+        self._queue: queue.Queue = queue.Queue()
 
         self._lock = threading.Lock()
         self._running = 0
 
-    def submit(self,
-               subtask_info: dict,
-               reference_data: list,
-               resources: list,
-               results: list,
-               cb: FunctionType) -> None:
-
-        kwargs = dict(
-            subtask_info=subtask_info,
-            results=results,
-            resources=resources,
-            reference_data=reference_data
-        )
-
+    def submit(self, cb: FunctionType, **kwargs) -> None:
         entry = self.Entry(time.time(), kwargs, cb)
-
         self._queue.put(entry)
         self._process_queue()
 
@@ -98,7 +84,7 @@ class VerificationQueue:
             if entry:
                 self._run(entry)
 
-    def _next(self) -> Optional[Entry]:
+    def _next(self) -> Optional['Entry']:
         try:
             return self._queue.get()
         except queue.Empty:

@@ -213,11 +213,11 @@ class CoreTask(Task):
             verification_finished_()
 
         self.VERIFICATION_QUEUE.submit(
+            verification_finished,
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data(),
-            cb=verification_finished
+            reference_data=self.get_reference_data()
         )
 
     def get_reference_data(self):
