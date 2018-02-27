@@ -865,8 +865,9 @@ class TaskResultHashTest(LogTestCase):
 
     @staticmethod
     def _create_pull_package(result):
-        def pull_package(content_hash, task_id, subtask_id,
-                         secret, success, error, *args, **kwargs):
+        def pull_package(*_, **kwargs):
+            success = kwargs.get('success')
+            error = kwargs.get('error')
             if result:
                 success(Mock())
             else:
@@ -902,7 +903,7 @@ class TaskResultHashTest(LogTestCase):
         assert self.ts.result_received.called
 
     def test_reject_result_pull_failed_no_concent(self):
-        def get_task_message(*args, **kwargs):
+        def get_task_message_mock(*_, **__):
             return factories.messages.TaskToCompute(concent_enabled=False)
 
         msg = factories.messages.TaskResultHashFactory(
@@ -912,7 +913,7 @@ class TaskResultHashTest(LogTestCase):
             self._create_pull_package(False)
 
         with patch('golem.task.tasksession.get_task_message',
-                   get_task_message):
+                   get_task_message_mock):
             self.ts._react_to_task_result_hash(msg)
             assert self.ts.task_server.reject_result.called
             assert self.ts.task_manager.task_computation_failure.called
@@ -933,7 +934,7 @@ class TaskResultHashTest(LogTestCase):
             self.assertIn('from diferrent node', log.output[0])
 
     def test_reject_result_pull_failed_with_concent(self):
-        def get_task_message(*args, **kwargs):
+        def get_task_message_mock(*args, **__):
             if args[0] == 'TaskToCompute':
                 return factories.messages.TaskToCompute(concent_enabled=True)
             elif args[0] == 'ReportComputedTask':
@@ -946,7 +947,7 @@ class TaskResultHashTest(LogTestCase):
             self._create_pull_package(False)
 
         with patch('golem.task.tasksession.get_task_message',
-                   get_task_message):
+                   get_task_message_mock):
             self.ts._react_to_task_result_hash(msg)
 
             stm = self.ts.concent_service.submit_task_message
@@ -957,7 +958,7 @@ class TaskResultHashTest(LogTestCase):
             )
 
     def test_reject_result_pull_failed_with_concent_no_rct(self):
-        def get_task_message(*args, **kwargs):
+        def get_task_message_mock(*args, **__):
             if args[0] == 'TaskToCompute':
                 return factories.messages.TaskToCompute(concent_enabled=True)
 
@@ -968,6 +969,6 @@ class TaskResultHashTest(LogTestCase):
             self._create_pull_package(False)
 
         with patch('golem.task.tasksession.get_task_message',
-                   get_task_message):
+                   get_task_message_mock):
             self.ts._react_to_task_result_hash(msg)
             self.ts.concent_service.submit_task_message.assert_not_called()
