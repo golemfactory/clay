@@ -1,6 +1,8 @@
 # pylint: disable=too-few-public-methods
-import factory
 import time
+import mock
+
+import factory
 
 import factory.fuzzy
 
@@ -110,3 +112,13 @@ class ForceReportComputedTask(factory.Factory):
 
     result_hash = factory.Faker('text')
     report_computed_task = factory.SubFactory(ReportComputedTask)
+
+
+class TaskResultHashFactory(factory.Factory):
+    class Meta:
+        model = tasks.TaskResultHash
+
+    subtask_id = factory.Faker('uuid4')
+    multihash = factory.Faker('text')
+    secret = factory.Faker('text')
+    options = factory.LazyFunction(mock.Mock)

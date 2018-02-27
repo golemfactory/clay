@@ -173,6 +173,26 @@ class ConcentClientService(threading.Thread):
         self.received_messages.join()
         logger.info('%s stopped', self)
 
+    def submit_task_message(
+            self, subtask_id: str, msg: message.Message,
+            delay: typing.Optional[datetime.timedelta] = None
+    ) -> None:
+        """
+        Submit a subtask-related message to the Concent.
+        Wrapper for `ConcentClientService.submit` that accepts a
+        subtask_id and constructs a default task message key
+
+        :param subtask_id: the id of the subtask that the message pertains to
+        :param msg: the message to send
+        :param delay: time to wait before sending the message
+        :return: None
+        """
+
+        self.submit(
+            ConcentRequest.build_key(subtask_id, msg.__class__.__name__),
+            msg, delay,
+        )
+
     def submit(self,
                key: typing.Hashable,
                msg: message.Message,
