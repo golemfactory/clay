@@ -331,7 +331,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
             ts.subtask_rejected.assert_not_called()
         dropped_mock.assert_called_once_with()
 
-    @patch('golem.task.tasksession.get_task_message', Mock())
+    @patch('golem.task.tasksession.get_task_message',
+           Mock(return_value=Mock(concent_enabled=False)))
     def test_react_to_task_result_hash(self):
 
         def create_pull_package(result):
@@ -734,6 +735,14 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         service = history.MessageHistoryService.instance
         service.add_sync(nmsg_dict)
 
+    def assert_submit_task_message(self, subtask_id, wtr):
+        self.ts.concent_service.submit_task_message.assert_called_once_with(
+            subtask_id, ANY)
+
+        msg = self.ts.concent_service.submit_task_message.call_args[0][1]
+        self.assertEqual(msg.result_hash, 'sha1:' + wtr.package_sha1)
+
+
     def test_send_report_computed_task_concent_no_message(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(owner=self.n)
         self.ts.send_report_computed_task(
@@ -746,18 +755,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
         self.ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
-        self.ts.concent_service.submit.assert_called_once_with(
-            concent_client.ConcentRequest.build_key(
-                self.subtask_id,
-                'ForceReportComputedTask',
-            ),
-            ANY,
-        )
-        msg = self.ts.concent_service.submit.call_args[0][1]
-        self.assertEqual(
-            msg.result_hash,
-            'sha1:' + wtr.package_sha1,
-        )
+
+        self.assert_submit_task_message(self.subtask_id, wtr)
 
     def test_send_report_computed_task_concent_success_many_files(self):
         result = []
@@ -776,18 +775,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self.ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
 
-        self.ts.concent_service.submit.assert_called_once_with(
-            concent_client.ConcentRequest.build_key(
-                self.subtask_id,
-                'ForceReportComputedTask',
-            ),
-            ANY,
-        )
-        msg = self.ts.concent_service.submit.call_args[0][1]
-        self.assertEqual(
-            msg.result_hash,
-            'sha1:' + wtr.package_sha1,
-        )
+        self.assert_submit_task_message(self.subtask_id, wtr)
 
     def test_send_report_computed_task_concent_disabled(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(

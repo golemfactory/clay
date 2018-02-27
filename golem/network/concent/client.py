@@ -187,7 +187,7 @@ class ConcentClientService(threading.Thread):
         :return: None
         """
 
-        return self.submit(
+        self.submit(
             ConcentRequest.build_key(subtask_id, msg.__class__.__name__),
             msg, delay,
         )
