@@ -118,6 +118,12 @@ class KeysAuth:
         self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
+    def key_exists(datadir: str, private_key_name: str) -> bool:
+        keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
+        priv_key_path = os.path.join(keys_dir, private_key_name)
+        return os.path.isfile(priv_key_path)
+
+    @staticmethod
     def _load_or_generate_keys(datadir: str, filename: str, password: str,
                                difficulty: int) -> Tuple[bytes, bytes]:
         keys_dir = KeysAuth._get_or_create_keys_dir(datadir)

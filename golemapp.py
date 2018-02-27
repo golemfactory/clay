@@ -72,6 +72,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--geth-address', default=None, metavar="http://<host>:<port>",
               callback=argsparser.parse_http_addr,
               help="Connect with given geth node")
+@click.option('--password', default=None,
+              help="Password to unlock Golem. This flag should be mostly used "
+              "during development as it's not a safe way to provide password")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
@@ -97,7 +100,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Change level for all loggers and handlers")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, start_geth_port, geth_address, version, m, loglevel):
+          start_geth, start_geth_port, geth_address, password, version, m,
+          loglevel):
     freeze_support()
     delete_reactor()
 
@@ -137,7 +141,9 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             use_monitor=monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
-            geth_address=geth_address)
+            geth_address=geth_address,
+            password=password,
+        )
 
         node.start()
 

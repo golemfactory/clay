@@ -1,17 +1,19 @@
 import logging
+from threading import Condition
 from typing import List, Optional, Callable
 
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred
+from twisted.internet.defer import gatherResults, Deferred, inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.async import async_callback
-from golem.core.keysauth import KeysAuth
+from golem.core.keysauth import KeysAuth, WrongPasswordException
 from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
+from golem.report import Component, Stage, StatusPublisher
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session
@@ -33,7 +35,8 @@ class Node(object):
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
-                 geth_address: Optional[str] = None) -> None:
+                 geth_address: Optional[str] = None,
+                 password: Optional[str] = None) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -45,7 +48,11 @@ class Node(object):
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
 
+        self._keys_auth: Optional[KeysAuth] = None
+        self._keys_auth_cv = Condition()
+
         self.rpc_router: Optional[CrossbarRouter] = None
+        self._rpc_session: Optional[Session] = None
 
         self._peers: List[SocketAddress] = peers or []
 
@@ -62,6 +69,10 @@ class Node(object):
             geth_address=geth_address,
         )
 
+        if password is not None:
+            if not self.set_password(password):
+                raise Exception("Password incorrect")
+
     def start(self) -> None:
         try:
             rpc = self._start_rpc()
@@ -73,6 +84,22 @@ class Node(object):
         except Exception as exc:
             logger.exception("Application error: %r", exc)
 
+    def set_password(self, password: str) -> bool:
+        logger.info("Got password")
+        with self._keys_auth_cv:
+            try:
+                self._keys_auth = KeysAuth(
+                    datadir=self._datadir,
+                    private_key_name=PRIVATE_KEY,
+                    password=password,
+                    difficulty=self._config_desc.key_difficulty,
+                )
+                self._keys_auth_cv.notify()
+            except WrongPasswordException:
+                logger.info("Password incorrect")
+                return False
+            return True
+
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
             host=self._config_desc.rpc_address,
@@ -81,17 +108,39 @@ class Node(object):
         )
         deferred = rpc._start_node(rpc.options, self._reactor)
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
+
+        @inlineCallbacks
+        def create_session(*_):
+            self._rpc_session = Session(self.rpc_router.address)
+            yield self._rpc_session.connect()
+            self._rpc_session.register_methods(
+                [(self.set_password, 'golem.password.set')],
+            )
+        deferred.addCallbacks(create_session, self._error('rpc router setup'))
         return deferred
 
     def _start_keys_auth(self) -> Deferred:
-        return threads.deferToThread(
-            KeysAuth,
-            datadir=self._datadir,
-            private_key_name=PRIVATE_KEY,
-            # TODO: user provided password
-            password='verystrongpasswodmuchsecurity',
-            difficulty=self._config_desc.key_difficulty
-        )
+        def create_keysauth():
+            # If keys_auth already exists it means we used command line flag
+            # and don't need to inform client about required password
+            with self._keys_auth_cv:
+                if self._keys_auth is not None:
+                    return
+
+            if KeysAuth.key_exists(self._datadir, PRIVATE_KEY):
+                event = 'get_password'
+                logger.info("Waiting for password to unlock the account")
+            else:
+                event = 'new_password'
+                logger.info("New account, need to create new password")
+            StatusPublisher.publish(Component.client, event, Stage.pre)
+
+            with self._keys_auth_cv:
+                while self._keys_auth is None:
+                    self._keys_auth_cv.wait()
+            StatusPublisher.publish(Component.client, event, Stage.post)
+
+        return threads.deferToThread(create_keysauth)
 
     def _start_docker(self) -> Deferred:
         if not self._use_docker_manager:
@@ -104,17 +153,14 @@ class Node(object):
         return threads.deferToThread(start_docker)
 
     def _setup_client(self, gathered_results: List) -> None:
-        keys_auth = gathered_results[1]
-        self.client = self._client_factory(keys_auth)
+        self.client = self._client_factory(self._keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
-        rpc_session = Session(self.rpc_router.address,  # type: ignore
-                              methods=methods)
-        self.client.configure_rpc(rpc_session)
-        rpc_session.connect().addCallbacks(
-            async_callback(self._run), self._error('session connect'))
+        self._rpc_session.register_methods(methods)
+        self.client.configure_rpc(self._rpc_session)
+        self._run()
 
     def _run(self, *_) -> None:
         self._setup_apps()
