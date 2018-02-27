@@ -46,7 +46,8 @@ class CompTaskInfo:
 
     def check_deadline(self, deadline):
         now_ = common.get_timestamp_utc()
-        if now_ > deadline or deadline > now_ + self.header.subtask_timeout:
+        # FIXME: create a proper deadline check for 0.12.1
+        if now_ > deadline:  # or deadline > now_ + self.header.subtask_timeout:
             return False
         return True
 
