@@ -80,19 +80,16 @@ class RenderingTaskCollector(object):
             if not self.width or not self.height:
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_img_files)
-            img = Image.new('RGB', (self.width, self.height))
-            final_img = self._paste_image(img, final_img, 0)
-            img.close()
+            with Image.new('RGB', (self.width, self.height)) as img:
+                final_img = self._paste_image(img, final_img, 0)
 
         for i, img_path in enumerate(self.accepted_img_files[1:], start=1):
             img = load_img(img_path)
-            rgb8_im = img.to_pil()
-            if not self.paste:
-                final_img = ImageChops.add(final_img, rgb8_im)
-            else:
-                final_img = self._paste_image(final_img, rgb8_im, i)
-                
-            rgb8_im.close()
+            with img.to_pil() as rgb8_im:
+                if not self.paste:
+                    final_img = ImageChops.add(final_img, rgb8_im)
+                else:
+                    final_img = self._paste_image(final_img, rgb8_im, i)
 
         return final_img
         
@@ -100,30 +97,27 @@ class RenderingTaskCollector(object):
         res_x, res_y = 0, 0
 
         for name in self.accepted_img_files:
-            img = Image.open(name)
-            res_x, img_y = img.size
-            res_y += img_y
-            img.close()
-        
+            with Image.open(name) as img:
+                res_x, img_y = img.size
+                res_y += img_y
+
         self.width = res_x
         self.height = res_y
-        img = Image.open(self.accepted_img_files[0])
-        bands = img.getbands()
-        img.close()
+        with Image.open(self.accepted_img_files[0]) as img:
+            bands = img.getbands()
         band = ""
         for b in bands:
             band += b
         final_img = Image.new(band, (res_x, res_y))
         offset = 0
         for img_path in self.accepted_img_files:
-            img = Image.open(img_path)
-            if not self.paste:
-                final_img = ImageChops.add(final_img, img)
-            else:
-                final_img.paste(img, (0, offset))
-                _, img_y = img.size
-                offset += img_y
-                img.close()
+            with Image.open(img_path) as img:
+                if not self.paste:
+                    final_img = ImageChops.add(final_img, img)
+                else:
+                    final_img.paste(img, (0, offset))
+                    _, img_y = img.size
+                    offset += img_y
         return final_img
 
     def _paste_image(self, final_img, new_part, num):
