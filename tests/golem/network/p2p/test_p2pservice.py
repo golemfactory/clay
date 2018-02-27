@@ -113,14 +113,14 @@ class TestP2PService(testutils.DatabaseFixture):
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
-        self.service.add_peer(node.key, node)
+        self.service.add_peer(node)
         assert len(self.service.peers) == 1
         node.last_message_time = 0
         self.service.sync_network()
 
         assert len(self.service.peers) == 0
 
-        self.service.add_peer(node.key, node)
+        self.service.add_peer(node)
         self.service.peers[node.key].last_message_time = time.time() + 1000
         assert len(self.service.peers) == 1
         self.service.sync_network()
@@ -139,8 +139,8 @@ class TestP2PService(testutils.DatabaseFixture):
         node2.key_id = node2.key
         node2.address = sa
 
-        self.service.add_peer(node.key, node)
-        self.service.add_peer(node2.key, node2)
+        self.service.add_peer(node)
+        self.service.add_peer(node2)
 
         self.service.peers[node.key].last_message_time = time.time() + 1000
         self.service.peers[node2.key].last_message_time = time.time() + 1000
@@ -315,14 +315,14 @@ class TestP2PService(testutils.DatabaseFixture):
         m.transport.getPeer.return_value.host = "10.10.10.10"
         ps1 = PeerSession(m)
         ps1.key_id = self.keys_auth.key_id
-        self.service.add_peer(self.keys_auth.key_id, ps1)
+        self.service.add_peer(ps1)
         m2 = mock.MagicMock()
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
         keys_auth2 = KeysAuth(self.path, "PUBTESTPATH1")
         ps2.key_id = keys_auth2.key_id
-        self.service.add_peer(keys_auth2.key_id, ps2)
+        self.service.add_peer(ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
 
     def test(self):

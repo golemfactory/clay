@@ -518,7 +518,7 @@ class PeerSession(BasicSafeSession):
                                             self.address,
                                             self.listen_port,
                                             self.node_info)
-        self.p2p_service.add_peer(self.key_id, self)
+        self.p2p_service.add_peer(self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
             self.node_info,
