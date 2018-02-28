@@ -158,7 +158,7 @@ class TestGenerateCrops(TempDirFixture):
         sync_wait(d, 140)
 
     def test_strange_resolutions(self):
-
+        # pylint: disable=R0914
         strange_res = [313, 317, 953, 967, 1949, 1951, 3319, 3323, 9949, 9967]
 
         for l in range(0, 8):
