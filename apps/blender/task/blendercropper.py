@@ -31,12 +31,14 @@ class BlenderCropper:
         self.crop_size = ()
         self.split_values = []
         self.split_pixels = []
+        self.rendered_crops_results = {}
 
     def clear(self):
         self.crop_counter = 0
         self.crop_size = ()
         self.split_values = []
         self.split_pixels = []
+        self.rendered_crops_results = {}
 
     def generate_split_data(self, resolution, image_border, splits_num,
                             crop_size=None):
@@ -134,15 +136,42 @@ class BlenderCropper:
                                               subtask_info['crop_window'],
                                               num_crops,
                                               crop_size)
-        for _ in range(num_crops):
-            verify_ctx = CropContext(crops_info[1], self.crop_counter,
-                                     crops_path)
-            self._render_one_crop(computer, resources,
-                                  crops_info[0][self.crop_counter],
-                                  subtask_info, verify_ctx, crop_rendered,
-                                  crop_render_failure)
-            self.crop_counter += 1
+
+        self.render_next_crop(None, None, None, crops_info, crops_path,
+                              computer, resources,
+                              subtask_info, crop_rendered,
+                              crop_render_failure)
         return self.crop_size
+
+    def render_next_crop(self, results, time_spend, verification_context,
+                         crops_info, crops_path, computer, resources,
+                         subtask_info, crop_rendered,
+                         crop_render_failure):
+        if results and time_spend and verification_context:
+            self.rendered_crops_results[self.crop_counter] \
+                = [results, time_spend, verification_context]
+        if self.crop_counter == 3:
+            for i in range(1, 4):
+                crop_rendered(self.rendered_crops_results[i][0],
+                              self.rendered_crops_results[i][1],
+                              self.rendered_crops_results[i][2])
+            return
+
+        verify_ctx = CropContext(crops_info[1], self.crop_counter,
+                                 crops_path)
+        self._render_one_crop(computer, resources,
+                              crops_info[0][self.crop_counter], subtask_info,
+                              verify_ctx,
+                              partial(self.render_next_crop,
+                                      crops_info=crops_info,
+                                      crops_path=crops_path,
+                                      computer=computer,
+                                      resources=resources,
+                                      subtask_info=subtask_info,
+                                      crop_rendered=crop_rendered,
+                                      crop_render_failure=crop_render_failure),
+                              crop_render_failure)
+        self.crop_counter += 1
 
     # FIXME it would be better to make this subtask agnostic, pass only data
     # needed to generate crops. Drop local computer.

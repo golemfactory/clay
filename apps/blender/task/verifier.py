@@ -14,6 +14,7 @@ from golem.docker.job import DockerJob
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import find_task_script
 from golem.core.common import get_golem_path
+from golem.docker.manager import DockerManager
 
 logger = logging.getLogger("apps.blender")
 
@@ -161,9 +162,15 @@ class BlenderVerifier(FrameRenderingVerifier):
             logger.warning("Wrong main program file: %r", err)
             src_code = ""
 
+        self.docker_manager = DockerManager.install()
+        if self.docker_manager:
+            host_config = self.docker_manager.container_host_config
+        else:
+            host_config = None
+
         with DockerJob(di, src_code, params,
                        resource_dir, work_dir, output_dir,
-                       host_config=None) as job:
+                       host_config=host_config) as job:
             job.start()
             was_failure = job.wait()
             stdout_file = os.path.join(logs_dir, "stdout.log")
