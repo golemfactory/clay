@@ -551,7 +551,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
         msg.serialize()
-        print(msg.sig)
         with self.assertNoLogs(logger, level="INFO"):
             self.peer_session._react_to_remove_task(msg)
         assert task_server.task_keeper.task_headers.get(task_id) is None
