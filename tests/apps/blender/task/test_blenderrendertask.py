@@ -169,6 +169,8 @@ class TestBlenderFrameTask(TempDirFixture):
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                        'status'] == SubtaskStatus.finished
 
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
+
         def verification_finished2(*args, **kwargs):
             result = {'reference_data': None,
                       'message': "",
