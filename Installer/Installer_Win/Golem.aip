@@ -662,11 +662,11 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
     <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="17.10.0" SetupFileUrl="C:\BuildResources\DockerToolbox.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox.exe"/>
-    <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /passive /norestart" BasicUiComLine="/install /passive /norestart" NoUiComLine="/install /passive /norestart" Options="izym" TargetName="vc_redist.x64.exe"/>
+    <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /passive /norestart" BasicUiComLine="/install /passive /norestart" NoUiComLine="/install /passive /norestart" Options="zym" TargetName="vc_redist.x64.exe"/>
     <ATTRIBUTE name="PrereqsOrder" value="DockerToolbox MicrosoftVisualC"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqSearchComponent">
-    <ROW SearchKey="SystemFolderfile.dll" Prereq="MicrosoftVisualC" SearchType="0" SearchString="[SystemFolder]file.dll" VerMin="1.0" Order="1" Property="PreReqSearch"/>
+    <ROW SearchKey="SystemFolderfile.dll" Prereq="MicrosoftVisualC" SearchType="2" SearchString="HKLM\Software\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64\Version" VerMin="14.0.23026" Order="1" Property="PreReqSearch"/>
     <ROW SearchKey="SystemFolderfile.dll_1" Prereq="DockerToolbox" SearchType="0" SearchString="[ProgramFiles64Folder]\Docker Toolbox\docker.exe" VerMin="17.0" Order="1" Property="PreReqSearch_1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.SynchronizedFolderComponent">
