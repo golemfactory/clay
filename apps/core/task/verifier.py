@@ -102,9 +102,10 @@ class VerificationQueue:
                 self._running -= 1
 
             logger.info("Finished verification for subtask %r", subtask_info)
-
-            entry.cb(*args, **kwargs)
-            self._process_queue()
+            try:
+                entry.cb(*args, **kwargs)
+            finally:
+                self._process_queue()
 
         try:
             verifier = self._verifier_class(callback)
@@ -117,3 +118,7 @@ class VerificationQueue:
             logger.error("Failed to start verification for subtask %r: %r",
                          subtask_info, exc)
             self._process_queue()
+
+    def _reset(self) -> None:
+        self._queue = queue.Queue()
+        self._running = 0
