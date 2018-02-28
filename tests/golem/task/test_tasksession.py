@@ -94,8 +94,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_request_task(self, *_):  # pylint: disable=too-many-statements
+        task_manager = Mock(tasks_states={}, tasks={})
         conn = Mock(
-            server=Mock(task_manager=Mock(tasks_states={}))
+            server=Mock(task_manager=task_manager)
         )
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
@@ -117,10 +118,20 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
 
+        task_id = '42'
+        requestor_key = 'req pubkey'
+        task_manager.tasks[task_id] = Mock(header=TaskHeader(
+            node_name='ABC',
+            task_id='xyz',
+            task_owner_address='10.10.10.10',
+            task_owner_port=12345,
+            task_owner_key_id=requestor_key,
+            environment='',
+            task_owner=Node(key=requestor_key)
+        ))
+
         ctd = message.tasks.ComputeTaskDef()
-        ctd['task_owner'] = Node().to_dict()
-        ctd['task_owner']['key'] = requestor_key = 'req pubkey'
-        ctd['task_id'] = '42'
+        ctd['task_id'] = task_id
 
         task_state = taskstate.TaskState()
         task_state.package_hash = '667'
@@ -341,7 +352,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = Mock()
+        ts.task_manager = MagicMock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
         ts.send = Mock()
@@ -371,13 +382,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # No source code in the local environment -> failure
         __reset_mocks()
+        header = ts.task_manager.comp_task_keeper.get_task_header()
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID'
+        header.task_owner_address = '10.10.10.10'
+        header.task_owner_port = 1112
+
         ctd = message.ComputeTaskDef()
-        ctd['key_id'] = "KEY_ID"
         ctd['subtask_id'] = "SUBTASKID"
-        ctd['task_owner'] = Node().to_dict()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_address'] = "10.10.10.10"
-        ctd['return_port'] = 1112
         ctd['docker_images'] = [
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
@@ -399,7 +411,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong key id -> failure
         __reset_mocks()
-        ctd['key_id'] = "KEY_ID2"
+        header.task_owner_key_id = 'KEY_ID2'
+        header.task_owner.key = 'KEY_ID2'
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -409,8 +423,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong task owner key id -> failure
         __reset_mocks()
-        ctd['key_id'] = "KEY_ID"
-        ctd['task_owner']['key'] = "KEY_ID2"
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID2'
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -420,8 +435,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong return port -> failure
         __reset_mocks()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_port'] = 0
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID'
+        header.task_owner_port = 0
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -431,8 +448,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Proper port and key -> proper execution
         __reset_mocks()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_port'] = 1319
+        header.task_owner_port = 1112
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))

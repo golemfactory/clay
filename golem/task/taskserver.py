@@ -168,19 +168,19 @@ class TaskServer(
             logger.warning("Cannot send request for task: {}".format(err))
             self.task_keeper.remove_task_header(theader.task_id)
 
-    def send_results(self, subtask_id, task_id, result, computing_time,
-                     owner_address, owner_port, owner_key_id, owner,
-                     node_name):
+    def send_results(self, subtask_id, task_id, result, computing_time):
 
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
+
+        header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(
                 task_id, computing_time)
             if self.client.transaction_system:
                 self.client.transaction_system.incomes_keeper.expect(
-                    sender_node_id=owner_key_id,
+                    sender_node_id=header.task_owner_key_id,
                     subtask_id=subtask_id,
                     value=value,
                 )
@@ -188,16 +188,23 @@ class TaskServer(
             delay_time = 0.0
             last_sending_trial = 0
 
-            wtr = WaitingTaskResult(task_id, subtask_id, result['data'],
-                                    result['result_type'], computing_time,
-                                    last_sending_trial, delay_time,
-                                    owner_address, owner_port, owner_key_id,
-                                    owner)
+            wtr = WaitingTaskResult(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                result=result['data'],
+                result_type=result['result_type'],
+                computing_time=computing_time,
+                last_sending_trial=last_sending_trial,
+                delay_time=delay_time,
+                owner_address=header.task_owner_address,
+                owner_port=header.task_owner_port,
+                owner_key_id=header.task_owner_key_id,
+                owner=header.task_owner)
 
             self.create_and_set_result_package(wtr)
             self.results_to_send[subtask_id] = wtr
 
-            Trust.REQUESTED.increase(owner_key_id)
+            Trust.REQUESTED.increase(header.task_owner_key_id)
         else:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
@@ -211,15 +218,22 @@ class TaskServer(
         wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
             result
 
-    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address,
-                         owner_port, owner_key_id, owner, node_name):
+    def send_task_failed(
+            self, subtask_id: str, task_id: str, err_msg: str) -> None:
+
+        header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(owner_key_id)
+            Trust.REQUESTED.decrease(header.task_owner_key_id)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
-                task_id, subtask_id, err_msg, owner_address, owner_port,
-                owner_key_id, owner)
+                task_id=task_id,
+                subtask_id=subtask_id,
+                err_msg=err_msg,
+                owner_address=header.task_owner_address,
+                owner_port=header.task_owner_port,
+                owner_key_id=header.task_owner_key_id,
+                owner=header.task_owner)
 
     def new_connection(self, session):
         if self.active:
