@@ -355,14 +355,16 @@ class DockerManager(DockerConfigManager):
             cls._pull_images(entries)
 
     @classmethod
-    @report_calls(Component.docker, 'images.pull')
     def _pull_images(cls, entries):
         for entry in entries:
             version = cls._image_version(entry)
+            cls._pull_image(version)
 
-            logger.warn('Docker: pulling image {}'
-                        .format(version))
-            cls.command('pull', args=[version])
+    @classmethod
+    @report_calls(Component.docker, 'images.pull')
+    def _pull_image(cls, version):
+        logger.warning('Docker: pulling image %r', version)
+        cls.command('pull', args=[version])
 
     @classmethod
     def _image_version(cls, entry):
