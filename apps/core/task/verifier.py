@@ -57,7 +57,7 @@ class VerificationQueue:
     Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
                                  'kwargs', 'cb'])
 
-    def __init__(self, concurrency: int = 2) -> None:
+    def __init__(self, concurrency: int = 1) -> None:
 
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
