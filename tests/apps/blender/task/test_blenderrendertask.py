@@ -103,6 +103,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
         task_definition.resolution = [200, 300]
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
             task_definition=task_definition,
@@ -167,6 +168,8 @@ class TestBlenderFrameTask(TempDirFixture):
                                          ResultType.FILES, lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                        'status'] == SubtaskStatus.finished
+
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
         def verification_finished2(*args, **kwargs):
             result = {'reference_data': None,
