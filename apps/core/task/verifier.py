@@ -1,7 +1,6 @@
 import logging
 import queue
 import threading
-import time
 from collections import namedtuple
 from datetime import datetime
 import os
@@ -55,7 +54,7 @@ class CoreVerifier(StateVerifier):
 
 class VerificationQueue:
 
-    Entry = namedtuple('Entry', ['created', 'kwargs', 'cb'])
+    Entry = namedtuple('Entry', ['subtask_id', 'kwargs', 'cb'])
 
     def __init__(self,
                  verifier_class: Type[Verifier],
@@ -68,8 +67,8 @@ class VerificationQueue:
         self._lock = threading.Lock()
         self._running = 0
 
-    def submit(self, cb: FunctionType, **kwargs) -> None:
-        entry = self.Entry(time.time(), kwargs, cb)
+    def submit(self, subtask_id: str, cb: FunctionType, **kwargs) -> None:
+        entry = self.Entry(subtask_id, kwargs, cb)
         self._queue.put(entry)
         self._process_queue()
 
@@ -94,14 +93,14 @@ class VerificationQueue:
         with self._lock:
             self._running += 1
 
-        subtask_info = entry.kwargs['subtask_info']
-        logger.info("Running verification for subtask %r", subtask_info)
+        subtask_id = entry.subtask_id
+        logger.info("Running verification of subtask %r", subtask_id)
 
         def callback(*args, **kwargs):
             with self._lock:
                 self._running -= 1
 
-            logger.info("Finished verification for subtask %r", subtask_info)
+            logger.info("Finished verification of subtask %r", subtask_id)
             try:
                 entry.cb(*args, **kwargs)
             finally:
@@ -115,8 +114,8 @@ class VerificationQueue:
             with self._lock:
                 self._running -= 1
 
-            logger.error("Failed to start verification for subtask %r: %r",
-                         subtask_info, exc)
+            logger.error("Failed to start verification of subtask %r: %r",
+                         subtask_id, exc)
             self._process_queue()
 
     def _reset(self) -> None:

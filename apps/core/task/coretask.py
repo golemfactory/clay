@@ -213,6 +213,7 @@ class CoreTask(Task):
             verification_finished_()
 
         self.VERIFICATION_QUEUE.submit(
+            subtask_id,
             verification_finished,
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
