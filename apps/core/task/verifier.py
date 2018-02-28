@@ -86,7 +86,7 @@ class VerificationQueue:
 
     def _next(self) -> Optional['Entry']:
         try:
-            return self._queue.get()
+            return self._queue.get(block=False)
         except queue.Empty:
             return None
 
