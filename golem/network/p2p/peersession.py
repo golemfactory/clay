@@ -17,6 +17,10 @@ from golem.network.transport.tcpnetwork import SafeProtocol
 logger = logging.getLogger(__name__)
 
 
+def remove_task_string(task_id):
+    return "REMOVE " + task_id
+
+
 def compare_version(client_ver):
     try:
         v_client = semantic_version.Version(client_ver)
@@ -172,11 +176,12 @@ class PeerSession(BasicSafeSession):
         """  Send get tasks message """
         self.send(message.GetTasks())
 
-    def send_remove_task(self, task_id):
+    def send_remove_task(self, task_id, signature):
         """  Send remove task  message
          :param str task_id: task to be removed
         """
-        self.send(message.RemoveTask(task_id=task_id))
+        self.send(message.RemoveTask(task_id=task_id,
+                                     owner_signature=signature))
 
     def send_degree(self, degree):
         """ Send degree message
@@ -372,9 +377,19 @@ class PeerSession(BasicSafeSession):
                 )
 
     def _react_to_remove_task(self, msg):
+        task_owner = self.p2p_service.task_server.task_keeper.get_owner(
+            msg.task_id)
+        if task_owner is None:
+            return
+        data = remove_task_string(msg.task_id)
+        if not self.p2p_service.keys_auth.verify(msg.owner_signature, data,
+                                                 task_owner):
+            logger.info("Someone tries to remove task header: %s without "
+                        "proper signature" % msg.task_id)
+            return
         removed = self.p2p_service.remove_task_header(msg.task_id)
         if removed:  # propagate the message
-            self.p2p_service.remove_task(msg.task_id)
+            self.p2p_service.remove_task(msg.task_id, msg.owner_signature)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree

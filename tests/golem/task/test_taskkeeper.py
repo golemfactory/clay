@@ -439,6 +439,12 @@ class TestTaskHeaderKeeper(LogTestCase):
                        'reason': 'environment_not_accepting_tasks',
                        'ntasks': 1}, reasons)
 
+    def test_get_owner(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        tk.add_task_header(get_dict_task_header())
+        assert tk.get_owner("xyz") == "kkkk"
+        assert tk.get_owner("UNKNOWN") is None
+
 
 def get_dict_task_header(task_id="xyz"):
     return {

@@ -43,7 +43,7 @@ from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.peersession import PeerSessionInfo, remove_task_string
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.helper.trust import Trust
@@ -633,7 +633,8 @@ class Client(HardwarePresetsMixin):
 
     def delete_task(self, task_id):
         self.remove_task_header(task_id)
-        self.remove_task(task_id)
+        owner_signature = self.keys_auth.sign(remove_task_string(task_id))
+        self.remove_task(task_id, owner_signature)
         self.task_server.task_manager.delete_task(task_id)
 
     def get_node(self):
@@ -939,8 +940,8 @@ class Client(HardwarePresetsMixin):
         dir_manager.clear_dir(
             self.get_received_files_dir(), older_than_seconds)
 
-    def remove_task(self, task_id):
-        self.p2pservice.remove_task(task_id)
+    def remove_task(self, task_id, signature):
+        self.p2pservice.remove_task(task_id, signature)
 
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
