@@ -103,6 +103,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
         task_definition.resolution = [200, 300]
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
             task_definition=task_definition,
