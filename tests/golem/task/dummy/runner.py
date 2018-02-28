@@ -58,11 +58,7 @@ def create_client(datadir):
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
     config_desc.key_difficulty = 0
 
-    from ethereum.keys import PBKDF2_CONSTANTS
-    test_keyconfig = PBKDF2_CONSTANTS
-    test_keyconfig['c'] = 1
-
-    with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', test_keyconfig):
+    with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
         from golem.core.keysauth import KeysAuth
         keys_auth = KeysAuth(
             datadir=datadir,
