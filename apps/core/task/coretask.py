@@ -86,7 +86,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
-    VERIFICATION_QUEUE = VerificationQueue(VERIFIER_CLASS)
+    VERIFICATION_QUEUE = VerificationQueue()
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -213,6 +213,7 @@ class CoreTask(Task):
             verification_finished_()
 
         self.VERIFICATION_QUEUE.submit(
+            self.VERIFIER_CLASS,
             subtask_id,
             verification_finished,
             subtask_info=self.subtasks_given[subtask_id],

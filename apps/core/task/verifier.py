@@ -54,21 +54,24 @@ class CoreVerifier(StateVerifier):
 
 class VerificationQueue:
 
-    Entry = namedtuple('Entry', ['subtask_id', 'kwargs', 'cb'])
+    Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
+                                 'kwargs', 'cb'])
 
-    def __init__(self,
-                 verifier_class: Type[Verifier],
-                 concurrency: int = 2) -> None:
+    def __init__(self, concurrency: int = 2) -> None:
 
-        self._verifier_class = verifier_class
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
 
         self._lock = threading.Lock()
         self._running = 0
 
-    def submit(self, subtask_id: str, cb: FunctionType, **kwargs) -> None:
-        entry = self.Entry(subtask_id, kwargs, cb)
+    def submit(self,
+               verifier_class: Type[Verifier],
+               subtask_id: str,
+               cb: FunctionType,
+               **kwargs) -> None:
+
+        entry = self.Entry(verifier_class, subtask_id, kwargs, cb)
         self._queue.put(entry)
         self._process_queue()
 
@@ -107,7 +110,7 @@ class VerificationQueue:
                 self._process_queue()
 
         try:
-            verifier = self._verifier_class(callback)
+            verifier = entry.verifier_class(callback)
             verifier.computer = ComputerAdapter()
             verifier.start_verification(**entry.kwargs)
         except Exception as exc:  # pylint: disable=broad-except
