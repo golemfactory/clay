@@ -131,7 +131,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_session.register_methods(methods)
         self.client.configure_rpc(self.rpc_session)
 
-        async_run(AsyncRequest(self._run))
+        async_run(AsyncRequest(self._run),
+                  error=self._error('Cannot start the client'))
 
     def _run(self, *_) -> None:
         self._setup_apps()
