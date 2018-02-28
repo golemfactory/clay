@@ -205,7 +205,7 @@ class CoreTask(Task):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
-        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifing
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
 
@@ -243,7 +243,7 @@ class CoreTask(Task):
             raise Exception("Subtask {} already accepted".format(subtask_id))
         if subtask.get("status", None) not in [SubtaskStatus.starting,
                                                SubtaskStatus.downloading,
-                                               SubtaskStatus.verifing,
+                                               SubtaskStatus.verifying,
                                                SubtaskStatus.resent,
                                                SubtaskStatus.finished,
                                                SubtaskStatus.failure,

@@ -97,7 +97,7 @@ class TaskStatus(object):
 class SubtaskStatus(object):
     starting = "Starting"
     downloading = "Downloading"
-    verifing = "Verifing"
+    verifying = "verifying"
     resent = "Failed - Resent"
     finished = "Finished"
     failure = "Failure"
@@ -109,7 +109,7 @@ class SubtaskStatus(object):
 
     @classmethod
     def is_active(cls, status):
-        return status in [cls.starting, cls.downloading, cls.verifing]
+        return status in [cls.starting, cls.downloading, cls.verifying]
 
 class TaskTestStatus(object):
     started = 'Started'
