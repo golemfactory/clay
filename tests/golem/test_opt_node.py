@@ -476,7 +476,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.rpc_session
         assert self.node.client.rpc_publisher
         assert self.node.client.rpc_publisher.session == self.node.rpc_session
-        assert self.node.rpc_session.connect.called
+        assert self.node.rpc_session.connect.called  # pylint: disable=no-member
         assert mock_run.called
         assert reactor.addSystemEventTrigger.call_count == 2
 

@@ -117,6 +117,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return threads.deferToThread(start_docker)
 
     def _setup_client(self, gathered_results: List) -> None:
+        if not self.rpc_session:
+            self._error("RPC session is not available")
+            return
+
         keys_auth = gathered_results[0]
         self.client = self._client_factory(keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
