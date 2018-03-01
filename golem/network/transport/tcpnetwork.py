@@ -476,11 +476,7 @@ class ServerProtocol(BasicProtocol):
     """ Basic protocol connected to server instance
     """
 
-    def __init__(self, server):
-        """
-        :param Server server: server instance
-        :return None:
-        """
+    def __init__(self, server: 'TCPServer') -> None:
         BasicProtocol.__init__(self)
         self.server = server
 

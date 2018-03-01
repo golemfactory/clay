@@ -8,13 +8,12 @@ from collections import deque
 from golem.core.hostaddress import ip_address_private, ip_network_contains, ipv4_networks
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
-from .server import Server
 from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 
 logger = logging.getLogger('golem.network.transport.tcpserver')
 
 
-class TCPServer(Server):
+class TCPServer:
     """ Basic tcp server that can start listening on given port """
 
     def __init__(self, config_desc, network):
@@ -23,18 +22,22 @@ class TCPServer(Server):
         :param ClientConfigDescriptor config_desc: config descriptor for listening port
         :param TCPNetwork network: network that server will use
         """
-        Server.__init__(self, config_desc, network)
+        self.config_desc = config_desc
+        self.network = network
         self.active = True
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ipv4_networks()
+
+    def new_connection(self, session):
+        pass
 
     def change_config(self, config_desc):
         """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
         listening on a new one.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
-        Server.change_config(self, config_desc)
+        self.config_desc = config_desc
         if self.config_desc.start_port <= self.cur_port <= self.config_desc.end_port:
             return
 
