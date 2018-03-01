@@ -49,7 +49,7 @@ class TaskServerMessageHandler():
     def on_verdict_report_computed_task(self, msg):
         """Verdict is forced by Concent on Requestor
 
-        Requestor should as it has sent AckReportComputedTask by himself.
+        Requestor should act as it had sent AckReportComputedTask by himself.
         """
 
         logger.warning("[CONCENT] Received verdict: %s", msg)
