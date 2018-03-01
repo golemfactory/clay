@@ -118,16 +118,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             send_mock.call_args_list[1][0][1].slots(),
             message.RandVal(rand_val=client_hello.rand_val).slots())
 
-    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
-    @mock.patch('golem.network.transport.session.BasicSession.send')
-    def test_react_to_hello_super(self, send_mock, super_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-        self.peer_session.interpret(client_hello)
-        super_mock.assert_called_once_with(client_hello)
-
-    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
     @mock.patch('golem.network.transport.session.BasicSession.disconnect')
-    def test_react_to_hello_malformed(self, disconnect_mock, super_mock):
+    def test_react_to_hello_malformed(self, disconnect_mock):
         """Reaction to hello without attributes"""
 
         malformed_hello = message.Hello()
