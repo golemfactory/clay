@@ -4,21 +4,22 @@ import logging
 import time
 from unittest import mock, TestCase
 import urllib
-
-
-from freezegun import freeze_time
-import golem_messages
-from golem_messages import message
-import golem_messages.cryptography
-import golem_messages.exceptions
 import requests
 from requests.exceptions import RequestException
+from freezegun import freeze_time
+
+import golem_messages
+import golem_messages.cryptography
+import golem_messages.exceptions
+from golem_messages import message
+from golem_messages.constants import (
+    DEFAULT_MSG_LIFETIME, MSG_LIFETIMES
+)
 
 from golem import testutils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import client
-from golem.network.concent import constants
 from golem.network.concent import exceptions
 
 from tests.factories import messages as msg_factories
@@ -232,9 +233,9 @@ class TestConcentClientService(testutils.TempDirFixture):
 
     def test_loop_request_timeout(self, send_mock, *_):
         self.assertFalse(self.concent_service.isAlive())
-        delta = constants.MSG_LIFETIMES.get(
+        delta = MSG_LIFETIMES.get(
             self.msg.__class__,
-            constants.DEFAULT_MSG_LIFETIME,
+            DEFAULT_MSG_LIFETIME,
         )
         with freeze_time(datetime.datetime.now()) as frozen_time:
             self.concent_service.submit(

@@ -11,6 +11,8 @@ from twisted.internet.defer import Deferred
 from twisted.web.client import readBody
 from twisted.web.http_headers import Headers
 
+from golem_messages.helpers import maximum_download_time
+
 from golem.core.async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
 
@@ -20,12 +22,6 @@ log = logging.getLogger(__name__)
 DEFAULT_HYPERDRIVE_PORT = 3282
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
 DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
-
-
-def timeout_from_size(size: int, rate: int = DEFAULT_UPLOAD_RATE):
-    bytes_per_sec = rate * 10 ** 3
-    margin = 10
-    return margin + int(math.ceil(size / bytes_per_sec))
 
 
 class HyperdriveClient(IClient):
@@ -93,8 +89,7 @@ class HyperdriveClient(IClient):
 
         if client_options:
             size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
-            if size:
-                timeout = timeout_from_size(size) if size else None
+            timeout = maximum_download_time(size).seconds if size else None
 
             filtered = client_options.filtered(cls.CLIENT_ID, cls.VERSION)
             if filtered:

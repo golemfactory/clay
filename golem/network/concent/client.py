@@ -11,12 +11,14 @@ import requests
 import golem_messages
 from golem_messages import message
 from golem_messages import datastructures as msg_datastructures
+from golem_messages.constants import (
+    DEFAULT_MSG_LIFETIME, MSG_DELAYS, MSG_LIFETIMES
+)
 
 from golem import constants as gconst
 from golem import utils
 from golem.core import keysauth
 from golem.core import variables
-from golem.network.concent import constants
 from golem.network.concent import exceptions
 
 logger = logging.getLogger(__name__)
@@ -207,12 +209,12 @@ class ConcentClientService(threading.Thread):
         from twisted.internet import reactor
 
         msg_cls = msg.__class__
-        lifetime = constants.MSG_LIFETIMES.get(
+        lifetime = MSG_LIFETIMES.get(
             msg_cls,
-            constants.DEFAULT_MSG_LIFETIME
+            DEFAULT_MSG_LIFETIME
         )
         if delay is None:
-            delay = constants.MSG_DELAYS[msg_cls]
+            delay = MSG_DELAYS[msg_cls]
 
         req = ConcentRequest(
             key=key,
