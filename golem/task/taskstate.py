@@ -97,7 +97,7 @@ class TaskStatus(object):
 class SubtaskStatus(object):
     starting = "Starting"
     downloading = "Downloading"
-    verifying = "verifying"
+    verifying = "Verifying"
     resent = "Failed - Resent"
     finished = "Finished"
     failure = "Failure"
