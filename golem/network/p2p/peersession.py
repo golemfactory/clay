@@ -222,7 +222,7 @@ class PeerSession(BasicSafeSession):
             message.WantToStartTaskSession(
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=super_node_info.to_dict()
             )
         )
 
@@ -247,7 +247,7 @@ class PeerSession(BasicSafeSession):
                 key_id=key_id,
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=super_node_info.to_dict()
             )
         )
 
@@ -428,18 +428,24 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_want_to_start_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node:
+            super_node_info = msg.super_node.from_dict(msg.super_node)
         self.p2p_service.peer_want_task_session(
             Node.from_dict(msg.node_info),
-            msg.super_node_info,
+            super_node_info,
             msg.conn_id
         )
 
     def _react_to_set_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node:
+            super_node_info = msg.super_node.from_dict(msg.super_node)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
             Node.from_dict(msg.node_info),
             msg.conn_id,
-            msg.super_node_info
+            super_node_info
         )
 
     def _react_to_disconnect(self, msg):
