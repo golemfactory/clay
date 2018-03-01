@@ -2,8 +2,7 @@ import logging
 import pathlib
 import pickle
 import time
-from typing import Optional
-
+import typing
 
 import random
 from collections import Counter
@@ -235,7 +234,7 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers = {}
+        self.task_headers: typing.Dict[str, TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # results of tasks' support checks
@@ -368,7 +367,7 @@ class TaskHeaderKeeper:
             return False
         return local.patch >= remote.patch
 
-    def get_support_status(self, task_id) -> Optional[SupportStatus]:
+    def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
         :param task_id: id of the task
         :return SupportStatus|None: the support status
