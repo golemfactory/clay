@@ -3,6 +3,7 @@ import gc
 import unittest
 import unittest.mock as mock
 
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem import testutils
@@ -60,12 +61,62 @@ class TaskServerMessageHandlerTestCase(
             reason=msg.reason,
         )
 
-    @mock.patch("golem.network.concent.helpers.process_report_computed_task")
-    def test_concents_force_report_computed_task(self, process_mock):
-        msg = msg_factories.ForceReportComputedTask()
+    @mock.patch("golem.task.taskserver.TaskServer"
+                ".receive_subtask_computation_time")
+    @mock.patch("golem.task.taskserver.TaskServer.get_result")
+    def test_verdict_report_computed_task(
+            self,
+            get_mock,
+            rsct_mock):
+        msg = msg_factories.VerdictReportComputedTask()
         library.interpret(msg)
-        process_mock.assert_called_once_with(
-            msg=msg.report_computed_task,
-            task_session=None,
+        self.assertEqual(
+            self.client.keys_auth.ecc.verify.call_count,
+            2,
         )
+        rct = msg.force_report_computed_task.report_computed_task
+        rsct_mock.assert_called_once_with(
+            msg.ack_report_computed_task.subtask_id,
+            rct.computation_time,
+        )
+        get_mock.assert_called_once_with(
+            subtask_id=msg.ack_report_computed_task.subtask_id,
+        )
+
+    @mock.patch("golem.task.taskserver.TaskServer"
+                ".receive_subtask_computation_time")
+    @mock.patch("golem.task.taskserver.TaskServer.get_result")
+    def test_verdict_report_computed_task_invalid_sig(
+            self,
+            get_mock,
+            rsct_mock):
+        self.client.keys_auth.ecc.verify.side_effect = \
+            msg_exceptions.InvalidSignature
+        msg = msg_factories.VerdictReportComputedTask()
+        library.interpret(msg)
+        ttc_from_ack = msg.ack_report_computed_task.task_to_compute
+        self.client.keys_auth.ecc.verify.assert_called_once_with(
+            inputb=ttc_from_ack.get_short_hash(),
+            sig=ttc_from_ack.sig)
+        rsct_mock.assert_not_called()
+        get_mock.assert_not_called()
+
+    @mock.patch("golem.task.taskserver.TaskServer"
+                ".receive_subtask_computation_time")
+    @mock.patch("golem.task.taskserver.TaskServer.get_result")
+    def test_verdict_report_computed_task_diff_ttc(
+            self,
+            get_mock,
+            rsct_mock):
+        msg = msg_factories.VerdictReportComputedTask()
+        msg.ack_report_computed_task.task_to_compute = \
+            msg_factories.TaskToCompute()
+        self.assertNotEqual(
+            msg.ack_report_computed_task.task_to_compute,
+            msg.force_report_computed_task.report_computed_task.task_to_compute,
+        )
+        library.interpret(msg)
+        rsct_mock.assert_not_called()
+        get_mock.assert_not_called()
+
 # pylint: enable=no-self-use
