@@ -432,8 +432,8 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_want_to_start_task_session(self, msg):
         super_node_info = None
-        if msg.super_node:
-            super_node_info = Node.from_dict(msg.super_node)
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.peer_want_task_session(
             Node.from_dict(msg.node_info),
             super_node_info,
@@ -442,8 +442,8 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_set_task_session(self, msg):
         super_node_info = None
-        if msg.super_node:
-            super_node_info = Node.from_dict(msg.super_node)
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
             Node.from_dict(msg.node_info),
