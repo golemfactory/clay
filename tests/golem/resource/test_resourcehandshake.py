@@ -554,12 +554,16 @@ class TestResourceHandshakeShare(DatabaseFixture):
         resource_manager.pull_resource = types.MethodType(_pull_resource,
                                                           resource_manager)
 
-        task_server = TaskServer(
-            node=Mock(client=client, key=str(uuid.uuid4())),
-            config_desc=ClientConfigDescriptor(),
-            client=client,
-            use_docker_manager=False
-        )
+        with patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            task_server = TaskServer(
+                node=Mock(client=client, key=str(uuid.uuid4())),
+                config_desc=ClientConfigDescriptor(),
+                client=client,
+                use_docker_manager=False
+            )
         task_server.task_manager = Mock(
             task_result_manager=Mock(
                 resource_manager=resource_manager
