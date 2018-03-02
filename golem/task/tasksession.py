@@ -166,6 +166,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _task_subtask_from_message(self, msg, local_role):
         task, subtask = None, None
 
+        if hasattr(msg, 'task_to_compute'):
+            msg = msg.task_to_compute
         if isinstance(msg, message.TaskToCompute):
             definition = msg.compute_task_def
             if definition:
@@ -599,6 +601,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.send(returned_msg)
         if not isinstance(returned_msg, message.concents.AckReportComputedTask):
             self.dropped()
+            return
 
         self.task_server.receive_subtask_computation_time(
             msg.subtask_id,
