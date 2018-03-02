@@ -258,7 +258,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
-            'status': '0x1',
+            'status': 1,
         })
         self.sci.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
@@ -303,7 +303,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             'blockNumber': tx_block_number,
             'blockHash': '0x' + 64 * 'f',
             'gasUsed': 55001,
-            'status': '0x0',
+            'status': 0,
         })
         self.sci.get_block_number.return_value = \
             tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
