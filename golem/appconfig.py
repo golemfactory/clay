@@ -6,6 +6,7 @@ from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
+from golem.core.variables import KEY_DIFFICULTY
 
 from golem.ranking.helper.trust_const import \
     REQUESTING_TRUST, \
@@ -28,7 +29,6 @@ RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
 SEND_PEERS_NUM = 10
-KEY_DIFFICULTY = 14
 
 USE_IP6 = 0
 USE_UPNP = 1

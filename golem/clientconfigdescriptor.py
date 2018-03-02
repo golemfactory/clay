@@ -1,5 +1,7 @@
 import logging
 
+from golem.core.variables import KEY_DIFFICULTY
+
 logger = logging.getLogger(__name__)
 
 
@@ -76,19 +78,16 @@ class ConfigApprover(object):
        format. Doesn't change them if they're in a wrong format (they're
        saved as strings then).
        """
-
-    dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
-                       'use_distributed_resource_management', 'send_pings',
-                       'use_ipv6', 'use_upnp', 'eth_account', 'accept_tasks',
-                       'node_name']
-    to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num',
-                  'p2p_session_timeout', 'task_session_timeout',
-                  'pings_interval', 'max_results_sending_delay', 'min_price',
-                  'max_price']
-    to_float_opt = ['getting_peers_interval', 'getting_tasks_interval',
-                    'computing_trust', 'requesting_trust']
-
-    numeric_opt = to_int_opt + to_float_opt
+    to_int_opt = {
+        'seed_port', 'num_cores', 'opt_peer_num', 'p2p_session_timeout',
+        'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
+        'min_price', 'max_price', 'key_difficulty'
+    }
+    to_float_opt = {
+        'getting_peers_interval', 'getting_tasks_interval', 'computing_trust',
+        'requesting_trust'
+    }
+    max_opt = {'key_difficulty': KEY_DIFFICULTY}
 
     def __init__(self, config_desc):
         """ Create config approver class that keeps old config descriptor
@@ -96,10 +95,15 @@ class ConfigApprover(object):
                                                    may be modified in the
                                                    future
         """
+        self._actions = [
+            (self.to_int_opt, self._to_int),
+            (self.to_float_opt, self._to_float),
+            (self.max_opt, self._max_value)
+        ]
         self.config_desc = config_desc
-        self._actions = {}
-        self._opts_to_change = self.dont_change_opt + self.numeric_opt
-        self._init_actions()
+
+    def approve(self):
+        return self.change_config(self.config_desc)
 
     def change_config(self, new_config_desc):
         """Try to change specific configuration options in the old config
@@ -108,28 +112,16 @@ class ConfigApprover(object):
         :param ClientConfigDescriptor new_config_desc: new config descriptor
         :return ClientConfigDescriptor: changed config descriptor
         """
-        ncd_dict = new_config_desc.__dict__
-        change_dict = {
-            k: ncd_dict[k]
-            for k in self._opts_to_change if k in self._opts_to_change
-        }
-        for key, val in list(change_dict.items()):
-            change_dict[key] = self._actions[key](val, key)
-        self.config_desc.__dict__.update(change_dict)
+        for key, val in new_config_desc.__dict__.items():
+            for keys, action in self._actions:
+                if key in keys:
+                    val = action(val, key)
+                    setattr(self.config_desc, key, val)
         return self.config_desc
 
-    def _init_actions(self):
-        for opt in self.dont_change_opt:
-            self._actions[opt] = ConfigApprover._empty_action
-        for opt in self.to_int_opt:
-            self._actions[opt] = ConfigApprover._to_int
-        for opt in self.to_float_opt:
-            self._actions[opt] = ConfigApprover._to_float
-
-    @staticmethod
-    def _empty_action(val, name):
-        """ Return value val without making any changes """
-        return val
+    @classmethod
+    def is_numeric(cls, name):
+        return name in cls.to_int_opt or name in cls.to_float_opt
 
     @staticmethod
     def _to_int(val, name):
@@ -156,4 +148,17 @@ class ConfigApprover(object):
             return float(val)
         except ValueError:
             logger.warning("{} value '{}' is not a number".format(name, val))
+        return val
+
+    @classmethod
+    def _max_value(cls, val, name):
+        """Try to set a maximum numeric value of val or the default value.
+        :param val: value that should be changed to float
+        :param str name: name of a config description option for logs
+        :return: max(val, min_value) or unchanged value if it's not possible
+        """
+        try:
+            return max(val, cls.max_opt[name])
+        except (KeyError, ValueError):
+            logger.warning('Cannot apply a minimum value to %r', name)
         return val

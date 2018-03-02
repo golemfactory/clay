@@ -30,6 +30,7 @@ CONCENT_PUBKEY = b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x8
 
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
+KEY_DIFFICULTY = 14
 
 # Maximum acceptable difference between node time and monitor time (seconds)
 MAX_TIME_DIFF = 10
