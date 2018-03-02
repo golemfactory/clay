@@ -1,6 +1,7 @@
 import json
 import os
 from random import random, randint
+from unittest import TestCase
 from unittest.mock import patch
 
 from freezegun import freeze_time
@@ -133,8 +134,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         old_difficulty = 0
         new_difficulty = 7
         priv_key = str(random())[2:]
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-
         assert old_difficulty < new_difficulty  # just in case
 
         keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
@@ -295,17 +294,37 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             ek2.encrypt(None)
 
 
+class TestKeysAuthWithReactor(TestCase):
+
+    @patch('golem.core.keysauth.logger')
+    def test_generate_keys_stop_when_reactor_stopped(self, logger):
+        from twisted.internet import reactor, threads
+        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
+        reactor.callLater(0.1, reactor.stop)
+        reactor.run()
+
+        assert reactor._startedBefore
+        assert logger.info.call_count == 1
+        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
+        assert logger.warning.call_count == 1
+        assert logger.warning.call_args_list[0][0][0] == \
+            'reactor stopped, aborting key generation ..'
+
+
 class TestKeysAuthKeystore(testutils.TempDirFixture):
+
     def test_keystore(self):
         key_name = str(random())
         password = 'passwd'
 
         # Generate new key
-        KeysAuth(
-            datadir=self.path,
-            private_key_name=key_name,
-            password=password,
-        )
+        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            KeysAuth(
+                datadir=self.path,
+                private_key_name=key_name,
+                password=password,
+            )
+
         # Try to load it, this shouldn't throw
         KeysAuth(
             datadir=self.path,

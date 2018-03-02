@@ -102,6 +102,7 @@ class KeysAuth:
 
         :param datadir where to store files
         :param private_key_name: name of the file containing private key
+        :param password: user password to protect private key
         :param difficulty:
             desired key difficulty level. It's a number of leading zeros in
             binary representation of public key. Value in range <0, 255>.
@@ -174,6 +175,7 @@ class KeysAuth:
 
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
+        from twisted.internet import reactor
         logger.info("Generating new key pair")
         started = time.time()
         while True:
@@ -181,6 +183,10 @@ class KeysAuth:
             pub_key = privtopub(priv_key)
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
+            # ugly, but this gets True on reactor stop (eg. ^C hit by user)
+            if reactor._startedBefore:  # pylint: disable=protected-access
+                logger.warning("reactor stopped, aborting key generation ..")
+                raise Exception("reactor stopped, aborting key generation")
 
         logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
