@@ -8,7 +8,7 @@ from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
-from apps.rendering.resources.utils import save_image_or_log_error
+from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verifier import RenderingVerifier
 from golem.core.common import get_golem_path
@@ -123,23 +123,22 @@ class RenderingTask(CoreTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
+    @handle_image_error(logger)
     def _update_preview(self, new_chunk_file_path, num_start):
-        img = load_as_pil(new_chunk_file_path)
-
-        img_current = self._open_preview()
-        img_current = ImageChops.add(img_current, img)
-        save_image_or_log_error(img_current, self.preview_file_path,
-                                PREVIEW_EXT)
-        img_current.close()
-        img.close()
+        with handle_none(load_as_pil(new_chunk_file_path),
+                         raise_if_none=IOError("load_as_pil failed")) as img, \
+                self._open_preview() as img_current, \
+                ImageChops.add(img_current, img) as img_added:
+            img_added.save(self.preview_file_path, PREVIEW_EXT)
 
     @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
+        subtask = self.subtasks_given[subtask_id]
         empty_color = (0, 0, 0)
-        img = self._open_preview()
-        self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        save_image_or_log_error(img, self.preview_file_path, PREVIEW_EXT)
-        img.close()
+        with handle_image_error(logger), \
+                self._open_preview() as img:
+            self._mark_task_area(subtask, img, empty_color)
+            img.save(self.preview_file_path, PREVIEW_EXT)
 
     def _update_task_preview(self):
         sent_color = (0, 255, 0)
@@ -149,17 +148,18 @@ class RenderingTask(CoreTask):
         preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                           preview_name))
 
-        img_task = self._open_preview()
+        with handle_image_error(logger), \
+                self._open_preview() as img_task:
 
-        for sub in self.subtasks_given.values():
-            if SubtaskStatus.is_computed(sub['status']):
-                self._mark_task_area(sub, img_task, sent_color)
-            if sub['status'] in [SubtaskStatus.failure,
-                                 SubtaskStatus.restarted]:
-                self._mark_task_area(sub, img_task, failed_color)
+            for sub in self.subtasks_given.values():
+                if SubtaskStatus.is_computed(sub['status']):
+                    self._mark_task_area(sub, img_task, sent_color)
+                if sub['status'] in [SubtaskStatus.failure,
+                                     SubtaskStatus.restarted]:
+                    self._mark_task_area(sub, img_task, failed_color)
 
-        save_image_or_log_error(img_task, preview_task_file_path, PREVIEW_EXT)
-        img_task.close()
+            img_task.save(preview_task_file_path, PREVIEW_EXT)
+
         self._update_preview_task_file_path(preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
@@ -237,11 +237,14 @@ class RenderingTask(CoreTask):
             preview_name = "current_preview.{}".format(ext)
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                               preview_name))
-            img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
-                                   int(round(self.res_y * self.scale_factor))))
-            logger.debug('Saving new preview: %r', self.preview_file_path)
-            save_image_or_log_error(img, self.preview_file_path, ext)
-            img.close()
+
+            with handle_image_error(logger), \
+                    Image.new(mode,
+                              (int(round(self.res_x * self.scale_factor)),
+                               int(round(self.res_y * self.scale_factor)))) \
+                    as img:
+                logger.debug('Saving new preview: %r', self.preview_file_path)
+                img.save(self.preview_file_path, ext)
 
         return Image.open(self.preview_file_path)
 

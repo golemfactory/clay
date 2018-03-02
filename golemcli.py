@@ -1,19 +1,27 @@
 #!/usr/bin/env python
 
+import os
 import argparse
 import sys
 
-from golem.core.common import config_logging, install_reactor
-from golem.interface.cli import CLI
-from golem.interface.client import debug
-from golem.interface.client.account import Account
-from golem.interface.client.environments import Environments
-from golem.interface.client.network import Network
-from golem.interface.client.payments import payments, incomes
-from golem.interface.client.resources import Resources
-from golem.interface.client.settings import Settings
-from golem.interface.client.tasks import Tasks, Subtasks
-from golem.interface.websockets import WebSocketCLI
+from multiprocessing import freeze_support
+
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
+
+# pylint: disable=wrong-import-position
+from golem.core.common import config_logging, install_reactor  # noqa
+from golem.interface.cli import CLI  # noqa
+from golem.interface.client import debug  # noqa
+from golem.interface.client.account import Account  # noqa
+from golem.interface.client.environments import Environments  # noqa
+from golem.interface.client.network import Network  # noqa
+from golem.interface.client.payments import payments, incomes  # noqa
+from golem.interface.client.resources import Resources  # noqa
+from golem.interface.client.settings import Settings  # noqa
+from golem.interface.client.tasks import Tasks, Subtasks  # noqa
+from golem.interface.websockets import WebSocketCLI  # noqa
+
 
 # prevent 'unused' warnings
 _ = {
@@ -23,6 +31,9 @@ _ = {
 
 
 def start():
+    freeze_support()
+    delete_reactor()
+
     flags = dict(
         interactive=('-i', '--interactive'),
         address=('-a', '--address'),
@@ -61,6 +72,11 @@ def start():
     install_reactor()
     ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
+
+
+def delete_reactor():
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
 
 
 if __name__ == '__main__':

@@ -381,7 +381,7 @@ class TaskServer(
         logger.warning('Should get result for %r', subtask_id)
         # TODO: send GetTaskResult(subtask_id=subtask_id) to Provider
         #       depends on: #2223 Message Queue
-        #       https://github.com/golemfactory/golem/issues/2223 
+        #       https://github.com/golemfactory/golem/issues/2223
 
     def accept_result(self, subtask_id, account_info):
         mod = min(

@@ -3,7 +3,6 @@ import os
 from collections import namedtuple
 
 from crossbar.common import checkconfig
-from crossbar.controller.node import Node, default_native_workers
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc.session import WebSocketAddress
@@ -54,6 +53,9 @@ class CrossbarRouter(object):
         self._start_node(options, reactor).addCallbacks(callback, errback)
 
     def _start_node(self, options, reactor):
+        # imports reactor
+        from crossbar.controller.node import Node, default_native_workers
+
         self.node = Node(options.cbdir, reactor=reactor)
         self.pubkey = self.node.maybe_generate_key(options.cbdir)
 
