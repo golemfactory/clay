@@ -60,6 +60,7 @@ def process_report_computed_task(msg, task_session):
             msg,
         )
         subtask_deadline = -1
+
     if now_ts > subtask_deadline:
         send_reject(reject_reasons.SubtaskTimeLimitExceeded)
         raise exceptions.ConcentVerificationFailed("Subtask timeout")
@@ -70,6 +71,10 @@ def process_report_computed_task(msg, task_session):
         subtask=msg.subtask_id,
     )
 
+    # we're checking for existence of earlier messages here to eliminate
+    # the situation when a Provider sends the Requestor a `ReportComputedTask`
+    # for a task that they had previously claimed un-computable
+
     # CannotComputeTask received
     try:
         unwanted_msg = get_msg(msg_cls='CannotComputeTask')
@@ -77,6 +82,9 @@ def process_report_computed_task(msg, task_session):
             reject_reasons.GotMessageCannotComputeTask,
             cannot_compute_task=unwanted_msg,
         )
+        #
+        # @fixme: the name `ConcentVerification` is confusing in this context
+        #
         raise exceptions.ConcentVerificationFailed("CannotComputeTask received")
     except history.MessageNotFound:
         pass

@@ -382,7 +382,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
-        # the requestor safely
+        # the Requestor safely
         if not task_to_compute.concent_enabled:
             return
 
@@ -399,14 +399,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', msg)
-
-        self.concent_service.submit(
-            ConcentRequest.build_key(
-                task_result.subtask_id,
-                msg.__class__.__name__,
-            ),
-            msg,
-        )
+        self.concent_service.submit_task_message(task_result.subtask_id, msg)
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -502,8 +495,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 compute_task_def=ctd,
                 requestor_id=ctd['task_owner']['key'],
                 requestor_public_key=ctd['task_owner']['key'],
+                requestor_ethereum_public_key=ctd['task_owner']['key'],
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
+                provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
@@ -568,7 +563,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:  # noqa
+        if self.check_provider_for_subtask(msg.subtask_id):
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -577,6 +572,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
+        if not self.check_requestor_for_task(msg.task_id):
+            self.dropped()
+            return
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
@@ -585,8 +583,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        if msg.subtask_id not in self.task_manager.subtask2task_mapping:
-            logger.warning('Received unknown subtask_id: %r', msg)
+        if not self.check_provider_for_subtask(msg.subtask_id):
             self.dropped()
             return
 
@@ -620,6 +617,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.provider_history
     def _react_to_get_task_result(self, msg) -> None:
+        if not self.check_requestor_for_subtask(msg.subtask_id):
+            self.dropped()
+            return
         wtr = self.task_server.get_waiting_task_result(msg.subtask_id)
         if wtr is None:
             logger.warning("Result was requested for an unknown subtask "
@@ -656,6 +656,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             return
 
+        if not self.check_provider_for_subtask(msg.subtask_id):
+            self.dropped()
+            return
+
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
             content_hash,
@@ -674,18 +678,37 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning("Task result error: %s (%s)", subtask_id,
                            exc or "unspecified")
 
-            # in case of resources failure, we're sending the rejection
-            # until we implement `ForceGetTaskResults` (pending)
-            self._reject_subtask_result(
-                subtask_id,
-                reason=message.tasks.SubtaskResultsRejected.REASON
-                .ResourcesFailure
-            )
+            ttc = get_task_message('TaskToCompute', task_id, subtask_id)
+            if not ttc or not ttc.concent_enabled:
+                # in case of resources failure, if we're not using the Concent
+                # we're immediately sending a rejection message to the Provider
+                self._reject_subtask_result(
+                    subtask_id,
+                    reason=message.tasks.SubtaskResultsRejected.REASON
+                    .ResourcesFailure
+                )
 
-            self.task_manager.task_computation_failure(
-                subtask_id,
-                'Error downloading task result'
-            )
+                self.task_manager.task_computation_failure(
+                    subtask_id,
+                    'Error downloading task result'
+                )
+            else:
+                # otherwise, we're resorting to mediation through the Concent
+                # to obtain the task results
+                rct = get_task_message(
+                    'ReportComputedTask', task_id, subtask_id
+                )
+                if not rct:
+                    logger.error(
+                        "[CONCENT] Can't construct ForceGetTaskResult message"
+                        "for task %s, subtask %s", task_id, subtask_id)
+                else:
+                    msg = message.concents.ForceGetTaskResult(
+                        report_computed_task=rct
+                    )
+                    logger.debug('[CONCENT] ForceGetTaskResult: %s', msg)
+                    self.concent_service.submit_task_message(subtask_id, msg)
+
             self.dropped()
 
         self.task_manager.task_result_incoming(subtask_id)
@@ -724,21 +747,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
         subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
+        if not self.check_requestor_for_subtask(subtask_id):
+            self.dropped()
+            return
         self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
         self.dropped()
 
     @history.provider_history
     def _react_to_subtask_results_rejected(self, msg):
+        subtask_id = msg.report_computed_task.subtask_id
+        if not self.check_requestor_for_subtask(subtask_id):
+            self.dropped()
+            return
         self.task_server.subtask_rejected(
-            subtask_id=msg.report_computed_task.subtask_id,
+            subtask_id=subtask_id,
         )
         self.dropped()
 
     def _react_to_task_failure(self, msg):
-        self.task_server.subtask_failure(msg.subtask_id, msg.err)
+        if self.check_provider_for_subtask(msg.subtask_id):
+            self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
     def _react_to_delta_parts(self, msg):
+        if not self.check_requestor_for_task(self.task_id):
+            self.dropped()
+            return
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(
@@ -762,7 +796,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                                         client_options=client_options)
 
     def _react_to_hello(self, msg):
-        super()._react_to_hello(msg)
         if not self.conn.opened:
             return
         send_hello = False
@@ -844,6 +877,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.address,
             self.port
         )
+
+    def check_provider_for_subtask(self, subtask_id) -> bool:
+        node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
+        if node_id != self.key_id:
+            logger.warning('Received message about subtask %r from diferrent '
+                           'node %r than expected %r', subtask_id,
+                           self.key_id, node_id)
+            return False
+        return True
+
+    def check_requestor_for_task(self, task_id, additional_msg="") -> bool:
+        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
+            task_id)
+        if node_id != self.key_id:
+            logger.warning('Received message about task %r from diferrent '
+                           'node %r than expected %r. %s', task_id,
+                           self.key_id, node_id, additional_msg)
+            return False
+        return True
+
+    def check_requestor_for_subtask(self, subtask_id) -> bool:
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
+            subtask_id)
+        return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd):
         reasons = message.CannotComputeTask.REASON

@@ -30,8 +30,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_server.keys_auth = keys_auth = \
             keysauth.KeysAuth(
                 datadir=self.tempdir,
+                private_key_name='priv_key',
+                password='password',
             )
-
+        self.task_session.key_id = "KEY_ID"
         self.msg = factories.messages.ReportComputedTask()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
@@ -47,6 +49,11 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
+
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = "KEY_ID"
+        self.task_session.task_manager.get_node_id_for_subtask.return_value = \
+            "KEY_ID"
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
         subtask_state.deadline = now_ts + 60
@@ -64,9 +71,12 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
     def test_subtask_id_unknown(self, dropped_mock):
         "Drop if subtask is unknown"
-        self.task_session.task_manager.subtask2task_mapping = {}
+        self.task_session.task_manager.get_node_id_for_subtask.return_value = \
+            None
         self.task_session._react_to_report_computed_task(self.msg)
         dropped_mock.assert_called_once_with()
+        self.task_session.task_manager.get_node_id_for_subtask.return_value = \
+            "KEY_ID"
 
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
     def test_no_task_to_compute(self, dropped_mock):

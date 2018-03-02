@@ -52,7 +52,7 @@ class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
 class TestEthAccountInfo(TempDirFixture):
 
     def test_comparison(self):
-        k = KeysAuth(self.path)
+        k = KeysAuth(self.path, 'priv_key', 'password')
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
         a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            Node(), addr1)
@@ -64,7 +64,12 @@ class TestEthAccountInfo(TempDirFixture):
         c = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            n, addr1)
         self.assertEqual(a, c)
-        k = KeysAuth("%s_other" % self.path, difficulty=2)
+        k = KeysAuth(
+            "%s_other" % self.path,
+            'priv_key',
+            'password',
+            difficulty=2,
+        )
         c.key_id = k.key_id
         self.assertNotEqual(a, c)
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"

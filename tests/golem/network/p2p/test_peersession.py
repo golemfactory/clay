@@ -41,7 +41,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         random.seed()
         self.peer_session = PeerSession(mock.MagicMock())
         node = p2p_factories.Node()
-        keys_auth = KeysAuth(self.path)
+        keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.peer_session.conn.server = \
             self.peer_session.p2p_service = P2PService(
                 node=node,
@@ -111,16 +111,8 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
             send_mock.call_args_list[1][0][1].slots(),
             message.RandVal(rand_val=client_hello.rand_val).slots())
 
-    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
-    @mock.patch('golem.network.transport.session.BasicSession.send')
-    def test_react_to_hello_super(self, send_mock, super_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-        self.peer_session.interpret(client_hello)
-        super_mock.assert_called_once_with(client_hello)
-
-    @mock.patch('golem.network.transport.session.BasicSession._react_to_hello')
     @mock.patch('golem.network.transport.session.BasicSession.disconnect')
-    def test_react_to_hello_malformed(self, disconnect_mock, super_mock):
+    def test_react_to_hello_malformed(self, disconnect_mock):
         """Reaction to hello without attributes"""
 
         malformed_hello = message.Hello()
@@ -356,7 +348,7 @@ class TestPeerSession(testutils.TempDirFixture, LogTestCase,
         conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
+        keys_auth = KeysAuth(self.path, 'priv_key', 'password')
 
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)

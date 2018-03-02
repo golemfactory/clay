@@ -145,9 +145,6 @@ class BasicSession(FileSession):
             return False
         return True
 
-    def _react_to_hello(self, msg):
-        pass
-
     def _react_to_disconnect(self, msg):
         logger.info("Disconnect reason: %r", msg.reason)
         logger.info("Closing %s:%s", self.address, self.port)

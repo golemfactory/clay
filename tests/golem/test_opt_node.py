@@ -381,7 +381,6 @@ def done_deferred(*_):
     deferred.callback(True)
     return deferred
 
-
 def chain_function(_, fn, *args, **kwargs):
     result = fn(*args, **kwargs)
     deferred = Deferred()

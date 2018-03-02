@@ -157,7 +157,7 @@ class TestPaymentsKeeper(TestWithDatabase):
 
 class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
-        k = KeysAuth(self.path)
+        k = KeysAuth(self.path, 'priv_key', 'password')
         e = urandom(20)
         a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
                            e)
@@ -168,6 +168,11 @@ class TestAccountInfo(TempDirFixture):
                  pub_port=1032)
         c = EthAccountInfo(k.key_id, 5112, "10.0.0.2", "test-test2-test", n, e)
         self.assertEqual(a, c)
-        k = KeysAuth("%s_other" % self.path, difficulty=2)
+        k = KeysAuth(
+            "%s_other" % self.path,
+            'priv_key',
+            'password',
+            difficulty=2,
+        )
         c.key_id = k.key_id
         self.assertNotEqual(a, c)

@@ -270,9 +270,6 @@ class PeerSession(BasicSafeSession):
         if (self.address, port) in self.p2p_service.seeds:
             compare_version(getattr(msg, 'client_ver', None))
 
-        # We want to compare_version() before calling
-        # super()._react_to_hello() and potentially returning
-        super()._react_to_hello(msg)
         if not self.conn.opened:
             return
 
@@ -518,7 +515,7 @@ class PeerSession(BasicSafeSession):
                                             self.address,
                                             self.listen_port,
                                             self.node_info)
-        self.p2p_service.add_peer(self.key_id, self)
+        self.p2p_service.add_peer(self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
             self.node_info,

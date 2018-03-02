@@ -1,16 +1,21 @@
 import logging
-from pydispatch import dispatcher
-import threading
 import queue
+import threading
+import time
+from urllib.parse import urljoin
 
+import requests
+from pydispatch import dispatcher
+
+from golem.core import variables
 from golem.decorators import log_error
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .model import statssnapshotmodel
 from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.nodemetadatamodel import NodeInfoModel
-from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .model.paymentmodel import ExpenditureModel, IncomeModel
+from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .transport.sender import DefaultJSONSender as Sender
 
 log = logging.getLogger('golem.monitor')
@@ -67,37 +72,44 @@ class SystemMonitor(object):
             )
         return self._sender_thread
 
-    def p2p_listener(self, sender, signal, event='default', **kwargs):
+    def p2p_listener(self, event='default', ports=None, *_, **__):
         if event != 'listening':
             return
-        try:
-            result = self.ping_request(kwargs['port'])
-            if not result['success']:
-                status = result['description'].replace('\n', ', ')
-                log.warning('Port status: {}'.format(status))
-                dispatcher.send(
-                    'golem.p2p',
-                    event='unreachable',
-                    port=kwargs['port'],
-                    description=result['description']
-                )
-        except Exception as exc:  # pylint: disable=broad-except
-            log.warning('Port reachability check error: %r', exc)
+        result = self.ping_request(ports)
 
-    def ping_request(self, port):
-        import requests
+        if not result['success']:
+            for port_status in result['port_statuses']:
+                if not port_status['is_open']:
+                    dispatcher.send(
+                        signal='golem.p2p',
+                        event='unreachable',
+                        port=port_status['port'],
+                        description=port_status['description']
+                    )
+
+        if result['time_diff'] > variables.MAX_TIME_DIFF:
+            dispatcher.send(
+                signal='golem.p2p',
+                event='unsynchronized',
+                time_diff=result['time_diff']
+            )
+
+    def ping_request(self, ports):
         timeout = 2.5  # seconds
         try:
             response = requests.post(
-                '%sping-me' % (self.config['HOST'],),
-                data={'port': port, },
+                urljoin(self.config['HOST'], 'ping-me'),
+                data={
+                    'ports': ports,
+                    'timestamp': time.time()
+                },
                 timeout=timeout,
             )
             result = response.json()
-        except requests.ConnectionError as e:
-            result = {'success': False, 'description': 'Local error: %s' % e}
-        log.debug('ping result %r', result)
-        return result
+            log.debug('Ping result: %r', result)
+            return result
+        except requests.ConnectionError:
+            log.exception('Ping connection error')
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):
