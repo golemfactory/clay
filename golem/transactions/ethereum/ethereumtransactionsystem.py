@@ -28,22 +28,16 @@ class EthereumTransactionSystem(TransactionSystem):
         #        Proper account managment is needed.
 
         try:
-            node_address = privtoaddr(node_priv_key)
+            eth_addr = encode_hex(privtoaddr(node_priv_key))
         except AssertionError:
             raise ValueError("not a valid private key")
-
-        self.__eth_addr = EthereumAddress(node_address)
-        if self.get_payment_address() is None:
-            raise ValueError("Invalid Ethereum address constructed '{}'"
-                             .format(node_address))
-
-        log.info("Node Ethereum address: " + self.get_payment_address())
+        log.info("Node Ethereum address: %s", eth_addr)
 
         self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
         self._sci = golem_sci.new_sci(
             self._node.web3,
-            encode_hex(privtoaddr(node_priv_key)),
+            eth_addr,
             lambda tx: tx.sign(node_priv_key),
         )
         self.payment_processor = PaymentProcessor(
@@ -74,7 +68,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
-        return self.__eth_addr.get_str_addr()
+        return self._sci.get_eth_address()
 
     def get_balance(self):
         if not self.payment_processor.balance_known():
