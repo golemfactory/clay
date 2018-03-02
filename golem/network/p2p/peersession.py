@@ -218,11 +218,13 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.WantToStartTaskSession(
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -242,12 +244,13 @@ class PeerSession(BasicSafeSession):
         """
         logger.debug('Forwarding session request: %s -> %s to %s',
                      node_info.key, key_id, self.key_id)
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -428,18 +431,24 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_want_to_start_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.peer_want_task_session(
             Node.from_dict(msg.node_info),
-            msg.super_node_info,
+            super_node_info,
             msg.conn_id
         )
 
     def _react_to_set_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
             Node.from_dict(msg.node_info),
             msg.conn_id,
-            msg.super_node_info
+            super_node_info
         )
 
     def _react_to_disconnect(self, msg):
