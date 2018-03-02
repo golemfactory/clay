@@ -1,8 +1,18 @@
+import logging
+import queue
+import threading
+from collections import namedtuple
 from datetime import datetime
 import os
+from types import FunctionType
+from typing import Optional, Type
+
+from golem.task.localcomputer import ComputerAdapter
 
 from golem.verification.verifier import (StateVerifier,
-                                         SubtaskVerificationState)
+                                         SubtaskVerificationState, Verifier)
+
+logger = logging.getLogger("apps.core")
 
 
 class CoreVerifier(StateVerifier):
@@ -40,3 +50,77 @@ class CoreVerifier(StateVerifier):
         """ Override this to change verification method
         """
         return True
+
+
+class VerificationQueue:
+
+    Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
+                                 'kwargs', 'cb'])
+
+    def __init__(self, concurrency: int = 1) -> None:
+
+        self._concurrency = concurrency
+        self._queue: queue.Queue = queue.Queue()
+
+        self._lock = threading.Lock()
+        self._running = 0
+
+    def submit(self,
+               verifier_class: Type[Verifier],
+               subtask_id: str,
+               cb: FunctionType,
+               **kwargs) -> None:
+
+        entry = self.Entry(verifier_class, subtask_id, kwargs, cb)
+        self._queue.put(entry)
+        self._process_queue()
+
+    @property
+    def can_run(self) -> bool:
+        with self._lock:
+            return self._running < self._concurrency
+
+    def _process_queue(self) -> None:
+        if self.can_run:
+            entry = self._next()
+            if entry:
+                self._run(entry)
+
+    def _next(self) -> Optional['Entry']:
+        try:
+            return self._queue.get(block=False)
+        except queue.Empty:
+            return None
+
+    def _run(self, entry: Entry) -> None:
+        with self._lock:
+            self._running += 1
+
+        subtask_id = entry.subtask_id
+        logger.info("Running verification of subtask %r", subtask_id)
+
+        def callback(*args, **kwargs):
+            with self._lock:
+                self._running -= 1
+
+            logger.info("Finished verification of subtask %r", subtask_id)
+            try:
+                entry.cb(*args, **kwargs)
+            finally:
+                self._process_queue()
+
+        try:
+            verifier = entry.verifier_class(callback)
+            verifier.computer = ComputerAdapter()
+            verifier.start_verification(**entry.kwargs)
+        except Exception as exc:  # pylint: disable=broad-except
+            with self._lock:
+                self._running -= 1
+
+            logger.error("Failed to start verification of subtask %r: %r",
+                         subtask_id, exc)
+            self._process_queue()
+
+    def _reset(self) -> None:
+        self._queue = queue.Queue()
+        self._running = 0

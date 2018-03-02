@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import platform
 import sys
 import logging
@@ -10,17 +11,21 @@ import psutil
 from cpuinfo import get_cpu_info
 from ethereum import slogging
 
-import golem
-import golem.argsparser as argsparser
-from golem.appconfig import AppConfig
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import install_reactor
-from golem.core.simpleenv import get_local_datadir
-from golem.core.variables import PROTOCOL_CONST
-from golem.node import Node
+# Export pbr version for peewee_migrate user
+os.environ["PBR_VERSION"] = '3.1.1'
+
+# pylint: disable=wrong-import-position
+import golem  # noqa
+import golem.argsparser as argsparser  # noqa
+from golem.appconfig import AppConfig  # noqa
+from golem.clientconfigdescriptor import ClientConfigDescriptor, \
+    ConfigApprover  # noqa
+from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
+from golem.core.variables import PROTOCOL_CONST  # noqa
+from golem.node import Node  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
-
 
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.
@@ -112,6 +117,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc = ConfigApprover(config_desc).approve()
 
     if rpc_address:
         config_desc.rpc_address = rpc_address.address

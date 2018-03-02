@@ -1,5 +1,6 @@
 import abc
 import decimal
+
 import golem_messages.message
 import logging
 import os
@@ -10,7 +11,7 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verifier import CoreVerifier
+from apps.core.task.verifier import CoreVerifier, VerificationQueue
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -19,7 +20,6 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.localcomputer import ComputerAdapter
 
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
@@ -86,6 +86,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
+    VERIFICATION_QUEUE = VerificationQueue()
 
     # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
@@ -211,13 +212,15 @@ class CoreTask(Task):
             self.verification_finished(subtask_id, verdict, result)
             verification_finished_()
 
-        verifier = self.VERIFIER_CLASS(verification_finished)
-        verifier.computer = ComputerAdapter()
-        verifier.start_verification(
+        self.VERIFICATION_QUEUE.submit(
+            self.VERIFIER_CLASS,
+            subtask_id,
+            verification_finished,
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data())
+            reference_data=self.get_reference_data()
+        )
 
     def get_reference_data(self):
         return []

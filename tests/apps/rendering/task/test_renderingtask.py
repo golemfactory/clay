@@ -331,6 +331,14 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
                 prefix, 'x64', exe_dir, exe + '.exe'
             ))
 
+    def test_update_task_preview_ioerror(self):
+        e = IOError("test message")
+        with patch("PIL.Image.open", side_effect=e), \
+                patch("apps.rendering.task.renderingtask.logger") as logger:
+            self.task._update_task_preview()
+            assert logger.error.called
+            assert logger.error.call_args[0][1] == e
+
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
