@@ -83,3 +83,14 @@ class EthereumTransactionSystem(TransactionSystem):
         av_gnt = self.payment_processor._gnt_available()
         eth, last_eth_update = self.payment_processor.eth_balance()
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
+
+
+class NotEnoughFunds(Exception):
+    def __init__(self, required=None, available=None, extension="GNT"):
+        self.required = required
+        self.available = available
+        self.extension = extension
+
+    def __str__(self):
+        return "Not enough %s available. Required: %d, available: %d" % \
+               (self.extension, self.required, self.available)
