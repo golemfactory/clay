@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timedelta
 import logging
+import time
+from typing import Iterable
 
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 from golem.utils import encode_hex, pubkeytoaddr
 
@@ -102,3 +106,15 @@ class IncomesKeeper:
             Income.transaction,
             Income.value
         ).order_by(Income.created_date.desc())
+
+    @staticmethod
+    def get_overdue_incomes() -> Iterable[Income]:
+        accepted_ts_deadline = time.time() - PAYMENT_DEADLINE
+        created_deadline = datetime.now() - timedelta(seconds=PAYMENT_DEADLINE)
+        return Income.select(Income).where(
+            Income.transaction.is_null(True),
+            Income.accepted_ts < accepted_ts_deadline | (
+                Income.accepted_ts.is_null(True) &
+                (Income.created_date < created_deadline)
+            )
+        )

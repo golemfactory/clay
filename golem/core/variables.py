@@ -75,3 +75,8 @@ STAGE_TIME = 36000
 # THREADING CONST #
 ###################
 REACTOR_THREAD_POOL_SIZE = 20
+
+#################
+# INCOMES CONST #
+#################
+PAYMENT_DEADLINE = 24 * 60 * 60

@@ -234,6 +234,7 @@ class Income(BaseModel):
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
+    overdue = BooleanField(default=False)
 
     class Meta:
         database = db

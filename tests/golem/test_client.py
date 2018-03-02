@@ -6,7 +6,7 @@ import uuid
 from random import Random
 from types import MethodType
 from unittest import TestCase
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import call, Mock, MagicMock, patch
 
 from freezegun import freeze_time
 from pydispatch import dispatcher
@@ -512,6 +512,24 @@ class TestClient(TestWithDatabase, TestWithReactor):
             in task_manager.tasks_states[task_id].subtask_states.values())
         assert task_manager.tasks_states[new_task_id].status \
             == TaskStatus.waiting
+
+    @patch('golem.client.EthereumTransactionSystem', autospec=True)
+    @patch('golem.client.Trust', autospec=True)
+    def test_check_payments(self, trust, *_):
+
+        client = Client(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            transaction_system=True,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        client.transaction_system\
+            .get_nodes_with_overdue_payments.return_value = ['a', 'b']
+        client.check_payments()
+        trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
 
 
 class TestDoWorkService(TestWithReactor):

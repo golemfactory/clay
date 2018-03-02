@@ -1,11 +1,16 @@
-import random
+from datetime import datetime, timedelta
+from random import Random
 import time
 
+from freezegun import freeze_time
+
+from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import db, Income
 from golem.testutils import PEP8MixIn
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.incomeskeeper import IncomesKeeper
 from golem.utils import pubkeytoaddr
+from tests.factories import model as model_factories
 
 # SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
 
@@ -16,6 +21,8 @@ from golem.utils import pubkeytoaddr
 MAX_INT = 2 ** 63
 # this proves that Golem's HexIntegerField wrapper does not
 # overflows in contrast to standard SQL implementation
+
+random = Random()
 
 
 def generate_some_id(prefix='test'):
@@ -29,7 +36,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
 
     def setUp(self):
         super(TestIncomesKeeper, self).setUp()
-        random.seed()
+        random.seed(__name__)
         self.incomes_keeper = IncomesKeeper()
 
     def _test_expect_income(self, sender_node_id, subtask_id, value):
@@ -158,3 +165,42 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node_id2, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
+
+    def test_get_overdue_incomes_none(self):
+        incomes = self.incomes_keeper.get_overdue_incomes()
+        self.assertSequenceEqual(incomes, ())
+
+    @freeze_time()
+    def test_get_overdue_incomes_all_paid(self):
+        model_factories.Income.create(
+            accepted_ts=time.time(),
+            transaction='transaction')
+        model_factories.Income.create(
+            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
+            accepted_ts=time.time() - 2*PAYMENT_DEADLINE,
+            transaction='transaction')
+        incomes = self.incomes_keeper.get_overdue_incomes()
+        self.assertSequenceEqual(incomes, ())
+
+    @freeze_time()
+    def test_get_overdue_incomes_accepted_deadline_passed(self):
+        overdue_income = model_factories.Income.create(
+            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
+            accepted_ts=time.time() - 2*PAYMENT_DEADLINE)
+        incomes = self.incomes_keeper.get_overdue_incomes()
+        self.assertSequenceEqual(incomes, (overdue_income,))
+
+    @freeze_time()
+    def test_get_overdue_incomes_unaccepted_deadline_passed(self):
+        overdue_income = model_factories.Income.create(
+            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE))
+        incomes = self.incomes_keeper.get_overdue_incomes()
+        self.assertSequenceEqual(incomes, (overdue_income,))
+
+    @freeze_time()
+    def test_get_overdue_incomes_old_but_recently_accepted(self):
+        model_factories.Income.create(
+            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
+            accepted_ts=time.time())
+        incomes = self.incomes_keeper.get_overdue_incomes()
+        self.assertSequenceEqual(incomes, ())

@@ -1,3 +1,5 @@
+from typing import List
+
 from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment, PaymentStatus, PaymentDetails
 
@@ -80,19 +82,9 @@ class TransactionSystem(object):
 
         return [item(income) for income in incomes]
 
-    def check_payments(self):
-        # TODO Some code from taskkeeper
-        # now = datetime.datetime.now()
-        # after_deadline = []
-        # for subtask_id, [task_id, task_date, deadline]
-        # in self.completed.items():
-        #     if deadline < now:
-        #         after_deadline.append(task_id)
-        #         del self.completed[subtask_id]
-        # return after_deadline
-
-        self.incomes_keeper.run_once()
-        return []
+    def get_nodes_with_overdue_payments(self) -> List[str]:
+        overdue_incomes = self.incomes_keeper.get_overdue_incomes()
+        return [x.sender_node for x in overdue_incomes]
 
     def sync(self) -> None:
         pass
