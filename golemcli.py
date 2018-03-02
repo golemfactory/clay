@@ -9,6 +9,7 @@ from multiprocessing import freeze_support
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
+# pylint: disable=wrong-import-position
 from golem.core.common import config_logging, install_reactor  # noqa
 from golem.interface.cli import CLI  # noqa
 from golem.interface.client import debug  # noqa

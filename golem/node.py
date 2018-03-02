@@ -20,6 +20,7 @@ from golem.rpc.session import object_method_map, Session, Publisher
 logger = logging.getLogger("app")
 
 
+# pylint: disable=too-many-instance-attributes
 class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
@@ -35,7 +36,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None) -> None:
-        # pylint: disable=too-many-instance-attributes
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -106,7 +106,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             difficulty=self._config_desc.key_difficulty
         )
 
-    def _start_docker(self) -> Deferred:
+    def _start_docker(self) -> Optional[Deferred]:
         if not self._use_docker_manager:
             return None
 
@@ -135,6 +135,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
                   error=self._error('Cannot start the client'))
 
     def _run(self, *_) -> None:
+        if not self.client:
+            self._error("Client object is not available")
+            return
+
         self._setup_apps()
         self.client.sync()
 
@@ -146,6 +150,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._reactor.callFromThread(self._reactor.stop)
 
     def _setup_apps(self) -> None:
+        if not self.client:
+            self._error("Client object is not available")
+            return
+
         apps_manager = AppsManager()
         apps_manager.load_apps()
 
