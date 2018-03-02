@@ -10,6 +10,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth
 from golem.core.async import async_run, AsyncRequest
+from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher
@@ -103,6 +104,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return threads.deferToThread(
             KeysAuth,
             datadir=self._datadir,
+            private_key_name=PRIVATE_KEY,
+            # TODO: user provided password
+            password='verystrongpasswodmuchsecurity',
             difficulty=self._config_desc.key_difficulty
         )
 
