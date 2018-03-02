@@ -79,5 +79,6 @@ class TestNotEnoughFunds(TestCase):
         try:
             raise NotEnoughFunds(10, 2)
         except NotEnoughFunds as err:
-            print(err)
-            assert False
+            expected_str = "Not enough GNT available. Required: 10, " \
+                           "available: 2"
+            assert expected_str in str(err)

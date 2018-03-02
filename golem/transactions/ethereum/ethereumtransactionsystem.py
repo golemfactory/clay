@@ -84,6 +84,13 @@ class EthereumTransactionSystem(TransactionSystem):
         eth, last_eth_update = self.payment_processor.eth_balance()
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
 
+    def check_funds_for_task(self, task):
+        subtask_price = task.header.max_price * task.header.subtask_timeout / 60
+        price = subtask_price * task.total_tasks
+        gnt_available = self.payment_processor._gnt_available()
+        if price > gnt_available:
+            raise NotEnoughFunds(price, gnt_available)
+
 
 class NotEnoughFunds(Exception):
     def __init__(self, required=None, available=None, extension="GNT"):

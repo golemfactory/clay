@@ -8,6 +8,7 @@ from types import MethodType
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock, patch
 
+from ethereum.utils import denoms
 from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -24,7 +25,6 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, Income
@@ -37,6 +37,7 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
+from golem.testutils import get_key_auth_for_tests
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
@@ -747,14 +748,14 @@ class TestTaskCleanerService(TestWithReactor):
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-
+        keys_auth = get_key_auth_for_tests(self.path)
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             client = Client(
                 datadir=self.path,
                 config_desc=ClientConfigDescriptor(),
-                keys_auth=Mock(),
-                transaction_system=False,
+                keys_auth=keys_auth,
+                transaction_system=True,
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False
@@ -780,7 +781,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        c.keys_auth = get_key_auth_for_tests(self.path)
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -841,19 +842,28 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.transaction_system.payment_processor = MagicMock()
+        c.transaction_system.payment_processor._gnt_available.return_value = \
+            100 * denoms.ether
 
         task_header = Mock(
             max_price=1 * 10**18,
-            task_id=str(uuid.uuid4())
+            task_id=str(uuid.uuid4()),
+            subtask_timeout=37
         )
         task = Mock(
             header=task_header,
-            get_resources=Mock(return_value=[])
+            get_resources=Mock(return_value=[]),
+            total_tasks=5
         )
 
         c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
-
+        task_mock = MagicMock()
+        task_mock.header.max_price = 1 * 10**18
+        task_mock.header.subtask_timeout = 158
+        task_mock.total_tasks = 3
+        c.task_server.task_manager.create_task.return_value = task_mock
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4())
@@ -912,6 +922,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
+        c.transaction_system.payment_processor = MagicMock()
+        c.transaction_system.payment_processor._gnt_available.return_value = \
+            100 * denoms.ether
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)

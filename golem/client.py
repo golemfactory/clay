@@ -487,6 +487,8 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        self.transaction_system.check_funds_for_task(task)
+
         task_id = task.header.task_id
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
