@@ -115,7 +115,8 @@ class ConfigApprover(object):
         for key, val in new_config_desc.__dict__.items():
             for keys, action in self._actions:
                 if key in keys:
-                    setattr(self.config_desc, key, action(val, key))
+                    val = action(val, key)
+                    setattr(self.config_desc, key, val)
         return self.config_desc
 
     @classmethod
