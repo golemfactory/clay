@@ -7,7 +7,7 @@ from os import path
 from playhouse.shortcuts import RetryOperationalError
 
 from golem.database.migration import default_migrate_dir
-from golem.database.migration.migrate import migrate_schema, NoMigrationScripts
+from golem.database.migration.migrate import migrate_schema, MigrationError
 
 logger = logging.getLogger('golem.db')
 
@@ -71,9 +71,12 @@ class Database:
                     version, to_version)
 
         try:
+            if not self.schemas_dir:
+                raise MigrationError("Invalid schema directory")
+
             migrate_schema(self, version, to_version,
                            migrate_dir=self.schemas_dir)
-        except NoMigrationScripts as exc:
+        except MigrationError as exc:
             logger.warning("Cannot migrate database schema: %s", exc)
             self._drop_tables()
             self._create_tables()

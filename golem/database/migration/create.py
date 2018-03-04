@@ -1,5 +1,5 @@
 import sys
-from typing import Optional, Type
+from typing import Type
 
 import os
 
@@ -24,21 +24,14 @@ def latest_migration_exists(migrate_dir=default_migrate_dir()):
     return environment.last_version == Database.SCHEMA_VERSION
 
 
-def create_migration(data_dir: Optional[str] = None,
-                     migrate_dir: Optional[str] = None,
-                     migration_name: Optional[str] = None,
+def create_migration(data_dir: str = get_local_datadir('default'),
+                     migrate_dir: str = default_migrate_dir(),
+                     migration_name: str = 'schema',
                      db_class: Type[Database] = Database,
                      force: bool = False):
 
     """ Create a schema migration script """
     from peewee_migrate.router import MIGRATE_TEMPLATE
-
-    if not data_dir:
-        data_dir = get_local_datadir('default')
-    if not migrate_dir:
-        migrate_dir = default_migrate_dir()
-    if not migration_name:
-        migration_name = 'schema'
 
     environment = Router.Environment(migrate_dir)
     database = db_class(db, fields=DB_FIELDS, models=DB_MODELS,
