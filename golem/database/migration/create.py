@@ -1,5 +1,5 @@
 import sys
-from typing import Optional
+from typing import Optional, Type
 
 import os
 
@@ -8,7 +8,7 @@ from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
 from golem.database.migration import default_migrate_dir, patch_peewee
 from golem.database.migration.router import Router
-from golem.model import DB_MODELS, db
+from golem.model import DB_FIELDS, DB_MODELS, db
 
 TEMPLATE = """# pylint: disable=no-member
 # pylint: disable=too-few-public-methods
@@ -27,6 +27,7 @@ def latest_migration_exists(migrate_dir=default_migrate_dir()):
 def create_migration(data_dir: Optional[str] = None,
                      migrate_dir: Optional[str] = None,
                      migration_name: Optional[str] = None,
+                     db_class: Type[Database] = Database,
                      force: bool = False):
 
     """ Create a schema migration script """
@@ -40,7 +41,8 @@ def create_migration(data_dir: Optional[str] = None,
         migration_name = 'schema'
 
     environment = Router.Environment(migrate_dir)
-    database = Database(db, data_dir, DB_MODELS, migrate=False)
+    database = db_class(db, fields=DB_FIELDS, models=DB_MODELS,
+                        db_dir=data_dir, schemas_dir=None)
     template = TEMPLATE.format(schema_version=database.SCHEMA_VERSION,
                                model_package=golem.model.__name__,
                                template=MIGRATE_TEMPLATE)
@@ -57,7 +59,7 @@ def create_migration(data_dir: Optional[str] = None,
     print('> output dir: {}'.format(migrate_dir))
 
     try:
-        with patch_peewee():
+        with patch_peewee(database.fields, database.models):
             r = Router(database.db, migrate_dir,
                        database.SCHEMA_VERSION, template)
             name = r.create(migration_name, auto=golem.model)

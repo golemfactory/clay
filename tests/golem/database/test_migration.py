@@ -9,10 +9,11 @@ from peewee import CharField
 
 import golem
 from golem.database import Database
+from golem.database.migration import default_migrate_dir
 from golem.database.migration.create import create_from_commandline, \
     create_migration
 from golem.database.migration.migrate import migrate_schema, choose_scripts
-from golem.model import Account, BaseModel, DB_MODELS, Stats
+from golem.model import Account, BaseModel, DB_MODELS, Stats, DB_FIELDS
 from golem.testutils import DatabaseFixture, TempDirFixture
 
 
@@ -276,7 +277,9 @@ class TestSavedMigrations(TempDirFixture):
     def database_context(self):
         from golem.model import db
         version = Database.SCHEMA_VERSION
-        database = Database(db, self.tempdir, DB_MODELS, migrate=False)
+        database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                            db_dir=self.tempdir, schemas_dir=None)
+        database.schemas_dir = default_migrate_dir()
         yield database
         Database.SCHEMA_VERSION = version
         database.close()
