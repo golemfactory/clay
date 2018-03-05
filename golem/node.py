@@ -166,7 +166,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _error(self, msg: str) -> Callable:
         def log_error_and_stop_reactor(err):
-            if not self._reactor._stopped:  # pylint: disable=protected-access
+            if not self._reactor.running:
                 logger.error("Stopping because of %s error: %r", msg, err)
                 self._reactor.callFromThread(self._reactor.stop)
 

@@ -176,6 +176,7 @@ class KeysAuth:
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
         from twisted.internet import reactor
+        reactor_started = reactor.running
         logger.info("Generating new key pair")
         started = time.time()
         while True:
@@ -183,8 +184,9 @@ class KeysAuth:
             pub_key = privtopub(priv_key)
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
-            # ugly, but this gets True on reactor stop (eg. ^C hit by user)
-            if reactor._startedBefore:  # pylint: disable=protected-access
+
+            # lets be responsive to reactor stop (eg. ^C hit by user)
+            if reactor_started and not reactor.running:
                 logger.warning("reactor stopped, aborting key generation ..")
                 raise Exception("reactor stopped, aborting key generation")
 
