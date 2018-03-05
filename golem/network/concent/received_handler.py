@@ -102,7 +102,7 @@ class TaskServerMessageHandler():
         rct = msg.report_computed_task
 
         returned_msg = concent_helpers.process_report_computed_task(
-            msg=msg,
+            msg=rct,
             ecc=self.task_server.keys_auth.ecc,
             task_header_keeper=self.task_server.task_keeper,
         )
@@ -110,6 +110,9 @@ class TaskServerMessageHandler():
             rct.subtask_id,
             returned_msg,
         )
+
+        if isinstance(returned_msg, message.concents.RejectReportComputedTask):
+            return
 
         self.task_server.receive_subtask_computation_time(
             rct.subtask_id,

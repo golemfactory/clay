@@ -172,7 +172,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         ts.task_server.get_key_id.return_value = 'key id'
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
-        ms = ts.conn.send_message.call_args[0][0]
+        ms: message.ReportComputedTask = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.ReportComputedTask)
         self.assertEqual(ms.subtask_id, "xxyyzz")
         self.assertEqual(ms.result_type, ResultType.DATA)
@@ -199,7 +199,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         get_mock.side_effect = history.MessageNotFound
 
-        ts2.interpret(ms)
+        with mock.patch(
+                'golem.network.concent.helpers'
+                '.process_report_computed_task'):
+            ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             "xxyyzz", 13190)
         wtr.result_type = "UNKNOWN"

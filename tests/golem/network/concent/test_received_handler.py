@@ -119,4 +119,21 @@ class TaskServerMessageHandlerTestCase(
         rsct_mock.assert_not_called()
         get_mock.assert_not_called()
 
+    @mock.patch(
+        "golem.network.concent.helpers.process_report_computed_task"
+    )
+    def test_force_report_computed_task(self, helper_mock):
+        msg = msg_factories.ForceReportComputedTask()
+        helper_mock.return_value = returned_msg = object()
+        library.interpret(msg)
+        helper_mock.assert_called_once_with(
+            msg=msg.report_computed_task,
+            ecc=mock.ANY,
+            task_header_keeper=mock.ANY,
+        )
+        self.task_server.client.concent_service.submit_task_message \
+            .assert_called_once_with(
+                msg.report_computed_task.subtask_id,
+                returned_msg)
+
 # pylint: enable=no-self-use
