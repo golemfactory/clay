@@ -30,6 +30,7 @@ from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
 from tests.factories import p2p as p2p_factories
+from tests.factories import messages as msg_factories
 
 
 def fill_slots(msg):
@@ -201,7 +202,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
 
         with patch(
                 'golem.network.concent.helpers'
-                '.process_report_computed_task'):
+                '.process_report_computed_task',
+                return_value=msg_factories.AckReportComputedTask()):
             ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             "xxyyzz", 13190)
