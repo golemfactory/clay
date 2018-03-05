@@ -198,9 +198,8 @@ class Client(HardwarePresetsMixin):
             signal='golem.taskmanager'
         )
 
-    def configure_rpc(self, rpc_session):
-        self.rpc_publisher = Publisher(rpc_session)
-        StatusPublisher.set_publisher(self.rpc_publisher)
+    def set_rpc_publisher(self, rpc_publisher):
+        self.rpc_publisher = rpc_publisher
 
     def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':

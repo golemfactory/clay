@@ -55,6 +55,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
+        self._rpc_publisher: Optional[Publisher] = None
 
         self._peers: List[SocketAddress] = peers or []
 
@@ -78,7 +79,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def start(self) -> None:
 
         try:
-            self._start_rpc()
+            rpc = self._start_rpc()
+            keys = chain_function(rpc, self._start_keys_auth)
+            docker = self._start_docker()
+            gatherResults([keys, docker], consumeErrors=True).addCallbacks(
+                self._setup_client,
+                self._error('keys or docker'),
+            )
             self._reactor.run()
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Application error: %r", exc)
@@ -108,18 +115,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         # pylint: disable=protected-access
         deferred = rpc._start_node(rpc.options, self._reactor)
-        deferred_session = chain_function(deferred, self._start_session)
-        print('>> deferred for session', deferred_session)
-        deferred_keys = chain_function(deferred_session, self._start_keys_auth)
-        deferred_keys.addCallbacks(
-            self._setup_client,
-            self._error('keys or docker')
-        )
-
+        return chain_function(deferred, self._start_session)
 
     def _start_session(self) -> Deferred:
         self.rpc_session = Session(self.rpc_router.address)  # type: ignore
-        return self.rpc_session.connect()
+        deferred = self.rpc_session.connect()
+
+        def set_publisher(*_):
+            self._rpc_publisher = Publisher(self.rpc_session)
+            StatusPublisher.set_publisher(self._rpc_publisher)
+
+        return deferred.addCallbacks(set_publisher, self._error('rpc session'))
 
     def _start_keys_auth(self) -> Deferred:
 
@@ -136,28 +142,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 event = 'new_password'
                 logger.info("New account, need to create new password")
 
-            while True:
+            while self._keys_auth is None:
                 StatusPublisher.publish(Component.client, event, Stage.pre)
-
-                if self._keys_auth is None:
-                    time.sleep(5)
-                else:
-                    break
+                time.sleep(5)
 
             StatusPublisher.publish(Component.client, event, Stage.post)
 
-        publisher = Publisher(self.rpc_session)
-        StatusPublisher.set_publisher(publisher)
-
         self.rpc_session.register_methods([
-            (self.set_password, 'golen.password.set')
+            (self.set_password, 'golem.password.set')
         ])
 
-        docker = self._start_docker()
-        keys = threads.deferToThread(create_keysauth)
-
-        return gatherResults([keys, docker], consumeErrors=True)
-
+        return threads.deferToThread(create_keysauth)
 
     def _start_docker(self) -> Optional[Deferred]:
         if not self._use_docker_manager:
@@ -174,15 +169,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._error("RPC session is not available")
             return
 
-        keys_auth = gathered_results[0]
-        self.client = self._client_factory(keys_auth)
+        if not self._keys_auth:
+            self._error("KeysAuth is not available")
+            return
+
+        self.client = self._client_factory(self._keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
-        self.rpc_session.methods = methods
         self.rpc_session.register_methods(methods)
-        self.client.configure_rpc(self.rpc_session)
+        self.client.set_rpc_publisher(self._rpc_publisher)
 
         async_run(AsyncRequest(self._run),
                   error=self._error('Cannot start the client'))
