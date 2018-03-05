@@ -84,7 +84,8 @@ class ReportComputedTask(factory.Factory):
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
     size = factory.Faker('pyint')
-    checksum = factory.Faker('text')
+    multihash = factory.Faker('text')
+    secret = factory.Faker('text')
 
 
 class SubtaskResultsRejected(factory.Factory):
