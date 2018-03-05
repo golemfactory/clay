@@ -797,8 +797,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                "key_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
-        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.tm.add_new_task(task)
         sig = task.header.signature
 

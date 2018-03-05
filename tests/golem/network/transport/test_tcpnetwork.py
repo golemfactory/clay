@@ -58,8 +58,7 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            self.ek = KeysAuth(self.path, 'priv_key', 'password')
+        self.ek = KeysAuth(self.path, 'priv_key', 'password')
         for args in datas:
             self.__producer_consumer_test(
                 *args,
@@ -143,8 +142,7 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
             [self.tmp_file1, self.tmp_file2, self.tmp_file3],
             32,
             session=MagicMock())
-        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            self.ek = KeysAuth(self.path, 'priv_key', 'password')
+        self.ek = KeysAuth(self.path, 'priv_key', 'password')
         self.__producer_consumer_test(
             [],
             file_producer_cls=EncryptFileProducer,

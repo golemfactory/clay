@@ -318,12 +318,11 @@ class TestKeysAuthKeystore(testutils.TempDirFixture):
         password = 'passwd'
 
         # Generate new key
-        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            KeysAuth(
-                datadir=self.path,
-                private_key_name=key_name,
-                password=password,
-            )
+        KeysAuth(
+            datadir=self.path,
+            private_key_name=key_name,
+            password=password,
+        )
 
         # Try to load it, this shouldn't throw
         KeysAuth(

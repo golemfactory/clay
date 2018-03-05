@@ -66,8 +66,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,

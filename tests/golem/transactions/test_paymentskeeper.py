@@ -1,20 +1,19 @@
 from copy import deepcopy
-from os import urandom
-from unittest.mock import patch
 
 from peewee import IntegrityError
+from os import urandom
 
+from golem.network.p2p.node import Node
 from golem.core.keysauth import KeysAuth
 from golem.model import PaymentStatus
-from golem.network.p2p.node import Node
 from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, \
     logger, PaymentsKeeper
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.utils import encode_hex
+from golem.tools.ci import ci_skip
 
 
 @ci_skip  # Windows gives random failures #1738
@@ -158,8 +157,7 @@ class TestPaymentsKeeper(TestWithDatabase):
 
 class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
-        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            k = KeysAuth(self.path, 'priv_key', 'password')
+        k = KeysAuth(self.path, 'priv_key', 'password')
         e = urandom(20)
         a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
                            e)
@@ -170,12 +168,11 @@ class TestAccountInfo(TempDirFixture):
                  pub_port=1032)
         c = EthAccountInfo(k.key_id, 5112, "10.0.0.2", "test-test2-test", n, e)
         self.assertEqual(a, c)
-        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            k = KeysAuth(
-                "%s_other" % self.path,
-                'priv_key',
-                'password',
-                difficulty=2,
-            )
+        k = KeysAuth(
+            "%s_other" % self.path,
+            'priv_key',
+            'password',
+            difficulty=2,
+        )
         c.key_id = k.key_id
         self.assertNotEqual(a, c)

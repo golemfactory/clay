@@ -279,12 +279,11 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_add_task_header(self, *_):
-        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            keys_auth_2 = KeysAuth(
-                os.path.join(self.path, "2"),
-                'priv_key',
-                'password',
-            )
+        keys_auth_2 = KeysAuth(
+            os.path.join(self.path, "2"),
+            'priv_key',
+            'password',
+        )
 
         ts = self.ts
 

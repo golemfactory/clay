@@ -26,8 +26,7 @@ class TestP2PService(testutils.DatabaseFixture):
         random.seed()
         # Mock saving keys as it takes long to compute and isn't needed here
         KeysAuth._save_private_key = mock.Mock()
-        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-            self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.service = P2PService(
             None,
             ClientConfigDescriptor(),
