@@ -18,6 +18,7 @@ from zope.interface import implementer
 from golem.core.databuffer import DataBuffer
 from golem.core.hostaddress import get_host_addresses
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE
+from golem.network.transport.limiter import CallRateLimiter
 from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
     OutgoingProtocolFactoryWrapper
 from .spamprotector import SpamProtector
@@ -38,7 +39,8 @@ MAX_MESSAGE_SIZE = 2 * 1024 * 1024
 
 class TCPNetwork(Network):
 
-    def __init__(self, protocol_factory, use_ipv6=False, timeout=5):
+    def __init__(self, protocol_factory, use_ipv6=False, timeout=5,
+                 limit_connection_rate=False):
         """
         TCP network information
         :param ProtocolFactory protocol_factory: Protocols should be at least
@@ -58,6 +60,11 @@ class TCPNetwork(Network):
         self.timeout = timeout
         self.active_listeners = {}
         self.host_addresses = get_host_addresses()
+
+        if limit_connection_rate:
+            self.rate_limiter = CallRateLimiter()
+        else:
+            self.rate_limiter = None
 
     def connect(self, connect_info, **kwargs):
         """
@@ -154,16 +161,23 @@ class TCPNetwork(Network):
         address = addresses[0].address
         port = addresses[0].port
 
-        self.__try_to_connect_to_address(
-            address,
-            port,
+        _args = (
+            address, port,
             self.__connection_to_address_established,
             self.__connection_to_address_failure,
+        )
+        _kwargs = dict(
             addresses_to_arg=addresses,
             established_callback_to_arg=established_callback,
             failure_callback_to_arg=failure_callback,
-            **kwargs,
+            **kwargs
         )
+
+        if self.rate_limiter:
+            self.rate_limiter.call(self.__try_to_connect_to_address, *_args,
+                                   **_kwargs)
+        else:
+            self.__try_to_connect_to_address(*_args, **_kwargs)
 
     def __try_to_connect_to_address(self, address, port, established_callback,
                                     failure_callback, **kwargs):
@@ -311,10 +325,9 @@ class BasicProtocol(SessionProtocol):
     """
 
     def __init__(self):
+        super().__init__()
         self.opened = False
         self.db = DataBuffer()
-        self.lock = Lock()
-        super().__init__()
         self.spam_protector = SpamProtector()
 
     def send_message(self, msg):
@@ -392,14 +405,13 @@ class BasicProtocol(SessionProtocol):
         db.append_len_prefixed_bytes(ser_msg)
         return db.read_all()
 
-    def _can_receive(self):
+    def _can_receive(self) -> bool:
         return self.opened and isinstance(self.db, DataBuffer)
 
     def _interpret(self, data):
-        with self.lock:
-            self.db.append_bytes(data)
-            mess = self._data_to_messages()
-
+        self.session.last_message_time = time.time()
+        self.db.append_bytes(data)
+        mess = self._data_to_messages()
         for m in mess:
             self.session.interpret(m)
 
@@ -478,19 +490,15 @@ class ServerProtocol(BasicProtocol):
         BasicProtocol.connectionMade(self)
         self.server.new_connection(self.session)
 
-    def _can_receive(self):
+    def _can_receive(self) -> bool:
         if not self.opened:
-            raise IOError("Protocol is closed")
-        if not isinstance(self.db, DataBuffer):
-            raise TypeError(
-                "incorrect db type: {}. Should be: DataBuffer".format(
-                    type(self.db),
-                )
-            )
+            logger.warning("Protocol is closed")
+            return False
 
         if not self.session and self.server:
             self.opened = False
-            raise Exception('Peer for connection is None')
+            logger.warning('Peer for connection is None')
+            return False
 
         return True
 
@@ -566,8 +574,6 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol.close_now(self)
 
     def _interpret(self, data):
-        self.session.last_message_time = time.time()
-
         if self.stream_mode:
             self._stream_data_received(data)
             return
@@ -575,6 +581,8 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol._interpret(self, data)
 
     def _stream_data_received(self, data):
+        self.session.last_message_time = time.time()
+
         if self.consumer is None:
             raise ValueError("consumer is None")
         if self._check_stream(data):

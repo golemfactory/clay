@@ -73,7 +73,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                   history.IMessageHistoryProvider):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.FilesProtocol
+    ConnectionStateType = tcpnetwork.SafeProtocol
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
