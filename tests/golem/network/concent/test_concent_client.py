@@ -159,11 +159,12 @@ class TestReceiveFromConcent(TestCase):
 class TestConcentClientService(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
-        keys_auth = keysauth.KeysAuth(
-            datadir=self.path,
-            private_key_name='priv_key',
-            password='password',
-        )
+        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            keys_auth = keysauth.KeysAuth(
+                datadir=self.path,
+                private_key_name='priv_key',
+                password='password',
+            )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
             enabled=True,
@@ -364,12 +365,12 @@ class TestConcentClientService(testutils.TempDirFixture):
 class ConcentCallLaterTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
+        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            keys_auth = keysauth.KeysAuth(datadir=self.path,
+                                          private_key_name='priv_key',
+                                          password='password', )
         self.concent_service = client.ConcentClientService(
-            keys_auth=keysauth.KeysAuth(
-                datadir=self.path,
-                private_key_name='priv_key',
-                password='password',
-            ),
+            keys_auth=keys_auth,
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()

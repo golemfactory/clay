@@ -1,16 +1,17 @@
+from unittest.mock import patch
+
 from rlp.utils import decode_hex
 from sha3 import sha3_256
 
-from golem.transactions.paymentskeeper import PaymentsKeeper
+from golem.core.keysauth import KeysAuth
+from golem.network.p2p.node import Node
+from golem.testutils import (TempDirFixture, PEP8MixIn)
+from golem.tools.assertlogs import LogTestCase
+from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumpaymentskeeper import (
     EthAccountInfo, EthereumAddress, logger)
 from golem.transactions.paymentskeeper import PaymentInfo
-from golem.core.keysauth import KeysAuth
-from golem.testutils import (TempDirFixture, PEP8MixIn)
-
-from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithdatabase import TestWithDatabase
-from golem.network.p2p.node import Node
+from golem.transactions.paymentskeeper import PaymentsKeeper
 
 
 class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
@@ -52,7 +53,8 @@ class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
 class TestEthAccountInfo(TempDirFixture):
 
     def test_comparison(self):
-        k = KeysAuth(self.path, 'priv_key', 'password')
+        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            k = KeysAuth(self.path, 'priv_key', 'password')
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
         a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            Node(), addr1)
@@ -64,12 +66,13 @@ class TestEthAccountInfo(TempDirFixture):
         c = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
                            n, addr1)
         self.assertEqual(a, c)
-        k = KeysAuth(
-            "%s_other" % self.path,
-            'priv_key',
-            'password',
-            difficulty=2,
-        )
+        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            k = KeysAuth(
+                "%s_other" % self.path,
+                'priv_key',
+                'password',
+                difficulty=2,
+            )
         c.key_id = k.key_id
         self.assertNotEqual(a, c)
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"

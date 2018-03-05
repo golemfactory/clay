@@ -27,12 +27,13 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
-        self.task_session.task_server.keys_auth = keys_auth = \
-            keysauth.KeysAuth(
-                datadir=self.tempdir,
-                private_key_name='priv_key',
-                password='password',
-            )
+        with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            self.task_session.task_server.keys_auth = keys_auth = \
+                keysauth.KeysAuth(
+                    datadir=self.tempdir,
+                    private_key_name='priv_key',
+                    password='password',
+                )
         self.task_session.key_id = "KEY_ID"
         self.msg = factories.messages.ReportComputedTask()
         self.now = datetime.datetime.utcnow()

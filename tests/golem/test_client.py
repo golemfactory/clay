@@ -780,7 +780,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        with patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+            c.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
 
         self.assertIsInstance(c.get_node(), dict)
 
