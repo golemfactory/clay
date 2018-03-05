@@ -57,7 +57,9 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             "KEY_ID"
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
-        subtask_state.deadline = self.msg.task_to_compute.compute_task_def['deadline']
+        subtask_state.deadline = self.msg.task_to_compute.compute_task_def[
+            'deadline'
+        ]
 
     def assert_reject_reason(self, send_mock, reason, **kwargs):
         send_mock.assert_called_once_with(mock.ANY)
@@ -110,7 +112,6 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def test_task_deadline_not_found(self, send_mock, get_mock):
         "Reject if subtask timeout unreachable"
         get_mock.return_value = []
-        task_id = self.msg.task_to_compute.compute_task_def['task_id']
         self.task_session.task_server.task_keeper.task_headers = {}
         self.task_session._react_to_report_computed_task(self.msg)
         self.assertEqual(send_mock.call_count, 2)

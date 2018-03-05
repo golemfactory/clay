@@ -199,7 +199,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         get_mock.side_effect = history.MessageNotFound
 
-        with mock.patch(
+        with patch(
                 'golem.network.concent.helpers'
                 '.process_report_computed_task'):
             ts2.interpret(ms)
