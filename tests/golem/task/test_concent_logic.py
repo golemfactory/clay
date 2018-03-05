@@ -50,7 +50,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         }
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
-                taskstate.TaskState()
+            taskstate.TaskState()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "KEY_ID"
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
