@@ -338,6 +338,10 @@ class PaymentProcessor(LoopingCallService):
             return False
 
         if self.__faucet and gnt_balance < 100 * denoms.ether:
+            # During GNT-GNTW convertion gnt_balance will be zero, but we don't
+            # want to request GNT from faucet again
+            if self._gnt_converter.is_converting():
+                return False
             log.info("Requesting GNT from faucet")
             self._sci.request_gnt_from_faucet()
             return False

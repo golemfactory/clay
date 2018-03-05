@@ -68,6 +68,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         return task_def
 
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
         task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)

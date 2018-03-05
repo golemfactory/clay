@@ -323,7 +323,6 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
             ts.subtask_rejected.assert_not_called()
         dropped_mock.assert_called_once_with()
 
-
     def test_react_to_task_to_compute(self):
         conn = Mock()
         ts = TaskSession(conn)

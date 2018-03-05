@@ -4,7 +4,6 @@ from typing import Callable, Optional
 
 from twisted.internet import defer
 from twisted.internet import threads
-from twisted.web.client import Agent
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implementer
 
@@ -46,6 +45,7 @@ class AsyncHTTPRequest:
     @classmethod
     def create_agent(cls):
         from twisted.internet import reactor
+        from twisted.web.client import Agent  # imports reactor
         return Agent(reactor, connectTimeout=cls.timeout)
 
 
@@ -73,14 +73,9 @@ def async_run(deferred_call: AsyncRequest, success: Optional[Callable] = None,
     return deferred
 
 
-def async_callback(func):
-    def callback(result):
-        return async_run(AsyncRequest(func, result))
-    return callback
-
-
 def default_errback(failure):
     logger.error('Caught async exception:\n%s', failure.getTraceback())
+    return failure  # return the failure to continue with the errback chain
 
 
 def deferred_run():

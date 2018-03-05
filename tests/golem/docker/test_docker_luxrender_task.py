@@ -81,6 +81,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         return task_def
 
     def _test_task(self) -> LuxTask:
+        LuxTask.VERIFICATION_QUEUE._reset()
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)

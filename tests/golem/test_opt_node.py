@@ -1,6 +1,7 @@
 from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
+from twisted.internet.defer import Deferred
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -358,16 +359,43 @@ class TestNode(TestWithDatabase):
             assert return_value.exit_code != 0
 
 
-def mock_async_callback(call):
-    def callback(result):
-        return call(result)
+def mock_async_run(req, success=None, error=None):
+    deferred = Deferred()
+    if success:
+        deferred.addCallback(success)
+    if error:
+        deferred.addErrback(error)
 
-    return callback
+    try:
+        result = req.method(*req.args, **req.kwargs)
+    except Exception as e:  # pylint: disable=broad-except
+        deferred.errback(e)
+    else:
+        deferred.callback(result)
+
+    return deferred
 
 
-@patch('golem.node.async_callback', mock_async_callback)
-@patch('golem.node.CrossbarRouter', create=True)
-@patch('golem.node.Session')
+def done_deferred(*_):
+    deferred = Deferred()
+    deferred.callback(True)
+    return deferred
+
+
+def chain_function(_, fn, *args, **kwargs):
+    result = fn(*args, **kwargs)
+    deferred = Deferred()
+    deferred.callback(result)
+    return deferred
+
+
+@patch('golem.node.Node._start_keys_auth')
+@patch('golem.node.Node._start_docker')
+@patch('golem.node.async_run', mock_async_run)
+@patch('golem.node.chain_function', chain_function)
+@patch('golem.node.threads.deferToThread', done_deferred)
+@patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
+@patch('golem.node.Session', Mock(connect=done_deferred))
 @patch('golem.node.gatherResults')
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
@@ -404,7 +432,7 @@ class TestOptNode(TempDirFixture):
 
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([None, keys_auth, None])
+            lambda callback, _: callback([keys_auth, None])
 
         # when
         self.node = Node(datadir=self.path,
@@ -430,7 +458,7 @@ class TestOptNode(TempDirFixture):
         # given
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([None, Mock(), None])
+            lambda callback, _: callback([Mock(), None])
 
         mock_session.return_value = mock_session
         mock_session.connect.return_value = mock_session
@@ -445,10 +473,10 @@ class TestOptNode(TempDirFixture):
 
         # then
         assert self.node.client
-        assert mock_session.called
+        assert self.node.rpc_session
         assert self.node.client.rpc_publisher
-        assert self.node.client.rpc_publisher.session == mock_session
-        assert mock_session.connect.called
+        assert self.node.client.rpc_publisher.session == self.node.rpc_session
+        assert self.node.rpc_session.connect.called  # pylint: disable=no-member
         assert mock_run.called
         assert reactor.addSystemEventTrigger.call_count == 2
 
@@ -458,7 +486,7 @@ class TestOptNode(TempDirFixture):
         # given
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([None, Mock(), None])
+            lambda callback, _: callback([Mock(), None])
 
         mock_session.return_value = mock_session
         mock_session.connect.return_value = mock_session
