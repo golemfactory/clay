@@ -1,6 +1,5 @@
 import logging
 import time
-from threading import Condition
 from typing import List, Optional, Callable
 
 from twisted.internet import threads
