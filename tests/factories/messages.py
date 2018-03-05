@@ -119,16 +119,6 @@ class ForceReportComputedTask(factory.Factory):
     report_computed_task = factory.SubFactory(ReportComputedTask)
 
 
-class TaskResultHashFactory(factory.Factory):
-    class Meta:
-        model = tasks.TaskResultHash
-
-    subtask_id = factory.Faker('uuid4')
-    multihash = factory.Faker('text')
-    secret = factory.Faker('text')
-    options = factory.LazyFunction(mock.Mock)
-
-
 class AckReportComputedTask(factory.Factory):
     class Meta:
         model = concents.AckReportComputedTask

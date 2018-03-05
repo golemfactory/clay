@@ -377,11 +377,10 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def get_result(self, subtask_id):
-        logger.warning('Should get result for %r', subtask_id)
-        # TODO: send GetTaskResult(subtask_id=subtask_id) to Provider
-        #       depends on: #2223 Message Queue
-        #       https://github.com/golemfactory/golem/issues/2223
+    def get_result(self, rct_message):
+        logger.warning('Should get result for %r', rct_message)
+        # actually retrieve results from the provider based on
+        # the information in the `ReportComputedTask` message
 
     def accept_result(self, subtask_id, account_info):
         mod = min(
