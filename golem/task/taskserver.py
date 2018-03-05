@@ -7,6 +7,7 @@ import weakref
 from collections import deque
 from pathlib import Path
 
+from golem.network.pending import PendingSessionMessages
 from golem_messages import message
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -74,6 +75,8 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
+
+        self.pending_messages = PendingSessionMessages(client.datadir)
 
         self.max_trust = 1.0
         self.min_trust = 0.0

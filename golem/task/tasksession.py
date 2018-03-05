@@ -5,7 +5,10 @@ import pickle
 import time
 
 from golem_messages import message
+
 from golem_messages.helpers import maximum_download_time
+from golem_messages.message import registered_message_types
+from peewee import PeeweeException
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
@@ -96,16 +99,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.conn_id = None  # connection id
         # key of a peer that communicates with us through middleman session
         self.asking_node_key_id = None
-        # messages waiting to be send (because connection hasn't been
-        # verified yet)
-        self.msgs_to_send = []
         # information about user that should be rewarded (or punished)
         # for the result
         self.result_owner = None
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
-        # self.threads = []
     ########################
     # BasicSession methods #
     ########################
@@ -453,8 +452,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
                 proto_id=PROTOCOL_CONST.ID
-            ),
-            send_unverified=True
+            )
         )
 
     def send_start_session_response(self, conn_id):
@@ -571,7 +569,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
-        if not self.msgs_to_send:
+        if not self.task_server.message_queue.exists(self.key_id):
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
@@ -793,10 +791,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if send_hello:
             self.send_hello()
-        self.send(
-            message.RandVal(rand_val=msg.rand_val),
-            send_unverified=True
-        )
+        self.send(message.RandVal(rand_val=msg.rand_val))
 
     def _react_to_rand_val(self, msg):
         # If we disconnect in react_to_hello, we still might get the RandVal
@@ -806,10 +801,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if self.rand_val == msg.rand_val:
             self.verified = True
-            self.task_server.verified_conn(self.conn_id, )
-            for msg in self.msgs_to_send:
-                self.send(msg)
-            self.msgs_to_send = []
+            self.task_server.verified_conn(self.conn_id)
+            self._send_pending_messages()
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
 
@@ -844,11 +837,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                            "an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
-    def send(self, msg, send_unverified=False):
-        if not self.verified and not send_unverified:
-            self.msgs_to_send.append(msg)
-            return
-        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
+    def send(self, msg) -> bool:  # noqa pylint: disable=arguments-differ
+
+        if not BasicSafeSession.send(self, msg):
+            if self.key_id:
+                self.task_server.pending_messages.put(
+                    node_id=self.key_id,
+                    msg_type=msg.TYPE,
+                    msg_serialized=msg.serialize(),
+                    task_id=self.task_id,
+                    subtask_id=self.subtask_id
+                )
+            return False
+
         self.task_server.set_last_message(
             "->",
             time.localtime(),
@@ -856,6 +857,26 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.address,
             self.port
         )
+        return True
+
+    def _send_pending_messages(self) -> None:
+        try:
+            iterator = self.task_server.pending_messages.get(self.key_id)
+        except PeeweeException as exc:
+            logger.error("Error fetching pending messages: %r", exc)
+            return
+
+        from twisted.internet import reactor
+
+        for pending_msg in iterator:
+            try:
+                cls = registered_message_types[pending_msg.type]
+                msg = cls(slots=pending_msg.slots)
+                reactor.callLater(0, self.send, msg)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error('Cannot send the pending message: %r', exc)
+            else:
+                pending_msg.delete_instance()
 
     def check_provider_for_subtask(self, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)

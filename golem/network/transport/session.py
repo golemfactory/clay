@@ -146,6 +146,9 @@ class BasicSession(FileSession):
             return False
         return True
 
+    def _react_to_hello(self, msg):
+        pass
+
     def _react_to_disconnect(self, msg):
         logger.info("Disconnect reason: %r", msg.reason)
         logger.info("Closing %s:%s", self.address, self.port)
@@ -177,16 +180,13 @@ class BasicSafeSession(BasicSession):
             return None
         return utils.decode_hex(self.key_id)
 
-    def send(self, msg, send_unverified=False):  # noqa pylint: disable=arguments-differ
+    def send(self, msg) -> bool:  # noqa pylint: disable=arguments-differ
         """Send given message if connection was verified or send_unverified
            option is set to True.
 
         :param Message msg: message to be sent.
-        :param boolean send_unverified: should message be sent even
-                                        if the connection hasn't been
-                                        verified yet?
         """
-        if not self._can_send(msg, send_unverified):
+        if not self._can_send(msg):
             logger.info(
                 "Connection hasn't been verified yet,"
                 " not sending %r to %r:%r",
@@ -197,14 +197,19 @@ class BasicSafeSession(BasicSession):
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
                 self.disconnect(message.Disconnect.REASON.Unverified)
-            return
+            return False
 
-        BasicSession.send(self, msg)
+        try:
+            BasicSession.send(self, msg)
+        except Exception:  # pylint: disable=broad-except
+            return False
+        return True
 
-    def _can_send(self, msg, send_unverified):
-        return self.verified \
-            or send_unverified \
+    def _can_send(self, msg):
+        return self.conn and self.conn.opened and (
+            self.verified
             or msg.TYPE in self.can_be_unverified
+        )
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):

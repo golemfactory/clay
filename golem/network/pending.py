@@ -3,6 +3,7 @@ from typing import List, Iterator, Optional, Tuple
 
 import operator
 from functools import reduce
+from golem_messages import serializer
 from peewee import CharField, IntegerField, TextField, BlobField
 
 from golem.database import GolemSqliteDatabase, Database
@@ -32,6 +33,21 @@ class ResultOwnerField(JsonField):
     def python_value(self, value):
         dictionary = super().python_value(value)
         return EthAccountInfo(**dictionary)
+
+
+class MessageSlotsField(BlobField):
+
+    def db_value(self, value):
+        try:
+            return serializer.dumps(value)
+        except Exception:  # pylint: disable=broad-except
+            return None
+
+    def python_value(self, value):
+        try:
+            return serializer.loads(value)
+        except Exception:  # pylint: disable=broad-except
+            return None
 
 
 # Models
@@ -76,7 +92,7 @@ class PendingTaskSession(PendingObjectModel):
 class PendingMessage(PendingObjectModel):
 
     type = IntegerField()
-    serialized = BlobField()
+    slots = MessageSlotsField()
 
 
 # Mixins
@@ -86,15 +102,14 @@ class PendingMessagesMixin:
     @classmethod
     def put(cls,
             node_id: str,
-            msg_type: int,
-            msg_serialized: bytes,
+            msg: 'Message',
             task_id: Optional[str] = None,
             subtask_id: Optional[str] = None) -> None:
 
         PendingMessage(
             node_id=node_id,
-            type=msg_type,
-            serialized=msg_serialized,
+            type=msg.TYPE,
+            slots=msg.slots(),
             task_id=task_id,
             subtask_id=subtask_id
         ).save(force_insert=True)
