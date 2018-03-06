@@ -229,7 +229,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         msg.proto_id = PROTOCOL_CONST.ID
 
         ts._react_to_hello(msg)
-        assert ts.send.called
+        self.assertTrue(ts.send.called)
 
     @patch('golem.task.tasksession.get_task_message', Mock())
     def test_result_received(self):
@@ -262,10 +262,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
 
         ts.result_received(extra_data, decrypt=False)
 
-        assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0],
-                          message.tasks.SubtaskResultsRejected)
-        assert conn.close.called
+        self.assertTrue(ts.msgs_to_send)
+        self.assertIsInstance(ts.msgs_to_send[0],
+                              message.tasks.SubtaskResultsRejected)
+        self.assertTrue(conn.close.called)
 
         extra_data.update(dict(
             result_type=ResultType.DATA,
@@ -318,7 +318,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
             ts.subtask_rejected.assert_not_called()
         dropped_mock.assert_called_once_with()
 
-    def test_react_to_task_to_compute(self):  # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements
+    def test_react_to_task_to_compute(self):
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
@@ -498,6 +499,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
 
+    # pylint: enable=too-many-statements
+
     def test_get_resource(self):
         conn = BasicProtocol()
         conn.transport = Mock()
@@ -512,7 +515,9 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         sess._can_send = lambda *_: True
         sess.request_resource(str(uuid.uuid4()))
 
-        assert message.Message.deserialize(db.buffered_data, lambda x: x)
+        self.assertTrue(
+            message.Message.deserialize(db.buffered_data, lambda x: x)
+        )
 
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
@@ -659,7 +664,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         testutils.TempDirFixture.tearDown(self)
         history.MessageHistoryService.instance = None
 
-    def _mock_task_to_compute(self, task_id, subtask_id, node_id, **kwargs):
+    @staticmethod
+    def _mock_task_to_compute(task_id, subtask_id, node_id, **kwargs):
         task_to_compute = message.TaskToCompute(**kwargs)
         nmsg_dict = dict(
             task=task_id,
@@ -725,18 +731,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self.ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
         self.ts.concent_service.submit.assert_not_called()
-
-
-def executor_success(req, success, error):
-    success(('filename', 'multihash'))
-
-
-def executor_recoverable_error(req, success, error):
-    error(EnvironmentError())
-
-
-def executor_error(req, success, error):
-    error(Exception())
 
 
 class GetTaskMessageTest(TestCase):
