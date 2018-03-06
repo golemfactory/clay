@@ -42,6 +42,7 @@ class IPortMapper(ABC):
 
     @abstractmethod
     def remove_mapping(self,
+                       port: int,
                        external_port: int,
                        protocol: str = 'TCP') -> bool:
         pass
@@ -138,6 +139,7 @@ class PortMapperManager(IPortMapper):
             return port
 
     def remove_mapping(self,
+                       port: int,
                        external_port: int,
                        protocol: str = 'TCP') -> bool:
 
@@ -147,10 +149,8 @@ class PortMapperManager(IPortMapper):
         mapper = self._active_mapper
 
         try:
-            success = mapper.remove_mapping(external_port, protocol)
+            success = mapper.remove_mapping(port, external_port, protocol)
             if success:
-                port = {k: v for k, v in self._mapping[protocol].items()
-                        if v == external_port}
                 logger.debug('Removed local port %r', port)
                 del self._mapping[protocol][port]
         except Exception as exc:  # pylint: disable=broad-except
@@ -174,5 +174,5 @@ class PortMapperManager(IPortMapper):
             return
 
         for protocol, mapping in self._mapping.items():
-            for external_ip in mapping.values():
-                self.remove_mapping(external_ip, protocol)
+            for port, external_port in mapping.items():
+                self.remove_mapping(port, external_port, protocol)
