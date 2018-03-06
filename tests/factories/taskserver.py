@@ -13,7 +13,7 @@ class TaskServer(factory.Factory):
     class Meta:
         model = taskserver.TaskServer
 
-    node = p2p_factory.Node()
+    node = factory.SubFactory('tests.factories.p2p.Node')
     config_desc = clientconfigdescriptor.ClientConfigDescriptor()
     use_docker_manager = False
 
@@ -32,5 +32,5 @@ class WaitingTaskResultFactory(factory.Factory):
     owner_address = factory.Faker('ipv4')
     owner_port = factory.LazyFunction(lambda: random.randint(30000, 60000))
     owner_key_id = factory.Faker('sha1')
-    owner = factory.Faker('sha1')
+    owner = factory.SubFactory('tests.factories.p2p.Node')
     package_sha1 = factory.Faker('sha1')

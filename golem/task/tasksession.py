@@ -630,17 +630,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         task = self.task_manager.tasks.get(task_id, None)
         output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
 
-        if not task:
-            logger.error(
-                "Task result received with unknown subtask_id: %r",
-                subtask_id
-            )
-            return
-
-        if not self.check_provider_for_subtask(msg.subtask_id):
-            self.dropped()
-            return
-
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
             msg.multihash,
@@ -659,8 +648,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning("Task result error: %s (%s)", subtask_id,
                            exc or "unspecified")
 
-            ttc = get_task_message('TaskToCompute', task_id, subtask_id)
-            if not ttc or not ttc.concent_enabled:
+            if not msg.task_to_compute.concent_enabled:
                 # in case of resources failure, if we're not using the Concent
                 # we're immediately sending a rejection message to the Provider
                 self._reject_subtask_result(

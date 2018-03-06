@@ -48,10 +48,8 @@ def process_report_computed_task(msg, task_session):
         raise exceptions.ConcentVerificationFailed("Task timeout")
     # Check subtask deadline
     try:
-        subtask_deadline = \
-            task_session.task_manager.tasks_states[task_id] \
-                        .subtask_states[msg.subtask_id] \
-                        .deadline
+        task_state = task_session.task_manager.tasks_states[task_id]
+        subtask_deadline = task_state.subtask_states[msg.subtask_id].deadline
     except KeyError:
         logger.warning(
             'Deadline for subtask %r not found.'

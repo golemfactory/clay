@@ -379,7 +379,7 @@ class TaskServer(
 
     def get_result(self, rct_message):
         logger.warning('Should get result for %r', rct_message)
-        # actually retrieve results from the provider based on
+        # @todo: actually retrieve results from the provider based on
         # the information in the `ReportComputedTask` message
 
     def accept_result(self, subtask_id, account_info):

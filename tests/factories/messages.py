@@ -1,4 +1,5 @@
 # pylint: disable=too-few-public-methods
+import calendar
 import time
 import mock
 
@@ -32,7 +33,7 @@ class ComputeTaskDef(factory.DictFactory):
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
     task_owner = factory.SubFactory(TaskOwner)
-    deadline = factory.Faker('pyint')
+    deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
     src_code = factory.Faker('text')
 
 
