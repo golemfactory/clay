@@ -68,7 +68,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self,
                 SessionFactory(PeerSession)
             ),
-            config_desc.use_ipv6
+            config_desc.use_ipv6,
+            limit_connection_rate=True
         )
         tcpserver.PendingConnectionsServer.__init__(self, config_desc, network)
 

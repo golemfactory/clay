@@ -49,6 +49,7 @@ scipy==0.19.1
 pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
+token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 Golem-Messages==1.13.0
