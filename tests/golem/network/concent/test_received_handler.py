@@ -79,9 +79,7 @@ class TaskServerMessageHandlerTestCase(
             msg.ack_report_computed_task.subtask_id,
             rct.computation_time,
         )
-        get_mock.assert_called_once_with(
-            subtask_id=msg.ack_report_computed_task.subtask_id,
-        )
+        get_mock.assert_called_once_with(rct)
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
