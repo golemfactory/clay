@@ -134,6 +134,7 @@ class PortMapperManager(IPortMapper):
         else:
             logger.info('%s: mapped %u -> %u (%s)',
                         mapper.name, local_port, port, protocol)
+            self._mapping[protocol][local_port] = port
             return port
 
     def remove_mapping(self,
@@ -146,7 +147,12 @@ class PortMapperManager(IPortMapper):
         mapper = self._active_mapper
 
         try:
-            mapper.remove_mapping(external_port, protocol)
+            success = mapper.remove_mapping(external_port, protocol)
+            if success:
+                port = {k: v for k, v in self._mapping[protocol].items()
+                        if v == external_port}
+                logger.debug('Removed local port %r', port)
+                del self._mapping[protocol][port]
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning('%s: cannot remove external port %u (%s) mapping: '
                            '%r', mapper.name, external_port, protocol, exc)
