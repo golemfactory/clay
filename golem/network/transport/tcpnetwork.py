@@ -11,8 +11,8 @@ from golem_messages import message
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, \
     TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
+from twisted.internet.error import ConnectionDone
 from twisted.internet.interfaces import IPullProducer
-from twisted.internet.protocol import connectionDone
 from zope.interface import implementer
 
 from golem.core.databuffer import DataBuffer
@@ -389,11 +389,11 @@ class BasicProtocol(SessionProtocol):
 
         self._interpret(data)
 
-    def connectionLost(self, reason=connectionDone):
+    def connectionLost(self, reason=ConnectionDone):
         """Called when connection is lost (for whatever reason)"""
         self.opened = False
         if self.session:
-            self.session.dropped()
+            self.session.dropped(reason)
 
         SessionProtocol.connectionLost(self, reason)
 

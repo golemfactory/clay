@@ -2,7 +2,6 @@
 import calendar
 import datetime
 
-import golem_messages
 import os
 import pathlib
 import pickle
@@ -11,6 +10,8 @@ import time
 import uuid
 from unittest import TestCase
 from unittest.mock import patch, ANY, Mock, MagicMock, _SentinelObject
+
+import golem_messages
 
 from golem_messages import message
 

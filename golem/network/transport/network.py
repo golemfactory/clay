@@ -1,6 +1,6 @@
 import abc
-from twisted.internet.tcp import Client, Server
-from twisted.internet.protocol import Factory, Protocol, connectionDone
+from twisted.internet.error import ConnectionDone
+from twisted.internet.protocol import Factory, Protocol
 
 
 class Network(object, metaclass=abc.ABCMeta):
@@ -106,7 +106,7 @@ class SessionProtocol(Protocol):
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
 
-    def connectionLost(self, reason=connectionDone):
+    def connectionLost(self, reason=ConnectionDone):
         del self.session
 
 
@@ -120,7 +120,7 @@ class Session(object, metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
-    def dropped(self):
+    def dropped(self, reason=ConnectionDone):
         return
 
     @abc.abstractmethod

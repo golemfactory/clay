@@ -63,10 +63,10 @@ class PendingObjectModel(BaseModel):
     subtask_id = CharField(null=True)
 
     @classmethod
-    def select_clauses(cls,
-                       node_id: Optional[object] = ANY,
-                       task_id: Optional[object] = ANY,
-                       subtask_id: Optional[object] = ANY) -> List[Tuple]:
+    def build_select_clauses(cls,
+                             node_id: Optional[object] = ANY,
+                             task_id: Optional[object] = ANY,
+                             subtask_id: Optional[object] = ANY) -> List[Tuple]:
 
         """ Builds and returns 'with' statement clauses """
 
@@ -84,9 +84,24 @@ class PendingObjectModel(BaseModel):
 
 class PendingTaskSession(PendingObjectModel):
 
-    node_id = CharField(index=True, unique=True)  # Force uniqueness
     result_owner = ResultOwnerField(null=True)
     err_msg = TextField(null=True)
+
+    @classmethod
+    def from_session(cls, session: 'TaskSession') -> 'PendingTaskSession':
+        return cls(
+            node_id=session.key_id,
+            task_id=session.task_id,
+            subtask_id=session.subtask_id,
+            result_owner=session.result_owner,
+            err_msg=session.err_msg
+        )
+
+    def update_session(self, session: 'TaskSession') -> None:
+        session.task_id = self.task_id
+        session.subtask_id = self.subtask_id
+        session.result_owner = self.result_owner
+        session.err_msg = self.err_msg
 
 
 class PendingMessage(PendingObjectModel):
@@ -124,7 +139,8 @@ class PendingMessagesMixin:
             Can be used by an established TaskSession between ourselves and
             node_id to know what messages should be sent."""
 
-        clauses = PendingMessage.select_clauses(node_id, task_id, subtask_id)
+        clauses = PendingMessage.build_select_clauses(node_id, task_id,
+                                                      subtask_id)
         return PendingMessage.select().where(clauses).iterator()
 
     @classmethod
@@ -133,38 +149,27 @@ class PendingMessagesMixin:
                task_id: Optional[object] = ANY,
                subtask_id: Optional[object] = ANY) -> bool:
 
-        clauses = PendingMessage.select_clauses(node_id, task_id, subtask_id)
+        clauses = PendingMessage.build_select_clauses(node_id, task_id,
+                                                      subtask_id)
         return PendingMessage.select().where(clauses).exists()
 
 
 class PendingTaskSessionsMixin:
 
     @classmethod
-    def put_session(cls,
-                    node_id: str,
-                    task_id: Optional[str] = None,
-                    subtask_id: Optional[str] = None,
-                    result_owner: Optional[EthAccountInfo] = None,
-                    err_msg: Optional[str] = None) -> None:
-
-        PendingTaskSession(
-            node_id=node_id,
-            task_id=task_id,
-            subtask_id=subtask_id,
-            result_owner=result_owner,
-            err_msg=err_msg
-        ).save(force_insert=True)
+    def put_session(cls, session: 'TaskSession') -> None:
+        PendingTaskSession.from_session(session).save(force_insert=True)
 
     @classmethod
     def get_session(cls,
                     node_id: str,
                     task_id: Optional[object] = ANY,
                     subtask_id: Optional[object] = ANY
-                    ) -> Iterator['PendingMessage']:
+                    ) -> PendingTaskSession:
 
-        clauses = PendingTaskSession.select_clauses(node_id, task_id,
-                                                    subtask_id)
-        return PendingTaskSession.select().where(clauses).iteartor()
+        clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
+                                                          subtask_id)
+        return PendingTaskSession.get(clauses)
 
     @classmethod
     def exists(cls,
@@ -172,8 +177,8 @@ class PendingTaskSessionsMixin:
                task_id: Optional[object] = ANY,
                subtask_id: Optional[object] = ANY) -> bool:
 
-        clauses = PendingTaskSession.select_clauses(node_id, task_id,
-                                                    subtask_id)
+        clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
+                                                          subtask_id)
         return PendingTaskSession.select().where(clauses).exists()
 
 

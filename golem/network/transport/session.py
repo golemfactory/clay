@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 from golem_messages import message
+from twisted.internet.error import ConnectionDone
 
 from golem import utils
 from golem.core.keysauth import get_random_float
@@ -77,7 +78,7 @@ class BasicSession(FileSession):
         else:
             self.disconnect(message.Disconnect.REASON.BadProtocol)
 
-    def dropped(self):
+    def dropped(self, reason=ConnectionDone):
         """ Close connection """
         self.conn.close()
         try:

@@ -5,6 +5,7 @@ import time
 import semantic_version
 from golem_messages import message
 from pydispatch import dispatcher
+from twisted.internet.error import ConnectionDone
 
 import golem
 from golem.appconfig import SEND_PEERS_NUM
@@ -92,7 +93,7 @@ class PeerSession(BasicSafeSession):
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
 
-    def dropped(self):
+    def dropped(self, reason=ConnectionDone):
         """
         Close connection and inform p2p service about disconnection
         """

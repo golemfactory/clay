@@ -8,7 +8,8 @@ from golem_messages import message
 
 from golem_messages.helpers import maximum_download_time
 from golem_messages.message import registered_message_types
-from peewee import PeeweeException
+from peewee import PeeweeException, DoesNotExist
+from twisted.internet.error import ConnectionDone, ConnectionLost
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
@@ -125,13 +126,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         )
         BasicSafeSession.interpret(self, msg)
 
-    def dropped(self):
-        """ Close connection """
-        BasicSafeSession.dropped(self)
-        if self.task_server:
-            self.task_server.remove_task_session(self)
-            if self.key_id:
-                self.task_server.remove_resource_peer(self.task_id, self.key_id)
+    def dropped(self, reason=ConnectionDone):
+        """ Close connection. Save session state if connection was lost. """
+        BasicSafeSession.dropped(self, reason)
+        if not self.task_server:
+            return
+
+        self.task_server.remove_task_session(self)
+        if not self.key_id:
+            return
+
+        if reason == ConnectionLost:
+            self.task_server.pending_messages.put_session(self)
+            # TODO: reconnect if there are pending messages
+        self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -802,6 +810,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id)
+            self._restore_session_state()
             self._send_pending_messages()
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
@@ -977,6 +986,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         )
         self.conn.stream_mode = True
         self.subtask_id = msg.subtask_id
+
+    def _restore_session_state(self) -> None:
+        try:
+            state = self.task_server.pending_messages.get_session(self.key_id)
+        except (PeeweeException, DoesNotExist):
+            logger.debug('No session data to restore for session %r',
+                         self.key_id)
+        else:
+            state.update_sesion(self)
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
