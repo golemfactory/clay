@@ -375,9 +375,30 @@ class PeerSession(BasicSafeSession):
                 )
 
     def _react_to_remove_task(self, msg):
+        if not self._verify_remove_task(msg):
+            return
+        self._handle_remove_task(msg)
+
+    def _verify_remove_task(self, msg):
+        task_owner = self.p2p_service.task_server.task_keeper.get_owner(
+            msg.task_id)
+        if task_owner is None:
+            return False
+        if not self.p2p_service.keys_auth.verify(msg.sig, msg.get_short_hash(),
+                                                 task_owner):
+            logger.info("Someone tries to remove task header: %s without "
+                        "proper signature" % msg.task_id)
+            return False
+        return True
+
+    def _handle_remove_task(self, msg):
         removed = self.p2p_service.remove_task_header(msg.task_id)
         if removed:  # propagate the message
-            self.p2p_service.remove_task(msg.task_id)
+            self.p2p_service.send_remove_task_container(msg)
+
+    def _react_to_remove_task_container(self, msg):
+        for remove_task in msg.remove_tasks:
+            self._react_to_remove_task(remove_task)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree
@@ -562,6 +583,8 @@ class PeerSession(BasicSafeSession):
             message.GetTasks.TYPE: self._react_to_get_tasks,
             message.Tasks.TYPE: self._react_to_tasks,
             message.RemoveTask.TYPE: self._react_to_remove_task,
+            message.RemoveTaskContainer.TYPE:
+                self._react_to_remove_task_container,
             message.FindNode.TYPE: self._react_to_find_node,
             message.RandVal.TYPE: self._react_to_rand_val,
             message.WantToStartTaskSession.TYPE:

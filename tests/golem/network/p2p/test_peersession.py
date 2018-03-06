@@ -6,6 +6,7 @@ import random
 import sys
 import unittest
 import unittest.mock as mock
+import uuid
 
 import semantic_version
 from golem_messages import message
@@ -19,10 +20,11 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import (PeerSession, PeerSessionInfo)
+from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
 from tests.factories import p2p as p2p_factories
-from tests.factories import taskserver as taskserver_factories
+from tests.factories import taskserver as task_server_factory
+
 
 
 def fill_slots(msg):
@@ -53,7 +55,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         client = mock.MagicMock()
         client.datadir = self.path
         self.peer_session.p2p_service.task_server = \
-            taskserver_factories.TaskServer(client=client)
+            task_server_factory.TaskServer(client=client)
 
     def __setup_handshake_server_test(self, send_mock) -> message.Hello:
         self.peer_session.conn.server.node = node = p2p_factories.Node()
@@ -498,6 +500,79 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session._react_to_peers(msg)
         peers[0]['node'] = Node.from_dict(peers[0]['node'])
         add_peer_mock.assert_called_once_with(peers[0])
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_send_remove_task(self, send_mock):
+        self.peer_session.send_remove_task("some random string")
+        send_mock.assert_called()
+        assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
+
+    def _gen_data_for_test_react_to_remove_task(self):
+        keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        previous_ka = self.peer_session.p2p_service.keys_auth
+        self.peer_session.p2p_service.keys_auth = keys_auth
+
+        # Unknown task owner
+        client = mock.MagicMock()
+        client.datadir = self.path
+        task_server = task_server_factory.TaskServer(client=client,)
+        self.peer_session.p2p_service.task_server = task_server
+        peer_mock = mock.MagicMock()
+        self.peer_session.p2p_service.peers["ABC"] = peer_mock
+
+        task_id = "test_{}".format(uuid.uuid4())
+        msg = message.RemoveTask(task_id=task_id)
+        msg.serialize(sign_func=keys_auth.sign)
+        assert keys_auth.verify(msg.sig, msg.get_short_hash(), keys_auth.key_id)
+        return msg, task_id, previous_ka
+
+    def test_react_to_remove_task_unknown_task_owner(self):
+        msg, task_id, previous_ka = \
+            self._gen_data_for_test_react_to_remove_task()
+        with self.assertNoLogs(logger, level="INFO"):
+            self.peer_session._react_to_remove_task(msg)
+        self.peer_session.p2p_service.keys_auth = previous_ka
+
+    def test_react_to_remove_task_wrong_task_owner(self):
+        msg, task_id, previous_ka = \
+            self._gen_data_for_test_react_to_remove_task()
+        th_mock = mock.MagicMock()
+        th_mock.task_owner_key_id = "UNKNOWNKEY"
+        task_server = self.peer_session.p2p_service.task_server
+        task_server.task_keeper.task_headers[task_id] = th_mock
+        with self.assertLogs(logger, level="INFO") as log:
+            self.peer_session._react_to_remove_task(msg)
+        assert "Someone tries to remove task header: " in log.output[0]
+        assert task_id in log.output[0]
+        assert task_server.task_keeper.task_headers[task_id] == th_mock
+        self.peer_session.p2p_service.keys_auth = previous_ka
+
+    def test_react_to_remove_task_broadcast(self):
+        msg, task_id, previous_ka = \
+            self._gen_data_for_test_react_to_remove_task()
+        th_mock = mock.MagicMock()
+        keys_auth = self.peer_session.p2p_service.keys_auth
+        th_mock.task_owner_key_id = keys_auth.key_id
+        task_server = self.peer_session.p2p_service.task_server
+        task_server.task_keeper.task_headers[task_id] = th_mock
+        msg.serialize()
+        with self.assertNoLogs(logger, level="INFO"):
+            self.peer_session._react_to_remove_task(msg)
+        assert task_server.task_keeper.task_headers.get(task_id) is None
+        peer_mock = self.peer_session.p2p_service.peers["ABC"]
+        arg = peer_mock.send.call_args[0][0]
+        assert isinstance(arg, message.RemoveTaskContainer)
+        assert arg.remove_tasks == [msg]
+        self.peer_session.p2p_service.keys_auth = previous_ka
+
+    def test_react_to_remove_task_no_broadcast(self):
+        msg, task_id, previous_ka = \
+            self._gen_data_for_test_react_to_remove_task()
+        with self.assertNoLogs(logger, level="INFO"):
+            self.peer_session._react_to_remove_task(msg)
+        peer_mock = self.peer_session.p2p_service.peers["ABC"]
+        peer_mock.send.assert_not_called()
+        self.peer_session.p2p_service.keys_auth = previous_ka
 
     @mock.patch('golem.network.p2p.peersession.PeerSession.send')
     def test_send_want_start_task_session(self, mock_send):
