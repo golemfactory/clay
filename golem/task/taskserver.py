@@ -113,7 +113,6 @@ class TaskServer(
         self._sync_forwarded_session_requests()
         self.__remove_old_tasks()
         self.__remove_old_sessions()
-        self._remove_old_listenings()
         concent.process_messages_received_from_concent(
             concent_service=self.client.concent_service,
         )
@@ -538,24 +537,6 @@ class TaskServer(
         # FIXME: some graceful terminations should take place here
         # sys.exit(0)
 
-    def _listening_for_start_session_established(self, port, listen_id,
-                                                 super_node, asking_node,
-                                                 dest_node, ask_conn_id):
-        logger.debug("_listening_for_start_session_established()")
-        logger.debug("Listening on port {}".format(port))
-        listening = self.open_listenings.get(listen_id)
-        if listening:
-            self.listening.time = time.time()
-            self.listening.listening_port = port
-        else:
-            logger.warning(
-                "Listening {} not in open listenings list".format(listen_id))
-
-    def _listening_for_start_session_failure(
-            self, listen_id, super_node, asking_node, dest_node, ask_conn_id):
-        if listen_id in self.open_listenings:
-            del self.open_listenings['listen_id']
-
     #############################
     #   CONNECTION REACTIONS    #
     #############################
@@ -849,18 +830,6 @@ class TaskServer(
             self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_final_failure,
-        })
-
-    def _set_listen_established(self):
-        self.listen_established_for_type.update({
-            TaskListenTypes.StartSession:
-            self._listening_for_start_session_established
-        })
-
-    def _set_listen_failure(self):
-        self.listen_failure_for_type.update({
-            TaskListenTypes.StartSession:
-            self._listening_for_start_session_failure
         })
 
 
