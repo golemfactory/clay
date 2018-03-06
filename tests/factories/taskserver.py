@@ -32,3 +32,5 @@ class WaitingTaskResultFactory(factory.Factory):
     owner_key_id = factory.Faker('sha1')
     owner = factory.SubFactory('tests.factories.p2p.Node')
     package_sha1 = factory.Faker('sha1')
+    result_size = factory.LazyFunction(
+        lambda: random.randint(1 << 20, 10 << 20))

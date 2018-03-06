@@ -1,6 +1,7 @@
 # pylint: disable=too-few-public-methods
 import calendar
 import time
+import random
 
 import factory
 
@@ -83,7 +84,8 @@ class ReportComputedTask(factory.Factory):
         TaskToCompute,
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
-    size = factory.Faker('pyint')
+    size = factory.LazyFunction(
+        lambda: random.randint(1 << 20, 10 << 20))
     multihash = factory.Faker('text')
     secret = factory.Faker('text')
 

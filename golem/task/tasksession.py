@@ -5,6 +5,7 @@ import pickle
 import time
 
 from golem_messages import message
+from golem_messages.helpers import maximum_download_time
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
@@ -15,7 +16,6 @@ from golem.model import Actor
 from golem.network import history
 from golem.network.concent import exceptions as concent_exceptions
 from golem.network.concent import helpers as concent_helpers
-from golem.network.concent.client import ConcentRequest
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -380,6 +380,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             node_info=node_info.to_dict(),
             eth_account=eth_account,
             extra_data=extra_data,
+            size=task_result.result_size,
             multihash=task_result.result_hash,
             secret=task_result.result_secret,
             options=client_options.__dict__,
@@ -638,11 +639,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             client_options
         )
 
+        fgtr = message.concents.ForceGetTaskResult(
+            report_computed_task=msg
+        )
+
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
             logger.debug("Task result extracted {}"
                          .format(extracted_pkg.__dict__))
             self.result_received(extra_data, decrypt=False)
+            self.concent_service.cancel_task_message(
+                msg.subtask_id, 'ForceGetTaskResult')
 
         def on_error(exc, *args, **kwargs):
             logger.warning("Task result error: %s (%s)", subtask_id,
@@ -664,13 +671,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             else:
                 # otherwise, we're resorting to mediation through the Concent
                 # to obtain the task results
-                fgtr = message.concents.ForceGetTaskResult(
-                    report_computed_task=msg
-                )
-                logger.debug('[CONCENT] ForceGetTaskResult: %s', fgtr)
+                logger.debug('[CONCENT] sending ForceGetTaskResult: %s', fgtr)
                 self.concent_service.submit_task_message(subtask_id, fgtr)
 
             self.dropped()
+
+        # submit a delayed `ForceGetTaskResult` to the Concent
+        # in case the download exceeds the maximum allowable download time.
+        # however, if it succeeds, the message will get cancelled
+        # in the success handler
+
+        self.concent_service.submit_task_message(
+            subtask_id, fgtr, maximum_download_time(msg.size))
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
@@ -801,10 +813,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.debug("Requestor '%r' accepted the computed subtask '%r' "
                          "report", self.key_id, msg.subtask_id)
 
-            self.concent_service.cancel(
-                ConcentRequest.build_key(msg.subtask_id,
-                                         'ForceReportComputedTask')
-            )
+            self.concent_service.cancel_task_message(
+                msg.subtask_id, 'ForceReportComputedTask')
         else:
             logger.warning("Requestor '%r' acknowledged a computed task report "
                            "of an unknown task (subtask_id='%s')",
@@ -817,10 +827,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.info("Requestor '%r' rejected the computed subtask '%r' "
                         "report", self.key_id, msg.subtask_id)
 
-            self.concent_service.cancel(
-                ConcentRequest.build_key(msg.subtask_id,
-                                         'ForceReportComputedTask')
-            )
+            self.concent_service.cancel_task_message(
+                msg.subtask_id, 'ForceReportComputedTask')
         else:
             logger.warning("Requestor '%r' rejected a computed task report of"
                            "an unknown task (subtask_id='%s')",
