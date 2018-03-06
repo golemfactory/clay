@@ -40,7 +40,7 @@ class MockPortMapper(IPortMapper):
                        protocol='TCP', lease_duration=None):
         pass
 
-    def remove_mapping(self, external_port, protocol='TCP'):
+    def remove_mapping(self, port, external_port, protocol='TCP'):
         pass
 
 
@@ -102,7 +102,7 @@ class TestPortMapperManagerRemoveMapping(TestCase):
     def test_remove_mapping_not_available(self):
         mapper = MockPortMapper()
         manager = PortMapperManager(mappers=[mapper])
-        assert manager.remove_mapping(40102) is False
+        assert manager.remove_mapping(40102, 40102) is False
 
     def test_remove_mapping_failure(self):
         mapper = MockPortMapper(available=True)
@@ -110,7 +110,7 @@ class TestPortMapperManagerRemoveMapping(TestCase):
 
         manager = PortMapperManager(mappers=[mapper])
         manager._active_mapper = mapper
-        assert manager.remove_mapping(40102) is False
+        assert manager.remove_mapping(40102, 40102) is False
 
     def test_remove_mapping(self):
         mapper = MockPortMapper(available=True)
@@ -118,7 +118,15 @@ class TestPortMapperManagerRemoveMapping(TestCase):
 
         manager = PortMapperManager(mappers=[mapper])
         manager._active_mapper = mapper
-        assert manager.remove_mapping(40102) is True
+        manager._mapping = {
+            'TCP': {
+                40102: 40102,
+                40103: 40103,
+                3282: 3282
+            },
+            'UDP': {},
+        }
+        assert manager.remove_mapping(40102, 40102) is True
 
 
 class TestPortMapperManagerQuit(TestCase):
