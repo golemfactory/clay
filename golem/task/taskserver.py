@@ -13,7 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, FilesProtocol)
+    TCPNetwork, SocketAddress, SafeProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
@@ -42,7 +42,7 @@ class TaskServer(
                  config_desc: ClientConfigDescriptor,
                  client,
                  use_ipv6=False,
-                 use_docker_machine_manager=True,
+                 use_docker_manager=True,
                  task_archiver=None):
         self.client = client
         self.keys_auth = client.keys_auth
@@ -65,11 +65,11 @@ class TaskServer(
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
                                                   client.datadir, benchmarks)
-        udmm = use_docker_machine_manager
+        udmm = use_docker_manager
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_machine_manager=udmm)
+            use_docker_manager=udmm)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -94,7 +94,7 @@ class TaskServer(
         self.resource_handshakes = {}
 
         network = TCPNetwork(
-            ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
+            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
@@ -377,6 +377,11 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
+    def get_result(self, rct_message):
+        logger.warning('Should get result for %r', rct_message)
+        # @todo: actually retrieve results from the provider based on
+        # the information in the `ReportComputedTask` message
+
     def accept_result(self, subtask_id, account_info):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
@@ -557,12 +562,12 @@ class TaskServer(
             self, session, conn_id, node_name, key_id, task_id,
             estimated_performance, price, max_resource_size, max_memory_size,
             num_cores):
-        self.remove_forwarded_session_request(key_id)
-        session.task_id = task_id
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[task_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=task_id,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
                              max_resource_size, max_memory_size, num_cores)
@@ -590,11 +595,12 @@ class TaskServer(
 
     def __connection_for_task_result_established(self, session, conn_id,
                                                  waiting_task_result):
-        self.remove_forwarded_session_request(waiting_task_result.owner_key_id)
-        session.key_id = waiting_task_result.owner_key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[waiting_task_result.subtask_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=waiting_task_result.subtask_id,
+            key_id=waiting_task_result.owner_key_id,
+            conn_id=conn_id,
+        )
 
         session.send_hello()
         payment_addr = (self.client.transaction_system.get_payment_address()
@@ -624,11 +630,12 @@ class TaskServer(
 
     def __connection_for_task_failure_established(self, session, conn_id,
                                                   key_id, subtask_id, err_msg):
-        self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=subtask_id,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.send_task_failure(subtask_id, err_msg)
 
@@ -653,10 +660,12 @@ class TaskServer(
     def __connection_for_start_session_established(
             self, session, conn_id, key_id, node_info, super_node_info,
             ans_conn_id):
-        self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
+        self.new_session_prepare(
+            session=session,
+            subtask_id=None,
+            key_id=key_id,
+            conn_id=conn_id,
+        )
         session.send_hello()
         session.send_start_session_response(ans_conn_id)
 
@@ -710,6 +719,7 @@ class TaskServer(
         self.remove_responses(ans_conn_id)
 
     def new_session_prepare(self, session, subtask_id, key_id, conn_id):
+        self.remove_forwarded_session_request(key_id)
         session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id

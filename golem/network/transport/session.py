@@ -95,7 +95,7 @@ class BasicSession(FileSession):
         except KeyError:
             pass
 
-    def disconnect(self, reason):
+    def disconnect(self, reason: message.Disconnect.REASON):
         """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting.
         """
@@ -134,7 +134,7 @@ class BasicSession(FileSession):
     def full_data_received(self, extra_data=None):
         pass
 
-    def _send_disconnect(self, reason):
+    def _send_disconnect(self, reason: message.Disconnect.REASON):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
             self._disconnect_sent = True
@@ -145,9 +145,6 @@ class BasicSession(FileSession):
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
         return True
-
-    def _react_to_hello(self, msg):
-        pass
 
     def _react_to_disconnect(self, msg):
         logger.info("Disconnect reason: %r", msg.reason)

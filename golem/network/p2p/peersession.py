@@ -9,6 +9,7 @@ from pydispatch import dispatcher
 import golem
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
+from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
@@ -217,11 +218,13 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.WantToStartTaskSession(
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -241,12 +244,13 @@ class PeerSession(BasicSafeSession):
         """
         logger.debug('Forwarding session request: %s -> %s to %s',
                      node_info.key, key_id, self.key_id)
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -269,9 +273,6 @@ class PeerSession(BasicSafeSession):
         if (self.address, port) in self.p2p_service.seeds:
             compare_version(getattr(msg, 'client_ver', None))
 
-        # We want to compare_version() before calling
-        # super()._react_to_hello() and potentially returning
-        super()._react_to_hello(msg)
         if not self.conn.opened:
             return
 
@@ -293,8 +294,11 @@ class PeerSession(BasicSafeSession):
         if not self.p2p_service.keys_auth.is_pubkey_difficult(
                 self.node_info.key,
                 self.p2p_service.key_difficulty):
-            logger.info("Key from %r:%r is not difficult enough", self.address,
-                        self.port)
+            logger.info(
+                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
+                self.node_info.node_name, self.address, self.port,
+                KeysAuth.get_difficulty(self.node_info.key),
+                self.p2p_service.key_difficulty)
             self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
             return
 
@@ -434,18 +438,24 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_want_to_start_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.peer_want_task_session(
             Node.from_dict(msg.node_info),
-            msg.super_node_info,
+            super_node_info,
             msg.conn_id
         )
 
     def _react_to_set_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
             Node.from_dict(msg.node_info),
             msg.conn_id,
-            msg.super_node_info
+            super_node_info
         )
 
     def _react_to_disconnect(self, msg):
@@ -524,7 +534,7 @@ class PeerSession(BasicSafeSession):
                                             self.address,
                                             self.listen_port,
                                             self.node_info)
-        self.p2p_service.add_peer(self.key_id, self)
+        self.p2p_service.add_peer(self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
             self.node_info,

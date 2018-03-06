@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 import logging
 import os
 import struct
@@ -23,7 +24,7 @@ from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
                                                 DecryptDataConsumer,
                                                 SafeProtocol,
                                                 SocketAddress,
-                                                MAX_MESSAGE_SIZE)
+                                                MAX_MESSAGE_SIZE, TCPNetwork)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from tests.factories import messages as msg_factories
@@ -57,7 +58,7 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        self.ek = KeysAuth(self.path)
+        self.ek = KeysAuth(self.path, 'priv_key', 'password')
         for args in datas:
             self.__producer_consumer_test(
                 *args,
@@ -141,7 +142,7 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
             [self.tmp_file1, self.tmp_file2, self.tmp_file3],
             32,
             session=MagicMock())
-        self.ek = KeysAuth(self.path)
+        self.ek = KeysAuth(self.path, 'priv_key', 'password')
         self.__producer_consumer_test(
             [],
             file_producer_cls=EncryptFileProducer,
@@ -362,3 +363,41 @@ class TestSocketAddress(unittest.TestCase):
         assert not SocketAddress.is_proper_address("127.0.0.1", 0)
         assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
         assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)
+
+
+class TestTCPNetworkConnections(unittest.TestCase):
+
+    def setUp(self):
+        self.addresses = [
+            SocketAddress('192.168.0.1', 40102),
+            SocketAddress('192.168.0.2', 40104),
+        ]
+
+    def test_without_rate_limiter(self):
+        factory = mock.Mock()
+        network = TCPNetwork(factory)
+        assert not network.rate_limiter
+
+        connect = mock.Mock()
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
+        network._TCPNetwork__try_to_connect_to_address = connect
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert connect.called
+
+    def test_with_rate_limiter(self):
+        factory = mock.Mock()
+        network = TCPNetwork(factory, limit_connection_rate=True)
+
+        assert network.rate_limiter
+
+        call = mock.Mock()
+        connect = mock.Mock()
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
+
+        network._TCPNetwork__try_to_connect_to_address = connect
+        network.rate_limiter.call = call
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert not connect.called
+        assert call.called

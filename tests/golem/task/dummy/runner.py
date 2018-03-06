@@ -6,6 +6,7 @@ difficulty is configurable, see comments in DummyTaskParameters.
 import atexit
 import logging
 import os
+from os import path
 import pathlib
 import re
 import shutil
@@ -13,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from os import path
+from unittest import mock
 from threading import Thread
 
 from twisted.internet import reactor
@@ -55,13 +56,24 @@ def create_client(datadir):
     from golem.client import Client
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.key_difficulty = 0
+
+    with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
+        from golem.core.keysauth import KeysAuth
+        keys_auth = KeysAuth(
+            datadir=datadir,
+            private_key_name='priv_key',
+            password='password',
+            difficulty=config_desc.key_difficulty,
+        )
 
     return Client(datadir=datadir,
                   config_desc=config_desc,
+                  keys_auth=keys_auth,
                   use_monitor=False,
                   transaction_system=False,
                   connect_to_known_hosts=False,
-                  use_docker_machine_manager=False)
+                  use_docker_manager=False)
 
 
 def run_requesting_node(datadir, num_subtasks=3):

@@ -1,16 +1,17 @@
+import json
 import logging
 import math
 import os
+import time
 from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
+from ethereum.keys import decode_keystore_json, make_keystore_json
+
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
-
-from golem.core.variables import PRIVATE_KEY
 from golem.utils import encode_hex, decode_hex
-from .simpleenv import get_local_datadir
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,32 @@ def get_random_float() -> float:
     return float(result - 1) / float(10 ** len(str(result)))
 
 
+def _serialize_keystore(keystore):
+    def encode_bytes(obj):
+        if isinstance(obj, bytes):
+            return '0x' + encode_hex(obj)
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                obj[k] = encode_bytes(v)
+        return obj
+    return json.dumps(encode_bytes(keystore))
+
+
+def _deserialize_keystore(keystore):
+    def decode_bytes(obj):
+        if isinstance(obj, str) and obj[:2] == '0x':
+            return decode_hex(obj)
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                obj[k] = decode_bytes(v)
+        return obj
+    return decode_bytes(json.loads(keystore))
+
+
+class WrongPasswordException(Exception):
+    pass
+
+
 class KeysAuth:
     """
     Elliptical curves cryptographic authorization manager. Generates
@@ -68,7 +95,7 @@ class KeysAuth:
     key_id = ""  # type: str
     ecc = None  # type: ECCx
 
-    def __init__(self, datadir: str, private_key_name: str = PRIVATE_KEY,
+    def __init__(self, datadir: str, private_key_name: str, password: str,
                  difficulty: int = 0) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
@@ -82,7 +109,7 @@ class KeysAuth:
         """
 
         prv, pub = KeysAuth._load_or_generate_keys(
-            datadir, private_key_name, difficulty)
+            datadir, private_key_name, password, difficulty)
 
         self._private_key = prv
         self.ecc = ECCx(prv)
@@ -91,37 +118,47 @@ class KeysAuth:
         self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
-    def _load_or_generate_keys(datadir: str, filename: str,
+    def _load_or_generate_keys(datadir: str, filename: str, password: str,
                                difficulty: int) -> Tuple[bytes, bytes]:
         keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
         priv_key_path = os.path.join(keys_dir, filename)
 
-        loaded_keys = KeysAuth._load_and_check_keys(priv_key_path, difficulty)
+        loaded_keys = KeysAuth._load_and_check_keys(
+            priv_key_path,
+            password,
+            difficulty,
+        )
 
         if loaded_keys:
             priv_key, pub_key = loaded_keys
         else:
             priv_key, pub_key = KeysAuth._generate_keys(difficulty)
-            KeysAuth._save_private_key(priv_key, priv_key_path)
+            KeysAuth._save_private_key(priv_key, priv_key_path, password)
 
         return priv_key, pub_key
 
     @staticmethod
     def _get_or_create_keys_dir(datadir: str) -> str:
-        path = datadir or get_local_datadir('default')
-        keys_dir = os.path.join(path, KeysAuth.KEYS_SUBDIR)
+        keys_dir = os.path.join(datadir, KeysAuth.KEYS_SUBDIR)
         if not os.path.isdir(keys_dir):
             os.makedirs(keys_dir)
         return keys_dir
 
     @staticmethod
     def _load_and_check_keys(priv_key_path: str,
+                             password: str,
                              difficulty: int) -> Optional[Tuple[bytes, bytes]]:
         try:
-            with open(priv_key_path, 'rb') as f:
-                priv_key = f.read()
+            with open(priv_key_path, 'r') as f:
+                keystore = f.read()
         except FileNotFoundError:
             return None
+        keystore = _deserialize_keystore(keystore)
+
+        try:
+            priv_key = decode_keystore_json(keystore, password)
+        except ValueError:
+            raise WrongPasswordException()
 
         if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
             logger.error("Wrong loaded private key size: %d.", len(priv_key))
@@ -137,27 +174,31 @@ class KeysAuth:
 
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
-        logger.info("Generating new key pair.")
+        logger.info("Generating new key pair")
+        started = time.time()
         while True:
             priv_key = mk_privkey(str(get_random_float()))
             pub_key = privtopub(priv_key)
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
+
+        logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
 
     @staticmethod
-    def _save_private_key(key, key_path):
+    def _save_private_key(key, key_path, password: str):
         def backup_file(path):
-            if os.path.exists(path):
-                logger.info("Backing up existing private key.")
-                dirname, filename = os.path.split(path)
-                date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
-                filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
-                os.rename(path, os.path.join(dirname, filename_bak))
+            logger.info("Backing up existing private key.")
+            dirname, filename = os.path.split(path)
+            date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
+            filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
+            os.rename(path, os.path.join(dirname, filename_bak))
 
-        backup_file(key_path)
-        with open(key_path, 'wb') as f:
-            f.write(key)
+        if os.path.exists(key_path):
+            backup_file(key_path)
+        keystore = make_keystore_json(key, password)
+        with open(key_path, 'w') as f:
+            f.write(_serialize_keystore(keystore))
 
     @staticmethod
     def _count_max_hash(difficulty: int) -> int:

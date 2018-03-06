@@ -242,10 +242,9 @@ class TestPayments(unittest.TestCase):
     def setUpClass(cls):
 
         incomes_list = [{
-            'value': '{}'.format(i),
             'payer': 'node_{}'.format(i),
             'status': 'waiting',
-            'block_number': 'deadbeef0{}'.format(i)
+            'value': '{}'.format(i),
         } for i in range(1, 6)]
 
         payments_list = [{
@@ -273,7 +272,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT', 'deadbeef01'
+                'node_1', 'waiting', '0.000000 GNT'
             ]
 
     def test_payments(self):

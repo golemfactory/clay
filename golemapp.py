@@ -1,22 +1,31 @@
 #!/usr/bin/env python
 import os
+import platform
 import sys
 import logging
 from multiprocessing import freeze_support
+
 import click
+import humanize
+import psutil
+from cpuinfo import get_cpu_info
 from ethereum import slogging
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
+# pylint: disable=wrong-import-position
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
 from golem.appconfig import AppConfig  # noqa
-from golem.clientconfigdescriptor import ClientConfigDescriptor  # noqa
+from golem.clientconfigdescriptor import ClientConfigDescriptor, \
+    ConfigApprover  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
+
+logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
 # Monkey patch for ethereum.slogging.
 # SLogger aggressively mess up with python looger.
@@ -83,8 +92,14 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', default=None,
-              help="Change level for all loggers and handlers, "
-              "possible values are ERROR, WARNING, INFO or DEBUG")
+              type=click.Choice([
+                  'CRITICAL',
+                  'ERROR',
+                  'WARNING',
+                  'INFO',
+                  'DEBUG',
+              ]),
+              help="Change level for all loggers and handlers")
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
           start_geth, start_geth_port, geth_address, version, m, loglevel):
@@ -102,6 +117,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc = ConfigApprover(config_desc).approve()
 
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
@@ -117,6 +133,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         config_logging(datadir=datadir, loglevel=loglevel)
         install_reactor()
         log_golem_version()
+        log_platform_info()
 
         node = Node(
             datadir=datadir,
@@ -126,9 +143,9 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             use_monitor=monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
-            geth_address=geth_address,
-        )
-        node.run()
+            geth_address=geth_address)
+
+        node.start()
 
 
 def delete_reactor():
@@ -151,14 +168,32 @@ def start_crossbar_worker(module):
 
 
 def log_golem_version():
-    log = logging.getLogger('golem.version')
     # initial version info
     import golem_messages
     from golem.core.variables import PROTOCOL_CONST
 
-    log.info("GOLEM Version: %s", golem.__version__)
-    log.info("Protocol Version: %s", PROTOCOL_CONST.ID)
-    log.info("golem_messages Version: %s", golem_messages.__version__)
+    logger.info("GOLEM Version: %s", golem.__version__)
+    logger.info("Protocol Version: %s", PROTOCOL_CONST.ID)
+    logger.info("golem_messages Version: %s", golem_messages.__version__)
+
+
+def log_platform_info():
+    # platform
+    logger.info("system: %s, release: %s, version: %s, machine: %s",
+                platform.system(), platform.release(), platform.version(),
+                platform.machine())
+
+    # cpu
+    cpuinfo = get_cpu_info()
+    logger.info("cpu: %s %s, %s cores",
+                cpuinfo['vendor_id'], cpuinfo['brand'], cpuinfo['count'])
+
+    # ram
+    meminfo = psutil.virtual_memory()
+    swapinfo = psutil.swap_memory()
+    logger.info("memory: %s, swap: %s",
+                humanize.naturalsize(meminfo.total, binary=True),
+                humanize.naturalsize(swapinfo.total, binary=True))
 
 
 if __name__ == '__main__':

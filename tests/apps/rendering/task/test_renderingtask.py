@@ -218,44 +218,49 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
 
-    def test_put_collected_files_together(self):
+    def test_put_collected_files_together_exec_windows(self):
 
         output_file_name = "out.exr"
         files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
         arg = 'EXR'
 
-        def assert_command_line(exec_cmd):
-            args = exec_cmd.call_args[0][0]
-            assert args[1] == arg
-            assert args[2] == str(self.task.res_x)
-            assert args[3] == str(self.task.res_y)
-            assert args[4] == '"{}"'.format(output_file_name)
-            assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
+        with patch('apps.rendering.task.renderingtask.is_windows',
+                   return_value=True), \
+                patch('golem.core.fileshelper.is_windows', return_value=True), \
+                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(output_file_name, files, arg)
-
-            assert exec_cmd.call_args[0][0][0].endswith('.exe')
-            exec_cmd.assert_called_with([ANY, arg,
-                                         str(self.task.res_x), str(self.task.res_y),
-                                         output_file_name] + files)
-
-        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
-             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(output_file_name, files, arg)
+            self.task._put_collected_files_together(
+                output_file_name, files, arg)
 
             args = exec_cmd.call_args[0][0]
-            assert args[0].startswith('"') and args[0].endswith('"')
-            assert args[1] == arg
-            assert args[2] == str(self.task.res_x)
-            assert args[3] == str(self.task.res_y)
-            assert args[4] == '"{}"'.format(output_file_name)
-            assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
+            assert not args[0].startswith('"')
+            assert not args[0].endswith('.exe"')
+            assert args[0].endswith('.exe')
+            exec_cmd.assert_called_with(
+                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
+                 '{}'.format(output_file_name)] +
+                ['{}'.format(f) for f in files])
+
+    def test_put_collected_files_together_exec_unix(self):
+        output_file_name = "out.exr"
+        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
+        arg = 'EXR'
+
+        with patch('apps.rendering.task.renderingtask.is_windows',
+                   return_value=False), \
+                patch('golem.core.fileshelper.is_windows', return_value=False),\
+                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+
+            self.task._put_collected_files_together(
+                output_file_name, files, arg)
+
+            args = exec_cmd.call_args[0][0]
             assert not args[0].endswith('.exe"')
             assert not args[0].endswith('.exe')
+            exec_cmd.assert_called_with(
+                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
+                 '"{}"'.format(output_file_name)] +
+                ['"{}"'.format(f) for f in files])
 
     def test_get_outer_task(self):
         task = self.task
@@ -325,6 +330,14 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert windows_path.endswith(os.path.join(
                 prefix, 'x64', exe_dir, exe + '.exe'
             ))
+
+    def test_update_task_preview_ioerror(self):
+        e = IOError("test message")
+        with patch("PIL.Image.open", side_effect=e), \
+                patch("apps.rendering.task.renderingtask.logger") as logger:
+            self.task._update_task_preview()
+            assert logger.error.called
+            assert logger.error.call_args[0][1] == e
 
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):

@@ -20,7 +20,8 @@ cache:
 
 before_install:
   - brew update
-  - brew install python3 openexr freeimage
+  - brew upgrade python
+  - brew install openexr freeimage
 
   # geth
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz

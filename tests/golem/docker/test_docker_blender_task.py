@@ -67,6 +67,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         return task_def
 
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
+        BlenderRenderTask.VERIFICATION_QUEUE._reset()
         task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
@@ -85,9 +86,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node = Node(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
         )
-        self.node.client = self.node._client_factory()
+        self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
 
@@ -97,7 +98,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
             node=Mock(),
             config_desc=ccd,
             client=self.node.client,
-            use_docker_machine_manager=False,
+            use_docker_manager=False,
         )
         task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header

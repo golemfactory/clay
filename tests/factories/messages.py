@@ -1,6 +1,8 @@
 # pylint: disable=too-few-public-methods
-import factory
+import calendar
 import time
+
+import factory
 
 import factory.fuzzy
 
@@ -30,7 +32,7 @@ class ComputeTaskDef(factory.DictFactory):
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
     task_owner = factory.SubFactory(TaskOwner)
-    deadline = factory.Faker('pyint')
+    deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
     src_code = factory.Faker('text')
 
 
@@ -54,7 +56,7 @@ class CannotComputeTask(factory.Factory):
         model = tasks.CannotComputeTask
 
     subtask_id = factory.Faker('uuid4')
-    task_to_compute = factory.SubFactory(ComputeTaskDef)
+    task_to_compute = factory.SubFactory(TaskToCompute)
 
 
 class TaskFailure(factory.Factory):
@@ -63,7 +65,7 @@ class TaskFailure(factory.Factory):
 
     subtask_id = factory.Faker('uuid4')
     err = factory.Faker('sentence')
-    task_to_compute = factory.SubFactory(ComputeTaskDef)
+    task_to_compute = factory.SubFactory(TaskToCompute)
 
 
 class ReportComputedTask(factory.Factory):
@@ -77,9 +79,13 @@ class ReportComputedTask(factory.Factory):
     address = factory.Faker('ipv4')
     port = factory.Faker('pyint')
     key_id = factory.Faker('binary', length=64)
-    task_to_compute = factory.SubFactory(TaskToCompute)
+    task_to_compute = factory.SubFactory(
+        TaskToCompute,
+        compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
+    )
     size = factory.Faker('pyint')
-    checksum = factory.Faker('text')
+    multihash = factory.Faker('text')
+    secret = factory.Faker('text')
 
 
 class SubtaskResultsRejected(factory.Factory):
@@ -88,6 +94,7 @@ class SubtaskResultsRejected(factory.Factory):
 
     report_computed_task = factory.SubFactory(ReportComputedTask)
 
+
 class SubtaskResultsAcceptedFactory(factory.Factory):
     class Meta:
         model = tasks.SubtaskResultsAccepted
@@ -95,13 +102,14 @@ class SubtaskResultsAcceptedFactory(factory.Factory):
     task_to_compute = factory.SubFactory(TaskToCompute)
     payment_ts = factory.LazyFunction(lambda: int(time.time()))
 
+
 class ServiceRefused(factory.Factory):
     class Meta:
         model = concents.ServiceRefused
 
     reason = factory.fuzzy.FuzzyChoice(concents.ServiceRefused.REASON)
     subtask_id = factory.Faker('uuid4')
-    task_to_compute = factory.SubFactory(ComputeTaskDef)
+    task_to_compute = factory.SubFactory(TaskToCompute)
 
 
 class ForceReportComputedTask(factory.Factory):
@@ -110,3 +118,30 @@ class ForceReportComputedTask(factory.Factory):
 
     result_hash = factory.Faker('text')
     report_computed_task = factory.SubFactory(ReportComputedTask)
+
+
+class AckReportComputedTask(factory.Factory):
+    class Meta:
+        model = concents.AckReportComputedTask
+
+    subtask_id = factory.Faker('uuid4')
+    task_to_compute = factory.SubFactory(
+        TaskToCompute,
+        compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
+    )
+
+
+class VerdictReportComputedTask(factory.Factory):
+    class Meta:
+        model = concents.VerdictReportComputedTask
+
+    force_report_computed_task = factory.SubFactory(ForceReportComputedTask)
+    ack_report_computed_task = factory.SubFactory(
+        AckReportComputedTask,
+        subtask_id=factory.SelfAttribute(
+            '..force_report_computed_task.report_computed_task.subtask_id',
+        ),
+        task_to_compute=factory.SelfAttribute(
+            '..force_report_computed_task.report_computed_task.task_to_compute',
+        ),
+    )
