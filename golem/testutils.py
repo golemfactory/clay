@@ -42,7 +42,8 @@ class TempDirFixture(unittest.TestCase):
     #         shutil.rmtree(cls.root_dir)
 
     def setUp(self):
-        # instead of patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1})
+
+        # KeysAuth uses it. Default val (250k+) slows down the tests terribly
         ethereum.keys.PBKDF2_CONSTANTS['c'] = 1
 
         prefix = self.id().rsplit('.', 1)[1]  # Use test method name

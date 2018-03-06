@@ -307,14 +307,6 @@ class TaskServer(
     def get_key_id(self):
         return self.keys_auth.key_id
 
-    def encrypt(self, message, public_key):
-        if public_key == 0:
-            return message
-        return self.keys_auth.encrypt(message, public_key)
-
-    def decrypt(self, message):
-        return self.keys_auth.decrypt(message)
-
     def sign(self, data):
         return self.keys_auth.sign(data)
 
