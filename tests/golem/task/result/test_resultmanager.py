@@ -117,7 +117,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     def testExtract(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
         data, secret = create_package(manager, self.node_name, self.task_id)
-        content_hash, path, _, _ = data
+        _, path, __, ___ = data
 
         extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)

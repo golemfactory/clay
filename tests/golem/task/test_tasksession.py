@@ -61,8 +61,8 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-class TestTaskSession(
-    ConcentMessageMixin, LogTestCase, testutils.TempDirFixture):
+class TestTaskSession(ConcentMessageMixin, LogTestCase,
+                      testutils.TempDirFixture):
 
     def setUp(self):
         super(TestTaskSession, self).setUp()
