@@ -540,12 +540,10 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ts.task_computer = Mock()
 
         # Always fail on listening
-        from golem.network.transport import tcpnetwork
         ts.network.listen = MagicMock(
             side_effect=lambda listen_info, waiting_task_result:
-            tcpnetwork.TCPNetwork.__call_failure_callback(  # noqa pylint: disable=too-many-function-args
-                listen_info.failure_callback,
-                {'waiting_task_result': waiting_task_result}
+            listen_info.failure_callback(
+                waiting_task_result=waiting_task_result
             )
         )
 

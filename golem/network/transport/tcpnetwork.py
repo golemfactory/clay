@@ -5,14 +5,17 @@ import time
 from copy import copy
 from ipaddress import ip_address
 from threading import Lock
+from typing import Dict, TYPE_CHECKING
 
 import golem_messages
 from golem_messages import message
+
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, \
     TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
+from twisted.internet.tcp import Port
 from zope.interface import implementer
 
 from golem.core.databuffer import DataBuffer
@@ -26,6 +29,9 @@ from .spamprotector import SpamProtector
 # Import helpers to this namespace
 from .tcpnetwork_helpers import SocketAddress, TCPListenInfo  # noqa pylint: disable=unused-import
 from .tcpnetwork_helpers import TCPListeningInfo, TCPConnectInfo  # noqa pylint: disable=unused-import
+
+if TYPE_CHECKING:
+    from .tcpserver import TCPServer  # pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +64,7 @@ class TCPNetwork(Network):
             protocol_factory)
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
-        self.active_listeners = {}
+        self.active_listeners: Dict[int, Port] = {}
         self.host_addresses = get_host_addresses()
 
         if limit_connection_rate:
@@ -66,60 +72,36 @@ class TCPNetwork(Network):
         else:
             self.rate_limiter = None
 
-    def connect(self, connect_info, **kwargs):
+    def connect(self, connect_info: TCPConnectInfo) -> None:
         """
         Connect network protocol factory to address from connect_info via TCP.
-        :param TCPConnectInfo connect_info:
-        :param kwargs: any additional parameters
-        :return None:
         """
-        self.__try_to_connect_to_addresses(
-            connect_info.socket_addresses,
-            connect_info.established_callback,
-            connect_info.failure_callback,
-            **kwargs
-        )
+        self.__try_to_connect_to_addresses(connect_info)
 
-    def listen(self, listen_info, **kwargs):
+    def listen(self, listen_info: TCPListenInfo) -> None:
         """
         Listen with network protocol factory on a TCP socket
         specified by listen_info
-
-        :param TCPListenInfo listen_info:
-        :param kwargs: any additional parameters
-        :return None:
         """
         self.__try_to_listen_on_port(
             listen_info.port_start,
             listen_info.port_end,
             listen_info.established_callback,
             listen_info.failure_callback,
-            **kwargs
         )
 
-    def stop_listening(self, listening_info, **kwargs):
+    def stop_listening(self, listening_info: TCPListeningInfo):
         """
         Stop listening on a TCP socket specified by listening_info
-        :param TCPListeningInfo listening_info:
-        :param kwargs: any additional parameters
-        :return None|Deferred:
         """
         port = listening_info.port
-        listening_port = self.active_listeners.get(port)
+        listening_port: Port = self.active_listeners.get(port)
         if listening_port:
             defer = maybeDeferred(listening_port.stopListening)
 
             if not defer.called:
-                defer.addCallback(
-                    TCPNetwork.__stop_listening_success,
-                    listening_info.stopped_callback,
-                    **kwargs
-                )
-                defer.addErrback(
-                    TCPNetwork.__stop_listening_failure,
-                    listening_info.stopped_errback,
-                    **kwargs
-                )
+                defer.addCallback(listening_info.stopped_callback)
+                defer.addErrback(listening_info.stopped_errback)
             del self.active_listeners[port]
             return defer
         else:
@@ -127,11 +109,8 @@ class TCPNetwork(Network):
                 "Can't stop listening on port %r, wasn't listening.",
                 port,
             )
-            TCPNetwork.__stop_listening_failure(
-                None,
-                listening_info.stopped_errback,
-                **kwargs,
-            )
+            listening_info.stopped_errback()
+            return None
 
     def __filter_host_addresses(self, addresses):
         result = []
@@ -148,14 +127,14 @@ class TCPNetwork(Network):
             result.append(sa)
         return result
 
-    def __try_to_connect_to_addresses(self, addresses, established_callback,
-                                      failure_callback, **kwargs):
-        addresses = self.__filter_host_addresses(addresses)
+    def __try_to_connect_to_addresses(self, connect_info: TCPConnectInfo) \
+            -> None:
+        addresses = self.__filter_host_addresses(connect_info.socket_addresses)
         logger.debug('__try_to_connect_to_addresses(%r) filtered', addresses)
 
         if not addresses:
             logger.warning("No addresses for connection given")
-            TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
+            connect_info.failure_callback()
             return
 
         address = addresses[0].address
@@ -168,9 +147,8 @@ class TCPNetwork(Network):
         )
         _kwargs = dict(
             addresses_to_arg=addresses,
-            established_callback_to_arg=established_callback,
-            failure_callback_to_arg=failure_callback,
-            **kwargs
+            established_callback_to_arg=connect_info.established_callback,
+            failure_callback_to_arg=connect_info.failure_callback
         )
 
         if self.rate_limiter:
@@ -205,25 +183,17 @@ class TCPNetwork(Network):
     def __connection_established(self, conn, established_callback, **kwargs):
         pp = conn.transport.getPeer()
         logger.debug("Connection established %r %r", pp.host, pp.port)
-        TCPNetwork.__call_established_callback(
-            established_callback,
-            conn.session,
-            **kwargs,
-        )
+        established_callback(conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
         logger.debug("Connection failure. %r", err_desc)
-        TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
+        failure_callback(**kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
         established_callback = kwargs.pop("established_callback_to_arg", None)
         kwargs.pop("failure_callback_to_arg", None)
         kwargs.pop("addresses_to_arg", None)
-        TCPNetwork.__call_established_callback(
-            established_callback,
-            conn,
-            **kwargs,
-        )
+        established_callback(conn, **kwargs)
 
     def __connection_to_address_failure(self, **kwargs):
         established_callback = kwargs.pop("established_callback_to_arg", None)
@@ -237,10 +207,10 @@ class TCPNetwork(Network):
                 **kwargs,
             )
         else:
-            TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
+            failure_callback(**kwargs)
 
     def __try_to_listen_on_port(self, port, max_port, established_callback,
-                                failure_callback, **kwargs):
+                                failure_callback):
         if self.use_ipv6:
             ep = TCP6ServerEndpoint(self.reactor, port)
         else:
@@ -251,7 +221,6 @@ class TCPNetwork(Network):
         defer.addCallback(
             self.__listening_established,
             established_callback,
-            **kwargs,
         )
         defer.addErrback(
             self.__listening_failure,
@@ -259,22 +228,17 @@ class TCPNetwork(Network):
             max_port,
             established_callback,
             failure_callback,
-            **kwargs,
         )
 
-    def __listening_established(self, listening_port, established_callback,
-                                **kwargs):
+    def __listening_established(self, listening_port, established_callback):
         port = listening_port.getHost().port
         self.active_listeners[port] = listening_port
-        TCPNetwork.__call_established_callback(
-            established_callback,
-            port,
-            **kwargs,
-        )
+        established_callback(port)
 
     def __listening_failure(self, err_desc, port, max_port,
-                            established_callback, failure_callback, **kwargs):
+                            established_callback, failure_callback):
         err = str(err_desc.value)
+        logger.debug("Can't listen on port %r: %r", port, err)
         if port < max_port:
             port += 1
             self.__try_to_listen_on_port(
@@ -282,36 +246,9 @@ class TCPNetwork(Network):
                 max_port,
                 established_callback,
                 failure_callback,
-                **kwargs,
             )
         else:
-            logger.debug("Can't listen on port %r: %r", port, err)
-            TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
-
-    @staticmethod
-    def __call_failure_callback(failure_callback, **kwargs):
-        if failure_callback is None:
-            return
-        failure_callback(**kwargs)
-
-    @staticmethod
-    def __call_established_callback(established_callback, result, **kwargs):
-        if established_callback is None:
-            return
-        established_callback(result, **kwargs)
-
-    @staticmethod
-    def __stop_listening_success(result, callback, **kwargs):
-        if result:
-            logger.info("Stop listening result %r", result)
-        if callback is None:
-            return
-        callback(**kwargs)
-
-    @staticmethod
-    def __stop_listening_failure(fail, errback, **kwargs):
-        logger.error("Can't stop listening %r", fail)
-        TCPNetwork.__call_failure_callback(errback, **kwargs)
+            failure_callback()
 
 #############
 # Protocols #

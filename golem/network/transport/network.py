@@ -1,19 +1,20 @@
 import abc
-from twisted.internet.tcp import Client, Server
 from twisted.internet.protocol import Factory, Protocol, connectionDone
 
+from .tcpnetwork_helpers import TCPConnectInfo, TCPListenInfo, TCPListeningInfo
 
-class Network(object, metaclass=abc.ABCMeta):
+
+class Network(abc.ABC):
     @abc.abstractmethod
-    def connect(self, connect_info, **kwargs):
+    def connect(self, connect_info: TCPConnectInfo) -> None:
         return
 
     @abc.abstractmethod
-    def listen(self, listen_info, **kwargs):
+    def listen(self, listen_info: TCPListenInfo) -> None:
         return
 
     @abc.abstractmethod
-    def stop_listening(self, listening_info, **kwargs):
+    def stop_listening(self, listening_info: TCPListeningInfo):
         return
 
 

@@ -1,8 +1,13 @@
 import ipaddress
 import logging
 import re
+import uuid
+from functools import partial
+from typing import Callable, List, Optional
 
 from golem.core import variables
+from golem.core.types import Callback, Kwargs
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,78 +143,105 @@ class SocketAddress():
         return SocketAddress(addr_str, port)
 
 
-class TCPListenInfo(object):
-    def __init__(self, port_start, port_end=None, established_callback=None,
-                 failure_callback=None):
+def _handle_none_callback(callback: Optional[Callable], *args, **kwargs) \
+        -> Callback:
+    if callback is None:
+        def none_callback(*args, **kwargs):
+            pass
+        return none_callback
+    if args or kwargs:
+        return partial(callback, *args, **kwargs)
+    return callback
+
+
+def _get_original_callback(callback: Callable):
+    if hasattr(callback, 'func'):
+        # callback is wrapped in partial
+        return getattr(callback, 'func')
+    return callback
+
+
+class TCPListenInfo:
+    def __init__(self,
+                 port_start: int,
+                 port_end: Optional[int] = None,
+                 established_callback: Optional[Callback] = None,
+                 failure_callback: Optional[Callback] = None,
+                 kwargs: Kwargs = {}) -> None:
         """
         Information needed for listen function. Network will try to start
         listening on port_start, then iterate by 1 to port_end.
         If port_end is None, than network will only try to listen on
         port_start.
-        :param int port_start: try to start listening from that port
-        :param int port_end: *Default: None* highest port that network
-                             will try to listen on
-        :param fun|None established_callback: *Default: None* deferred
-                                              callback after listening
-                                              established
-        :param fun|None failure_callback: *Default: None* deferred callback
-                                          after listening failure
-        :return:
+        :param port_start: try to start listening from that port
+        :param port_end: *Default: None* highest port that network will try to
+                         listen on
+        :param established_callback: *Default: None* deferred callback after
+                                     listening established
+        :param failure_callback: *Default: None* deferred callback after
+                                 listening failure
         """
         self.port_start = port_start
-        if port_end:
-            self.port_end = port_end
-        else:
-            self.port_end = port_start
-        self.established_callback = established_callback
-        self.failure_callback = failure_callback
+        self.port_end: int = port_end if port_end is not None else port_start
+        self.established_callback = \
+            _handle_none_callback(established_callback, **kwargs)
+        self.failure_callback = \
+            _handle_none_callback(failure_callback, **kwargs)
 
     def __str__(self):
         return ("TCP listen info: ports [{}:{}],"
                 "callback: {}, errback: {}").format(
                     self.port_start,
                     self.port_end,
-                    self.established_callback,
-                    self.failure_callback, )
+                    _get_original_callback(self.established_callback),
+                    _get_original_callback(self.failure_callback))
 
 
-class TCPListeningInfo(object):
-    def __init__(self, port, stopped_callback=None, stopped_errback=None):
+class TCPListeningInfo:
+    def __init__(self, port: int,
+                 stopped_callback: Optional[Callback] = None,
+                 stopped_errback: Optional[Callback] = None) -> None:
         """
         TCP listening port information
-        :param int port: port opened for listening
-        :param fun|None stopped_callback: *Default: None* deferred callback
-                                          after listening on this port
-                                          is stopped
-        :param fun|None stopped_errback: *Default: None* deferred callback
-                                         after stop listening failed
-        :return:
+        :param port: port opened for listening
+        :param stopped_callback: *Default: None* deferred callback after
+                                 listening on this port is stopped
+        :param stopped_errback: *Default: None* deferred callback after stop
+                                listening failed
         """
         self.port = port
-        self.stopped_callback = stopped_callback
-        self.stopped_errback = stopped_errback
+        self.stopped_callback = _handle_none_callback(stopped_callback)
+        self.stopped_errback = _handle_none_callback(stopped_errback)
 
     def __str__(self):
-        return "A listening port {} information".format(self.port)
+        return ("A listening port information: port {}, callback {}, errback {}"
+                .format(self.port, self.stopped_callback, self.stopped_errback))
 
 
-class TCPConnectInfo(object):
-    def __init__(self, socket_addresses, established_callback=None,
-                 failure_callback=None):
+class TCPConnectInfo:
+    def __init__(self,
+                 socket_addresses: List[SocketAddress],
+                 established_callback: Optional[Callback] = None,
+                 failure_callback: Optional[Callback] = None,
+                 final_failure_callback: Optional[Callback] = None,
+                 kwargs: Kwargs = {}) -> None:
         """
         Information for TCP connect function
-        :param list socket_addresses: list of SocketAddresses
-        :param fun|None established_callback:
-        :param fun|None failure_callback:
-        :return None:
         """
+        self.id = str(uuid.uuid4())
         self.socket_addresses = socket_addresses
-        self.established_callback = established_callback
-        self.failure_callback = failure_callback
+        self.established_callback = \
+            _handle_none_callback(established_callback, self.id, **kwargs)
+        self.failure_callback = \
+            _handle_none_callback(failure_callback, self.id, **kwargs)
+        self.final_failure_callback = \
+            _handle_none_callback(final_failure_callback, self.id, **kwargs)
 
     def __str__(self):
-        return ("TCP connection information: addresses {}, "
-                "callback {}, errback {}").format(
+        return ("TCP connection information: id {}, addresses {}, "
+                "callback {}, errback {}, final errback {}").format(
+                    self.id,
                     self.socket_addresses,
-                    self.established_callback,
-                    self.failure_callback, )
+                    _get_original_callback(self.established_callback),
+                    _get_original_callback(self.failure_callback),
+                    _get_original_callback(self.final_failure_callback))

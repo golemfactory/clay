@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 
-from golem.network.transport.tcpserver import (TCPServer, PendingConnectionsServer, PendingConnection,
-                                               PendingListening, PenConnStatus)
+from golem.network.transport.tcpserver import (
+    TCPServer, PendingConnectionsServer, PendingConnection, PenConnStatus)
 from golem.network.p2p.node import Node
 
 
@@ -26,7 +26,7 @@ class Network(object):
     def stop_listening(self, _):
         self.stop_listening_called = True
 
-    def connect(self, connect_info, conn_id, *args):
+    def connect(self, connect_info, *args):
         self.connected = True
 
 
@@ -134,26 +134,30 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, self.node_info, self.port,
+                                    self.key_id)
         assert len(server.pending_connections) == 1
         pending_conn = next(iter(list(server.pending_connections.values())))
 
         final_failure_called[0] = False
-        server.final_conn_failure(pending_conn.id)
+        server.final_conn_failure(pending_conn.connect_info.id)
         assert final_failure_called[0]
 
-        server.verified_conn(pending_conn.id)
+        server.verified_conn(pending_conn.connect_info.id)
         assert len(server.pending_connections) == 0
 
         final_failure_called[0] = False
-        server.final_conn_failure(pending_conn.id)
+        server.final_conn_failure(pending_conn.connect_info.id)
         assert not final_failure_called[0]
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, self.node_info, self.port,
+                                    self.key_id)
         pending_conn = next(iter(list(server.pending_connections.values())))
-        server._mark_connected(pending_conn.id, "10.10.10.1", self.port)
+        server._mark_connected(pending_conn.connect_info.id, "10.10.10.1",
+                               self.port)
         assert pending_conn.status == PenConnStatus.Connected
-        assert SocketAddress("10.10.10.1", self.port) == pending_conn.socket_addresses[0]
+        assert SocketAddress("10.10.10.1", self.port) == \
+            pending_conn.connect_info.socket_addresses[0]
 
     def test_sync_pending(self):
         network = Network()
@@ -173,7 +177,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
 
-        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, node_info, self.port, self.key_id)
         assert len(server.pending_connections) == 1
 
         server._sync_pending()
@@ -182,10 +186,10 @@ class TestPendingConnectionServer(unittest.TestCase):
         network.connected = False
         server.pending_connections = {}
 
-        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, node_info, self.port, self.key_id)
         assert len(server.pending_connections) == 1
         pending_conn = next(iter(list(server.pending_connections.values())))
-        pending_conn.socket_addresses = []
+        pending_conn.connect_info.socket_addresses = []
 
         server._sync_pending()
         assert not network.connected

@@ -142,9 +142,8 @@ class TestNetwork(TestWithReactor):
         self.assertEqual(len(self.network.active_listeners), 2)
 
         with async_scope(listen_status):
-            self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
+            self.network.listen(listen_info)
         self.assertEqual(self.port, port + 2)
-        self.assertEqual(self.kwargs_len, 5)
         self.assertEqual(len(self.network.active_listeners), 3)
 
         # connect
@@ -238,13 +237,13 @@ class TestNetwork(TestWithReactor):
         self.port = None
         self.listen_success = False
 
-    def __connection_success(self, result, **kwargs):
+    def __connection_success(self, conn_id, result, **kwargs):
         self.connect_success = True
 
-    def __connection_failure(self, **kwargs):
+    def __connection_failure(self, conn_id, **kwargs):
         self.connect_success = False
 
-    def __stop_listening_success(self, **kwargs):
+    def __stop_listening_success(self, reason, **kwargs):
         self.stop_listening_success = True
 
     def __stop_listening_failure(self, **kwargs):
