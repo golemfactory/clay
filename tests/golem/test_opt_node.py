@@ -119,7 +119,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=False,
                                      start_geth_port=None,
                                      transaction_system=True,
-                                     use_monitor=True)
+                                     use_monitor=True,
+                                     password=None)
 
     @patch('golem.node.Client')
     def test_geth_address_should_be_passed_to_client(self, mock_client, *_):
@@ -196,7 +197,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=True,
                                      start_geth_port=None,
                                      transaction_system=True,
-                                     use_monitor=True)
+                                     use_monitor=True,
+                                     password=None)
 
     @patch('golem.node.Client')
     def test_start_geth_should_be_passed_to_client(self, mock_client, *_):
@@ -251,7 +253,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=True,
                                      start_geth_port=port,
                                      transaction_system=True,
-                                     use_monitor=True)
+                                     use_monitor=True,
+                                     password=None)
 
     @patch('golem.node.Client')
     def test_start_geth_port_should_be_passed_to_client(self, mock_client, *_):
@@ -389,13 +392,17 @@ def chain_function(_, fn, *args, **kwargs):
     return deferred
 
 
-@patch('golem.node.Node._start_keys_auth')
+def set_keys_auth(obj):
+    obj._keys_auth = Mock()
+
+
+@patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
 @patch('golem.node.async_run', mock_async_run)
 @patch('golem.node.chain_function', chain_function)
 @patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
-@patch('golem.node.Session', Mock(connect=done_deferred))
+@patch('golem.node.Session')
 @patch('golem.node.gatherResults')
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
@@ -416,6 +423,7 @@ class TestOptNode(TempDirFixture):
                          config_desc=config_desc,
                          use_docker_manager=False)
 
+        self.node._setup_client = Mock()
         self.node.start()
 
         # then
@@ -427,12 +435,11 @@ class TestOptNode(TempDirFixture):
 
     def test_start_creates_client(self, reactor, mock_gather_results, *_):
         # given
-        keys_auth = Mock()
         config_descriptor = ClientConfigDescriptor()
 
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([keys_auth, None])
+            lambda callback, _: callback([])
 
         # when
         self.node = Node(datadir=self.path,
@@ -444,7 +451,6 @@ class TestOptNode(TempDirFixture):
         assert self.node.client
         assert self.node.client.datadir == self.path
         assert self.node.client.config_desc == config_descriptor
-        assert self.node.client.keys_auth == keys_auth
         assert reactor.addSystemEventTrigger.call_count == 2
         assert reactor.addSystemEventTrigger.call_args_list[0][0] == (
             'before', 'shutdown', self.node.rpc_router.stop)

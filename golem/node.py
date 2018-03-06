@@ -79,9 +79,12 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         try:
             rpc = self._start_rpc()
-            keys = chain_function(rpc, self._start_keys_auth)
-            docker = self._start_docker()
-            gatherResults([keys, docker], consumeErrors=True).addCallbacks(
+
+            def on_rpc_ready() -> Deferred:
+                keys = self._start_keys_auth()
+                docker = self._start_docker()
+                return gatherResults([keys, docker], consumeErrors=True)
+            chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
             )
@@ -127,6 +130,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return deferred.addCallbacks(set_publisher, self._error('rpc session'))
 
     def _start_keys_auth(self) -> Deferred:
+        if not self.rpc_session:
+            self._error("RPC session is not available")
+            return
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
