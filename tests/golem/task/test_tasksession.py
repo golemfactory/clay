@@ -871,11 +871,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         )
 
     def test_result_received(self):
-        msg = factories.messages.ReportComputedTask(
-            subtask_id=self.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.task_id,
-        )
-
+        msg = self._prepare_report_computed_task()
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(True)
 
@@ -884,14 +880,11 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
 
         cancel = self.ts.concent_service.cancel_task_message
         self.assert_concent_cancel(
-            cancel, self.subtask_id, 'ForceGetTaskResult')
+            cancel.call_args[0], self.subtask_id, 'ForceGetTaskResult')
 
     def test_reject_result_pull_failed_no_concent(self):
-        msg = factories.messages.ReportComputedTask(
-            subtask_id=self.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.task_id,
-            task_to_compute__concent_enabled=False
-        )
+        msg = self._prepare_report_computed_task(
+            task_to_compute__concent_enabled=False)
 
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(False)
@@ -901,11 +894,8 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         assert self.ts.task_manager.task_computation_failure.called
 
     def test_reject_result_pull_failed_with_concent(self):
-        msg = factories.messages.ReportComputedTask(
-            subtask_id=self.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.task_id,
-            task_to_compute__concent_enabled=True
-        )
+        msg = self._prepare_report_computed_task(
+            task_to_compute__concent_enabled=True)
 
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(False)
@@ -923,4 +913,3 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         self.assertGreater(stm.call_args_list[0][0][2], datetime.timedelta(0))
         # ensure the second one is not
         self.assertEqual(len(stm.call_args_list[1][0]), 2)
-
