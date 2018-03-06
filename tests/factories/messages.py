@@ -1,7 +1,6 @@
 # pylint: disable=too-few-public-methods
 import calendar
 import time
-import mock
 
 import factory
 

@@ -25,11 +25,9 @@ from golem.resource.client import ClientOptions
 from golem.task import taskstate
 from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
-from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
-from tests.factories import p2p as p2p_factories
 from tests.factories.taskserver import WaitingTaskResultFactory
 
 
@@ -244,7 +242,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
 
         def finished():
             if not ts.task_manager.verify_subtask(subtask_id):
-                ts._reject_subtask_result(subtask_id)
+                ts._reject_subtask_result(subtask_id, '')
                 ts.dropped()
                 return
 
@@ -320,7 +318,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
             ts.subtask_rejected.assert_not_called()
         dropped_mock.assert_called_once_with()
 
-    def test_react_to_task_to_compute(self):
+    def test_react_to_task_to_compute(self):  # pylint: disable=too-many-statements
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
@@ -643,6 +641,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture):
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
 
+
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
     def setUp(self):
@@ -681,7 +680,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
         msg = self.ts.concent_service.submit_task_message.call_args[0][1]
         self.assertEqual(msg.result_hash, 'sha1:' + wtr.package_sha1)
-
 
     def test_send_report_computed_task_concent_no_message(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(owner=self.n)
@@ -840,7 +838,7 @@ class ReportComputedTaskTest(LogTestCase):
             self.task_id: Mock()
         }
         ts.task_manager.tasks_states = {
-            self.task_id: Mock(subtask_states = {
+            self.task_id: Mock(subtask_states={
                 self.subtask_id: Mock(deadline=calendar.timegm(time.gmtime()))
             })
         }

@@ -943,7 +943,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.TaskToCompute.TYPE: self._react_to_task_to_compute,
             message.CannotAssignTask.TYPE: self._react_to_cannot_assign_task,
             message.CannotComputeTask.TYPE: self._react_to_cannot_compute_task,
-            message.ReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
+            message.ReportComputedTask.TYPE:
+                self._react_to_report_computed_task,
             message.GetResource.TYPE: self._react_to_get_resource,
             message.ResourceList.TYPE: self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted.TYPE:

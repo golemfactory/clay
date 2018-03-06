@@ -6,8 +6,6 @@ from golem import clientconfigdescriptor
 from golem.task import taskserver
 from golem.task.taskbase import ResultType
 
-from tests.factories import p2p as p2p_factory
-
 
 class TaskServer(factory.Factory):
     class Meta:
