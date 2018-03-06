@@ -68,8 +68,8 @@ class TestDataProducerAndConsumer(testutils.TempDirFixture):
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
-        session.encrypt.side_effect = self.ek.encrypt
-        session.decrypt.side_effect = self.ek.decrypt
+        session.encrypt.side_effect = lambda x: x
+        session.decrypt.side_effect = lambda x: x
         return session
 
     def __producer_consumer_test(self, data, buff_size=None,
@@ -175,8 +175,8 @@ class TestFileProducerAndConsumer(testutils.TempDirFixture):
 
     def __make_encrypted_session_mock(self):
         session = MagicMock()
-        session.encrypt.side_effect = self.ek.encrypt
-        session.decrypt.side_effect = self.ek.decrypt
+        session.encrypt.side_effect = lambda x: x
+        session.decrypt.side_effect = lambda x: x
         return session
 
     def __producer_consumer_test(

@@ -12,7 +12,7 @@ from golem.core.keysauth import (
     get_random,
     get_random_float,
     sha2,
-)
+    WrongPassword, NotDifficultEnough)
 from golem.core.simpleserializer import CBORSerializer
 from golem.utils import decode_hex
 from golem.utils import encode_hex
@@ -96,7 +96,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
 
         # then
-        with self.assertRaisesRegex(Exception, 'Loaded key is not difficult'):
+        with self.assertRaises(NotDifficultEnough):
             self._create_keysauth(difficulty=req_difficulty, key_name=priv_key)
 
     def test_save_keys(self):
@@ -224,7 +224,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         # Try to load it, this shouldn't throw
         self._create_keysauth(key_name=key_name, password=password)
 
-        with self.assertRaisesRegex(Exception, "Wrong password"):
+        with self.assertRaises(WrongPassword):
             self._create_keysauth(key_name=key_name, password='wrong_pw')
 
 

@@ -71,6 +71,18 @@ def _deserialize_keystore(keystore):
     return decode_bytes(json.loads(keystore))
 
 
+class WrongPassword(Exception):
+    pass
+
+
+class NotDifficultEnough(Exception):
+    pass
+
+
+class ReactorStopped(Exception):
+    pass
+
+
 class KeysAuth:
     """
     Elliptical curves cryptographic authorization manager. Generates
@@ -149,12 +161,12 @@ class KeysAuth:
         try:
             priv_key = decode_keystore_json(keystore, password)
         except ValueError:
-            raise Exception("Wrong password")
+            raise WrongPassword
 
         pub_key = privtopub(priv_key)
 
         if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            raise Exception("Loaded key is not difficult enough.")
+            raise NotDifficultEnough
 
         return priv_key, pub_key
 
@@ -173,7 +185,7 @@ class KeysAuth:
             # lets be responsive to reactor stop (eg. ^C hit by user)
             if reactor_started and not reactor.running:
                 logger.warning("reactor stopped, aborting key generation ..")
-                raise Exception("reactor stopped, aborting key generation")
+                raise ReactorStopped
 
         logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key

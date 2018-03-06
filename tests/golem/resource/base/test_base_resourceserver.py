@@ -86,17 +86,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             resource_dir
         )
 
-    def testDecrypt(self):
-
-        to_encrypt = "test string to enc"
-        encrypted = self.resource_server.encrypt(
-            to_encrypt,
-            self.keys_auth.public_key
-        )
-        decrypted = self.resource_server.decrypt(encrypted)
-
-        self.assertEqual(decrypted, to_encrypt.encode())
-
     def _resources(self):
         existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)
         existing_paths = []
