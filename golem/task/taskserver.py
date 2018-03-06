@@ -13,7 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, FilesProtocol)
+    TCPNetwork, SocketAddress, SafeProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
@@ -94,7 +94,7 @@ class TaskServer(
         self.resource_handshakes = {}
 
         network = TCPNetwork(
-            ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
+            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
@@ -377,11 +377,10 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def get_result(self, subtask_id):
-        logger.warning('Should get result for %r', subtask_id)
-        # TODO: send GetTaskResult(subtask_id=subtask_id) to Provider
-        #       depends on: #2223 Message Queue
-        #       https://github.com/golemfactory/golem/issues/2223
+    def get_result(self, rct_message):
+        logger.warning('Should get result for %r', rct_message)
+        # @todo: actually retrieve results from the provider based on
+        # the information in the `ReportComputedTask` message
 
     def accept_result(self, subtask_id, account_info):
         mod = min(

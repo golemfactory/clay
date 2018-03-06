@@ -73,7 +73,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                   history.IMessageHistoryProvider):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.FilesProtocol
+    ConnectionStateType = tcpnetwork.SafeProtocol
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
@@ -366,6 +366,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if not task_to_compute:
             return
 
+        client_options = self.task_server.get_share_options(task_result.task_id,
+                                                            self.key_id)
+
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
@@ -376,7 +379,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             key_id=self.task_server.get_key_id(),
             node_info=node_info.to_dict(),
             eth_account=eth_account,
-            extra_data=extra_data)
+            extra_data=extra_data,
+            multihash=task_result.result_hash,
+            secret=task_result.result_secret,
+            options=client_options.__dict__,
+        )
+
         report_computed_task.task_to_compute = task_to_compute
         self.send(report_computed_task)
 
@@ -583,7 +591,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        if not self.check_provider_for_subtask(msg.subtask_id):
+        subtask_id = msg.subtask_id
+        if not self.check_provider_for_subtask(subtask_id):
             self.dropped()
             return
 
@@ -601,7 +610,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
 
         self.task_server.receive_subtask_computation_time(
-            msg.subtask_id,
+            subtask_id,
             msg.computation_time
         )
 
@@ -613,35 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             p2p_node.Node.from_dict(msg.node_info),
             msg.eth_account
         )
-        self.send(message.GetTaskResult(subtask_id=msg.subtask_id))
 
-    @history.provider_history
-    def _react_to_get_task_result(self, msg) -> None:
-        if not self.check_requestor_for_subtask(msg.subtask_id):
-            self.dropped()
-            return
-        wtr = self.task_server.get_waiting_task_result(msg.subtask_id)
-        if wtr is None:
-            logger.warning("Result was requested for an unknown subtask "
-                           "id: %r", msg.subtask_id)
-            return self.disconnect(message.Disconnect.REASON.NoMoreMessages)
-
-        wtr.already_sending = True
-        client_options = self.task_server.get_share_options(wtr.task_id,
-                                                            self.key_id)
-
-        msg = message.TaskResultHash(
-            subtask_id=wtr.subtask_id,
-            multihash=wtr.result_hash,
-            secret=wtr.result_secret,
-            options=client_options.__dict__  # This slot will be used in #1768
-        )
-        self.send(msg)
-
-    def _react_to_task_result_hash(self, msg):
-        secret = msg.secret
-        content_hash = msg.multihash
-        subtask_id = msg.subtask_id
         client_options = self.task_server.get_download_options(self.key_id,
                                                                self.address)
 
@@ -649,20 +630,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         task = self.task_manager.tasks.get(task_id, None)
         output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
 
-        if not task:
-            logger.error(
-                "Task result received with unknown subtask_id: %r",
-                subtask_id
-            )
-            return
-
-        if not self.check_provider_for_subtask(msg.subtask_id):
-            self.dropped()
-            return
-
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
-            content_hash,
+            msg.multihash,
             self.address,
             self.port,
             client_options
@@ -678,8 +648,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             logger.warning("Task result error: %s (%s)", subtask_id,
                            exc or "unspecified")
 
-            ttc = get_task_message('TaskToCompute', task_id, subtask_id)
-            if not ttc or not ttc.concent_enabled:
+            if not msg.task_to_compute.concent_enabled:
                 # in case of resources failure, if we're not using the Concent
                 # we're immediately sending a rejection message to the Provider
                 self._reject_subtask_result(
@@ -695,28 +664,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             else:
                 # otherwise, we're resorting to mediation through the Concent
                 # to obtain the task results
-                rct = get_task_message(
-                    'ReportComputedTask', task_id, subtask_id
+                fgtr = message.concents.ForceGetTaskResult(
+                    report_computed_task=msg
                 )
-                if not rct:
-                    logger.error(
-                        "[CONCENT] Can't construct ForceGetTaskResult message"
-                        "for task %s, subtask %s", task_id, subtask_id)
-                else:
-                    msg = message.concents.ForceGetTaskResult(
-                        report_computed_task=rct
-                    )
-                    logger.debug('[CONCENT] ForceGetTaskResult: %s', msg)
-                    self.concent_service.submit_task_message(subtask_id, msg)
+                logger.debug('[CONCENT] ForceGetTaskResult: %s', fgtr)
+                self.concent_service.submit_task_message(subtask_id, fgtr)
 
             self.dropped()
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
-            content_hash,
+            msg.multihash,
             task_id,
             subtask_id,
-            secret,
+            msg.secret,
             success=on_success,
             error=on_error,
             client_options=client_options,
@@ -982,9 +943,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.TaskToCompute.TYPE: self._react_to_task_to_compute,
             message.CannotAssignTask.TYPE: self._react_to_cannot_assign_task,
             message.CannotComputeTask.TYPE: self._react_to_cannot_compute_task,
-            message.ReportComputedTask.TYPE: self._react_to_report_computed_task,  # noqa
-            message.GetTaskResult.TYPE: self._react_to_get_task_result,
-            message.TaskResultHash.TYPE: self._react_to_task_result_hash,
+            message.ReportComputedTask.TYPE:
+                self._react_to_report_computed_task,
             message.GetResource.TYPE: self._react_to_get_resource,
             message.ResourceList.TYPE: self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted.TYPE:

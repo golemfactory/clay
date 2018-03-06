@@ -85,4 +85,4 @@ class TaskServerMessageHandler():
             rct.computation_time,
         )
 
-        self.task_server.get_result(subtask_id=rct.subtask_id)
+        self.task_server.get_result(rct)

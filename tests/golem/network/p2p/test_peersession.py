@@ -8,11 +8,6 @@ import unittest
 import unittest.mock as mock
 import uuid
 
-from pydispatch import dispatcher
-import semantic_version
-
-from golem_messages import message
-
 import semantic_version
 from golem_messages import message
 from pydispatch import dispatcher
@@ -29,6 +24,7 @@ from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
 from tests.factories import p2p as p2p_factories
 from tests.factories import taskserver as task_server_factory
+
 
 
 def fill_slots(msg):
@@ -56,6 +52,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 keys_auth=keys_auth,
                 connect_to_known_hosts=False,
             )
+        client = mock.MagicMock()
+        client.datadir = self.path
+        self.peer_session.p2p_service.task_server = \
+            task_server_factory.TaskServer(client=client)
 
     def __setup_handshake_server_test(self, send_mock) -> message.Hello:
         self.peer_session.conn.server.node = node = p2p_factories.Node()
@@ -560,6 +560,58 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         peer_mock = self.peer_session.p2p_service.peers["ABC"]
         peer_mock.send.assert_not_called()
         self.peer_session.p2p_service.keys_auth = previous_ka
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_send_want_start_task_session(self, mock_send):
+        node = p2p_factories.Node()
+        super_node = p2p_factories.Node()
+        self.peer_session.send_want_to_start_task_session(node, "CONN_ID",
+                                                          super_node)
+        msg = mock_send.call_args[0][0]
+        assert isinstance(msg, message.WantToStartTaskSession)
+        assert isinstance(msg.node_info, dict)
+        assert isinstance(msg.super_node_info, dict)
+
+        self.peer_session._react_to_want_to_start_task_session(msg)
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_send_want_start_task_session_with_supernode_none(self, mock_send):
+        node = p2p_factories.Node()
+        self.peer_session.send_want_to_start_task_session(node, "CONN_ID", None)
+
+        msg = mock_send.call_args[0][0]
+        assert isinstance(msg, message.WantToStartTaskSession)
+        assert isinstance(msg.node_info, dict)
+        assert msg.super_node_info is None
+
+        self.peer_session._react_to_want_to_start_task_session(msg)
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_set_task_session(self, mock_send):
+        node = p2p_factories.Node()
+        super_node = p2p_factories.Node()
+        self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID",
+                                                super_node)
+        msg = mock_send.call_args[0][0]
+        assert isinstance(msg, message.SetTaskSession)
+        assert isinstance(msg.node_info, dict)
+        assert isinstance(msg.super_node_info, dict)
+        assert msg.key_id == "KEY_ID"
+
+        self.peer_session._react_to_set_task_session(msg)
+
+    @mock.patch('golem.network.p2p.peersession.PeerSession.send')
+    def test_set_task_session_with_supernode_none(self, mock_send):
+        node = p2p_factories.Node()
+        self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID", None)
+        msg = mock_send.call_args[0][0]
+        assert isinstance(msg, message.SetTaskSession)
+        assert isinstance(msg.node_info, dict)
+        assert msg.super_node_info is None
+        assert msg.key_id == "KEY_ID"
+
+        self.peer_session._react_to_set_task_session(msg)
+
 
 class TestPeerSessionInfo(unittest.TestCase):
 
