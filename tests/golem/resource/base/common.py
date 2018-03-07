@@ -85,12 +85,16 @@ class AddGetResources(TempDirFixture, LogTestCase):
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
                                                     mock.Mock(), client)
-        client.task_server = TaskServer(
-            node=mock.Mock(),
-            config_desc=mock.Mock(),
-            client=client,
-            use_docker_manager=False,
-        )
+        with mock.patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            client.task_server = TaskServer(
+                node=mock.Mock(),
+                config_desc=mock.Mock(),
+                client=client,
+                use_docker_manager=False,
+            )
 
         client.start = mock.Mock()
         client.start_network = mock.Mock()

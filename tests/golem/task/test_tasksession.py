@@ -28,6 +28,8 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
+from tests.factories import p2p as p2p_factories
+from tests.factories import messages as msg_factories
 from tests.factories.taskserver import WaitingTaskResultFactory
 
 
@@ -181,7 +183,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", wtr.owner)
 
-        rct = ts.conn.send_message.call_args[0][0]
+        rct: message.ReportComputedTask = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(rct, message.ReportComputedTask)
         self.assertEqual(rct.subtask_id, wtr.subtask_id)
         self.assertEqual(rct.result_type, ResultType.DATA)
@@ -210,7 +212,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         get_mock.side_effect = history.MessageNotFound
 
-        ts2.interpret(rct)
+        with patch(
+                'golem.network.concent.helpers'
+                '.process_report_computed_task',
+                return_value=msg_factories.AckReportComputedTask()):
+            ts2.interpret(rct)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             wtr.subtask_id, wtr.computing_time)
         wtr.result_type = "UNKNOWN"
@@ -855,6 +861,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
                 self.subtask_id: Mock(deadline=calendar.timegm(time.gmtime()))
             })
         }
+        ts.task_server.task_keeper.task_headers = {}
         self.ts = ts
 
         gsam = patch('golem.network.concent.helpers.history'

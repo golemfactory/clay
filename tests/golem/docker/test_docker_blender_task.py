@@ -2,6 +2,7 @@ import json
 from os import makedirs, path
 import shutil
 import time
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -94,12 +95,16 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(
-            node=Mock(),
-            config_desc=ccd,
-            client=self.node.client,
-            use_docker_manager=False,
-        )
+        with mock.patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            task_server = TaskServer(
+                node=Mock(),
+                config_desc=ccd,
+                client=self.node.client,
+                use_docker_manager=False,
+            )
         task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer

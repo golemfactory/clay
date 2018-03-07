@@ -6,6 +6,7 @@ from golem_messages import message
 
 from golem.task import taskserver
 
+from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,10 @@ class TaskServerMessageHandler():
     def __init__(self, task_server: taskserver.TaskServer):
         self.task_server = task_server
         register_handlers(self)
+
+    @property
+    def concent_service(self):
+        return self.task_server.client.concent_service
 
     @handler_for(message.concents.ServiceRefused)
     def on_concents_service_refused(self, msg):
@@ -85,4 +90,29 @@ class TaskServerMessageHandler():
             rct.computation_time,
         )
 
-        self.task_server.get_result(rct)
+    @handler_for(message.concents.ForceReportComputedTask)
+    def on_force_report_computed_task(self, msg):
+        """Concent forwarded ReportComputedTask from Provider
+
+        Requestor should answer to Concent with either AckReportComputedTask
+        or RejectReportComputedTask
+        """
+        rct = msg.report_computed_task
+
+        returned_msg = concent_helpers.process_report_computed_task(
+            msg=rct,
+            ecc=self.task_server.keys_auth.ecc,
+            task_header_keeper=self.task_server.task_keeper,
+        )
+        self.concent_service.submit_task_message(
+            rct.subtask_id,
+            returned_msg,
+        )
+
+        if isinstance(returned_msg, message.concents.RejectReportComputedTask):
+            return
+
+        self.task_server.receive_subtask_computation_time(
+            rct.subtask_id,
+            rct.computation_time,
+        )

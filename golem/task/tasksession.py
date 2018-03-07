@@ -14,7 +14,6 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
-from golem.network.concent import exceptions as concent_exceptions
 from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
@@ -167,6 +166,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _task_subtask_from_message(self, msg, local_role):
         task, subtask = None, None
 
+        if hasattr(msg, 'task_to_compute'):
+            msg = msg.task_to_compute
         if isinstance(msg, message.TaskToCompute):
             definition = msg.compute_task_def
             if definition:
@@ -602,12 +603,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
             return
 
-        try:
-            concent_helpers.process_report_computed_task(
-                msg,
-                task_session=self,
-            )
-        except concent_exceptions.ConcentVerificationFailed:
+        returned_msg = concent_helpers.process_report_computed_task(
+            msg=msg,
+            ecc=self.task_server.keys_auth.ecc,
+            task_header_keeper=self.task_server.task_keeper,
+        )
+        self.send(returned_msg)
+        if not isinstance(returned_msg, message.concents.AckReportComputedTask):
+            self.dropped()
             return
 
         self.task_server.receive_subtask_computation_time(
