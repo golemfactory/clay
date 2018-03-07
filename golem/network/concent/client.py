@@ -195,6 +195,19 @@ class ConcentClientService(threading.Thread):
             msg, delay,
         )
 
+    def cancel_task_message(
+            self, subtask_id: str, msg_classname: str) -> bool:
+        """
+        Cancel a subtask-related message to the Concent.
+
+        :param subtask_id: the id of the subtask the message pertains to
+        :param msg_classname: the name of the message class to cancel
+        :return: whether the message was indeed found and cancelled
+        """
+        return self.cancel(
+            ConcentRequest.build_key(subtask_id, msg_classname)
+        )
+
     def submit(self,
                key: typing.Hashable,
                msg: message.Message,

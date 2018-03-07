@@ -439,6 +439,12 @@ class TestTaskHeaderKeeper(LogTestCase):
                        'reason': 'environment_not_accepting_tasks',
                        'ntasks': 1}, reasons)
 
+    def test_get_owner(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        tk.add_task_header(get_dict_task_header())
+        assert tk.get_owner("xyz") == "kkkk"
+        assert tk.get_owner("UNKNOWN") is None
+
 
 def get_dict_task_header(task_id="xyz"):
     return {
@@ -498,9 +504,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
-            ctd['environment'] = header.environment
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 10)
-            ctk.receive_subtask(ctd)
+            self.assertTrue(ctk.receive_subtask(ctd))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
@@ -589,7 +594,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "abc"
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
-        ctd['environment'] = th.environment
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
@@ -629,9 +633,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header = get_task_header()
         ctk.add_request(header, 40003)
         ctk.active_tasks['xyz'].requests = 0
-        comp_task_def = {'task_id': "xyz", 'subtask_id': 'xxyyzz',
-                         'deadline': get_timestamp_utc() + 100,
-                         'environment': 'DEFAULT'}
+        comp_task_def = {
+            'task_id': "xyz",
+            'subtask_id': 'xxyyzz',
+            'deadline': get_timestamp_utc() + 100,
+        }
         with self.assertLogs(logger, level="INFO") as l:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask xxyyzz for task xyz. ' \
@@ -661,13 +667,3 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         del ctk.active_tasks['xyz'].subtasks['xxyyzz']
         assert ctk.check_comp_task_def(comp_task_def)
-
-        comp_task_def['environment'] = "DIFFERENT_ENV"
-        with self.assertLogs(logger, level="INFO") as l:
-            assert not ctk.check_comp_task_def(comp_task_def)
-        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
-               'Expected environment: DEFAULT, received: DIFFERENT_ENV.' in \
-               l.output[0]
-
-
-

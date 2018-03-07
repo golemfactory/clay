@@ -9,10 +9,11 @@ from peewee import CharField
 
 import golem
 from golem.database import Database
+from golem.database.migration import default_migrate_dir
 from golem.database.migration.create import create_from_commandline, \
     create_migration
 from golem.database.migration.migrate import migrate_schema, choose_scripts
-from golem.model import Account, BaseModel, DB_MODELS, Stats
+from golem.model import Account, BaseModel, DB_MODELS, Stats, DB_FIELDS
 from golem.testutils import DatabaseFixture, TempDirFixture
 
 
@@ -55,16 +56,12 @@ class TestMigrationCommandLine(TestCase):
 
 class TestCreateMigration(TempDirFixture):
 
-    @patch('golem.database.migration.create.get_local_datadir')
-    @patch('golem.database.migration.create.default_migrate_dir')
-    def test_create_params(self, default_migrate_dir, get_local_datadir):
+    def test_create_params(self):
         out_dir = os.path.join(self.tempdir, 'schemas')
         os.makedirs(out_dir, exist_ok=True)
 
-        default_migrate_dir.return_value = out_dir
-        get_local_datadir.return_value = self.tempdir
-
-        output_file = create_migration()
+        output_file = create_migration(data_dir=self.tempdir,
+                                       migrate_dir=out_dir)
 
         assert len(os.listdir(out_dir)) == 1
         assert os.path.exists(output_file)
@@ -276,7 +273,9 @@ class TestSavedMigrations(TempDirFixture):
     def database_context(self):
         from golem.model import db
         version = Database.SCHEMA_VERSION
-        database = Database(db, self.tempdir, DB_MODELS, migrate=False)
+        database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                            db_dir=self.tempdir, schemas_dir=None)
+        database.schemas_dir = default_migrate_dir()
         yield database
         Database.SCHEMA_VERSION = version
         database.close()

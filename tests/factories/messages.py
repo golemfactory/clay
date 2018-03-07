@@ -1,8 +1,6 @@
 # pylint: disable=too-few-public-methods
+import calendar
 import time
-import mock
-
-import factory
 
 import factory.fuzzy
 
@@ -20,19 +18,13 @@ class Hello(factory.Factory):
     node_name = factory.Faker("name")
 
 
-class TaskOwner(factory.DictFactory):
-    node_name = factory.Faker('name')
-    key = factory.Faker('binary', length=64)
-
-
 class ComputeTaskDef(factory.DictFactory):
     class Meta:
         model = tasks.ComputeTaskDef
 
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
-    task_owner = factory.SubFactory(TaskOwner)
-    deadline = factory.Faker('pyint')
+    deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
     src_code = factory.Faker('text')
 
 
@@ -47,7 +39,6 @@ class TaskToCompute(factory.Factory):
     @classmethod
     def _create(cls, *args, **kwargs):
         instance = super()._create(*args, **kwargs)
-        instance.compute_task_def['task_owner']['key'] = instance.requestor_id
         return instance
 
 
@@ -83,8 +74,9 @@ class ReportComputedTask(factory.Factory):
         TaskToCompute,
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
-    size = factory.Faker('pyint')
-    checksum = factory.Faker('text')
+    size = factory.Faker('random_int', min=1 << 20, max=10 << 20)
+    multihash = factory.Faker('text')
+    secret = factory.Faker('text')
 
 
 class SubtaskResultsRejected(factory.Factory):
@@ -117,16 +109,6 @@ class ForceReportComputedTask(factory.Factory):
 
     result_hash = factory.Faker('text')
     report_computed_task = factory.SubFactory(ReportComputedTask)
-
-
-class TaskResultHashFactory(factory.Factory):
-    class Meta:
-        model = tasks.TaskResultHash
-
-    subtask_id = factory.Faker('uuid4')
-    multihash = factory.Faker('text')
-    secret = factory.Faker('text')
-    options = factory.LazyFunction(mock.Mock)
 
 
 class AckReportComputedTask(factory.Factory):
