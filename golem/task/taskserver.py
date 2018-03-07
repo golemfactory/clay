@@ -44,7 +44,9 @@ class TaskServer(
                  client,
                  use_ipv6=False,
                  use_docker_manager=True,
-                 task_archiver=None):
+                 task_archiver=None,
+                 persist_messages=True):
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -76,7 +78,10 @@ class TaskServer(
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
 
-        self.pending_messages = PendingSessionMessages(client.datadir)
+        if persist_messages:
+            self.pending_messages = PendingSessionMessages(client.datadir)
+        else:
+            self.pending_messages = None
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -125,6 +130,9 @@ class TaskServer(
                          self.task_manager.tasks_states)
 
     def sync_sessions(self):
+        if not self.pending_messages:
+            return
+
         for session in self.pending_messages.get_sessions():
             # Messages may have not appeared (yet; e.g. task results)
             if not self.pending_messages.exists(session.node_id):
@@ -494,7 +502,8 @@ class TaskServer(
         return socket_addresses
 
     def quit(self):
-        self.pending_messages.quit()
+        if self.pending_messages:
+            self.pending_messages.quit()
         self.task_computer.quit()
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):

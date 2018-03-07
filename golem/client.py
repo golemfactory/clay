@@ -260,7 +260,7 @@ class Client(HardwarePresetsMixin):
                 service.stop()
         self.concent_service.stop()
         if self.task_server:
-            self.task_server.task_computer.quit()
+            self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.stop_monitor()
             self.monitor = None

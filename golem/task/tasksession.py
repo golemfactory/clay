@@ -138,10 +138,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
-        if not self.node_info:
+        pending_messages = self.task_server.pending_messages
+        if not (self.task_server.pending_messages and self.node_info):
             return
 
-        pending_messages = self.task_server.pending_messages
         if reason == ConnectionLost or pending_messages.exists(self.key_id):
             pending_messages.put_session(self)
 
@@ -818,8 +818,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id)
-            self._restore_session_state()
-            self._restore_messages()
+            if self.task_server.pending_messages:
+                self._restore_session_state()
+                self._restore_messages()
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
 

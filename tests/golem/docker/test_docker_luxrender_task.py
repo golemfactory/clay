@@ -118,7 +118,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
                 node=Mock(),
                 config_desc=ccd,
                 client=self.node.client,
-                use_docker_manager=False
+                use_docker_manager=False,
+                persist_messages=False,
             )
         task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header

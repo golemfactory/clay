@@ -769,7 +769,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=client,
-                use_docker_manager=False
+                use_docker_manager=False,
+                persist_messages=False
             )
         client.monitor = Mock()
 
