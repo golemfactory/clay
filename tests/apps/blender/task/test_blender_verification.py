@@ -48,7 +48,6 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
             'golemfactory/blender', tag='1.4').to_dict()]
-        self.subtask_info['ctd']['environment'] = 'BLENDER'
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['end_task'] =\
             self.subtask_info['end_task']
@@ -68,10 +67,7 @@ class TestGenerateCrops(TempDirFixture):
             self.subtask_info['start_task']
         self.subtask_info['ctd']['extra_data']['total_tasks'] =\
             self.subtask_info['total_tasks']
-        self.subtask_info['ctd']['key_id'] = 'deadbeef'
         self.subtask_info['ctd']['performance'] = self.subtask_info['perf']
-        self.subtask_info['ctd']['return_address'] = '127.0.0.1'
-        self.subtask_info['ctd']['return_port'] = 40103
         self.subtask_info['ctd']['short_description'] = ''
         self.subtask_info['ctd']['src_code'] = open(
             os.path.join(
@@ -81,7 +77,6 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
         self.subtask_info['ctd']['task_id'] =\
             '7d8cb5f8-2a8c-43a1-9189-44a5f422fbe1'
-        self.subtask_info['ctd']['task_owner'] = dict()
         self.subtask_info['ctd']['working_directory'] = self.tempdir
 
     @ci_skip

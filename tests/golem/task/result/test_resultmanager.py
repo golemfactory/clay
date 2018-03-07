@@ -90,11 +90,12 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     def testCreate(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
         data, secret = create_package(manager, self.node_name, self.task_id)
-        content_hash, path, sha1 = data
+        content_hash, path, sha1, size = data
 
         self.assertIsNotNone(sha1)
         self.assertIsInstance(sha1, str)
         self.assertIsInstance(path, str)
+        self.assertIsInstance(size, int)
         self.assertTrue(os.path.isfile(path))
 
     def testCreateEnvironmentError(self):
@@ -116,7 +117,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     def testExtract(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
         data, secret = create_package(manager, self.node_name, self.task_id)
-        content_hash, path, _ = data
+        _, path, __, ___ = data
 
         extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)
@@ -127,7 +128,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
     def testPullPackage(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
         data, secret = create_package(manager, self.node_name, self.task_id)
-        content_hash, path, _ = data
+        content_hash, path, _, _ = data
 
         assert os.path.exists(path)
         assert content_hash
