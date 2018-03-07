@@ -76,3 +76,8 @@ REACTOR_THREAD_POOL_SIZE = 20
 # INCOMES CONST #
 #################
 PAYMENT_DEADLINE = 24 * 60 * 60
+
+#################
+# CONCENT CONST #
+#################
+NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER = 3
