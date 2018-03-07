@@ -738,8 +738,7 @@ class TestTaskCleanerService(TestWithReactor):
             service._run()
 
             c.delete_task.assert_called_with(task_id)
-            # logger.info.assert_called()  is since python 3.6
-            assert logger.info.called
+            logger.info.assert_called()
 
 
 @patch('signal.signal')

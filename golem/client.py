@@ -242,7 +242,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
-        logger.debug('Starting client services')
+        logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
         self.concent_service.start()
 
@@ -261,6 +261,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
+        logger.debug('Stopping client services ...')
         self.stop_network()
 
         for service in self._services:
@@ -272,6 +273,7 @@ class Client(HardwarePresetsMixin):
         if self.use_monitor and self.monitor:
             self.stop_monitor()
             self.monitor = None
+        logger.debug('Stopped client services')
 
     def start_network(self):
         logger.info("Starting network ...")
@@ -397,7 +399,7 @@ class Client(HardwarePresetsMixin):
                                          listening_failure=task.errback)
 
     def start_upnp(self, ports):
-        logger.info("Starting upnp ...")
+        logger.debug("Starting upnp ...")
         self.port_mapper = PortMapperManager()
         self.port_mapper.discover()
 
