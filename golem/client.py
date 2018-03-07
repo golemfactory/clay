@@ -18,7 +18,7 @@ from twisted.internet.defer import (
 
 import golem
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
-                             PAYMENT_CHECK_INTERVAL)
+                             PAYMENT_CHECK_INTERVAL, SESSION_CHECK_INTERVAL)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -1168,6 +1168,12 @@ class DoWorkService(LoopingCallService):
             self._client.ranking.sync_network()
         except Exception:
             log.exception("ranking.sync_network failed")
+
+        if self._time_for('sessions', SESSION_CHECK_INTERVAL):
+            try:
+                self._client.task_server.sync_sessions()
+            except Exception:  # pylint: disable=broad-except
+                log.exception("sync_sessions failed")
 
         if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
             try:
