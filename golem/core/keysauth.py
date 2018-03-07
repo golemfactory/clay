@@ -55,23 +55,12 @@ def get_random_float() -> float:
 def _serialize_keystore(keystore):
     def encode_bytes(obj):
         if isinstance(obj, bytes):
-            return '0x' + encode_hex(obj)
+            return ''.join([chr(c) for c in obj])
         if isinstance(obj, dict):
             for k, v in obj.items():
                 obj[k] = encode_bytes(v)
         return obj
     return json.dumps(encode_bytes(keystore))
-
-
-def _deserialize_keystore(keystore):
-    def decode_bytes(obj):
-        if isinstance(obj, str) and obj[:2] == '0x':
-            return decode_hex(obj)
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                obj[k] = decode_bytes(v)
-        return obj
-    return decode_bytes(json.loads(keystore))
 
 
 class WrongPasswordException(Exception):
@@ -160,7 +149,7 @@ class KeysAuth:
                 keystore = f.read()
         except FileNotFoundError:
             return None
-        keystore = _deserialize_keystore(keystore)
+        keystore = json.loads(keystore)
 
         try:
             priv_key = decode_keystore_json(keystore, password)
