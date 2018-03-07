@@ -54,8 +54,11 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             )
         client = mock.MagicMock()
         client.datadir = self.path
-        self.peer_session.p2p_service.task_server = \
-            task_server_factory.TaskServer(client=client)
+        with mock.patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            self.peer_session.p2p_service.task_server = \
+                task_server_factory.TaskServer(client=client)
 
     def __setup_handshake_server_test(self, send_mock) -> message.Hello:
         self.peer_session.conn.server.node = node = p2p_factories.Node()

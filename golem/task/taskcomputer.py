@@ -144,15 +144,10 @@ class TaskComputer(object):
         subtask_id = self.task_to_subtask_mapping.pop(task_id)
         if subtask_id in self.assigned_subtasks:
             subtask = self.assigned_subtasks.pop(subtask_id)
-            p2p_node = P2PNode.from_dict(subtask['task_owner'])
             self.task_server.send_task_failed(
-                subtask_id, subtask['task_id'],
+                subtask_id,
+                subtask['task_id'],
                 'Error downloading resources: {}'.format(reason),
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
             )
         self.session_closed()
 
@@ -194,7 +189,6 @@ class TaskComputer(object):
             logger.error("No subtask with id %r", subtask_id)
             return
 
-        p2p_node = P2PNode.from_dict(subtask['task_owner'])
         if task_thread.error or task_thread.error_msg:
             if "Task timed out" in task_thread.error_msg:
                 self.stats.increase_stat('tasks_with_timeout')
@@ -204,11 +198,6 @@ class TaskComputer(object):
                     subtask_id,
                     subtask['task_id'],
                     task_thread.error_msg,
-                    subtask['return_address'],
-                    subtask['return_port'],
-                    subtask['key_id'],
-                    p2p_node,
-                    self.node_name,
                 )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
 
@@ -222,11 +211,6 @@ class TaskComputer(object):
                 subtask['task_id'],
                 task_thread.result,
                 work_time_to_be_paid,
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
             )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
 
@@ -236,11 +220,6 @@ class TaskComputer(object):
                 subtask_id,
                 subtask['task_id'],
                 "Wrong result format",
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
             )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
         self.counting_task = None
@@ -404,16 +383,10 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtasks.pop(subtask_id)
-            p2p_node = P2PNode.from_dict(subtask['task_owner'])
             self.task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
                 "Host direct task not supported",
-                subtask['return_address'],
-                subtask['return_port'],
-                subtask['key_id'],
-                p2p_node,
-                self.node_name,
             )
             self.counting_task = None
             return

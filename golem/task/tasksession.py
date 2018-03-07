@@ -14,7 +14,6 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
-from golem.network.concent import exceptions as concent_exceptions
 from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
@@ -167,6 +166,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def _task_subtask_from_message(self, msg, local_role):
         task, subtask = None, None
 
+        if hasattr(msg, 'task_to_compute'):
+            msg = msg.task_to_compute
         if isinstance(msg, message.TaskToCompute):
             definition = msg.compute_task_def
             if definition:
@@ -500,12 +501,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.dropped()
         elif ctd:
+            task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
             msg = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
-                requestor_id=ctd['task_owner']['key'],
-                requestor_public_key=ctd['task_owner']['key'],
-                requestor_ethereum_public_key=ctd['task_owner']['key'],
+                requestor_id=task.header.task_owner.key,
+                requestor_public_key=task.header.task_owner.key,
+                requestor_ethereum_public_key=task.header.task_owner.key,
                 provider_id=self.key_id,
                 provider_public_key=self.key_id,
                 provider_ethereum_public_key=self.key_id,
@@ -603,12 +605,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.dropped()
             return
 
-        try:
-            concent_helpers.process_report_computed_task(
-                msg,
-                task_session=self,
-            )
-        except concent_exceptions.ConcentVerificationFailed:
+        returned_msg = concent_helpers.process_report_computed_task(
+            msg=msg,
+            ecc=self.task_server.keys_auth.ecc,
+            task_header_keeper=self.task_server.task_keeper,
+        )
+        self.send(returned_msg)
+        if not isinstance(returned_msg, message.concents.AckReportComputedTask):
+            self.dropped()
             return
 
         self.task_server.receive_subtask_computation_time(
@@ -878,14 +882,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd):
+        header = self.task_manager.comp_task_keeper.get_task_header(
+            ctd['task_id'])
         reasons = message.CannotComputeTask.REASON
-        if ctd['key_id'] != self.key_id\
-                or ctd['task_owner']['key'] != self.key_id:
+        if header.task_owner_key_id != self.key_id\
+                or header.task_owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
         if not tcpnetwork.SocketAddress.is_proper_address(
-                ctd['return_address'],
-                ctd['return_port']):
+                header.task_owner_address,
+                header.task_owner_port):
             self.err_msg = reasons.WrongAddress
             return False
         return True

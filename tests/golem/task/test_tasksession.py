@@ -28,6 +28,8 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
+from tests.factories import p2p as p2p_factories
+from tests.factories import messages as msg_factories
 from tests.factories.taskserver import WaitingTaskResultFactory
 
 
@@ -92,8 +94,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_request_task(self, *_):  # pylint: disable=too-many-statements
+        task_manager = Mock(tasks_states={}, tasks={})
         conn = Mock(
-            server=Mock(task_manager=Mock(tasks_states={}))
+            server=Mock(task_manager=task_manager)
         )
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
@@ -115,10 +118,20 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
 
+        task_id = '42'
+        requestor_key = 'req pubkey'
+        task_manager.tasks[task_id] = Mock(header=TaskHeader(
+            node_name='ABC',
+            task_id='xyz',
+            task_owner_address='10.10.10.10',
+            task_owner_port=12345,
+            task_owner_key_id=requestor_key,
+            environment='',
+            task_owner=Node(key=requestor_key)
+        ))
+
         ctd = message.tasks.ComputeTaskDef()
-        ctd['task_owner'] = Node().to_dict()
-        ctd['task_owner']['key'] = requestor_key = 'req pubkey'
-        ctd['task_id'] = '42'
+        ctd['task_id'] = task_id
 
         task_state = taskstate.TaskState()
         task_state.package_hash = '667'
@@ -181,7 +194,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.send_report_computed_task(
             wtr, wtr.owner_address, wtr.owner_port, "0x00", wtr.owner)
 
-        rct = ts.conn.send_message.call_args[0][0]
+        rct: message.ReportComputedTask = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(rct, message.ReportComputedTask)
         self.assertEqual(rct.subtask_id, wtr.subtask_id)
         self.assertEqual(rct.result_type, ResultType.DATA)
@@ -211,7 +224,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         get_mock.side_effect = history.MessageNotFound
 
-        ts2.interpret(rct)
+        with patch(
+                'golem.network.concent.helpers'
+                '.process_report_computed_task',
+                return_value=msg_factories.AckReportComputedTask()):
+            ts2.interpret(rct)
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             wtr.subtask_id, wtr.computing_time)
         wtr.result_type = "UNKNOWN"
@@ -336,7 +353,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = Mock()
+        ts.task_manager = MagicMock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
         ts.send = Mock()
@@ -366,13 +383,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # No source code in the local environment -> failure
         __reset_mocks()
+        header = ts.task_manager.comp_task_keeper.get_task_header()
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID'
+        header.task_owner_address = '10.10.10.10'
+        header.task_owner_port = 1112
+
         ctd = message.ComputeTaskDef()
-        ctd['key_id'] = "KEY_ID"
         ctd['subtask_id'] = "SUBTASKID"
-        ctd['task_owner'] = Node().to_dict()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_address'] = "10.10.10.10"
-        ctd['return_port'] = 1112
         ctd['docker_images'] = [
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
@@ -394,7 +412,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong key id -> failure
         __reset_mocks()
-        ctd['key_id'] = "KEY_ID2"
+        header.task_owner_key_id = 'KEY_ID2'
+        header.task_owner.key = 'KEY_ID2'
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -404,8 +424,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong task owner key id -> failure
         __reset_mocks()
-        ctd['key_id'] = "KEY_ID"
-        ctd['task_owner']['key'] = "KEY_ID2"
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID2'
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -415,8 +436,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Wrong return port -> failure
         __reset_mocks()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_port'] = 0
+        header.task_owner_key_id = 'KEY_ID'
+        header.task_owner.key = 'KEY_ID'
+        header.task_owner_port = 0
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -426,8 +449,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Proper port and key -> proper execution
         __reset_mocks()
-        ctd['task_owner']['key'] = "KEY_ID"
-        ctd['return_port'] = 1319
+        header.task_owner_port = 1112
+
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -856,6 +879,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
                 self.subtask_id: Mock(deadline=calendar.timegm(time.gmtime()))
             })
         }
+        ts.task_server.task_keeper.task_headers = {}
         self.ts = ts
 
         gsam = patch('golem.network.concent.helpers.history'

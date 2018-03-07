@@ -20,7 +20,7 @@ from golem.utils import decode_hex
 from golem.utils import encode_hex
 
 
-def make_keystore_json(key, password):
+def make_keystore_json(key, password, **_):
     return {'key': key, 'password': password}
 
 

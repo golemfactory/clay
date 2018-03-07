@@ -3,6 +3,7 @@ import logging
 import os
 from os import makedirs, path, remove
 import shutil
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -109,12 +110,16 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(
-            node=Mock(),
-            config_desc=ccd,
-            client=self.node.client,
-            use_docker_manager=False
-        )
+        with mock.patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            task_server = TaskServer(
+                node=Mock(),
+                config_desc=ccd,
+                client=self.node.client,
+                use_docker_manager=False
+            )
         task_server.create_and_set_result_package = Mock()
         task_server.task_keeper.task_headers[task_id] = render_task.header
         task_computer = task_server.task_computer
@@ -136,7 +141,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
                 makedirs(dest_dirname)
             shutil.copyfile(res_file, dest_file)
 
-        def send_task_failed(self_, subtask_id, task_id, error_msg, *args):
+        def send_task_failed(_, __, ___, error_msg):
             self.error_msg = error_msg
 
         TaskServer.send_task_failed = send_task_failed
