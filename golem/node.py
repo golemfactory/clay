@@ -3,7 +3,7 @@ import time
 from typing import List, Optional, Callable
 
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred, inlineCallbacks
+from twisted.internet.defer import gatherResults, Deferred
 
 from apps.appsmanager import AppsManager
 from golem.client import Client

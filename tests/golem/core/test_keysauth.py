@@ -21,13 +21,18 @@ from golem.utils import encode_hex
 
 
 def make_keystore_json(key, password, **_):
-    return {'key': key, 'password': password}
+    k = []
+    for i in key:
+        k.append(ord(hex(i // 16)[2]))
+        k.append(ord(hex(i % 16)[2]))
+    k = bytes(k)
+    return {'key': k, 'password': password}
 
 
 def decode_keystore_json(j, password):
     if password != j['password']:
         raise Exception('Incorrect password')
-    return j['key']
+    return decode_hex(j['key'])
 
 
 # Patch those functions as they are taking quite long to compute
@@ -89,7 +94,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         key_name = "priv_key"
         key_path = os.path.join(keys_dir, key_name)
         with open(key_path, 'w') as f:
-            f.write(json.dumps({'key': '0xdead', 'password': ''}))
+            f.write(json.dumps({'key': 'dead', 'password': ''}))
         assert os.listdir(keys_dir) == [key_name]
 
         # when
@@ -103,7 +108,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         with open(key_path, 'r') as f:
             keystore = f.read()
         keystore = json.loads(keystore)
-        keystore['key'] = decode_hex(keystore['key'])
         new_priv_key = decode_keystore_json(keystore, '')
         assert len(new_priv_key) == KeysAuth.PRIV_KEY_LEN
         self.assertCountEqual(

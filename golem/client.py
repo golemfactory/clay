@@ -54,7 +54,6 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
