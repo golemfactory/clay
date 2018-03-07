@@ -192,7 +192,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(rct.eth_account, "0x00")
         self.assertEqual(rct.extra_data, [])
         self.assertEqual(rct.node_info, wtr.owner.to_dict())
-        self.assertEqual(rct.package_hash, wtr.package_sha1)
+        self.assertEqual(rct.package_hash, 'sha1:' + wtr.package_sha1)
         self.assertEqual(rct.multihash, wtr.result_hash)
         self.assertEqual(rct.secret, wtr.result_secret)
 
