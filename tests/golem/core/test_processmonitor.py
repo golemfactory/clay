@@ -1,37 +1,32 @@
-from multiprocessing import Process
 import os
 import subprocess
 import time
+from multiprocessing import Process
+from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import psutil
 
 from golem.core.processmonitor import ProcessMonitor
-from golem.tools.assertlogs import LogTestCase
 
 
 class MockProcess(object):
-    def __init__(self, timeout=10, raise_exc=True):
+    def __init__(self, timeout=1):
         self.timeout = timeout
         self.working = True
-        self.raise_exc = raise_exc
 
     def run(self):
         started = time.time()
 
         while self.working:
-            time.sleep(1)
+            time.sleep(0.1)
             if time.time() - started >= self.timeout:
-                if self.raise_exc:
-                    raise Exception("Mock process running for over {}s".format(
-                        self.timeout))
-                else:
-                    self.working = False
+                self.working = False
 
 
-def wait_for_processes(timeout=10, *processes):
+def wait_for_processes(timeout=1, *processes):
     started = time.time()
-    timeout = max(timeout, 5)
+    timeout = max(timeout, 1)
 
     while time.time() - started < timeout:
 
@@ -46,15 +41,15 @@ def wait_for_processes(timeout=10, *processes):
         time.sleep(0.5)
 
 
-def sleep_1sec():
-    time.sleep(1)
+def sleep_tenth_sec():
+    time.sleep(0.1)
 
 
 def run_exit():
     return
 
 
-class TestProcessMonitor(LogTestCase):
+class TestProcessMonitor(TestCase):
 
     def test_monitor(self):
         mp = MockProcess()
@@ -68,10 +63,10 @@ class TestProcessMonitor(LogTestCase):
         pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
-        wait_for_processes(10, p1, p2)
+        wait_for_processes(2, p1, p2)
 
-        self.assertFalse(pm.is_process_alive(p1))
-        self.assertFalse(pm.is_process_alive(p2))
+        self.assertFalse(pm.is_process_alive(p1), "process not finished")
+        self.assertFalse(pm.is_process_alive(p2), "process not killed")
 
     def test_monitor_2(self):
         mp1, mp2 = MockProcess(), MockProcess(timeout=0)
@@ -86,11 +81,10 @@ class TestProcessMonitor(LogTestCase):
         pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
-        wait_for_processes(10, p1, p2)
+        wait_for_processes(1, p1, p2)
 
-        if pm.is_process_alive(p1) or pm.is_process_alive(p2):
-            pm.exit()
-            self.fail("Processes not killed after timeout")
+        self.assertFalse(pm.is_process_alive(p1), "process not killed")
+        self.assertFalse(pm.is_process_alive(p2), "process not finished")
 
     def test_exit(self):
         import logging
@@ -112,8 +106,7 @@ class TestProcessMonitor(LogTestCase):
         pm.add_callbacks(callback)
         pm.start()
         pm.exit()
-
-        wait_for_processes(10, p1, p2)
+        pm.join()
 
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
@@ -139,7 +132,8 @@ class TestProcessMonitor(LogTestCase):
 
     def test_lifecycle_popen(self):
 
-        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        process = subprocess.Popen(
+            ['python', '-c', 'import time; time.sleep(0.1)'])
         assert ProcessMonitor.is_process_alive(process)
         assert ProcessMonitor._pid(process)
         assert ProcessMonitor.is_supported(process)
@@ -150,7 +144,7 @@ class TestProcessMonitor(LogTestCase):
 
     def test_lifecycle_multiprocessing(self):
 
-        process = Process(target=sleep_1sec)
+        process = Process(target=sleep_tenth_sec)
         assert not ProcessMonitor.is_process_alive(process)
         assert ProcessMonitor.is_supported(process)
 
@@ -159,7 +153,7 @@ class TestProcessMonitor(LogTestCase):
         process.join()
 
         assert not ProcessMonitor.is_process_alive(process)
-        assert ProcessMonitor.exit_code(process) is not None
+        assert ProcessMonitor.exit_code(process) == 0
 
     def test_lifecycle_none(self):
 
@@ -179,14 +173,14 @@ class TestProcessMonitor(LogTestCase):
 
     def test_kill_process_multiprocessing(self):
 
-        process = Process(target=sleep_1sec)
+        process = Process(target=sleep_tenth_sec)
         process.start()
 
         assert ProcessMonitor.is_process_alive(process)
         ProcessMonitor.kill_process(process)
         assert not ProcessMonitor.is_process_alive(process)
 
-        process = Process(target=sleep_1sec)
+        process = Process(target=sleep_tenth_sec)
         ProcessMonitor.kill_process(process)
 
     def test_exit_code(self):
