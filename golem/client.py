@@ -34,7 +34,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import DB_MODELS, db
+from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -113,7 +113,8 @@ class Client(HardwarePresetsMixin):
         )
 
         # Initialize database
-        self.db = Database(db, datadir, DB_MODELS)
+        self.db = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                           db_dir=datadir)
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
