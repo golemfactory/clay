@@ -7,6 +7,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
+import ethereum.keys
 from ethereum.keys import decode_keystore_json, make_keystore_json
 
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
@@ -196,7 +197,16 @@ class KeysAuth:
 
         if os.path.exists(key_path):
             backup_file(key_path)
-        keystore = make_keystore_json(key, password)
+
+        # The default c parameter is quite large and makes the decryption take
+        # more than 10 seconds which is annoying.
+        ethereum.keys.PBKDF2_CONSTANTS["c"] = 1024
+        keystore = make_keystore_json(
+            key,
+            password,
+            kdf="pbkdf2",
+            cipher="aes-128-ctr",
+        )
         with open(key_path, 'w') as f:
             f.write(_serialize_keystore(keystore))
 
