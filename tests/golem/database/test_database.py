@@ -21,6 +21,7 @@ class TestDatabase(DatabaseFixture, PEP8MixIn):
         self.assertEqual(self.database.get_user_version(), 0)
 
         self.database.close()
-        database = Database(m.db, self.path, m.DB_MODELS)
+        database = Database(m.db, fields=m.DB_FIELDS, models=m.DB_MODELS,
+                            db_dir=self.path)
         self.assertEqual(database.get_user_version(), database.SCHEMA_VERSION)
         database.close()

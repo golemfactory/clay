@@ -63,10 +63,8 @@ class TaskServerMessageHandlerTestCase(
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
-    @mock.patch("golem.task.taskserver.TaskServer.get_result")
     def test_verdict_report_computed_task(
             self,
-            get_mock,
             rsct_mock):
         msg = msg_factories.VerdictReportComputedTask()
         library.interpret(msg)
@@ -79,7 +77,6 @@ class TaskServerMessageHandlerTestCase(
             msg.ack_report_computed_task.subtask_id,
             rct.computation_time,
         )
-        get_mock.assert_called_once_with(rct)
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
@@ -116,5 +113,22 @@ class TaskServerMessageHandlerTestCase(
         library.interpret(msg)
         rsct_mock.assert_not_called()
         get_mock.assert_not_called()
+
+    @mock.patch(
+        "golem.network.concent.helpers.process_report_computed_task"
+    )
+    def test_force_report_computed_task(self, helper_mock):
+        msg = msg_factories.ForceReportComputedTask()
+        helper_mock.return_value = returned_msg = object()
+        library.interpret(msg)
+        helper_mock.assert_called_once_with(
+            msg=msg.report_computed_task,
+            ecc=mock.ANY,
+            task_header_keeper=mock.ANY,
+        )
+        self.task_server.client.concent_service.submit_task_message \
+            .assert_called_once_with(
+                msg.report_computed_task.subtask_id,
+                returned_msg)
 
 # pylint: enable=no-self-use

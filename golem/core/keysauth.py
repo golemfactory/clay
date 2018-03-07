@@ -7,7 +7,7 @@ import time
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
-import ethereum
+import ethereum.keys
 from ethereum.keys import decode_keystore_json, make_keystore_json
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub

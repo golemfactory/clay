@@ -541,9 +541,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['working_directory'] == working_directory
-        assert ctd['docker_images'] == c.header.docker_images
-        assert ctd['task_owner'] == c.header.task_owner.to_dict()
-        assert ctd['environment'] == c.header.environment
+        assert ctd['docker_images'] == c.docker_images
 
 
 class TestLogKeyError(LogTestCase):

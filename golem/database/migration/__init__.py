@@ -1,9 +1,7 @@
-import inspect
 from contextlib import contextmanager
 
 import peewee
 
-import golem
 from golem.database import schemas
 
 
@@ -12,27 +10,28 @@ def default_migrate_dir():
 
 
 @contextmanager
-def patch_peewee():
+def patch_peewee(db_fields, db_models):
     """
     Temporarily assign all known models and field types to the peewee module.
     peewee_migrate assumes that all models and field types are located there.
     """
 
-    def is_field(cls):
-        return inspect.isclass(cls) and issubclass(cls, peewee.Field)
-
-    db_fields = [c for _, c in inspect.getmembers(golem.model, is_field)]
-
     undo = set()
+    replace = dict()
 
-    for db_class in db_fields + golem.model.DB_MODELS:
+    for db_class in db_fields + db_models:
         property_name = db_class.__name__
 
-        if not hasattr(peewee, property_name):
+        if hasattr(peewee, property_name):
+            replace[property_name] = getattr(peewee, property_name)
+        else:
             undo.add(property_name)
-            setattr(peewee, property_name, db_class)
+
+        setattr(peewee, property_name, db_class)
 
     yield
 
-    for property_name in undo:
-        delattr(peewee, property_name)
+    for name in undo:
+        delattr(peewee, name)
+    for name, value in replace.items():
+        setattr(peewee, name, value)

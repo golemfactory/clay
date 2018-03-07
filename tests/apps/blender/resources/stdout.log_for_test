@@ -1,4 +1,4 @@
-found bundled python: /opt/blender-2.78a-linux-glibc211-x86_64/2.78/python
+found bundled python: /opt/blender-2.79a-linux-glibc211-x86_64/2.79/python
 read blend: /golem/resources/fishy_cat.blend
 warning DM_ensure_tessface: could not create tessfaces from 24 polygons, dm->type=2
 warning DM_ensure_tessface: could not create tessfaces from 40 polygons, dm->type=2

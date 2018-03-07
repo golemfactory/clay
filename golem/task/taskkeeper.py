@@ -2,8 +2,7 @@ import logging
 import pathlib
 import pickle
 import time
-from typing import Optional
-
+import typing
 
 import random
 from collections import Counter
@@ -110,7 +109,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError, AttributeError):
+            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -138,6 +137,10 @@ class CompTaskKeeper:
     @handle_key_error
     def get_task_env(self, task_id):
         return self.active_tasks[task_id].header.environment
+
+    @handle_key_error
+    def get_task_header(self, task_id):
+        return self.active_tasks[task_id].header
 
     @handle_key_error
     def receive_subtask(self, comp_task_def):
@@ -171,11 +174,6 @@ class CompTaskKeeper:
         if comp_task_def['subtask_id'] in task.subtasks:
             logger.info(not_accepted_message, *log_args,
                         "Definition of this subtask was already received.")
-            return False
-        if comp_task_def['environment'] != task.header.environment:
-            msg = "Expected environment: %s, received: %s." % (
-                task.header.environment, comp_task_def['environment'])
-            logger.info(not_accepted_message, *log_args, msg)
             return False
         return True
 
@@ -239,7 +237,7 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers = {}
+        self.task_headers: typing.Dict[str, TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # results of tasks' support checks
@@ -372,7 +370,7 @@ class TaskHeaderKeeper:
             return False
         return local.patch >= remote.patch
 
-    def get_support_status(self, task_id) -> Optional[SupportStatus]:
+    def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
         :param task_id: id of the task
         :return SupportStatus|None: the support status
@@ -511,7 +509,7 @@ class TaskHeaderKeeper:
         self.removed_tasks[task_id] = time.time()
         return True
 
-    def get_owner(self, task_id) -> Optional[str]:
+    def get_owner(self, task_id) -> typing.Optional[str]:
         """ Returns key_id of task owner or None if there is no information
         about this task.
         """
