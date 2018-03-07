@@ -7,6 +7,7 @@ import time
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
+import ethereum
 from ethereum.keys import decode_keystore_json, make_keystore_json
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
@@ -22,19 +23,18 @@ def sha2(seed: Union[str, bytes]) -> int:
     return int.from_bytes(sha256(seed).digest(), 'big')
 
 
-def get_random(min_value: int = 0, max_value: Optional[int] = None) -> int:
+def get_random(min_value: int = 0, max_value: int = sys.maxsize) -> int:
     """
     :return: Random cryptographically secure random integer in range
              `<min_value, max_value>`
     """
 
-    from Crypto.Random.random import randrange
-    if max_value is None:
-        max_value = sys.maxsize
+    from Crypto.Random.random import randrange  # noqa pylint: disable=no-name-in-module,import-error
     if min_value > max_value:
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
         return min_value
+
     return randrange(min_value, max_value)
 
 
@@ -72,14 +72,6 @@ def _deserialize_keystore(keystore):
 
 
 class WrongPassword(Exception):
-    pass
-
-
-class NotDifficultEnough(Exception):
-    pass
-
-
-class ReactorStopped(Exception):
     pass
 
 
@@ -166,7 +158,7 @@ class KeysAuth:
         pub_key = privtopub(priv_key)
 
         if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            raise NotDifficultEnough
+            raise Exception("Loaded key is not difficult enough")
 
         return priv_key, pub_key
 
@@ -185,14 +177,22 @@ class KeysAuth:
             # lets be responsive to reactor stop (eg. ^C hit by user)
             if reactor_started and not reactor.running:
                 logger.warning("reactor stopped, aborting key generation ..")
-                raise ReactorStopped
+                raise Exception("aborting key generation")
 
         logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
 
     @staticmethod
     def _save_private_key(key, key_path, password: str):
-        keystore = make_keystore_json(key, password)
+        # The default c parameter is quite large and makes the decryption take
+        # more than 10 seconds which is annoying.
+        ethereum.keys.PBKDF2_CONSTANTS["c"] = 1024
+        keystore = make_keystore_json(
+            key,
+            password,
+            kdf="pbkdf2",
+            cipher="aes-128-ctr",
+        )
         with open(key_path, 'w') as f:
             f.write(_serialize_keystore(keystore))
 

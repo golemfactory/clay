@@ -1,6 +1,6 @@
 import os
+import time
 from random import random, randint
-from unittest import TestCase
 from unittest.mock import patch
 
 from golem_messages import message
@@ -8,12 +8,9 @@ from golem_messages.cryptography import ECCx, privtopub
 
 from golem import testutils
 from golem.core.keysauth import (
-    KeysAuth,
-    get_random,
-    get_random_float,
-    sha2,
-    WrongPassword, NotDifficultEnough)
+    KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.core.simpleserializer import CBORSerializer
+from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex
 from golem.utils import encode_hex
 
@@ -96,7 +93,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
 
         # then
-        with self.assertRaises(NotDifficultEnough):
+        with self.assertRaisesRegex(Exception,
+                                    "Loaded key is not difficult enough"):
             self._create_keysauth(difficulty=req_difficulty, key_name=priv_key)
 
     def test_save_keys(self):
@@ -228,16 +226,23 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             self._create_keysauth(key_name=key_name, password='wrong_pw')
 
 
-class TestKeysAuthWithReactor(TestCase):
+class TestKeysAuthWithReactor(TestWithReactor):
 
     @patch('golem.core.keysauth.logger')
     def test_generate_keys_stop_when_reactor_stopped(self, logger):
-        from twisted.internet import reactor, threads
-        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
-        reactor.callLater(0.1, reactor.stop)
-        reactor.run()
+        # given
+        from twisted.internet import threads
+        reactor = self._get_reactor()
 
-        assert reactor._startedBefore
+        # when
+        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
+
+        time.sleep(0.01)
+        reactor.stop()
+        time.sleep(0.01)
+
+        # then
+        assert not reactor.running
         assert logger.info.call_count == 1
         assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
         assert logger.warning.call_count == 1
