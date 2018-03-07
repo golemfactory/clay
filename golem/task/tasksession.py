@@ -104,6 +104,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # for the result
         self.result_owner = None
         self.err_msg = None  # Keep track of errors
+        self.node_info = None
         self.__set_msg_interpretations()
 
     ########################
@@ -129,17 +130,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     def dropped(self, reason=ConnectionDone):
         """ Close connection. Save session state if connection was lost. """
         BasicSafeSession.dropped(self, reason)
+
         if not self.task_server:
             return
-
         self.task_server.remove_task_session(self)
+
         if not self.key_id:
             return
+        self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
         if reason == ConnectionLost:
+            self._connection_lost()
+
+    def _connection_lost(self):
+        if self.task_server.pending_messages.exists(self.key_id):
             self.task_server.pending_messages.put_session(self)
-            # TODO: reconnect if there are pending messages
-        self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -459,7 +464,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID
+                proto_id=PROTOCOL_CONST.ID,
+                node_info=self.task_server.node.to_dict()
             )
         )
 
@@ -787,6 +793,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if self.key_id is None:
             self.key_id = msg.client_key_id
             send_hello = True
+
+        if self.node_info is None:
+            self.node_info = msg.node_info
 
         if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(

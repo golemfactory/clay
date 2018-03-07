@@ -68,7 +68,7 @@ class PendingObjectModel(BaseModel):
                              task_id: Optional[object] = ANY,
                              subtask_id: Optional[object] = ANY) -> List[Tuple]:
 
-        """ Builds and returns 'with' statement clauses """
+        """ Builds and returns 'where' statement clauses """
 
         clauses = []
 
@@ -84,6 +84,9 @@ class PendingObjectModel(BaseModel):
 
 class PendingTaskSession(PendingObjectModel):
 
+    address = CharField(null=True)
+    port = IntegerField(null=True)
+    node_info = JsonField(null=True)
     result_owner = ResultOwnerField(null=True)
     err_msg = TextField(null=True)
 
@@ -93,6 +96,7 @@ class PendingTaskSession(PendingObjectModel):
             node_id=session.key_id,
             task_id=session.task_id,
             subtask_id=session.subtask_id,
+            node_info=session.node_info,
             result_owner=session.result_owner,
             err_msg=session.err_msg
         )
@@ -100,6 +104,7 @@ class PendingTaskSession(PendingObjectModel):
     def update_session(self, session: 'TaskSession') -> None:
         session.task_id = self.task_id
         session.subtask_id = self.subtask_id
+        session.node_info = self.node_info
         session.result_owner = self.result_owner
         session.err_msg = self.err_msg
 
@@ -198,8 +203,8 @@ class PendingSessionMessages(PendingMessagesMixin,
             db_name=db_name,
             db_dir=db_dir,
             schemas_dir=schemas_dir,
-            fields=self._fields,
-            models=self._models
+            fields=DB_FIELDS,
+            models=DB_MODELS
         )
 
     def sweep(self) -> None:
@@ -209,6 +214,9 @@ class PendingSessionMessages(PendingMessagesMixin,
             model.delete() \
                 .where(model.created_date + self.LIFETIME <= now) \
                 .execute()
+
+    def quit(self):
+        self._database.close()
 
 
 DB_FIELDS = [cls for _, cls in collect_db_fields(__name__)]

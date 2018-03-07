@@ -80,6 +80,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock, *_):
+        node = Mock(to_dict=Mock(return_value=dict()))
+        self.task_session.conn.server.node = node
         self.task_session.conn.server.get_key_id.return_value = key_id = \
             'key id%d' % (random.random() * 1000,)
         self.task_session.send_hello()
@@ -87,7 +89,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['rand_val', self.task_session.rand_val],
             ['proto_id', PROTOCOL_CONST.ID],
             ['node_name', None],
-            ['node_info', None],
+            ['node_info', dict()],
             ['port', None],
             ['client_ver', None],
             ['client_key_id', key_id],

@@ -485,6 +485,7 @@ class TaskServer(
         return socket_addresses
 
     def quit(self):
+        self.pending_messages.quit()
         self.task_computer.quit()
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):

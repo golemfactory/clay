@@ -664,6 +664,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.ts.task_computer = MagicMock()
 
     def tearDown(self):
+        self.ts.quit()
         for parent in self.__class__.__bases__:
             parent.tearDown(self)
 
@@ -808,6 +809,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         )
         self.ts.task_manager.dump_task = Mock()
         self.task_count = 3
+
+    def tearDown(self):
+        self.ts.quit()
+        for parent in self.__class__.__bases__:
+            parent.tearDown(self)
 
     @staticmethod
     def _create_tasks(task_server, count):
