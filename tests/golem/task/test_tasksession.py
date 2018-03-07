@@ -842,6 +842,7 @@ class ReportComputedTaskTest(LogTestCase):
                 self.subtask_id: Mock(deadline=calendar.timegm(time.gmtime()))
             })
         }
+        ts.task_server.task_keeper.task_headers = {}
         self.ts = ts
 
         gsam = patch('golem.network.concent.helpers.history'

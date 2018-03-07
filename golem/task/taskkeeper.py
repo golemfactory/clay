@@ -510,7 +510,7 @@ class TaskHeaderKeeper:
         self.removed_tasks[task_id] = time.time()
         return True
 
-    def get_owner(self, task_id) -> Optional[str]:
+    def get_owner(self, task_id) -> typing.Optional[str]:
         """ Returns key_id of task owner or None if there is no information
         about this task.
         """

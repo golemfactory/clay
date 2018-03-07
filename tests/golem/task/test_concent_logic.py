@@ -114,7 +114,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         get_mock.return_value = []
         self.task_session.task_server.task_keeper.task_headers = {}
         self.task_session._react_to_report_computed_task(self.msg)
-        self.assertEqual(send_mock.call_count, 2)
+        self.assertEqual(send_mock.call_count, 1)
+        concent_call = send_mock.call_args_list[0]
+        ack_msg = concent_call[0][0]
+        self.assertIsInstance(ack_msg, concents.AckReportComputedTask)
 
     @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')

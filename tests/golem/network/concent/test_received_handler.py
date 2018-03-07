@@ -63,10 +63,8 @@ class TaskServerMessageHandlerTestCase(
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
-    @mock.patch("golem.task.taskserver.TaskServer.get_result")
     def test_verdict_report_computed_task(
             self,
-            get_mock,
             rsct_mock):
         msg = msg_factories.VerdictReportComputedTask()
         library.interpret(msg)
@@ -79,7 +77,6 @@ class TaskServerMessageHandlerTestCase(
             msg.ack_report_computed_task.subtask_id,
             rct.computation_time,
         )
-        get_mock.assert_called_once_with(rct)
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
