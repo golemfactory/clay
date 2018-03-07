@@ -141,7 +141,10 @@ class PendingMessagesMixin:
 
         clauses = PendingMessage.build_select_clauses(node_id, task_id,
                                                       subtask_id)
-        return PendingMessage.select().where(clauses).iterator()
+        return PendingMessage.select() \
+            .where(clauses) \
+            .order_by(PendingMessage.created_date.asc()) \
+            .iterator()
 
     @classmethod
     def exists(cls,
@@ -170,16 +173,6 @@ class PendingTaskSessionsMixin:
         clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
                                                           subtask_id)
         return PendingTaskSession.get(clauses)
-
-    @classmethod
-    def exists(cls,
-               node_id: str,
-               task_id: Optional[object] = ANY,
-               subtask_id: Optional[object] = ANY) -> bool:
-
-        clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
-                                                          subtask_id)
-        return PendingTaskSession.select().where(clauses).exists()
 
 
 # Manager
