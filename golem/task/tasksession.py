@@ -139,12 +139,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
-        if reason == ConnectionLost:
-            self._connection_lost()
+        if not self.node_info:
+            return
 
-    def _connection_lost(self):
-        if self.task_server.pending_messages.exists(self.key_id):
-            self.task_server.pending_messages.put_session(self)
+        pending_messages = self.task_server.pending_messages
+        if reason == ConnectionLost or pending_messages.exists(self.key_id):
+            pending_messages.put_session(self)
 
     #######################
     # SafeSession methods #
@@ -583,7 +583,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
-        if not self.task_server.message_queue.exists(self.key_id):
+        if not self.task_server.pending_messages.exists(self.key_id):
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
@@ -820,7 +820,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.verified = True
             self.task_server.verified_conn(self.conn_id)
             self._restore_session_state()
-            self._send_pending_messages()
+            self._restore_messages()
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
 
@@ -857,12 +857,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
     def send(self, msg) -> bool:  # noqa pylint: disable=arguments-differ
 
+        basic_messages = [message.Hello.TYPE,
+                          message.RandVal.TYPE,
+                          message.Disconnect.TYPE]
+
         if not BasicSafeSession.send(self, msg):
-            if self.key_id:
+            if self.key_id and msg.TYPE not in basic_messages:
                 self.task_server.pending_messages.put(
                     node_id=self.key_id,
-                    msg_type=msg.TYPE,
-                    msg_serialized=msg.serialize(),
+                    msg=msg,
                     task_id=self.task_id,
                     subtask_id=self.subtask_id
                 )
@@ -876,25 +879,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.port
         )
         return True
-
-    def _send_pending_messages(self) -> None:
-        try:
-            iterator = self.task_server.pending_messages.get(self.key_id)
-        except PeeweeException as exc:
-            logger.error("Error fetching pending messages: %r", exc)
-            return
-
-        from twisted.internet import reactor
-
-        for pending_msg in iterator:
-            try:
-                cls = registered_message_types[pending_msg.type]
-                msg = cls(slots=pending_msg.slots)
-                reactor.callLater(0, self.send, msg)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error('Cannot send the pending message: %r', exc)
-            else:
-                pending_msg.delete_instance()
 
     def check_provider_for_subtask(self, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
@@ -1004,6 +988,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                          self.key_id)
         else:
             state.update_sesion(self)
+
+    def _restore_messages(self) -> None:
+        from twisted.internet import reactor
+
+        try:
+            iterator = self.task_server.pending_messages.get(self.key_id)
+        except PeeweeException as exc:
+            logger.error("Error fetching pending messages: %r", exc)
+            return
+
+        for pending_msg in iterator:
+            try:
+                cls = registered_message_types[pending_msg.type]
+                msg = cls(slots=pending_msg.slots)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error('Cannot send the pending message: %r', exc)
+            else:
+                reactor.callLater(0, self.send, msg)
+                pending_msg.delete_instance()
 
     def __set_msg_interpretations(self):
         self._interpretation.update({

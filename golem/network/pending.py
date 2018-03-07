@@ -1,15 +1,17 @@
 import datetime
-from typing import List, Iterator, Optional, Tuple
-
+import json
 import operator
 from functools import reduce
-from golem_messages import serializer
-from peewee import CharField, IntegerField, TextField, BlobField
+from typing import Iterator, List, Optional, Tuple
 
-from golem.database import GolemSqliteDatabase, Database
-from golem.model import JsonField, BaseModel, collect_db_models, \
-    collect_db_fields
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from peewee import BlobField, CharField, IntegerField, TextField, DoesNotExist
+
+from golem_messages import serializer
+
+from golem.core.simpleserializer import DictSerializer
+from golem.database import Database, GolemSqliteDatabase
+from golem.model import BaseModel, JsonField, collect_db_fields, \
+    collect_db_models
 
 ANY = object()
 db = GolemSqliteDatabase(
@@ -24,15 +26,13 @@ db = GolemSqliteDatabase(
 
 # Fields
 
-class ResultOwnerField(JsonField):
+class ResultOwnerField(TextField):
 
     def db_value(self, value):
-        dictionary = value.__dict__ if value else None
-        return super().db_value(dictionary)
+        return json.dumps(DictSerializer.dump(value))
 
     def python_value(self, value):
-        dictionary = super().python_value(value)
-        return EthAccountInfo(**dictionary)
+        return DictSerializer.load(json.loads(value))
 
 
 class MessageSlotsField(BlobField):
@@ -166,6 +166,12 @@ class PendingTaskSessionsMixin:
 
     @classmethod
     def put_session(cls, session: 'TaskSession') -> None:
+        try:
+            session = cls.get_session(session.key_id)
+            session.delete_instance()
+        except DoesNotExist:
+            pass
+
         PendingTaskSession.from_session(session).save(force_insert=True)
 
     @classmethod

@@ -124,6 +124,15 @@ class TaskServer(
             logger.debug('TASK SERVER TASKS STATES: %r',
                          self.task_manager.tasks_states)
 
+    def sync_sessions(self):
+        for session in self.pending_messages.get_sessions():
+            # Messages may have not appeared (yet; e.g. task results)
+            if not self.pending_messages.exists(session.node_id):
+                continue
+
+            logger.info('Reconnecting to %r', session.node_info)
+            self.start_task_session(session.node_info, None, None)
+
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(
             env_id)
