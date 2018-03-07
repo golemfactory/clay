@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 import logging
 import time
-from typing import Iterable
+from typing import List
 
 from ethereum.utils import denoms
 from pydispatch import dispatcher
@@ -108,13 +108,23 @@ class IncomesKeeper:
         ).order_by(Income.created_date.desc())
 
     @staticmethod
-    def get_overdue_incomes() -> Iterable[Income]:
-        accepted_ts_deadline = time.time() - PAYMENT_DEADLINE
+    def update_overdue_incomes() -> List[Income]:
+        """
+        Set overdue flag for all incomes that have been waiting for too long.
+        :return: Updated incomes
+        """
+        accepted_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
         created_deadline = datetime.now() - timedelta(seconds=PAYMENT_DEADLINE)
-        return Income.select(Income).where(
+
+        incomes = list(Income.select().where(
+            Income.overdue == False,   # noqa pylint: disable=singleton-comparison
             Income.transaction.is_null(True),
-            Income.accepted_ts < accepted_ts_deadline | (
+            (Income.accepted_ts < accepted_ts_deadline) | (
                 Income.accepted_ts.is_null(True) &
                 (Income.created_date < created_deadline)
             )
-        )
+        ))
+        for income in incomes:
+            income.overdue = True
+            income.save()
+        return incomes

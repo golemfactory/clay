@@ -83,7 +83,7 @@ class TransactionSystem(object):
         return [item(income) for income in incomes]
 
     def get_nodes_with_overdue_payments(self) -> List[str]:
-        overdue_incomes = self.incomes_keeper.get_overdue_incomes()
+        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
         return [x.sender_node for x in overdue_incomes]
 
     def sync(self) -> None:

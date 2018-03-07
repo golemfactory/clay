@@ -4,7 +4,7 @@ from golem import model
 # pylint: disable=too-few-public-methods
 
 
-class Income(factory.Factory):  # pylint: disable=too-few-public-methods
+class Income(factory.Factory):
     class Meta:
         model = model.Income
 

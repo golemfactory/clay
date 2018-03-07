@@ -19,7 +19,7 @@ class TestTransactionSystem(TestWithDatabase):
 
     def test_check_payments(self):
         with patch.object(
-            self.transaction_system.incomes_keeper, 'get_overdue_incomes'
+            self.transaction_system.incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
             incomes.return_value = [
                 Mock(spec=Income, sender_node='a'),

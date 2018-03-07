@@ -39,6 +39,13 @@ class BaseModel(Model):
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
 
+    def refresh(self):
+        """
+        https://github.com/coleifer/peewee/issues/686#issuecomment-130548126
+        :return: Refreshed version of the object retrieved from db
+        """
+        return type(self).get(self._pk_expr())
+
 
 class GenericKeyValue(BaseModel):
     key = CharField(primary_key=True)
