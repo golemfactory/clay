@@ -138,7 +138,7 @@ class PendingMessagesMixin:
     def get(cls,
             node_id: str,
             task_id: Optional[object] = ANY,
-            subtask_id: Optional[object] = ANY) -> Iterator['PendingMessage']:
+            subtask_id: Optional[object] = ANY) -> Iterator[PendingMessage]:
 
         """ Returns a message iterator.
             Can be used by an established TaskSession between ourselves and
@@ -178,6 +178,13 @@ class PendingTaskSessionsMixin:
         clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
                                                           subtask_id)
         return PendingTaskSession.get(clauses)
+
+    @classmethod
+    def get_sessions(cls) -> Iterator[PendingTaskSession]:
+
+        return PendingTaskSession.select() \
+            .order_by(+PendingTaskSession.created_date) \
+            .iterator()
 
 
 # Manager
@@ -220,4 +227,6 @@ class PendingSessionMessages(PendingMessagesMixin,
 
 
 DB_FIELDS = [cls for _, cls in collect_db_fields(__name__)]
-DB_MODELS = [cls for _, cls in collect_db_models(__name__)]
+DB_MODELS = [cls for _, cls in collect_db_models(
+    __name__, excluded=[BaseModel, PendingObjectModel]
+)]
