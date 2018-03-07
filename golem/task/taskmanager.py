@@ -453,6 +453,7 @@ class TaskManager(TaskEventListener):
                                      op=OtherOp.UNEXPECTED)
             verification_finished_()
             return
+        subtask_state.subtask_status = SubtaskStatus.verifying
 
         def verification_finished():
             ss = self.tasks_states[task_id].subtask_states[subtask_id]
