@@ -27,6 +27,36 @@ def register_handlers(instance) -> None:
             continue
         library.register_handler(msg_cls)(method)
 
+@library.register_handler(message.concents.ForceReportComputedTaskResponse)
+def on_force_report_computed_task_response(msg):
+    """Concents response to Provider to his ForceReportComputedTask
+    """
+    reasons = message.concents.ForceReportComputedTaskResponse.REASON
+
+    if msg.reason == reasons.SubtaskTimeout:
+        # Is reject_report_computed_task created and attached by concent?
+        logger.warning("[CONCENT] SubtaskTimeout for subtask: %r", msg)
+        return
+
+    if msg.reason in (reasons.ConcentAck, reasons.AckFromRequestor):
+        subtask_id = msg.ack_report_computed_task.subtask_id
+        logger.warning(
+            "[CONCENT] %s for subtask: %r",
+            msg.reason,
+            subtask_id,
+        )
+        return
+
+    if msg.reason == reasons.RejectFromRequestor:
+        subtask_id = msg.ack_report_computed_task.subtask_id
+        logger.warning(
+            "[CONCENT] Reject for subtask: %r",
+            subtask_id,
+        )
+        return
+
+    raise RuntimeError("Impossible condition caused by {}".format(msg))
+
 
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
