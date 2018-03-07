@@ -44,7 +44,7 @@ class CompTaskInfo:
             self.requests
         )
 
-    def check_deadline(self, deadline):
+    def check_deadline(self, deadline: float) -> bool:
         """
         Checks if subtask deadline defined in newly received ComputeTaskDef
         is properly set, ie. it's set to future date, but not much further than
@@ -54,7 +54,7 @@ class CompTaskInfo:
         """
         now_ = common.get_timestamp_utc()
         expected_deadline = now_ + self.header.subtask_timeout
-        if now_ < deadline < expected_deadline + MTD:
+        if now_ < deadline < expected_deadline + MTD.seconds:
             return True
         logger.debug('check_deadline failed: (now: %r, deadline: %r, '
                      'timeout: %r)', now_, deadline,
