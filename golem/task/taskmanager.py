@@ -366,11 +366,6 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None, False, False
 
-        ctd['key_id'] = task.header.task_owner_key_id
-        ctd['return_address'] = task.header.task_owner_address
-        ctd['return_port'] = task.header.task_owner_port
-        ctd['task_owner'] = task.header.task_owner.to_dict()
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, price, ctd, address,

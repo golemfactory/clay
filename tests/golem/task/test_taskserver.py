@@ -187,13 +187,9 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         task_header["task_id"] = "xyz"
         ts.add_task_header(task_header)
         ts.request_task()
-        self.assertTrue(
-            ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101,
-                            "key", n, "node_name"))
+        self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(
-            ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101,
-                            "key", n, "node_name"))
+        self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40))
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
@@ -702,7 +698,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = "xyz"
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.ctd['environment'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
@@ -750,7 +745,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = "xyz"
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.ctd['environment'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
