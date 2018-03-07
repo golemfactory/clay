@@ -84,8 +84,7 @@ class ReportComputedTask(factory.Factory):
         TaskToCompute,
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
-    size = factory.LazyFunction(
-        lambda: random.randint(1 << 20, 10 << 20))
+    size = factory.Faker('random_int', min=1 << 20, max=10 << 20)
     multihash = factory.Faker('text')
     secret = factory.Faker('text')
 
