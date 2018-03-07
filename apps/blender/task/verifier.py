@@ -112,7 +112,8 @@ class BlenderVerifier(FrameRenderingVerifier):
     # The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
     # pylint: disable=R0914
-    def _crop_rendered(self, results, time_spend, verification_context):
+    def _crop_rendered(self, results, time_spend, verification_context,
+                       crop_number):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
 
@@ -124,7 +125,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             if self.wasFailure:
                 return
 
-        work_dir = verification_context.crop_path
+        work_dir = verification_context.get_crop_path(crop_number)
         di = DockerImage(BlenderVerifier.DOCKER_NAME,
                          tag=BlenderVerifier.DOCKER_TAG)
 
@@ -150,8 +151,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             "/golem/resources",
             os.path.basename(self.current_results_file))
 
-        params['xres'] = verification_context.crop_position_x
-        params['yres'] = verification_context.crop_position_y
+        params['xres'] = verification_context.crop_pixels[crop_number][0]
+        params['yres'] = verification_context.crop_pixels[crop_number][1]
 
         # pylint: disable=W0703
         try:
@@ -172,8 +173,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             result_path = os.path.join(output_dir, "result.txt")
             try:
                 with open(result_path) as json_data:
-                    self.metrics[
-                        verification_context.crop_id] = json.load(
+                    self.metrics[crop_number] = json.load(
                             json_data)
             except EnvironmentError as exc:
                 logger.error("Metrics not calculated %r", exc)
