@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import itertools
 import logging
+from typing import Optional
+
 import os
 import time
 import weakref
@@ -78,10 +80,9 @@ class TaskServer(
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
 
+        self.pending_messages: Optional[PendingSessionMessages] = None
         if persist_messages:
             self.pending_messages = PendingSessionMessages(client.datadir)
-        else:
-            self.pending_messages = None
 
         self.max_trust = 1.0
         self.min_trust = 0.0

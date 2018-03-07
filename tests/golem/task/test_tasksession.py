@@ -339,6 +339,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         assert pending_message is None
         assert conn.close.called
+        pending_messages.quit()
 
     def test_result_rejected(self):
         # pylint: disable=no-value-for-parameter
