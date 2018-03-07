@@ -180,7 +180,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def test_ack(self, send_mock, *_):
         "Send ACK if verification passed"
         self.task_session._react_to_report_computed_task(self.msg)
-        self.assertEqual(send_mock.call_count, 2)
+        self.assertEqual(send_mock.call_count, 1)
         concent_call = send_mock.call_args_list[0]
         ack_msg = concent_call[0][0]
         self.assertIsInstance(ack_msg, concents.AckReportComputedTask)

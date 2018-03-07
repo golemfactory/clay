@@ -90,8 +90,6 @@ class TaskServerMessageHandler():
             rct.computation_time,
         )
 
-        self.task_server.get_result(subtask_id=rct.subtask_id)
-
     @handler_for(message.concents.ForceReportComputedTask)
     def on_force_report_computed_task(self, msg):
         """Concent forwarded ReportComputedTask from Provider
@@ -118,5 +116,3 @@ class TaskServerMessageHandler():
             rct.subtask_id,
             rct.computation_time,
         )
-
-        self.task_server.get_result(subtask_id=rct.subtask_id)

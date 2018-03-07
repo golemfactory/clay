@@ -12,7 +12,7 @@ import pycodestyle
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.model import DB_MODELS, db
+from golem.model import DB_MODELS, db, DB_FIELDS
 
 
 class TempDirFixture(unittest.TestCase):
@@ -108,7 +108,8 @@ class DatabaseFixture(TempDirFixture):
 
     def setUp(self):
         super(DatabaseFixture, self).setUp()
-        self.database = Database(db, self.tempdir, DB_MODELS)
+        self.database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                                 db_dir=self.tempdir)
 
     def tearDown(self):
         self.database.db.close()

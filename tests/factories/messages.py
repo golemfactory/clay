@@ -1,6 +1,6 @@
 # pylint: disable=too-few-public-methods
+import calendar
 import time
-import mock
 
 import factory
 
@@ -32,7 +32,7 @@ class ComputeTaskDef(factory.DictFactory):
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
     task_owner = factory.SubFactory(TaskOwner)
-    deadline = factory.Faker('pyint')
+    deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
     src_code = factory.Faker('text')
 
 
@@ -84,7 +84,8 @@ class ReportComputedTask(factory.Factory):
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
     size = factory.Faker('pyint')
-    checksum = factory.Faker('text')
+    multihash = factory.Faker('text')
+    secret = factory.Faker('text')
 
 
 class SubtaskResultsRejected(factory.Factory):
@@ -117,16 +118,6 @@ class ForceReportComputedTask(factory.Factory):
 
     result_hash = factory.Faker('text')
     report_computed_task = factory.SubFactory(ReportComputedTask)
-
-
-class TaskResultHashFactory(factory.Factory):
-    class Meta:
-        model = tasks.TaskResultHash
-
-    subtask_id = factory.Faker('uuid4')
-    multihash = factory.Faker('text')
-    secret = factory.Faker('text')
-    options = factory.LazyFunction(mock.Mock)
 
 
 class AckReportComputedTask(factory.Factory):
