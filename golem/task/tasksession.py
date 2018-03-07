@@ -7,7 +7,6 @@ import time
 from golem_messages import message
 
 from golem_messages.helpers import maximum_download_time
-from golem_messages.message import registered_message_types
 from peewee import PeeweeException, DoesNotExist
 from twisted.internet.error import ConnectionDone, ConnectionLost
 
@@ -1000,7 +999,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         for pending_msg in iterator:
             try:
-                cls = registered_message_types[pending_msg.type]
+                cls = message.registered_message_types[pending_msg.type]
                 msg = cls(slots=pending_msg.slots)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error('Cannot send the pending message: %r', exc)

@@ -6,7 +6,7 @@ from typing import Iterator, List, Optional, Tuple
 
 from peewee import BlobField, CharField, IntegerField, TextField, DoesNotExist
 
-from golem_messages import serializer
+from golem_messages import message, serializer  # noqa # pylint: disable=unused-import,import-error
 
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database, GolemSqliteDatabase
@@ -55,7 +55,7 @@ class MessageSlotsField(BlobField):
 class PendingObjectModel(BaseModel):
     """ Base class for pending message and session models"""
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
         database = db
 
     node_id = CharField(index=True)  # Receiving node
@@ -91,7 +91,7 @@ class PendingTaskSession(PendingObjectModel):
     err_msg = TextField(null=True)
 
     @classmethod
-    def from_session(cls, session: 'TaskSession') -> 'PendingTaskSession':
+    def from_session(cls, session) -> 'PendingTaskSession':
         return cls(
             node_id=session.key_id,
             task_id=session.task_id,
@@ -101,7 +101,7 @@ class PendingTaskSession(PendingObjectModel):
             err_msg=session.err_msg
         )
 
-    def update_session(self, session: 'TaskSession') -> None:
+    def update_session(self, session) -> None:
         session.task_id = self.task_id
         session.subtask_id = self.subtask_id
         session.node_info = self.node_info
@@ -122,7 +122,7 @@ class PendingMessagesMixin:
     @classmethod
     def put(cls,
             node_id: str,
-            msg: 'Message',
+            msg: 'message.base.Message',
             task_id: Optional[str] = None,
             subtask_id: Optional[str] = None) -> None:
 
@@ -165,7 +165,7 @@ class PendingMessagesMixin:
 class PendingTaskSessionsMixin:
 
     @classmethod
-    def put_session(cls, session: 'TaskSession') -> None:
+    def put_session(cls, session) -> None:
         try:
             session = cls.get_session(session.key_id)
             session.delete_instance()
@@ -178,8 +178,7 @@ class PendingTaskSessionsMixin:
     def get_session(cls,
                     node_id: str,
                     task_id: Optional[object] = ANY,
-                    subtask_id: Optional[object] = ANY
-                    ) -> PendingTaskSession:
+                    subtask_id: Optional[object] = ANY) -> PendingTaskSession:
 
         clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
                                                           subtask_id)
@@ -206,7 +205,7 @@ class PendingSessionMessages(PendingMessagesMixin,
     def __init__(self,
                  db_dir: str,
                  db_name: str = 'session.db',
-                 schemas_dir: Optional[str] = None):
+                 schemas_dir: Optional[str] = None) -> None:
 
         self._last_sweep_ts = None
         self._fields = DB_FIELDS

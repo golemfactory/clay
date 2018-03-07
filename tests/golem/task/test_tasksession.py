@@ -270,7 +270,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts._react_to_hello(msg)
         self.assertTrue(ts.send.called)
 
-    @patch.dict('golem_messages.serializer.ENCODERS', extra_serializers)
+    @patch.object(golem_messages.serializer, 'ENCODERS', extra_serializers)
     @patch('golem.task.tasksession.get_task_message',
            return_value=message.ReportComputedTask())
     def test_result_received(self, *_):
