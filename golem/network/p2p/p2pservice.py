@@ -646,6 +646,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for p in list(self.peers.values()):
             p.send_remove_task(task_id)
 
+    def send_remove_task_container(self, msg_remove_task):
+        for p in list(self.peers.values()):
+            p.send(message.RemoveTaskContainer(remove_tasks=[msg_remove_task]))
+
     def want_to_start_task_session(
             self,
             key_id,

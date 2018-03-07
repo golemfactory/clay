@@ -773,7 +773,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         send_hello = False
 
-        if self.key_id == 0:
+        if self.key_id is None:
             self.key_id = msg.client_key_id
             send_hello = True
 
@@ -794,6 +794,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         )
 
     def _react_to_rand_val(self, msg):
+        # If we disconnect in react_to_hello, we still might get the RandVal
+        # message
+        if self.key_id is None:
+            return
+
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id, )

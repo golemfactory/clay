@@ -47,7 +47,7 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.3').to_dict()]
+            'golemfactory/blender', tag='1.4').to_dict()]
         self.subtask_info['ctd']['environment'] = 'BLENDER'
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['end_task'] =\

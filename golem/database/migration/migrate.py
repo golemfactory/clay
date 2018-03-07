@@ -32,7 +32,7 @@ def migrate_schema(database: 'Database',
                                  "no suitable migration scripts found"
                                  .format(from_version, to_version))
 
-    with patch_peewee():
+    with patch_peewee(database.fields, database.models):
         migrator = Migrator(router.database)
 
         # Teach migrator previous changes
