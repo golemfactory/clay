@@ -79,10 +79,12 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                      node=node,
                                      task_result=task_result)
 
+        size = os.path.getsize(path)
+
         self.resource_manager.add_file(path, task_id)
         for resource in self.resource_manager.get_resources(task_id):
             if file_name in resource.files:
-                return resource.hash, file_path, sha1
+                return resource.hash, file_path, sha1, size
 
         if os.path.exists(path):
             raise EnvironmentError("Error creating package: "

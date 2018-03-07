@@ -3,6 +3,7 @@ import logging
 import os
 from os import makedirs, path, remove
 import shutil
+from unittest import mock
 from unittest.mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
@@ -135,12 +136,16 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         ccd = ClientConfigDescriptor()
 
-        task_server = TaskServer(
-            node=Mock(),
-            config_desc=ccd,
-            client=self.node.client,
-            use_docker_manager=False
-        )
+        with mock.patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            task_server = TaskServer(
+                node=Mock(),
+                config_desc=ccd,
+                client=self.node.client,
+                use_docker_manager=False
+            )
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 

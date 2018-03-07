@@ -13,7 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, FilesProtocol)
+    TCPNetwork, SocketAddress, SafeProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
@@ -94,7 +94,7 @@ class TaskServer(
         self.resource_handshakes = {}
 
         network = TCPNetwork(
-            ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
+            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
@@ -208,7 +208,8 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        wtr.result_hash, wtr.result_path, wtr.package_sha1 = result
+        wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
+            result
 
     def send_task_failed(self, subtask_id, task_id, err_msg, owner_address,
                          owner_port, owner_key_id, owner, node_name):
@@ -377,11 +378,10 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def get_result(self, subtask_id):
-        logger.warning('Should get result for %r', subtask_id)
-        # TODO: send GetTaskResult(subtask_id=subtask_id) to Provider
-        #       depends on: #2223 Message Queue
-        #       https://github.com/golemfactory/golem/issues/2223
+    def get_result(self, rct_message):
+        logger.warning('Should get result for %r', rct_message)
+        # @todo: actually retrieve results from the provider based on
+        # the information in the `ReportComputedTask` message
 
     def accept_result(self, subtask_id, account_info):
         mod = min(
@@ -868,7 +868,7 @@ class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type, computing_time,
                  last_sending_trial, delay_time, owner_address, owner_port,
                  owner_key_id, owner, result_path=None, result_hash=None,
-                 result_secret=None, package_sha1=None):
+                 result_secret=None, package_sha1=None, result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -886,6 +886,7 @@ class WaitingTaskResult(object):
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+        self.result_size = result_size
 
         self.already_sending = False
 

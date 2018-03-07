@@ -1088,10 +1088,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.remove_task = Mock()
         c.task_server = Mock()
 
-        c.delete_task(str(uuid.uuid4()))
+        task_id = str(uuid.uuid4())
+        c.delete_task(task_id)
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+        c.remove_task.assert_called_with(task_id)
 
     def test_get_unsupport_reasons(self, *_):
         c = self.client

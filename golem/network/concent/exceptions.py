@@ -26,10 +26,6 @@ class ConcentUnavailableError(ConcentError):
     pass
 
 
-class ConcentVerificationFailed(ConcentError):
-    pass
-
-
 class ConcentVersionMismatchError(ConcentError):
     def __init__(self, *args, **kwargs):
         self.ours = kwargs.pop('ours', '<unknown>')
