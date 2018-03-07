@@ -8,12 +8,12 @@ from typing import Optional
 import random
 from collections import Counter
 from golem_messages import message
+from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
-from golem.core.variables import MAX_TIME_DIFF
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -46,9 +46,16 @@ class CompTaskInfo:
         )
 
     def check_deadline(self, deadline):
+        """
+        Checks if subtask deadline defined in newly received ComputeTaskDef
+        is properly set, ie. it's set to future date, but not much further than
+        it was declared in subtask timeout.
+        :param float deadline: subtask deadline
+        :return bool:
+        """
         now_ = common.get_timestamp_utc()
         expected_deadline = now_ + self.header.subtask_timeout
-        if now_ < deadline < expected_deadline + MAX_TIME_DIFF:
+        if now_ < deadline < expected_deadline + MTD:
             return True
         logger.debug('check_deadline failed: (now: %r, deadline: %r, '
                      'timeout: %r)', now_, deadline,
