@@ -290,7 +290,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             subtask_id='xxyyzz'
         )
 
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         self.assertTrue(ts.msgs_to_send)
         self.assertIsInstance(ts.msgs_to_send[0],
@@ -306,7 +306,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.computed_task_received = Mock(
             side_effect=finished(),
         )
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         assert ts.msgs_to_send
         assert isinstance(ts.msgs_to_send[0],
@@ -319,7 +319,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn.close.called = False
         ts.msgs_to_send = []
 
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         assert not ts.msgs_to_send
         assert conn.close.called
@@ -839,7 +839,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         with patch('golem.task.tasksession.get_task_message',
                    Mock(return_value=ttc)):
-            self.task_session.result_received(extra_data, decrypt=False)
+            self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
