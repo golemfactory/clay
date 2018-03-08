@@ -19,6 +19,7 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_ethereum_node(self):
         np = NodeProcess(self.tempdir, start_node=True)
+        np.web3 = Mock()
         assert np.is_running() is False
         np.start()
         assert np.is_running() is True
@@ -39,11 +40,13 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_ethereum_node_reuse(self):
         np = NodeProcess(self.tempdir, start_node=True)
+        np.web3 = Mock()
         np.start()
 
         # Reuse but with different directory
         ndir = path.join(self.tempdir, "ndir")
         np1 = NodeProcess(ndir, start_node=True)
+        np1.web3 = Mock()
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True
@@ -55,6 +58,7 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
         port = 3000
 
         np = NodeProcess(self.tempdir)
+        np.web3 = Mock()
         np.start = Mock()
         np.start_node = True
 
@@ -83,6 +87,7 @@ class EthereumClientNodeTest(TempDirFixture):
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
         self.node = NodeProcess(self.tempdir, start_node=True)
+        self.node.web3 = Mock()
         self.node.start()
         self.client = Client(self.node.web3)
 
