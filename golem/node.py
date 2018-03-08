@@ -9,7 +9,7 @@ from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
-from golem.core.keysauth import KeysAuth, WrongPasswordException
+from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
@@ -102,7 +102,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 password=password,
                 difficulty=self._config_desc.key_difficulty,
             )
-        except WrongPasswordException:
+        except WrongPassword:
             logger.info("Password incorrect")
             return False
         return True
@@ -129,10 +129,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return deferred.addCallbacks(set_publisher, self._error('rpc session'))
 
-    def _start_keys_auth(self) -> Deferred:
+    def _start_keys_auth(self) -> Optional[Deferred]:
         if not self.rpc_session:
             self._error("RPC session is not available")
-            return
+            return None
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
@@ -168,7 +168,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return threads.deferToThread(start_docker)
 
-    def _setup_client(self, gathered_results: List) -> None:
+    def _setup_client(self, *_) -> None:
         if not self.rpc_session:
             self._error("RPC session is not available")
             return
