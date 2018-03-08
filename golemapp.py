@@ -79,6 +79,15 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Connect with given geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
+@click.option('--log-level', default=None,
+              type=click.Choice([
+                  'CRITICAL',
+                  'ERROR',
+                  'WARNING',
+                  'INFO',
+                  'DEBUG',
+              ]),
+              help="Change level for Golem loggers and handlers")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -91,18 +100,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--worker', expose_value=False)
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
-@click.option('--loglevel', default=None,
-              type=click.Choice([
-                  'CRITICAL',
-                  'ERROR',
-                  'WARNING',
-                  'INFO',
-                  'DEBUG',
-              ]),
-              help="Change level for all loggers and handlers")
+@click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, start_geth_port, geth_address, version, m, loglevel):
+          start_geth, start_geth_port, geth_address, version, log_level, m):
     freeze_support()
     delete_reactor()
 
@@ -130,7 +131,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=loglevel)
+        config_logging(datadir=datadir, loglevel=log_level)
         install_reactor()
         log_golem_version()
         log_platform_info()
