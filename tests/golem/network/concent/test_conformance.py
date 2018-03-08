@@ -19,7 +19,7 @@ class ConformanceTestCase(unittest.TestCase, testutils.PEP8MixIn):
     def test_lint(self):
         base_path = pathlib.Path(common.get_golem_path())
         concent_path = base_path / "golem/network/concent"
-        tests_path = base_path /  "tests/golem/network/concent"
+        tests_path = base_path / "tests/golem/network/concent"
         options = "{tests_dir} {lib_dir} -f json".format(
             lib_dir=concent_path.as_posix(),
             tests_dir=tests_path.as_posix(),
