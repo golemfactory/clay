@@ -102,10 +102,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
-        ctd['return_address'] = "10.10.10.10"
-        ctd['return_port'] = 10203
-        ctd['key_id'] = "key"
-        ctd['task_owner'] = p2p_node.to_dict()
         ctd['src_code'] = \
             "cnt=0\n" \
             "for i in range(10000):\n" \
@@ -144,8 +140,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.counting_thread is None
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
-            "xxyyzz", "xyz", "Host direct task not supported",
-            "10.10.10.10", 10203, "key", p2p_node, "ABC")
+            "xxyyzz", "xyz", "Host direct task not supported")
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -168,11 +163,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[2]["data"], 10000)
         self.assertGreater(args[3], 0)
         self.assertLess(args[3], 10)
-        self.assertEqual(args[4], "10.10.10.10")
-        self.assertEqual(args[5], 10203)
-        self.assertEqual(args[6], "key")
-        self.assertEqual(args[7], p2p_node)
-        self.assertEqual(args[8], "ABC")
 
         ctd['subtask_id'] = "aabbcc"
         ctd['src_code'] = "raise Exception('some exception')"
@@ -191,8 +181,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
-            "aabbcc", "xyz", 'some exception', "10.10.10.10",
-            10203, "key", p2p_node, "ABC")
+            "aabbcc", "xyz", 'some exception')
 
         ctd['subtask_id'] = "aabbcc2"
         ctd['src_code'] = "print('Hello world')"
@@ -202,8 +191,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with(
-            "aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-            "key", p2p_node, "ABC")
+            "aabbcc2", "xyz", "Wrong result format")
 
         task_server.task_keeper.task_headers["xyz"].deadline = \
             timeout_to_deadline(20)
@@ -225,8 +213,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_computed(tc.counting_thread)
         self.assertIsNone(tc.counting_thread)
         task_server.send_task_failed.assert_called_with(
-            "xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
-            "key", p2p_node, "ABC")
+            "xxyyzz2", "xyz", "Wrong result format")
         tt.end_comp()
         time.sleep(0.5)
         if tt.is_alive():

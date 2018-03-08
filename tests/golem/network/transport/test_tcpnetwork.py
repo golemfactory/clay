@@ -1,5 +1,4 @@
-import logging
-import os
+# pylint: disable=no-member
 import struct
 import unittest
 from unittest import mock
@@ -11,21 +10,10 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem import testutils
-from golem.core.common import config_logging
-from golem.core.keysauth import KeysAuth
-from golem.core.variables import BUFF_SIZE
 from golem.network.transport import tcpnetwork
-from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
-                                                FileProducer, FileConsumer,
-                                                EncryptFileProducer,
-                                                DecryptFileConsumer,
-                                                EncryptDataProducer,
-                                                DecryptDataConsumer,
-                                                SafeProtocol,
-                                                SocketAddress,
-                                                MAX_MESSAGE_SIZE)
+from golem.network.transport.tcpnetwork import (SafeProtocol, SocketAddress,
+                                                MAX_MESSAGE_SIZE, TCPNetwork)
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.captureoutput import captured_output
 from tests.factories import messages as msg_factories
 from tests.factories import p2p as p2p_factories
 
@@ -38,201 +26,6 @@ class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
         'golem/network/transport/tcpnetwork.py',
         'golem/network/transport/tcpnetwork_helpers.py',
     ]
-
-
-class TestDataProducerAndConsumer(testutils.TempDirFixture):
-
-    def test_progress(self):
-
-        long_string = b"abcdefghijklmn opqrstuvwxyz"
-        datas = (
-            (b"", None),
-            (b"abcde", None),
-            (long_string, 8),
-            (long_string * 1000, 16),
-            (long_string * 1000, 128),
-            # (long_string * 1000 * 1000 * 10, None)  # This takes some time.
-        )
-
-        for args in datas:
-            self.__producer_consumer_test(*args, session=MagicMock())
-
-        self.ek = KeysAuth(self.path, 'priv_key', 'password')
-        for args in datas:
-            self.__producer_consumer_test(
-                *args,
-                data_producer_cls=EncryptDataProducer,
-                data_consumer_cls=DecryptDataConsumer,
-                session=self.__make_encrypted_session_mock())
-
-    def __make_encrypted_session_mock(self):
-        session = MagicMock()
-        session.encrypt.side_effect = self.ek.encrypt
-        session.decrypt.side_effect = self.ek.decrypt
-        return session
-
-    def __producer_consumer_test(self, data, buff_size=None,
-                                 data_producer_cls=DataProducer,
-                                 data_consumer_cls=DataConsumer,
-                                 session=MagicMock()):
-        producer_progress_value = "Sending progress 100 %"
-        consumer_progress_value = "File data receiving 100 %"
-        if buff_size:
-            d = data_producer_cls(data, session, buff_size)
-        else:
-            d = data_producer_cls(data, session)
-            buff_size = BUFF_SIZE
-        with captured_output() as (out, err):
-            while session.conn.transport.unregisterProducer.call_count == 0:
-                d.resumeProducing()
-
-        min_num = len(data) // buff_size
-
-        split = out.getvalue().strip().split("\r")
-        self.assertGreaterEqual(
-            session.conn.transport.write.call_count, min_num)
-        self.assertEqual(split[-1], producer_progress_value)
-        self.assertGreaterEqual(len(split), min(min_num, 100))
-        self.assertEqual(err.getvalue().strip(), "")
-
-        extra_data = {}
-        c = data_consumer_cls(session, extra_data)
-        with captured_output() as (out, err):
-            for chunk in session.conn.transport.write.call_args_list:
-                c.dataReceived(chunk[0][0])
-
-        split = out.getvalue().strip().split("\r")
-        self.assertEqual(extra_data["result"], data)
-        self.assertEqual(split[-1], consumer_progress_value)
-        self.assertGreaterEqual(len(split), min(min_num, 100))
-        self.assertEqual(err.getvalue().strip(), "")
-
-
-class TestFileProducerAndConsumer(testutils.TempDirFixture):
-
-    @classmethod
-    def setUpClass(cls):
-        config_logging()
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.shutdown()
-
-    def setUp(self):
-        testutils.TempDirFixture.setUp(self)
-        self.tmp_file1, self.tmp_file2, self.tmp_file3 \
-            = self.additional_dir_content([1, [2]])
-
-        long_text = "abcdefghij\nklmn opqrstuvwxy\tz"
-        with open(self.tmp_file1, 'w') as f:
-            f.write(long_text)
-        with open(self.tmp_file3, 'w') as f:
-            f.write(long_text * 1000)
-        with open(self.tmp_file2, 'w'):
-            pass
-
-    def test_progress(self):
-        self.__producer_consumer_test([], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file1], session=MagicMock())
-        self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
-        self.__producer_consumer_test(
-            [self.tmp_file1, self.tmp_file3], session=MagicMock())
-        self.__producer_consumer_test(
-            [self.tmp_file1, self.tmp_file2, self.tmp_file3],
-            32,
-            session=MagicMock())
-        self.ek = KeysAuth(self.path, 'priv_key', 'password')
-        self.__producer_consumer_test(
-            [],
-            file_producer_cls=EncryptFileProducer,
-            file_consumer_cls=DecryptFileConsumer,
-            session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(
-            [self.tmp_file1],
-            file_producer_cls=EncryptFileProducer,
-            file_consumer_cls=DecryptFileConsumer,
-            session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(
-            [self.tmp_file2],
-            file_producer_cls=EncryptFileProducer,
-            file_consumer_cls=DecryptFileConsumer,
-            session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(
-            [self.tmp_file1,
-             self.tmp_file3],
-            file_producer_cls=EncryptFileProducer,
-            file_consumer_cls=DecryptFileConsumer,
-            session=self.__make_encrypted_session_mock())
-        self.__producer_consumer_test(
-            [self.tmp_file1,
-             self.tmp_file2,
-             self.tmp_file3],
-            32,
-            file_producer_cls=EncryptFileProducer,
-            file_consumer_cls=DecryptFileConsumer,
-            session=self.__make_encrypted_session_mock())
-
-    def __make_encrypted_session_mock(self):
-        session = MagicMock()
-        session.encrypt.side_effect = self.ek.encrypt
-        session.decrypt.side_effect = self.ek.decrypt
-        return session
-
-    def __producer_consumer_test(
-            self,
-            file_list,
-            buff_size=None,
-            file_producer_cls=FileProducer,
-            file_consumer_cls=FileConsumer,
-            session=MagicMock()):
-        producer_progress_value = "Sending progress 100 %"
-        consumer_progress_value = "File data receiving 100 %"
-        consumer_list = ["consumer{}".format(i + 1) for i in
-                         range(len(file_list))]
-
-        if buff_size:
-            p = file_producer_cls(file_list, session, buff_size)
-        else:
-            p = file_producer_cls(file_list, session)
-            buff_size = BUFF_SIZE
-
-        with captured_output() as (out, err):
-            while session.conn.transport.unregisterProducer.call_count == 0:
-                p.resumeProducing()
-
-        min_num = 0
-        for file in file_list:
-            with open(file, 'rb') as f:
-                data = f.read()
-            min_num += len(data) // buff_size
-
-        transport = session.conn.transport
-        self.assertGreaterEqual(transport.write.call_count, min_num)
-        self.assertGreaterEqual(len(transport.write.call_args_list), min_num)
-
-        split = out.getvalue().strip().split("\r")
-        if len(file_list) > 0:
-            self.assertEqual(split[-1], producer_progress_value)
-            self.assertGreaterEqual(len(split), min(min_num, 100))
-        self.assertEqual(err.getvalue().strip(), "")
-
-        c = file_consumer_cls(consumer_list, self.path, session)
-        with captured_output() as (out, err):
-            for chunk in session.conn.transport.write.call_args_list:
-                c.dataReceived(chunk[0][0])
-
-        for prod, cons in zip(file_list, consumer_list):
-            with open(prod) as f:
-                prod_data = f.read()
-            with open(os.path.join(self.path, cons)) as f:
-                cons_data = f.read()
-            self.assertEqual(prod_data, cons_data)
-
-        split = out.getvalue().strip().split("\r")
-        if len(consumer_list) > 0:
-            self.assertEqual(split[-1], consumer_progress_value)
-            self.assertGreaterEqual(len(split), min(min_num, 100))
-        self.assertEqual(err.getvalue().strip(), "")
 
 
 class TestBasicProtocol(LogTestCase):
@@ -362,3 +155,41 @@ class TestSocketAddress(unittest.TestCase):
         assert not SocketAddress.is_proper_address("127.0.0.1", 0)
         assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
         assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)
+
+
+class TestTCPNetworkConnections(unittest.TestCase):
+
+    def setUp(self):
+        self.addresses = [
+            SocketAddress('192.168.0.1', 40102),
+            SocketAddress('192.168.0.2', 40104),
+        ]
+
+    def test_without_rate_limiter(self):
+        factory = mock.Mock()
+        network = TCPNetwork(factory)
+        assert not network.rate_limiter
+
+        connect = mock.Mock()
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
+        network._TCPNetwork__try_to_connect_to_address = connect
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert connect.called
+
+    def test_with_rate_limiter(self):
+        factory = mock.Mock()
+        network = TCPNetwork(factory, limit_connection_rate=True)
+
+        assert network.rate_limiter
+
+        call = mock.Mock()
+        connect = mock.Mock()
+        connect_all = network._TCPNetwork__try_to_connect_to_addresses
+
+        network._TCPNetwork__try_to_connect_to_address = connect
+        network.rate_limiter.call = call
+
+        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        assert not connect.called
+        assert call.called

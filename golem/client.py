@@ -34,7 +34,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import DB_MODELS, db
+from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -113,7 +113,8 @@ class Client(HardwarePresetsMixin):
         )
 
         # Initialize database
-        self.db = Database(db, datadir, DB_MODELS)
+        self.db = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                           db_dir=datadir)
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
@@ -1013,7 +1014,8 @@ class Client(HardwarePresetsMixin):
     def check_payments(self):
         if not self.transaction_system:
             return
-        after_deadline_nodes = self.transaction_system.check_payments()
+        after_deadline_nodes = \
+            self.transaction_system.get_nodes_with_overdue_payments()
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
 

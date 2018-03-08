@@ -25,17 +25,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(ValueError):
             EthereumTransactionSystem(self.tempdir, "not a private key")
 
-    @mock.patch(
-        'golem.transactions.ethereum.ethereumtransactionsystem.'
-        'EthereumTransactionSystem.get_payment_address',
-        new_callable=mock.PropertyMock)
-    def test_invalid_eth_adress_construction(self, mock_get_payment_address):
-        mock_get_payment_address().return_value = None
-
-        with self.assertRaisesRegexp(ValueError,
-                                     "Invalid Ethereum address constructed"):
-            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None, None, None)

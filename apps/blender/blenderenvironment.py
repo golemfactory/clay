@@ -6,7 +6,7 @@ from golem.docker.environment import DockerEnvironment
 
 class BlenderEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/blender"
-    DOCKER_TAG = "1.3"
+    DOCKER_TAG = "1.4"
     ENV_ID = "BLENDER"
     APP_DIR = path.join(get_golem_path(), 'apps', 'blender')
     SCRIPT_NAME = "docker_blendertask.py"

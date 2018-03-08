@@ -13,7 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, FilesProtocol)
+    TCPNetwork, SocketAddress, SafeProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
@@ -94,7 +94,7 @@ class TaskServer(
         self.resource_handshakes = {}
 
         network = TCPNetwork(
-            ProtocolFactory(FilesProtocol, self, SessionFactory(TaskSession)),
+            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
@@ -113,7 +113,6 @@ class TaskServer(
         self._sync_forwarded_session_requests()
         self.__remove_old_tasks()
         self.__remove_old_sessions()
-        self._remove_old_listenings()
         concent.process_messages_received_from_concent(
             concent_service=self.client.concent_service,
         )
@@ -168,19 +167,19 @@ class TaskServer(
             logger.warning("Cannot send request for task: {}".format(err))
             self.task_keeper.remove_task_header(theader.task_id)
 
-    def send_results(self, subtask_id, task_id, result, computing_time,
-                     owner_address, owner_port, owner_key_id, owner,
-                     node_name):
+    def send_results(self, subtask_id, task_id, result, computing_time):
 
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
+
+        header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(
                 task_id, computing_time)
             if self.client.transaction_system:
                 self.client.transaction_system.incomes_keeper.expect(
-                    sender_node_id=owner_key_id,
+                    sender_node_id=header.task_owner_key_id,
                     subtask_id=subtask_id,
                     value=value,
                 )
@@ -188,16 +187,23 @@ class TaskServer(
             delay_time = 0.0
             last_sending_trial = 0
 
-            wtr = WaitingTaskResult(task_id, subtask_id, result['data'],
-                                    result['result_type'], computing_time,
-                                    last_sending_trial, delay_time,
-                                    owner_address, owner_port, owner_key_id,
-                                    owner)
+            wtr = WaitingTaskResult(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                result=result['data'],
+                result_type=result['result_type'],
+                computing_time=computing_time,
+                last_sending_trial=last_sending_trial,
+                delay_time=delay_time,
+                owner_address=header.task_owner_address,
+                owner_port=header.task_owner_port,
+                owner_key_id=header.task_owner_key_id,
+                owner=header.task_owner)
 
             self.create_and_set_result_package(wtr)
             self.results_to_send[subtask_id] = wtr
 
-            Trust.REQUESTED.increase(owner_key_id)
+            Trust.REQUESTED.increase(header.task_owner_key_id)
         else:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
@@ -208,17 +214,25 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        wtr.result_hash, wtr.result_path, wtr.package_sha1 = result
+        wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
+            result
 
-    def send_task_failed(self, subtask_id, task_id, err_msg, owner_address,
-                         owner_port, owner_key_id, owner, node_name):
+    def send_task_failed(
+            self, subtask_id: str, task_id: str, err_msg: str) -> None:
+
+        header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(owner_key_id)
+            Trust.REQUESTED.decrease(header.task_owner_key_id)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
-                task_id, subtask_id, err_msg, owner_address, owner_port,
-                owner_key_id, owner)
+                task_id=task_id,
+                subtask_id=subtask_id,
+                err_msg=err_msg,
+                owner_address=header.task_owner_address,
+                owner_port=header.task_owner_port,
+                owner_key_id=header.task_owner_key_id,
+                owner=header.task_owner)
 
     def new_connection(self, session):
         if self.active:
@@ -307,14 +321,6 @@ class TaskServer(
     def get_key_id(self):
         return self.keys_auth.key_id
 
-    def encrypt(self, message, public_key):
-        if public_key == 0:
-            return message
-        return self.keys_auth.encrypt(message, public_key)
-
-    def decrypt(self, message):
-        return self.keys_auth.decrypt(message)
-
     def sign(self, data):
         return self.keys_auth.sign(data)
 
@@ -377,11 +383,10 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def get_result(self, subtask_id):
-        logger.warning('Should get result for %r', subtask_id)
-        # TODO: send GetTaskResult(subtask_id=subtask_id) to Provider
-        #       depends on: #2223 Message Queue
-        #       https://github.com/golemfactory/golem/issues/2223
+    def get_result(self, rct_message):
+        logger.warning('Should get result for %r', rct_message)
+        # @todo: actually retrieve results from the provider based on
+        # the information in the `ReportComputedTask` message
 
     def accept_result(self, subtask_id, account_info):
         mod = min(
@@ -537,24 +542,6 @@ class TaskServer(
             self.config_desc.start_port, self.config_desc.end_port))
         # FIXME: some graceful terminations should take place here
         # sys.exit(0)
-
-    def _listening_for_start_session_established(self, port, listen_id,
-                                                 super_node, asking_node,
-                                                 dest_node, ask_conn_id):
-        logger.debug("_listening_for_start_session_established()")
-        logger.debug("Listening on port {}".format(port))
-        listening = self.open_listenings.get(listen_id)
-        if listening:
-            self.listening.time = time.time()
-            self.listening.listening_port = port
-        else:
-            logger.warning(
-                "Listening {} not in open listenings list".format(listen_id))
-
-    def _listening_for_start_session_failure(
-            self, listen_id, super_node, asking_node, dest_node, ask_conn_id):
-        if listen_id in self.open_listenings:
-            del self.open_listenings['listen_id']
 
     #############################
     #   CONNECTION REACTIONS    #
@@ -851,24 +838,12 @@ class TaskServer(
             self.__connection_for_start_session_final_failure,
         })
 
-    def _set_listen_established(self):
-        self.listen_established_for_type.update({
-            TaskListenTypes.StartSession:
-            self._listening_for_start_session_established
-        })
-
-    def _set_listen_failure(self):
-        self.listen_failure_for_type.update({
-            TaskListenTypes.StartSession:
-            self._listening_for_start_session_failure
-        })
-
 
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type, computing_time,
                  last_sending_trial, delay_time, owner_address, owner_port,
                  owner_key_id, owner, result_path=None, result_hash=None,
-                 result_secret=None, package_sha1=None):
+                 result_secret=None, package_sha1=None, result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -886,6 +861,7 @@ class WaitingTaskResult(object):
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+        self.result_size = result_size
 
         self.already_sending = False
 

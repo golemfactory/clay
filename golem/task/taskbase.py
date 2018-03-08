@@ -55,7 +55,6 @@ class TaskHeader(object):
                  estimated_memory=0,
                  min_version=golem.__version__,
                  max_price: int=0,
-                 docker_images=None,
                  signature=None):
         """
         :param max_price: maximum price that this (requestor) node may
@@ -64,7 +63,6 @@ class TaskHeader(object):
         """
 
         self.task_id = task_id
-        # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
@@ -78,7 +76,6 @@ class TaskHeader(object):
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
-        self.docker_images = docker_images
         self.max_price = max_price
         self.signature = signature
 
@@ -97,11 +94,7 @@ class TaskHeader(object):
         th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
-            th.task_owner = DictSerializer.load(th.task_owner, as_class=Node)
-        if hasattr(th, 'docker_images') and th.docker_images is not None:
-            for i, di in enumerate(th.docker_images):
-                if isinstance(di, dict):
-                    th.docker_images[i] = DictSerializer.load(di, as_class=DockerImage)
+            th.task_owner = Node.from_dict(th.task_owner)
         return th
 
     @classmethod

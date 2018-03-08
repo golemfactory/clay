@@ -7,12 +7,13 @@ import unittest
 from pathlib import Path
 from time import sleep
 
+import ethereum.keys
 import pycodestyle
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.model import DB_MODELS, db
+from golem.model import DB_MODELS, db, DB_FIELDS
 
 
 class TempDirFixture(unittest.TestCase):
@@ -41,6 +42,10 @@ class TempDirFixture(unittest.TestCase):
     #         shutil.rmtree(cls.root_dir)
 
     def setUp(self):
+
+        # KeysAuth uses it. Default val (250k+) slows down the tests terribly
+        ethereum.keys.PBKDF2_CONSTANTS['c'] = 1
+
         prefix = self.id().rsplit('.', 1)[1]  # Use test method name
         self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.root_dir)
         self.path = self.tempdir  # Alias for legacy tests
@@ -108,7 +113,8 @@ class DatabaseFixture(TempDirFixture):
 
     def setUp(self):
         super(DatabaseFixture, self).setUp()
-        self.database = Database(db, self.tempdir, DB_MODELS)
+        self.database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                                 db_dir=self.tempdir)
 
     def tearDown(self):
         self.database.db.close()

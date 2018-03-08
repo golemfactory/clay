@@ -71,7 +71,7 @@ class IGDPortMapper(IPortMapper):
         except Exception:  # pylint: disable=broad-except
             return create_mapping()
 
-    def remove_mapping(self, external_port: int, protocol: str = 'TCP'):
+    def remove_mapping(self, _port, external_port: int, protocol: str = 'TCP'):
         return self.upnp.deleteportmapping(external_port, protocol)
 
     def _mapping_exists(self,

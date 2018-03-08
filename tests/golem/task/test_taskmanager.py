@@ -112,7 +112,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ctd['environment'] = "DEFAULT"
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
         task_mock.query_extra_data_return_value = Task.ExtraData(
@@ -396,7 +395,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 ctd = ComputeTaskDef()
                 ctd['task_id'] = self.header.task_id
                 ctd['subtask_id'] = self.subtasks_id[0]
-                ctd['environment'] = "DEFAULT"
                 self.subtasks_id = self.subtasks_id[1:]
                 e = self.ExtraData(False, ctd)
                 return e
