@@ -63,7 +63,7 @@ class TestProcessMonitor(TestCase):
         pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
-        wait_for_processes(2, p1, p2)
+        wait_for_processes(10, p1, p2)
 
         self.assertFalse(pm.is_process_alive(p1), "process not finished")
         self.assertFalse(pm.is_process_alive(p2), "process not killed")
@@ -81,7 +81,7 @@ class TestProcessMonitor(TestCase):
         pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
-        wait_for_processes(1, p1, p2)
+        wait_for_processes(10, p1, p2)
 
         self.assertFalse(pm.is_process_alive(p1), "process not killed")
         self.assertFalse(pm.is_process_alive(p2), "process not finished")
