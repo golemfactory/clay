@@ -14,7 +14,7 @@ class TestBalanceModel(MonitorTestBaseClass):
     def test_channel(self):
         eth_balance = random.randint(1, 10 ** 20)
         gnt_balance = random.randint(1, 10 ** 20)
-        gntw_balance = random.randint(1, 10 ** 20)
+        gntb_balance = random.randint(1, 10 ** 20)
 
         with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
             dispatcher.send(
@@ -22,7 +22,7 @@ class TestBalanceModel(MonitorTestBaseClass):
                 event='balance_snapshot',
                 eth_balance=eth_balance,
                 gnt_balance=gnt_balance,
-                gntw_balance=gntw_balance
+                gntb_balance=gntb_balance
             )
 
             send.assert_called_once()
@@ -31,4 +31,4 @@ class TestBalanceModel(MonitorTestBaseClass):
             self.assertEqual(result.type, 'Balance')
             self.assertEqual(result.eth_balance, eth_balance)
             self.assertEqual(result.gnt_balance, gnt_balance)
-            self.assertEqual(result.gntw_balance, gntw_balance)
+            self.assertEqual(result.gntb_balance, gntb_balance)
