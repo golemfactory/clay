@@ -27,6 +27,7 @@ def register_handlers(instance) -> None:
             continue
         library.register_handler(msg_cls)(method)
 
+
 @library.register_handler(message.concents.ForceReportComputedTaskResponse)
 def on_force_report_computed_task_response(msg):
     """Concents response to Provider to his ForceReportComputedTask
@@ -48,7 +49,7 @@ def on_force_report_computed_task_response(msg):
         return
 
     if msg.reason == reasons.RejectFromRequestor:
-        subtask_id = msg.ack_report_computed_task.subtask_id
+        subtask_id = msg.reject_report_computed_task.subtask_id
         logger.warning(
             "[CONCENT] Reject for subtask: %r",
             subtask_id,
