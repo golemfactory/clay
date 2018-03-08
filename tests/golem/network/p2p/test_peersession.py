@@ -148,8 +148,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @mock.patch('golem.network.transport.session.BasicSession.send')
     def test_react_to_hello_key_not_difficult(self, send_mock):
-        self.peer_session.p2p_service.keys_auth.is_pubkey_difficult = \
-            mock.Mock(return_value=False)
+        KeysAuth.is_pubkey_difficult = mock.Mock(return_value=False)
         client_hello = self.__setup_handshake_server_test(send_mock)
 
         self.peer_session._react_to_hello(client_hello)
