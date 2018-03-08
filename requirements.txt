@@ -11,6 +11,7 @@ psutil==5.2.2
 pluggy==0.6.0
 asn1crypto==0.22.0
 pyasn1==0.4.1
+pycryptodome==3.4.11
 pysha3>=1.0.2
 pytz
 six==1.10.0
