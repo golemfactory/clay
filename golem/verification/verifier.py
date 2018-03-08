@@ -68,7 +68,8 @@ class StateVerifier(Verifier):
 
     def task_timeout(self, subtask_id):
         if self.time_started is not None:
-            return self.stop_verification()
+            self.stop_verification()
+            return
         self.time_started = self.time_ended = datetime.utcnow()
 
         self.state = SubtaskVerificationState.TIMEOUT
