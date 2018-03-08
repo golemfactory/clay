@@ -280,5 +280,17 @@ class KeysAuth:
                 public_key = decode_hex(public_key)
             return ecdsa_verify(public_key, sig, data)
         except Exception as e:
-            logger.error("Cannot verify signature: %s", e)
+            # Always log exceptions as repr, otherwise you'll see empty values
+            # if excpetion args is empty. It happends because
+            # str of BaseException returns str representation of args.
+            # SEE:
+            #    https://docs.python.org/3/library/exceptions.html#BaseException
+            logger.error("Cannot verify signature: %r", e)
+            logger.debug(
+                ".verify(%r, %r, %r) failed",
+                sig,
+                data,
+                public_key,
+                exc_info=True,
+            )
         return False
