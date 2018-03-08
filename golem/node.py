@@ -147,7 +147,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 event = 'new_password'
                 logger.info("New account, need to create new password")
 
-            while self._keys_auth is None:
+            while self._keys_auth is None and self._reactor.running:
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
