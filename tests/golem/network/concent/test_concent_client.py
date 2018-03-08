@@ -101,6 +101,24 @@ class TestSendToConcent(TestCase):
         )
         verify_mock.assert_called_once_with(response)
 
+    @mock.patch('golem.network.concent.client.verify_response')
+    def test_delayed_timestamp(self, *_):
+        future = datetime.datetime.utcnow() + datetime.timedelta(days=5)
+        # messages use integer timestamps
+        future = future.replace(microsecond=0)
+        # freezegun requires naive datetime, .timestamp() works only with aware
+        future_aware = future.replace(tzinfo=datetime.timezone.utc)
+        with freeze_time(future):
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
+        self.assertEqual(
+            self.msg.timestamp,
+            future_aware.timestamp(),
+        )
+
 
 @mock.patch('requests.get')
 class TestReceiveFromConcent(TestCase):
