@@ -63,18 +63,20 @@ class StateVerifier(Verifier):
         answer = self._get_answer()
         self.callback(subtask_id=self.subtask_info['subtask_id'],
                       verdict=self.state,
-                      results=answer)
+                      result=answer)
         self._clear_state()
 
-    def task_timeout(self):
+    def task_timeout(self, subtask_id):
+        if self.time_started is not None:
+            return self.stop_verification()
         self.time_started = self.time_ended = datetime.utcnow()
 
         self.state = SubtaskVerificationState.TIMEOUT
         self.message = "Verification never ran, task timed out"
         answer = self._get_answer()
-        self.callback(subtask_id=self.subtask_info['subtask_id'],
+        self.callback(subtask_id=subtask_id,
                       verdict=self.state,
-                      results=answer)
+                      result=answer)
         self._clear_state()
 
     def _clear_state(self):

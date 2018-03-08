@@ -117,7 +117,7 @@ class VerificationQueue:
             if deadline_to_timeout(entry.deadline) > 0:
                 verifier.start_verification(**entry.kwargs)
             else:
-                verifier.task_timeout()
+                verifier.task_timeout(subtask_id)
                 raise Exception("Task deadline passed")
 
         except Exception as exc:  # pylint: disable=broad-except
