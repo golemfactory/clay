@@ -1,43 +1,20 @@
-import json
 import os
+import time
 from random import random, randint
 from unittest.mock import patch
 
-from freezegun import freeze_time
 from golem_messages import message
-from golem_messages.cryptography import ECCx
+from golem_messages.cryptography import ECCx, privtopub
 
 from golem import testutils
 from golem.core.keysauth import (
-    KeysAuth,
-    get_random,
-    get_random_float,
-    sha2,
-    WrongPasswordException,
-)
+    KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.core.simpleserializer import CBORSerializer
+from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex
 from golem.utils import encode_hex
 
 
-def make_keystore_json(key, password, **_):
-    k = []
-    for i in key:
-        k.append(ord(hex(i // 16)[2]))
-        k.append(ord(hex(i % 16)[2]))
-    k = bytes(k)
-    return {'key': k, 'password': password}
-
-
-def decode_keystore_json(j, password):
-    if password != j['password']:
-        raise Exception('Incorrect password')
-    return decode_hex(j['key'])
-
-
-# Patch those functions as they are taking quite long to compute
-@patch('golem.core.keysauth.make_keystore_json', make_keystore_json)
-@patch('golem.core.keysauth.decode_keystore_json', decode_keystore_json)
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     PEP8_FILES = ['golem/core/keysauth.py']
 
@@ -78,42 +55,9 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             self.assertGreater(r, 0)
             self.assertGreater(1, r)
 
-    def test_init(self):
-        for _ in range(100):
-            ek = self._create_keysauth()
-            self.assertEqual(len(ek._private_key),
-                             KeysAuth.PRIV_KEY_LEN)
-            self.assertEqual(len(ek.public_key), KeysAuth.PUB_KEY_LEN)
-            self.assertEqual(len(ek.key_id), KeysAuth.KEY_ID_LEN)
-
-    @freeze_time("2017-11-23 11:40:27.767804")
-    @patch('golem.core.keysauth.logger')
-    def test_init_priv_key_wrong_length(self, logger):
-        # given
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        key_name = "priv_key"
-        key_path = os.path.join(keys_dir, key_name)
-        with open(key_path, 'w') as f:
-            f.write(json.dumps({'key': 'dead', 'password': ''}))
-        assert os.listdir(keys_dir) == [key_name]
-
-        # when
-        self._create_keysauth(key_name=key_name)
-
-        # then
-        assert logger.error.call_count == 1
-        assert logger.error.call_args[0] == (
-            'Wrong loaded private key size: %d.', 2)
-
-        with open(key_path, 'r') as f:
-            keystore = f.read()
-        keystore = json.loads(keystore)
-        new_priv_key = decode_keystore_json(keystore, '')
-        assert len(new_priv_key) == KeysAuth.PRIV_KEY_LEN
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
-        )
+    def test_pubkey_suits_privkey(self):
+        ka = self._create_keysauth()
+        self.assertEqual(ka.public_key, privtopub(ka._private_key))
 
     def test_difficulty(self):
         difficulty = 5
@@ -130,41 +74,28 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         assert KeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
         assert KeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
 
-    @freeze_time("2017-11-23 11:40:27.767804")
-    @patch('golem.core.keysauth.logger')
-    def test_key_backup_and_recreate_on_increased_difficulty(self, logger):
+    def test_exception_difficulty(self):
         # given
-        old_difficulty = 0
-        new_difficulty = 7
+        lower_difficulty = 0
+        req_difficulty = 7
         priv_key = str(random())[2:]
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-
-        assert old_difficulty < new_difficulty  # just in case
+        assert lower_difficulty < req_difficulty  # just in case
 
         keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        # create key that has difficulty lower than new_difficulty
+        # create key that has difficulty lower than req_difficulty
         while True:
-            ek = self._create_keysauth(old_difficulty, priv_key)
-            if not ek.is_difficult(new_difficulty):
+            ka = self._create_keysauth(lower_difficulty, priv_key)
+            if not ka.is_difficult(req_difficulty):
                 break
             os.rmdir(keys_dir)  # to enable keys regeneration
 
-        assert KeysAuth.get_difficulty(ek.key_id) >= old_difficulty
-        assert KeysAuth.get_difficulty(ek.key_id) < new_difficulty
-        logger.reset_mock()  # just in case
-
-        # when
-        ek = self._create_keysauth(new_difficulty, priv_key)
+        assert KeysAuth.get_difficulty(ka.key_id) >= lower_difficulty
+        assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
 
         # then
-        assert KeysAuth.get_difficulty(ek.key_id) >= new_difficulty
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args[0][0] == \
-            'Loaded key is not difficult enough.'
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [priv_key, "%s_2017-11-23_11-40-27_767804.bak" % priv_key],
-        )
+        with self.assertRaisesRegex(Exception,
+                                    "Loaded key is not difficult enough"):
+            self._create_keysauth(difficulty=req_difficulty, key_name=priv_key)
 
     def test_save_keys(self):
         # given
@@ -276,50 +207,44 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
-        dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
-        loaded_l = message.Message.deserialize(dumped_l, ek.decrypt)
+        dumped_l = msg.serialize(ek.sign, lambda x: x)
+        loaded_l = message.Message.deserialize(dumped_l, lambda x: x)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
         self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), public_key))
 
-    def test_encrypt_decrypt(self):
-        """ Test encryption and decryption with KeysAuth """
-        ek = self._create_keysauth()
-        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
-        enc = ek.encrypt(data)
-        self.assertEqual(ek.decrypt(enc), data)
-        ek2 = self._create_keysauth()
-        self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
-        data2 = b"23103"
-        self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
-        data3 = b"\x00" + os.urandom(1024)
-        ek2 = self._create_keysauth(difficulty=2)
-        self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
-        with self.assertRaises(TypeError):
-            ek2.encrypt(None)
-
-
-class TestKeysAuthKeystore(testutils.TempDirFixture):
     def test_keystore(self):
         key_name = str(random())
         password = 'passwd'
 
         # Generate new key
-        KeysAuth(
-            datadir=self.path,
-            private_key_name=key_name,
-            password=password,
-        )
+        self._create_keysauth(key_name=key_name, password=password)
         # Try to load it, this shouldn't throw
-        KeysAuth(
-            datadir=self.path,
-            private_key_name=key_name,
-            password=password,
-        )
+        self._create_keysauth(key_name=key_name, password=password)
 
-        with self.assertRaises(WrongPasswordException):
-            KeysAuth(
-                datadir=self.path,
-                private_key_name=key_name,
-                password='wrongpassword',
-            )
+        with self.assertRaises(WrongPassword):
+            self._create_keysauth(key_name=key_name, password='wrong_pw')
+
+
+class TestKeysAuthWithReactor(TestWithReactor):
+
+    @patch('golem.core.keysauth.logger')
+    def test_generate_keys_stop_when_reactor_stopped(self, logger):
+        # given
+        from twisted.internet import threads
+        reactor = self._get_reactor()
+
+        # when
+        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
+
+        time.sleep(0.01)
+        reactor.stop()
+        time.sleep(0.01)
+
+        # then
+        assert not reactor.running
+        assert logger.info.call_count == 1
+        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
+        assert logger.warning.call_count == 1
+        assert logger.warning.call_args_list[0][0][0] == \
+            'reactor stopped, aborting key generation ..'

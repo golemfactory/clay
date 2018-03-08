@@ -63,9 +63,9 @@ class PaymentProcessor(LoopingCallService):
         self._gnt_converter = GNTConverter(sci)
         self.__eth_balance = None  # type: Optional[int]
         self.__gnt_balance = None  # type: Optional[int]
-        self.__gntw_balance = None  # type: Optional[int]
+        self.__gntb_balance = None  # type: Optional[int]
         self.__eth_reserved = 0
-        self.__gntw_reserved = 0
+        self.__gntb_reserved = 0
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
@@ -78,7 +78,7 @@ class PaymentProcessor(LoopingCallService):
 
     def balance_known(self):
         return self.__gnt_balance is not None and \
-            self.__gntw_balance is not None and \
+            self.__gntb_balance is not None and \
             self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
@@ -95,7 +95,7 @@ class PaymentProcessor(LoopingCallService):
         return (self.__eth_balance, self._last_eth_update)
 
     def gnt_balance(self, refresh=False):
-        if self.__gnt_balance is None or self.__gntw_balance is None or refresh:
+        if self.__gnt_balance is None or self.__gntb_balance is None or refresh:
             gnt_balance = self._sci.get_gnt_balance(
                 self._sci.get_eth_address())
             if gnt_balance is not None:
@@ -103,24 +103,24 @@ class PaymentProcessor(LoopingCallService):
             else:
                 log.warning("Failed to retrieve GNT balance")
 
-            gntw_balance = self._sci.get_gntw_balance(
+            gntb_balance = self._sci.get_gntb_balance(
                 self._sci.get_eth_address())
-            if gntw_balance is not None:
-                self.__gntw_balance = gntw_balance
+            if gntb_balance is not None:
+                self.__gntb_balance = gntb_balance
             else:
-                log.warning("Failed to retrieve GNTW balance")
+                log.warning("Failed to retrieve GNTB balance")
 
             if self.__gnt_balance is not None and \
-               self.__gntw_balance is not None:
+               self.__gntb_balance is not None:
                 log.info(
-                    "GNT: %r GNTW: %r",
+                    "GNT: %r GNTB: %r",
                     self.__gnt_balance / denoms.ether,
-                    self.__gntw_balance / denoms.ether,
+                    self.__gntb_balance / denoms.ether,
                 )
                 self._last_gnt_update = time.mktime(
                     datetime.today().timetuple())
 
-        return (self.__gnt_balance + self.__gntw_balance,
+        return (self.__gnt_balance + self.__gntb_balance,
                 self._last_gnt_update)
 
     def _eth_reserved(self):
@@ -132,11 +132,11 @@ class PaymentProcessor(LoopingCallService):
         return eth_balance - self._eth_reserved()
 
     def _gnt_reserved(self):
-        return self.__gntw_reserved
+        return self.__gntb_reserved
 
     def _gnt_available(self):
         gnt_balance, _ = self.gnt_balance()
-        return gnt_balance - self.__gntw_reserved
+        return gnt_balance - self.__gntb_reserved
 
     def load_from_db(self):
         with db.atomic():
@@ -173,28 +173,28 @@ class PaymentProcessor(LoopingCallService):
             # TODO: Optimize by checking the time once per service update.
             self.deadline = min(self.deadline, ts + deadline)
 
-        self.__gntw_reserved += payment.value
+        self.__gntb_reserved += payment.value
         self.__eth_reserved += self.ETH_PER_PAYMENT
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
             self._gnt_available() / denoms.ether,
-            self.__gntw_reserved / denoms.ether))
+            self.__gntb_reserved / denoms.ether))
 
     def __get_next_batch(
             self,
             payments: List[Payment],
             closure_time: int) -> Tuple[List[Payment], List[Payment]]:
         payments.sort(key=lambda p: p.processed_ts)
-        gntw_balance = self.__gntw_balance
+        gntb_balance = self.__gntb_balance
         eth_balance, _ = self.eth_balance()
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
         for p in payments:
             if p.processed_ts > closure_time:
                 break
-            gntw_balance -= p.value
+            gntb_balance -= p.value
             eth_balance -= self.ETH_PER_PAYMENT
-            if gntw_balance < 0 or eth_balance < 0:
+            if gntb_balance < 0 or eth_balance < 0:
                 break
             ind += 1
 
@@ -217,7 +217,7 @@ class PaymentProcessor(LoopingCallService):
                 return False
 
             if self._gnt_converter.is_converting():
-                log.info('Waiting for GNT-GNTW conversion')
+                log.info('Waiting for GNT-GNTB conversion')
                 return False
 
             closure_time = now - self.CLOSURE_TIME_DELAY
@@ -254,7 +254,7 @@ class PaymentProcessor(LoopingCallService):
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
-        self.__gntw_reserved -= value
+        self.__gntb_reserved -= value
         self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
 
@@ -338,7 +338,7 @@ class PaymentProcessor(LoopingCallService):
             return False
 
         if self.__faucet and gnt_balance < 100 * denoms.ether:
-            # During GNT-GNTW convertion gnt_balance will be zero, but we don't
+            # During GNT-GNTB convertion gnt_balance will be zero, but we don't
             # want to request GNT from faucet again
             if self._gnt_converter.is_converting():
                 return False
@@ -353,7 +353,7 @@ class PaymentProcessor(LoopingCallService):
             event='balance_snapshot',
             eth_balance=self.__eth_balance,
             gnt_balance=self.__gnt_balance,
-            gntw_balance=self.__gntw_balance
+            gntb_balance=self.__gntb_balance
         )
 
     def _run(self):

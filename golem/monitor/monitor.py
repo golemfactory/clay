@@ -210,12 +210,12 @@ class SystemMonitor(object):
         self.sender_thread.send(msg)
 
     def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
-                            gntw_balance: int):
+                            gntb_balance: int):
         self.sender_thread.send(
             BalanceModel(
                 self.meta_data,
                 eth_balance,
                 gnt_balance,
-                gntw_balance
+                gntb_balance
             )
         )

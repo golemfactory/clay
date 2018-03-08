@@ -235,7 +235,8 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError):
+                except (pickle.UnpicklingError, EOFError, ImportError,
+                        KeyError):
                     logger.exception('Problem restoring task from: %s', path)
                     # On Windows, attempting to remove a file that is in use
                     # causes an exception to be raised, therefore
@@ -366,11 +367,6 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None, False, False
 
-        ctd['key_id'] = task.header.task_owner_key_id
-        ctd['return_address'] = task.header.task_owner_address
-        ctd['return_port'] = task.header.task_owner_port
-        ctd['task_owner'] = task.header.task_owner.to_dict()
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, price, ctd, address,
@@ -458,6 +454,7 @@ class TaskManager(TaskEventListener):
                                      op=OtherOp.UNEXPECTED)
             verification_finished_()
             return
+        subtask_state.subtask_status = SubtaskStatus.verifying
 
         def verification_finished():
             ss = self.tasks_states[task_id].subtask_states[subtask_id]
