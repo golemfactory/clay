@@ -80,10 +80,6 @@ class DummyTask(CoreTask):
             "result_size": self.task_definition.result_size,
             "result_file": self.__get_result_file_name(subtask_id),
             "subtask_data_size": sbs,
-            "ctd": {
-                # Deadlines are mocked, 1 is enough.
-                "deadline": 1
-            }
         }
 
         return self._new_compute_task_def(subtask_id,

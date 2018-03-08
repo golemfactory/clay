@@ -56,7 +56,7 @@ class CoreVerifier(StateVerifier):
 class VerificationQueue:
 
     Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
-                                 'kwargs', 'cb'])
+                                 'deadline', 'kwargs', 'cb'])
 
     def __init__(self, concurrency: int = 1) -> None:
 
@@ -69,10 +69,11 @@ class VerificationQueue:
     def submit(self,
                verifier_class: Type[Verifier],
                subtask_id: str,
+               deadline: int,
                cb: FunctionType,
                **kwargs) -> None:
 
-        entry = self.Entry(verifier_class, subtask_id, kwargs, cb)
+        entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
         self._queue.put(entry)
         self._process_queue()
 
@@ -111,13 +112,13 @@ class VerificationQueue:
                 self._process_queue()
 
         try:
-            deadline = entry.kwargs["subtask_info"]["ctd"]["deadline"]
             verifier = entry.verifier_class(callback)
             verifier.computer = ComputerAdapter()
-            if deadline_to_timeout(deadline) > 0:
+            if deadline_to_timeout(entry.deadline) > 0:
                 verifier.start_verification(**entry.kwargs)
             else:
-                raise Exception("Deadline passed")
+                verifier.task_timeout()
+                raise Exception("Task deadline passed")
 
         except Exception as exc:  # pylint: disable=broad-except
             with self._lock:

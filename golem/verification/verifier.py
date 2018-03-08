@@ -10,6 +10,7 @@ class SubtaskVerificationState(Enum):
     VERIFIED = 3
     WRONG_ANSWER = 4
     NOT_SURE = 5
+    TIMEOUT = 6
 
 
 class Verifier:
@@ -59,6 +60,17 @@ class StateVerifier(Verifier):
         if self.state in self.active_status:
             self.state = SubtaskVerificationState.NOT_SURE
         self.message = "Verification was stopped"
+        answer = self._get_answer()
+        self.callback(subtask_id=self.subtask_info['subtask_id'],
+                      verdict=self.state,
+                      results=answer)
+        self._clear_state()
+
+    def task_timeout(self):
+        self.time_started = self.time_ended = datetime.utcnow()
+
+        self.state = SubtaskVerificationState.TIMEOUT
+        self.message = "Verification never ran, task timed out"
         answer = self._get_answer()
         self.callback(subtask_id=self.subtask_info['subtask_id'],
                       verdict=self.state,

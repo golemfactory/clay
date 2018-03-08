@@ -215,10 +215,7 @@ class LuxTask(renderingtask.RenderingTask):
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
-                      "ctd": {
-                          # Deadline is mocked or set elsewhere
-                          "deadline": 1.0
-                      }}
+                      }
 
         hash = "{}".format(random.getrandbits(128))
         self.subtasks_given[hash] = copy(extra_data)
