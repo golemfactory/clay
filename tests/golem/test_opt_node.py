@@ -70,12 +70,14 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=cfg)
 
         node._client_factory(keys_auth)
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=cfg,
                                        keys_auth=keys_auth,
                                        geth_address=None,
@@ -113,6 +115,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=geth_address,
                                      peers=[],
@@ -129,6 +132,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             geth_address=geth_address)
 
@@ -136,6 +140,7 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
                                        geth_address=geth_address,
@@ -190,6 +195,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
@@ -203,6 +209,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             start_geth=True)
 
@@ -210,6 +217,7 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
                                        geth_address=None,
@@ -245,6 +253,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
 
         mock_node.assert_called_with(datadir=self.path,
+                                     app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
@@ -261,6 +270,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             start_geth=True,
             start_geth_port=port)
@@ -269,6 +279,7 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
                                        geth_address=None,
@@ -413,6 +424,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=config_desc,
                          use_docker_manager=False)
 
@@ -436,6 +448,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=config_descriptor,
                          use_docker_manager=False)
         self.node.start()
@@ -467,6 +480,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=(ClientConfigDescriptor()),
                          use_docker_manager=False)
         self.node.start()
@@ -501,6 +515,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
                          peers=parsed_peer,
                          use_docker_manager=False)

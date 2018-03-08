@@ -116,8 +116,9 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
     if rpc_address:
@@ -138,6 +139,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
 
         node = Node(
             datadir=datadir,
+            app_config=app_config,
             config_desc=config_desc,
             transaction_system=payments,
             peers=peer,
