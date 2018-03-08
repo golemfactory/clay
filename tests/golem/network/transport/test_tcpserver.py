@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 
-from golem.network.transport.tcpserver import (TCPServer, PendingConnectionsServer, PendingConnection,
-                                               PendingListening, PenConnStatus)
+from golem.network.transport.tcpserver import (
+    TCPServer, PendingConnectionsServer, PendingConnection, PenConnStatus)
 from golem.network.p2p.node import Node
 
 
@@ -191,40 +191,8 @@ class TestPendingConnectionServer(unittest.TestCase):
         assert not network.connected
         assert final_failure_called[0]
 
-    def test_sync_listen(self):
-        network = Network()
-        server = PendingConnectionsServer(None, network)
-        req_type = 0
-
-        server.listen_established_for_type[req_type] = lambda x: x
-        server.listen_failure_for_type[req_type] = server.final_conn_failure
-
-        server._add_pending_listening(req_type, self.port, {})
-        assert len(server.pending_listenings) == 1
-        pending_lis = server.pending_listenings[0]
-        pending_lis.time = 0
-
-        server._sync_pending()
-
-        assert len(server.pending_listenings) == 0
-        assert len(server.open_listenings) == 1
-
-        server.last_check_listening_time = 0
-        server._remove_old_listenings()
-
-        assert network.stop_listening_called
-        assert len(server.pending_listenings) == 0
-        assert len(server.open_listenings) == 0
-
 
 class TestPendingConnection(unittest.TestCase):
     def test_init(self):
         pc = PendingConnection(1, "10.10.10.10")
         self.assertIsInstance(pc, PendingConnection)
-
-
-class TestPendingListening(unittest.TestCase):
-    def test_init(self):
-        pl = PendingListening(1, 1020)
-        self.assertIsInstance(pl, PendingListening)
-

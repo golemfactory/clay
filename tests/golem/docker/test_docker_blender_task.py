@@ -230,8 +230,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
-        assert task.header.docker_images[0].repository == 'golemfactory/blender'
-        assert task.header.docker_images[0].tag == '1.4'
+        assert task.docker_images[0].repository == 'golemfactory/blender'
+        assert task.docker_images[0].tag == '1.4'
         assert task.header.max_price == 10.2
         assert not task.header.signature
         assert task.listeners == []
@@ -269,7 +269,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def test_wrong_image_repository_specified(self):
         task = self._create_test_task()
-        task.header.docker_images = [DockerImage("%$#@!!!")]
+        task.docker_images = [DockerImage("%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
             assert not task_thread.result
@@ -277,8 +277,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def test_wrong_image_id_specified(self):
         task = self._create_test_task()
-        image = task.header.docker_images[0]
-        task.header.docker_images = [
+        image = task.docker_images[0]
+        task.docker_images = [
             DockerImage(image.repository, image_id="%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:

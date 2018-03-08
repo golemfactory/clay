@@ -1,9 +1,12 @@
+import logging
 import subprocess
 import time
 from multiprocessing import Process
 from threading import Thread, Lock
 
 import psutil
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessMonitor(Thread):
@@ -28,8 +31,8 @@ class ProcessMonitor(Thread):
                 process = self._child_processes[i]
 
                 if not self.is_process_alive(process):
-                    print("Subprocess {} exited with code {}"
-                          .format(process.pid, self.exit_code(process)))
+                    logger.info("Subprocess %d exited with code %d",
+                                process.pid, self.exit_code(process))
                     if self.working:
                         self.run_callbacks(process)
                     self._child_processes.pop(i)
@@ -77,9 +80,9 @@ class ProcessMonitor(Thread):
                     process.join()
 
             except Exception as exc:
-                print("Error terminating process {}: {}".format(process, exc))
+                logger.error("Error terminating process %d: %r", process, exc)
             else:
-                print("Subprocess {} terminated".format(cls._pid(process)))
+                logger.warning("Subprocess %d terminated", cls._pid(process))
 
     @staticmethod
     def _pid(process):

@@ -181,7 +181,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
                 makedirs(dest_dirname)
             shutil.copyfile(os.path.join(td.code_dir, res_file), dest_file)
 
-        def send_task_failed(self_, subtask_id, task_id, error_msg, *args):
+        def send_task_failed(_, __, ___, error_msg):
             self.error_msg = error_msg
 
         TaskServer.send_task_failed = send_task_failed
