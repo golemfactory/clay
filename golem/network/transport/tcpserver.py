@@ -1,6 +1,5 @@
 import logging
 import time
-from functools import partial
 from typing import Callable, Dict, List, Optional, Set
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -246,6 +245,7 @@ class PendingConnection:
     """ Describe pending connections parameters for PendingConnectionsServer """
     connect_statuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
+    # pylint: disable-msg=too-many-arguments
     def __init__(self,
                  type_: int,
                  socket_addresses: List[SocketAddress],

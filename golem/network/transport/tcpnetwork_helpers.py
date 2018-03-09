@@ -200,12 +200,13 @@ class TCPListeningInfo(object):
 
 
 class TCPConnectInfo(object):
+    # pylint: disable-msg=too-many-arguments
     def __init__(self,
                  socket_addresses: List[SocketAddress],
                  established_callback: Optional[Callable] = None,
                  failure_callback: Optional[Callable] = None,
                  final_failure_callback: Optional[Callable] = None,
-                 kwargs: Kwargs = {}) \
+                 kwargs: Kwargs = dict()) \
                  -> None:
         """
         Information for TCP connect function

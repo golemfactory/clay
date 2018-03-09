@@ -111,6 +111,7 @@ class TCPNetwork(Network):
                 None,
                 listening_info.stopped_errback,
             )
+            return None
 
     def __filter_host_addresses(self, addresses):
         result = []
@@ -170,7 +171,8 @@ class TCPNetwork(Network):
                          self.__connection_to_address_failure,
                          connect_info)
 
-    def __connection_established(self, conn, established_callback,
+    @staticmethod
+    def __connection_established(conn, established_callback,
                                  connect_info: TCPConnectInfo):
         pp = conn.transport.getPeer()
         logger.debug("Connection established %r %r", pp.host, pp.port)
@@ -180,12 +182,14 @@ class TCPNetwork(Network):
             connect_info,
         )
 
-    def __connection_failure(self, err_desc, failure_callback,
+    @staticmethod
+    def __connection_failure(err_desc, failure_callback,
                              connect_info: TCPConnectInfo):
         logger.debug("Connection failure. %r", err_desc)
         TCPNetwork.__call_failure_callback(failure_callback, connect_info)
 
-    def __connection_to_address_established(self, conn,
+    @staticmethod
+    def __connection_to_address_established(conn,
                                             connect_info: TCPConnectInfo):
         TCPNetwork.__call_established_callback(
             connect_info.established_callback,
