@@ -14,6 +14,7 @@ from golem_messages import message
 
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -306,7 +307,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.disconnect = Mock()
         ts.send = Mock()
 
-        from golem.core.keysauth import KeysAuth
         ka = KeysAuth(datadir=self.path, difficulty=difficulty,
                       private_key_name='prv', password='')
         peer_info = MagicMock()
