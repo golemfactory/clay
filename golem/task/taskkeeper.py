@@ -7,6 +7,7 @@ import typing
 import random
 from collections import Counter
 from golem_messages import message
+from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
@@ -43,15 +44,22 @@ class CompTaskInfo:
             self.requests
         )
 
-    def check_deadline(self, deadline):
+    def check_deadline(self, deadline: float) -> bool:
+        """
+        Checks if subtask deadline defined in newly received ComputeTaskDef
+        is properly set, ie. it's set to future date, but not much further than
+        it was declared in subtask timeout.
+        :param float deadline: subtask deadline
+        :return bool:
+        """
         now_ = common.get_timestamp_utc()
-        # FIXME: create a proper deadline check for 0.12.1
-        if now_ > deadline:  # or deadline > now_ + self.header.subtask_timeout:
-            logger.debug('check_deadline failed: (now: %r, deadline: %r, '
-                         'timeout: %r)', now_, deadline,
-                         self.header.subtask_timeout)
-            return False
-        return True
+        expected_deadline = now_ + self.header.subtask_timeout
+        if now_ < deadline < expected_deadline + MTD.seconds:
+            return True
+        logger.debug('check_deadline failed: (now: %r, deadline: %r, '
+                     'timeout: %r)', now_, deadline,
+                     self.header.subtask_timeout)
+        return False
 
 
 class CompSubtaskInfo:
