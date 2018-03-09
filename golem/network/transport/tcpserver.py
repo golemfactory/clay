@@ -126,7 +126,7 @@ class PendingConnectionsServer(TCPServer):
     def remove_pending_conn(self, conn_id):
         return self.pending_connections.pop(conn_id, None)
 
-    def final_conn_failure(self, conn_id) -> bool:
+    def final_conn_failure(self, conn_id):
         """ React to the information that all connection attempts failed. Call specific for this connection type
         method and then remove it from pending connections list.
         :param uuid|None conn_id: id of verified connection
@@ -139,7 +139,7 @@ class PendingConnectionsServer(TCPServer):
             logger.debug("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, request_type, node,
-                             prv_port, pub_port, args):
+                             prv_port, pub_port, args) -> bool:
         if not self.active:
             return False
 
