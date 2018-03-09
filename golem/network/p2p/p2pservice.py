@@ -575,6 +575,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return list: list of information about closest neighbours
         """
         alpha = alpha or self.peer_keeper.concurrency
+        public = self.config_desc.send_public_addresses
 
         if node_key_id is None:
             peers = list(self.peers.values())
@@ -593,8 +594,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
             def _mapper(peer):
                 return {
-                    "address": peer.prv_addr,
-                    "port": peer.prv_port,
+                    "address": peer.pub_addr if public else peer.prv_addr,
+                    "port": peer.pub_port if public else peer.prv_port,
                     "id": peer.key,
                     "node": peer,
                     "node_name": peer.node_name,

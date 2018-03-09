@@ -58,6 +58,7 @@ class ClientConfigDescriptor(object):
         self.public_address = ""
 
         self.accept_tasks = 1
+        self.send_public_addresses = 1
 
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig

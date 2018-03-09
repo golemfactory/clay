@@ -73,8 +73,8 @@ class TestP2PService(testutils.DatabaseFixture):
                 neighbour_node,
             ])
         expected = [{
-            'address': neighbour_node.prv_addr,
-            'port': neighbour_node.prv_port,
+            'address': neighbour_node.pub_addr,
+            'port': neighbour_node.pub_port,
             'id': neighbour_node.key,
             'node': neighbour_node,
             'node_name': neighbour_node.node_name,
