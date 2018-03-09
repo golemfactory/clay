@@ -45,5 +45,3 @@ class TestMiddleware(unittest.TestCase):
         with self.assertRaises(ConnectionError):
             middleware(Mock(), None)
         assert listener.called
-
-
