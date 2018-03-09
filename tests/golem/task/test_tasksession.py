@@ -304,7 +304,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             subtask_id='xxyyzz'
         )
 
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         pending_message = next(pending_messages.get(node_id=ts.key_id))
         assert pending_message.type == message.tasks.SubtaskResultsRejected.TYPE
@@ -319,7 +319,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.computed_task_received = Mock(
             side_effect=finished(),
         )
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         pending_message = next(pending_messages.get(node_id=ts.key_id))
         assert pending_message.type == message.tasks.SubtaskResultsAccepted.TYPE
@@ -330,7 +330,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             subtask_id=None,
         ))
         conn.close.called = False
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         try:
             pending_message = next(pending_messages.get(node_id=ts.key_id))
@@ -856,7 +856,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         with patch('golem.task.tasksession.get_task_message',
                    Mock(return_value=ttc)):
-            self.task_session.result_received(extra_data, decrypt=False)
+            self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object

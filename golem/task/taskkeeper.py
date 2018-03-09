@@ -109,7 +109,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError, AttributeError):
+            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path

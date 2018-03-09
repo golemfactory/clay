@@ -1011,7 +1011,8 @@ class Client(HardwarePresetsMixin):
     def check_payments(self):
         if not self.transaction_system:
             return
-        after_deadline_nodes = self.transaction_system.check_payments()
+        after_deadline_nodes = \
+            self.transaction_system.get_nodes_with_overdue_payments()
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
 

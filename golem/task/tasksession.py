@@ -205,61 +205,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     # FileSession methods #
     #######################
 
-    def data_sent(self, extra_data):
-        """ All data that should be send in a stream mode has been send.
-        :param dict extra_data: additional information that may be needed
-        """
-        if extra_data and "subtask_id" in extra_data:
-            self.task_server.task_result_sent(extra_data["subtask_id"])
-        BasicSafeSession.data_sent(self, extra_data)
-        self.dropped()
-
-    def full_data_received(self, extra_data):
-        """Received all data in a stream mode (it may be task result or
-           resources for the task).
-        :param dict extra_data: additional information that may be needed
-        """
-        data_type = extra_data.get('data_type')
-        if data_type is None:
-            logger.error("Wrong full data received type")
-            self.dropped()
-            return
-        if data_type == "resource":
-            self.resource_received(extra_data)
-        elif data_type == "result":
-            self.result_received(extra_data)
-        else:
-            logger.error("Unknown data type {}".format(data_type))
-            self.conn.producer = None
-            self.dropped()
-
-    def resource_received(self, extra_data):
-        """ Inform server about received resource
-        :param dict extra_data: dictionary with information about received
-                                resource
-        """
-        file_sizes = extra_data.get('file_sizes')
-        if file_sizes is None:
-            logger.error("No file sizes given")
-            self.dropped()
-        file_size = file_sizes[0]
-        tmp_file = extra_data.get('file_received')[0]
-        if file_size > 0:
-            decompress_dir(extra_data.get('output_dir'), tmp_file)
-        task_id = extra_data.get('task_id')
-        if task_id:
-            self.task_computer.resource_given(task_id)
-        else:
-            logger.error("No task_id in extra_data for received File")
-        self.conn.producer = None
-        self.dropped()
-
-    def result_received(self, extra_data, decrypt=True):
+    def result_received(self, extra_data):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about
                                 received result
-        :param bool decrypt: tells whether result decryption should
-                             be performed
         """
         result = extra_data.get('result')
         result_type = extra_data.get("result_type")
@@ -283,8 +232,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
 
         if result_type == ResultType.DATA:
             try:
-                if decrypt:
-                    result = self.decrypt(result)
                 result = CBORSerializer.loads(result)
             except Exception as err:
                 logger.error("Can't load result data {}".format(err))
@@ -663,7 +610,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             extra_data = extracted_pkg.to_extra_data()
             logger.debug("Task result extracted {}"
                          .format(extracted_pkg.__dict__))
-            self.result_received(extra_data, decrypt=False)
+            self.result_received(extra_data)
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceGetTaskResult')
 
@@ -951,34 +898,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         reasons = message.CannotComputeTask.REASON
         self.err_msg = reasons.WrongDockerImages
         return False
-
-    def __receive_data_result(self, msg):
-        extra_data = {
-            "subtask_id": msg.subtask_id,
-            "result_type": msg.result_type,
-            "data_type": "result"
-        }
-        self.conn.consumer = tcpnetwork.DecryptDataConsumer(self, extra_data)
-        self.conn.stream_mode = True
-        self.subtask_id = msg.subtask_id
-
-    def __receive_files_result(self, msg):
-        extra_data = {
-            "subtask_id": msg.subtask_id,
-            "result_type": msg.result_type,
-            "data_type": "result"
-        }
-        output_dir = self.task_manager.dir_manager.get_task_temporary_dir(
-            self.task_manager.get_task_id(msg.subtask_id), create=False
-        )
-        self.conn.consumer = tcpnetwork.DecryptFileConsumer(
-            msg.extra_data,
-            output_dir,
-            self,
-            extra_data
-        )
-        self.conn.stream_mode = True
-        self.subtask_id = msg.subtask_id
 
     def _restore_session_state(self) -> None:
         try:

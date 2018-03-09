@@ -42,7 +42,7 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules # noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules # noqa
     """
-    ID = 23
+    ID = 24
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):
@@ -71,3 +71,8 @@ STAGE_TIME = 36000
 # THREADING CONST #
 ###################
 REACTOR_THREAD_POOL_SIZE = 20
+
+#################
+# INCOMES CONST #
+#################
+PAYMENT_DEADLINE = 24 * 60 * 60

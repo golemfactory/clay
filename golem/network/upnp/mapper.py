@@ -174,5 +174,6 @@ class PortMapperManager(IPortMapper):
             return
 
         for protocol, mapping in self._mapping.items():
-            for port, external_port in mapping.items():
+            fixed_mapping = deepcopy(mapping)
+            for port, external_port in fixed_mapping.items():
                 self.remove_mapping(port, external_port, protocol)
