@@ -9,6 +9,7 @@ import weakref
 from collections import deque
 from pathlib import Path
 
+from golem.network.p2p.node import Node
 from golem.network.pending import PendingSessionMessages
 from golem_messages import message
 
@@ -136,11 +137,17 @@ class TaskServer(
 
         for session in self.pending_messages.get_sessions():
             # Messages may have not appeared (yet; e.g. task results)
-            if not self.pending_messages.exists(session.node_id):
+            if not self.pending_messages.exists(session.key_id):
                 continue
 
             logger.info('Reconnecting to %r', session.node_info)
-            self.start_task_session(session.node_info, None, None)
+
+            try:
+                node = Node.from_dict(session.node_info)
+                self.start_task_session(node, None, None)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning('Cannot reconnect to node %r: %r',
+                               session.node_info, exc)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(
