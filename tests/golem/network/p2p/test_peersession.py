@@ -146,9 +146,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 reason=message.Disconnect.REASON.ProtocolVersion).slots())
 
     @patch('golem.network.transport.session.BasicSession.send')
-    @patch('golem.core.keysauth.KeysAuth.is_pubkey_difficult')
+    @patch('golem.core.keysauth.KeysAuth.is_pubkey_difficult',
+           return_value=False)
     def test_react_to_hello_key_not_difficult(self, is_difficult_fn, send_mock):
-        is_difficult_fn.return_value = False
         client_hello = self.__setup_handshake_server_test(send_mock)
 
         self.peer_session._react_to_hello(client_hello)
