@@ -54,8 +54,9 @@ def create_client(datadir):
     pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.init_from_app_config(app_config)
     config_desc.key_difficulty = 0
 
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
@@ -68,6 +69,7 @@ def create_client(datadir):
         )
 
     return Client(datadir=datadir,
+                  app_config=app_config,
                   config_desc=config_desc,
                   keys_auth=keys_auth,
                   use_monitor=False,
