@@ -5,7 +5,6 @@ import pickle
 import queue
 import threading
 import time
-from abc import abstractmethod, ABC
 from functools import reduce, wraps
 from typing import List
 
@@ -249,7 +248,7 @@ class MessageHistoryService(IService):
 
 # SHORTCUTS #
 
-def message_to_model(msg:message.base.Message,
+def message_to_model(msg: message.base.Message,
                      node_id,
                      local_role: Actor,
                      remote_role: Actor) -> dict:
@@ -278,13 +277,17 @@ def message_to_model(msg:message.base.Message,
         'remote_role': remote_role,
     }
 
+
 def add(msg: message.base.Message,
         node_id,
         local_role: Actor,
         remote_role: Actor) -> None:
     service = MessageHistoryService.instance
     if not service:
-        logger.error("MessageHistoryService unavailable. Cannot log message: %r", msg)
+        logger.error(
+            "MessageHistoryService unavailable. Cannot log message: %r",
+            msg,
+        )
         return
     try:
         model = message_to_model(
@@ -329,7 +332,7 @@ def record_history(local_role, remote_role):
             result = func(self, msg, *args, **kwargs)
             add(
                 msg=msg,
-                node_id=self.key_id, 
+                node_id=self.key_id,
                 local_role=local_role,
                 remote_role=remote_role,
             )

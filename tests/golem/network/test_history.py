@@ -106,9 +106,8 @@ class TestMessageHistoryService(DatabaseFixture):
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
-        with mock.patch(
-                'peewee.DeleteQuery.execute',
-                side_effect=PeeweeException):
+        with mock.patch('peewee.DeleteQuery.execute',
+                        side_effect=PeeweeException):
             self.service.remove_sync(msg['task'])
             assert self.service._remove_queue.put.called
             assert message_count() == 1

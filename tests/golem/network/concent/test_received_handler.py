@@ -42,10 +42,10 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
     def setUp(self):
         self.msg = msg_factories.ForceReportComputedTaskResponse()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
+        ttc = self.msg.ack_report_computed_task.task_to_compute
         self.call_response = mock.call(
             msg=self.msg,
-            node_id=self.msg.ack_report_computed_task.task_to_compute \
-                .requestor_id,
+            node_id=ttc.requestor_id,
             local_role=Actor.Provider,
             remote_role=Actor.Concent,
         )
@@ -116,7 +116,6 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
             self.call_response,
             call_inner,
         ])
-
 
 
 # pylint: disable=no-self-use

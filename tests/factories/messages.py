@@ -121,6 +121,7 @@ class AckReportComputedTask(factory.Factory):
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
 
+
 class RejectReportComputedTask(factory.Factory):
     class Meta:
         model = concents.RejectReportComputedTask

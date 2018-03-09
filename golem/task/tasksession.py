@@ -17,7 +17,6 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -712,8 +711,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id, )
-            for msg in self.msgs_to_send:
-                self.send(msg)
+            for msg_ in self.msgs_to_send:
+                self.send(msg_)
             self.msgs_to_send = []
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
