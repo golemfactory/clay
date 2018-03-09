@@ -152,9 +152,3 @@ class PEP8MixIn(object):
         result = style.check_files(absolute_files)
         self.assertEqual(result.total_errors, 0,
                          "Found code style errors (and warnings).")
-
-
-def get_key_auth_for_tests(datadir, difficulty=0):
-    with unittest.mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
-        from golem.core.keysauth import KeysAuth
-        return KeysAuth(datadir, 'priv_key', 'password', difficulty)

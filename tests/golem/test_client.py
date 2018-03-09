@@ -25,6 +25,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, Income
@@ -37,7 +38,6 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
-from golem.testutils import get_key_auth_for_tests
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
@@ -766,7 +766,7 @@ class TestTaskCleanerService(TestWithReactor):
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-        keys_auth = get_key_auth_for_tests(self.path)
+        keys_auth = KeysAuth(self.path, 'priv_key', '')
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             client = Client(
@@ -799,7 +799,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = get_key_auth_for_tests(self.path)
+        c.keys_auth = KeysAuth(datadir, 'priv_key', 'password')
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -872,7 +872,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock(
             header=task_header,
             get_resources=Mock(return_value=[]),
-            total_tasks=5
+            total_tasks=5,
+            get_price=Mock(return_value=900)
         )
 
         c.enqueue_new_task(task)
@@ -881,6 +882,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.header.max_price = 1 * 10**18
         task_mock.header.subtask_timeout = 158
         task_mock.total_tasks = 3
+        task_mock.get_price.return_value = task_mock.header.max_price * \
+                                           task_mock.total_tasks
         c.task_server.task_manager.create_task.return_value = task_mock
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
