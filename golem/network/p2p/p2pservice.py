@@ -42,7 +42,10 @@ SEEDS = [
     ('94.23.196.166', 40102),
     ('94.23.196.166', 40104),
     ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104)
+    ('188.165.227.180', 40104),
+    # TODO: FOR BETA, replace with seeds.golem.network
+    ('seeds.test.golem.network', 40102),
+    ('seeds.test.golem.network', 40104),
 ]
 
 
