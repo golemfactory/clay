@@ -57,6 +57,7 @@ def create_client(datadir):
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
     config_desc.key_difficulty = 0
+    config_desc.send_public_addresses = False
 
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
         from golem.core.keysauth import KeysAuth
