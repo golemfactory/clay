@@ -1,8 +1,10 @@
 import datetime
 import logging
 import operator
+import pickle
 import queue
 import threading
+import time
 from abc import abstractmethod, ABC
 from functools import reduce, wraps
 from typing import List
@@ -245,38 +247,79 @@ class MessageHistoryService(IService):
             logger.error("Message sweep failed: %r", exc)
 
 
-##############
-# INTERFACES #
-##############
+# SHORTCUTS #
 
+def message_to_model(msg:message.base.Message,
+                     node_id,
+                     local_role: Actor,
+                     remote_role: Actor) -> dict:
+    """Converts a message to its database model dictionary representation.
 
-class IMessageHistoryProvider(ABC):
+    MessageHistoryService operates in a separate thread, whereas peewee
+    models are created on per-connection (here: per-thread) basis. If
+    MessageHistoryService used objects created in another thread, it would
+    lock the database for that thread.
 
-    @abstractmethod
-    def message_to_model(self, msg: 'golem_messages.message.Message',
-                         local_role: Actor,
-                         remote_role: Actor) -> dict:
-        """
-        Converts a message to its database model dictionary representation.
+    The returned dict representation is used for creating NetworkMessage
+    models in MessageHistoryService thread.
 
-        MessageHistoryService operates in a separate thread, whereas peewee
-        models are created on per-connection (here: per-thread) basis. If
-        MessageHistoryService used objects created in another thread, it would
-        lock the database for that thread.
+    :param local_role: Local node's role in computation
+    :param remote_role: Remote node's role in computation
+    :return: Dict representation of NetworkMessage
+    """
+    return {
+        'task': msg.task_id,
+        'subtask': msg.subtask_id,
+        'node': node_id,
+        'msg_date': time.time(),
+        'msg_cls': msg.__class__.__name__,
+        'msg_data': pickle.dumps(msg),
+        'local_role': local_role,
+        'remote_role': remote_role,
+    }
 
-        The returned dict representation is used for creating NetworkMessage
-        models in MessageHistoryService thread.
+def add(msg: message.base.Message,
+        node_id,
+        local_role: Actor,
+        remote_role: Actor) -> None:
+    service = MessageHistoryService.instance
+    if not service:
+        logger.error("MessageHistoryService unavailable. Cannot log message: %r", msg)
+        return
+    try:
+        model = message_to_model(
+            msg=msg,
+            node_id=node_id,
+            local_role=local_role,
+            remote_role=remote_role,
+        )
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "message_to_model(%r, %r, %r, %r) failed:",
+            msg,
+            node_id,
+            local_role,
+            remote_role,
+        )
+        return
 
-        :param msg: Session message
-        :param local_role: Local node's role in computation
-        :param remote_role: Remote node's role in computation
-        :return: Dict representation of NetworkMessage
-        """
+    try:
+        service.add(model)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("MessageHistoryService.add(%r) failed:", model)
+        return
+    logger.debug(
+        "Succesfully saved %r node_id: %r local_role: %r remote_role: %r",
+        msg,
+        node_id,
+        local_role,
+        remote_role,
+    )
+
 
 ##############
 # DECORATORS #
 ##############
-
 
 def record_history(local_role, remote_role):
     def decorator(func):
@@ -284,24 +327,13 @@ def record_history(local_role, remote_role):
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
             result = func(self, msg, *args, **kwargs)
-
-            try:
-                service = MessageHistoryService.instance
-                model = self.message_to_model(msg, local_role, remote_role)
-                if model and service:
-                    service.add(model)
-                else:
-                    logger.error("Cannot log message: %r", msg)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception(
-                    "record_history(%r, %r, *%r, **%r) failed:",
-                    self,
-                    msg,
-                    args,
-                    kwargs,
-                )
+            add(
+                msg=msg,
+                node_id=self.key_id, 
+                local_role=local_role,
+                remote_role=remote_role,
+            )
             return result
-
         return wrapper
     return decorator
 

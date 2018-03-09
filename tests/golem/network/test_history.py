@@ -2,35 +2,34 @@
 import datetime
 import queue
 import uuid
+import unittest
 import unittest.mock as mock
-from unittest.mock import Mock, patch
 
-from golem_messages import message
+from faker import Faker
 from peewee import DataError, PeeweeException, IntegrityError
 
 from golem.model import NetworkMessage, Actor
-from golem.network.history import MessageHistoryService, record_history, \
-    IMessageHistoryProvider, requestor_history, provider_history
+from golem.network import history
 from golem.testutils import DatabaseFixture
+
+from tests.factories import messages as msg_factories
+
+fake = Faker()
 
 
 def message_count():
     return NetworkMessage.select().count()
 
 
-def mock_sign(*_):
-    return b'\0' * message.Message.SIG_LEN
-
-
 class TestMessageHistoryService(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        self.service = MessageHistoryService()
+        self.service = history.MessageHistoryService()
 
     def tearDown(self):
         super().tearDown()
-        MessageHistoryService.instance = None
+        history.MessageHistoryService.instance = None
 
     @staticmethod
     def _build_dict(task=None, subtask=None):
@@ -63,7 +62,7 @@ class TestMessageHistoryService(DatabaseFixture):
 
     @mock.patch('golem.model.NetworkMessage.save')
     def test_add_sync_fail(self, save):
-        self.service._save_queue = Mock()
+        self.service._save_queue = mock.Mock()
         msg_dict = self._build_dict(None, None)
 
         save.side_effect = DataError
@@ -98,16 +97,18 @@ class TestMessageHistoryService(DatabaseFixture):
         msg = self._build_dict(None, None)
 
         self.service.add_sync(msg)
-        self.service._remove_queue = Mock()
+        self.service._remove_queue = mock.Mock()
 
         assert message_count() == 1
 
-        with patch('peewee.DeleteQuery.execute', side_effect=DataError):
+        with mock.patch('peewee.DeleteQuery.execute', side_effect=DataError):
             self.service.remove_sync(msg['task'])
             assert not self.service._remove_queue.put.called
             assert message_count() == 1
 
-        with patch('peewee.DeleteQuery.execute', side_effect=PeeweeException):
+        with mock.patch(
+                'peewee.DeleteQuery.execute',
+                side_effect=PeeweeException):
             self.service.remove_sync(msg['task'])
             assert self.service._remove_queue.put.called
             assert message_count() == 1
@@ -143,9 +144,12 @@ class TestMessageHistoryService(DatabaseFixture):
         assert len(clauses) == 2
         assert all(prop in clauses for prop in ['task', 'subtask'])
 
-    @patch('golem.network.history.MessageHistoryService.QUEUE_TIMEOUT', 0.1)
+    @mock.patch(
+        'golem.network.history.MessageHistoryService.QUEUE_TIMEOUT',
+        0.1,
+    )
     def test_start_stop(self, *_):
-        self.service._loop = Mock()
+        self.service._loop = mock.Mock()
 
         assert not self.service.running
         self.service.start()
@@ -156,7 +160,7 @@ class TestMessageHistoryService(DatabaseFixture):
 
         assert self.service._loop.called
 
-    @patch('threading.Thread')
+    @mock.patch('threading.Thread')
     def test_multiple_starts(self, *_):
         self.service.start()
         assert self.service._thread.start.called
@@ -196,7 +200,7 @@ class TestMessageHistoryService(DatabaseFixture):
         assert message_count() == 2
 
     def test_loop_sweep(self):
-        self.service._sweep = Mock()
+        self.service._sweep = mock.Mock()
         self.service._queue_timeout = 0.1
 
         self.service._loop()
@@ -207,9 +211,9 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service._sweep.called
 
     def test_loop_add_sync(self):
-        self.service._sweep = Mock()
+        self.service._sweep = mock.Mock()
         self.service._queue_timeout = 0.1
-        self.service.add_sync = Mock()
+        self.service.add_sync = mock.Mock()
 
         # No message
         self.service._loop()
@@ -229,9 +233,9 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.add_sync.called
 
     def test_loop_remove_sync(self):
-        self.service._sweep = Mock()
+        self.service._sweep = mock.Mock()
         self.service._queue_timeout = 0.1
-        self.service.remove_sync = Mock()
+        self.service.remove_sync = mock.Mock()
 
         # No tuple
         self.service._loop()
@@ -252,68 +256,93 @@ class TestMessageHistoryService(DatabaseFixture):
         assert not self.service.remove_sync.called
 
 
-class TestMessageHistoryProvider(DatabaseFixture):
+@mock.patch("golem.network.history.MessageHistoryService.add")
+class TestAdd(unittest.TestCase):
+    def setUp(self):
+        self.service = history.MessageHistoryService().instance
+        self.msg = msg_factories.TaskToCompute()
 
     def tearDown(self):
         super().tearDown()
-        MessageHistoryService.instance = None
+        history.MessageHistoryService.instance = None
 
-    def test_invalid_class(self):
-        class Invalid:
-            @record_history(local_role=Actor.Provider,
-                            remote_role=Actor.Requestor)
-            def method(self, msg):
-                print('Got', msg)
+    def test_no_service(self, add_mock):
+        history.MessageHistoryService.instance = None
+        history.add(
+            msg=self.msg,
+            node_id=fake.binary(length=64),
+            local_role=fake.random_element(Actor),
+            remote_role=fake.random_element(Actor),
+        )
+        add_mock.assert_not_called()
 
-        invalid = Invalid()
-        invalid.method(None)
+    @mock.patch("golem.network.history.message_to_model", side_effect=Exception)
+    def test_model_failed(self, model_mock, add_mock):
+        history.add(
+            msg=self.msg,
+            node_id=fake.binary(length=64),
+            local_role=fake.random_element(Actor),
+            remote_role=fake.random_element(Actor),
+        )
+        model_mock.assert_called_once()
+        add_mock.assert_not_called()
 
-    def test_record_history(self):
-        service = MessageHistoryService().instance
+    def test_service_add_failed(self, add_mock):
+        add_mock.side_effect = Exception
+        history.add(
+            msg=self.msg,
+            node_id=fake.binary(length=64),
+            local_role=fake.random_element(Actor),
+            remote_role=fake.random_element(Actor),
+        )
+        add_mock.assert_called_once()
 
-        class Provider(IMessageHistoryProvider):
+    @mock.patch("golem.network.history.message_to_model")
+    def test_success(self, model_mock, add_mock):
+        model_mock.return_value = model = {}
+        node_id = fake.binary(length=64)
+        local_role = fake.random_element(Actor)
+        remote_role = fake.random_element(Actor)
+        history.add(
+            msg=self.msg,
+            node_id=node_id,
+            local_role=local_role,
+            remote_role=remote_role,
+        )
+        model_mock.assert_called_once_with(
+            msg=self.msg,
+            node_id=node_id,
+            local_role=local_role,
+            remote_role=remote_role,
+        )
+        add_mock.assert_called_once_with(model)
 
-            def __init__(self):
-                self.key_id = 'a0b1c2'
 
-            def message_to_model(self, msg, local_role, remote_role):
-                return dict(key='value')
+class TestMessageToModel(unittest.TestCase):
+    def setUp(self):
+        self.msg = msg_factories.TaskToCompute()
 
-            @requestor_history
-            def react_to_report_computed_task(self, *_):
-                pass
-
-            @provider_history
-            def react_to_task_to_compute(self, *_):
-                pass
-
-        provider = Provider()
-
-        msg_hello = message.Hello()
-        msg_request = message.WantToComputeTask(task_id='t')
-        msg_result = message.ReportComputedTask(subtask_id='s')
-
-        NetworkMessage.delete().execute()
-
-        # Resolve node_id
-        assert service._save_queue.qsize() == 0
-        provider.react_to_task_to_compute(msg_request)
-        assert service._save_queue.qsize() == 1
-
-        service._save_queue = queue.Queue()
-
-        # Also resolve task_id using the interface
-        assert service._save_queue.qsize() == 0
-        provider.react_to_report_computed_task(msg_result)
-        assert service._save_queue.qsize() == 1
-
-        service._save_queue = queue.Queue()
-
-        # Logs an error when model is not available
-        assert service._save_queue.qsize() == 0
-        provider.message_to_model = Mock(return_value=None)
-        provider.react_to_task_to_compute(msg_hello)
-        assert service._save_queue.qsize() == 0
+    def test_basic(self):
+        node_id = fake.binary(length=64)
+        local_role = fake.random_element(Actor)
+        remote_role = fake.random_element(Actor)
+        result = history.message_to_model(
+            msg=self.msg,
+            node_id=node_id,
+            local_role=local_role,
+            remote_role=remote_role,
+        )
+        expected = {
+            'task': self.msg.task_id,
+            'subtask': self.msg.subtask_id,
+            'node': node_id,
+            'msg_date': mock.ANY,
+            'msg_cls': 'TaskToCompute',
+            'msg_data': mock.ANY,
+            'local_role': local_role,
+            'remote_role': remote_role,
+        }
+        self.assertEqual(result, expected)
 
 
 class TestNetworkMessage(DatabaseFixture):

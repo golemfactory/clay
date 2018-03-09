@@ -121,6 +121,32 @@ class AckReportComputedTask(factory.Factory):
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
 
+class RejectReportComputedTask(factory.Factory):
+    class Meta:
+        model = concents.RejectReportComputedTask
+
+    reason = factory.Faker(
+        'random_element',
+        elements=concents.RejectReportComputedTask.REASON,
+    )
+    subtask_id = factory.Faker('uuid4')
+    task_to_compute = factory.SubFactory(
+        TaskToCompute,
+        compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
+    )
+    task_failure = factory.SubFactory(
+        TaskFailure,
+        task_to_compute=factory.SelfAttribute(
+            '..task_to_compute',
+        )
+    )
+    cannot_compute_task = factory.SubFactory(
+        CannotComputeTask,
+        task_to_compute=factory.SelfAttribute(
+            '..task_to_compute',
+        )
+    )
+
 
 class VerdictReportComputedTask(factory.Factory):
     class Meta:
@@ -134,5 +160,25 @@ class VerdictReportComputedTask(factory.Factory):
         ),
         task_to_compute=factory.SelfAttribute(
             '..force_report_computed_task.report_computed_task.task_to_compute',
+        ),
+    )
+
+
+class ForceReportComputedTaskResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceReportComputedTaskResponse
+
+    reason = factory.Faker(
+        'random_element',
+        elements=concents.ForceReportComputedTaskResponse.REASON,
+    )
+    reject_report_computed_task = factory.SubFactory(RejectReportComputedTask)
+    ack_report_computed_task = factory.SubFactory(
+        AckReportComputedTask,
+        subtask_id=factory.SelfAttribute(
+            '..reject_report_computed_task.subtask_id',
+        ),
+        task_to_compute=factory.SelfAttribute(
+            '..reject_report_computed_task.task_to_compute',
         ),
     )
