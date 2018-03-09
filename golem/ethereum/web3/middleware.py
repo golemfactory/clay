@@ -15,7 +15,7 @@ class RemoteRPCErrorMiddlewareBuilder:
 
     def __init__(self,
                  error_listener: MethodType,
-                 max_errors: int = MAX_ERRORS):
+                 max_errors: int = MAX_ERRORS) -> None:
         """
         :param error_listener: Function to execute when the maximum number of
         consecutive errors is reached
