@@ -811,7 +811,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if not BasicSafeSession.send(self, msg):
             if self.key_id and msg.TYPE not in basic_messages:
                 self.task_server.pending_messages.put(
-                    node_id=self.key_id,
+                    key_id=self.key_id,
                     msg=msg,
                     task_id=self.task_id,
                     subtask_id=self.subtask_id

@@ -58,13 +58,13 @@ class PendingObjectModel(BaseModel):
     class Meta:  # pylint: disable=too-few-public-methods
         database = db
 
-    node_id = CharField(index=True)  # Receiving node
+    key_id = CharField(index=True)  # Receiving node
     task_id = CharField(null=True)
     subtask_id = CharField(null=True)
 
     @classmethod
     def build_select_clauses(cls,
-                             node_id: Optional[object] = ANY,
+                             key_id: Optional[object] = ANY,
                              task_id: Optional[object] = ANY,
                              subtask_id: Optional[object] = ANY) -> List[Tuple]:
 
@@ -72,8 +72,8 @@ class PendingObjectModel(BaseModel):
 
         clauses = []
 
-        if node_id is not ANY:
-            clauses.append((cls.node_id == node_id))
+        if key_id is not ANY:
+            clauses.append((cls.key_id == key_id))
         if task_id is not ANY:
             clauses.append((cls.task_id == task_id))
         if subtask_id is not ANY:
@@ -93,7 +93,7 @@ class PendingTaskSession(PendingObjectModel):
     @classmethod
     def from_session(cls, session) -> 'PendingTaskSession':
         return cls(
-            node_id=session.key_id,
+            key_id=session.key_id,
             task_id=session.task_id,
             subtask_id=session.subtask_id,
             node_info=session.node_info,
@@ -121,13 +121,13 @@ class PendingMessagesMixin:
 
     @classmethod
     def put(cls,
-            node_id: str,
+            key_id: str,
             msg: 'message.base.Message',
             task_id: Optional[str] = None,
             subtask_id: Optional[str] = None) -> None:
 
         PendingMessage(
-            node_id=node_id,
+            key_id=key_id,
             type=msg.TYPE,
             slots=msg.slots(),
             task_id=task_id,
@@ -136,15 +136,15 @@ class PendingMessagesMixin:
 
     @classmethod
     def get(cls,
-            node_id: str,
+            key_id: str,
             task_id: Optional[object] = ANY,
             subtask_id: Optional[object] = ANY) -> Iterator[PendingMessage]:
 
         """ Returns a message iterator.
             Can be used by an established TaskSession between ourselves and
-            node_id to know what messages should be sent."""
+            key_id to know what messages should be sent."""
 
-        clauses = PendingMessage.build_select_clauses(node_id, task_id,
+        clauses = PendingMessage.build_select_clauses(key_id, task_id,
                                                       subtask_id)
         return PendingMessage.select() \
             .where(clauses) \
@@ -153,11 +153,11 @@ class PendingMessagesMixin:
 
     @classmethod
     def exists(cls,
-               node_id: str,
+               key_id: str,
                task_id: Optional[object] = ANY,
                subtask_id: Optional[object] = ANY) -> bool:
 
-        clauses = PendingMessage.build_select_clauses(node_id, task_id,
+        clauses = PendingMessage.build_select_clauses(key_id, task_id,
                                                       subtask_id)
         return PendingMessage.select().where(clauses).exists()
 
@@ -176,11 +176,11 @@ class PendingTaskSessionsMixin:
 
     @classmethod
     def get_session(cls,
-                    node_id: str,
+                    key_id: str,
                     task_id: Optional[object] = ANY,
                     subtask_id: Optional[object] = ANY) -> PendingTaskSession:
 
-        clauses = PendingTaskSession.build_select_clauses(node_id, task_id,
+        clauses = PendingTaskSession.build_select_clauses(key_id, task_id,
                                                           subtask_id)
         return PendingTaskSession.get(clauses)
 
