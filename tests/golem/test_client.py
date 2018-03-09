@@ -799,7 +799,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(datadir, 'priv_key', 'password')
+        c.keys_auth = KeysAuth(c.datadir, 'priv_key', '')
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -860,9 +860,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         c.resource_server = Mock()
         c.task_server = Mock()
-        c.transaction_system.payment_processor = MagicMock()
-        c.transaction_system.payment_processor._gnt_available.return_value = \
-            100 * denoms.ether
+        c.transaction_system.payment_processor = \
+            self._make_mock_payment_processor(c.transaction_system._sci)
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -890,6 +889,15 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             task_id=str(uuid.uuid4())
         ))
         assert c.task_server.task_manager.create_task.called
+
+    def _make_mock_payment_processor(self, sci, eth=100, gnt=100):
+        pp = MagicMock()
+        pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
+        pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
+
+        pp._gnt_available.return_value = gnt * denoms.ether
+        pp._eth_available.return_value = eth * denoms.ether
+        return pp
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
@@ -943,9 +951,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
-        c.transaction_system.payment_processor = MagicMock()
-        c.transaction_system.payment_processor._gnt_available.return_value = \
-            100 * denoms.ether
+        c.transaction_system.payment_processor = \
+            self._make_mock_payment_processor(c.transaction_system._sci)
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
