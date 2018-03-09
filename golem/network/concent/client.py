@@ -1,4 +1,5 @@
 import base64
+import calendar
 import datetime
 import logging
 import queue
@@ -68,6 +69,23 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     :return: Raw reply message, None or exception
     :rtype: Bytes|None
     """
+
+    logger.debug('send_to_concent(): Updating timestamp msg %r', msg)
+    # Delayed messages are prepared before they're needed
+    # and only sent to Concent if they're not cancelled
+    # before. This can cause a situation where previously
+    # prepared message will be too old to send when enqueued.
+    # Also messages with no delay could have stayed in queue
+    # long enough to eat significant amount of Message Transport Time
+    # SEE: golem_messages.constants
+    header = msg_datastructures.MessageHeader(
+        msg.header.type_,
+        # Using this tricky approach instead of time.time()
+        # because of AppVeyor issues.
+        calendar.timegm(time.gmtime()),
+        msg.header.encrypted,
+    )
+    msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
     data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
@@ -332,6 +350,7 @@ class ConcentClientService(threading.Thread):
         logger.debug('Concent grace time: %r', self._grace_time)
         time.sleep(self._grace_time)
 
-    def _enqueue(self, req):
+    def _enqueue(self, req: ConcentRequest):
+        logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)
