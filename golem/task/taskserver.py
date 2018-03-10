@@ -10,6 +10,7 @@ from pathlib import Path
 from golem_messages import message
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -520,7 +521,7 @@ class TaskServer(
             socket_address = SocketAddress(address, pub_port)
             self._prepend_address(socket_addresses, socket_address)
 
-        return socket_addresses
+        return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
     def quit(self):
         self.task_computer.quit()

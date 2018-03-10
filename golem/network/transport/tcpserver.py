@@ -4,6 +4,7 @@ import time
 
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 
 from .server import Server
 from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
@@ -11,11 +12,8 @@ from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConne
 logger = logging.getLogger('golem.network.transport.tcpserver')
 
 
-MAX_ADDRESSES = 8
-
-
 def shorten_key_id(key_id):
-    if not key_id:
+    if not isinstance(key_id, str):
         return key_id
     return key_id[:16] + "..." + key_id[-16:]
 
@@ -138,7 +136,7 @@ class PendingConnectionsServer(TCPServer):
         else:
             logger.debug("Connection {} is unknown".format(conn_id))
 
-    def _add_pending_request(self, request_type, node,
+    def _add_pending_request(self, request_type, node,  # noqa # pylint: disable=too-many-arguments
                              prv_port, pub_port, args) -> bool:
         if not self.active:
             return False
@@ -216,28 +214,27 @@ class PendingConnectionsServer(TCPServer):
                 addresses.append(SocketAddress(node_info.prv_addr, prv_port))
 
         # The rest of private addresses
-        prv_addresses = self._filter_addresses(node_info.prv_addresses)
+        if not isinstance(node_info.prv_addresses, list):
+            return addresses
 
-        for prv_address in prv_addresses:
+        for prv_address in node_info.prv_addresses:
+
             if self._is_address_valid(prv_address, prv_port):
                 address = SocketAddress(prv_address, prv_port)
                 if address not in addresses:
                     addresses.append(address)
 
+            if len(addresses) >= MAX_CONNECT_SOCKET_ADDRESSES:
+                break
+
         return addresses
 
     @classmethod
-    def _is_address_valid(cls, address, port):
+    def _is_address_valid(cls, address: str, port: int) -> bool:
         try:
             return port > 0 and SocketAddress.is_proper_address(address, port)
         except TypeError:
             return False
-
-    @classmethod
-    def _filter_addresses(cls, addresses):
-        if not isinstance(addresses, list):
-            return []
-        return addresses[:MAX_ADDRESSES]
 
     @classmethod
     def _prepend_address(cls, addresses, address):

@@ -8,6 +8,7 @@ from threading import Lock
 from golem_messages import message
 
 from golem.core import simplechallenge
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
@@ -568,7 +569,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             socket_address = tcpnetwork.SocketAddress(address, pub_port)
             self._prepend_address(socket_addresses, socket_address)
 
-        return socket_addresses
+        return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
     # Kademlia functions
     #############################
