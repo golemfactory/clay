@@ -1,11 +1,10 @@
-from unittest import TestCase
 import unittest.mock as mock
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
-    EthereumTransactionSystem, NotEnoughFunds
+    EthereumTransactionSystem
 )
 
 PRIV_KEY = '07' * 32
@@ -61,13 +60,3 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             mock_is_service_running.return_value = True
             e.stop()
             assert e.payment_processor._loopingCall.stop.called
-
-
-class TestNotEnoughFunds(TestCase):
-    def test_exception(self):
-        try:
-            raise NotEnoughFunds(10, 2)
-        except NotEnoughFunds as err:
-            expected_str = "Not enough GNT available. Required: 10, " \
-                           "available: 2"
-            assert expected_str in str(err)
