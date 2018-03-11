@@ -71,10 +71,7 @@ def create_client(datadir):
 
     with mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                     'PaymentProcessor') as pp:
-        pp.return_value.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
-        pp.return_value.ETH_PER_PAYMENT = 0.001 * denoms.ether
-        pp.return_value._eth_available.return_value = 5000 * denoms.ether
-        pp.return_value._gnt_available.return_value = 3000 * denoms.ether
+        _configure_mock_payment_processor(pp.return_value)
         return Client(datadir=datadir,
                       app_config=app_config,
                       config_desc=config_desc,
@@ -82,6 +79,15 @@ def create_client(datadir):
                       use_monitor=False,
                       connect_to_known_hosts=False,
                       use_docker_manager=False)
+
+
+def _configure_mock_payment_processor(pp):
+    pp.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
+    pp.ETH_PER_PAYMENT = 0.001 * denoms.ether
+    pp.gnt_balance.return_value = 5000 * denoms.ether, time.time()
+    pp.eth_balance.return_value = 300 * denoms.ether, time.time()
+    pp._eth_available.return_value = 5000 * denoms.ether
+    pp._gnt_available.return_value = 3000 * denoms.ether
 
 
 def run_requesting_node(datadir, num_subtasks=3):

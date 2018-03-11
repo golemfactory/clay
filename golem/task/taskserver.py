@@ -424,6 +424,7 @@ class TaskServer(
 
         payment = self.client.transaction_system.add_payment_info(
             task_id, subtask_id, value, account_info)
+        self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
         return payment
