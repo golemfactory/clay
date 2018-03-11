@@ -67,14 +67,17 @@ class TestP2PService(testutils.DatabaseFixture):
             node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
             prv_addr=randaddr(),
-            prv_port=random.randint(1, 2 ** 16 - 1))
+            pub_addr=randaddr(),
+            p2p_prv_port=random.randint(1, 2 ** 16 - 1),
+            p2p_pub_port=random.randint(1, 2 ** 16 - 1),
+        )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
                 neighbour_node,
             ])
         expected = [{
-            'address': neighbour_node.pub_addr,
-            'port': neighbour_node.pub_port,
+            'address': neighbour_node.prv_addr,
+            'port': neighbour_node.prv_port,
             'id': neighbour_node.key,
             'node': neighbour_node,
             'node_name': neighbour_node.node_name,
@@ -220,11 +223,11 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        node = mock.MagicMock()
-        node.key = encode_hex(urandom(64))
-        node.key_id = node.key
-        node.pub_addr = '127.0.0.1'
-        node.pub_port = 10000
+        node = Node(
+            key=encode_hex(urandom(64)),
+            pub_addr='127.0.0.1',
+            p2p_pub_port=10000
+        )
 
         self.service.config_desc.opt_peer_num = 10
         self.service.free_peers.append(node.key)
@@ -237,6 +240,7 @@ class TestP2PService(testutils.DatabaseFixture):
         }
 
         self.service.last_peers_request = time.time() - 60
+        self.service._is_address_accessible = mock.Mock(return_value=True)
         self.service.sync_network()
 
         assert not self.service.free_peers

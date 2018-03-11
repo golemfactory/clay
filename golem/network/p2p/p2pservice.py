@@ -8,6 +8,7 @@ from threading import Lock
 from golem_messages import message
 
 from golem.core import simplechallenge
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
@@ -42,7 +43,10 @@ SEEDS = [
     ('94.23.196.166', 40102),
     ('94.23.196.166', 40104),
     ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104)
+    ('188.165.227.180', 40104),
+    # TODO: FOR BETA, replace with seeds.golem.network
+    ('seeds.test.golem.network', 40102),
+    ('seeds.test.golem.network', 40104),
 ]
 
 
@@ -327,24 +331,31 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param force: add or overwrite existing data
         """
         key_id = peer_info["node"].key
-        if ((force or self.__is_new_peer(key_id)) and
-            (peer_info["port"] > 0 and tcpnetwork.SocketAddress
-                .is_proper_address(peer_info["address"], peer_info["port"]))):
-            logger.info(
-                "add peer to incoming %r %r %r (%r)",
-                peer_info["node_name"],
-                peer_info["address"],
-                peer_info["port"],
-                key_id
-            )
-            self.incoming_peers[key_id] = {"address": peer_info["address"],
-                                           "port": peer_info["port"],
-                                           "node": peer_info["node"],
-                                           "node_name": peer_info["node_name"],
-                                           "conn_trials": 0}
-            if key_id not in self.free_peers:
-                self.free_peers.append(key_id)
-            logger.debug(self.incoming_peers)
+        add_peer = force or self.__is_new_peer(key_id)
+        add_peer = add_peer and self._is_address_valid(peer_info["address"],
+                                                       peer_info["port"])
+        if not add_peer:
+            return
+
+        logger.info(
+            "add peer to incoming %r %r %r (%r)",
+            peer_info["node_name"],
+            peer_info["address"],
+            peer_info["port"],
+            key_id
+        )
+
+        self.incoming_peers[key_id] = {
+            "address": peer_info["address"],
+            "port": peer_info["port"],
+            "node": peer_info["node"],
+            "node_name": peer_info["node_name"],
+            "conn_trials": 0
+        }
+
+        if key_id not in self.free_peers:
+            self.free_peers.append(key_id)
+        logger.debug(self.incoming_peers)
 
     def remove_peer(self, peer_session):
         """ Remove given peer session
@@ -530,25 +541,35 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def set_suggested_conn_reverse(self, client_key_id, value=True):
         self.suggested_conn_reverse[client_key_id] = value
 
-    def get_socket_addresses(self, node_info, port, key_id):
-        """ Change node info into tcp addresses. Add suggested address
+    def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
+        """ Change node info into tcp addresses. Adds a suggested address.
         :param Node node_info: node information
-        :param int port: port that should be used
-        :param key_id: node's public key
+        :param prv_port: private port that should be used
+        :param pub_port: public port that should be used
         :return:
         """
-        socket_addresses = tcpserver \
-            .PendingConnectionsServer \
-            .get_socket_addresses(
-                self,
-                node_info,
-                port,
-                key_id
-            )
-        addr = self.suggested_address.get(key_id, None)
-        if addr:
-            socket_addresses += [tcpnetwork.SocketAddress(addr, port)]
-        return socket_addresses
+        prv_port = prv_port or node_info.p2p_prv_port
+        pub_port = pub_port or node_info.p2p_pub_port
+
+        socket_addresses = super().get_socket_addresses(
+            node_info=node_info,
+            prv_port=prv_port,
+            pub_port=pub_port
+        )
+
+        address = self.suggested_address.get(node_info.key, None)
+        if not address:
+            return socket_addresses
+
+        if self._is_address_valid(address, prv_port):
+            socket_address = tcpnetwork.SocketAddress(address, prv_port)
+            self._prepend_address(socket_addresses, socket_address)
+
+        if self._is_address_valid(address, pub_port):
+            socket_address = tcpnetwork.SocketAddress(address, pub_port)
+            self._prepend_address(socket_addresses, socket_address)
+
+        return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
     # Kademlia functions
     #############################
@@ -575,7 +596,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return list: list of information about closest neighbours
         """
         alpha = alpha or self.peer_keeper.concurrency
-        public = self.config_desc.send_public_addresses
 
         if node_key_id is None:
             peers = list(self.peers.values())
@@ -594,8 +614,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
             def _mapper(peer):
                 return {
-                    "address": peer.pub_addr if public else peer.prv_addr,
-                    "port": peer.pub_port if public else peer.prv_port,
+                    "address": peer.prv_addr,
+                    "port": peer.prv_port,
                     "id": peer.key,
                     "node": peer,
                     "node_name": peer.node_name,
@@ -892,23 +912,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 peer = self.incoming_peers[peer_id]
                 node = peer['node']
 
-                if peer['address'] == node.pub_addr:
-                    port = node.p2p_pub_port or node.p2p_prv_port
-                else:
-                    port = node.p2p_prv_port
-
-                logger.info(
-                    "Connecting to peer %r:%r",
-                    peer['address'],
-                    port
-                )
                 # increment connection trials
                 self.incoming_peers[peer_id]["conn_trials"] += 1
                 self._add_pending_request(
                     P2PConnTypes.Start,
                     node,
-                    port,
-                    node.key,
+                    prv_port=node.p2p_prv_port,
+                    pub_port=node.p2p_pub_port,
                     args={}
                 )
 

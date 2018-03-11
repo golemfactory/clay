@@ -4,11 +4,18 @@ import time
 
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 
 from .server import Server
 from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 
 logger = logging.getLogger('golem.network.transport.tcpserver')
+
+
+def shorten_key_id(key_id):
+    if not isinstance(key_id, str):
+        return key_id
+    return key_id[:16] + "..." + key_id[-16:]
 
 
 class TCPServer(Server):
@@ -129,21 +136,32 @@ class PendingConnectionsServer(TCPServer):
         else:
             logger.debug("Connection {} is unknown".format(conn_id))
 
-    def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+    def _add_pending_request(self, request_type, node,  # noqa # pylint: disable=too-many-arguments
+                             prv_port, pub_port, args) -> bool:
         if not self.active:
-            return
+            return False
 
-        logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
-        # FIXME key_id is ignored
-        sockets = [sock for sock in
-                   self.get_socket_addresses(task_owner, port, key_id) if
-                   self._is_address_accessible(sock)]
+        logger.debug('_add_pending_request(%r, %r, %r, %r, %r)',
+                     request_type, node, prv_port, pub_port, args)
 
-        pc = PendingConnection(req_type, sockets,
-                               self.conn_established_for_type[req_type],
-                               self.conn_failure_for_type[req_type], args)
+        sockets = [sock for sock
+                   in self.get_socket_addresses(node, prv_port, pub_port)
+                   if self._is_address_accessible(sock)]
 
+        if not sockets:
+            return False
+
+        logger.info("Connecting to peer %r using addresses: %r",
+                    shorten_key_id(node.key),
+                    [str(socket) for socket in sockets])
+
+        pc = PendingConnection(request_type,
+                               sockets,
+                               self.conn_established_for_type[request_type],
+                               self.conn_failure_for_type[request_type],
+                               args)
         self.pending_connections[pc.id] = pc
+        return True
 
     def _is_address_accessible(self, socket_addr):
         """ Checks if an address is directly accessible. The IP address has to be public or in a private
@@ -183,14 +201,49 @@ class PendingConnectionsServer(TCPServer):
                 connect_info = TCPConnectInfo(conn.socket_addresses, conn.established, conn.failure)
                 self.network.connect(connect_info, conn_id=conn.id, **conn.args)
 
-    def get_socket_addresses(self, node_info, port, key_id):
-        socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
-        if node_info.pub_addr is None:
-            return socket_addresses
-        if node_info.pub_port:
-            port = node_info.pub_port
-        socket_addresses.append(SocketAddress(node_info.pub_addr, port))
-        return socket_addresses
+    def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
+        addresses = []
+
+        # Primary public address
+        if self._is_address_valid(node_info.pub_addr, pub_port):
+            addresses.append(SocketAddress(node_info.pub_addr, pub_port))
+
+        # Primary private address
+        if node_info.prv_addr != node_info.pub_addr:
+            if self._is_address_valid(node_info.prv_addr, prv_port):
+                addresses.append(SocketAddress(node_info.prv_addr, prv_port))
+
+        # The rest of private addresses
+        if not isinstance(node_info.prv_addresses, list):
+            return addresses
+
+        for prv_address in node_info.prv_addresses:
+
+            if self._is_address_valid(prv_address, prv_port):
+                address = SocketAddress(prv_address, prv_port)
+                if address not in addresses:
+                    addresses.append(address)
+
+            if len(addresses) >= MAX_CONNECT_SOCKET_ADDRESSES:
+                break
+
+        return addresses
+
+    @classmethod
+    def _is_address_valid(cls, address: str, port: int) -> bool:
+        try:
+            return port > 0 and SocketAddress.is_proper_address(address, port)
+        except TypeError:
+            return False
+
+    @classmethod
+    def _prepend_address(cls, addresses, address):
+        try:
+            index = addresses.index(address)
+        except ValueError:
+            addresses.insert(0, address)
+        else:
+            addresses.insert(0, addresses.pop(index))
 
     def sync_network(self, timeout=1.0):
         for session in frozenset(self.pending_sessions):

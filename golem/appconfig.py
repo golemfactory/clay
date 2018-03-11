@@ -34,7 +34,6 @@ USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
-SEND_PUBLIC_ADDRESSES = 1
 
 PINGS_INTERVALS = 120
 GETTING_PEERS_INTERVAL = 4.0
@@ -121,7 +120,6 @@ class AppConfig:
             # flags
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
-            send_public_addresses=SEND_PUBLIC_ADDRESSES,
             # hardware
             hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
             # price and trust
