@@ -895,6 +895,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
 
+        pp.eth_for_batch_payment.return_value = pp.ETH_BATCH_PAYMENT_BASE + \
+                                                pp.ETH_PER_PAYMENT * 10
+
         pp._gnt_available.return_value = gnt * denoms.ether
         pp._eth_available.return_value = eth * denoms.ether
         return pp

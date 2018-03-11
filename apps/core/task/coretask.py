@@ -320,10 +320,6 @@ class CoreTask(Task):
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
-    def get_price(self) -> float:
-        subtask_price = self.header.max_price * self.header.subtask_timeout / 6
-        return subtask_price * self.total_tasks
-
     def to_dictionary(self):
         return {
             'id': to_unicode(self.header.task_id),

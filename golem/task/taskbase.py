@@ -384,7 +384,3 @@ class Task(abc.ABC):
         :return list:
         """
         return []
-
-    def get_price(self) -> float:
-        """ Return current estimated price for this task"""
-        pass

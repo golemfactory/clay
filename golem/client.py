@@ -57,12 +57,14 @@ from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskkeeper import compute_subtask_value
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 log = logging.getLogger("golem.client")
 
@@ -489,7 +491,7 @@ class Client(HardwarePresetsMixin):
             task = task_dict
 
         if self.transaction_system:
-            self.transaction_system.check_funds_for_task(task)
+            self.check_funds_for_task(task)
 
         task_id = task.header.task_id
         files = get_resources_for_task(resource_header=None,
@@ -527,6 +529,25 @@ class Client(HardwarePresetsMixin):
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
         return _result
+
+    def check_funds_for_task(self, task):
+        self._check_eth_for_task(task)
+        self._check_gnt_for_task(task)
+
+    def _check_gnt_for_task(self, task):
+        price = compute_subtask_value(task.header.max_price,
+                                      task.header.subtask_timeout)
+        gnt = self.transaction_system.payment_processor._gnt_available()
+
+        if price > gnt:
+            raise NotEnoughFunds(price, gnt)
+
+    def _check_eth_for_task(self, task):
+        pp = self.transaction_system.payment_processor
+        eth = pp.eth_for_batch_payment(task.total_tasks)
+        eth_available = pp._eth_available()
+        if eth > eth_available:
+            raise NotEnoughFunds(eth, eth_available, extension="ETH")
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)

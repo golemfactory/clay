@@ -78,32 +78,6 @@ class EthereumTransactionSystem(TransactionSystem):
         eth, last_eth_update = self.payment_processor.eth_balance()
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
 
-    def check_funds_for_task(self, task):
-        self._check_eth_for_task(task)
-        self._check_gnt_for_task(task)
-
-    def _check_gnt_for_task(self, task):
-        price = task.get_price()
-        gnt_available = self.payment_processor._gnt_available()
-
-        if price > gnt_available:
-            raise NotEnoughFunds(price, gnt_available)
-
-    def _check_eth_for_task(self, task):
-        eth = self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
-              self.payment_processor.ETH_PER_PAYMENT * task.total_tasks
-
-        eth_available = self.payment_processor._eth_available()
-        if eth > eth_available:
-            raise NotEnoughFunds(eth, eth_available, extension="ETH")
-
-
-class NotEnoughFunds(Exception):
-    def __init__(self, required=None, available=None, extension="GNT"):
-        self.required = required
-        self.available = available
-        self.extension = extension
-
-    def __str__(self):
-        return "Not enough %s available. Required: %d, available: %d" % \
-               (self.extension, self.required, self.available)
+    def eth_for_batch_payment(self, num_batches):
+        return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
+               self.payment_processor.ETH_BATCH_PAYMENT_BASE * num_batches
