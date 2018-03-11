@@ -8,6 +8,7 @@ from golem_messages import message
 from golem_messages.helpers import maximum_download_time
 
 from golem.core.common import HandleAttributeError
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
@@ -94,8 +95,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
-        # key of a peer that communicates with us through middleman session
-        self.asking_node_key_id = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -736,6 +735,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 PROTOCOL_CONST.ID
             )
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            return
+
+        if not KeysAuth.is_pubkey_difficult(
+                self.key_id,
+                self.task_server.config_desc.key_difficulty):
+            logger.info(
+                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
+                msg.node_info.node_name, self.address, self.port,
+                KeysAuth.get_difficulty(self.key_id),
+                self.task_server.config_desc.key_difficulty)
+            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
             return
 
         if send_hello:
