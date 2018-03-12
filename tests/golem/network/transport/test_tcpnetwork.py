@@ -13,6 +13,7 @@ from golem import testutils
 from golem.network.transport import tcpnetwork
 from golem.network.transport.tcpnetwork import (SafeProtocol, SocketAddress,
                                                 MAX_MESSAGE_SIZE, TCPNetwork)
+from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo
 from golem.tools.assertlogs import LogTestCase
 from tests.factories import messages as msg_factories
 from tests.factories import p2p as p2p_factories
@@ -174,7 +175,7 @@ class TestTCPNetworkConnections(unittest.TestCase):
         connect_all = network._TCPNetwork__try_to_connect_to_addresses
         network._TCPNetwork__try_to_connect_to_address = connect
 
-        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
         assert connect.called
 
     def test_with_rate_limiter(self):
@@ -190,6 +191,6 @@ class TestTCPNetworkConnections(unittest.TestCase):
         network._TCPNetwork__try_to_connect_to_address = connect
         network.rate_limiter.call = call
 
-        connect_all(self.addresses, mock.Mock(), mock.Mock())
+        connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
         assert not connect.called
         assert call.called

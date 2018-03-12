@@ -1,11 +1,13 @@
 import logging
-import uuid
 import time
+from typing import Callable, Dict, List, Optional, Set
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.types import Kwargs
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
 
+from .session import BasicSession
 from .tcpnetwork import TCPNetwork, TCPListeningInfo, TCPListenInfo, \
     SocketAddress, TCPConnectInfo
 
@@ -100,11 +102,16 @@ class PendingConnectionsServer(TCPServer):
         :param network: network that server will use
         """
         # Pending connections
-        self.pending_connections = {}  # Connections that should be accomplished
-        self.pending_sessions = set()  # Sessions a.k.a Peers before handshake
-        self.conn_established_for_type = {}  # Reactions for established connections of certain types
-        self.conn_failure_for_type = {}  # Reactions for failed connection attempts of certain types
-        self.conn_final_failure_for_type = {}  # Reactions for final connection attempts failure
+        #  Connections that should be accomplished
+        self.pending_connections: Dict[str, PendingConnection] = {}
+        #  Sessions a.k.a Peers before handshake
+        self.pending_sessions: Set[BasicSession] = set()
+        #  Reactions for established connections of certain types
+        self.conn_established_for_type: Dict[int, Callable] = {}
+        #  Reactions for failed connection attempts of certain types
+        self.conn_failure_for_type: Dict[int, Callable] = {}
+        #  Reactions for final connection attempts failure
+        self.conn_final_failure_for_type: Dict[int, Callable] = {}
 
         # Set reactions
         self._set_conn_established()
@@ -128,12 +135,12 @@ class PendingConnectionsServer(TCPServer):
         method and then remove it from pending connections list.
         :param uuid|None conn_id: id of verified connection
         """
-        conn = self.pending_connections.get(conn_id)
+        conn: PendingConnection = self.pending_connections.get(conn_id)
         if conn:
-            self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
+            conn.final_failure()
             self.remove_pending_conn(conn_id)
         else:
-            logger.debug("Connection {} is unknown".format(conn_id))
+            logger.debug("Connection %s is unknown", conn_id)
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
         if not self.active:
@@ -147,7 +154,9 @@ class PendingConnectionsServer(TCPServer):
 
         pc = PendingConnection(req_type, sockets,
                                self.conn_established_for_type[req_type],
-                               self.conn_failure_for_type[req_type], args)
+                               self.conn_failure_for_type[req_type],
+                               self.conn_final_failure_for_type[req_type],
+                               args)
 
         self.pending_connections[pc.id] = pc
 
@@ -181,13 +190,12 @@ class PendingConnectionsServer(TCPServer):
         for conn in conns:
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
-                conn.failure(conn.id, **conn.args)
+                conn.failure()
                 # TODO Implement proper way to deal with failures
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
-                connect_info = TCPConnectInfo(conn.socket_addresses, conn.established, conn.failure)
-                self.network.connect(connect_info, conn_id=conn.id, **conn.args)
+                self.network.connect(conn.connect_info)
 
     def get_socket_addresses(self, node_info, port, key_id):
         socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
@@ -233,23 +241,53 @@ class PenConnStatus(object):
     WaitingAlt = 5
 
 
-class PendingConnection(object):
-    """ Describe pending connections parameters for PendingConnectionsServer  """
+class PendingConnection:
+    """ Describe pending connections parameters for PendingConnectionsServer """
     connect_statuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
-    def __init__(self, type_, socket_addresses, established=None, failure=None, args=None):
+    # pylint: disable-msg=too-many-arguments
+    def __init__(self,
+                 type_: int,
+                 socket_addresses: List[SocketAddress],
+                 established: Optional[Callable] = None,
+                 failure: Optional[Callable] = None,
+                 final_failure: Optional[Callable] = None,
+                 kwargs: Kwargs = {}) -> None:
         """ Create new pending connection
-        :param int type_: connection type that allows to select proper reactions
-        :param list socket_addresses: list of socket_addresses that the node should try to connect to
-        :param func|None established: established connection callback
-        :param func|None failure: connection errback
-        :param dict args: arguments that should be passed to established or failure function
+        :param type_: connection type that allows to select proper reactions
+        :param socket_addresses: list of socket_addresses that the node should
+                                 try to connect to
+        :param established: established connection callback
+        :param failure: connection errback
+        :param kwargs: arguments that should be passed to established or
+                       failure function
         """
-        self.id = str(uuid.uuid4())
-        self.socket_addresses = socket_addresses
+        self.connect_info = TCPConnectInfo(socket_addresses, established,
+                                           failure, final_failure, kwargs)
         self.last_try_time = time.time()
-        self.established = established
-        self.failure = failure
-        self.args = args
         self.type = type_
         self.status = PenConnStatus.Inactive
+
+    @property
+    def id(self):
+        return self.connect_info.id
+
+    @property
+    def socket_addresses(self):
+        return self.connect_info.socket_addresses
+
+    @socket_addresses.setter
+    def socket_addresses(self, new_addresses):
+        self.connect_info.socket_addresses = new_addresses
+
+    @property
+    def established(self):
+        return self.connect_info.established_callback
+
+    @property
+    def failure(self):
+        return self.connect_info.failure_callback
+
+    @property
+    def final_failure(self):
+        return self.connect_info.final_failure_callback
