@@ -103,9 +103,16 @@ class TaskHeader(object):
         self_dict.pop('last_checking', None)
         self_dict.pop('signature', None)
 
+        port_statuses = self_dict['task_owner'].get('port_statuses')
+        if isinstance(port_statuses, dict):
+            self_dict['task_owner']['port_statuses'] = \
+                cls._ordered(port_statuses)
+
         self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
+
         if self_dict.get('docker_images'):
-            self_dict['docker_images'] = [cls._ordered(di) for di in self_dict['docker_images']]
+            self_dict['docker_images'] = [cls._ordered(di) for di
+                                          in self_dict['docker_images']]
 
         return CBORSerializer.dumps(cls._ordered(self_dict))
 
