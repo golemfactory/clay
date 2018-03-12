@@ -281,7 +281,8 @@ def message_to_model(msg: message.base.Message,
 def add(msg: message.base.Message,
         node_id,
         local_role: Actor,
-        remote_role: Actor) -> None:
+        remote_role: Actor,
+        sync: bool=False) -> None:
     service = MessageHistoryService.instance
     if not service:
         logger.error(
@@ -307,7 +308,10 @@ def add(msg: message.base.Message,
         return
 
     try:
-        service.add(model)
+        if sync:
+            service.add_sync(model)
+        else:
+            service.add(model)
     except Exception:  # pylint: disable=broad-except
         logger.exception("MessageHistoryService.add(%r) failed:", model)
         return
