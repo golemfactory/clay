@@ -104,7 +104,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             config_desc=ClientConfigDescriptor(),
             use_docker_manager=False,
         )
-        self.node.client = self.node._client_factory(Mock())
+        with mock.patch('golem.client.EthereumTransactionSystem'):
+            self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
 

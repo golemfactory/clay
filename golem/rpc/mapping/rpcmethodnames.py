@@ -17,7 +17,6 @@ CORE_METHOD_MAP = dict(
     activate_hw_preset=     'env.hw.preset.activate',
 
     use_ranking=            'env.use_ranking',
-    use_transaction_system= 'env.use_transaction_system',
 
     get_key_id=             'crypto.keys.id',
     get_public_key=         'crypto.keys.pub',

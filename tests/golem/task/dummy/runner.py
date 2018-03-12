@@ -67,13 +67,13 @@ def create_client(datadir):
             difficulty=config_desc.key_difficulty,
         )
 
-    return Client(datadir=datadir,
-                  config_desc=config_desc,
-                  keys_auth=keys_auth,
-                  use_monitor=False,
-                  transaction_system=False,
-                  connect_to_known_hosts=False,
-                  use_docker_manager=False)
+    with mock.patch('golem.client.EthereumTransactionSystem'):
+        return Client(datadir=datadir,
+                      config_desc=config_desc,
+                      keys_auth=keys_auth,
+                      use_monitor=False,
+                      connect_to_known_hosts=False,
+                      use_docker_manager=False)
 
 
 def run_requesting_node(datadir, num_subtasks=3):
