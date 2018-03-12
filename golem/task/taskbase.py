@@ -99,10 +99,16 @@ class TaskHeader(object):
 
     @classmethod
     def dict_to_binary(cls, dictionary):
+        """ Nullifies the properties not required for signature verification
+        and sorts the task dict representation in order to have the same
+        resulting binary blob after serialization.
+        """
         self_dict = dict(dictionary)
         self_dict.pop('last_checking', None)
         self_dict.pop('signature', None)
 
+        # "port_statuses" is a nested dict and needs to be sorted;
+        # Python < 3.7 does not guarantee the same dict iteration ordering
         port_statuses = self_dict['task_owner'].get('port_statuses')
         if isinstance(port_statuses, dict):
             self_dict['task_owner']['port_statuses'] = \
