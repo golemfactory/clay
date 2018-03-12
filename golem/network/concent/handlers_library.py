@@ -25,7 +25,6 @@ class HandlersLibrary():
         # Can't use weakref.WeakValueDictionary() because it doesn't work
         # with methods.
 
-        # Once in python3.6:
         self._handlers: typing.Dict[message.base.Message, weakref.ref] = {}
 
     def register_handler(self, msg_cls: message.base.Message) -> Callable:
@@ -64,6 +63,7 @@ class HandlersLibrary():
                     "Handler was defined but it has been garbage collected"
                 )
         except KeyError:
+            logger.debug("interpret(%r) err", msg, exc_info=True)
             logger.warning(
                 "I don't know how to handle %s. Ignoring %r",
                 msg.__class__,

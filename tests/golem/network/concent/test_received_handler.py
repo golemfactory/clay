@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 import gc
+import importlib
 import unittest
 import unittest.mock as mock
 
@@ -7,6 +8,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem import testutils
+from golem.model import Actor
 from golem.network.concent import received_handler
 from golem.network.concent.handlers_library import library
 from tests.factories import messages as msg_factories
@@ -33,6 +35,87 @@ class RegisterHandlersTestCase(unittest.TestCase):
             library._handlers[message.p2p.Ping](),
             instance.ping_handler,
         )
+
+
+@mock.patch("golem.network.history.add")
+class TestOnForceReportComputedTaskResponse(unittest.TestCase):
+    def setUp(self):
+        self.msg = msg_factories.ForceReportComputedTaskResponse()
+        self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
+        ttc = self.msg.ack_report_computed_task.task_to_compute
+        self.call_response = mock.call(
+            msg=self.msg,
+            node_id=ttc.requestor_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Concent,
+        )
+        importlib.reload(received_handler)
+
+    def tearDown(self):
+        library._handlers = {}
+
+    def test_subtask_timeout(self, add_mock):
+        self.msg.ack_report_computed_task = None
+        self.msg.reject_report_computed_task = None
+        self.msg.reason = self.reasons.SubtaskTimeout
+        library.interpret(self.msg)
+        add_mock.assert_called_once_with(
+            msg=self.msg,
+            node_id=None,
+            local_role=Actor.Provider,
+            remote_role=Actor.Concent,
+        )
+
+    def test_concent_ack(self, add_mock):
+        self.msg.reason = self.reasons.ConcentAck
+        self.msg.reject_report_computed_task = None
+        library.interpret(self.msg)
+        ttc = self.msg.ack_report_computed_task.task_to_compute
+        call_inner = mock.call(
+            msg=self.msg.ack_report_computed_task,
+            node_id=ttc.requestor_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Concent,
+        )
+        self.assertEqual(add_mock.call_count, 2)
+        add_mock.assert_has_calls([
+            self.call_response,
+            call_inner,
+        ])
+
+    def test_ack_from_requestor(self, add_mock):
+        self.msg.reason = self.reasons.AckFromRequestor
+        self.msg.reject_report_computed_task = None
+        library.interpret(self.msg)
+        ttc = self.msg.ack_report_computed_task.task_to_compute
+        self.assertEqual(add_mock.call_count, 2)
+        call_inner = mock.call(
+            msg=self.msg.ack_report_computed_task,
+            node_id=ttc.requestor_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
+        add_mock.assert_has_calls([
+            self.call_response,
+            call_inner,
+        ])
+
+    def test_reject_from_requestor(self, add_mock):
+        self.msg.reason = self.reasons.RejectFromRequestor
+        self.msg.ack_report_computed_task = None
+        library.interpret(self.msg)
+        ttc = self.msg.reject_report_computed_task.task_to_compute
+        self.assertEqual(add_mock.call_count, 2)
+        call_inner = mock.call(
+            msg=self.msg.reject_report_computed_task,
+            node_id=ttc.requestor_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
+        add_mock.assert_has_calls([
+            self.call_response,
+            call_inner,
+        ])
 
 
 # pylint: disable=no-self-use
