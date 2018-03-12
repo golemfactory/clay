@@ -317,12 +317,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the `ReportComputedTask` sent above before the delay elapses,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
-        msg = message.ForceReportComputedTask(
+        delayed_forcing_msg = message.ForceReportComputedTask(
             report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
-        logger.debug('[CONCENT] ForceReport: %s', msg)
-        self.concent_service.submit_task_message(task_result.subtask_id, msg)
+        logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
+        self.concent_service.submit_task_message(task_result.subtask_id, delayed_forcing_msg)
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -627,11 +627,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
-        subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
-        if not self.check_requestor_for_subtask(subtask_id):
+        if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
+        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
+        self.concent_service.cancel_task_message(
+            msg.subtask_id,
+            'ForceSubtaskResults',
+        )
         self.dropped()
 
     @history.provider_history
@@ -642,6 +645,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         self.task_server.subtask_rejected(
             subtask_id=subtask_id,
+        )
+        self.concent_service.cancel_task_message(
+            subtask_id,
+            'ForceSubtaskResults',
         )
         self.dropped()
 
@@ -733,16 +740,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
-        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.debug("Requestor '%r' accepted the computed subtask '%r' "
-                         "report", self.key_id, msg.subtask_id)
-
-            self.concent_service.cancel_task_message(
-                msg.subtask_id, 'ForceReportComputedTask')
-        else:
+        sender_is_owner = keeper.check_task_owner_by_subtask(
+            self.key_id,
+            msg.subtask_id,
+        )
+        if not is_owner:
             logger.warning("Requestor '%r' acknowledged a computed task report "
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
+            return
+
+        logger.debug("Requestor '%r' accepted the computed subtask '%r' "
+                     "report", self.key_id, msg.subtask_id)
+
+        self.concent_service.cancel_task_message(
+            msg.subtask_id, 'ForceReportComputedTask')
+
+        delayed_forcing_msg = message.ForceSubtaskResults(
+            ack_report_computed_task=msg,
+        )
+        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
+        self.concent_service.submit_task_message(msg.subtask_id, delayed_forcing_msg)
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
