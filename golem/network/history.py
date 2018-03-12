@@ -282,7 +282,7 @@ def add(msg: message.base.Message,
         node_id,
         local_role: Actor,
         remote_role: Actor,
-        sync: bool=False) -> None:
+        sync: bool = False) -> None:
     service = MessageHistoryService.instance
     if not service:
         logger.error(
