@@ -32,6 +32,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  config_desc: ClientConfigDescriptor,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = False,
+                 mainnet: bool = False,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
@@ -57,6 +58,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             datadir=datadir,
             config_desc=config_desc,
             keys_auth=keys_auth,
+            mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
             start_geth=start_geth,
@@ -74,7 +76,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             gatherResults([keys, docker], consumeErrors=True).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker')
-            )
+            ).addErrback(self._error('setup client'))
 
         try:
             self._start_rpc().addCallbacks(_start, self._error('rpc'))
@@ -165,7 +167,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def _error(self, msg: str) -> Callable:
         def log_error_and_stop_reactor(err):
             if self._reactor.running:
-                logger.error("Stopping because of %s error: %r", msg, err)
+                logger.error("Stopping because of %s error: %s", msg, err)
                 self._reactor.callFromThread(self._reactor.stop)
 
         return log_error_and_stop_reactor

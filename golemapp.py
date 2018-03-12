@@ -68,6 +68,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--peer', '-p', multiple=True,
               callback=argsparser.parse_peer, metavar="<host>:<port>",
               help="Connect with given peer")
+@click.option('--mainnet', is_flag=True, default=False,
+              help='Whether to run on Ethereum mainnet')
 @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
               help="Start local geth node")
 @click.option('--start-geth-port', default=None, type=int,
@@ -100,7 +102,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               ]),
               help="Change level for all loggers and handlers")
 @click.option('--title', expose_value=False)
-def start(monitor, datadir, node_address, rpc_address, peer,
+def start(monitor, datadir, node_address, rpc_address, peer, mainnet,
           start_geth, start_geth_port, geth_address, version, m, loglevel):
     freeze_support()
     delete_reactor()
@@ -139,6 +141,7 @@ def start(monitor, datadir, node_address, rpc_address, peer,
             config_desc=config_desc,
             peers=peer,
             use_monitor=monitor,
+            mainnet=mainnet,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address)

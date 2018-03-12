@@ -71,7 +71,7 @@ class TestPublicNodeList(unittest.TestCase):
 
     def test_builtin_public_nodes(self):
         with patch('requests.get', lambda *_: None):
-            public_nodes = get_public_nodes()
+            public_nodes = get_public_nodes(mainnet=False)
 
         assert public_nodes is not NODE_LIST
         assert all(n in NODE_LIST for n in public_nodes)

@@ -87,6 +87,7 @@ class Client(HardwarePresetsMixin):
             datadir: str,
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
+            mainnet: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -166,6 +167,7 @@ class Client(HardwarePresetsMixin):
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
+            mainnet,
             start_geth=start_geth,
             start_port=start_geth_port,
             address=geth_address,
