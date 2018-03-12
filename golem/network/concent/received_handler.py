@@ -176,3 +176,27 @@ class TaskServerMessageHandler():
             rct.subtask_id,
             rct.computation_time,
         )
+
+    @handler_for(message.concents.ForceGetTaskResultFailed)
+    def on_force_get_task_result_failed(self, msg):
+        """
+        Concent acknowledges a failure to retrieve the task results from
+        the Provider.
+
+        The only thing we can do at this moment is to mark the task as failed
+        and preserve this message for possible later usage in case the
+        Provider demands payment or tries to force acceptance.
+        """
+
+        history.add(
+            msg,
+            node_id=msg.task_to_compute.provider_id,
+            local_role=Actor.Requestor,
+            remote_role=Actor.Concent,
+            sync=True,
+        )
+
+        self.task_server.task_manager.task_computation_failure(
+            msg.subtask_id,
+            'Error downloading the task result through the Concent'
+        )
