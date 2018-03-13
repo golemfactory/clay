@@ -67,7 +67,8 @@ def create_client(datadir):
             difficulty=config_desc.key_difficulty,
         )
 
-    with mock.patch('golem.client.EthereumTransactionSystem'):
+    with mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                    'PaymentProcessor'):
         return Client(datadir=datadir,
                       config_desc=config_desc,
                       keys_auth=keys_auth,
