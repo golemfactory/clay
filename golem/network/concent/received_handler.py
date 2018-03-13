@@ -227,6 +227,8 @@ class TaskServerMessageHandler():
             'Concent claims ForceGetTaskResult no longer possible'
         )
 
+    # pylint: disable=no-self-use
+
     @handler_for(message.concents.AckForceGetTaskResult)
     def on_ack_force_get_task_result(self, msg, **_):
         """
@@ -236,3 +238,5 @@ class TaskServerMessageHandler():
             "ForceGetTaskResult has been accepted by the Concent, subtask: %r",
             msg.subtask_id,
         )
+
+    # pylint:enable=no-self-use

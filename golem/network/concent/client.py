@@ -21,8 +21,7 @@ from golem import utils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
-
-from .handlers_library import library
+from golem.network.concent.handlers_library import library
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +180,7 @@ class ConcentClientService(threading.Thread):
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
-        self.received_messages = queue.Queue(maxsize=100)
+        self.received_messages: queue.Queue = queue.Queue(maxsize=100)
 
     def run(self) -> None:
         while not self._stop_event.isSet():
