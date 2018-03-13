@@ -54,4 +54,4 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 Golem-Messages==1.16.1
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@129a96eb3400caab84109c79124e9f122b423ab0#egg=golem_sci
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@f5b6aad7dff05e3abadf32d8f83c40d7afc296b5#egg=golem_sci
