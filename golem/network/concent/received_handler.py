@@ -108,6 +108,12 @@ class TaskServerMessageHandler():
             msg.reason,
         )
 
+        if isinstance(response_to, message.concents.ForceGetTaskResult):
+            self.task_server.task_manager.task_computation_failure(
+                msg.subtask_id,
+                'Concent refused to assist in forced results download'
+            )
+
     @handler_for(message.concents.VerdictReportComputedTask)
     def on_verdict_report_computed_task(self, msg, **_):
         """Verdict is forced by Concent on Requestor
@@ -202,4 +208,31 @@ class TaskServerMessageHandler():
         self.task_server.task_manager.task_computation_failure(
             msg.subtask_id,
             'Error downloading the task result through the Concent'
+        )
+
+    @handler_for(message.concents.ForceGetTaskResultRejected)
+    def on_force_get_task_result_rejected(self, msg, **_):
+        """
+        Concent rejects a `ForceGetTaskResult` request, giving a reason.
+        """
+
+        logger.warning(
+            "ForceGetTaskResult request has been rejected for subtask: %r %s",
+            msg.subtask_id,
+            msg.reason,
+        )
+
+        self.task_server.task_manager.task_computation_failure(
+            msg.subtask_id,
+            'Concent claims ForceGetTaskResult no longer possible'
+        )
+
+    @handler_for(message.concents.AckForceGetTaskResult)
+    def on_ack_force_get_task_result(self, msg, **_):
+        """
+        Concent accepts a `ForceGetTaskResult` request
+        """
+        logger.debug(
+            "ForceGetTaskResult has been accepted by the Concent, subtask: %r",
+            msg.subtask_id,
         )
