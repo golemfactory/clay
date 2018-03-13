@@ -30,7 +30,7 @@ def register_handlers(instance) -> None:
 
 
 @library.register_handler(message.concents.ForceReportComputedTaskResponse)
-def on_force_report_computed_task_response(msg):
+def on_force_report_computed_task_response(msg, **_):
     """Concents response to Provider to his ForceReportComputedTask
     """
     if msg.reject_report_computed_task:
@@ -99,14 +99,17 @@ class TaskServerMessageHandler():
         return self.task_server.client.concent_service
 
     @handler_for(message.concents.ServiceRefused)
-    def on_concents_service_refused(self, msg):
-        self.task_server.concent_refused(
-            subtask_id=msg.subtask_id,
-            reason=msg.reason,
+    def on_service_refused(self, msg,
+                           response_to: message.Message = None):
+        logger.warning(
+            "Concent service (%s) refused for subtask_id: %r %s",
+            response_to.__class__.__name__ if response_to else '',
+            msg.subtask_id,
+            msg.reason,
         )
 
     @handler_for(message.concents.VerdictReportComputedTask)
-    def on_verdict_report_computed_task(self, msg):
+    def on_verdict_report_computed_task(self, msg, **_):
         """Verdict is forced by Concent on Requestor
 
         Requestor should act as it had sent AckReportComputedTask by himself.
@@ -151,7 +154,7 @@ class TaskServerMessageHandler():
         )
 
     @handler_for(message.concents.ForceReportComputedTask)
-    def on_force_report_computed_task(self, msg):
+    def on_force_report_computed_task(self, msg, **_):
         """Concent forwarded ReportComputedTask from Provider
 
         Requestor should answer to Concent with either AckReportComputedTask
@@ -178,7 +181,7 @@ class TaskServerMessageHandler():
         )
 
     @handler_for(message.concents.ForceGetTaskResultFailed)
-    def on_force_get_task_result_failed(self, msg):
+    def on_force_get_task_result_failed(self, msg, **_):
         """
         Concent acknowledges a failure to retrieve the task results from
         the Provider.

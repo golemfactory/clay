@@ -137,14 +137,11 @@ class TaskServerMessageHandlerTestCase(
         del self.task_server
         gc.collect()
 
-    @mock.patch("golem.task.taskserver.TaskServer.concent_refused")
-    def test_concent_service_refused(self, refused_mock):
+    @mock.patch("golem.network.concent.received_handler.logger.warning")
+    def test_concent_service_refused(self, logger_mock):
         msg = msg_factories.ServiceRefused()
         library.interpret(msg)
-        refused_mock.assert_called_once_with(
-            subtask_id=msg.subtask_id,
-            reason=msg.reason,
-        )
+        self.assertIn('Concent service (%s) refused', logger_mock.call_args[0][0])
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")

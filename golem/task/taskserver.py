@@ -35,8 +35,7 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 class TaskServer(
         PendingConnectionsServer,
-        resources.TaskResourcesMixin,
-        concent.ConcentMixin):
+        resources.TaskResourcesMixin):
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
