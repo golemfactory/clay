@@ -22,6 +22,7 @@ class ClientConfigDescriptor(object):
         self.use_ipv6 = 0
         self.key_difficulty = 0
         self.use_upnp = 0
+        self.enable_talkback = 0
 
         self.seed_host = ""
         self.seed_port = 0
