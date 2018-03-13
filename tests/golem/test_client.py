@@ -527,6 +527,18 @@ class TestClient(TestWithDatabase, TestWithReactor):
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
 
+    @patch('golem.client.EthereumTransactionSystem', autospec=True)
+    def test_is_mainnet(self, *_):
+        client = Client(
+            datadir=self.path,
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        assert not client.is_mainnet()
+
 
 class TestDoWorkService(TestWithReactor):
 

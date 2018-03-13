@@ -1,6 +1,7 @@
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
+    is_mainnet=             'golem.mainnet',
 
     get_settings=           'env.opts',
     update_settings=        'env.opts.update',
