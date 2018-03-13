@@ -337,7 +337,7 @@ class ConcentClientService(threading.Thread):
         except Exception:   # pylint: disable=broad-except
             logger.debug("Error interpreting synchronous response: %r", msg)
 
-    def react_to_concent_message(self, data: bytes,
+    def react_to_concent_message(self, data: typing.Optional[bytes],
                                  response_to: message.Message = None):
         if data is None:
             return
