@@ -351,6 +351,7 @@ class ConcentClientService(threading.Thread):
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
             return
+
         if not response_to:
             self.received_messages.put(msg)
         else:
