@@ -101,8 +101,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               ]),
               help="Change level for all loggers and handlers")
 @click.option('--title', expose_value=False)
+@click.option('--testnet', is_flag=True, default=False)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, start_geth_port, geth_address, version, m, loglevel):
+          start_geth, start_geth_port, geth_address, version, m, loglevel,
+          testnet: bool):
     freeze_support()
     delete_reactor()
 
@@ -134,6 +136,7 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         log_golem_version()
         log_platform_info()
+        log_ether_chain(testnet)
 
         node = Node(
             datadir=datadir,
@@ -143,7 +146,8 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             use_monitor=monitor,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
-            geth_address=geth_address)
+            geth_address=geth_address,
+            is_testnet=testnet)
 
         node.start()
 
@@ -194,6 +198,11 @@ def log_platform_info():
     logger.info("memory: %s, swap: %s",
                 humanize.naturalsize(meminfo.total, binary=True),
                 humanize.naturalsize(swapinfo.total, binary=True))
+
+
+def log_ether_chain(is_testnet: bool):
+    blockchain = "rinkeby" if is_testnet else "mainnet"
+    logger.info("blockchain: %s", blockchain)
 
 
 if __name__ == '__main__':

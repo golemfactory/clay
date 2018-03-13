@@ -55,7 +55,7 @@ class PaymentProcessor(LoopingCallService):
 
     def __init__(self,
                  sci,
-                 faucet=False) -> None:
+                 use_faucet: bool = False) -> None:
         self.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         self.ETH_BATCH_PAYMENT_BASE = \
             sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
@@ -69,7 +69,7 @@ class PaymentProcessor(LoopingCallService):
         self._awaiting_lock = Lock()
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
-        self.__faucet = faucet
+        self.__use_faucet: bool = use_faucet
         self.deadline = sys.maxsize
         self.load_from_db()
         self._last_gnt_update = None
@@ -326,7 +326,7 @@ class PaymentProcessor(LoopingCallService):
         if eth_balance is None:
             return False
 
-        if self.__faucet and eth_balance < 0.01 * denoms.ether:
+        if self.__use_faucet and eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH")
             tETH_faucet_donate(self._sci.get_eth_address())
             return False
@@ -337,7 +337,7 @@ class PaymentProcessor(LoopingCallService):
         if gnt_balance is None:
             return False
 
-        if self.__faucet and gnt_balance < 100 * denoms.ether:
+        if self.__use_faucet and gnt_balance < 100 * denoms.ether:
             # During GNT-GNTB convertion gnt_balance will be zero, but we don't
             # want to request GNT from faucet again
             if self._gnt_converter.is_converting():

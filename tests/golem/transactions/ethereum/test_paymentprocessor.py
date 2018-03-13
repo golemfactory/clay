@@ -113,7 +113,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
     @mock.patch('golem.ethereum.paymentprocessor.tETH_faucet_donate')
     def test_faucet(self, donate):
-        self.pp._PaymentProcessor__faucet = True
+        self.pp._PaymentProcessor__use_faucet = True
         self.pp.get_ether_from_faucet()
         donate.assert_called_once_with(self.addr)
 
@@ -382,7 +382,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.is_synchronized.return_value = True
         self.pp.sendout = mock.Mock()
 
-        self.pp._PaymentProcessor__faucet = True
+        self.pp._PaymentProcessor__use_faucet = True
 
         self.sci.get_eth_balance.return_value = None
         self.sci.get_gnt_balance.return_value = None
@@ -423,7 +423,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp._gnt_converter.is_converting.return_value = False
 
     def test_faucet(self):
-        self.pp._PaymentProcessor__faucet = True
+        self.pp._PaymentProcessor__use_faucet = True
 
         self.sci.get_gnt_balance.return_value = 1000 * denoms.ether
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether

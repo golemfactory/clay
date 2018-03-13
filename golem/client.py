@@ -93,7 +93,8 @@ class Client(HardwarePresetsMixin):
             use_monitor: bool = True,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None) -> None:
+            geth_address: Optional[str] = None,
+            is_testnet: bool = False) -> None:
 
         self.datadir = datadir
         self.__lock_datadir()
@@ -172,6 +173,7 @@ class Client(HardwarePresetsMixin):
                 start_geth=start_geth,
                 start_port=start_geth_port,
                 address=geth_address,
+                use_faucet=is_testnet,
             )
         else:
             self.transaction_system = None

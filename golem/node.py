@@ -36,7 +36,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
-                 geth_address: Optional[str] = None) -> None:
+                 geth_address: Optional[str] = None,
+                 is_testnet: bool = False) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -64,6 +65,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
+            is_testnet=is_testnet,
         )
 
     def start(self) -> None:
