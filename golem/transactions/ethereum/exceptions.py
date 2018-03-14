@@ -1,5 +1,6 @@
 class NotEnoughFunds(Exception):
     def __init__(self, required=None, available=None, extension="GNT"):
+        super().__init__()
         self.required = required
         self.available = available
         self.extension = extension

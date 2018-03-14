@@ -17,6 +17,7 @@ import time
 from unittest import mock
 from threading import Thread
 
+from ethereum.utils import denoms
 from twisted.internet import reactor
 
 from golem.appconfig import AppConfig
@@ -69,7 +70,11 @@ def create_client(datadir):
         )
 
     with mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                    'PaymentProcessor'):
+                    'PaymentProcessor') as pp:
+        pp.return_value.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
+        pp.return_value.ETH_PER_PAYMENT = 0.001 * denoms.ether
+        pp.return_value._eth_available.return_value = 5000 * denoms.ether
+        pp.return_value._gnt_available.return_value = 3000 * denoms.ether
         return Client(datadir=datadir,
                       app_config=app_config,
                       config_desc=config_desc,

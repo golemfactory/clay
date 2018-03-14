@@ -540,8 +540,8 @@ class Client(HardwarePresetsMixin):
 
     def _check_eth_for_task(self, task):
         pp = self.transaction_system.payment_processor
-        eth = pp.eth_for_batch_payment(task.total_tasks)
         eth_available = pp._eth_available()
+        eth = self.transaction_system.eth_for_batch_payment(task.total_tasks)
         if eth > eth_available:
             raise NotEnoughFunds(eth, eth_available, extension="ETH")
 
