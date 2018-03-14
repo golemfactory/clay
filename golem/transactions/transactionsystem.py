@@ -88,6 +88,3 @@ class TransactionSystem(object):
 
     def sync(self) -> None:
         pass
-
-    def check_funds_for_task(self, task):
-        raise NotImplementedError
