@@ -5,11 +5,16 @@ import os
 import socket
 
 import ipaddress
+
+import re
+
 from golem.network.stun import pystun as stun
 
 from .variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
 
 logger = logging.getLogger(__name__)
+
+LOOPBACK_REGEX = re.compile('(127.0.0.1)|(.*::1(%.*)?)$')
 
 # Old method that works on Windows, but not on Linux (usually returns only 127.0.0.1)
 # def ip4_addresses():
@@ -33,10 +38,8 @@ def ip_addresses(use_ipv6=False):
             continue
         for addrInfo in ip:
             addr = addrInfo.get('addr')
-            if addr is not None:
+            if addr and not LOOPBACK_REGEX.match(addr):
                 addresses.append(addr.split("%")[0])
-            if '127.0.0.1' in addresses:
-                addresses.remove('127.0.0.1')
     return addresses
 
 
@@ -49,18 +52,21 @@ def ipv4_networks():
         if not ip:
             continue
         for addrInfo in ip:
-            addr = str(addrInfo.get('addr'))
-            mask = str(addrInfo.get('netmask', '255.255.255.0'))
+            addr = addrInfo.get('addr')
+            mask = addrInfo.get('netmask', '255.255.255.0')
+
+            if not addr or LOOPBACK_REGEX.match(addr):
+                continue
 
             try:
                 ip_addr = ipaddress.ip_network((addr, mask), strict=False)
             except Exception as exc:
-                logger.error("Error parsing ip address {}: {}".format(addr, exc))
+                logger.error("Error parsing ip address %r: %r", addr, exc)
                 continue
 
-            if addr != '127.0.0.1':
-                split = str(ip_addr).split('/')
-                addresses.append((split[0], split[1]))
+            split = str(ip_addr).split('/')
+            addresses.append((split[0], split[1]))
+
     return addresses
 
 
@@ -115,6 +121,7 @@ def get_external_address(source_port=0):
     logger.debug("NAT %r, external_ip [%r] External_port %r",
                  nat_type, external_ip, external_port)
     return external_ip, external_port, nat_type
+
 
 def get_host_address(seed_addr=None, use_ipv6=False):
     """
