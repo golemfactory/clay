@@ -3,12 +3,12 @@ import logging
 from ethereum.utils import privtoaddr
 from eth_utils import encode_hex
 
+from golem_sci import new_sci, chains
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.transactionsystem import TransactionSystem
-from golem_sci import new_sci, chains
 
 log = logging.getLogger('golem.pay')
 

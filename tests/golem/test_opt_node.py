@@ -219,6 +219,47 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        use_monitor=False)
 
+    @patch('golemapp.Node')
+    def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
+        # given
+        args = self.args + ['--mainnet']
+
+        # when
+        runner = CliRunner()
+        return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=self.path,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     use_monitor=True,
+                                     mainnet=True)
+
+    @patch('golem.node.Client')
+    def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
+        # when
+        node = Node(
+            datadir=self.path,
+            config_desc=Mock(),
+            mainnet=True)
+
+        node._client_factory(None)
+
+        # then
+        mock_client.assert_called_with(datadir=self.path,
+                                       config_desc=ANY,
+                                       keys_auth=None,
+                                       geth_address=None,
+                                       start_geth=False,
+                                       start_geth_port=None,
+                                       use_docker_manager=True,
+                                       use_monitor=False,
+                                       mainnet=True)
+
     def test_start_geth_port_wo_param_should_fail(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--start-geth-port'])

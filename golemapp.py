@@ -135,6 +135,7 @@ def start(monitor, datadir, node_address, rpc_address, peer, mainnet,
         install_reactor()
         log_golem_version()
         log_platform_info()
+        log_ethereum_chain(mainnet)
 
         node = Node(
             datadir=datadir,
@@ -195,6 +196,11 @@ def log_platform_info():
     logger.info("memory: %s, swap: %s",
                 humanize.naturalsize(meminfo.total, binary=True),
                 humanize.naturalsize(swapinfo.total, binary=True))
+
+
+def log_ethereum_chain(mainnet: bool):
+    chain = "mainnet" if mainnet else "rinkeby"
+    logger.info("ethereum chain: %s", chain)
 
 
 if __name__ == '__main__':
