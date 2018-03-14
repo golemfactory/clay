@@ -111,6 +111,10 @@ def start(monitor, datadir, node_address, rpc_address, peer, mainnet,
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
+    # We should use different directories for different chains
+    subdir = 'mainnet' if mainnet else 'rinkeby'
+    datadir = os.path.join(datadir, subdir)
+
     # Workarounds for pyinstaller executable
     sys.modules['win32com.gen_py.os'] = None
     sys.modules['win32com.gen_py.pywintypes'] = None
@@ -200,7 +204,7 @@ def log_platform_info():
 
 def log_ethereum_chain(mainnet: bool):
     chain = "mainnet" if mainnet else "rinkeby"
-    logger.info("ethereum chain: %s", chain)
+    logger.info("Ethereum chain: %s", chain)
 
 
 if __name__ == '__main__':
