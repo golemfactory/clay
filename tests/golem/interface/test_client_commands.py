@@ -401,6 +401,7 @@ class TestTasks(TempDirFixture):
         client.get_tasks = self.get_tasks
         client.get_subtasks = self.get_subtasks
         client.get_unsupport_reasons = self.get_unsupport_reasons
+        client.keys_auth = Mock(public_key=b'a' * 128)
 
         self.client = client
 
@@ -419,10 +420,10 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-    @patch("golem.interface.client.tasks.uuid4")
+    @patch("golem.task.taskmanager.TaskManager.create_task_id",
+           return_value="new_uuid")
     def test_create(self, mock_uuid) -> None:
         client = self.client
-        mock_uuid.return_value = "new_uuid"
 
         definition = TaskDefinition()
         definition.task_name = "The greatest task ever"

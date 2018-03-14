@@ -97,6 +97,7 @@ class TestDummyTaskBuilder(TestCase):
     def test_build_full_definition(self):
         def get_dict():
             dictionary = {}
+            dictionary['id'] = 'some_task_id'
             dictionary['resources'] = {"aa"}
             dictionary['subtasks'] = 5
             dictionary['name'] = "name"

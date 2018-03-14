@@ -455,13 +455,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
-        keys_auth = Mock()
-        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(key_id="a" * 64, public_key=b'a' * 128)),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -790,7 +788,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 )
 
         client.sync = Mock()
-        client.keys_auth = Mock(key_id=str(uuid.uuid4()))
+        client.keys_auth = Mock(key_id=str(uuid.uuid4()), public_key=b'a' * 128)
         client.p2pservice = Mock(peers={})
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):

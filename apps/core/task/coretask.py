@@ -1,13 +1,11 @@
 import abc
 import decimal
-
-import golem_messages.message
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
+import golem_messages.message
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
@@ -20,7 +18,6 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
@@ -567,7 +564,7 @@ class CoreTaskBuilder(TaskBuilder):
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
-        definition.task_id = dictionary.get('id', str(uuid.uuid4()))
+        definition.task_id = str(dictionary['id'])
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
