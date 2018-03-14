@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
+
 class TestNotEnoughFunds(TestCase):
     def test_exception(self):
         try:

@@ -876,8 +876,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.header.max_price = 1 * 10**18
         task_mock.header.subtask_timeout = 158
         task_mock.total_tasks = 3
-        task_mock.get_price.return_value = task_mock.header.max_price * \
-                                           task_mock.total_tasks
+        price = task_mock.header.max_price * task_mock.total_tasks
+        task_mock.get_price.return_value = price
         c.task_server.task_manager.create_task.return_value = task_mock
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
@@ -890,8 +890,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
 
-        pp.eth_for_batch_payment.return_value = pp.ETH_BATCH_PAYMENT_BASE + \
-                                                pp.ETH_PER_PAYMENT * 10
+        val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
+        pp.eth_for_batch_payment.return_value = val
 
         pp._gnt_available.return_value = gnt * denoms.ether
         pp._eth_available.return_value = eth * denoms.ether
