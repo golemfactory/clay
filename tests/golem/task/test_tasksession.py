@@ -685,30 +685,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not isinstance(call_options['client_options'], Mock)
         assert call_options['client_options'].options['peers'] == peers
 
-    def test_task_subtask_from_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
-        definition = message.ComputeTaskDef({'task_id': 't', 'subtask_id': 's'})
-        msg = message.TaskToCompute(compute_task_def=definition)
-
-        task, subtask = self.task_session._task_subtask_from_message(
-            msg, Actor.Provider)
-
-        assert task == definition['task_id']
-        assert subtask == definition['subtask_id']
-        assert not self.task_session._subtask_to_task.called
-
-    def test_task_subtask_from_other_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
-        msg = message.Hello()
-
-        task, subtask = self.task_session._task_subtask_from_message(
-            msg, Actor.Provider
-        )
-
-        assert not task
-        assert not subtask
-        assert self.task_session._subtask_to_task.called
-
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
         mapping = dict()

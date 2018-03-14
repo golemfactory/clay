@@ -837,7 +837,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for p in list(self.peers.values()):
             p.send_get_tasks()
 
-    def __connection_established(self, session, conn_id=None):
+    def __connection_established(self, session, conn_id: str):
         peer_conn = session.conn.transport.getPeer()
         ip_address = peer_conn.host
         port = peer_conn.port
@@ -845,16 +845,16 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
 
-        logger.debug("Connection to peer established. {}: {}, conn_id {}"
-                     .format(ip_address, port, conn_id))
+        logger.debug("Connection to peer established. %s: %s, conn_id %s",
+                     ip_address, port, conn_id)
 
     @staticmethod
-    def __connection_failure(conn_id=None):
-        logger.info("Connection to peer failure {}.".format(conn_id))
+    def __connection_failure(conn_id: str):
+        logger.debug("Connection to peer failure %s.", conn_id)
 
     @staticmethod
-    def __connection_final_failure(conn_id=None):
-        logger.info("Can't connect to peer {}.".format(conn_id))
+    def __connection_final_failure(conn_id: str):
+        logger.debug("Can't connect to peer %s.", conn_id)
 
     def __is_new_peer(self, id_):
         return id_ not in self.incoming_peers\

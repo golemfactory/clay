@@ -89,7 +89,6 @@ class Client(HardwarePresetsMixin):
             datadir: str,
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
-            transaction_system: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -163,20 +162,16 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        if transaction_system:
-            # Bootstrap transaction system if enabled.
-            # TODO: Transaction system (and possible other modules) should be
-            #       modeled as a Service that run independently.
-            #       The Client/Application should be a collection of services.
-            self.transaction_system = EthereumTransactionSystem(
-                datadir,
-                self.keys_auth._private_key,
-                start_geth=start_geth,
-                start_port=start_geth_port,
-                address=geth_address,
-            )
-        else:
-            self.transaction_system = None
+        # TODO: Transaction system (and possible other modules) should be
+        #       modeled as a Service that run independently.
+        #       The Client/Application should be a collection of services.
+        self.transaction_system = EthereumTransactionSystem(
+            datadir,
+            self.keys_auth._private_key,
+            start_geth=start_geth,
+            start_port=start_geth_port,
+            address=geth_address,
+        )
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -467,8 +462,7 @@ class Client(HardwarePresetsMixin):
         log.info('Shutting down ...')
         self.stop()
 
-        if self.transaction_system:
-            self.transaction_system.stop()
+        self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
         if self.daemon_manager:
@@ -820,24 +814,19 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def get_balance(self):
-        if self.use_transaction_system():
-            gnt, av_gnt, eth, \
-                last_gnt_update, \
-                last_eth_update = yield self.transaction_system.get_balance()
-            if gnt is not None:
-                return str(gnt), str(av_gnt), str(eth), str(
-                    last_gnt_update), str(last_eth_update)
+        gnt, av_gnt, eth, \
+            last_gnt_update, \
+            last_eth_update = yield self.transaction_system.get_balance()
+        if gnt is not None:
+            return str(gnt), str(av_gnt), str(eth), str(
+                last_gnt_update), str(last_eth_update)
         return None, None, None, None, None
 
     def get_payments_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_payments_list()
-        return ()
+        return self.transaction_system.get_payments_list()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incoming_payments()
-        return []
+        return self.transaction_system.get_incoming_payments()
 
     def get_task_cost(self, task_id):
         """
@@ -849,9 +838,6 @@ class Client(HardwarePresetsMixin):
         if cost is None:
             return 0.0
         return cost
-
-    def use_transaction_system(self):
-        return bool(self.transaction_system)
 
     def get_computing_trust(self, node_id):
         if self.use_ranking():
@@ -1033,8 +1019,6 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
     def check_payments(self):
-        if not self.transaction_system:
-            return
         after_deadline_nodes = \
             self.transaction_system.get_nodes_with_overdue_payments()
         for node_id in after_deadline_nodes:

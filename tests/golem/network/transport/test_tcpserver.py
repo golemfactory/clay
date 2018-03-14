@@ -26,7 +26,7 @@ class Network(object):
     def stop_listening(self, _):
         self.stop_listening_called = True
 
-    def connect(self, connect_info, conn_id, *args):
+    def connect(self, connect_info):
         self.connected = True
 
 
@@ -127,7 +127,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         req_type = 0
         final_failure_called = [False]
 
-        def final_failure(_):
+        def final_failure(*args, **kwargs):
             final_failure_called[0] = True
 
         server.conn_established_for_type[req_type] = lambda x: x
@@ -166,7 +166,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         node_info.pub_addr = "1.2.3.4"
         node_info.pub_port = self.port
 
-        def final_failure(_):
+        def final_failure(*args, **kwargs):
             final_failure_called[0] = True
 
         server.conn_established_for_type[req_type] = lambda x: x

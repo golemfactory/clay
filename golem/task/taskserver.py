@@ -177,12 +177,11 @@ class TaskServer(
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(
                 task_id, computing_time)
-            if self.client.transaction_system:
-                self.client.transaction_system.incomes_keeper.expect(
-                    sender_node_id=header.task_owner_key_id,
-                    subtask_id=subtask_id,
-                    value=value,
-                )
+            self.client.transaction_system.incomes_keeper.expect(
+                sender_node_id=header.task_owner_key_id,
+                subtask_id=subtask_id,
+                value=value,
+            )
 
             delay_time = 0.0
             last_sending_trial = 0
@@ -401,13 +400,6 @@ class TaskServer(
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
 
-        if not self.client.transaction_system:
-            logger.info(
-                "Transaction system not ready. "
-                "Ignoring payment for subtask: %r",
-                subtask_id)
-            return
-
         if not account_info.eth_account.address:
             logger.warning("Unknown payment address of %r (%r). Subtask: %r",
                            account_info.node_name, account_info.addr,
@@ -591,8 +583,7 @@ class TaskServer(
         )
 
         session.send_hello()
-        payment_addr = (self.client.transaction_system.get_payment_address()
-                        if self.client.transaction_system else None)
+        payment_addr = self.client.transaction_system.get_payment_address()
         session.send_report_computed_task(waiting_task_result,
                                           self.node.prv_addr, self.cur_port,
                                           payment_addr, self.node)
