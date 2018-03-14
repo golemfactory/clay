@@ -441,3 +441,31 @@ class TestP2PService(TestDatabaseWithReactor):
         self.service.connect(addr)
         assert connection_failure.called
         assert connection_failure.call_args[1]['conn_id'] is not None
+
+    def test_try_to_add_peer(self):
+        key_id = 'abcde1234567890'
+        peer_info = {
+            'node_name': 'test',
+            'port': 1,
+            'node': mock.Mock(key=key_id),
+            'address': '10.0.0.1',
+            'conn_trials': 0,
+        }
+        self.service.try_to_add_peer(peer_info, True)
+
+        assert key_id in self.service.free_peers
+        assert key_id in self.service.incoming_peers
+        assert peer_info == self.service.incoming_peers[key_id]
+
+    def test_get_socket_addresses(self):
+        key_id = 'abcd'
+        address = '10.0.0.1'
+        prv_port = 1
+        pub_port = 2
+        node_info = mock.Mock(key=key_id)
+
+        self.service.suggested_address[key_id] = address
+        result = self.service.get_socket_addresses(node_info, prv_port,
+                                                   pub_port)
+        assert SocketAddress(address, prv_port) in result
+        assert SocketAddress(address, pub_port) in result
