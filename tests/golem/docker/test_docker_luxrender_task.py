@@ -101,6 +101,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # Create the computing node
         self.node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             use_docker_manager=False,
         )
@@ -224,7 +225,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         return new_flm_file, new_file
 
     # @pytest.mark.slow
-    def test_luxrender_real_task_png(self):
+    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    def test_luxrender_real_task_png(self, mock_dtt):
+        mock_dtt.return_value = 1.0
         task = self._test_task()
         task.output_format = "png"
         task.res_y = 200
@@ -238,7 +241,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self._test_luxrender_real_task(task)
 
     @pytest.mark.slow
-    def test_luxrender_real_task_exr(self):
+    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    def test_luxrender_real_task_exr(self, mock_dtt):
+        mock_dtt.return_value = 1.0
         task = self._test_task()
         task.output_format = "exr"
         task.res_y = 200

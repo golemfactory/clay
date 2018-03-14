@@ -12,9 +12,9 @@ class CallRateLimiter:
     KEY = b'default'
 
     def __init__(self,
-                 rate: int = 5,
+                 rate: int = 6,
                  capacity_factor: float = 1.5,
-                 delay_factor: float = 1.5) -> None:
+                 delay_factor: float = 1.35) -> None:
 
         """
         :param rate: Tokens to consume per time window (per sec)

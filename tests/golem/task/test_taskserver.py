@@ -35,7 +35,10 @@ def get_example_task_header():
         "task_id": "uvw",
         "node_name": "ABC",
         "environment": "DEFAULT",
-        "task_owner": dict(),
+        "task_owner": dict(
+            prv_port=40103,
+            prv_addr='10.0.0.10'
+        ),
         "task_owner_port": 10101,
         "task_owner_key_id": "key",
         "task_owner_address": "10.10.10.10",
@@ -104,6 +107,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         )
         ts.verify_header_sig = lambda x: True
         self.ts = ts
+        ts._is_address_accessible = Mock(return_value=True)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_suggested_conn_reverse.return_value = False
         ts.client.get_requesting_trust.return_value = 0.3
@@ -117,6 +121,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), "uvw")
         assert ts.remove_task_header("uvw")
+
         task_header["task_owner_port"] = 0
         task_header["task_id"] = "uvw2"
         self.assertTrue(ts.add_task_header(task_header))
@@ -177,16 +182,18 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
     def test_send_results(self, trust, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 11
-        n = Node()
+        task_header = get_example_task_header()
+        n = Node.from_dict(task_header['task_owner'])
         ts = self.ts
+        ts._is_address_accessible = Mock(return_value=True)
         ts.verify_header_sig = lambda x: True
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
         results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
-        ts.add_task_header(task_header)
-        ts.request_task()
+        assert ts.add_task_header(task_header)
+        assert ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40))
@@ -530,10 +537,16 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
         task_result"""
+        node = Mock(
+            key='deadbeef',
+            prv_port=None,
+            prv_addr='10.0.0.10',
+        )
         ts = self.ts
         ts.network = MagicMock()
         ts.final_conn_failure = Mock()
         ts.task_computer = Mock()
+        ts._is_address_accessible = Mock(return_value=True)
 
         # Always fail on listening
         from golem.network.transport import tcpnetwork
@@ -544,19 +557,20 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
                 {'waiting_task_result': waiting_task_result}
             )
         )
-
         # Try sending mocked task_result
-        wtr = MagicMock()
-        wtr.owner_key_id = 'owner_key_id'
-        kwargs = {'waiting_task_result': wtr}
-        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id',
-                                'owner_port', wtr.owner_key_id, kwargs)
-        ts._sync_pending()
-        ts.client.want_to_start_task_session.assert_called_once_with(
-            wtr.owner_key_id,
-            ts.node,
-            ANY,  # conn_id
+        wtr = MagicMock(
+            owner=node,
+            owner_key_id='owner_key_id'
         )
+        ts._add_pending_request(
+            TASK_CONN_TYPES['task_result'],
+            node,
+            prv_port=node.prv_port,
+            pub_port=node.pub_port,
+            args={'waiting_task_result': wtr}
+        )
+        ts._sync_pending()
+        assert not ts.network.connect.called
 
     def test_should_accept_provider(self, *_):
         ts = self.ts
