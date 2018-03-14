@@ -86,6 +86,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # Create the computing node
         self.node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             use_docker_manager=False,
         )

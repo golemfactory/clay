@@ -69,7 +69,10 @@ class TestP2PService(TestDatabaseWithReactor):
             node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
             prv_addr=randaddr(),
-            prv_port=random.randint(1, 2 ** 16 - 1))
+            pub_addr=randaddr(),
+            p2p_prv_port=random.randint(1, 2 ** 16 - 1),
+            p2p_pub_port=random.randint(1, 2 ** 16 - 1),
+        )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
                 neighbour_node,
@@ -222,11 +225,11 @@ class TestP2PService(TestDatabaseWithReactor):
         assert len(self.service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        node = mock.MagicMock()
-        node.key = encode_hex(urandom(64))
-        node.key_id = node.key
-        node.pub_addr = '127.0.0.1'
-        node.pub_port = 10000
+        node = Node(
+            key=encode_hex(urandom(64)),
+            pub_addr='127.0.0.1',
+            p2p_pub_port=10000
+        )
 
         self.service.config_desc.opt_peer_num = 10
         self.service.free_peers.append(node.key)
@@ -239,6 +242,7 @@ class TestP2PService(TestDatabaseWithReactor):
         }
 
         self.service.last_peers_request = time.time() - 60
+        self.service._is_address_accessible = mock.Mock(return_value=True)
         self.service.sync_network()
 
         assert not self.service.free_peers
@@ -437,3 +441,31 @@ class TestP2PService(TestDatabaseWithReactor):
         self.service.connect(addr)
         assert connection_failure.called
         assert connection_failure.call_args[1]['conn_id'] is not None
+
+    def test_try_to_add_peer(self):
+        key_id = 'abcde1234567890'
+        peer_info = {
+            'node_name': 'test',
+            'port': 1,
+            'node': mock.Mock(key=key_id),
+            'address': '10.0.0.1',
+            'conn_trials': 0,
+        }
+        self.service.try_to_add_peer(peer_info, True)
+
+        assert key_id in self.service.free_peers
+        assert key_id in self.service.incoming_peers
+        assert peer_info == self.service.incoming_peers[key_id]
+
+    def test_get_socket_addresses(self):
+        key_id = 'abcd'
+        address = '10.0.0.1'
+        prv_port = 1
+        pub_port = 2
+        node_info = mock.Mock(key=key_id)
+
+        self.service.suggested_address[key_id] = address
+        result = self.service.get_socket_addresses(node_info, prv_port,
+                                                   pub_port)
+        assert SocketAddress(address, prv_port) in result
+        assert SocketAddress(address, pub_port) in result
