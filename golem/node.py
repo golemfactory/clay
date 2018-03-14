@@ -33,7 +33,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  app_config: AppConfig,
                  config_desc: ClientConfigDescriptor,
                  peers: Optional[List[SocketAddress]] = None,
-                 transaction_system: bool = False,
                  use_monitor: bool = False,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
@@ -58,10 +57,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
-            app_config=app_config,
+            app_config = app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
-            transaction_system=transaction_system,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
             start_geth=start_geth,
@@ -118,8 +116,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return None
 
         def start_docker():
-            docker: DockerManager = DockerManager.install(self._config_desc)
-            docker.check_environment()  # pylint: disable=no-member
+            DockerManager.install(self._config_desc).check_environment()  # noqa pylint: disable=no-member
 
         return threads.deferToThread(start_docker)
 
@@ -170,7 +167,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _error(self, msg: str) -> Callable:
         def log_error_and_stop_reactor(err):
-            logger.error("Stopping because of %s error: %r", msg, err)
-            self._reactor.callFromThread(self._reactor.stop)
+            if self._reactor.running:
+                logger.error("Stopping because of %s error: %r", msg, err)
+                self._reactor.callFromThread(self._reactor.stop)
 
         return log_error_and_stop_reactor

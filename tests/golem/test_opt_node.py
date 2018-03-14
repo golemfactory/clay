@@ -83,7 +83,6 @@ class TestNode(TestWithDatabase):
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
         self.assertEqual(
@@ -121,7 +120,6 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     transaction_system=True,
                                      use_monitor=True)
 
     @patch('golem.node.Client')
@@ -146,7 +144,6 @@ class TestNode(TestWithDatabase):
                                        geth_address=geth_address,
                                        start_geth=False,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
 
@@ -201,7 +198,6 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
-                                     transaction_system=True,
                                      use_monitor=True)
 
     @patch('golem.node.Client')
@@ -223,7 +219,6 @@ class TestNode(TestWithDatabase):
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
 
@@ -259,7 +254,6 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
-                                     transaction_system=True,
                                      use_monitor=True)
 
     @patch('golem.node.Client')
@@ -285,7 +279,6 @@ class TestNode(TestWithDatabase):
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=port,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
 
@@ -437,7 +430,8 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    def test_start_creates_client(self, reactor, mock_gather_results, *_):
+    @patch('golem.client.EthereumTransactionSystem')
+    def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         # given
         keys_auth = Mock()
         config_descriptor = ClientConfigDescriptor()
@@ -464,10 +458,16 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
+    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
-            self, mock_run, reactor, mock_gather_results, mock_session, *_):
-
+            self,
+            mock_run,
+            _ets,
+            reactor,
+            mock_gather_results,
+            mock_session,
+            *_):
         # given
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \

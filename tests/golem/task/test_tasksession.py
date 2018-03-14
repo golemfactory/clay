@@ -14,6 +14,7 @@ from golem_messages import message
 
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
+from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -28,7 +29,6 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
-from tests.factories import p2p as p2p_factories
 from tests.factories import messages as msg_factories
 from tests.factories.taskserver import WaitingTaskResultFactory
 
@@ -236,11 +236,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ts.send_report_computed_task(
                 wtr, wtr.owner_address, wtr.owner_port, "0x00", wtr.owner)
 
-    def test_react_to_hello(self):
+    def test_react_to_hello_protocol_version(self):
+        # given
         conn = MagicMock()
-
         ts = TaskSession(conn)
         ts.task_server = Mock()
+        ts.task_server.config_desc = Mock()
+        ts.task_server.config_desc.key_difficulty = 0
         ts.disconnect = Mock()
         ts.send = Mock()
 
@@ -248,17 +250,75 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         peer_info = MagicMock()
         peer_info.key = key_id
         msg = message.Hello(port=1, node_name='node2', client_key_id=key_id,
-                            node_info=peer_info,
-                            proto_id=-1)
-
+                            node_info=peer_info, proto_id=-1)
         fill_slots(msg)
-        ts._react_to_hello(msg)
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            ts._react_to_hello(msg)
+
+        # then
         ts.disconnect.assert_called_with(
             message.Disconnect.REASON.ProtocolVersion)
 
+        # re-given
         msg.proto_id = PROTOCOL_CONST.ID
 
-        ts._react_to_hello(msg)
+        # re-when
+        with self.assertNoLogs(logger, level='INFO'):
+            ts._react_to_hello(msg)
+
+        # re-then
+        self.assertTrue(ts.send.called)
+
+    def test_react_to_hello_key_not_difficult(self):
+        # given
+        conn = MagicMock()
+        ts = TaskSession(conn)
+        ts.task_server = Mock()
+        ts.task_server.config_desc = Mock()
+        ts.task_server.config_desc.key_difficulty = 80
+        ts.disconnect = Mock()
+        ts.send = Mock()
+
+        key_id = 'deadbeef'
+        peer_info = MagicMock()
+        peer_info.key = key_id
+        msg = message.Hello(port=1, node_name='node2', client_key_id=key_id,
+                            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+        fill_slots(msg)
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            ts._react_to_hello(msg)
+
+        # then
+        ts.disconnect.assert_called_with(
+            message.Disconnect.REASON.KeyNotDifficult)
+
+    def test_react_to_hello_key_difficult(self):
+        # given
+        difficulty = 4
+        conn = MagicMock()
+        ts = TaskSession(conn)
+        ts.task_server = Mock()
+        ts.task_server.config_desc = Mock()
+        ts.task_server.config_desc.key_difficulty = difficulty
+        ts.disconnect = Mock()
+        ts.send = Mock()
+
+        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
+                      private_key_name='prv', password='')
+        peer_info = MagicMock()
+        peer_info.key = ka.key_id
+        msg = message.Hello(port=1, node_name='node2', client_key_id=ka.key_id,
+                            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+        fill_slots(msg)
+
+        # when
+        with self.assertNoLogs(logger, level='INFO'):
+            ts._react_to_hello(msg)
+        # then
         self.assertTrue(ts.send.called)
 
     @patch('golem.task.tasksession.get_task_message', Mock())
@@ -290,7 +350,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             subtask_id='xxyyzz'
         )
 
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         self.assertTrue(ts.msgs_to_send)
         self.assertIsInstance(ts.msgs_to_send[0],
@@ -306,7 +366,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.computed_task_received = Mock(
             side_effect=finished(),
         )
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         assert ts.msgs_to_send
         assert isinstance(ts.msgs_to_send[0],
@@ -319,7 +379,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn.close.called = False
         ts.msgs_to_send = []
 
-        ts.result_received(extra_data, decrypt=False)
+        ts.result_received(extra_data)
 
         assert not ts.msgs_to_send
         assert conn.close.called
@@ -625,30 +685,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not isinstance(call_options['client_options'], Mock)
         assert call_options['client_options'].options['peers'] == peers
 
-    def test_task_subtask_from_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
-        definition = message.ComputeTaskDef({'task_id': 't', 'subtask_id': 's'})
-        msg = message.TaskToCompute(compute_task_def=definition)
-
-        task, subtask = self.task_session._task_subtask_from_message(
-            msg, Actor.Provider)
-
-        assert task == definition['task_id']
-        assert subtask == definition['subtask_id']
-        assert not self.task_session._subtask_to_task.called
-
-    def test_task_subtask_from_other_message(self):
-        self.task_session._subtask_to_task = Mock(return_value=None)
-        msg = message.Hello()
-
-        task, subtask = self.task_session._task_subtask_from_message(
-            msg, Actor.Provider
-        )
-
-        assert not task
-        assert not subtask
-        assert self.task_session._subtask_to_task.called
-
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
         mapping = dict()
@@ -839,7 +875,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         with patch('golem.task.tasksession.get_task_message',
                    Mock(return_value=ttc)):
-            self.task_session.result_received(extra_data, decrypt=False)
+            self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object

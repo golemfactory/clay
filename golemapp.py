@@ -45,7 +45,6 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 
 @click.command()
-@click.option('--payments/--nopayments', default=True)
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
@@ -102,8 +101,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(payments, monitor, datadir, node_address, rpc_address, peer,
+def start(monitor, datadir, node_address, rpc_address, peer,
           start_geth, start_geth_port, geth_address, version, log_level, m):
+
     freeze_support()
     delete_reactor()
 
@@ -141,7 +141,6 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
             datadir=datadir,
             app_config=app_config,
             config_desc=config_desc,
-            transaction_system=payments,
             peers=peer,
             use_monitor=monitor,
             start_geth=start_geth,

@@ -4,10 +4,11 @@ import logging
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
-from golem.task import taskserver
-
+from golem.model import Actor
+from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
+from golem.task import taskserver
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,65 @@ def register_handlers(instance) -> None:
         except AttributeError:
             continue
         library.register_handler(msg_cls)(method)
+
+
+@library.register_handler(message.concents.ForceReportComputedTaskResponse)
+def on_force_report_computed_task_response(msg):
+    """Concents response to Provider to his ForceReportComputedTask
+    """
+    if msg.reject_report_computed_task:
+        node_id = msg.reject_report_computed_task.task_to_compute.requestor_id
+    elif msg.ack_report_computed_task:
+        node_id = msg.ack_report_computed_task.task_to_compute.requestor_id
+    else:
+        logger.warning("Can't determine node_id from %r. Assuming None", msg)
+        node_id = None
+
+    history.add(
+        msg=msg,
+        node_id=node_id,
+        local_role=Actor.Provider,
+        remote_role=Actor.Concent,
+    )
+    reasons = message.concents.ForceReportComputedTaskResponse.REASON
+
+    if msg.reason == reasons.SubtaskTimeout:
+        # Is reject_report_computed_task created and attached by concent?
+        logger.warning("[CONCENT] SubtaskTimeout for subtask: %r", msg)
+        return
+
+    if msg.reason in (reasons.ConcentAck, reasons.AckFromRequestor):
+        logger.warning(
+            "[CONCENT] %s for subtask: %r",
+            msg.reason,
+            msg.subtask_id,
+        )
+        if msg.reason == reasons.ConcentAck:
+            remote_role = Actor.Concent
+        else:
+            remote_role = Actor.Requestor
+        history.add(
+            msg=msg.ack_report_computed_task,
+            node_id=node_id,
+            local_role=Actor.Provider,
+            remote_role=remote_role,
+        )
+        return
+
+    if msg.reason == reasons.RejectFromRequestor:
+        logger.warning(
+            "[CONCENT] Reject for subtask: %r",
+            msg.subtask_id,
+        )
+        history.add(
+            msg=msg.reject_report_computed_task,
+            node_id=node_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
+        return
+
+    raise RuntimeError("Impossible condition caused by {}".format(msg))
 
 
 class TaskServerMessageHandler():
@@ -115,4 +175,28 @@ class TaskServerMessageHandler():
         self.task_server.receive_subtask_computation_time(
             rct.subtask_id,
             rct.computation_time,
+        )
+
+    @handler_for(message.concents.ForceGetTaskResultFailed)
+    def on_force_get_task_result_failed(self, msg):
+        """
+        Concent acknowledges a failure to retrieve the task results from
+        the Provider.
+
+        The only thing we can do at this moment is to mark the task as failed
+        and preserve this message for possible later usage in case the
+        Provider demands payment or tries to force acceptance.
+        """
+
+        history.add(
+            msg,
+            node_id=msg.task_to_compute.provider_id,
+            local_role=Actor.Requestor,
+            remote_role=Actor.Concent,
+            sync=True,
+        )
+
+        self.task_server.task_manager.task_computation_failure(
+            msg.subtask_id,
+            'Error downloading the task result through the Concent'
         )

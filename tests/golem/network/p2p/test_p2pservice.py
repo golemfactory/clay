@@ -5,7 +5,8 @@ import time
 import unittest.mock as mock
 import uuid
 
-from golem import testutils
+from twisted.internet.tcp import EISCONN
+
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import KeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
@@ -16,10 +17,11 @@ from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
 
 
-class TestP2PService(testutils.DatabaseFixture):
+class TestP2PService(TestDatabaseWithReactor):
 
     def setUp(self):
         super(TestP2PService, self).setUp()
@@ -413,3 +415,29 @@ class TestP2PService(testutils.DatabaseFixture):
             seed = self.service._get_next_random_seed()
             seeds.remove(seed)
         assert not seeds
+
+    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket')
+    @mock.patch('golem.network.p2p.p2pservice.'
+                'P2PService._P2PService__connection_established')
+    def test_connect_success(self, connection_established, createSocket):
+        createSocket.return_value = socket = mock.Mock()
+        socket.fileno = mock.Mock(return_value=0)
+        socket.getsockopt = mock.Mock(return_value=None)
+        socket.connect_ex = mock.Mock(return_value=EISCONN)
+
+        addr = SocketAddress('127.0.0.1', 40102)
+        self.service.connect(addr)
+        time.sleep(0.1)
+        assert connection_established.called
+        assert connection_established.call_args[0][0] is not None
+        assert connection_established.call_args[1]['conn_id'] is not None
+
+    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket',
+                side_effect=Exception('something has failed'))
+    @mock.patch('golem.network.p2p.p2pservice.'
+                'P2PService._P2PService__connection_failure')
+    def test_connect_failure(self, connection_failure, createSocket):
+        addr = SocketAddress('127.0.0.1', 40102)
+        self.service.connect(addr)
+        assert connection_failure.called
+        assert connection_failure.call_args[1]['conn_id'] is not None
