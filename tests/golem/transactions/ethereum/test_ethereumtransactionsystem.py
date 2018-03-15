@@ -1,4 +1,6 @@
-import unittest.mock as mock
+from unittest.mock import patch, Mock, ANY, PropertyMock
+
+import golem_sci
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
@@ -29,23 +31,25 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert e.get_balance() == (None, None, None, None, None)
         e.stop()
 
-    @mock.patch('golem.core.service.LoopingCallService.running',
-                new_callable=mock.PropertyMock)
+    @patch('golem.core.service.LoopingCallService.running',
+           new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
         pkg = 'golem.ethereum.'
+        new_sci_method_name = \
+            'golem.transactions.ethereum.ethereumtransactionsystem.new_sci'
 
         def _init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
-            self.web3 = mock.MagicMock()
+            self.web3 = Mock()
 
-        with mock.patch('twisted.internet.task.LoopingCall.start'), \
-                mock.patch('twisted.internet.task.LoopingCall.stop'), \
-                mock.patch('golem_sci.new_sci'), \
-                mock.patch(pkg + 'node.NodeProcess.start'), \
-                mock.patch(pkg + 'node.NodeProcess.stop'), \
-                mock.patch(pkg + 'node.NodeProcess.__init__', _init), \
-                mock.patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+        with patch('twisted.internet.task.LoopingCall.start'), \
+                patch('twisted.internet.task.LoopingCall.stop'), \
+                patch(new_sci_method_name), \
+                patch(pkg + 'node.NodeProcess.start'), \
+                patch(pkg + 'node.NodeProcess.stop'), \
+                patch(pkg + 'node.NodeProcess.__init__', _init), \
+                patch('web3.providers.rpc.HTTPProvider.__init__', _init):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
@@ -60,3 +64,30 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             mock_is_service_running.return_value = True
             e.stop()
             assert e.payment_processor._loopingCall.stop.called
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
+           Mock())
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+           'PaymentProcessor')
+    def test_mainnet_flag(self, pp, new_sci):
+        EthereumTransactionSystem(self.tempdir, PRIV_KEY, False)
+        new_sci.assert_called_once_with(
+            ANY,
+            ANY,
+            ANY,
+            golem_sci.chains.RINKEBY,
+        )
+        pp.assert_called_once_with(sci=ANY, faucet=True)
+
+        new_sci.reset_mock()
+        pp.reset_mock()
+
+        EthereumTransactionSystem(self.tempdir, PRIV_KEY, True)
+        new_sci.assert_called_once_with(
+            ANY,
+            ANY,
+            ANY,
+            golem_sci.chains.MAINNET,
+        )
+        pp.assert_called_once_with(sci=ANY, faucet=False)
