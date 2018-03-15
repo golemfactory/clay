@@ -431,6 +431,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
 
         self.client.start()
         sync_wait(deferred)
@@ -467,6 +468,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
         self.client.start()
         sync_wait(deferred)
 
