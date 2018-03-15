@@ -183,3 +183,10 @@ class ForceReportComputedTaskResponse(factory.Factory):
             '..reject_report_computed_task.task_to_compute',
         ),
     )
+
+
+class ForceGetTaskResultFailed(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultFailed
+
+    task_to_compute = factory.SubFactory(TaskToCompute)

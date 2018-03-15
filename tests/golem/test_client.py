@@ -91,9 +91,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -139,9 +139,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -184,9 +184,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -203,9 +203,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -214,12 +214,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
         # TODO: assertTrue when re-enabled
         self.assertFalse(self.client.transaction_system.sync.called)
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -259,15 +260,16 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_datadir_lock(self, *_):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
         datadir = os.path.join(self.path, "non-existing-dir")
         self.client = Client(
             datadir=datadir,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -276,15 +278,17 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir,
+                   app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
                    keys_auth=Mock())
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -317,23 +321,26 @@ class TestClient(TestWithDatabase, TestWithReactor):
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
         )
         self.client.db = None
         self.client.quit()
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_collect_gossip(self, *_):
         keys_auth = Mock()
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -341,12 +348,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -365,12 +373,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_restart_by_frame(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -403,6 +412,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -412,9 +422,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -440,6 +450,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
+    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
@@ -448,9 +459,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -519,9 +530,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=True,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -768,15 +779,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
-            client = Client(
-                datadir=self.path,
-                config_desc=ClientConfigDescriptor(),
-                keys_auth=Mock(),
-                transaction_system=False,
-                connect_to_known_hosts=False,
-                use_docker_manager=False,
-                use_monitor=False
-            )
+            with patch('golem.client.EthereumTransactionSystem'):
+                client = Client(
+                    datadir=self.path,
+                    app_config=Mock(),
+                    config_desc=ClientConfigDescriptor(),
+                    keys_auth=Mock(),
+                    connect_to_known_hosts=False,
+                    use_docker_manager=False,
+                    use_monitor=False
+                )
 
         client.sync = Mock()
         client.keys_auth = Mock(key_id=str(uuid.uuid4()))
