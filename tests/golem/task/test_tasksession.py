@@ -180,7 +180,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     @patch(
         'golem.network.history.MessageHistoryService.get_sync_as_message',
     )
-    def test_send_report_computed_task(self, get_mock):
+    @patch(
+        'golem.network.history.add',
+    )
+    def test_send_report_computed_task(self, add_mock, get_mock):
         ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
@@ -208,6 +211,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(rct.package_hash, 'sha1:' + wtr.package_sha1)
         self.assertEqual(rct.multihash, wtr.result_hash)
         self.assertEqual(rct.secret, wtr.result_secret)
+
+        add_mock.assert_called_once_with(
+            msg=rct,
+            node_id=ts.key_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
 
         ts2 = TaskSession(Mock())
         ts2.verified = True
@@ -646,7 +656,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         task_keeper.active_tasks[task_id] = task
 
         # Subtask is known
-        session._react_to_ack_report_computed_task(msg_ack)
+        with patch("golem.task.tasksession.get_task_message") as get_mock:
+            get_mock.return_value = msg_factories.ReportComputedTask()
+            session._react_to_ack_report_computed_task(msg_ack)
+            session.concent_service.submit_task_message.assert_called_once_with(
+                subtask_id=msg_ack.subtask_id,
+                msg=ANY,
+                delay=ANY,
+            )
         self.assertTrue(cancel.called)
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
@@ -850,8 +867,13 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session._react_to_subtask_result_accepted(sra)
         if called:
             self.task_server.subtask_accepted.assert_called_once_with(
-                sra.task_to_compute.compute_task_def.get('subtask_id'),
+                sra.subtask_id,
                 sra.payment_ts,
+            )
+            cancel = self.task_session.concent_service.cancel_task_message
+            cancel.assert_called_once_with(
+                sra.subtask_id,
+                'ForceSubtaskResults',
             )
         else:
             self.task_server.subtask_accepted.assert_not_called()
