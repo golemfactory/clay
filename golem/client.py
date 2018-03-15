@@ -91,6 +91,7 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
+            use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None) -> None:
@@ -131,8 +132,9 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
+        self.use_concent = use_concent
         self.concent_service = ConcentClientService(
-            enabled=False,
+            enabled=self.use_concent,
             keys_auth=self.keys_auth,
         )
 

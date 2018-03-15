@@ -46,6 +46,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 @click.command()
 @click.option('--monitor/--nomonitor', default=True)
+@click.option('--concent/--noconcent', default=False)
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
               type=click.Path(
@@ -101,7 +102,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(monitor, datadir, node_address, rpc_address, peer,
+def start(monitor, concent, datadir, node_address, rpc_address, peer,
           start_geth, start_geth_port, geth_address, version, log_level, m):
 
     freeze_support()
@@ -143,6 +144,7 @@ def start(monitor, datadir, node_address, rpc_address, peer,
             config_desc=config_desc,
             peers=peer,
             use_monitor=monitor,
+            use_concent=concent,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address)
