@@ -186,8 +186,7 @@ def config_logging(suffix='', datadir=None, loglevel=None,
 
     if loglevel:
         for _logger in LOGGING.get('loggers', {}).values():
-            if 'level' in _logger:
-                _logger['level'] = loglevel
+            _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
 
     if enable_talkback:

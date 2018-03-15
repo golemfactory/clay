@@ -54,8 +54,9 @@ def create_client(datadir):
     pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.init_from_app_config(app_config)
     config_desc.key_difficulty = 0
 
     from golem.core.keysauth import KeysAuth
@@ -67,13 +68,15 @@ def create_client(datadir):
             difficulty=config_desc.key_difficulty,
         )
 
-    return Client(datadir=datadir,
-                  config_desc=config_desc,
-                  keys_auth=keys_auth,
-                  use_monitor=False,
-                  transaction_system=False,
-                  connect_to_known_hosts=False,
-                  use_docker_manager=False)
+    with mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                    'PaymentProcessor'):
+        return Client(datadir=datadir,
+                      app_config=app_config,
+                      config_desc=config_desc,
+                      keys_auth=keys_auth,
+                      use_monitor=False,
+                      connect_to_known_hosts=False,
+                      use_docker_manager=False)
 
 
 def run_requesting_node(datadir, num_subtasks=3):

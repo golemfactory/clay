@@ -112,7 +112,7 @@ class CoreTask(Task):
         """
 
         task_timeout = task_definition.full_task_timeout
-        deadline = timeout_to_deadline(task_timeout)
+        self._deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
         self.task_resources = list(
@@ -151,7 +151,7 @@ class CoreTask(Task):
             task_owner_key_id=owner_key_id,
             environment=self.environment.get_id(),
             task_owner=Node(),
-            deadline=deadline,
+            deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
@@ -214,6 +214,7 @@ class CoreTask(Task):
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
             subtask_id,
+            self._deadline,
             verification_finished,
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
