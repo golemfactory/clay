@@ -1160,10 +1160,10 @@ class Client(HardwarePresetsMixin):
             sentry_handler = [
                 h for h in logger_root.handlers if h.name == 'sentry'][0]
             msg_part = 'Enabling' if talkback_value else 'Disabling'
-            log.info('{0} talkback service'.format(msg_part))
+            logger.info('{0} talkback service'.format(msg_part))
             sentry_handler.set_enabled(talkback_value)
-        except Exception as e:
-            log.error('Cannot enable talkback. Error was: {0}'.format(str(e)))
+        except Exception as e:  # pylint: disable=broad-exception
+            logger.error('Cannot enable talkback. Error was: {0}'.format(str(e)))  # noqa
 
 
 class DoWorkService(LoopingCallService):

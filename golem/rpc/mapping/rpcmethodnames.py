@@ -7,7 +7,6 @@ CORE_METHOD_MAP = dict(
     get_setting=            'env.opt',
     update_setting=         'env.opt.update',
     get_datadir=            'env.datadir',
-    enable_talkback=        'env.enable_talkback',
 
     get_hw_caps=            'env.hw.caps',
     get_hw_presets=         'env.hw.presets',
