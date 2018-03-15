@@ -7,6 +7,7 @@ import os
 from types import FunctionType
 from typing import Optional, Type
 
+from golem.core.common import deadline_to_timeout
 from golem.task.localcomputer import ComputerAdapter
 
 from golem.verification.verifier import (StateVerifier,
@@ -55,7 +56,7 @@ class CoreVerifier(StateVerifier):
 class VerificationQueue:
 
     Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
-                                 'kwargs', 'cb'])
+                                 'deadline', 'kwargs', 'cb'])
 
     def __init__(self, concurrency: int = 1) -> None:
 
@@ -68,10 +69,11 @@ class VerificationQueue:
     def submit(self,
                verifier_class: Type[Verifier],
                subtask_id: str,
+               deadline: int,
                cb: FunctionType,
                **kwargs) -> None:
 
-        entry = self.Entry(verifier_class, subtask_id, kwargs, cb)
+        entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
         self._queue.put(entry)
         self._process_queue()
 
@@ -112,7 +114,12 @@ class VerificationQueue:
         try:
             verifier = entry.verifier_class(callback)
             verifier.computer = ComputerAdapter()
-            verifier.start_verification(**entry.kwargs)
+            if deadline_to_timeout(entry.deadline) > 0:
+                verifier.start_verification(**entry.kwargs)
+            else:
+                verifier.task_timeout(subtask_id)
+                raise Exception("Task deadline passed")
+
         except Exception as exc:  # pylint: disable=broad-except
             with self._lock:
                 self._running -= 1

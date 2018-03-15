@@ -1,3 +1,4 @@
+from os import path
 from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
@@ -70,18 +71,20 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=cfg)
 
         node._client_factory(keys_auth)
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=cfg,
                                        keys_auth=keys_auth,
+                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
         self.assertEqual(
@@ -112,13 +115,14 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=self.path,
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
                                      config_desc=ANY,
+                                     mainnet=False,
                                      geth_address=geth_address,
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     transaction_system=True,
                                      use_monitor=True,
                                      password=None)
 
@@ -130,6 +134,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             geth_address=geth_address)
 
@@ -137,12 +142,13 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
 
@@ -190,13 +196,14 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=self.path,
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
                                      config_desc=ANY,
+                                     mainnet=False,
                                      geth_address=None,
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
-                                     transaction_system=True,
                                      use_monitor=True,
                                      password=None)
 
@@ -205,6 +212,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             start_geth=True)
 
@@ -212,14 +220,60 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=None,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
+
+    @patch('golemapp.Node')
+    def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
+        # given
+        args = self.args + ['--mainnet']
+
+        # when
+        runner = CliRunner()
+        return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     use_monitor=True,
+                                     password=None,
+                                     mainnet=True)
+
+    @patch('golem.node.Client')
+    def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
+        # when
+        node = Node(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=Mock(),
+            mainnet=True)
+
+        node._client_factory(None)
+
+        # then
+        mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
+                                       config_desc=ANY,
+                                       keys_auth=None,
+                                       geth_address=None,
+                                       start_geth=False,
+                                       start_geth_port=None,
+                                       use_docker_manager=True,
+                                       use_monitor=False,
+                                       mainnet=True)
 
     def test_start_geth_port_wo_param_should_fail(self, *_):
         runner = CliRunner()
@@ -246,13 +300,14 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=self.path,
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
                                      config_desc=ANY,
+                                     mainnet=False,
                                      geth_address=None,
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
-                                     transaction_system=True,
                                      use_monitor=True,
                                      password=None)
 
@@ -264,6 +319,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             start_geth=True,
             start_geth_port=port)
@@ -272,12 +328,13 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=port,
-                                       transaction_system=False,
                                        use_docker_manager=True,
                                        use_monitor=False)
 
@@ -420,6 +477,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=config_desc,
                          use_docker_manager=False)
 
@@ -433,7 +491,8 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    def test_start_creates_client(self, reactor, mock_gather_results, *_):
+    @patch('golem.client.EthereumTransactionSystem')
+    def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         # given
         config_descriptor = ClientConfigDescriptor()
 
@@ -443,6 +502,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=config_descriptor,
                          use_docker_manager=False)
         self.node.start()
@@ -457,10 +517,16 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
+    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
-            self, mock_run, reactor, mock_gather_results, mock_session, *_):
-
+            self,
+            mock_run,
+            _ets,
+            reactor,
+            mock_gather_results,
+            mock_session,
+            *_):
         # given
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
@@ -473,6 +539,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=(ClientConfigDescriptor()),
                          use_docker_manager=False)
         self.node.start()
@@ -507,6 +574,7 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(datadir=self.path,
+                         app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
                          peers=parsed_peer,
                          use_docker_manager=False)

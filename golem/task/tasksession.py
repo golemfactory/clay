@@ -1,13 +1,13 @@
 import functools
 import logging
 import os
-import pickle
 import time
 
 from golem_messages import message
 from golem_messages.helpers import maximum_download_time
 
 from golem.core.common import HandleAttributeError
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
@@ -18,7 +18,6 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -68,8 +67,7 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
         )
 
 
-class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
-                  history.IMessageHistoryProvider):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.SafeProtocol
@@ -94,8 +92,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
-        # key of a peer that communicates with us through middleman session
-        self.asking_node_key_id = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -148,37 +144,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     ###################################
     # IMessageHistoryProvider methods #
     ###################################
-
-    def message_to_model(self, msg, local_role, remote_role):
-        task, subtask = self._task_subtask_from_message(msg, local_role)
-
-        return dict(
-            task=task,
-            subtask=subtask,
-            node=self.key_id,
-            msg_date=time.time(),
-            msg_cls=msg.__class__.__name__,
-            msg_data=pickle.dumps(msg),
-            local_role=local_role,
-            remote_role=remote_role,
-        )
-
-    def _task_subtask_from_message(self, msg, local_role):
-        task, subtask = None, None
-
-        if hasattr(msg, 'task_to_compute'):
-            msg = msg.task_to_compute
-        if isinstance(msg, message.TaskToCompute):
-            definition = msg.compute_task_def
-            if definition:
-                task = definition.get('task_id')
-                subtask = definition.get('subtask_id')
-        else:
-            task = getattr(msg, 'task_id', None)
-            subtask = getattr(msg, 'subtask_id', None)
-            task = task or self._subtask_to_task(subtask, local_role)
-
-        return task, subtask
 
     def _subtask_to_task(self, sid, local_role):
         if not self.task_manager:
@@ -463,21 +428,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 # is always in use
                 concent_enabled=True,
             )
-            history_service = history.MessageHistoryService.instance
-            history_dict = self.message_to_model(
+            history.add(
                 msg=msg,
+                node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            if not (history_service and history_dict):
-                logger.error(
-                    "Can't remember %s. history_service: %r history_dict: %r",
-                    msg,
-                    history_service,
-                    history_dict,
-                )
-                return
-            history_service.add(history_dict)
             self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
@@ -738,6 +694,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
+        if not KeysAuth.is_pubkey_difficult(
+                self.key_id,
+                self.task_server.config_desc.key_difficulty):
+            logger.info(
+                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
+                msg.node_info.node_name, self.address, self.port,
+                KeysAuth.get_difficulty(self.key_id),
+                self.task_server.config_desc.key_difficulty)
+            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            return
+
         if send_hello:
             self.send_hello()
         self.send(
@@ -754,8 +721,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id, )
-            for msg in self.msgs_to_send:
-                self.send(msg)
+            for msg_ in self.msgs_to_send:
+                self.send(msg_)
             self.msgs_to_send = []
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)

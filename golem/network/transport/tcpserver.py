@@ -1,15 +1,24 @@
 import logging
-import uuid
 import time
+from typing import Callable, Dict, List, Optional, Set
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.types import Kwargs
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 
+from .session import BasicSession
 from .tcpnetwork import TCPNetwork, TCPListeningInfo, TCPListenInfo, \
     SocketAddress, TCPConnectInfo
 
 logger = logging.getLogger('golem.network.transport.tcpserver')
+
+
+def shorten_key_id(key_id):
+    if not isinstance(key_id, str):
+        return key_id
+    return key_id[:16] + "..." + key_id[-16:]
 
 
 class TCPServer:
@@ -100,11 +109,16 @@ class PendingConnectionsServer(TCPServer):
         :param network: network that server will use
         """
         # Pending connections
-        self.pending_connections = {}  # Connections that should be accomplished
-        self.pending_sessions = set()  # Sessions a.k.a Peers before handshake
-        self.conn_established_for_type = {}  # Reactions for established connections of certain types
-        self.conn_failure_for_type = {}  # Reactions for failed connection attempts of certain types
-        self.conn_final_failure_for_type = {}  # Reactions for final connection attempts failure
+        #  Connections that should be accomplished
+        self.pending_connections: Dict[str, PendingConnection] = {}
+        #  Sessions a.k.a Peers before handshake
+        self.pending_sessions: Set[BasicSession] = set()
+        #  Reactions for established connections of certain types
+        self.conn_established_for_type: Dict[int, Callable] = {}
+        #  Reactions for failed connection attempts of certain types
+        self.conn_failure_for_type: Dict[int, Callable] = {}
+        #  Reactions for final connection attempts failure
+        self.conn_final_failure_for_type: Dict[int, Callable] = {}
 
         # Set reactions
         self._set_conn_established()
@@ -128,28 +142,40 @@ class PendingConnectionsServer(TCPServer):
         method and then remove it from pending connections list.
         :param uuid|None conn_id: id of verified connection
         """
-        conn = self.pending_connections.get(conn_id)
+        conn: PendingConnection = self.pending_connections.get(conn_id)
         if conn:
-            self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
+            conn.final_failure()
             self.remove_pending_conn(conn_id)
         else:
-            logger.debug("Connection {} is unknown".format(conn_id))
+            logger.debug("Connection %s is unknown", conn_id)
 
-    def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+    def _add_pending_request(self, request_type, node,  # noqa # pylint: disable=too-many-arguments
+                             prv_port, pub_port, args) -> bool:
         if not self.active:
-            return
+            return False
 
-        logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
-        # FIXME key_id is ignored
-        sockets = [sock for sock in
-                   self.get_socket_addresses(task_owner, port, key_id) if
-                   self._is_address_accessible(sock)]
+        logger.debug('_add_pending_request(%r, %r, %r, %r, %r)',
+                     request_type, node, prv_port, pub_port, args)
 
-        pc = PendingConnection(req_type, sockets,
-                               self.conn_established_for_type[req_type],
-                               self.conn_failure_for_type[req_type], args)
+        sockets = [sock for sock
+                   in self.get_socket_addresses(node, prv_port, pub_port)
+                   if self._is_address_accessible(sock)]
 
+        if not sockets:
+            return False
+
+        logger.info("Connecting to peer %r using addresses: %r",
+                    shorten_key_id(node.key),
+                    [str(socket) for socket in sockets])
+
+        pc = PendingConnection(request_type,
+                               sockets,
+                               self.conn_established_for_type[request_type],
+                               self.conn_failure_for_type[request_type],
+                               self.conn_final_failure_for_type[request_type],
+                               args)
         self.pending_connections[pc.id] = pc
+        return True
 
     def _is_address_accessible(self, socket_addr):
         """ Checks if an address is directly accessible. The IP address has to be public or in a private
@@ -181,22 +207,60 @@ class PendingConnectionsServer(TCPServer):
         for conn in conns:
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
-                conn.failure(conn.id, **conn.args)
+                conn.failure()
                 # TODO Implement proper way to deal with failures
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
-                connect_info = TCPConnectInfo(conn.socket_addresses, conn.established, conn.failure)
-                self.network.connect(connect_info, conn_id=conn.id, **conn.args)
+                self.network.connect(conn.connect_info)
 
-    def get_socket_addresses(self, node_info, port, key_id):
-        socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
-        if node_info.pub_addr is None:
-            return socket_addresses
-        if node_info.pub_port:
-            port = node_info.pub_port
-        socket_addresses.append(SocketAddress(node_info.pub_addr, port))
-        return socket_addresses
+    def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
+        addresses = []
+
+        # Primary public address
+        if self._is_address_valid(node_info.pub_addr, pub_port):
+            addresses.append(SocketAddress(node_info.pub_addr, pub_port))
+
+        # Primary private address
+        if node_info.prv_addr != node_info.pub_addr:
+            if self._is_address_valid(node_info.prv_addr, prv_port):
+                addresses.append(SocketAddress(node_info.prv_addr, prv_port))
+
+        # The rest of private addresses
+        if not isinstance(node_info.prv_addresses, list):
+            return addresses
+
+        for prv_address in node_info.prv_addresses:
+
+            if self._is_address_valid(prv_address, prv_port):
+                address = SocketAddress(prv_address, prv_port)
+                if address not in addresses:
+                    addresses.append(address)
+
+            if len(addresses) >= MAX_CONNECT_SOCKET_ADDRESSES:
+                break
+
+        return addresses
+
+    @classmethod
+    def _is_address_valid(cls, address: str, port: int) -> bool:
+        try:
+            # FIXME: Where did None become 'None'?
+            if address == 'None':
+                logger.debug('Got "None" as socket address. Skipping...')
+                return False
+            return port > 0 and SocketAddress.is_proper_address(address, port)
+        except TypeError:
+            return False
+
+    @classmethod
+    def _prepend_address(cls, addresses, address):
+        try:
+            index = addresses.index(address)
+        except ValueError:
+            addresses.insert(0, address)
+        else:
+            addresses.insert(0, addresses.pop(index))
 
     def sync_network(self, timeout=1.0):
         for session in frozenset(self.pending_sessions):
@@ -233,23 +297,53 @@ class PenConnStatus(object):
     WaitingAlt = 5
 
 
-class PendingConnection(object):
-    """ Describe pending connections parameters for PendingConnectionsServer  """
+class PendingConnection:
+    """ Describe pending connections parameters for PendingConnectionsServer """
     connect_statuses = [PenConnStatus.Inactive, PenConnStatus.Failure]
 
-    def __init__(self, type_, socket_addresses, established=None, failure=None, args=None):
+    # pylint: disable-msg=too-many-arguments
+    def __init__(self,
+                 type_: int,
+                 socket_addresses: List[SocketAddress],
+                 established: Optional[Callable] = None,
+                 failure: Optional[Callable] = None,
+                 final_failure: Optional[Callable] = None,
+                 kwargs: Kwargs = {}) -> None:
         """ Create new pending connection
-        :param int type_: connection type that allows to select proper reactions
-        :param list socket_addresses: list of socket_addresses that the node should try to connect to
-        :param func|None established: established connection callback
-        :param func|None failure: connection errback
-        :param dict args: arguments that should be passed to established or failure function
+        :param type_: connection type that allows to select proper reactions
+        :param socket_addresses: list of socket_addresses that the node should
+                                 try to connect to
+        :param established: established connection callback
+        :param failure: connection errback
+        :param kwargs: arguments that should be passed to established or
+                       failure function
         """
-        self.id = str(uuid.uuid4())
-        self.socket_addresses = socket_addresses
+        self.connect_info = TCPConnectInfo(socket_addresses, established,
+                                           failure, final_failure, kwargs)
         self.last_try_time = time.time()
-        self.established = established
-        self.failure = failure
-        self.args = args
         self.type = type_
         self.status = PenConnStatus.Inactive
+
+    @property
+    def id(self):
+        return self.connect_info.id
+
+    @property
+    def socket_addresses(self):
+        return self.connect_info.socket_addresses
+
+    @socket_addresses.setter
+    def socket_addresses(self, new_addresses):
+        self.connect_info.socket_addresses = new_addresses
+
+    @property
+    def established(self):
+        return self.connect_info.established_callback
+
+    @property
+    def failure(self):
+        return self.connect_info.failure_callback
+
+    @property
+    def final_failure(self):
+        return self.connect_info.final_failure_callback
