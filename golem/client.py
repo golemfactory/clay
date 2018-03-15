@@ -96,7 +96,7 @@ class Client(HardwarePresetsMixin):
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None) -> None:
 
-        self.mainnet = False
+        self.mainnet = mainnet
         self.datadir = datadir
         self.__lock_datadir()
         self.lock = Lock()
