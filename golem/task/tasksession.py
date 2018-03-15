@@ -631,7 +631,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.check_requestor_for_subtask(subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
+        self.task_server.subtask_accepted(
+            self.key_id,
+            subtask_id,
+            msg.payment_ts,
+        )
         self.dropped()
 
     @history.provider_history

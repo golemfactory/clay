@@ -383,10 +383,11 @@ class TaskServer(
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
-    def subtask_accepted(self, subtask_id, accepted_ts):
+    def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.update_awaiting(
+            sender_node_id,
             subtask_id,
             accepted_ts,
         )
