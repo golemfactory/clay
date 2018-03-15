@@ -64,43 +64,61 @@ class TestPendingConnectionServer(unittest.TestCase):
         self.port = 1234
 
         node_info = Mock()
+        node_info.key = 'deadbeef'
         node_info.prv_addresses = ["10.10.10.2"]
         node_info.pub_addr = "10.10.10.1"
         node_info.pub_port = self.port
+        node_info.prv_port = self.port - 1
 
         self.node_info = node_info
 
     def test_get_socket_addresses(self):
         server = PendingConnectionsServer(None, Network())
 
-        node = Node()
-        port = 100
-        res = server.get_socket_addresses(node, port, None)
-        self.assertEqual(res, [])
+        node = self.node_info
+        res = server.get_socket_addresses(node,
+                                          prv_port=node.prv_port,
+                                          pub_port=node.pub_port)
+        self.assertEqual(res, [
+            SocketAddress(self.node_info.pub_addr, self.node_info.pub_port),
+            SocketAddress(self.node_info.prv_addresses[0],
+                          self.node_info.prv_port)
+        ])
         node.pub_addr = "10.10.10.10"
-        res = server.get_socket_addresses(node, port, None)
-        self.assertEqual(len(res), 1)
+        res = server.get_socket_addresses(node,
+                                          prv_port=node.prv_port,
+                                          pub_port=node.pub_port)
+        self.assertEqual(len(res), 2)
         self.assertEqual(res[0].address, node.pub_addr)
-        self.assertEqual(res[0].port, port)
+        self.assertEqual(res[0].port, node.pub_port)
         node.pub_port = 1023
-        res = server.get_socket_addresses(node, port, None)
-        self.assertEqual(len(res), 1)
+        res = server.get_socket_addresses(node,
+                                          prv_port=node.prv_port,
+                                          pub_port=node.pub_port)
+        self.assertEqual(len(res), 2)
         self.assertEqual(res[0].address, node.pub_addr)
         self.assertEqual(res[0].port, 1023)
-        node.prv_addresses = ["10.10.10.1", "10.10.10.2", "10.10.10.3", "10.10.10.4"]
-        res = server.get_socket_addresses(node, port, None)
+
+        node.prv_addresses = ["10.10.10.1", "10.10.10.2",
+                              "10.10.10.3", "10.10.10.4"]
+
+        res = server.get_socket_addresses(node,
+                                          prv_port=node.prv_port,
+                                          pub_port=node.pub_port)
         self.assertEqual(len(res), 5)
-        self.assertEqual(res[4].address, node.pub_addr)
-        self.assertEqual(res[4].port, 1023)
+        self.assertEqual(res[4].address, node.prv_addresses[-1])
+        self.assertEqual(res[4].port, 1233)
         for i in range(4):
-            self.assertEqual(res[i].address, node.prv_addresses[i])
-            self.assertEqual(res[i].port, port)
+            self.assertEqual(res[i + 1].address, node.prv_addresses[i])
+            self.assertEqual(res[i + 1].port, node.prv_port)
         node.pub_addr = None
-        res = server.get_socket_addresses(node, port, None)
+        res = server.get_socket_addresses(node,
+                                          prv_port=node.prv_port,
+                                          pub_port=node.pub_port)
         self.assertEqual(len(res), 4)
         for i in range(4):
             self.assertEqual(res[i].address, node.prv_addresses[i])
-            self.assertEqual(res[i].port, port)
+            self.assertEqual(res[i].port, node.prv_port)
 
     def test_address_accessible(self):
         config = Mock()
@@ -133,8 +151,15 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
+        server._is_address_accessible = Mock(return_value=True)
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(
+            req_type,
+            self.node_info,
+            prv_port=self.node_info.prv_port,
+            pub_port=self.node_info.pub_port,
+            args={}
+        )
         assert len(server.pending_connections) == 1
         pending_conn = next(iter(list(server.pending_connections.values())))
 
@@ -149,7 +174,13 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.final_conn_failure(pending_conn.id)
         assert not final_failure_called[0]
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(
+            req_type,
+            self.node_info,
+            prv_port=self.node_info.prv_port,
+            pub_port=self.node_info.pub_port,
+            args={}
+        )
         pending_conn = next(iter(list(server.pending_connections.values())))
         server._mark_connected(pending_conn.id, "10.10.10.1", self.port)
         assert pending_conn.status == PenConnStatus.Connected
@@ -161,10 +192,12 @@ class TestPendingConnectionServer(unittest.TestCase):
         req_type = 0
         final_failure_called = [False]
 
-        node_info = Mock()
-        node_info.prv_addresses = ["1.2.3.4"]
-        node_info.pub_addr = "1.2.3.4"
-        node_info.pub_port = self.port
+        node_info = Mock(
+            key='1234',
+            prv_addresses=["1.2.3.4"],
+            pub_addr="1.2.3.4",
+            pub_port=self.port
+        )
 
         def final_failure(*args, **kwargs):
             final_failure_called[0] = True
@@ -172,8 +205,15 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
+        server._is_address_accessible = Mock(return_value=True)
 
-        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
+        server._add_pending_request(
+            req_type,
+            node_info,
+            prv_port=node_info.prv_port,
+            pub_port=node_info.pub_port,
+            args={}
+        )
         assert len(server.pending_connections) == 1
 
         server._sync_pending()
@@ -182,7 +222,13 @@ class TestPendingConnectionServer(unittest.TestCase):
         network.connected = False
         server.pending_connections = {}
 
-        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
+        server._add_pending_request(
+            req_type,
+            self.node_info,
+            prv_port=self.node_info.prv_port,
+            pub_port=self.node_info.pub_port,
+            args={}
+        )
         assert len(server.pending_connections) == 1
         pending_conn = next(iter(list(server.pending_connections.values())))
         pending_conn.socket_addresses = []

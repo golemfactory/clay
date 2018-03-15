@@ -19,6 +19,7 @@ BUFF_SIZE = 1024 * 1024
 MIN_PORT = 1
 MAX_PORT = 65535
 # CONNECT TO
+MAX_CONNECT_SOCKET_ADDRESSES = 8
 DEFAULT_CONNECT_TO = '8.8.8.8'
 DEFAULT_CONNECT_TO_PORT = 80
 CONCENT_URL = "http://staging.concent.golem.network"
@@ -42,7 +43,7 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules # noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules # noqa
     """
-    ID = 24
+    ID = 25
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):
@@ -76,3 +77,8 @@ REACTOR_THREAD_POOL_SIZE = 20
 # INCOMES CONST #
 #################
 PAYMENT_DEADLINE = 24 * 60 * 60
+
+#################
+# CONCENT CONST #
+#################
+NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER = 3

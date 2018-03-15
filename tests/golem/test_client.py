@@ -91,6 +91,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -138,6 +139,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -182,6 +184,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -200,6 +203,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -214,6 +218,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -262,6 +267,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         datadir = os.path.join(self.path, "non-existing-dir")
         self.client = Client(
             datadir=datadir,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -272,6 +278,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir,
+                   app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
                    keys_auth=Mock())
 
@@ -279,6 +286,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -317,6 +325,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
         )
@@ -329,6 +338,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -342,6 +352,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -366,6 +377,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_restart_by_frame(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -410,6 +422,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -446,6 +459,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
             connect_to_known_hosts=False,
@@ -516,6 +530,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
@@ -767,6 +782,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             with patch('golem.client.EthereumTransactionSystem'):
                 client = Client(
                     datadir=self.path,
+                    app_config=Mock(),
                     config_desc=ClientConfigDescriptor(),
                     keys_auth=Mock(),
                     connect_to_known_hosts=False,

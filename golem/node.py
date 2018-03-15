@@ -5,6 +5,7 @@ from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
 
 from apps.appsmanager import AppsManager
+from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
@@ -29,6 +30,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
+                 app_config: AppConfig,
                  config_desc: ClientConfigDescriptor,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = False,
@@ -56,6 +58,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
+            app_config=app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
             mainnet=mainnet,

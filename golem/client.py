@@ -18,7 +18,7 @@ from twisted.internet.defer import (
 
 import golem
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
-                             PAYMENT_CHECK_INTERVAL)
+                             PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -85,6 +85,7 @@ class Client(HardwarePresetsMixin):
     def __init__(  # noqa pylint: disable=too-many-arguments
             self,
             datadir: str,
+            app_config: AppConfig,
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             mainnet: bool = False,
@@ -103,6 +104,7 @@ class Client(HardwarePresetsMixin):
         self.task_archiver = TaskArchiver(datadir)
 
         # Read and validate configuration
+        self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
@@ -847,6 +849,9 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
+
+        self.app_config.change_config(self.config_desc)
+
         dispatcher.send(
             signal='golem.monitor',
             event='config_update',

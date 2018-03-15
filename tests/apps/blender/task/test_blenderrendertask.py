@@ -31,9 +31,7 @@ from apps.core.task.coretask import logger as logger_core
 from golem.verification.verifier import SubtaskVerificationState
 
 
-
 class TestBlenderDefaults(unittest.TestCase):
-
 
     def test_init(self):
         bd = BlenderDefaults()
@@ -120,7 +118,9 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    def test_computation_failed_or_finished(self):
+    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    def test_computation_failed_or_finished(self, mock_dtt):
+        mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
 
         # Failed compuation stays failed
