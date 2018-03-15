@@ -4,7 +4,7 @@ import os
 import time
 
 from golem_messages import message
-from golem_messages.helpers import maximum_download_time
+from golem_messages import helpers as msg_helpers
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
@@ -301,6 +301,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         report_computed_task.task_to_compute = task_to_compute
+
+        history.add(
+            msg=report_computed_task,
+            node_id=self.key_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
         self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
@@ -308,7 +315,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the Requestor safely
         if not task_to_compute.concent_enabled:
             return
-
         # we're preparing the `ForceReportComputedTask` here and
         # scheduling the dispatch of that message for later
         # (with an implicit delay in the concent service's `submit` method).
@@ -322,7 +328,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
-        self.concent_service.submit_task_message(task_result.subtask_id, delayed_forcing_msg)
+        self.concent_service.submit_task_message(
+            task_result.subtask_id,
+            delayed_forcing_msg,
+        )
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -590,7 +599,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # in the success handler
 
         self.concent_service.submit_task_message(
-            subtask_id, fgtr, maximum_download_time(msg.size))
+            subtask_id, fgtr, msg_helpers.maximum_download_time(msg.size))
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
@@ -744,7 +753,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id,
             msg.subtask_id,
         )
-        if not is_owner:
+        if not sender_is_owner:
             logger.warning("Requestor '%r' acknowledged a computed task report "
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
@@ -756,11 +765,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.concent_service.cancel_task_message(
             msg.subtask_id, 'ForceReportComputedTask')
 
-        delayed_forcing_msg = message.ForceSubtaskResults(
+        delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
         logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
-        self.concent_service.submit_task_message(msg.subtask_id, delayed_forcing_msg)
+        report_computed_task = get_task_message(
+            'ReportComputedTask',
+            msg.task_id,
+            msg.subtask_id,
+        )
+        if report_computed_task is None:
+            logger.warning(
+                '[CONCENT] Can`t delay send %r.'
+                ' ForceReportComputedTask not found; delay unknown',
+                delayed_forcing_msg,
+            )
+            return
+        self.concent_service.submit_task_message(
+            subtask_id=msg.subtask_id,
+            msg=delayed_forcing_msg,
+            delay=msg_helpers.maximum_results_patience(report_computed_task),
+        )
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
