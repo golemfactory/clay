@@ -240,6 +240,7 @@ class TestNode(TestWithDatabase):
         # then
         assert return_value.exit_code == 0
         mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+                                     app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
@@ -253,6 +254,7 @@ class TestNode(TestWithDatabase):
         # when
         node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=Mock(),
             mainnet=True)
 
@@ -260,6 +262,7 @@ class TestNode(TestWithDatabase):
 
         # then
         mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
                                        geth_address=None,
