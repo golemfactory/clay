@@ -101,8 +101,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               ]),
               help="Change level for all loggers and handlers")
 @click.option('--title', expose_value=False)
+@click.option('--enable-talkback', is_flag=True, default=None)
 def start(payments, monitor, datadir, node_address, rpc_address, peer,
-          start_geth, start_geth_port, geth_address, version, m, loglevel):
+          start_geth, start_geth_port, geth_address, version, m, loglevel,
+          enable_talkback):
     freeze_support()
     delete_reactor()
 
@@ -119,6 +121,9 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     config_desc.init_from_app_config(AppConfig.load_config(datadir))
     config_desc = ConfigApprover(config_desc).approve()
 
+    if enable_talkback is None:
+        enable_talkback = bool(config_desc.enable_talkback)
+
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
         config_desc.rpc_port = rpc_address.port
@@ -130,7 +135,8 @@ def start(payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=loglevel)
+        config_logging(datadir=datadir, loglevel=loglevel,
+                       enable_talkback=enable_talkback)
         install_reactor()
         log_golem_version()
         log_platform_info()

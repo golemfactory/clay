@@ -859,6 +859,8 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
+        self.enable_talkback(self.config_desc.enable_talkback)
+
         dispatcher.send(
             signal='golem.monitor',
             event='config_update',
@@ -1133,6 +1135,15 @@ class Client(HardwarePresetsMixin):
         except Exception:
             pass
         self.__datadir_lock.close()
+
+    def enable_talkback(self, value):
+        talkback_value = bool(value)
+        logger_root = logging.getLogger()
+        sentry_handler = [
+            h for h in logger_root.handlers if h.name == 'sentry'][0]
+        msg_part = 'Enabling' if talkback_value else 'Disabling'
+        log.info('{0} talkback service'.format(msg_part))
+        sentry_handler.set_enabled(talkback_value)
 
 
 class DoWorkService(LoopingCallService):
