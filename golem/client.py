@@ -34,7 +34,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import DB_MODELS, db, DB_FIELDS
+from golem.model import DB_MODELS, db, DB_FIELDS, GenericKeyValue
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -81,6 +81,7 @@ class ClientTaskComputerEventListener(object):
 
 class Client(HardwarePresetsMixin):
     _services = []  # type: List[IService]
+    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
 
     def __init__(  # noqa pylint: disable=too-many-arguments
             self,
@@ -188,6 +189,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self.stopped = False
 
         dispatcher.connect(
             self.p2p_listener,
@@ -241,6 +243,14 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
+        while not self.are_terms_accepted():
+            logger.error('Terms of use must be accepted before using Golem. '
+                         'Run `golemcli terms show` to display the terms '
+                         'and `golemcli terms accept` to accept them.')
+            time.sleep(5)
+            if self.stopped:
+                sys.exit(1)
+
         logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
         self.concent_service.start()
@@ -261,6 +271,7 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
         logger.debug('Stopping client services ...')
+        self.stopped = True
         self.stop_network()
 
         for service in self._services:
@@ -1122,6 +1133,14 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
+
+    def are_terms_accepted(self):
+        return GenericKeyValue.select()\
+            .where(GenericKeyValue.key == self.TERMS_ACCEPTED_KEY)\
+            .count() > 0
+
+    def accept_terms(self):
+        GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
