@@ -52,7 +52,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   file_okay=False,
                   writable=True
               ))
-@click.option('--protocol_id', type=click.INT,
+@click.option('--protocol_id', type=click.STRING,
               callback=PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
               expose_value=False,
@@ -118,7 +118,7 @@ def start(monitor, datadir, node_address, rpc_address, peer, mainnet,
     datadir = os.path.join(datadir, subdir)
     # We don't want different chains to talk to each other
     if not mainnet:
-        PROTOCOL_CONST.ID = str(PROTOCOL_CONST.ID) + '-testnet'
+        PROTOCOL_CONST.ID += '-testnet'
 
     # Workarounds for pyinstaller executable
     sys.modules['win32com.gen_py.os'] = None
