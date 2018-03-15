@@ -46,12 +46,23 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
     @mock.patch('golemapp.Node')
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
+        custom_id = '123456'
 
-        custom_id = 123456
+        # On testnet
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--protocol_id', custom_id],
+            catch_exceptions=False,
+        )
+        assert node_class.called
+        node_class.reset_mock()
+        assert PROTOCOL_CONST.ID == custom_id + '-testnet'
 
-        runner.invoke(start,
-                      ['--datadir', self.path, '--protocol_id', custom_id],
-                      catch_exceptions=False)
-
+        # On mainnet
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--protocol_id', custom_id, '--mainnet'],
+            catch_exceptions=False,
+        )
         assert node_class.called
         assert PROTOCOL_CONST.ID == custom_id
