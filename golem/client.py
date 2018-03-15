@@ -1139,11 +1139,14 @@ class Client(HardwarePresetsMixin):
     def enable_talkback(self, value):
         talkback_value = bool(value)
         logger_root = logging.getLogger()
-        sentry_handler = [
-            h for h in logger_root.handlers if h.name == 'sentry'][0]
-        msg_part = 'Enabling' if talkback_value else 'Disabling'
-        log.info('{0} talkback service'.format(msg_part))
-        sentry_handler.set_enabled(talkback_value)
+        try:
+            sentry_handler = [
+                h for h in logger_root.handlers if h.name == 'sentry'][0]
+            msg_part = 'Enabling' if talkback_value else 'Disabling'
+            log.info('{0} talkback service'.format(msg_part))
+            sentry_handler.set_enabled(talkback_value)
+        except Exception as e:
+            log.error('Cannot enable talkback. Error was: {0}'.format(str(e)))
 
 
 class DoWorkService(LoopingCallService):
