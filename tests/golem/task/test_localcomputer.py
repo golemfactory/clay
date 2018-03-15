@@ -10,7 +10,7 @@ from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 
 
 @ci_skip

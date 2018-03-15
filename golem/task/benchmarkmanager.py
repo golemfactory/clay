@@ -72,7 +72,7 @@ class BenchmarkManager(object):
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
-        if not os.path.exists(td.main_program_file):
+        if td.main_program_file and not os.path.exists(td.main_program_file):
             logger.error("Main program file does not exist: {}".format(
                 td.main_program_file))
             return False

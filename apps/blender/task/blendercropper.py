@@ -191,7 +191,8 @@ class BlenderCropper:
         # FIXME issue #1955
 
         # a cyclic import, do not make it global
-        from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.blender.dockerenvironment.blenderenvironment\
+            import BlenderEnvironment
 
         verify_ctx.computer.start_computation(
             root_path=verify_ctx.get_crop_path(crop_number),

@@ -32,7 +32,7 @@ class LuxBenchmark(RenderingBenchmark):
         self.task_definition.options.halttime = 0
         self.task_definition.main_scene_file = join(self.lux_task_path,
                                                     "schoolcorridor.lxs")
-        self.task_definition.main_program_file = env.main_program_file
+        self.task_definition.main_program_file = env.default_program_file
         self.task_definition.resources = self.find_resources()
 
     def find_resources(self):

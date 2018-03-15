@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.blender.task import blenderrendertask
 from apps.core.task.coretaskstate import TaskDesc
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
@@ -38,9 +38,6 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
         self.assertTrue(os.path.isdir(self.bb.blender_task_path))
         self.assertTrue(
             os.path.isfile(self.bb.task_definition.main_scene_file)
-        )
-        self.assertTrue(
-            os.path.isfile(self.bb.task_definition.main_program_file)
         )
 
 

@@ -25,4 +25,4 @@ class TestDummyEnvironment(DatabaseFixture):
         self.assertTrue(result == perf)
 
     def test_main_program_file(self):
-        assert path.isfile(DummyTaskEnvironment().main_program_file)
+        assert path.isfile(DummyTaskEnvironment().default_program_file)

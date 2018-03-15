@@ -440,7 +440,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
-        env.allow_custom_main_program_file = False
+        env.allow_custom_source_code = False
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_task_type.return_value = env
 
@@ -532,7 +532,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Allow custom code / no code in message.ComputeTaskDef -> failure
         __reset_mocks()
-        env.allow_custom_main_program_file = True
+        env.allow_custom_source_code = True
         ctd['src_code'] = ""
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -571,6 +571,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="325"),
             DockerImage("dockerix/xiii")
         ])
+        de.source_code_required = True
         ts.task_server.get_environment_by_task_type.return_value = de
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -585,7 +586,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         file_name = os.path.join(self.path, "main_program_file")
         with open(file_name, 'w') as f:
             f.write("Hello world!")
-        de.main_program_file = file_name
+        de.default_program_file = file_name
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))

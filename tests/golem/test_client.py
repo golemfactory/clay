@@ -15,7 +15,7 @@ from twisted.internet.defer import Deferred
 
 import golem
 from apps.appsmanager import AppsManager
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition

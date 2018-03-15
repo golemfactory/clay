@@ -1,6 +1,6 @@
 from os import path
 
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 
 from golem.model import Performance
 from golem.testutils import DatabaseFixture, PEP8MixIn
@@ -9,7 +9,7 @@ from golem.tools.ci import ci_skip
 
 @ci_skip
 class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
-    PEP8_FILES = ["apps/blender/blenderenvironment.py"]
+    PEP8_FILES = ["apps/blender/dockerenvironment/blenderenvironment.py"]
 
     def test_blender(self):
         """Basic environment test."""
@@ -31,4 +31,4 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
         self.assertEquals(result, fake_performance)
 
     def test_main_program_file(self):
-        assert path.isfile(BlenderEnvironment().main_program_file)
+        assert path.isfile(BlenderEnvironment().default_program_file)

@@ -859,10 +859,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.err_msg = reasons.WrongEnvironment
             return False
 
-        if not env.allow_custom_main_program_file:
+        if not env.allow_custom_source_code:
             ctd['src_code'] = env.get_source_code()
 
-        if not ctd['src_code']:
+        if env.source_code_required and not ctd['src_code']:
             self.err_msg = reasons.NoSourceCode
             return False
 

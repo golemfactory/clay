@@ -2,11 +2,12 @@ from golem.environments.environment import Environment
 
 
 class DummyTestEnvironment(Environment):
+    def __init__(self):
+        super().__init__()
+        self.source_code_required = True
+
     @classmethod
     def get_id(cls):
-        """ Get Environment unique id
-        :return str:
-        """
         return "TEST_ENVIRONMENT"
 
     # pylint: disable=arguments-differ

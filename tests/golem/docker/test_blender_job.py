@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
@@ -19,10 +20,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "1.4"
 
     def test_blender_job(self):
-        app_dir = os.path.join(get_golem_path(), "apps", "blender")
-        task_script = find_task_script(app_dir, "docker_blendertask.py")
-        with open(task_script) as f:
-            task_script_src = f.read()
+        task_script_src = BlenderEnvironment().get_source_code()
 
         # prepare dummy crop script
         crop_script_contents = generate_blender_crop_file(

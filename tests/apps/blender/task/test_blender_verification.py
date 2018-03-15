@@ -74,7 +74,8 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['ctd']['src_code'] = open(
             os.path.join(
                 self.golem_dir,
-                'apps/blender/resources/scripts/docker_blendertask.py'),
+                'apps/blender/dockerenvironment/resources/scripts/'
+                'docker_blendertask.py'),
             'r').read()
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
         self.subtask_info['ctd']['task_id'] = \

@@ -23,8 +23,8 @@ class BlenderBenchmark(RenderingBenchmark):
         task_def.output_format = "png"
         task_def.options = BlenderRendererOptions()
         task_def.options.frames = "1"
+        task_def.main_program_file = env.default_program_file
         main_scene_file = pathlib.Path(self.blender_task_path)
         main_scene_file /= "bmw27_cpu.blend"
         task_def.main_scene_file = str(main_scene_file)
-        task_def.main_program_file = env.main_program_file
         task_def.resources.add(str(main_scene_file.resolve()))

@@ -1,6 +1,6 @@
 from enforce.exceptions import RuntimeTypeError
 
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.tools.ci import ci_skip

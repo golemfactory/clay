@@ -192,7 +192,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
         def __init__(self):
             super(DummyEnvironment, self).__init__()
-            self.allow_custom_main_program_file = True
+            self.allow_custom_source_code = True
 
         # pylint: disable=too-many-arguments
         def get_task_thread(self, taskcomputer, subtask_id, short_desc,
