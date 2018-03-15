@@ -547,6 +547,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         client = Client(
             datadir=self.path,
             config_desc=ClientConfigDescriptor(),
+            app_config=Mock(),
             keys_auth=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
