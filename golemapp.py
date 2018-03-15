@@ -116,6 +116,9 @@ def start(monitor, datadir, node_address, rpc_address, peer, mainnet,
     # We should use different directories for different chains
     subdir = 'mainnet' if mainnet else 'rinkeby'
     datadir = os.path.join(datadir, subdir)
+    # We don't want different chains to talk to each other
+    if not mainnet:
+        PROTOCOL_CONST.ID = str(PROTOCOL_CONST.ID) + '-testnet'
 
     # Workarounds for pyinstaller executable
     sys.modules['win32com.gen_py.os'] = None
