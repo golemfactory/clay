@@ -244,6 +244,12 @@ class ConcentClientService(threading.Thread):
             msg_cls,
             DEFAULT_MSG_LIFETIME
         )
+        if (delay is not None) and delay < datetime.timedelta(seconds=0):
+            logger.warning(
+                '[CONCENT] Negative delay for %r. Assuming default...',
+                msg,
+            )
+            delay = None
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
