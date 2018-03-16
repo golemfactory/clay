@@ -8,7 +8,7 @@ class SwitchedSentryHandler(SentryHandler):
     def __init__(self, *args, **kwargs):
         try:
             self.enabled = bool(kwargs.pop('enabled', DEFAULT_SENTRY_ENABLED))
-        except Exception:
+        except Exception:   # pylint: disable=broad-except
             self.enabled = DEFAULT_SENTRY_ENABLED
         super().__init__(*args, **kwargs)
 
@@ -20,5 +20,5 @@ class SwitchedSentryHandler(SentryHandler):
     def set_enabled(self, value):
         try:
             self.enabled = bool(value)
-        except Exception:
+        except Exception:   # pylint: disable=broad-except
             self.enabled = DEFAULT_SENTRY_ENABLED
