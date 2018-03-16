@@ -279,6 +279,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task._put_image_together()
         img_repr = load_img(task.output_file)
         assert isinstance(img_repr, EXRImgRepr)
+        img_repr.close()
 
     def test_put_frame_together(self):
         task = self._get_frame_task(True)
@@ -296,6 +297,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         out_path = os.path.join(self.path, "output0005.exr")
         img_repr = load_img(out_path)
         assert isinstance(img_repr, EXRImgRepr)
+        img_repr.close()
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):

@@ -545,6 +545,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertTrue(pixel == (0, 0, 0))
         pixel = img_task2.getpixel((0, 100))
         self.assertTrue(pixel == color)
+        img_task2.close()
 
     def test_query_extra_data(self):
         extra_data = self.bt.query_extra_data(100000, num_cores=0,
