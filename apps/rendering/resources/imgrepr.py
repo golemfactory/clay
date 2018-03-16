@@ -36,6 +36,10 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
     def to_pil(self):
         return
 
+    @abc.abstractmethod
+    def close(self):
+        return
+
 
 class PILImgRepr(ImgRepr):
     def __init__(self):
@@ -78,6 +82,10 @@ class PILImgRepr(ImgRepr):
 
     def to_pil(self):
         return self.img
+
+    def close(self):
+        if self.img:
+            self.img.close()
 
 
 class EXRImgRepr(ImgRepr):
@@ -146,6 +154,9 @@ class EXRImgRepr(ImgRepr):
         e.min = self.min
         e.max = self.max
         return e
+
+    def close(self):
+        pass
 
 
 def load_img(file_: str) -> Optional[ImgRepr]:

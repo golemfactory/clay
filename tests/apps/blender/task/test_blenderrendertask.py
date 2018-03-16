@@ -421,9 +421,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.assertTrue(path.isfile(self.bt.output_file))
             img = load_img(self.bt.output_file)
             img_x, img_y = img.get_size()
-            img.close()
             self.assertEqual(self.bt.res_x, img_x)
             self.assertEqual(self.bt.res_y, img_y)
+            img.close()
 
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:

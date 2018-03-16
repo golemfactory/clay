@@ -80,7 +80,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img_file = os.path.join(self.path, "img1.png")
         img = Image.new("RGB", (800, 600), "#0000ff")
         img.save(img_file)
-        img.close()
         task.accept_results("SUBTASK1", [img_file])
         assert task.num_tasks_received == 1
         assert task.collected_file_names[3] == img_file
@@ -167,13 +166,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
         img = Image.new("RGB", (10, 10), (0, 122, 0))
         img.save(preview_path)
-        img.close()
         with self.assertLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk("nota image", preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
         with self.assertNoLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk(img, preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
+        img.close()
 
     def test_mark_task_area(self):
         task = self._get_frame_task()
