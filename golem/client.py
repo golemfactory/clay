@@ -1162,7 +1162,7 @@ class Client(HardwarePresetsMixin):
             msg_part = 'Enabling' if talkback_value else 'Disabling'
             logger.info('{0} talkback service'.format(msg_part))
             sentry_handler.set_enabled(talkback_value)
-        except Exception as e:  # pylint: disable=broad-exception
+        except Exception as e:  # pylint: disable=broad-except
             logger.error('Cannot enable talkback. Error was: {0}'.format(str(e)))  # noqa
 
 
