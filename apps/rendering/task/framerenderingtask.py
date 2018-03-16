@@ -261,6 +261,7 @@ class FrameRenderingTask(RenderingTask):
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
+            img_offset.close()
             img_offset = None
 
         if not os.path.exists(preview_file_path):
@@ -269,7 +270,9 @@ class FrameRenderingTask(RenderingTask):
         try:
             if img_offset:
                 with Image.open(preview_file_path) as img:
-                    return ImageChops.add(img, img_offset)
+                    result = ImageChops.add(img, img_offset)
+                    img_offset.close()
+                    return result 
             else:
                 return Image.open(preview_file_path)
         except Exception as err:
