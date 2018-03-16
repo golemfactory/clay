@@ -206,7 +206,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=None,
+            delay=datetime.timedelta(),
         )
 
         assert 'key' not in self.concent_service._delayed
@@ -232,7 +232,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=None,
+            delay=datetime.timedelta(),
         )
 
         send_mock.side_effect = exceptions.ConcentRequestError
@@ -259,7 +259,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service.submit(
                 'key',
                 self.msg,
-                delay=None,
+                delay=datetime.timedelta(),
             )
 
             self.assertEqual(send_mock.call_count, 0)
@@ -278,7 +278,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=None,
+            delay=datetime.timedelta(),
         )
 
         self.concent_service._loop()
