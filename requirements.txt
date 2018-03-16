@@ -53,5 +53,5 @@ miniupnpc<2.1,>=2.0
 token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
-Golem-Messages==1.16.1
+Golem-Messages==1.17.1
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@129a96eb3400caab84109c79124e9f122b423ab0#egg=golem_sci
