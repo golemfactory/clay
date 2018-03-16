@@ -426,7 +426,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
-                concent_enabled=True,
+                concent_enabled=self.concent_service.enabled,
             )
             history.add(
                 msg=msg,
