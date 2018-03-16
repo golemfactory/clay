@@ -512,11 +512,7 @@ class Client(HardwarePresetsMixin):
             task = task_dict
 
         if self.transaction_system:
-            self.funds_locker.lock_funds(task.header.task_id,
-                                         task.header.max_price,
-                                         task.total_tasks,
-                                         task.header.subtask_timeout,
-                                         task.header.deadline)
+            self.funds_locker.lock_funds(task)
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)

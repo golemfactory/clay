@@ -25,7 +25,13 @@ class TestFundsLocker(TempDirFixture):
     def test_lock_funds(self):
         fl = FundsLocker(self.ts, self.new_path)
         task_deadline = timeout_to_deadline(3600)
-        fl.lock_funds("abc", 320, 10, 360, task_deadline)
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.header.max_price = 320
+        task.total_tasks = 10
+        task.header.subtask_timeout = 360
+        task.header.deadline = task_deadline
+        fl.lock_funds(task)
         tfl = fl.task_lock['abc']
 
         def test_params(tfl):
@@ -40,16 +46,38 @@ class TestFundsLocker(TempDirFixture):
 
         test_params(tfl)
 
-        fl.lock_funds("abc", 111, 5, 120, task_deadline + 4)
+        task.header.max_price = 111
+        task.total_tasks = 5
+        task.header.subtask_timeout = 120
+        task.header.deadline = task_deadline + 4
+        fl.lock_funds(task)
         tfl = fl.task_lock['abc']
         test_params(tfl)
 
     def test_sum_locks(self):
         fl = FundsLocker(self.ts, self.new_path)
-        fl.lock_funds("abc", 320, 10, 360, timeout_to_deadline(3600))
-        fl.lock_funds("def", 140, 7, 3600, timeout_to_deadline(3600))
-        fl.lock_funds("ghi", 10, 4, 60, timeout_to_deadline(3600))
-        fl.lock_funds("jkl", 13, 1, 3000, timeout_to_deadline(3600))
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.header.max_price = 320
+        task.total_tasks = 10
+        task.header.subtask_timeout = 360
+        task.header.deadline = timeout_to_deadline(3600)
+        fl.lock_funds(task)
+        task.header.task_id = "def"
+        task.header.max_price = 140
+        task.total_tasks = 7
+        task.header.subtask_timeout = 3600
+        fl.lock_funds(task)
+        task.header.task_id = "ghi"
+        task.header.max_price = 10
+        task.total_tasks = 4
+        task.header.subtask_timeout = 60
+        fl.lock_funds(task)
+        task.header.task_id = "jkl"
+        task.header.max_price = 13
+        task.total_tasks = 1
+        task.header.subtask_timeout = 3000
+        fl.lock_funds(task)
         gnt, eth = fl.sum_locks()
         assert eth == 13000 * 4
         val1 = compute_subtask_value(320, 360) * 10
@@ -62,10 +90,31 @@ class TestFundsLocker(TempDirFixture):
     def test_remove_old(self, time_mock):
         time_mock.time.return_value = time.time()
         fl = FundsLocker(self.ts, self.new_path)
-        fl.lock_funds("abc", 320, 10, 360, timeout_to_deadline(0.5))
-        fl.lock_funds("def", 140, 7, 3600, timeout_to_deadline(2))
-        fl.lock_funds("ghi", 10, 4, 60, timeout_to_deadline(0.2))
-        fl.lock_funds("jkl", 13, 1, 3000, timeout_to_deadline(3.5))
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.header.max_price = 320
+        task.total_tasks = 10
+        task.header.subtask_timeout = 360
+        task.header.deadline = timeout_to_deadline(0.5)
+        fl.lock_funds(task)
+        task.header.task_id = "def"
+        task.header.max_price = 140
+        task.total_tasks = 7
+        task.header.subtask_timeout = 3600
+        task.header.deadline = timeout_to_deadline(2)
+        fl.lock_funds(task)
+        task.header.task_id = "ghi"
+        task.header.max_price = 10
+        task.total_tasks = 4
+        task.header.subtask_timeout = 60
+        task.header.deadline = timeout_to_deadline(0.2)
+        fl.lock_funds(task)
+        task.header.task_id = "jkl"
+        task.header.max_price = 13
+        task.total_tasks = 1
+        task.header.subtask_timeout = 3000
+        task.header.deadline = timeout_to_deadline(3.5)
+        fl.lock_funds(task)
         time_mock.time.return_value += PAYMENT_DEADLINE + 1
         fl.remove_old()
         assert fl.task_lock.get("abc") is None
@@ -73,14 +122,35 @@ class TestFundsLocker(TempDirFixture):
         assert fl.task_lock.get("ghi") is None
         assert fl.task_lock.get("jkl") is not None
 
-    def test_dump_and_resotre(self):
+    def test_dump_and_restore(self):
         fl = FundsLocker(self.ts, self.new_path)
 
         # we should dump tasks after every lock
-        fl.lock_funds("abc", 320, 10, 360, timeout_to_deadline(0.5))
-        fl.lock_funds("def", 140, 7, 3600, timeout_to_deadline(2))
-        fl.lock_funds("ghi", 10, 4, 60, timeout_to_deadline(0.2))
-        fl.lock_funds("jkl", 13, 1, 3000, timeout_to_deadline(3.5))
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.header.max_price = 320
+        task.total_tasks = 10
+        task.header.subtask_timeout = 360
+        task.header.deadline = timeout_to_deadline(0.5)
+        fl.lock_funds(task)
+        task.header.task_id = "def"
+        task.header.max_price = 140
+        task.total_tasks = 7
+        task.header.subtask_timeout = 3600
+        task.header.deadline = timeout_to_deadline(2)
+        fl.lock_funds(task)
+        task.header.task_id = "ghi"
+        task.header.max_price = 10
+        task.total_tasks = 4
+        task.header.subtask_timeout = 60
+        task.header.deadline = timeout_to_deadline(0.2)
+        fl.lock_funds(task)
+        task.header.task_id = "jkl"
+        task.header.max_price = 13
+        task.total_tasks = 1
+        task.header.subtask_timeout = 3000
+        task.header.deadline = timeout_to_deadline(3.5)
+        fl.lock_funds(task)
 
         # new fund locker should restore tasks
         fl2 = FundsLocker(self.ts, self.new_path)

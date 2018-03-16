@@ -11,13 +11,12 @@ logger = logging.getLogger("golem")
 
 
 class TaskFundsLock():
-    def __init__(self, task_id, price, num_tasks, subtask_timeout,
-                 task_deadline, transaction_system=None):
-        self.task_id = task_id
-        self.price = price
-        self.num_tasks = num_tasks
-        self.subtask_timeout = subtask_timeout
-        self.task_deadline = task_deadline
+    def __init__(self, task, transaction_system=None):
+        self.task_id = task.header.task_id
+        self.price = task.header.max_price
+        self.num_tasks = task.total_tasks
+        self.subtask_timeout = task.header.subtask_timeout
+        self.task_deadline = task.header.deadline
         self.transaction_system = transaction_system
 
     def gnt_lock(self):
@@ -35,6 +34,7 @@ class TaskFundsLock():
         return state
 
     def __setstate__(self, state):
+        # pylint: disable=attribute-defined-outside-init
         self.__dict__ = state
         self.transaction_system = None
 
@@ -49,15 +49,14 @@ class FundsLocker(LoopingCallService):
         self.persist = persist
         self.restore()
 
-    def lock_funds(self, task_id, price, num_tasks, subtask_timeout,
-                   task_deadline):
+    def lock_funds(self, task):
+        task_id = task.header.task_id
         if self.task_lock.get(task_id) is not None:
             logger.error("Tried to duplicate lock_fund with same "
                          "task_id %r", task_id)
             return
 
-        tfl = TaskFundsLock(task_id, price, num_tasks, subtask_timeout,
-                            task_deadline, self.transaction_system)
+        tfl = TaskFundsLock(task, self.transaction_system)
         _, gnt, eth, _, _ = self.transaction_system.get_balance()
         lock_gnt, lock_eth = self.sum_locks()
         if tfl.gnt_lock() > gnt - lock_gnt:
