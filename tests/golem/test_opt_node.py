@@ -251,6 +251,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
+                                     use_concent=False,
                                      use_monitor=True,
                                      mainnet=True)
 
@@ -274,6 +275,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False,
                                        mainnet=True)
 
