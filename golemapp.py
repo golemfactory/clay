@@ -46,13 +46,14 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 @click.command()
 @click.option('--monitor/--nomonitor', default=True)
+@click.option('--concent/--noconcent', default=False)
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
               type=click.Path(
                   file_okay=False,
                   writable=True
               ))
-@click.option('--protocol_id', type=click.INT,
+@click.option('--protocol_id', type=click.STRING,
               callback=PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
               expose_value=False,
@@ -68,6 +69,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--peer', '-p', multiple=True,
               callback=argsparser.parse_peer, metavar="<host>:<port>",
               help="Connect with given peer")
+@click.option('--mainnet', is_flag=True, default=False,
+              help='Whether to run on Ethereum mainnet')
 @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
               help="Start local geth node")
 @click.option('--start-geth-port', default=None, type=int,
@@ -78,6 +81,15 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Connect with given geth node")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
+@click.option('--log-level', default=None,
+              type=click.Choice([
+                  'CRITICAL',
+                  'ERROR',
+                  'WARNING',
+                  'INFO',
+                  'DEBUG',
+              ]),
+              help="Change level for Golem loggers and handlers")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -90,18 +102,11 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--worker', expose_value=False)
 @click.option('--type', expose_value=False)
 @click.option('--realm', expose_value=False)
-@click.option('--loglevel', default=None,
-              type=click.Choice([
-                  'CRITICAL',
-                  'ERROR',
-                  'WARNING',
-                  'INFO',
-                  'DEBUG',
-              ]),
-              help="Change level for all loggers and handlers")
+@click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(monitor, datadir, node_address, rpc_address, peer,
-          start_geth, start_geth_port, geth_address, version, m, loglevel):
+def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
+          start_geth, start_geth_port, geth_address, version, log_level, m):
+
     freeze_support()
     delete_reactor()
 
@@ -109,13 +114,21 @@ def start(monitor, datadir, node_address, rpc_address, peer,
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
+    # We should use different directories for different chains
+    subdir = 'mainnet' if mainnet else 'rinkeby'
+    datadir = os.path.join(datadir, subdir)
+    # We don't want different chains to talk to each other
+    if not mainnet:
+        PROTOCOL_CONST.ID += '-testnet'
+
     # Workarounds for pyinstaller executable
     sys.modules['win32com.gen_py.os'] = None
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(AppConfig.load_config(datadir))
+    config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
     if rpc_address:
@@ -129,16 +142,20 @@ def start(monitor, datadir, node_address, rpc_address, peer,
     # Golem headless
     else:
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=loglevel)
+        config_logging(datadir=datadir, loglevel=log_level)
         install_reactor()
         log_golem_version()
         log_platform_info()
+        log_ethereum_chain(mainnet)
 
         node = Node(
             datadir=datadir,
+            app_config=app_config,
             config_desc=config_desc,
             peers=peer,
             use_monitor=monitor,
+            use_concent=concent,
+            mainnet=mainnet,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address)
@@ -192,6 +209,11 @@ def log_platform_info():
     logger.info("memory: %s, swap: %s",
                 humanize.naturalsize(meminfo.total, binary=True),
                 humanize.naturalsize(swapinfo.total, binary=True))
+
+
+def log_ethereum_chain(mainnet: bool):
+    chain = "mainnet" if mainnet else "rinkeby"
+    logger.info("Ethereum chain: %s", chain)
 
 
 if __name__ == '__main__':

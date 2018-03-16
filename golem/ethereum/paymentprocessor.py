@@ -10,11 +10,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
 
+from golem_sci.gntconverter import GNTConverter
 from golem.core.service import LoopingCallService
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import encode_hex
-
-from .gntconverter import GNTConverter
 
 log = logging.getLogger("golem.pay")
 
@@ -179,6 +178,15 @@ class PaymentProcessor(LoopingCallService):
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
             self._gnt_available() / denoms.ether,
             self.__gntb_reserved / denoms.ether))
+
+        if self.__gntb_balance is not None and self.__gnt_balance is not None:
+            if self.__gntb_reserved > self.__gntb_balance:
+                if not self._gnt_converter.is_converting():
+                    log.info(
+                        'Will convert %f GNT to be ready for payments',
+                        self.__gnt_balance / denoms.ether,
+                    )
+                    self._gnt_converter.convert(self.__gnt_balance)
 
     def __get_next_batch(
             self,

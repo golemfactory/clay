@@ -172,7 +172,7 @@ class ConcentClientService(threading.Thread):
         self.keys_auth = keys_auth
         # self.private_key = private_key
         # self.public_key = public_key
-        self._enabled = enabled  # FIXME: remove
+        self.enabled = enabled
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
@@ -244,6 +244,12 @@ class ConcentClientService(threading.Thread):
             msg_cls,
             DEFAULT_MSG_LIFETIME
         )
+        if (delay is not None) and delay < datetime.timedelta(seconds=0):
+            logger.warning(
+                '[CONCENT] Negative delay for %r. Assuming default...',
+                msg,
+            )
+            delay = None
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
@@ -286,7 +292,7 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        if not self._enabled:
+        if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
 
@@ -313,7 +319,7 @@ class ConcentClientService(threading.Thread):
             self.react_to_concent_message(res)
 
     def receive(self) -> None:
-        if not self._enabled:
+        if not self.enabled:
             return
 
         try:

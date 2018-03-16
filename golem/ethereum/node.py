@@ -26,8 +26,10 @@ NODE_LIST = [
 ]
 
 
-def get_public_nodes():
+def get_public_nodes(mainnet: bool):
     """Returns public geth RPC addresses"""
+    if mainnet:
+        raise Exception('Mainnet not supported yet')
     addr_list = NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
@@ -36,7 +38,6 @@ def get_public_nodes():
 class NodeProcess(object):
 
     CONNECTION_TIMEOUT = 10
-    CHAIN = 'rinkeby'
 
     SUBPROCESS_PIPES = dict(
         stdout=subprocess.PIPE,
@@ -44,7 +45,7 @@ class NodeProcess(object):
         stdin=DEVNULL
     )
 
-    def __init__(self, datadir, addr=None, start_node=False):
+    def __init__(self, datadir, mainnet=False, addr=None, start_node=False):
         """
         :param datadir: working directory
         :param addr: address of a geth instance to connect with
@@ -52,8 +53,9 @@ class NodeProcess(object):
         """
         self.datadir = datadir
         self.start_node = start_node
+        self._mainnet = mainnet
         self.web3 = None  # web3 client interface
-        self.addr_list = [addr] if addr else get_public_nodes()
+        self.addr_list = [addr] if addr else get_public_nodes(mainnet)
 
         self.__ps = None  # child process
 
@@ -66,7 +68,7 @@ class NodeProcess(object):
             raise RuntimeError("Ethereum node already started by us")
 
         if self.start_node:
-            provider = self._create_local_ipc_provider(self.CHAIN, start_port)
+            provider = self._create_local_ipc_provider(start_port)
         else:
             provider = self._create_remote_rpc_provider()
 
@@ -112,7 +114,8 @@ class NodeProcess(object):
             return self.start(start_port)
         raise OSError("Cannot connect to geth: {}".format(provider))
 
-    def _create_local_ipc_provider(self, chain, start_port=None):  # noqa pylint: disable=too-many-locals
+    def _create_local_ipc_provider(self, start_port=None):  # noqa pylint: disable=too-many-locals
+        chain = 'mainnet' if self._mainnet else 'rinkeby'
         prog = self._find_geth()
 
         # Init geth datadir
@@ -140,7 +143,7 @@ class NodeProcess(object):
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
-            '--rinkeby',
+            '--rinkeby' if not self._mainnet else '',
             '--port={}'.format(start_port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
