@@ -80,6 +80,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img_file = os.path.join(self.path, "img1.png")
         img = Image.new("RGB", (800, 600), "#0000ff")
         img.save(img_file)
+        img.close()
         task.accept_results("SUBTASK1", [img_file])
         assert task.num_tasks_received == 1
         assert task.collected_file_names[3] == img_file
@@ -143,6 +144,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         new_img = Image.new("RGB", (10, 10), (255, 0, 0))
         img_path = self.temp_file_name("image2.png")
         new_img.save(img_path)
+        new_img.close()
         frame_task._update_frame_preview(img_path, 5, 2)
         frame_task._update_frame_preview(img_path, 7, 2)
         frame_task._update_frame_preview(img_path, 7, 1, True)
@@ -165,6 +167,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
         img = Image.new("RGB", (10, 10), (0, 122, 0))
         img.save(preview_path)
+        img.close()
         with self.assertLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk("nota image", preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
@@ -198,6 +201,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
                 assert img.getpixel((i, j)) == (0, 13, 0)
             for j in range(10, 20):
                 assert img.getpixel((i, j)) == (0, 0, 201)
+        img.close()
 
     def test_choose_frames(self):
         task = self._get_frame_task()
@@ -258,6 +262,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img = Image.new("RGB", (10, 10), (0, 0, 0))
         tmp_path = self.temp_file_name("img.png")
         img.save(tmp_path)
+        img.close()
         task._update_preview_task_file_path(tmp_path)
         task = self._get_frame_task(False)
         task._update_preview_task_file_path(tmp_path)

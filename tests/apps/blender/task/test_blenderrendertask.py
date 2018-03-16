@@ -421,6 +421,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.assertTrue(path.isfile(self.bt.output_file))
             img = load_img(self.bt.output_file)
             img_x, img_y = img.get_size()
+            img.close()
             self.assertEqual(self.bt.res_x, img_x)
             self.assertEqual(self.bt.res_y, img_y)
 
@@ -444,6 +445,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 self.assertTrue(path.isfile(self.bt.output_file))
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size
+                img.close()
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
     def test_update_frame_preview(self):
@@ -491,8 +493,10 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
         self.assertTrue(img.size == (300, 200))
+        img.close()
         img = Image.open(file4)
         self.assertTrue(img.size == (300, 200))
+        img.close()
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
@@ -574,6 +578,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         preview = files[0]
         img = Image.new("RGBA", (20, 200))
         img.save(preview, "PNG")
+        img.close()
         bt._update_preview(preview, 3)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
@@ -619,6 +624,7 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
                 img = Image.new("RGB", (res_x, chunks_sizes[i]))
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
+                img.close()
                 pu.update_preview(file1, i)
             if int(round(res_y * scale_factor)) != PREVIEW_Y:
                 self.assertAlmostEqual(pu.perfect_match_area_y,
