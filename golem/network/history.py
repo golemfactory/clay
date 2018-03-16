@@ -267,8 +267,8 @@ def message_to_model(msg: message.base.Message,
     :return: Dict representation of NetworkMessage
     """
     return {
-        'task': msg.task_id,
-        'subtask': msg.subtask_id,
+        'task': getattr(msg, 'task_id', None),
+        'subtask': getattr(msg, 'subtask_id', None),
         'node': node_id,
         'msg_date': time.time(),
         'msg_cls': msg.__class__.__name__,

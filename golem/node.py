@@ -5,6 +5,7 @@ from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
 
 from apps.appsmanager import AppsManager
+from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
@@ -29,10 +30,12 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
+                 app_config: AppConfig,
                  config_desc: ClientConfigDescriptor,
                  peers: Optional[List[SocketAddress]] = None,
-                 transaction_system: bool = False,
                  use_monitor: bool = False,
+                 use_concent: bool = False,
+                 mainnet: bool = False,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
@@ -56,11 +59,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
+            app_config=app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
-            transaction_system=transaction_system,
+            mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
+            use_concent=use_concent,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
@@ -76,7 +81,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             gatherResults([keys, docker], consumeErrors=True).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker')
-            )
+            ).addErrback(self._error('setup client'))
 
         try:
             self._start_rpc().addCallbacks(_start, self._error('rpc'))
@@ -167,7 +172,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def _error(self, msg: str) -> Callable:
         def log_error_and_stop_reactor(err):
             if self._reactor.running:
-                logger.error("Stopping because of %s error: %r", msg, err)
+                logger.error("Stopping because of %s error: %s", msg, err)
                 self._reactor.callFromThread(self._reactor.stop)
 
         return log_error_and_stop_reactor

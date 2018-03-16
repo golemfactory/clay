@@ -6,13 +6,15 @@ import typing
 
 import random
 from collections import Counter
-from golem_messages import message
+
+from golem_messages import message, helpers
 from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
+from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -30,12 +32,26 @@ def compute_subtask_value(price: int, computation_time: int):
     return (price * computation_time + 3599) // 3600
 
 
+def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
+                                   num_of_res_transfers_needed: int =
+                                   NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER):
+    # FIXME get num of res transfers needed
+    verification_timeout = subtask_timeout
+    resource_timeout = helpers.maximum_download_time(resource_size).seconds
+    resource_timeout *= num_of_res_transfers_needed
+    return common.timeout_to_deadline(subtask_timeout + verification_timeout
+                                      + resource_timeout)
+
+
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
         self.requests = 1
         self.subtasks = {}
+        # TODO Add concent communication timeout
+        self.keeping_deadline = comp_task_info_keeping_timeout(
+            self.header.subtask_timeout, self.header.resource_size)
 
     def __repr__(self):
         return "<CompTaskInfo(%r, %r) reqs: %r>" % (
@@ -216,7 +232,7 @@ class CompTaskKeeper:
 
     def remove_old_tasks(self):
         for task_id in frozenset(self.active_tasks):
-            deadline = self.active_tasks[task_id].header.deadline
+            deadline = self.active_tasks[task_id].keeping_deadline
             delta = deadline - common.get_timestamp_utc()
             if delta > 0:
                 continue
