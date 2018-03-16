@@ -78,12 +78,14 @@ class ConcentFiletransferService(LoopingCallService):
             elif request.file_transfer_token.is_download:
                 response = self.download(request)
         except Exception as e:
-            request.error(e)
+            if request.error:
+                request.error(e)
+            raise
 
-        request.success(response)
+        return request.success(response) if request.success else response
 
     def _get_target_uri(self, file_transfer_token: FileTransferToken):
-        return '{}{}/{}'.format(
+        return '{}{}{}'.format(
             file_transfer_token.storage_cluster_address,
             file_transfer_token.operation.value,
             file_transfer_token.files[0].get('path')
@@ -92,8 +94,9 @@ class ConcentFiletransferService(LoopingCallService):
     def _get_auth_headers(self, file_transfer_token: FileTransferToken):
         return {
             'Authorization': 'Golem ' + base64.b64encode(
-                file_transfer_token.serialize()),
-            'Concent-Client-Public-Key': self.keys_auth.public_key
+                file_transfer_token.serialize()).decode(),
+            'Concent-Client-Public-Key': base64.b64encode(
+                self.keys_auth.public_key)
         }
 
     def upload(self, request):
