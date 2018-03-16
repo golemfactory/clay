@@ -1,5 +1,6 @@
 import logging
 import requests.exceptions
+import tarfile
 
 from docker.errors import NotFound, APIError
 
@@ -52,3 +53,31 @@ class DockerImage(object):
         except requests.exceptions.ConnectionError:
             log.debug("DockerImage Can't connect", exc_info=True)
             return False
+
+    def extract_path(self, container_path, target_local_path):
+        if not self.is_available():
+            raise Exception(f'Image {self} is not available.')
+
+        client = local_client()
+        container_id = None
+        try:
+            container = client.create_container(image=self.name)
+            container_id = container['Id']
+            tar_response, _ = client.get_archive(container_id, container_path)
+            with tar_response, tarfile.open(fileobj=tar_response,
+                                            mode='r|') as t_file:
+                t_file.extractall(path=target_local_path)
+        except Exception as e:
+            log.error('Extracting %s from %s to %s failed.',
+                      container_path, self, target_local_path)
+            raise e
+        finally:
+            if container_id is not None:
+                try:
+                    client.remove_container(container_id)
+                except NotFound:  # Something has removed it, that's fine
+                    pass
+                except APIError as api_e:
+                    log.error(
+                        'Could not delete container %s: %s', container_id, api_e
+                    )

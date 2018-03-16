@@ -1,3 +1,6 @@
+import shutil
+import os
+import tempfile
 import unittest
 
 import requests
@@ -5,13 +8,19 @@ from docker import Client
 from docker.utils import kwargs_from_env
 
 from golem.docker.image import DockerImage
-from golem.tools.ci import ci_skip
+from golem.tools.ci import ci_skip, in_circleci
+
+
+def _count_containers(client):
+    return len(client.containers(all=True))
 
 
 class DockerTestCase(unittest.TestCase):
 
     TEST_REPOSITORY = "golemfactory/base"
     TEST_TAG = "1.2"
+    BLENDER_IMAGE_REP = 'golemfactory/blender'
+    BLENDER_IMAGE_TAG = '1.4'
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
     TEST_ENV_ID = None
 
@@ -94,12 +103,11 @@ class TestDockerImage(DockerTestCase):
         self.assertFalse(nimg2.is_available())
 
     def test_cmp_name_and_tag(self):
-
         img = DockerImage(self.TEST_REPOSITORY,
                           tag=self.TEST_TAG,
                           image_id=self.TEST_ENV_ID)
         img2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
-        
+
         assert img.cmp_name_and_tag(img2)
         assert img2.cmp_name_and_tag(img)
 
@@ -114,3 +122,57 @@ class TestDockerImage(DockerTestCase):
                            image_id=self.TEST_ENV_ID)
         assert not img.cmp_name_and_tag(img4)
         assert not img4.cmp_name_and_tag(img)
+
+    def test_path_extraction(self):
+        img = DockerImage(self.BLENDER_IMAGE_REP, tag=self.BLENDER_IMAGE_TAG)
+        client = self.test_client()
+        num_containers_before = _count_containers(client)
+        try:
+            target_dir = tempfile.TemporaryDirectory(
+                prefix='blender_extraction_test_',
+                dir='/tmp'
+            ).name
+            blender_dir = os.path.join(target_dir, 'blender')
+            blender_binary = os.path.join(blender_dir, 'blender')
+            img.extract_path('/opt/blender/', target_dir)
+            self.assertTrue(os.path.isfile(blender_binary))
+        finally:
+            shutil.rmtree(target_dir, ignore_errors=True)
+            if not in_circleci():
+                self.assertEqual(num_containers_before,
+                                 _count_containers(client))
+
+    def test_path_extraction_of_non_existent_path_fails_gracefully(self):
+        img = DockerImage(self.BLENDER_IMAGE_REP, tag=self.BLENDER_IMAGE_TAG)
+        client = self.test_client()
+        num_containers_before = _count_containers(client)
+        non_existent_container_path = '/opt/should_not/exist_in_/the_container'
+        try:
+            img.extract_path(non_existent_container_path, '/tmp')
+            self.fail('Extracting a non-existent path should raise '
+                      'an exception')
+        except OSError as e:
+            self.assertIn(non_existent_container_path, str(e))
+            if not in_circleci():
+                self.assertEqual(num_containers_before,
+                                 _count_containers(client))
+
+    def test_path_extraction_to_a_permissions_restricted_path_fails_fine(self):
+        local_path_we_have_no_write_permissions_to = '/root'
+        if os.access(local_path_we_have_no_write_permissions_to, os.W_OK):
+            self.skipTest('Environmental prerequisites for this test not met.')
+        img = DockerImage(self.BLENDER_IMAGE_REP, tag=self.BLENDER_IMAGE_TAG)
+        client = self.test_client()
+        num_containers_before = _count_containers(client)
+        try:
+            img.extract_path(
+                '/opt/blender/',
+                local_path_we_have_no_write_permissions_to
+            )
+            self.fail('Extracting to a path without write permissions '
+                      'should raise an exception!')
+        except PermissionError as pe:
+            self.assertIn(local_path_we_have_no_write_permissions_to, str(pe))
+            if not in_circleci():
+                self.assertEqual(num_containers_before,
+                                 _count_containers(client))
