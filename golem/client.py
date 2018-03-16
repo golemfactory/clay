@@ -1155,18 +1155,20 @@ class Client(HardwarePresetsMixin):
             pass
         self.__datadir_lock.close()
 
-    def enable_talkback(self, value):   # pylint: disable=no-self-use
+    @staticmethod
+    def enable_talkback(value):
         talkback_value = bool(value)
         logger_root = logging.getLogger()
         try:
             sentry_handler = [
                 h for h in logger_root.handlers if h.name == 'sentry'][0]
             msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback service' % msg_part)
+            logger.info('%s talkback service', msg_part)
             sentry_handler.set_enabled(talkback_value)
         except Exception as e:  # pylint: disable=broad-except
+            msg_part = 'enable' if talkback_value else 'disable'
             logger.error(
-                'Cannot enable talkback. Error was: %s' % str(e))
+                'Cannot %s talkback. Error was: %s', msg_part, str(e))
 
 
 class DoWorkService(LoopingCallService):
