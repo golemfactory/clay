@@ -200,3 +200,32 @@ class TaskServerMessageHandler():
             msg.subtask_id,
             'Error downloading the task result through the Concent'
         )
+
+    @handler_for(message.concents.ForceSubtaskResultsResponse)
+    def on_force_subtask_results_response(self, msg):
+        """Concent forwards verified Requestors response to ForceSubtaskResults
+        """
+        if msg.subtask_results_accepted:
+            node_id = msg.subtask_results_accepted.task_to_compute.requestor_id
+            sub_msg = msg.subtask_results_accepted
+            self.task_server.subtask_accepted(
+                subtask_id=msg.subtask_id,
+                accepted_ts=msg.subtask_results_accepted.payment_ts,
+            )
+        elif msg.subtask_results_rejected:
+            node_id = msg.subtask_results_rejected \
+                .report_computed_task \
+                .task_to_compute.requestor_id
+            sub_msg = msg.subtask_results_rejected
+            self.task_server.subtask_rejected(
+                subtask_id=msg.subtask_id,
+            )
+        else:
+            raise RuntimeError("Impossible condition caused by {}".format(msg))
+
+        history.add(
+            msg=sub_msg,
+            node_id=node_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )

@@ -233,4 +233,51 @@ class TaskServerMessageHandlerTestCase(
             fgtrf.subtask_id,
             'Error downloading the task result through the Concent')
 
+    def test_force_subtask_results_response_empty(self):
+        msg = message.concents.ForceSubtaskResultsResponse()
+        # pylint: disable=no-member
+        self.assertIsNone(msg.subtask_results_accepted)
+        self.assertIsNone(msg.subtask_results_rejected)
+        # pylint: enable=no-member
+        with self.assertRaises(RuntimeError):
+            library.interpret(msg)
+
+    @mock.patch("golem.network.history.add")
+    @mock.patch("golem.task.taskserver.TaskServer.subtask_accepted")
+    def test_force_subtask_results_response_accepted(
+            self,
+            accepted_mock,
+            add_mock):
+        msg = msg_factories.ForceSubtaskResultsResponse()
+        msg.subtask_results_rejected = None
+        library.interpret(msg)
+        accepted_mock.assert_called_once_with(
+            subtask_id=msg.subtask_id,
+            accepted_ts=msg.subtask_results_accepted.payment_ts,
+        )
+        add_mock.assert_called_once_with(
+            msg=msg.subtask_results_accepted,
+            node_id=mock.ANY,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
+
+    @mock.patch("golem.network.history.add")
+    @mock.patch("golem.task.taskserver.TaskServer.subtask_rejected")
+    def test_force_subtask_results_response_rejected(
+            self,
+            rejected_mock,
+            add_mock):
+        msg = msg_factories.ForceSubtaskResultsResponse()
+        msg.subtask_results_accepted = None
+        library.interpret(msg)
+        rejected_mock.assert_called_once_with(
+            subtask_id=msg.subtask_id,
+        )
+        add_mock.assert_called_once_with(
+            msg=msg.subtask_results_rejected,
+            node_id=mock.ANY,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
 # pylint: enable=no-self-use

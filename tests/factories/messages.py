@@ -190,3 +190,11 @@ class ForceGetTaskResultFailed(factory.Factory):
         model = concents.ForceGetTaskResultFailed
 
     task_to_compute = factory.SubFactory(TaskToCompute)
+
+
+class ForceSubtaskResultsResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceSubtaskResultsResponse
+
+    subtask_results_accepted = factory.SubFactory(SubtaskResultsAcceptedFactory)
+    subtask_results_rejected = factory.SubFactory(SubtaskResultsRejected)
