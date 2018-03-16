@@ -1199,7 +1199,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertEqual(c.task_test_result, None)
 
     def test_create_task(self, *_):
-        t = DummyTask(total_tasks=10, node_name="node_name",
+        t = DummyTask(total_tasks=10, owner=Node(node_name="node_name"),
                       task_definition=DummyTaskDefinition())
 
         c = self.client

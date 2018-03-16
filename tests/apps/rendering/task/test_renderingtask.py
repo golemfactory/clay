@@ -16,6 +16,7 @@ from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from golem.network.p2p.node import Node
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
@@ -52,12 +53,13 @@ class RenderingTaskMock(RenderingTask):
     def query_extra_data_for_test_task(self):
         pass
 
+
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
         with self.assertLogs(logger_core, level="WARNING"):
             rt = RenderingTaskMock(main_program_file="notexisting",
                                    task_definition=RenderingTaskDefinition(),
-                                   node_name="Some name",
+                                   owner=Node(node_name="ABC"),
                                    total_tasks=10,
                                    root_path=self.path
                                    )
@@ -82,13 +84,15 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
         task = RenderingTaskMock(
             main_program_file=files[0],
-            node_name="ABC",
             task_definition=task_definition,
             total_tasks=100,
             root_path=self.path,
-            owner_address="10.10.10.10",
-            owner_port=1023,
-            owner_key_id="keyid",
+            owner=Node(
+                node_name="ABC",
+                pub_addr="10.10.10.10",
+                pub_port=1023,
+                key="keyid"
+            ),
         )
 
         dm = DirManager(self.path)
@@ -344,9 +348,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        builder = RenderingTaskBuilder(root_path=self.path,
+        builder = RenderingTaskBuilder(owner=Node(node_name="node"),
                                        dir_manager=DirManager(self.path),
-                                       node_name="SOME NODE NAME",
                                        task_definition=definition)
 
         class Defaults(object):

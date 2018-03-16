@@ -81,12 +81,13 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         return task_def
 
     def _test_task(self) -> LuxTask:
+        from golem.network.p2p.node import Node as P2P_Node
+
         LuxTask.VERIFICATION_QUEUE._reset()
         task_def = self._test_task_definition()
-        node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir,
-                                            dir_manager)
+        task_builder = LuxRenderTaskBuilder(P2P_Node(node_name="node"),
+                                            task_def, dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         render_task.max_pending_client_results = 5

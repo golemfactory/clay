@@ -10,6 +10,7 @@ from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderi
                                                     FrameRenderingTaskBuilder,
                                                     FrameRendererOptions, logger)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -52,7 +53,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.estimated_memory = 1000
         rt.max_price = 15
         task = FrameRenderingTaskMock(files_[0],
-                                      node_name="ABC",
+                                      owner=Node(node_name="ABC"),
                                       task_definition=rt,
                                       total_tasks=3,
                                       root_path=self.path
@@ -309,9 +310,8 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.options.use_frames = True
         definition.options.frames = list(range(1, 7))
 
-        builder = FrameRenderingTaskBuilder(root_path=self.path,
+        builder = FrameRenderingTaskBuilder(Node(node_name="node"),
                                             dir_manager=DirManager(self.path),
-                                            node_name="SOME NODE NAME",
                                             task_definition=definition)
 
         class Defaults(object):

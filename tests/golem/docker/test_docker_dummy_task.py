@@ -108,12 +108,13 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         return task_def
 
     def _test_task(self) -> DummyTask:
+        from golem.network.p2p.node import Node as P2P_Node
+
         DummyTask.VERIFICATION_QUEUE._reset()
         task_def = self._test_task_definition()
-        node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
-        task_builder = DummyTaskBuilder(node_name, task_def, self.tempdir,
-                                        dir_manager)
+        task_builder = DummyTaskBuilder(P2P_Node(node_name="node"),
+                                        task_def, dir_manager)
         task = task_builder.build()  # type: DummyTask
         task.max_pending_client_results = 5
         return task
