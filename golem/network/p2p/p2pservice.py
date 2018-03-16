@@ -474,11 +474,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                                   that should be changed
         """
         try:
-            id_ = th_dict_repr["task_owner_key_id"]
+            id_ = th_dict_repr["task_owner"]["key"]
 
             if self.peers[id_]:
-                th_dict_repr["address"] = self.peers[id_].address
-                th_dict_repr["port"] = self.peers[id_].port
+                th_dict_repr["task_owner"]["pub_addr"] = self.peers[id_].address
+                th_dict_repr["task_owner"]["pub_port"] = self.peers[id_].port
         except KeyError as err:
             logger.error("Wrong task representation: {}".format(err))
 

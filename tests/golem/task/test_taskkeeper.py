@@ -160,9 +160,10 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header["task_id"], th.task_id)
         self.assertEqual(task_header["max_price"], th.max_price)
-        self.assertEqual(task_header["node_name"], th.node_name)
-        self.assertEqual(task_header["task_owner_port"], th.task_owner_port)
-        self.assertEqual(task_header["task_owner_key_id"], th.task_owner_key_id)
+        self.assertEqual(task_header["node_name"], th.task_owner.node_name)
+        self.assertEqual(task_header["task_owner"]["pub_port"],
+                         th.task_owner.pub_port)
+        self.assertEqual(task_header["task_owner"]["key"], th.task_owner.key)
         self.assertEqual(task_header["environment"], th.environment)
         self.assertEqual(task_header["deadline"], th.deadline)
         self.assertEqual(task_header["subtask_timeout"], th.subtask_timeout)
@@ -308,7 +309,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn("ta%d" % i, tk.task_headers)
 
         thd = get_dict_task_header("tb0")
-        thd["task_owner_key_id"] = "zzzz"
+        thd["task_owner"]["key"] = "zzzz"
         tk.add_task_header(thd)
 
         for i in range(limit):
@@ -351,7 +352,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         last_add_time = time.time()
 
         thd = get_dict_task_header("tb0")
-        thd["task_owner_key_id"] = "zzzz"
+        thd["task_owner"]["key"] = "zzzz"
         tk.add_task_header(thd)
 
         for i in range(new_limit):
@@ -371,7 +372,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertEqual(limit + 1, len(tk.task_headers))
 
         # shouldn't remove any tasks
-        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+        tk.check_max_tasks_per_owner(thd['task_owner']["key"])
 
         for i in range(limit):
             self.assertIn("ta%d" % i, tk.task_headers)
@@ -381,7 +382,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.max_tasks_per_requestor = new_limit
 
         # should remove ta{3..9}
-        tk.check_max_tasks_per_owner(thd['task_owner_key_id'])
+        tk.check_max_tasks_per_owner(thd['task_owner']["key"])
 
         for i in range(new_limit):
             self.assertIn("ta%d" % i, tk.task_headers)
@@ -449,11 +450,12 @@ class TestTaskHeaderKeeper(LogTestCase):
 def get_dict_task_header(task_id="xyz"):
     return {
         "task_id": task_id,
-        "node_name": "ABC",
-        "task_owner": {"node_name": "Bob's node"},
-        "task_owner_address": "10.10.10.10",
-        "task_owner_port": 10101,
-        "task_owner_key_id": "kkkk",
+        "task_owner": {
+            "node_name": "Bob's node",
+            "key": "kkkk",
+            "pub_addr": "10.10.10.10",
+            "pub_port": 10101
+        },
         "environment": "DEFAULT",
         "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
@@ -465,10 +467,9 @@ def get_dict_task_header(task_id="xyz"):
 
 def get_task_header():
     header = get_dict_task_header()
-    return TaskHeader(header["node_name"], header["task_id"],
-                      header["task_owner_address"],
-                      header["task_owner_port"], header["task_owner_key_id"],
-                      header["environment"], header["task_owner"],
+    return TaskHeader(header["task_id"],
+                      header["environment"],
+                      header["task_owner"],
                       header["deadline"],
                       header["subtask_timeout"], 1024, 1.0, 1000,
                       header['max_price'])
@@ -605,8 +606,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
-        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, "abc")
-        assert not ctk.check_task_owner_by_subtask(th.task_owner_key_id, "!!!")
+        assert ctk.check_task_owner_by_subtask(th.task_owner.key, "abc")
+        assert not ctk.check_task_owner_by_subtask(th.task_owner.key, "!!!")
         assert not ctk.check_task_owner_by_subtask('???', "abc")
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = "xyz"

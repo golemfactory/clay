@@ -140,14 +140,16 @@ class CoreTask(Task):
         else:
             self.docker_images = None
 
-        th = TaskHeader(
+        task_owner = Node(
+            key=owner_key_id,
             node_name=node_name,
+            pub_addr=owner_address,
+            pub_port=owner_port
+        )
+        th = TaskHeader(
             task_id=task_definition.task_id,
-            task_owner_address=owner_address,
-            task_owner_port=owner_port,
-            task_owner_key_id=owner_key_id,
             environment=self.environment.get_id(),
-            task_owner=Node(),
+            task_owner=task_owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,

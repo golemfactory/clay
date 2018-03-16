@@ -223,12 +223,12 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.src_code
         assert isinstance(task.header, TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
-        assert task.header.task_owner_key_id == ''
-        assert task.header.task_owner_address == ''
-        assert task.header.task_owner_port == 0
+        assert task.header.task_owner.key == ''
+        assert task.header.task_owner.pub_addr == ''
+        assert task.header.task_owner.pub_port == 0
         assert isinstance(task.header.task_owner, Node)
         assert task.header.subtask_timeout == 1200
-        assert task.header.node_name == 'some_node'
+        assert task.header.task_owner.node_name == 'some_node'
         assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0

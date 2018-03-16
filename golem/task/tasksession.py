@@ -832,13 +832,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
         reasons = message.CannotComputeTask.REASON
-        if header.task_owner_key_id != self.key_id\
-                or header.task_owner.key != self.key_id:
+        if header.task_owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
-        if not tcpnetwork.SocketAddress.is_proper_address(
-                header.task_owner_address,
-                header.task_owner_port):
+
+        address_valid = tcpnetwork.SocketAddress.is_proper_address(
+            header.task_owner.pub_addr,
+            header.task_owner.pub_port)
+
+        if not address_valid:
             self.err_msg = reasons.WrongAddress
             return False
         return True

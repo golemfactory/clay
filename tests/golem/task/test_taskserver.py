@@ -34,15 +34,15 @@ from golem.tools.testwithreactor import TestDatabaseWithReactor
 def get_example_task_header():
     return {
         "task_id": "uvw",
-        "node_name": "ABC",
         "environment": "DEFAULT",
         "task_owner": dict(
+            key="key",
+            node_name="ABC",
             prv_port=40103,
-            prv_addr='10.0.0.10'
+            prv_addr='10.0.0.10',
+            pub_port=40103,
+            pub_addr='1.2.3.4'
         ),
-        "task_owner_port": 10101,
-        "task_owner_key_id": "key",
-        "task_owner_address": "10.10.10.10",
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 20,
@@ -123,7 +123,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         self.assertEqual(ts.request_task(), "uvw")
         assert ts.remove_task_header("uvw")
 
-        task_header["task_owner_port"] = 0
+        task_header["task_owner"]["pub_port"] = 0
         task_header["task_id"] = "uvw2"
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
@@ -206,9 +206,9 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         self.assertEqual(wtr.computing_time, 40)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner_address, "10.10.10.10")
-        self.assertEqual(wtr.owner_port, 10101)
-        self.assertEqual(wtr.owner_key_id, "key")
+        self.assertEqual(wtr.owner.pub_addr, "10.10.10.10")
+        self.assertEqual(wtr.owner.pub_port, 10101)
+        self.assertEqual(wtr.owner.key, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
         ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
@@ -299,7 +299,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
             self.assertEqual(raised.exception.message, "Invalid signature")
             self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
-        task_header["task_owner_key_id"] = keys_auth_2.key_id
+        task_header["task_owner"]["key"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
@@ -308,7 +308,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
 
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz_2"
-        task_header["task_owner_key_id"] = keys_auth_2.key_id
+        task_header["task_owner"]["key"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
@@ -561,7 +561,6 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         # Try sending mocked task_result
         wtr = MagicMock(
             owner=node,
-            owner_key_id='owner_key_id'
         )
         ts._add_pending_request(
             TASK_CONN_TYPES['task_result'],

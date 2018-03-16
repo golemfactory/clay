@@ -1,4 +1,6 @@
 from unittest import TestCase
+
+from golem.network.p2p.node import Node
 from golem.task.taskarchiver import TaskArchiver, Archive, ArchTask, TimeInterval
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.task.taskbase import TaskHeader
@@ -33,8 +35,9 @@ class TestTaskArchiver(TestCase):
             last_checking = time.time()
         if not deadline:
             deadline = timeout_to_deadline(36000)
-        ret = TaskHeader("ABC", str(uuid4()), "10.10.10.10", 10101, "key",
-                         "DEFAULT", max_price=max_price, deadline=deadline,
+
+        ret = TaskHeader(str(uuid4()), "DEFAULT", task_owner=Node(),
+                         max_price=max_price, deadline=deadline,
                          min_version=min_version)
         if last_checking:
             ret.last_checking = last_checking
