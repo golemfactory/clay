@@ -1,12 +1,11 @@
 import logging
-import netifaces
 
 import os
+import re
 import socket
 
 import ipaddress
-
-import re
+import netifaces
 
 from golem.network.stun import pystun as stun
 
