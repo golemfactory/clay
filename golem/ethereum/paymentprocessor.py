@@ -1,6 +1,5 @@
 import calendar
 import logging
-import sys
 import time
 import requests
 from datetime import datetime
@@ -69,7 +68,6 @@ class PaymentProcessor(LoopingCallService):
         self._awaiting = []  # type: List[Any] # Awaiting individual payments
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__faucet = faucet
-        self.deadline = sys.maxsize
         self.load_from_db()
         self._last_gnt_update = None
         self._last_eth_update = None
@@ -151,7 +149,7 @@ class PaymentProcessor(LoopingCallService):
                     .where(Payment.status == PaymentStatus.awaiting):
                 self.add(awaiting_payment)
 
-    def add(self, payment, deadline=DEFAULT_DEADLINE):
+    def add(self, payment):
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError(
                 "Invalid payment status: {}".format(payment.status))
@@ -169,8 +167,12 @@ class PaymentProcessor(LoopingCallService):
                     payment.save()
 
             self._awaiting.append(payment)
-            # TODO: Optimize by checking the time once per service update.
-            self.deadline = min(self.deadline, ts + deadline)
+            # Insertion sort by processed_ts
+            idx = len(self._awaiting) - 1
+            while idx > 0 and self._awaiting[idx - 1].processed_ts > \
+                    self._awaiting[idx].processed_ts:
+                self._awaiting[idx - 1], self._awaiting[idx] = \
+                    self._awaiting[idx], self._awaiting[idx - 1]
 
         self.__gntb_reserved += payment.value
         self.__eth_reserved += self.ETH_PER_PAYMENT
@@ -192,7 +194,6 @@ class PaymentProcessor(LoopingCallService):
             self,
             payments: List[Payment],
             closure_time: int) -> Tuple[List[Payment], List[Payment]]:
-        payments.sort(key=lambda p: p.processed_ts)
         gntb_balance = self.__gntb_balance
         eth_balance, _ = self.eth_balance()
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
@@ -220,8 +221,9 @@ class PaymentProcessor(LoopingCallService):
                 return False
 
             now = get_timestamp()
-            if self.deadline > now:
-                log.info("Next sendout in {} s".format(self.deadline - now))
+            deadline = self._awaiting[0].processed_ts + self.DEFAULT_DEADLINE
+            if deadline > now:
+                log.info("Next sendout in {} s".format(deadline - now))
                 return False
 
             if self._gnt_converter.is_converting():
