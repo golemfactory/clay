@@ -1,5 +1,6 @@
+import functools
 import logging
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
@@ -103,8 +104,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _start_session(self) -> Optional[Deferred]:
         if not self.rpc_router:
-            self._error("RPC router is not available")
-            return None
+            return self._stop_on_error("rpc", "RPC router is not available")
 
         self.rpc_session = Session(self.rpc_router.address,
                                    cert_manager=self.rpc_router.cert_manager,
@@ -132,8 +132,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _setup_client(self, gathered_results: List) -> None:
         if not self.rpc_session:
-            self._error("RPC session is not available")
-            return
+            return self._stop_on_error("rpc", "RPC session is not available")
 
         keys_auth = gathered_results[0]
         self.client = self._client_factory(keys_auth)
@@ -150,8 +149,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _run(self, *_) -> None:
         if not self.client:
-            self._error("Client object is not available")
-            return
+            return self._stop_on_error("client", "Client is not available")
 
         self._setup_apps()
         self.client.sync()
@@ -165,8 +163,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _setup_apps(self) -> None:
         if not self.client:
-            self._error("Client object is not available")
-            return
+            return self._stop_on_error("client", "Client is not available")
 
         apps_manager = AppsManager()
         apps_manager.load_apps()
@@ -176,9 +173,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self.client.environments_manager.add_environment(env)
 
     def _error(self, msg: str) -> Callable:
-        def log_error_and_stop_reactor(err):
-            if self._reactor.running:
-                logger.error("Stopping because of %s error: %s", msg, err)
-                self._reactor.callFromThread(self._reactor.stop)
+        return functools.partial(self._stop_on_error, msg)
 
-        return log_error_and_stop_reactor
+    def _stop_on_error(self, msg: str, err: Any) -> None:
+        if not self._reactor.running:
+            return
+
+        logger.error("Stopping because of %r error: %r", msg, err)
+        self._reactor.callFromThread(self._reactor.stop)

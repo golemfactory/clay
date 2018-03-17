@@ -3,6 +3,7 @@ from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
 from twisted.internet.defer import Deferred
+from types import FunctionType
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -592,3 +593,41 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.start.call_count == 1
         self.node.client.connect.assert_called_with(parsed_peer[0])
         assert reactor.addSystemEventTrigger.call_count == 2
+
+    @patch('golem.node.Session')
+    def test_start_session(self, session, *_):
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+        self.node.rpc_router = Mock()
+
+        self.node._start_session()
+        assert self.node.rpc_session.connect.called
+
+    def test_start_session_failure(self, reactor, *_):
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+        self.node.rpc_router = None
+
+        assert self.node._start_session() is None
+        reactor.callFromThread.assert_called_with(reactor.stop)
+
+    def test_error(self, reactor, *_):
+        import functools
+        reactor.running = True
+
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+
+        error = self.node._error('any')
+        assert not reactor.callFromThread.called
+        assert isinstance(self.node._error('any'), functools.partial)
+
+        error_result = error('error message')
+        assert reactor.callFromThread.called
+        assert error_result is None
