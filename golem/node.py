@@ -98,11 +98,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 
         # pylint: disable=protected-access
-        deferred = rpc._start_node(rpc.options, self._reactor)
+        deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
     def _start_session(self) -> Deferred:
-        self.rpc_session = Session(self.rpc_router.address)  # type: ignore
+        self.rpc_session = Session(self.rpc_router.address,  # type: ignore
+                                   cert_manager=self.rpc_router.cert_manager,
+                                   use_ipv6=self._config_desc.use_ipv6)
         return self.rpc_session.connect()
 
     def _start_keys_auth(self) -> Deferred:
