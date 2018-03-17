@@ -486,7 +486,7 @@ class TestOptNode(TempDirFixture):
 
         # then
         assert self.node.rpc_router
-        assert self.node.rpc_router._start_node.called  # noqa pylint: disable=no-member
+        assert self.node.rpc_router.start.called  # noqa pylint: disable=no-member
         assert reactor.addSystemEventTrigger.called
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
