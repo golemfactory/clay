@@ -7,7 +7,8 @@ from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc.cert import CertificateManager
-from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM
+from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
+    CROSSBAR_PORT
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
@@ -23,8 +24,8 @@ class CrossbarRouter(object):
     serializers = ['msgpack']
 
     def __init__(self,  # pylint: disable=too-many-arguments
-                 host: str = 'localhost',
-                 port: int = 61000,
+                 host: str = CROSSBAR_HOST,
+                 port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  datadir: Optional[str] = None,
                  crossbar_dir: str = CROSSBAR_DIR,
