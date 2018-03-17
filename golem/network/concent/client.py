@@ -1,4 +1,5 @@
 import base64
+import calendar
 import datetime
 import logging
 import queue
@@ -68,6 +69,23 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     :return: Raw reply message, None or exception
     :rtype: Bytes|None
     """
+
+    logger.debug('send_to_concent(): Updating timestamp msg %r', msg)
+    # Delayed messages are prepared before they're needed
+    # and only sent to Concent if they're not cancelled
+    # before. This can cause a situation where previously
+    # prepared message will be too old to send when enqueued.
+    # Also messages with no delay could have stayed in queue
+    # long enough to eat significant amount of Message Transport Time
+    # SEE: golem_messages.constants
+    header = msg_datastructures.MessageHeader(
+        msg.header.type_,
+        # Using this tricky approach instead of time.time()
+        # because of AppVeyor issues.
+        calendar.timegm(time.gmtime()),
+        msg.header.encrypted,
+    )
+    msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
     data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
@@ -154,7 +172,7 @@ class ConcentClientService(threading.Thread):
         self.keys_auth = keys_auth
         # self.private_key = private_key
         # self.public_key = public_key
-        self._enabled = enabled  # FIXME: remove
+        self.enabled = enabled
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
@@ -226,6 +244,12 @@ class ConcentClientService(threading.Thread):
             msg_cls,
             DEFAULT_MSG_LIFETIME
         )
+        if (delay is not None) and delay < datetime.timedelta(seconds=0):
+            logger.warning(
+                '[CONCENT] Negative delay for %r. Assuming default...',
+                msg,
+            )
+            delay = None
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
@@ -268,7 +292,7 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        if not self._enabled:
+        if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
 
@@ -295,7 +319,7 @@ class ConcentClientService(threading.Thread):
             self.react_to_concent_message(res)
 
     def receive(self) -> None:
-        if not self._enabled:
+        if not self.enabled:
             return
 
         try:
@@ -332,6 +356,7 @@ class ConcentClientService(threading.Thread):
         logger.debug('Concent grace time: %r', self._grace_time)
         time.sleep(self._grace_time)
 
-    def _enqueue(self, req):
+    def _enqueue(self, req: ConcentRequest):
+        logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)

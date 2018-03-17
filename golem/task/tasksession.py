@@ -1,13 +1,13 @@
 import functools
 import logging
 import os
-import pickle
 import time
 
 from golem_messages import message
-from golem_messages.helpers import maximum_download_time
+from golem_messages import helpers as msg_helpers
 
 from golem.core.common import HandleAttributeError
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
@@ -18,7 +18,6 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.resource.resource import decompress_dir
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -68,8 +67,7 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
         )
 
 
-class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
-                  history.IMessageHistoryProvider):
+class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.SafeProtocol
@@ -94,8 +92,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
-        # key of a peer that communicates with us through middleman session
-        self.asking_node_key_id = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -148,37 +144,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     ###################################
     # IMessageHistoryProvider methods #
     ###################################
-
-    def message_to_model(self, msg, local_role, remote_role):
-        task, subtask = self._task_subtask_from_message(msg, local_role)
-
-        return dict(
-            task=task,
-            subtask=subtask,
-            node=self.key_id,
-            msg_date=time.time(),
-            msg_cls=msg.__class__.__name__,
-            msg_data=pickle.dumps(msg),
-            local_role=local_role,
-            remote_role=remote_role,
-        )
-
-    def _task_subtask_from_message(self, msg, local_role):
-        task, subtask = None, None
-
-        if hasattr(msg, 'task_to_compute'):
-            msg = msg.task_to_compute
-        if isinstance(msg, message.TaskToCompute):
-            definition = msg.compute_task_def
-            if definition:
-                task = definition.get('task_id')
-                subtask = definition.get('subtask_id')
-        else:
-            task = getattr(msg, 'task_id', None)
-            subtask = getattr(msg, 'subtask_id', None)
-            task = task or self._subtask_to_task(subtask, local_role)
-
-        return task, subtask
 
     def _subtask_to_task(self, sid, local_role):
         if not self.task_manager:
@@ -336,6 +301,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         )
 
         report_computed_task.task_to_compute = task_to_compute
+
+        history.add(
+            msg=report_computed_task,
+            node_id=self.key_id,
+            local_role=Actor.Provider,
+            remote_role=Actor.Requestor,
+        )
         self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
@@ -343,7 +315,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # the Requestor safely
         if not task_to_compute.concent_enabled:
             return
-
         # we're preparing the `ForceReportComputedTask` here and
         # scheduling the dispatch of that message for later
         # (with an implicit delay in the concent service's `submit` method).
@@ -352,12 +323,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # the `ReportComputedTask` sent above before the delay elapses,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
-        msg = message.ForceReportComputedTask(
+        delayed_forcing_msg = message.ForceReportComputedTask(
             report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
-        logger.debug('[CONCENT] ForceReport: %s', msg)
-        self.concent_service.submit_task_message(task_result.subtask_id, msg)
+        logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
+        self.concent_service.submit_task_message(
+            task_result.subtask_id,
+            delayed_forcing_msg,
+        )
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -461,23 +435,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
-                concent_enabled=True,
+                concent_enabled=self.concent_service.enabled,
             )
-            history_service = history.MessageHistoryService.instance
-            history_dict = self.message_to_model(
+            history.add(
                 msg=msg,
+                node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            if not (history_service and history_dict):
-                logger.error(
-                    "Can't remember %s. history_service: %r history_dict: %r",
-                    msg,
-                    history_service,
-                    history_dict,
-                )
-                return
-            history_service.add(history_dict)
             self.send(msg)
         elif wait:
             self.send(message.WaitingForResults())
@@ -634,7 +599,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         # in the success handler
 
         self.concent_service.submit_task_message(
-            subtask_id, fgtr, maximum_download_time(msg.size))
+            subtask_id, fgtr, msg_helpers.maximum_download_time(msg.size))
 
         self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(
@@ -671,11 +636,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
-        subtask_id = msg.task_to_compute.compute_task_def.get('subtask_id')
-        if not self.check_requestor_for_subtask(subtask_id):
+        if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_accepted(subtask_id, msg.payment_ts)
+        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
+        self.concent_service.cancel_task_message(
+            msg.subtask_id,
+            'ForceSubtaskResults',
+        )
         self.dropped()
 
     @history.provider_history
@@ -686,6 +654,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             return
         self.task_server.subtask_rejected(
             subtask_id=subtask_id,
+        )
+        self.concent_service.cancel_task_message(
+            subtask_id,
+            'ForceSubtaskResults',
         )
         self.dropped()
 
@@ -738,6 +710,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
 
+        if not KeysAuth.is_pubkey_difficult(
+                self.key_id,
+                self.task_server.config_desc.key_difficulty):
+            logger.info(
+                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
+                msg.node_info.node_name, self.address, self.port,
+                KeysAuth.get_difficulty(self.key_id),
+                self.task_server.config_desc.key_difficulty)
+            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            return
+
         if send_hello:
             self.send_hello()
         self.send(
@@ -754,8 +737,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id, )
-            for msg in self.msgs_to_send:
-                self.send(msg)
+            for msg_ in self.msgs_to_send:
+                self.send(msg_)
             self.msgs_to_send = []
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
@@ -766,16 +749,43 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin,
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
-        if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.debug("Requestor '%r' accepted the computed subtask '%r' "
-                         "report", self.key_id, msg.subtask_id)
-
-            self.concent_service.cancel_task_message(
-                msg.subtask_id, 'ForceReportComputedTask')
-        else:
+        sender_is_owner = keeper.check_task_owner_by_subtask(
+            self.key_id,
+            msg.subtask_id,
+        )
+        if not sender_is_owner:
             logger.warning("Requestor '%r' acknowledged a computed task report "
                            "of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
+            return
+
+        logger.debug("Requestor '%r' accepted the computed subtask '%r' "
+                     "report", self.key_id, msg.subtask_id)
+
+        self.concent_service.cancel_task_message(
+            msg.subtask_id, 'ForceReportComputedTask')
+
+        delayed_forcing_msg = message.concents.ForceSubtaskResults(
+            ack_report_computed_task=msg,
+        )
+        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
+        report_computed_task = get_task_message(
+            'ReportComputedTask',
+            msg.task_id,
+            msg.subtask_id,
+        )
+        if report_computed_task is None:
+            logger.warning(
+                '[CONCENT] Can`t delay send %r.'
+                ' ForceReportComputedTask not found; delay unknown',
+                delayed_forcing_msg,
+            )
+            return
+        self.concent_service.submit_task_message(
+            subtask_id=msg.subtask_id,
+            msg=delayed_forcing_msg,
+            delay=msg_helpers.maximum_results_patience(report_computed_task),
+        )
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
