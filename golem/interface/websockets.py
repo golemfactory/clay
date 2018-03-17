@@ -11,7 +11,7 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    def __init__(self, cli,
+    def __init__(self, cli,  # pylint: disable=too-many-arguments
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,

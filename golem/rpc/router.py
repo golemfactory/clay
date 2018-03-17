@@ -1,7 +1,7 @@
 import logging
 import os
 from collections import namedtuple
-from typing import Iterable
+from typing import Iterable, Optional
 
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
@@ -22,14 +22,14 @@ class CrossbarRouter(object):
 
     serializers = ['msgpack']
 
-    def __init__(self,
+    def __init__(self,  # pylint: disable=too-many-arguments
                  host: str = 'localhost',
                  port: int = 61000,
                  realm: str = CROSSBAR_REALM,
-                 datadir: str = None,
+                 datadir: Optional[str] = None,
                  crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
-                 ssl: bool = True):
+                 ssl: bool = True) -> None:
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -38,7 +38,7 @@ class CrossbarRouter(object):
 
         os.makedirs(self.working_dir, exist_ok=True)
         if not os.path.isdir(self.working_dir):
-            raise IOError("'%r' is not a directory", self.working_dir)
+            raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
         self.address = WebSocketAddress(host, port, realm, ssl)
@@ -73,7 +73,7 @@ class CrossbarRouter(object):
 
     @inlineCallbacks
     def stop(self):
-        yield self.node._controller.shutdown()
+        yield self.node._controller.shutdown()  # noqa # pylint: disable=protected-access
 
     def _build_options(self, argv=None, config=None):
         return CrossbarRouterOptions(
@@ -91,23 +91,14 @@ class CrossbarRouter(object):
                       realm: str = CROSSBAR_REALM,
                       enable_webstatus: bool = False):
 
-        ws_transport = {
-            'type': 'websocket',
-            'serializers': serializers,
-            'endpoint': {
-                'type': 'tcp',
-                'interface': str(address.host),
-                'port': address.port,
-            },
-            'url': str(address),
-            'options': {
-                'allowed_origins': str(address.host),
-                'enable_webstatus': enable_webstatus,
-            }
+        ws_endpoint = {
+            'type': 'tcp',
+            'interface': str(address.host),
+            'port': address.port,
         }
 
         if address.ssl:
-            ws_transport["endpoint"]["tls"] = {
+            ws_endpoint["tls"] = {
                 "key": cert_manager.key_path,
                 "certificate": cert_manager.cert_path,
                 "dhparam": cert_manager.dh_path,
@@ -125,7 +116,16 @@ class CrossbarRouter(object):
                 'options': {
                     'title': 'Golem'
                 },
-                'transports': [ws_transport],
+                'transports': [{
+                    'type': 'websocket',
+                    'serializers': serializers,
+                    'endpoint': ws_endpoint,
+                    'url': str(address),
+                    'options': {
+                        'allowed_origins': str(address.host),
+                        'enable_webstatus': enable_webstatus,
+                    }
+                }],
                 'components': [],
                 "realms": [{
                     "name": realm,

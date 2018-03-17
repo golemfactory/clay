@@ -101,8 +101,12 @@ class Node(object):  # pylint: disable=too-few-public-methods
         deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
-    def _start_session(self) -> Deferred:
-        self.rpc_session = Session(self.rpc_router.address,  # type: ignore
+    def _start_session(self) -> Optional[Deferred]:
+        if not self.rpc_router:
+            self._error("RPC router is not available")
+            return None
+
+        self.rpc_session = Session(self.rpc_router.address,
                                    cert_manager=self.rpc_router.cert_manager,
                                    use_ipv6=self._config_desc.use_ipv6)
         return self.rpc_session.connect()

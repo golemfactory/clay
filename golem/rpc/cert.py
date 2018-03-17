@@ -51,6 +51,7 @@ class CertificateManager:
 
     @staticmethod
     def _generate_dh_params(output_path: str, bits: int = 2048) -> None:
+        # pylint: disable=no-member
         logger.info("Generating DH key exchange params: %r", output_path)
 
         dh = lib.DH_new()
@@ -100,6 +101,6 @@ class CertificateManager:
         cert_subject.C = entity.pop('C', 'CH')
         cert_subject.ST = entity.pop('ST', '-')
         cert_subject.L = entity.pop('L', '-')
-        cert_subject.O = entity.pop('O', '-')
+        cert_subject.O = entity.pop('O', '-')  # noqa
         cert_subject.OU = entity.pop('OU', '-')
         cert_subject.CN = entity.pop('CN', X509_COMMON_NAME)

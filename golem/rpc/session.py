@@ -5,7 +5,7 @@ from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
-from twisted.internet import ssl
+from twisted.internet import ssl as twisted_ssl
 from twisted.internet._sslverify import optionsForClientTLS  # noqa # pylint: disable=protected-access
 from twisted.internet.defer import inlineCallbacks, Deferred
 from twisted.internet.endpoints import (
@@ -52,7 +52,7 @@ class WebSocketAddress(RPCAddress):
 
 class Session(ApplicationSession):
 
-    def __init__(self, address, methods=None, events=None,
+    def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
                  cert_manager=None, use_ipv6=False) -> None:
 
         self.address = address
@@ -106,7 +106,7 @@ class Session(ApplicationSession):
         if self.address.ssl:
             if self._cert_manager:
                 cert_data = self._cert_manager.read_certificate()
-                authority = ssl.Certificate.loadPEM(cert_data)
+                authority = twisted_ssl.Certificate.loadPEM(cert_data)
             else:
                 authority = None
 
