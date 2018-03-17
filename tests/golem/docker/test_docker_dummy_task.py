@@ -127,10 +127,12 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         # Create the computing node
         self.node = Node(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             use_docker_manager=False,
         )
-        self.node.client = self.node._client_factory(Mock())
+        with mock.patch('golem.client.EthereumTransactionSystem'):
+            self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
 
@@ -240,10 +242,13 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         return new_result
 
-    def test_dummy_real_task(self):
+    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    def test_dummy_real_task(self, mock_dtt):
+        mock_dtt.return_value = 1.0
 
         task = self._test_task()
         ctd = task.query_extra_data(1.0).ctd
+
         print(ctd)
         print(type(ctd))
 

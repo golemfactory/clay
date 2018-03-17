@@ -1,6 +1,10 @@
+# pylint: disable= bad-whitespace
+# flake8: noqa
+
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
+    is_mainnet=             'golem.mainnet',
 
     get_settings=           'env.opts',
     update_settings=        'env.opts.update',
@@ -17,7 +21,6 @@ CORE_METHOD_MAP = dict(
     activate_hw_preset=     'env.hw.preset.activate',
 
     use_ranking=            'env.use_ranking',
-    use_transaction_system= 'env.use_transaction_system',
 
     get_key_id=             'crypto.keys.id',
     get_public_key=         'crypto.keys.pub',

@@ -9,6 +9,7 @@ from golem_messages import message
 
 from golem import testutils
 from golem.model import Actor
+from golem.network import history
 from golem.network.concent import received_handler
 from golem.network.concent.handlers_library import library
 from tests.factories import messages as msg_factories
@@ -127,6 +128,7 @@ class TaskServerMessageHandlerTestCase(
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
         )
+        history.MessageHistoryService()
         # received_handler.TaskServerMessageHandler is instantiated
         # in TaskServer.__init__
 
@@ -213,5 +215,22 @@ class TaskServerMessageHandlerTestCase(
             .assert_called_once_with(
                 msg.report_computed_task.subtask_id,
                 returned_msg)
+
+    @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
+    def test_force_get_task_result_failed(self, tcf):
+        fgtrf = msg_factories.ForceGetTaskResultFailed()
+        library.interpret(fgtrf)
+
+        msg = history.MessageHistoryService.get_sync_as_message(
+            task=fgtrf.task_id,
+            subtask=fgtrf.subtask_id,
+            node=fgtrf.task_to_compute.provider_id,
+            msg_cls='ForceGetTaskResultFailed',
+        )
+
+        self.assertIsInstance(msg, message.concents.ForceGetTaskResultFailed)
+        tcf.assert_called_once_with(
+            fgtrf.subtask_id,
+            'Error downloading the task result through the Concent')
 
 # pylint: enable=no-self-use

@@ -76,12 +76,15 @@ class AddGetResources(TempDirFixture, LogTestCase):
         resource_manager = cls.__new__(cls)
         resource_manager.__init__(dir_manager)
 
-        client = Client(datadir=dir_manager.root_path,
-                        config_desc=ClientConfigDescriptor(),
-                        keys_auth=mock.Mock(),
-                        connect_to_known_hosts=False,
-                        use_docker_manager=False,
-                        use_monitor=False)
+        with mock.patch('golem.client.EthereumTransactionSystem'):
+            client = Client(datadir=dir_manager.root_path,
+                            app_config=mock.Mock(),
+                            config_desc=ClientConfigDescriptor(),
+                            keys_auth=mock.Mock(),
+                            connect_to_known_hosts=False,
+                            use_docker_manager=False,
+                            use_monitor=False)
+
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
                                                     mock.Mock(), client)
