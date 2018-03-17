@@ -102,6 +102,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.rpc.cert': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.resources': {
             'level': 'INFO',
             'propagate': True,
