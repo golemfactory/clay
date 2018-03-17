@@ -1198,7 +1198,7 @@ class DoWorkService(LoopingCallService):
             try:
                 self._client.task_server.sync_sessions()
             except Exception:  # pylint: disable=broad-except
-                log.exception("sync_sessions failed")
+                logger.exception("sync_sessions failed")
 
         if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
             try:
