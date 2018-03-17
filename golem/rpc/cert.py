@@ -35,15 +35,20 @@ class CertificateManager:
             self._generate_key_pair(self.key_path)
 
         if not os.path.exists(self.cert_path):
-            with open(self.key_path, 'r') as key_file:
-                buffer = key_file.read()
-
-            key = crypto.load_privatekey(crypto.FILETYPE_PEM, buffer)
+            key = self.read_key()
             self._create_and_sign_certificate(key, self.cert_path)
-            del key, buffer
+            del key
 
         import gc
         gc.collect()
+
+    def read_key(self) -> crypto.PKey:
+        with open(self.key_path, 'r') as key_file:
+            buffer = key_file.read()
+            try:
+                return crypto.load_privatekey(crypto.FILETYPE_PEM, buffer)
+            finally:
+                del buffer
 
     def read_certificate(self) -> bytes:
         with open(self.cert_path, "rb") as cert_file:
