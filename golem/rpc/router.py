@@ -92,9 +92,18 @@ class CrossbarRouter(object):
                       realm: str = CROSSBAR_REALM,
                       enable_webstatus: bool = False):
 
+        allowed_origins = [
+            address.host,
+            address.host + ':*',
+            'http://' + address.host,
+            'http://' + address.host + ':*',
+            'https://' + address.host,
+            'https://' + address.host + ':*',
+        ]
+
         ws_endpoint = {
             'type': 'tcp',
-            'interface': str(address.host),
+            'interface': address.host,
             'port': address.port,
         }
 
@@ -123,7 +132,7 @@ class CrossbarRouter(object):
                     'endpoint': ws_endpoint,
                     'url': str(address),
                     'options': {
-                        'allowed_origins': str(address.host),
+                        'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
                     }
                 }],
