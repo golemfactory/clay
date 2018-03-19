@@ -815,7 +815,8 @@ class Client(HardwarePresetsMixin):
             return self.transaction_system.get_incoming_payments()
         return []
 
-    def withdraw(self, _currency, _amount):
+    def withdraw(self, _amount, _sendTo, _type):
+        print("MONEY WITHDRAWED:", _amount, _sendTo, _type)
         return True
 
     def get_task_cost(self, task_id):
