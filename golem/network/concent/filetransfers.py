@@ -58,6 +58,9 @@ class ConcentFiletransferService(LoopingCallService):
                  success: typing.Optional[typing.Callable] = None,
                  error: typing.Optional[typing.Callable] = None):
 
+        if not self.running:
+            logger.warning("Request scheduled when service is not started")
+
         request = ConcentFileRequest(
             file_path, file_transfer_token, success=success, error=error)
 
@@ -112,7 +115,7 @@ class ConcentFiletransferService(LoopingCallService):
     def download(self, request):
         uri = self._get_target_uri(request.file_transfer_token)
         headers = self._get_auth_headers(request.file_transfer_token)
-        response = request.get(uri, stream=True, headers=headers)
+        response = requests.get(uri, stream=True, headers=headers)
         with open(request.file_path, mode='wb') as f:
             for chunk in response.iter_content(chunk_size=None):
                 f.write(chunk)
