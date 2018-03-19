@@ -272,7 +272,7 @@ class FrameRenderingTask(RenderingTask):
                 with Image.open(preview_file_path) as img:
                     result = ImageChops.add(img, img_offset)
                     img_offset.close()
-                    return result 
+                    return result
             else:
                 return Image.open(preview_file_path)
         except Exception as err:
