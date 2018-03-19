@@ -557,7 +557,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
         with freeze_time(timestamp_to_datetime(2)):
             self.pp.sendout()
-            self.sci.batch_transfer.assert_called_with([p2, p3], 2)
+            self.sci.batch_transfer.assert_called_with([p3, p2], 2)
 
 
 class FaucetTest(unittest.TestCase):
