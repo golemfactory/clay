@@ -11,6 +11,7 @@ from golem.core.service import LoopingCallService
 
 logger = logging.getLogger(__name__)
 
+
 class ConcentFileRequest():
     def __init__(self,
                  file_path: str,
@@ -51,10 +52,10 @@ class ConcentFiletransferService(LoopingCallService):
         logger.debug("Concent Filestransfer Service stopped")
 
     def transfer(self,
-               file_path: str,
-               file_transfer_token: FileTransferToken,
-               success: typing.Callable = None,
-               error: typing.Callable = None):
+                 file_path: str,
+                 file_transfer_token: FileTransferToken,
+                 success: typing.Callable = None,
+                 error: typing.Callable = None):
 
         request = ConcentFileRequest(
             file_path, file_transfer_token, success=success, error=error)
