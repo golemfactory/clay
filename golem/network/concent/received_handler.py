@@ -88,6 +88,13 @@ def on_force_report_computed_task_response(msg, **_):
     raise RuntimeError("Illegal condition caused by {}".format(msg))
 
 
+@library.register_handler(message.concents.ForceSubtaskResultsRejected)
+def on_force_subtask_results_rejected(msg):
+    # After #2349 we could reschedule ForceSubtaskResults message
+    # if reason is RequestPremature (because subtask_id would be known)
+    logger.warning("[CONCENT] %r", msg)
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer):
