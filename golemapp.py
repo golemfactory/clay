@@ -240,6 +240,8 @@ def generate_rpc_certificate(datadir: str):
     from golem.rpc.common import CROSSBAR_DIR
 
     cert_dir = os.path.join(datadir, CROSSBAR_DIR)
+    os.makedirs(cert_dir, exist_ok=True)
+
     cert_manager = CertificateManager(cert_dir)
     cert_manager.generate_if_needed()
 
