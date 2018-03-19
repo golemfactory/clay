@@ -287,7 +287,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service.keys_auth._private_key,
             self.concent_service.keys_auth.public_key,
         )
-        react_mock.assert_called_once_with(data)
+        react_mock.assert_called_once_with(data, response_to=self.msg)
 
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'
