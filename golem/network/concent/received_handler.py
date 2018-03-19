@@ -85,7 +85,7 @@ def on_force_report_computed_task_response(msg):
         )
         return
 
-    raise RuntimeError("Impossible condition caused by {}".format(msg))
+    raise RuntimeError("Illegal condition caused by {}".format(msg))
 
 
 class TaskServerMessageHandler():
@@ -221,7 +221,7 @@ class TaskServerMessageHandler():
                 subtask_id=msg.subtask_id,
             )
         else:
-            raise RuntimeError("Impossible condition caused by {}".format(msg))
+            raise RuntimeError("Illegal condition caused by {}".format(msg))
 
         history.add(
             msg=sub_msg,
