@@ -35,7 +35,7 @@ class TaskCollectorBuilder:
 
     def __build_on_windows(self):
         """ Check if taskcollector exists """
-        # @todo check how to call cl.exe from cmd and try to build
+        # @todo check how to call cl.exe from cmd and try to build. issue #2400
         if not isfile("{}.exe".format(self.build_path)):
             return \
                 """
