@@ -7,7 +7,7 @@ from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 
 from golem.ethereum.node import log, NodeProcess, \
-    NODE_LIST, get_public_nodes
+    TESTNET_NODE_LIST, get_public_nodes
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
@@ -77,8 +77,8 @@ class TestPublicNodeList(unittest.TestCase):
         with patch('requests.get', lambda *_: None):
             public_nodes = get_public_nodes(mainnet=False)
 
-        assert public_nodes is not NODE_LIST
-        assert all(n in NODE_LIST for n in public_nodes)
+        assert public_nodes is not TESTNET_NODE_LIST
+        assert all(n in TESTNET_NODE_LIST for n in public_nodes)
 
 
 class EthereumClientNodeTest(TempDirFixture):
@@ -149,3 +149,9 @@ class EthereumClientNodeTest(TempDirFixture):
 
         entries = client.get_filter_changes(filter_id)
         assert not entries
+
+    def test_different_nodes(self):
+        mainnet_nodes = get_public_nodes(mainnet=True)
+        testnet_nodes = get_public_nodes(mainnet=False)
+        assert all(n not in mainnet_nodes for n in testnet_nodes)
+        assert all(n not in testnet_nodes for n in mainnet_nodes)

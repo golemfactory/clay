@@ -294,6 +294,7 @@ class Client(HardwarePresetsMixin):
             self.node,
             self.config_desc,
             self.keys_auth,
+            self.mainnet,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
 
