@@ -82,10 +82,10 @@ class ConcentFiletransferService(LoopingCallService):
                 response = self.upload(request)
             elif request.file_transfer_token.is_download:
                 response = self.download(request)
-        except Exception as e:
+        except Exception as e:  # noqa pylint:disable=broad-except
             if request.error:
                 request.error(e)
-                return
+                return None
             else:
                 raise
 

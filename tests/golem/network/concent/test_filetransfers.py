@@ -1,7 +1,8 @@
 import base64
-import mock
 import queue
 import unittest
+
+import mock
 
 from golem_messages.message.concents import FileTransferToken
 
@@ -177,7 +178,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         )
 
         upload_address = ftt.storage_cluster_address + 'upload' + \
-                         ftt.files[0].get('path')
+            ftt.files[0].get('path')
 
         self.cfs.upload(request)
 
@@ -200,7 +201,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         )
 
         download_address = ftt.storage_cluster_address + 'download' + \
-                           ftt.files[0].get('path')
+            ftt.files[0].get('path')
 
         self.cfs.download(request)
 
