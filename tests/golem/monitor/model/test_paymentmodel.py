@@ -12,6 +12,10 @@ random = Random(__name__)
 
 class TestExpenditureModel(MonitorTestBaseClass):
 
+    def setUp(self):
+        super().setUp()
+        self.monitor.config['SEND_PAYMENT_INFO'] = True
+
     def test_channel(self):
         addr = str(uuid.UUID(int=random.getrandbits(128)))
         value = random.randint(1, 10 ** 20)
@@ -33,6 +37,10 @@ class TestExpenditureModel(MonitorTestBaseClass):
 
 
 class TestIncomeModel(MonitorTestBaseClass):
+
+    def setUp(self):
+        super().setUp()
+        self.monitor.config['SEND_PAYMENT_INFO'] = True
 
     def test_channel(self):
         addr = str(uuid.UUID(int=random.getrandbits(128)))

@@ -11,6 +11,10 @@ random = Random(__name__)
 
 class TestBalanceModel(MonitorTestBaseClass):
 
+    def setUp(self):
+        super().setUp()
+        self.monitor.config['SEND_PAYMENT_INFO'] = True
+
     def test_channel(self):
         eth_balance = random.randint(1, 10 ** 20)
         gnt_balance = random.randint(1, 10 ** 20)
