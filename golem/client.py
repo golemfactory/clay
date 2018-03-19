@@ -92,10 +92,12 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
+            use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None) -> None:
 
+        self.mainnet = mainnet
         self.datadir = datadir
         self.__lock_datadir()
         self.lock = Lock()
@@ -132,8 +134,9 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
+        self.use_concent = use_concent
         self.concent_service = ConcentClientService(
-            enabled=False,
+            enabled=self.use_concent,
             keys_auth=self.keys_auth,
         )
 
@@ -1122,6 +1125,9 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
+
+    def is_mainnet(self) -> bool:
+        return self.mainnet
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
