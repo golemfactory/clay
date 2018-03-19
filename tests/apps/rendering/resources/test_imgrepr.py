@@ -31,6 +31,9 @@ class TImgRepr(ImgRepr):
     def to_pil(self):
         super(TImgRepr, self).to_pil()
 
+    def close(self):
+        super(TImgRepr, self).close()
+
 
 class TestImgRepr(unittest.TestCase, PEP8MixIn):
     PEP8_FILES = [
