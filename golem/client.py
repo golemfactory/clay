@@ -238,7 +238,7 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable
+    # TODO: re-enable. issue #2398
     def sync(self):
         pass
 

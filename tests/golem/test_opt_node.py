@@ -352,7 +352,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, self.args + ['--peer', addr1],
                                      catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1]
+        # TODO: check peer == [addr1]. issue: #2395
 
     @patch('golemapp.Node')
     def test_many_peers(self, mock_node, *_):
@@ -365,7 +365,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
 
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1, addr2]
+        # TODO: check peer == [addr1, addr2]. issue #2395
 
     @patch('golemapp.Node')
     def test_bad_peer(self, *_):
@@ -388,7 +388,7 @@ class TestNode(TestWithDatabase):
             ], catch_exceptions=False
         )
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addrs...]
+        # TODO: check peer == [addrs...]. issue: #2395
 
     @patch('golemapp.Node')
     def test_rpc_address(self, *_):
