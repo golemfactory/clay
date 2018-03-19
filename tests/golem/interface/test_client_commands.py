@@ -4,7 +4,7 @@ from functools import partial
 import io
 import json
 import unittest
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 import uuid
 
 from ethereum.utils import denoms
@@ -20,6 +20,7 @@ from golem.interface.client.payments import incomes, payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
+from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -711,3 +712,26 @@ class TestDebug(unittest.TestCase):
 
             with self.assertRaises(CommandException):
                 debug.rpc((task_id, ))
+
+
+class TestTerms(unittest.TestCase):
+
+    def setUp(self):
+        super(TestTerms, self).setUp()
+
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    @patch('golem.interface.client.terms.Path.read_text', return_value=object())
+    def test_show(self, read_mock: MagicMock):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            result = terms.show()
+            read_mock.assert_called_once()
+            self.assertEqual(result, read_mock.return_value)
+
+    def test_accept(self):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            terms.accept()
+            self.client.accept_terms.assert_called_once()

@@ -436,18 +436,31 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start()
         sync_wait(deferred)
 
-        p2p_disc = self.client.p2pservice.disconnect
-        task_disc = self.client.task_server.disconnect
-
-        self.client.p2pservice.disconnect = Mock()
-        self.client.p2pservice.disconnect.side_effect = p2p_disc
-        self.client.task_server.disconnect = Mock()
-        self.client.task_server.disconnect.side_effect = task_disc
+        self.client.p2pservice.disconnect = Mock(
+            side_effect=self.client.p2pservice.disconnect)
+        self.client.task_server.disconnect = Mock(
+            side_effect=self.client.task_server.disconnect)
 
         self.client.stop()
 
-        assert self.client.p2pservice.disconnect.called
-        assert self.client.task_server.disconnect.called
+        self.assertTrue(self.client.stopped)
+        self.client.p2pservice.disconnect.assert_called_once()
+        self.client.task_server.disconnect.assert_called_once()
+
+    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.client.time.sleep')
+    def test_start_terms_unaccepted(self, sleep: MagicMock, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False
+        )
+        self.client.stopped = True
+        self.assertRaises(SystemExit, self.client.start)
+        sleep.assert_called_once()
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
