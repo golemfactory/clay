@@ -93,8 +93,16 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert income2.transaction is None
 
         # now we accept both
-        self.incomes_keeper.update_awaiting(subtask_id1, accepted_ts1)
-        self.incomes_keeper.update_awaiting(subtask_id2, accepted_ts2)
+        self.incomes_keeper.update_awaiting(
+            sender_node_id,
+            subtask_id1,
+            accepted_ts1,
+        )
+        self.incomes_keeper.update_awaiting(
+            sender_node_id,
+            subtask_id2,
+            accepted_ts2,
+        )
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
             pubkeytoaddr(sender_node_id),
@@ -142,7 +150,11 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         closure_time1 = 1337
         closure_time2 = 2137
 
-        self.incomes_keeper.update_awaiting(subtask_id1, closure_time1)
+        self.incomes_keeper.update_awaiting(
+            sender_node_id1,
+            subtask_id1,
+            closure_time1,
+        )
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
             pubkeytoaddr(sender_node_id1),
@@ -154,7 +166,11 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         income2 = Income.get(sender_node=sender_node_id2, subtask=subtask_id2)
         assert income2.transaction is None
 
-        self.incomes_keeper.update_awaiting(subtask_id2, closure_time2)
+        self.incomes_keeper.update_awaiting(
+            sender_node_id2,
+            subtask_id2,
+            closure_time2,
+        )
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
             pubkeytoaddr(sender_node_id2),

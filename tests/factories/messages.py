@@ -235,6 +235,14 @@ class FileTransferTokenFactory(factory.Factory):
     # pylint: enable=no-self-argument
 
 
+class ForceSubtaskResultsResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceSubtaskResultsResponse
+
+    subtask_results_accepted = factory.SubFactory(SubtaskResultsAcceptedFactory)
+    subtask_results_rejected = factory.SubFactory(SubtaskResultsRejected)
+
+
 class ForceGetTaskResult(factory.Factory):
     class Meta:
         model = concents.ForceGetTaskResult

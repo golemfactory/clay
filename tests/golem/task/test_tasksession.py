@@ -868,6 +868,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session._react_to_subtask_result_accepted(sra)
         if called:
             self.task_server.subtask_accepted.assert_called_once_with(
+                key_id,
                 sra.subtask_id,
                 sra.payment_ts,
             )
