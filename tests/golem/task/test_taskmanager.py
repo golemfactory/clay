@@ -795,6 +795,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert len(borders) == 0
 
     def test_update_signatures(self):
+        # pylint: disable=abstract-class-instantiated
 
         node = Node(
             node_name="node", key="key_id", prv_addr="10.0.0.10",
