@@ -188,7 +188,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             try:
                 result = CBORSerializer.loads(result)
             except Exception as err:
-                logger.error("Can't load result data {}".format(err))
+                logger.exception("Can't load result data")
                 send_verification_failure()
                 return
 
@@ -562,8 +562,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
-            logger.debug("Task result extracted {}"
-                         .format(extracted_pkg.__dict__))
+            logger.debug("Task result extracted %r",
+                         extracted_pkg.__dict__)
             self.result_received(extra_data)
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceGetTaskResult')

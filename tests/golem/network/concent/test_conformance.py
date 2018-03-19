@@ -11,6 +11,7 @@ CONCENT_PATH = GOLEM_PATH / "golem/network/concent"
 
 
 class ConformanceTestCase(unittest.TestCase, testutils.PEP8MixIn):
+    maxDiff = None
     PEP8_FILES = [
         p.relative_to(GOLEM_PATH) for p in CONCENT_PATH.glob('**/*.py')
         if p.is_file()
