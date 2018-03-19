@@ -10,7 +10,8 @@ import golem_messages
 from golem_messages import message
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, \
-    TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint
+    TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint, \
+    HostnameEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
 from zope.interface import implementer
@@ -149,15 +150,14 @@ class TCPNetwork(Network):
 
         logger.debug("Connection to host %r: %r", address, port)
 
-        use_ipv6 = False
-        try:
-            ip = ip_address(address)
-            use_ipv6 = ip.version == 6
-        except ValueError:
-            logger.warning("%r address is invalid", address)
+        use_ipv6 = connect_info.socket_addresses[0].ipv6
+        use_hostname = connect_info.socket_addresses[0].hostname
         if use_ipv6:
             endpoint = TCP6ClientEndpoint(self.reactor, address, port,
                                           self.timeout)
+        elif use_hostname:
+            endpoint = HostnameEndpoint(self.reactor, address, port,
+                                        self.timeout)
         else:
             endpoint = TCP4ClientEndpoint(self.reactor, address, port,
                                           self.timeout)
