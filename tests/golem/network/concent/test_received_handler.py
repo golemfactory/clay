@@ -333,15 +333,6 @@ class TaskServerMessageHandlerTestCase(
         self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')
-    def test_force_get_task_result_upload_no_ftt(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
-            file_transfer_token=None)
-        library.interpret(fgtru)
-        self.cf_transfer.assert_not_called()
-        log_mock.assert_called_once()
-        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
-
-    @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_force_get_task_result_upload_ftt_not_upload(self, log_mock):
         fgtru = msg_factories.ForceGetTaskResultUploadFactory(
             file_transfer_token__download=True)
