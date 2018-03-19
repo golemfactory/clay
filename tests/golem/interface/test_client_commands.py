@@ -166,7 +166,11 @@ class TestNetwork(unittest.TestCase):
 
         with client_ctx(Network, self.client):
 
-            self.client.connection_status.return_value = 'Status'
+            self.client.connection_status.return_value = {
+                'listening': True,
+                'port_statuses': dict(),
+                'connected': True,
+            }
             result = Network().status()
 
             assert self.client.connection_status.called

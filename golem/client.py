@@ -779,10 +779,14 @@ class Client(HardwarePresetsMixin):
     def get_datadir(self):
         return str(self.datadir)
 
-    def get_p2p_port(self):
+    def get_p2p_port(self) -> int:
+        if not self.p2pservice:
+            return 0
         return self.p2pservice.cur_port
 
-    def get_task_server_port(self):
+    def get_task_server_port(self) -> int:
+        if not self.task_server:
+            return 0
         return self.task_server.cur_port
 
     def get_task_count(self):
@@ -1170,24 +1174,16 @@ class Client(HardwarePresetsMixin):
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
+        status = dict()
+
         if listen_port == 0 or task_server_port == 0:
-            return "Application not listening, check config file."
+            status['listening'] = False
+            return status
+        status['listening'] = True
 
-        messages = []
-
-        if self.node.port_statuses:
-            status = ", ".join(
-                "{}: {}".format(port, status)
-                for port, status in self.node.port_statuses.items())
-            messages.append("Port {}.".format(status))
-
-        if self.get_connected_peers():
-            messages.append("Connected")
-        else:
-            messages.append("Not connected to Golem Network, "
-                            "check seed parameters.")
-
-        return ' '.join(messages)
+        status['port_statuses'] = deepcopy(self.node.port_statuses)
+        status['connected'] = bool(self.get_connected_peers())
+        return status
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()

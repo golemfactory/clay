@@ -28,8 +28,29 @@ class Network(object):
     @doc("Show client status")
     def status(self):
         deferred = Network.client.connection_status()
-        status = sync_wait(deferred) or "unknown"
-        return status
+        status = sync_wait(deferred)
+
+        if not status:
+            return "unknown"
+
+        if not status['listening']:
+            return "Application not listening, check config file."
+
+        messages = []
+
+        if status['port_statuses']:
+            port_statuses = ", ".join(
+                "{}: {}".format(port, port_status)
+                for port, port_status in self.node.port_statuses.items())
+            messages.append("Port {}.".format(port_statuses))
+
+        if status['connected']:
+            messages.append("Connected")
+        else:
+            messages.append("Not connected to Golem Network, "
+                            "check seed parameters.")
+
+        return ' '.join(messages)
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port_):

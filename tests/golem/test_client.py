@@ -1358,16 +1358,14 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
 
         # not connected
-        self.assertTrue(
-            c.connection_status().startswith("Application not listening")
-        )
+        assert not c.connection_status()['listening']
 
         # status without peers
         c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
 
         # status without peers
-        self.assertTrue(c.connection_status().startswith("Not connected"))
+        assert not c.connection_status()['connected']
 
         # peers
         c.p2pservice.incoming_peers = {
@@ -1385,13 +1383,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(all(peer for peer in connected_peers))
 
         # status with peers
-        self.assertTrue(c.connection_status().startswith("Connected"))
+        assert c.connection_status()['connected']
 
         # status without ports
         c.p2pservice.cur_port = 0
-        self.assertTrue(
-            c.connection_status().startswith("Application not listening")
-        )
+        assert not c.connection_status()['listening']
 
     def test_golem_version(self, *_):
         assert self.client.get_golem_version() == golem.__version__
