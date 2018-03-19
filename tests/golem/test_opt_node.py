@@ -3,7 +3,6 @@ from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
 from twisted.internet.defer import Deferred
-from types import FunctionType
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -466,6 +465,10 @@ def chain_function(_, fn, *args, **kwargs):
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
+    def setUp(self):
+        super().setUp()
+        self.node = None
+
     def tearDown(self):
         if self.node.client:
             self.node.client.quit()
@@ -595,7 +598,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_count == 2
 
     @patch('golem.node.Session')
-    def test_start_session(self, session, *_):
+    def test_start_session(self, *_):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
@@ -603,7 +606,7 @@ class TestOptNode(TempDirFixture):
         self.node.rpc_router = Mock()
 
         self.node._start_session()
-        assert self.node.rpc_session.connect.called
+        assert self.node.rpc_session.connect.called  # noqa # pylint: disable=no-member
 
     def test_start_session_failure(self, reactor, *_):
         self.node = Node(datadir=self.path,
