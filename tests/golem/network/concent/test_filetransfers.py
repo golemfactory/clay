@@ -168,7 +168,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
     def test_upload(self, requests_mock):
         path = self.path + '/something.good'
         with open(path, 'w') as f:
-            f.write('ə')
+            f.write('meh')
 
         ftt = FileTransferTokenFactory(upload=True)
 
