@@ -85,7 +85,9 @@ class ConcentFiletransferService(LoopingCallService):
         except Exception as e:
             if request.error:
                 request.error(e)
-            raise
+                return
+            else:
+                raise
 
         return request.success(response) if request.success else response
 

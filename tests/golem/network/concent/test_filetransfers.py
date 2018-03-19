@@ -118,6 +118,51 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         self.cfs.process(request)
         download_mock.assert_called_once_with(request)
 
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload', mock.Mock())
+    def test_process_success(self):
+        success = mock.Mock()
+        request = ConcentFileRequestFactory(
+            file_transfer_token__upload=True,
+            success=success,
+        )
+        self.cfs.process(request)
+        success.assert_called_once()
+
+    def test_process_success_no_handler(self):
+        rv = 42
+        request = ConcentFileRequestFactory(
+            file_transfer_token__upload=True,
+        )
+        with mock.patch('golem.network.concent.filetransfers.'
+                        'ConcentFiletransferService.upload',
+                        mock.Mock(return_value=rv)):
+            response = self.cfs.process(request)
+
+        self.assertEqual(response, rv)
+
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload',
+                mock.Mock(side_effect=Exception()))
+    def test_process_error(self):
+        error = mock.Mock()
+        request = ConcentFileRequestFactory(
+            file_transfer_token__upload=True,
+            error=error,
+        )
+        self.cfs.process(request)
+        error.assert_called_once()
+
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload',
+                mock.Mock(side_effect=Exception()))
+    def test_process_error_no_handler(self):
+        request = ConcentFileRequestFactory(
+            file_transfer_token__upload=True,
+        )
+        with self.assertRaises(Exception):
+            self.cfs.process(request)
+
     @mock.patch('golem.network.concent.filetransfers.requests.post')
     def test_upload(self, requests_mock):
         path = self.path + '/something.good'
