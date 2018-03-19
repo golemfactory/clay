@@ -4,4 +4,4 @@ pytest-cov
 codecov
 flake8
 factory-boy==2.9.2
-pylint
+pylint==1.7.6

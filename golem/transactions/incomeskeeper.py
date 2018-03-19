@@ -78,10 +78,9 @@ class IncomesKeeper:
             value=value
         )
 
-    def update_awaiting(self, subtask_id, accepted_ts):
+    def update_awaiting(self, sender_node, subtask_id, accepted_ts):
         try:
-            # FIXME: query by (sender_id, subtask_id)
-            income = Income.get(subtask=subtask_id)
+            income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",

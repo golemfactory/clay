@@ -86,6 +86,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False)
         self.assertEqual(
             cfg.node_address,
@@ -123,6 +124,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
+                                     use_concent=False,
                                      use_monitor=True,
                                      password=None)
 
@@ -150,6 +152,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False)
 
     def test_geth_address_wo_http_should_fail(self, *_):
@@ -204,6 +207,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
+                                     use_concent=False,
                                      use_monitor=True,
                                      password=None)
 
@@ -228,6 +232,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=None,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False)
 
     @patch('golemapp.Node')
@@ -248,6 +253,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
+                                     use_concent=False,
                                      use_monitor=True,
                                      password=None,
                                      mainnet=True)
@@ -272,6 +278,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False,
                                        mainnet=True)
 
@@ -308,6 +315,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
+                                     use_concent=False,
                                      use_monitor=True,
                                      password=None)
 
@@ -336,6 +344,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=port,
                                        use_docker_manager=True,
+                                       use_concent=False,
                                        use_monitor=False)
 
     @patch('golemapp.Node')
