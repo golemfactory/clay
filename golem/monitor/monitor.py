@@ -51,10 +51,12 @@ class SenderThread(threading.Thread):
 class SystemMonitor(object):
     def __init__(self,
                  meta_data: NodeMetadataModel,
-                 monitor_config: dict) -> None:
+                 monitor_config: dict,
+                 send_payment_info: bool = True) -> None:
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
+        self.send_payment_info = send_payment_info
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
@@ -194,35 +196,38 @@ class SystemMonitor(object):
         self.sender_thread.send(msg)
 
     def on_payment(self, addr, value):
-        if self.config['SEND_PAYMENT_INFO']:
-            self.sender_thread.send(
-                ExpenditureModel(
-                    self.meta_data.cliid,
-                    self.meta_data.sessid,
-                    addr,
-                    value
-                )
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            ExpenditureModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
             )
+        )
 
     def on_income(self, addr, value):
-        if self.config['SEND_PAYMENT_INFO']:
-            self.sender_thread.send(
-                IncomeModel(
-                    self.meta_data.cliid,
-                    self.meta_data.sessid,
-                    addr,
-                    value
-                )
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            IncomeModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
             )
+        )
 
     def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
                             gntb_balance: int):
-        if self.config['SEND_PAYMENT_INFO']:
-            self.sender_thread.send(
-                BalanceModel(
-                    self.meta_data,
-                    eth_balance,
-                    gnt_balance,
-                    gntb_balance
-                )
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            BalanceModel(
+                self.meta_data,
+                eth_balance,
+                gnt_balance,
+                gntb_balance
             )
+        )
