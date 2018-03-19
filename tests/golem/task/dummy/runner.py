@@ -223,6 +223,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     if requesting_proc.poll() is not None:
         logger.error("Requestor proc not started")
+        shutil.rmtree(datadir)
         return "ERROR"
 
     # Start computing nodes in a separate processes
@@ -291,6 +292,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 del proc
 
         time.sleep(1)
+
+        shutil.rmtree(datadir)
 
 
 def dispatch(args):

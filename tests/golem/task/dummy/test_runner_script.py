@@ -68,21 +68,23 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
+    @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("golem.core.common.config_logging")
     @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     def test_run_requesting_node(self, mock_reactor,
                                  mock_enqueue_new_task,
-                                 mock_config_logging):
+                                 mock_config_logging, _):
         client = runner.run_requesting_node(self.path, 3)
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_enqueue_new_task.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()
 
+    @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     @mock.patch("golem.core.common.config_logging")
-    def test_run_computing_node(self, mock_config_logging, mock_reactor):
+    def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
         client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
         environments = list(client.environments_manager.environments)
