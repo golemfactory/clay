@@ -12,7 +12,7 @@ class ModelBase(object, metaclass=abc.ABCMeta):
 class BasicModel(ModelBase):
 
     def __init__(self, type_str_repr, cliid, sessid):
-        # TODO: use class.TYPE
+        # TODO: use class.TYPE. issue #2413
         self.type = type_str_repr
         self.timestamp = time.time()
         self.cliid = cliid
