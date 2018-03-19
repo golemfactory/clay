@@ -44,7 +44,7 @@ SEEDS = [
     ('94.23.196.166', 40104),
     ('188.165.227.180', 40102),
     ('188.165.227.180', 40104),
-    # TODO: FOR BETA, replace with seeds.golem.network
+    # TODO: FOR BETA, replace with seeds.golem.network. issue GI #82
     ('seeds.test.golem.network', 40102),
     ('seeds.test.golem.network', 40104),
 ]
@@ -727,9 +727,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         if msg_snd and node_info.key == self.node.key:
             self.task_server.add_forwarded_session_request(key_id, conn_id)
-
-        # TODO This method should be only sent to supernodes or nodes
-        # that are closer to the target node
 
         if not msg_snd and node_info.key == self.get_key_id():
             self.task_server\
