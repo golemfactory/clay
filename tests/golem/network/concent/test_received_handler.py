@@ -132,6 +132,9 @@ class TaskServerMessageHandlerTestCase(
         # received_handler.TaskServerMessageHandler is instantiated
         # in TaskServer.__init__
 
+        self.cf_transfer = self.client.concent_filetransfers.transfer
+
+
     def tearDown(self):
         # Remove registered handlers
         del self.task_server
@@ -302,5 +305,58 @@ class TaskServerMessageHandlerTestCase(
         afgtr = msg_factories.AckForceGetTaskResult()
         library.interpret(afgtr, response_to=afgtr.force_get_task_result)
         self.assertEqual(log.call_count, 1)
+
+    def test_force_get_task_result_upload(self):
+
+        wtr = taskserver_factories.WaitingTaskResultFactory(
+            result_path=self.path)
+        rct = msg_factories.ReportComputedTask(subtask_id=wtr.subtask_id)
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            force_get_task_result__report_computed_task=rct)
+
+        self.task_server.results_to_send[wtr.subtask_id] = wtr
+        library.interpret(fgtru)
+
+        self.cf_transfer.assert_called_once()
+        self.assertEqual(self.cf_transfer.call_args[0][0],
+                         wtr.result_path)
+        self.assertEqual(self.cf_transfer.call_args[0][1],
+                         fgtru.file_transfer_token)
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_upload_no_ftt(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            file_transfer_token=None)
+        library.interpret(fgtru)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_upload_no_ftt(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            file_transfer_token=None)
+        library.interpret(fgtru)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_upload_ftt_not_upload(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            file_transfer_token__download=True)
+        library.interpret(fgtru)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_upload_wtr_not_found(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory()
+        library.interpret(fgtru)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('Cannot find the subtask', log_mock.call_args[0][0])
+
 
 # pylint: enable=no-self-use

@@ -235,6 +235,16 @@ class FileTransferTokenFactory(factory.Factory):
     # pylint: enable=no-self-argument
 
 
+class ForceGetTaskResultUploadFactory(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultUpload
+
+    force_get_task_result=factory.SubFactory(
+        'tests.factories.messages.ForceGetTaskResult')
+    file_transfer_token=factory.SubFactory(
+        FileTransferTokenFactory, upload=True)
+
+
 class ForceSubtaskResultsResponse(factory.Factory):
     class Meta:
         model = concents.ForceSubtaskResultsResponse
@@ -262,3 +272,4 @@ class AckForceGetTaskResult(factory.Factory):
         model = concents.AckForceGetTaskResult
 
     force_get_task_result = factory.SubFactory(ForceGetTaskResult)
+
