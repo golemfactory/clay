@@ -92,10 +92,15 @@ class ConcentFiletransferService(LoopingCallService):
         return request.success(response) if request.success else response
 
     @staticmethod
-    def _get_target_uri(file_transfer_token: FileTransferToken):
+    def _get_upload_uri(file_transfer_token: FileTransferToken):
+        return '{}upload/'.format(
+            file_transfer_token.storage_cluster_address)
+
+    @staticmethod
+    def _get_download_uri(file_transfer_token: FileTransferToken):
         return '{}{}{}'.format(
             file_transfer_token.storage_cluster_address,
-            file_transfer_token.operation.value,
+            'download',
             file_transfer_token.files[0].get('path')
         )
 
@@ -108,14 +113,18 @@ class ConcentFiletransferService(LoopingCallService):
         }
 
     def upload(self, request):
-        uri = self._get_target_uri(request.file_transfer_token)
-        headers = self._get_auth_headers(request.file_transfer_token)
+        uri = self._get_upload_uri(request.file_transfer_token)
+        ftt = request.file_transfer_token
+        headers = self._get_auth_headers(ftt)
+        headers.update({
+            'Concent-Upload-Path': ftt.files[0].get('path')
+        })
         with open(request.file_path, mode='rb') as f:
             response = requests.post(uri, data=f, headers=headers)
         return response
 
     def download(self, request):
-        uri = self._get_target_uri(request.file_transfer_token)
+        uri = self._get_download_uri(request.file_transfer_token)
         headers = self._get_auth_headers(request.file_transfer_token)
         response = requests.get(uri, stream=True, headers=headers)
         with open(request.file_path, mode='wb') as f:

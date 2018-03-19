@@ -177,8 +177,9 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
             file_transfer_token=ftt,
         )
 
-        upload_address = ftt.storage_cluster_address + 'upload' + \
-            ftt.files[0].get('path')
+        upload_address = ftt.storage_cluster_address + 'upload/'
+        headers = self._mock_get_auth_headers(ftt)
+        headers['Concent-Upload-Path'] = ftt.files[0].get('path')
 
         self.cfs.upload(request)
 
@@ -186,8 +187,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
         args, kwargs = requests_mock.call_args
         self.assertEqual(args, (upload_address, ))
-        self.assertEqual(
-            kwargs.get('headers'), self._mock_get_auth_headers(ftt))
+        self.assertEqual(kwargs.get('headers'), headers)
 
     @mock.patch('golem.network.concent.filetransfers.requests.get')
     def test_download(self, requests_mock):

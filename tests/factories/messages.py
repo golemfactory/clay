@@ -207,7 +207,7 @@ class FileTransferTokenFactory(factory.Factory):
 
     subtask_id = factory.Faker('uuid4')
     token_expiration_deadline = 1800
-    storage_cluster_address = factory.Faker('uri')
+    storage_cluster_address = factory.Faker('url')
     authorized_client_public_key = factory.Faker('binary', length=64)
     operation = concents.FileTransferToken.Operation.upload
     files = factory.List([
