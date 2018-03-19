@@ -6,9 +6,9 @@ import sys
 
 from multiprocessing import freeze_support
 
-# Export pbr version for peewee_migrate user
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
 
+# Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
 # pylint: disable=wrong-import-position
