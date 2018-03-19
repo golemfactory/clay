@@ -239,9 +239,9 @@ class ForceGetTaskResultUploadFactory(factory.Factory):
     class Meta:
         model = concents.ForceGetTaskResultUpload
 
-    force_get_task_result=factory.SubFactory(
+    force_get_task_result = factory.SubFactory(
         'tests.factories.messages.ForceGetTaskResult')
-    file_transfer_token=factory.SubFactory(
+    file_transfer_token = factory.SubFactory(
         FileTransferTokenFactory, upload=True)
 
 
@@ -272,4 +272,3 @@ class AckForceGetTaskResult(factory.Factory):
         model = concents.AckForceGetTaskResult
 
     force_get_task_result = factory.SubFactory(ForceGetTaskResult)
-
