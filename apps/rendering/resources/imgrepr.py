@@ -156,7 +156,8 @@ class EXRImgRepr(ImgRepr):
         return e
 
     def close(self):
-        pass
+        if self.img:
+            self.img.close()
 
 
 def load_img(file_: str) -> Optional[ImgRepr]:

@@ -81,7 +81,9 @@ class RenderingTaskCollector(object):
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_img_files)
             with Image.new('RGB', (self.width, self.height)) as img:
-                final_img = self._paste_image(img, final_img, 0)
+                new_img = self._paste_image(img, final_img, 0)
+                final_img.close()
+                final_img = new_img
 
         for i, img_path in enumerate(self.accepted_img_files[1:], start=1):
             img = load_img(img_path)
