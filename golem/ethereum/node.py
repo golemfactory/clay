@@ -72,14 +72,15 @@ class NodeProcess(object):
 
         if self.start_node:
             provider = self._create_local_ipc_provider(start_port)
-            middleware_builder = RemoteRPCErrorMiddlewareBuilder(
-                self._handle_remote_rpc_provider_failure)
-            self.web3.add_middleware(middleware_builder.build)
         else:
             provider = self._create_remote_rpc_provider()
 
         self.provider_proxy.provider = provider
         self.web3 = Web3(self.provider_proxy)
+
+        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
+            self._handle_remote_rpc_provider_failure)
+        self.web3.middleware_stack.add(middleware_builder.build)
 
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
