@@ -275,7 +275,8 @@ class Client(HardwarePresetsMixin):
             if service.running:
                 service.stop()
         self.concent_service.stop()
-        self.concent_filetransfers.stop()
+        if self.concent_filetransfers.running:
+            self.concent_filetransfers.stop()
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
