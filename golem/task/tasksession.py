@@ -639,7 +639,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_accepted(msg.subtask_id, msg.payment_ts)
+        self.task_server.subtask_accepted(
+            self.key_id,
+            msg.subtask_id,
+            msg.payment_ts,
+        )
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
