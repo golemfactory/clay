@@ -109,3 +109,4 @@ class CertificateManager:
         cert_subject.O = entity.pop('O', '-')  # noqa
         cert_subject.OU = entity.pop('OU', '-')
         cert_subject.CN = entity.pop('CN', X509_COMMON_NAME)
+        cert_subject.CN = entity.pop('SAN', X509_COMMON_NAME)
