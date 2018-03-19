@@ -54,7 +54,7 @@ class HandlersLibrary():
             return f
         return _wrapped
 
-    def interpret(self, msg) -> None:
+    def interpret(self, msg, response_to: message.Message = None) -> None:
         try:
             ref = self._handlers[msg.__class__]
             handler = ref()
@@ -70,7 +70,10 @@ class HandlersLibrary():
                 msg,
             )
             return
-        handler(msg)
+        if not response_to:
+            handler(msg)
+        else:
+            handler(msg, response_to=response_to)
 
 
 # The only reference to HandlersLibrary that should be used
