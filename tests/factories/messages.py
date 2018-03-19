@@ -233,3 +233,24 @@ class FileTransferTokenFactory(factory.Factory):
             obj.operation = concents.FileTransferToken.Operation.download
 
     # pylint: enable=no-self-argument
+
+
+class ForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResult
+
+    report_computed_task = factory.SubFactory(ReportComputedTask)
+
+
+class ForceGetTaskResultRejected(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultRejected
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)
+
+
+class AckForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.AckForceGetTaskResult
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)
