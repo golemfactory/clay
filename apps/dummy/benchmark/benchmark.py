@@ -15,7 +15,7 @@ APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 
 class DummyTaskBenchmark(CoreBenchmark):
     def __init__(self):
-        self._normalization_constant = 1000  # TODO tweak that
+        self._normalization_constant = 1000  # TODO tweak that. issue #1356
         self.dummy_task_path = join(get_golem_path(),
                                     "apps", "dummy", "test_data")
 
