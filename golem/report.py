@@ -30,7 +30,7 @@ class StatusPublisher(object):
     Publishes method execution stages via RPC.
     """
     _rpc_publisher = None
-    _last_status = None
+    _last_status = dict()
 
     @classmethod
     def publish(cls, component, method, stage, data=None):
@@ -45,17 +45,16 @@ class StatusPublisher(object):
         :param data: Payload (optional)
         :return: None
         """
+        cls._last_status[to_unicode(component)] = (
+            to_unicode(method),
+            to_unicode(stage),
+            data)
         if cls._rpc_publisher:
             from twisted.internet import reactor
 
-            cls._last_status = (to_unicode(component),
-                                to_unicode(method),
-                                to_unicode(stage),
-                                data)
-
             reactor.callFromThread(cls._rpc_publisher.publish,
                                    Golem.evt_golem_status,
-                                   *cls._last_status)
+                                   cls._last_status)
 
     @classmethod
     def last_status(cls):
