@@ -645,7 +645,7 @@ class CustomCollector(RenderingTaskCollector):
             self.current_offset += new_img_res_y
             img_offset.paste(new_part, (0, offset))
             result = ImageChops.add(final_img, img_offset)
-            return result
+        return result
 
 
 def generate_expected_offsets(parts, res_x, res_y):
