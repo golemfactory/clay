@@ -206,7 +206,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         assert 'key' not in self.concent_service._delayed
@@ -232,7 +232,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         send_mock.side_effect = exceptions.ConcentRequestError
@@ -259,7 +259,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service.submit(
                 'key',
                 self.msg,
-                delay=0
+                delay=datetime.timedelta(),
             )
 
             self.assertEqual(send_mock.call_count, 0)
@@ -278,7 +278,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         self.concent_service._loop()
@@ -287,7 +287,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service.keys_auth._private_key,
             self.concent_service.keys_auth.public_key,
         )
-        react_mock.assert_called_once_with(data)
+        react_mock.assert_called_once_with(data, response_to=self.msg)
 
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'

@@ -42,6 +42,7 @@ class SocketAddress():
         self.address = address
         self.port = port
         self.ipv6 = False
+        self.hostname = False
         try:
             self.__validate()
         except ValueError as err:
@@ -71,6 +72,7 @@ class SocketAddress():
                 ipaddress.IPv4Address(self.address)
             else:
                 SocketAddress.validate_hostname(self.address)
+                self.hostname = True
 
         if not variables.MIN_PORT <= self.port <= variables.MAX_PORT:
             raise ValueError('Port out of range ({} .. {}): {}'.format(
