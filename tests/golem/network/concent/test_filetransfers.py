@@ -18,7 +18,7 @@ class ConcentFileRequestTest(unittest.TestCase):
             pass
 
         cfr = ConcentFileRequestFactory(
-            file_path = self.file_path, success=success, error=error)
+            file_path=self.file_path, success=success, error=error)
         self.assertIsInstance(cfr, filetransfers.ConcentFileRequest)
         self.assertIsInstance(cfr.file_transfer_token, FileTransferToken)
         self.assertEqual(cfr.success, success)

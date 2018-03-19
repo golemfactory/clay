@@ -3,6 +3,8 @@ import factory
 from golem.network.concent import filetransfers
 from .messages import FileTransferTokenFactory
 
+# pylint:disable=too-few-public-methods
+
 
 class ConcentFileRequestFactory(factory.Factory):
     class Meta:

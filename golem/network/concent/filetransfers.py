@@ -1,8 +1,9 @@
 import base64
 import logging
-import requests
 import typing
 import queue
+
+import requests
 
 from golem_messages.message.concents import FileTransferToken
 
@@ -12,13 +13,12 @@ from golem.core.service import LoopingCallService
 logger = logging.getLogger(__name__)
 
 
-class ConcentFileRequest():
+class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
     def __init__(self,
                  file_path: str,
                  file_transfer_token: FileTransferToken,
-                 success: typing.Callable = None,
-                 error: typing.Callable = None,
-                 ):
+                 success: typing.Optional[typing.Callable] = None,
+                 error: typing.Optional[typing.Callable] = None) -> None:
         self.file_path = file_path
         self.file_transfer_token = file_transfer_token
         self.success = success
@@ -36,14 +36,15 @@ class ConcentFiletransferService(LoopingCallService):
     Golem service responsible for exchanging files with the Concent service.
     """
 
-    def __init__(
-            self, keys_auth: keysauth.KeysAuth, interval_seconds: int = 1):
+    def __init__(self,
+                 keys_auth: keysauth.KeysAuth,
+                 interval_seconds: int = 1) -> None:
         self.keys_auth = keys_auth
-        self._transfers = queue.Queue()
+        self._transfers: queue.Queue = queue.Queue()
         super().__init__(interval_seconds=interval_seconds)
 
-    def start(self):
-        super().start()
+    def start(self, now: bool = True):
+        super().start(now=now)
         logger.debug("Concent Filestransfer Service started")
 
     def stop(self):
@@ -54,8 +55,8 @@ class ConcentFiletransferService(LoopingCallService):
     def transfer(self,
                  file_path: str,
                  file_transfer_token: FileTransferToken,
-                 success: typing.Callable = None,
-                 error: typing.Callable = None):
+                 success: typing.Optional[typing.Callable] = None,
+                 error: typing.Optional[typing.Callable] = None):
 
         request = ConcentFileRequest(
             file_path, file_transfer_token, success=success, error=error)
@@ -85,7 +86,8 @@ class ConcentFiletransferService(LoopingCallService):
 
         return request.success(response) if request.success else response
 
-    def _get_target_uri(self, file_transfer_token: FileTransferToken):
+    @staticmethod
+    def _get_target_uri(file_transfer_token: FileTransferToken):
         return '{}{}{}'.format(
             file_transfer_token.storage_cluster_address,
             file_transfer_token.operation.value,
