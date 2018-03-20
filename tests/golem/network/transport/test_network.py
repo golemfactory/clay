@@ -75,7 +75,6 @@ class TestNetwork(TestWithReactor):
         self.connect_success = None
         self.stop_listening_success = None
         self.port = None
-        self.kwargs_len = 0
         session_factory = SessionFactory(ASession)
         protocol_factory = ProtocolFactory(SafeProtocol, Server(), session_factory)
         self.network = TCPNetwork(protocol_factory)
@@ -142,9 +141,8 @@ class TestNetwork(TestWithReactor):
         self.assertEqual(len(self.network.active_listeners), 2)
 
         with async_scope(listen_status):
-            self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
+            self.network.listen(listen_info)
         self.assertEqual(self.port, port + 2)
-        self.assertEqual(self.kwargs_len, 5)
         self.assertEqual(len(self.network.active_listeners), 3)
 
         # connect
@@ -229,12 +227,11 @@ class TestNetwork(TestWithReactor):
             self.network.stop_listening(listening_info)
         self.assertEqual(len(self.network.active_listeners), 0)
 
-    def __listen_success(self, port, **kwargs):
+    def __listen_success(self, port):
         self.listen_success = True
         self.port = port
-        self.kwargs_len = len(kwargs)
 
-    def __listen_failure(self, **kwargs):
+    def __listen_failure(self):
         self.port = None
         self.listen_success = False
 

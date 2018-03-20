@@ -20,7 +20,7 @@ class GolemSqliteDatabase(RetryOperationalError, peewee.SqliteDatabase):
 
 class Database:
 
-    SCHEMA_VERSION = 13
+    SCHEMA_VERSION = 14
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  db: peewee.Database,

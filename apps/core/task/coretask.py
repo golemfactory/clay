@@ -112,7 +112,7 @@ class CoreTask(Task):
         """
 
         task_timeout = task_definition.full_task_timeout
-        deadline = timeout_to_deadline(task_timeout)
+        self._deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
         self.task_resources = list(
@@ -136,11 +136,12 @@ class CoreTask(Task):
             src_code = ""
 
         # docker_images stuff
-        docker_images = None
         if task_definition.docker_images:
-            docker_images = task_definition.docker_images
+            self.docker_images = task_definition.docker_images
         elif isinstance(self.environment, DockerEnvironment):
-            docker_images = self.environment.docker_images
+            self.docker_images = self.environment.docker_images
+        else:
+            self.docker_images = None
 
         th = TaskHeader(
             node_name=node_name,
@@ -150,12 +151,11 @@ class CoreTask(Task):
             task_owner_key_id=owner_key_id,
             environment=self.environment.get_id(),
             task_owner=Node(),
-            deadline=deadline,
+            deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
-            docker_images=docker_images,
         )
 
         Task.__init__(self, th, src_code, task_definition)
@@ -181,9 +181,7 @@ class CoreTask(Task):
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
-        return hasattr(self.header, 'docker_images') \
-            and self.header.docker_images \
-            and len(self.header.docker_images) > 0
+        return len(self.docker_images or ()) > 0
 
     def initialize(self, dir_manager: DirManager) -> None:
         dir_manager.clear_temporary(self.header.task_id)
@@ -205,6 +203,7 @@ class CoreTask(Task):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
 
@@ -215,6 +214,7 @@ class CoreTask(Task):
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
             subtask_id,
+            self._deadline,
             verification_finished,
             subtask_info=self.subtasks_given[subtask_id],
             results=result_files,
@@ -242,6 +242,7 @@ class CoreTask(Task):
             raise Exception("Subtask {} already accepted".format(subtask_id))
         if subtask.get("status", None) not in [SubtaskStatus.starting,
                                                SubtaskStatus.downloading,
+                                               SubtaskStatus.verifying,
                                                SubtaskStatus.resent,
                                                SubtaskStatus.finished,
                                                SubtaskStatus.failure,
@@ -280,7 +281,9 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if SubtaskStatus.is_computed(subtask_info['status']):
+        if SubtaskStatus.is_active(subtask_info['status']):
+            # TODO Restarted tasks that were waiting for verification should
+            # cancel it.
             self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
@@ -336,14 +339,10 @@ class CoreTask(Task):
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         ctd['working_directory'] = working_directory
-        if self.header.docker_images:
-            ctd['docker_images'] = [
-                di.to_dict() for di in self.header.docker_images
-            ]
+        if self.docker_images:
+            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
                               self.header.deadline)
-        ctd['task_owner'] = self.header.task_owner.to_dict()
-        ctd['environment'] = self.header.environment
 
         return ctd
 

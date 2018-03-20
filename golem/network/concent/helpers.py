@@ -2,66 +2,72 @@ import calendar
 import functools
 import logging
 import time
+import typing
 
+from golem_messages import cryptography
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
-from golem.network.concent import exceptions
+from golem.task import taskkeeper
 
 
 logger = logging.getLogger(__name__)
 
+RESPONSE_FOR_RCT = typing.Union[
+    message.concents.RejectReportComputedTask,
+    message.concents.AckReportComputedTask,
+]
 
-def process_report_computed_task(msg, task_session):
-    # Check msg.task_to_compute signature
-    try:
-        task_session.task_server.keys_auth.ecc.verify(
-            sig=msg.task_to_compute.sig,
-            inputb=msg.task_to_compute.get_short_hash(),
-        )
-    except (AssertionError, msg_exceptions.InvalidSignature):
-        logger.warning('Received fake task_to_compute: %r', msg)
-        task_session.dropped()
-        return
 
-    def send_reject(reason, **kwargs):
+def process_report_computed_task(
+        msg: message.tasks.ReportComputedTask,
+        ecc: cryptography.ECCx,
+        task_header_keeper: taskkeeper.TaskHeaderKeeper) -> RESPONSE_FOR_RCT:
+    def _reject(reason, **kwargs):
         logger.debug(
-            '_reacto_to_computed_task.send_reject(%r, **%r)',
+            '_react_to_computed_task._reject(%r, **%r)',
             reason,
             kwargs,
         )
-        task_session.send(message.concents.RejectReportComputedTask(
+        reject_msg = message.concents.RejectReportComputedTask(
             subtask_id=msg.subtask_id,
             reason=reason,
             task_to_compute=msg.task_to_compute,
             **kwargs,
-        ))
+        )
+        return reject_msg
+
+    # Check msg.task_to_compute signature
+    try:
+        ecc.verify(
+            sig=msg.task_to_compute.sig,
+            inputb=msg.task_to_compute.get_short_hash(),
+        )
+    except msg_exceptions.InvalidSignature:
+        logger.warning('Received fake task_to_compute: %r', msg)
+        return _reject(None)
 
     reject_reasons = message.concents.RejectReportComputedTask.REASON
     now_ts = calendar.timegm(time.gmtime())
     task_id = msg.task_to_compute.compute_task_def['task_id']
 
     # Check task deadline
-    if now_ts > msg.task_to_compute.compute_task_def['deadline']:
-        send_reject(reject_reasons.TaskTimeLimitExceeded)
-        raise exceptions.ConcentVerificationFailed("Task timeout")
-    # Check subtask deadline
     try:
-        task_state = task_session.task_manager.tasks_states[task_id]
-        subtask_deadline = task_state.subtask_states[msg.subtask_id].deadline
+        task_header = task_header_keeper.task_headers[task_id]
+        task_deadline = task_header.deadline
     except KeyError:
-        logger.warning(
-            'Deadline for subtask %r not found.'
-            'Treating as timeouted. Message: %s',
-            msg.subtask_id,
-            msg,
+        logger.info(
+            "TaskHeader for %r not found. Assuming infinite timeout.",
+            task_id,
         )
-        subtask_deadline = -1
+        task_deadline = float('infinity')
+    if now_ts > task_deadline:
+        return _reject(reject_reasons.TaskTimeLimitExceeded)
 
-    if now_ts > subtask_deadline:
-        send_reject(reject_reasons.SubtaskTimeLimitExceeded)
-        raise exceptions.ConcentVerificationFailed("Subtask timeout")
+    # Check subtask deadline
+    if now_ts > msg.task_to_compute.compute_task_def['deadline']:
+        return _reject(reject_reasons.SubtaskTimeLimitExceeded)
 
     get_msg = functools.partial(
         history.MessageHistoryService.get_sync_as_message,
@@ -76,31 +82,26 @@ def process_report_computed_task(msg, task_session):
     # CannotComputeTask received
     try:
         unwanted_msg = get_msg(msg_cls='CannotComputeTask')
-        send_reject(
+        return _reject(
             reject_reasons.GotMessageCannotComputeTask,
             cannot_compute_task=unwanted_msg,
         )
-        #
-        # @fixme: the name `ConcentVerification` is confusing in this context
-        #
-        raise exceptions.ConcentVerificationFailed("CannotComputeTask received")
     except history.MessageNotFound:
         pass
 
     # TaskFailure received
     try:
         unwanted_msg = get_msg(msg_cls='TaskFailure')
-        send_reject(
+        return _reject(
             reject_reasons.GotMessageTaskFailure,
             task_failure=unwanted_msg,
         )
-        raise exceptions.ConcentVerificationFailed("TaskFailure received")
     except history.MessageNotFound:
         pass
 
     # Verification passed, will send ACK
 
-    task_session.send(message.concents.AckReportComputedTask(
+    return message.concents.AckReportComputedTask(
         subtask_id=msg.subtask_id,
         task_to_compute=msg.task_to_compute,
-    ))
+    )

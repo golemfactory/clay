@@ -291,7 +291,7 @@ class PeerSession(BasicSafeSession):
 
         self.node_info = Node.from_dict(msg.node_info)
 
-        if not self.p2p_service.keys_auth.is_pubkey_difficult(
+        if not KeysAuth.is_pubkey_difficult(
                 self.node_info.key,
                 self.p2p_service.key_difficulty):
             logger.info(

@@ -55,7 +55,6 @@ class TaskHeader(object):
                  estimated_memory=0,
                  min_version=golem.__version__,
                  max_price: int=0,
-                 docker_images=None,
                  signature=None):
         """
         :param max_price: maximum price that this (requestor) node may
@@ -64,7 +63,6 @@ class TaskHeader(object):
         """
 
         self.task_id = task_id
-        # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
@@ -78,7 +76,6 @@ class TaskHeader(object):
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
-        self.docker_images = docker_images
         self.max_price = max_price
         self.signature = signature
 
@@ -97,22 +94,31 @@ class TaskHeader(object):
         th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
-            th.task_owner = DictSerializer.load(th.task_owner, as_class=Node)
-        if hasattr(th, 'docker_images') and th.docker_images is not None:
-            for i, di in enumerate(th.docker_images):
-                if isinstance(di, dict):
-                    th.docker_images[i] = DictSerializer.load(di, as_class=DockerImage)
+            th.task_owner = Node.from_dict(th.task_owner)
         return th
 
     @classmethod
     def dict_to_binary(cls, dictionary):
+        """ Nullifies the properties not required for signature verification
+        and sorts the task dict representation in order to have the same
+        resulting binary blob after serialization.
+        """
         self_dict = dict(dictionary)
         self_dict.pop('last_checking', None)
         self_dict.pop('signature', None)
 
+        # "port_statuses" is a nested dict and needs to be sorted;
+        # Python < 3.7 does not guarantee the same dict iteration ordering
+        port_statuses = self_dict['task_owner'].get('port_statuses')
+        if isinstance(port_statuses, dict):
+            self_dict['task_owner']['port_statuses'] = \
+                cls._ordered(port_statuses)
+
         self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
+
         if self_dict.get('docker_images'):
-            self_dict['docker_images'] = [cls._ordered(di) for di in self_dict['docker_images']]
+            self_dict['docker_images'] = [cls._ordered(di) for di
+                                          in self_dict['docker_images']]
 
         return CBORSerializer.dumps(cls._ordered(self_dict))
 

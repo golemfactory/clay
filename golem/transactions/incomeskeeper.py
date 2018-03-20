@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timedelta
 import logging
+import time
+from typing import List
 
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 from golem.utils import encode_hex, pubkeytoaddr
 
@@ -74,10 +78,9 @@ class IncomesKeeper:
             value=value
         )
 
-    def update_awaiting(self, subtask_id, accepted_ts):
+    def update_awaiting(self, sender_node, subtask_id, accepted_ts):
         try:
-            # FIXME: query by (sender_id, subtask_id)
-            income = Income.get(subtask=subtask_id)
+            income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",
@@ -102,3 +105,25 @@ class IncomesKeeper:
             Income.transaction,
             Income.value
         ).order_by(Income.created_date.desc())
+
+    @staticmethod
+    def update_overdue_incomes() -> List[Income]:
+        """
+        Set overdue flag for all incomes that have been waiting for too long.
+        :return: Updated incomes
+        """
+        accepted_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
+        created_deadline = datetime.now() - timedelta(seconds=PAYMENT_DEADLINE)
+
+        incomes = list(Income.select().where(
+            Income.overdue == False,   # noqa pylint: disable=singleton-comparison
+            Income.transaction.is_null(True),
+            (Income.accepted_ts < accepted_ts_deadline) | (
+                Income.accepted_ts.is_null(True) &
+                (Income.created_date < created_deadline)
+            )
+        ))
+        for income in incomes:
+            income.overdue = True
+            income.save()
+        return incomes

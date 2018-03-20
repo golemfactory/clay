@@ -2,8 +2,6 @@
 import calendar
 import time
 
-import factory
-
 import factory.fuzzy
 
 from golem_messages.message import base
@@ -20,18 +18,12 @@ class Hello(factory.Factory):
     node_name = factory.Faker("name")
 
 
-class TaskOwner(factory.DictFactory):
-    node_name = factory.Faker('name')
-    key = factory.Faker('binary', length=64)
-
-
 class ComputeTaskDef(factory.DictFactory):
     class Meta:
         model = tasks.ComputeTaskDef
 
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
-    task_owner = factory.SubFactory(TaskOwner)
     deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
     src_code = factory.Faker('text')
 
@@ -47,7 +39,6 @@ class TaskToCompute(factory.Factory):
     @classmethod
     def _create(cls, *args, **kwargs):
         instance = super()._create(*args, **kwargs)
-        instance.compute_task_def['task_owner']['key'] = instance.requestor_id
         return instance
 
 
@@ -83,7 +74,7 @@ class ReportComputedTask(factory.Factory):
         TaskToCompute,
         compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
     )
-    size = factory.Faker('pyint')
+    size = factory.Faker('random_int', min=1 << 20, max=10 << 20)
     multihash = factory.Faker('text')
     secret = factory.Faker('text')
 
@@ -131,6 +122,33 @@ class AckReportComputedTask(factory.Factory):
     )
 
 
+class RejectReportComputedTask(factory.Factory):
+    class Meta:
+        model = concents.RejectReportComputedTask
+
+    reason = factory.Faker(
+        'random_element',
+        elements=concents.RejectReportComputedTask.REASON,
+    )
+    subtask_id = factory.Faker('uuid4')
+    task_to_compute = factory.SubFactory(
+        TaskToCompute,
+        compute_task_def__subtask_id=factory.SelfAttribute('...subtask_id'),
+    )
+    task_failure = factory.SubFactory(
+        TaskFailure,
+        task_to_compute=factory.SelfAttribute(
+            '..task_to_compute',
+        )
+    )
+    cannot_compute_task = factory.SubFactory(
+        CannotComputeTask,
+        task_to_compute=factory.SelfAttribute(
+            '..task_to_compute',
+        )
+    )
+
+
 class VerdictReportComputedTask(factory.Factory):
     class Meta:
         model = concents.VerdictReportComputedTask
@@ -145,3 +163,59 @@ class VerdictReportComputedTask(factory.Factory):
             '..force_report_computed_task.report_computed_task.task_to_compute',
         ),
     )
+
+
+class ForceReportComputedTaskResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceReportComputedTaskResponse
+
+    reason = factory.Faker(
+        'random_element',
+        elements=concents.ForceReportComputedTaskResponse.REASON,
+    )
+    reject_report_computed_task = factory.SubFactory(RejectReportComputedTask)
+    ack_report_computed_task = factory.SubFactory(
+        AckReportComputedTask,
+        subtask_id=factory.SelfAttribute(
+            '..reject_report_computed_task.subtask_id',
+        ),
+        task_to_compute=factory.SelfAttribute(
+            '..reject_report_computed_task.task_to_compute',
+        ),
+    )
+
+
+class ForceGetTaskResultFailed(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultFailed
+
+    task_to_compute = factory.SubFactory(TaskToCompute)
+
+
+class ForceSubtaskResultsResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceSubtaskResultsResponse
+
+    subtask_results_accepted = factory.SubFactory(SubtaskResultsAcceptedFactory)
+    subtask_results_rejected = factory.SubFactory(SubtaskResultsRejected)
+
+
+class ForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResult
+
+    report_computed_task = factory.SubFactory(ReportComputedTask)
+
+
+class ForceGetTaskResultRejected(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultRejected
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)
+
+
+class AckForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.AckForceGetTaskResult
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)

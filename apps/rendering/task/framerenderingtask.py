@@ -261,6 +261,7 @@ class FrameRenderingTask(RenderingTask):
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
+            img_offset.close()
             img_offset = None
 
         if not os.path.exists(preview_file_path):
@@ -269,7 +270,9 @@ class FrameRenderingTask(RenderingTask):
         try:
             if img_offset:
                 with Image.open(preview_file_path) as img:
-                    return ImageChops.add(img, img_offset)
+                    result = ImageChops.add(img, img_offset)
+                    img_offset.close()
+                    return result
             else:
                 return Image.open(preview_file_path)
         except Exception as err:
@@ -281,7 +284,7 @@ class FrameRenderingTask(RenderingTask):
         failed_color = (255, 0, 0)
 
         for sub in list(self.subtasks_given.values()):
-            if SubtaskStatus.is_computed(sub['status']):
+            if SubtaskStatus.is_active(sub['status']):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
 

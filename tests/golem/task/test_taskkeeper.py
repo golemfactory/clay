@@ -497,6 +497,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         for x in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
+            header.subtask_timeout = 1.5
+            header.resource_size = 1
             header.task_id = "test%d-%d" % (x, random.random() * 1000)
             test_headers.append(header)
             ctk.add_request(header, int(random.random() * 100))
@@ -504,9 +506,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
-            ctd['environment'] = header.environment
-            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 10)
-            ctk.receive_subtask(ctd)
+            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
+            self.assertTrue(ctk.receive_subtask(ctd))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
@@ -522,7 +523,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self._dump_some_tasks(tasks_dir)
 
     @mock.patch('golem.task.taskkeeper.async_run', async_run)
-    def test_remove_old_tasks(self):
+    @mock.patch('golem.task.taskkeeper.common.get_timestamp_utc')
+    def test_remove_old_tasks(self, timestamp):
+        timestamp.return_value = time.time()
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
@@ -531,7 +534,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         self.assertTrue(any(ctk.active_tasks))
         self.assertTrue(any(ctk.subtask_to_task))
-        time.sleep(1)
+        timestamp.return_value = time.time() + 1
+        ctk.remove_old_tasks()
+        self.assertTrue(any(ctk.active_tasks))
+        self.assertTrue(any(ctk.subtask_to_task))
+        timestamp.return_value = time.time() + 300
         ctk.remove_old_tasks()
         self.assertTrue(not any(ctk.active_tasks))
         self.assertTrue(not any(ctk.subtask_to_task))
@@ -595,7 +602,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "abc"
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
-        ctd['environment'] = th.environment
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks["xyz"].requests == 0
         assert ctk.subtask_to_task["abc"] == "xyz"
@@ -635,9 +641,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header = get_task_header()
         ctk.add_request(header, 40003)
         ctk.active_tasks['xyz'].requests = 0
-        comp_task_def = {'task_id': "xyz", 'subtask_id': 'xxyyzz',
-                         'deadline': get_timestamp_utc() + 100,
-                         'environment': 'DEFAULT'}
+        comp_task_def = {
+            'task_id': "xyz",
+            'subtask_id': 'xxyyzz',
+            'deadline': get_timestamp_utc() + 100,
+        }
         with self.assertLogs(logger, level="INFO") as l:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask xxyyzz for task xyz. ' \
@@ -667,13 +675,3 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         del ctk.active_tasks['xyz'].subtasks['xxyyzz']
         assert ctk.check_comp_task_def(comp_task_def)
-
-        comp_task_def['environment'] = "DIFFERENT_ENV"
-        with self.assertLogs(logger, level="INFO") as l:
-            assert not ctk.check_comp_task_def(comp_task_def)
-        assert 'Cannot accept subtask xxyyzz for task xyz. ' \
-               'Expected environment: DEFAULT, received: DIFFERENT_ENV.' in \
-               l.output[0]
-
-
-

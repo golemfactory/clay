@@ -55,7 +55,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.GAS_BATCH_PAYMENT_BASE = 30
         self.sci.get_eth_balance.return_value = 0
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         self.sci.get_eth_address.return_value = self.addr
         # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.sci)
@@ -75,7 +75,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_gnt_balance(self):
         expected_balance = 13
         self.sci.get_gnt_balance.return_value = expected_balance
-        self.sci.get_gntw_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         b, _ = self.pp.gnt_balance()
         assert b == expected_balance
         self.sci.get_gnt_balance.return_value = 16
@@ -117,85 +117,19 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.get_ether_from_faucet()
         donate.assert_called_once_with(self.addr)
 
-    @freeze_time(timestamp_to_datetime(10))
-    def test_payment_deadline(self):
-        a1 = urandom(20)
-        a2 = urandom(20)
-        a3 = urandom(20)
-
-        self.sci.get_eth_balance.return_value = 100 * denoms.ether
-
-        now = int(time.time())
-        self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
-        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
-
-        self.pp.add(
-            Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
-        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p3",
-                payee=a2,
-                value=1),
-            deadline=1)
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p5",
-                payee=a3,
-                value=1),
-            deadline=1)
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p6",
-                payee=a3,
-                value=1),
-            deadline=0)
-        assert check_deadline(self.pp.deadline, now)
-
-        self.pp.add(
-            Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
-        assert check_deadline(self.pp.deadline, now - 1)
-
-    @freeze_time(timestamp_to_datetime(10))
-    def test_payment_deadline_not_reached(self):
-        a1 = urandom(20)
-
-        self.sci.get_eth_balance.return_value = 100 * denoms.ether
-
-        now = int(time.time())
-        inf = now + 12 * 30 * 24 * 60 * 60
-        deadline = self.pp.deadline
-        assert self.pp.deadline > inf
-        assert not self.pp.sendout()
-        assert self.pp.deadline == deadline
-
-        p = Payment.create(subtask="p1", payee=a1, value=1111)
-        self.pp.add(p, deadline=1111)
-        assert check_deadline(self.pp.deadline, now + 1111)
-        assert not self.pp.sendout()
-        assert check_deadline(self.pp.deadline, now + 1111)
-
     def test_monitor_progress(self):
         inprogress = self.pp._inprogress
 
         # Give 1 ETH and 99 GNT
         balance_eth = 1 * denoms.ether
-        balance_gntw = 99 * denoms.ether
+        balance_gntb = 99 * denoms.ether
         self.sci.get_eth_balance.return_value = balance_eth
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = balance_gntw
+        self.sci.get_gntb_balance.return_value = balance_gntb
         self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp._gnt_reserved() == 0
-        assert self.pp._gnt_available() == balance_gntw
+        assert self.pp._gnt_available() == balance_gntb
         assert self.pp._eth_reserved() == self.pp.ETH_BATCH_PAYMENT_BASE
         eth_available = balance_eth - self.pp.ETH_BATCH_PAYMENT_BASE
         assert self.pp._eth_available() == eth_available
@@ -204,13 +138,13 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
-        assert self.pp._gnt_available() == balance_gntw - gnt_value
+        assert self.pp._gnt_available() == balance_gntb - gnt_value
         eth_reserved = self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.ETH_PER_PAYMENT
         assert self.pp._eth_reserved() == eth_reserved
         eth_available = balance_eth - eth_reserved
         assert self.pp._eth_available() == eth_available
 
-        self.pp.deadline = int(time.time())
+        self.pp.DEFAULT_DEADLINE = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
         assert self.pp.sendout()
@@ -222,7 +156,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         # Check payment status in the Blockchain
         self.sci.get_transaction_receipt.return_value = None
-        self.sci.get_gntw_balance.return_value = balance_gntw - gnt_value
+        self.sci.get_gntb_balance.return_value = balance_gntb - gnt_value
         self.pp.monitor_progress()
         balance_eth_after_sendout = balance_eth - \
             self.pp.ETH_BATCH_PAYMENT_BASE - \
@@ -232,11 +166,11 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert tx_hash in inprogress
         assert inprogress[tx_hash] == [p]
         gb, _ = self.pp.gnt_balance(True)
-        assert gb == balance_gntw - gnt_value
+        assert gb == balance_gntb - gnt_value
         eb, _ = self.pp.eth_balance(True)
         assert eb == balance_eth_after_sendout
         assert self.pp._gnt_reserved() == 0
-        assert self.pp._gnt_available() == balance_gntw - gnt_value
+        assert self.pp._gnt_available() == balance_gntb - gnt_value
         assert self.pp._eth_reserved() == \
             self.pp.ETH_BATCH_PAYMENT_BASE
         assert self.pp._eth_available() == \
@@ -245,7 +179,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert self.pp._gnt_reserved() == 0
-        assert self.pp._gnt_available() == balance_gntw - gnt_value
+        assert self.pp._gnt_available() == balance_gntb - gnt_value
         assert self.pp._eth_reserved() == \
             self.pp.ETH_BATCH_PAYMENT_BASE
         assert self.pp._eth_available() == \
@@ -279,16 +213,16 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         inprogress = self.pp._inprogress
 
         balance_eth = 1 * denoms.ether
-        balance_gntw = 99 * denoms.ether
+        balance_gntb = 99 * denoms.ether
         self.sci.get_eth_balance.return_value = balance_eth
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = balance_gntw
+        self.sci.get_gntb_balance.return_value = balance_gntb
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
 
-        self.pp.deadline = int(time.time())
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
@@ -386,7 +320,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         self.sci.get_eth_balance.return_value = None
         self.sci.get_gnt_balance.return_value = None
-        self.sci.get_gntw_balance.return_value = None
+        self.sci.get_gntb_balance.return_value = None
 
         # when
         self.pp._run()
@@ -426,35 +360,58 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp._PaymentProcessor__faucet = True
 
         self.sci.get_gnt_balance.return_value = 1000 * denoms.ether
-        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
         self.assertTrue(self.pp.get_gnt_from_faucet())
         self.sci.request_from_faucet.assert_not_called()
 
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         self.assertFalse(self.pp.get_gnt_from_faucet())
         self.sci.request_gnt_from_faucet.assert_called_once()
 
-    @freeze_time(timestamp_to_datetime(0))
     def test_batch_transfer(self):
-        self.pp.deadline = 0
+        deadline = self.pp.DEFAULT_DEADLINE
         self.pp.CLOSURE_TIME_DELAY = 0
-        self.assertFalse(self.pp.sendout())
-
-        p1 = make_awaiting_payment()
-        p2 = make_awaiting_payment()
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+
+        assert not self.pp.sendout()
+        self.sci.batch_transfer.assert_not_called()
+
+        ts1 = 123
+        ts2 = ts1 + 2 * deadline
+        p1 = make_awaiting_payment(ts=ts1)
+        p2 = make_awaiting_payment(ts=ts2)
         self.pp.add(p1)
         self.pp.add(p2)
-        self.assertTrue(self.pp.sendout())
-        self.sci.batch_transfer.assert_called_once_with([p1, p2], mock.ANY)
+
+        with freeze_time(timestamp_to_datetime(ts1 + deadline - 1)):
+            assert not self.pp.sendout()
+            self.sci.batch_transfer.assert_not_called()
+        with freeze_time(timestamp_to_datetime(ts1 + deadline + 1)):
+            assert self.pp.sendout()
+            self.sci.batch_transfer.assert_called_once_with(
+                [p1],
+                ts1 + deadline + 1,
+            )
+            self.sci.batch_transfer.reset_mock()
+
+        with freeze_time(timestamp_to_datetime(ts2 + deadline - 1)):
+            assert not self.pp.sendout()
+            self.sci.batch_transfer.assert_not_called()
+        with freeze_time(timestamp_to_datetime(ts2 + deadline + 1)):
+            assert self.pp.sendout()
+            self.sci.batch_transfer.assert_called_once_with(
+                [p2],
+                ts2 + deadline + 1,
+            )
+            self.sci.batch_transfer.reset_mock()
 
     def test_closure_time(self):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
 
         p1 = make_awaiting_payment()
         p2 = make_awaiting_payment()
@@ -466,7 +423,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         with freeze_time(timestamp_to_datetime(5)):
             self.pp.add(p5)
 
-        self.pp.deadline = 0
+        self.pp.DEFAULT_DEADLINE = 0
 
         closure_time = 2
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
@@ -496,8 +453,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
     def test_short_on_gnt(self):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 4 * denoms.ether
-        self.pp.deadline = 0
+        self.sci.get_gntb_balance.return_value = 4 * denoms.ether
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -514,7 +471,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 10)
             self.sci.batch_transfer.reset_mock()
 
-        self.sci.get_gntw_balance.return_value = 5 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 5 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
@@ -526,8 +483,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
     def test_short_on_gnt_closure_time(self):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 4 * denoms.ether
-        self.pp.deadline = 0
+        self.sci.get_gntb_balance.return_value = 4 * denoms.ether
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -544,7 +501,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 10)
             self.sci.batch_transfer.reset_mock()
 
-        self.sci.get_gntw_balance.return_value = 10 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 10 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10)):
             self.pp.sendout()
@@ -557,8 +514,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = self.sci.GAS_PRICE * \
             (self.sci.GAS_BATCH_PAYMENT_BASE + 2 * self.sci.GAS_PER_PAYMENT)
         self.sci.get_gnt_balance.return_value = 0
-        self.sci.get_gntw_balance.return_value = 1000 * denoms.ether
-        self.pp.deadline = 0
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1, ts=1)
@@ -583,6 +540,24 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 [p5],
                 10)
             self.sci.batch_transfer.reset_mock()
+
+    def test_sorted_payments(self):
+        self.sci.get_eth_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+        self.pp.DEFAULT_DEADLINE = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1, ts=3)
+        p2 = make_awaiting_payment(value=2, ts=2)
+        p3 = make_awaiting_payment(value=3, ts=1)
+        self.pp.add(p1)
+        self.pp.add(p2)
+        self.pp.add(p3)
+
+        with freeze_time(timestamp_to_datetime(2)):
+            self.pp.sendout()
+            self.sci.batch_transfer.assert_called_with([p3, p2], 2)
 
 
 class FaucetTest(unittest.TestCase):

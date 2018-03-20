@@ -13,6 +13,7 @@ from golem_messages.message import concents
 from golem import testutils
 from golem.core import keysauth
 from golem.network import history
+from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
 from tests import factories
@@ -37,26 +38,28 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.msg = factories.messages.ReportComputedTask()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
-        self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 3600
+        self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 60
         self.msg.task_to_compute.sig = keys_auth.ecc.sign(
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
-        self.task_session.task_manager.subtask2task_mapping = {
-            self.msg.subtask_id: None,  # value ignored
-        }
-
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
+        task_header = taskbase.TaskHeader(*(None,)*6)
+        task_header.deadline = now_ts + 3600
+        self.task_session.task_server.task_keeper.task_headers = {
+            task_id: task_header,
+        }
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
-
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "KEY_ID"
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
             "KEY_ID"
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
-        subtask_state.deadline = now_ts + 60
+        subtask_state.deadline = self.msg.task_to_compute.compute_task_def[
+            'deadline'
+        ]
 
     def assert_reject_reason(self, send_mock, reason, **kwargs):
         send_mock.assert_called_once_with(mock.ANY)
@@ -104,20 +107,23 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             reject_reasons.TaskTimeLimitExceeded,
         )
 
+    @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_subtask_deadline_not_found(self, send_mock):
+    def test_task_deadline_not_found(self, send_mock, get_mock):
         "Reject if subtask timeout unreachable"
-        task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        self.task_session.task_manager.tasks_states[task_id].subtask_states = {}
+        get_mock.return_value = []
+        self.task_session.task_server.task_keeper.task_headers = {}
         self.task_session._react_to_report_computed_task(self.msg)
-        self.assert_reject_reason(
-            send_mock,
-            reject_reasons.SubtaskTimeLimitExceeded,
-        )
+        self.assertEqual(send_mock.call_count, 1)
+        concent_call = send_mock.call_args_list[0]
+        ack_msg = concent_call[0][0]
+        self.assertIsInstance(ack_msg, concents.AckReportComputedTask)
 
+    @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_subtask_deadline(self, send_mock):
+    def test_subtask_deadline(self, send_mock, get_mock):
         "Reject after subtask timeout"
+        get_mock.return_value = []
         after_deadline = self.now \
             + datetime.timedelta(minutes=1, seconds=1)
         with freeze_time(after_deadline):

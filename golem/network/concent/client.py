@@ -1,4 +1,5 @@
 import base64
+import calendar
 import datetime
 import logging
 import queue
@@ -20,6 +21,7 @@ from golem import utils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
+from golem.network.concent.handlers_library import library
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,23 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     :return: Raw reply message, None or exception
     :rtype: Bytes|None
     """
+
+    logger.debug('send_to_concent(): Updating timestamp msg %r', msg)
+    # Delayed messages are prepared before they're needed
+    # and only sent to Concent if they're not cancelled
+    # before. This can cause a situation where previously
+    # prepared message will be too old to send when enqueued.
+    # Also messages with no delay could have stayed in queue
+    # long enough to eat significant amount of Message Transport Time
+    # SEE: golem_messages.constants
+    header = msg_datastructures.MessageHeader(
+        msg.header.type_,
+        # Using this tricky approach instead of time.time()
+        # because of AppVeyor issues.
+        calendar.timegm(time.gmtime()),
+        msg.header.encrypted,
+    )
+    msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
     data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
@@ -154,14 +173,14 @@ class ConcentClientService(threading.Thread):
         self.keys_auth = keys_auth
         # self.private_key = private_key
         # self.public_key = public_key
-        self._enabled = enabled  # FIXME: remove
+        self.enabled = enabled
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
-        self.received_messages = queue.Queue(maxsize=100)
+        self.received_messages: queue.Queue = queue.Queue(maxsize=100)
 
     def run(self) -> None:
         while not self._stop_event.isSet():
@@ -195,6 +214,19 @@ class ConcentClientService(threading.Thread):
             msg, delay,
         )
 
+    def cancel_task_message(
+            self, subtask_id: str, msg_classname: str) -> bool:
+        """
+        Cancel a subtask-related message to the Concent.
+
+        :param subtask_id: the id of the subtask the message pertains to
+        :param msg_classname: the name of the message class to cancel
+        :return: whether the message was indeed found and cancelled
+        """
+        return self.cancel(
+            ConcentRequest.build_key(subtask_id, msg_classname)
+        )
+
     def submit(self,
                key: typing.Hashable,
                msg: message.Message,
@@ -213,6 +245,12 @@ class ConcentClientService(threading.Thread):
             msg_cls,
             DEFAULT_MSG_LIFETIME
         )
+        if (delay is not None) and delay < datetime.timedelta(seconds=0):
+            logger.warning(
+                '[CONCENT] Negative delay for %r. Assuming default...',
+                msg,
+            )
+            delay = None
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
@@ -255,7 +293,7 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        if not self._enabled:
+        if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
 
@@ -279,10 +317,10 @@ class ConcentClientService(threading.Thread):
             self._grace_sleep()
         else:
             self._grace_time = self.MIN_GRACE_TIME
-            self.react_to_concent_message(res)
+            self.react_to_concent_message(res, response_to=req['msg'])
 
     def receive(self) -> None:
-        if not self._enabled:
+        if not self.enabled:
             return
 
         try:
@@ -297,7 +335,16 @@ class ConcentClientService(threading.Thread):
             return
         self.react_to_concent_message(res)
 
-    def react_to_concent_message(self, data: bytes):
+    @staticmethod
+    def process_synchronous_response(
+            msg, response_to: message.Message):
+        try:
+            library.interpret(msg, response_to=response_to)
+        except Exception:   # pylint: disable=broad-except
+            logger.debug("Error interpreting synchronous response: %r", msg)
+
+    def react_to_concent_message(self, data: typing.Optional[bytes],
+                                 response_to: message.Message = None):
         if data is None:
             return
         try:
@@ -310,7 +357,11 @@ class ConcentClientService(threading.Thread):
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
             return
-        self.received_messages.put(msg)
+
+        if not response_to:
+            self.received_messages.put(msg)
+        else:
+            self.process_synchronous_response(msg, response_to)
 
     def _grace_sleep(self):
         self._grace_time = min(self._grace_time * self.GRACE_FACTOR,
@@ -319,6 +370,7 @@ class ConcentClientService(threading.Thread):
         logger.debug('Concent grace time: %r', self._grace_time)
         time.sleep(self._grace_time)
 
-    def _enqueue(self, req):
+    def _enqueue(self, req: ConcentRequest):
+        logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)

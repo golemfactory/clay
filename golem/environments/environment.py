@@ -48,6 +48,7 @@ class UnsupportReason(enum.Enum):
     APP_VERSION = 'app_version'
     DENY_LIST = 'deny_list'
     REQUESTOR_TRUST = 'requesting_trust'
+    NETWORK_REQUEST = 'cannot_perform_network_request'
 
 
 class Environment():

@@ -2,15 +2,16 @@ import json
 import logging
 import math
 import os
+import sys
 import time
-from datetime import datetime
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
+import ethereum.keys
 from ethereum.keys import decode_keystore_json, make_keystore_json
-
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
+
 from golem.utils import encode_hex, decode_hex
 
 logger = logging.getLogger(__name__)
@@ -22,33 +23,28 @@ def sha2(seed: Union[str, bytes]) -> int:
     return int.from_bytes(sha256(seed).digest(), 'big')
 
 
-def get_random(min_value: int = 0, max_value: Optional[int] = None) -> int:
+def get_random(min_value: int = 0, max_value: int = sys.maxsize) -> int:
     """
-    Get cryptographically secure random integer in range
-    :param min_value: Minimal value
-    :param max_value: Maximum value
-    :return: Random number in range <min_value, max_value>
+    :return: Random cryptographically secure random integer in range
+             `<min_value, max_value>`
     """
 
-    from Crypto.Random.random import randrange
-    from sys import maxsize
-
-    if max_value is None:
-        max_value = maxsize
+    from Crypto.Random.random import randrange  # noqa pylint: disable=no-name-in-module,import-error
     if min_value > max_value:
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
         return min_value
+
     return randrange(min_value, max_value)
 
 
 def get_random_float() -> float:
     """
-    Get random number in range (0, 1)
     :return: Random number in range (0, 1)
     """
-    result = get_random(min_value=2)
-    return float(result - 1) / float(10 ** len(str(result)))
+
+    random = get_random(min_value=1, max_value=sys.maxsize - 1)
+    return float(random) / sys.maxsize
 
 
 def _serialize_keystore(keystore):
@@ -59,6 +55,7 @@ def _serialize_keystore(keystore):
             for k, v in obj.items():
                 obj[k] = encode_bytes(v)
         return obj
+
     return json.dumps(encode_bytes(keystore))
 
 
@@ -70,10 +67,11 @@ def _deserialize_keystore(keystore):
             for k, v in obj.items():
                 obj[k] = decode_bytes(v)
         return obj
+
     return decode_bytes(json.loads(keystore))
 
 
-class WrongPasswordException(Exception):
+class WrongPassword(Exception):
     pass
 
 
@@ -85,15 +83,11 @@ class KeysAuth:
     broken or contain key below requested difficulty new key is generated.
     """
     KEYS_SUBDIR = 'keys'
-    PRIV_KEY_LEN = 32
-    PUB_KEY_LEN = 64
-    HEX_PUB_KEY_LEN = 128
-    KEY_ID_LEN = 128
 
-    _private_key = b''  # type: bytes
-    public_key = b''  # type: bytes
-    key_id = ""  # type: str
-    ecc = None  # type: ECCx
+    _private_key: bytes = b''
+    public_key: bytes = b''
+    key_id: str = ""
+    ecc: ECCx = None
 
     def __init__(self, datadir: str, private_key_name: str, password: str,
                  difficulty: int = 0) -> None:
@@ -102,6 +96,7 @@ class KeysAuth:
 
         :param datadir where to store files
         :param private_key_name: name of the file containing private key
+        :param password: user password to protect private key
         :param difficulty:
             desired key difficulty level. It's a number of leading zeros in
             binary representation of public key. Value in range <0, 255>.
@@ -158,22 +153,19 @@ class KeysAuth:
         try:
             priv_key = decode_keystore_json(keystore, password)
         except ValueError:
-            raise WrongPasswordException()
-
-        if not len(priv_key) == KeysAuth.PRIV_KEY_LEN:
-            logger.error("Wrong loaded private key size: %d.", len(priv_key))
-            return None
+            raise WrongPassword
 
         pub_key = privtopub(priv_key)
 
         if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            logger.warning("Loaded key is not difficult enough.")
-            return None
+            raise Exception("Loaded key is not difficult enough")
 
         return priv_key, pub_key
 
     @staticmethod
     def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
+        from twisted.internet import reactor
+        reactor_started = reactor.running
         logger.info("Generating new key pair")
         started = time.time()
         while True:
@@ -182,21 +174,25 @@ class KeysAuth:
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
 
+            # lets be responsive to reactor stop (eg. ^C hit by user)
+            if reactor_started and not reactor.running:
+                logger.warning("reactor stopped, aborting key generation ..")
+                raise Exception("aborting key generation")
+
         logger.info("Keys generated in %.2fs", time.time() - started)
         return priv_key, pub_key
 
     @staticmethod
     def _save_private_key(key, key_path, password: str):
-        def backup_file(path):
-            logger.info("Backing up existing private key.")
-            dirname, filename = os.path.split(path)
-            date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
-            filename_bak = filename.replace('.', '_') + '_' + date + '.bak'
-            os.rename(path, os.path.join(dirname, filename_bak))
-
-        if os.path.exists(key_path):
-            backup_file(key_path)
-        keystore = make_keystore_json(key, password)
+        # The default c parameter is quite large and makes the decryption take
+        # more than 10 seconds which is annoying.
+        ethereum.keys.PBKDF2_CONSTANTS["c"] = 1024
+        keystore = make_keystore_json(
+            key,
+            password,
+            kdf="pbkdf2",
+            cipher="aes-128-ctr",
+        )
         with open(key_path, 'w') as f:
             f.write(_serialize_keystore(keystore))
 
@@ -223,33 +219,15 @@ class KeysAuth:
         """
         return int(math.floor(256 - math.log2(sha2(decode_hex(key_id)))))
 
-    def encrypt(self, data: bytes, public_key: Optional[bytes] = None) -> bytes:
-        """ Encrypt given data with ECIES.
-
-        :param data: data that should be encrypted
-        :param public_key: *Default: None* public key that should be used to
-        encrypt data. Public key may be in digest (len == 64) or hexdigest (len
-        == 128). If public key is None then default public key will be used.
-        :return: encrypted data
-        """
-        if public_key is None:
-            public_key = self.public_key
-        if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
-            public_key = decode_hex(public_key)
-        return ECCx.ecies_encrypt(data, public_key)
-
-    def decrypt(self, data: bytes) -> bytes:
-        """ ecrypt given data with ECIES."""
-        return self.ecc.ecies_decrypt(data)
-
     def sign(self, data: bytes) -> bytes:
-        """ Sign given data with ECDSA;
+        """
+        Sign given data with ECDSA;
         sha3 is used to shorten the data and speedup calculations.
         """
         return self.ecc.sign(data)
 
     def verify(self, sig: bytes, data: bytes,
-               public_key: Optional[bytes] = None) -> bool:
+               public_key: Optional[Union[bytes, str]] = None) -> bool:
         """
         Verify the validity of an ECDSA signature;
         sha3 is used to shorten the data and speedup calculations.
@@ -266,9 +244,21 @@ class KeysAuth:
         try:
             if public_key is None:
                 public_key = self.public_key
-            if len(public_key) == KeysAuth.HEX_PUB_KEY_LEN:
+            elif len(public_key) > len(self.public_key):
                 public_key = decode_hex(public_key)
             return ecdsa_verify(public_key, sig, data)
         except Exception as e:
-            logger.error("Cannot verify signature: %s", e)
+            # Always log exceptions as repr, otherwise you'll see empty values
+            # if excpetion args is empty. It happends because
+            # str of BaseException returns str representation of args.
+            # SEE:
+            #    https://docs.python.org/3/library/exceptions.html#BaseException
+            logger.error("Cannot verify signature: %r", e)
+            logger.debug(
+                ".verify(%r, %r, %r) failed",
+                sig,
+                data,
+                public_key,
+                exc_info=True,
+            )
         return False
