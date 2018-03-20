@@ -585,7 +585,7 @@ class LuxTask(renderingtask.RenderingTask):
         commonprefix = common_dir(results['data'])
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
         if img is None:
-            # TODO Maybe we should try again?
+            # TODO Maybe we should try again? Issue #2430
             logger.error("No final file generated...")
         else:
             try:
@@ -597,7 +597,7 @@ class LuxTask(renderingtask.RenderingTask):
 
     def __final_img_error(self, error):
         logger.error("Cannot generate final image: {}".format(error))
-        # TODO What should we do in this situation?
+        # TODO What should we do in this situation? Issue #2430
 
     def __generate_final_flm(self):
         self.collected_file_names = OrderedDict(
@@ -629,9 +629,9 @@ class LuxTask(renderingtask.RenderingTask):
 
     def __final_flm_failure(self, error):
         logger.error("Cannot generate final flm: {}".format(error))
-        # TODO What should we do in this sitution?
+        # TODO What should we do in this sitution? Issue #2430
 
-    # TODO Implement with proper verifier
+    # TODO Implement with proper verifier. Issue #2430
     def __generate_final_flm_advanced_verification(self):
         # the file containing result of task test
         test_result_flm = self.__get_test_flm()
