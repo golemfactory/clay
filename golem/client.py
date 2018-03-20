@@ -6,6 +6,7 @@ import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
+from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional
 
@@ -57,14 +58,13 @@ from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
-from golem.task.taskkeeper import compute_subtask_value
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.transactions.ethereum.fundslocker import FundsLocker
 
 logger = logging.getLogger(__name__)
 
@@ -179,6 +179,9 @@ class Client(HardwarePresetsMixin):
             start_port=start_geth_port,
             address=geth_address,
         )
+
+        self.funds_locker = FundsLocker(self.transaction_system,
+                                        Path(self.datadir))
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -509,7 +512,7 @@ class Client(HardwarePresetsMixin):
             task = task_dict
 
         if self.transaction_system:
-            self.check_funds_for_task(task)
+            self.funds_locker.lock_funds(task)
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
@@ -548,25 +551,6 @@ class Client(HardwarePresetsMixin):
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
         return _result
-
-    def check_funds_for_task(self, task):
-        self._check_eth_for_task(task)
-        self._check_gnt_for_task(task)
-
-    def _check_gnt_for_task(self, task):
-        price = compute_subtask_value(task.header.max_price,
-                                      task.header.subtask_timeout)
-        gnt = self.transaction_system.payment_processor._gnt_available()
-
-        if price > gnt:
-            raise NotEnoughFunds(price, gnt)
-
-    def _check_eth_for_task(self, task):
-        pp = self.transaction_system.payment_processor
-        eth_available = pp._eth_available()
-        eth = self.transaction_system.eth_for_batch_payment(task.total_tasks)
-        if eth > eth_available:
-            raise NotEnoughFunds(eth, eth_available, extension="ETH")
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)

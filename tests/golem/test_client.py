@@ -795,6 +795,8 @@ def make_mock_payment_processor(sci, eth=100, gnt=100):
     val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
     pp.eth_for_batch_payment.return_value = val
 
+    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
+    pp.eth_balance.return_value = eth * denoms.ether, time.time()
     pp._gnt_available.return_value = gnt * denoms.ether
     pp._eth_available.return_value = eth * denoms.ether
     return pp
@@ -897,6 +899,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
         c = self.client
+        c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
         c.transaction_system.payment_processor = \
@@ -928,6 +931,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             task_id=str(uuid.uuid4())
         ))
         assert c.task_server.task_manager.create_task.called
+        c.funds_locker.persist = True
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
