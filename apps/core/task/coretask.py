@@ -88,7 +88,6 @@ class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
     VERIFICATION_QUEUE = VerificationQueue()
 
-    # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None  # type: Type[Environment]
 
     handle_key_error = HandleKeyError(log_key_error)
@@ -228,7 +227,7 @@ class CoreTask(Task):
     def verification_finished(self, subtask_id, verdict, result):
         if verdict == SubtaskVerificationState.VERIFIED:
             self.accept_results(subtask_id, result['extra_data']['results'])
-        # TODO Add support for different verification states
+        # TODO Add support for different verification states. issue #2422
         else:
             self.computation_failed(subtask_id)
 
@@ -283,7 +282,7 @@ class CoreTask(Task):
 
         if SubtaskStatus.is_active(subtask_info['status']):
             # TODO Restarted tasks that were waiting for verification should
-            # cancel it.
+            # cancel it. Issue #2423
             self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
@@ -376,7 +375,7 @@ class CoreTask(Task):
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    # TODO why is it here and not in the Task?
+    # TODO why is it here and not in the Task? Issue #1355
     @abc.abstractmethod
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
         pass  # Implement in derived methods
@@ -499,8 +498,6 @@ class CoreTask(Task):
         return AcceptClientVerdict.ACCEPTED
 
 
-# TODO test it
-# some of the tests are in the test_luxrendertask.py
 def accepting(query_extra_data_func):
     """
     A function decorator which wraps given function with a verification code.
@@ -606,7 +603,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     # TODO: Backward compatibility only. The rendering tasks should
     # move to overriding their own TaskDefinitions instead of
-    # overriding `build_dictionary`
+    # overriding `build_dictionary. Issue #2424`
     @staticmethod
     def build_dictionary(definition: TaskDefinition) -> dict:
         return definition.to_dict()
