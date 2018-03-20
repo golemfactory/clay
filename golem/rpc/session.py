@@ -192,6 +192,7 @@ class Session(ApplicationSession):
     @staticmethod
     def _on_error(err):
         logger.error("RPC: Session error: {}".format(err))
+        return err
 
 
 class Client(object):

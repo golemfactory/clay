@@ -81,6 +81,19 @@ class CertificateManager:
     def _create_and_sign_certificate(cls, key: crypto.PKey, output_path: str,
                                      **entity):
 
+        """
+        Creates a self signed certificate for personal use. Lifetime of the
+        certificate spans from epoch to now + 10 years (an arbitrarily big
+        number), in order not to bother with expiring certificates. This
+        certificate may be regenerated at will, and should only serve a single
+        purpose (e.g. WSS communication).
+
+        :param key: private key
+        :param output_path: output path
+        :param entity: certificate subject parameters
+        :return:
+        """
+
         logger.info("Creating a self-signed certificate: %r", output_path)
 
         cert = crypto.X509()
@@ -101,8 +114,8 @@ class CertificateManager:
             cert_file.write(buffer)
         del cert
 
-    @classmethod
-    def _apply_to_subject(cls, cert_subject, **entity):
+    @staticmethod
+    def _apply_to_subject(cert_subject, **entity):
         cert_subject.C = entity.pop('C', 'CH')
         cert_subject.ST = entity.pop('ST', '-')
         cert_subject.L = entity.pop('L', '-')
