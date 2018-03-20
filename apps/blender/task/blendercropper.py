@@ -13,17 +13,18 @@ logger = logging.getLogger("blendercroppper")
 
 
 # FIXME #2086
+# pylint: disable=R0903
 class CropContext:
-    def __init__(self, crops_position, crops_path, computer,
-                 resources, subtask_info, success, errback):
-        self.crops_path = crops_path
-        self.crop_values = crops_position[0]
-        self.crop_pixels = crops_position[1]
+    def __init__(self, crops_data, computer,
+                 subtask_data, callbacks):
+        self.crops_path = crops_data['paths']
+        self.crop_values = crops_data['position'][0]
+        self.crop_pixels = crops_data['position'][1]
         self.computer = computer
-        self.resources = resources
-        self.subtask_info = subtask_info
-        self.success = success
-        self.errback = errback
+        self.resources = subtask_data['resources']
+        self.subtask_info = subtask_data['subtask_info']
+        self.success = callbacks['success']
+        self.errback = callbacks['errback']
 
     def get_crop_path(self, crop_number):
         return os.path.join(self.crops_path, str(crop_number))
@@ -144,9 +145,12 @@ class BlenderCropper:
                                               num_crops,
                                               crop_size)
 
-        verify_ctx = CropContext(crops_info, crops_path, computer, resources,
-                                 subtask_info, crop_rendered,
-                                 crop_render_failure)
+        verify_ctx = CropContext({'paths': crops_path, 'position': crops_info},
+                                 computer,
+                                 {'resources': resources,
+                                  'subtask_info': subtask_info},
+                                 {'success': crop_rendered,
+                                  'errback': crop_render_failure})
         self._render_one_crop(verify_ctx, self.crop_rendered,
                               crop_render_failure, self.crop_counter)
         self.crop_counter += 1

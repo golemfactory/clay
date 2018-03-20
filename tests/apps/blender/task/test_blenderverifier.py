@@ -58,9 +58,11 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
     @mock.patch('golem.docker.job.DockerJob.wait')
     def test_crop_rendered(self, wait_mock, start_mock):
         bv = BlenderVerifier(lambda: None)
-        verify_ctx = CropContext([[0.2, 0.4, 0.2, 0.4],[[75, 34]]], self.tempdir,
-                                 mock.Mock(), mock.Mock(), mock.Mock(),
-                                 mock.Mock(), mock.Mock())
+        verify_ctx = CropContext({'position': [[0.2, 0.4, 0.2, 0.4],
+                                               [[75, 34]]],
+                                  'paths': self.tempdir},
+                                 mock.MagicMock(), mock.MagicMock(),
+                                 mock.MagicMock())
         crop_path = os.path.join(self.tempdir, str(0))
         bv.current_results_file = os.path.join(self.tempdir, "none.png")
         open(bv.current_results_file, mode='a').close()
