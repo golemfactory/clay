@@ -59,7 +59,7 @@ class TestBlenderVerifier(LogTestCase, PEP8MixIn, TempDirFixture):
     def test_crop_rendered(self, wait_mock, start_mock):
         bv = BlenderVerifier(lambda: None)
         verify_ctx = CropContext({'position': [[0.2, 0.4, 0.2, 0.4],
-                                               [[75, 34]]],
+                                               [[75, 34]], 0.05],
                                   'paths': self.tempdir},
                                  mock.MagicMock(), mock.MagicMock(),
                                  mock.MagicMock())

@@ -90,7 +90,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                 from twisted.internet import reactor
                 self.success = partial(reactor.callFromThread, success_)
                 self.failure = partial(reactor.callFromThread, failure)
-                self.crops_size = self.cropper.render_crops(
+                self.cropper.render_crops(
                     self.computer,
                     self.resources,
                     self._crop_rendered,
@@ -186,6 +186,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             else:
                 self.verified_crops_counter += 1
                 if self.verified_crops_counter == 3:
+                    self.crops_size = verification_context.crop_size
                     self.make_verdict()
 
     # One failure is enough to stop verification process, although this might
@@ -210,7 +211,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         w_ssim_min = 0.6
 
         if avg_ssim > w_ssim:
-            logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
+            logger.info("Subtask %r verified with %r",
+                        self.subtask_info['subtask_id'], avg_ssim)
             self.success()
         elif avg_ssim > w_ssim_min and not self.additional_test:
             self.verified_crops_counter = 0
@@ -226,8 +228,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         elif avg_ssim < w_ssim_min:
-            logger.info("Subtask %r NOT verified",
-                        self.subtask_info['subtask_id'])
+            logger.info("Subtask %r NOT verified with %r",
+                        self.subtask_info['subtask_id'], avg_ssim)
             self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"

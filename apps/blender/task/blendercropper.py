@@ -25,6 +25,7 @@ class CropContext:
         self.subtask_info = subtask_data['subtask_info']
         self.success = callbacks['success']
         self.errback = callbacks['errback']
+        self.crop_size = crops_data['position'][2]
 
     def get_crop_path(self, crop_number):
         return os.path.join(self.crops_path, str(crop_number))
@@ -127,7 +128,7 @@ class BlenderCropper:
 
             self.split_values.append((x_f, right_f, y_f, bottom_f))
             self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
-        return self.split_values, self.split_pixels
+        return self.split_values, self.split_pixels, self.crop_size
 
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
