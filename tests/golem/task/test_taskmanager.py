@@ -12,7 +12,7 @@ from pydispatch import dispatcher
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
-from golem.core.common import get_timestamp_utc, timeout_to_deadline
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
@@ -834,6 +834,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.key_id = "1"
         with self.assertRaises(IOError):
             self.tm.add_new_task(t)
+
+    def test_put_task_in_restarted_state_two_times(self):
+        task_id = 'qaz123WSX'
+        subtask_id = "qweasdzxc"
+        t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
+        self.tm.add_new_task(t)
+
+        self.tm.put_task_in_restarted_state(task_id)
+        with self.assertRaises(self.tm.AlreadyRestartedError):
+            self.tm.put_task_in_restarted_state(task_id)
 
     def test_restart_frame_subtasks(self):
         tm = self.tm

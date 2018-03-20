@@ -641,7 +641,10 @@ class Client(HardwarePresetsMixin):
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
-        task_manager.put_task_in_restarted_state(task_id)
+        try:
+            task_manager.put_task_in_restarted_state(task_id)
+        except task_manager.AlreadyRestartedError:
+            return None
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
