@@ -143,7 +143,7 @@ class NodeProcess(object):
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
-            '--rinkeby' if not self._mainnet else '',
+            '--networkid={}'.format(1 if self._mainnet else 4),
             '--port={}'.format(start_port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
