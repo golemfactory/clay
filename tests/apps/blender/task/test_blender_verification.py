@@ -181,7 +181,7 @@ class TestGenerateCrops(TempDirFixture):
                     width_p = math.floor(numpy.float32(
                         values[j][1] - values[j][0]) *
                                          numpy.float32(res[0]))
-                    assert left_p < pixels[j][0] < right_p
-                    assert bottom_p < top_p - pixels[j][1] < top_p
-                    assert left_p < pixels[j][0] + width_p < right_p
-                    assert bottom_p < top_p - pixels[j][1] - height_p < top_p
+                    assert left_p <= pixels[j][0] <= right_p
+                    assert bottom_p <= top_p - pixels[j][1] <= top_p
+                    assert left_p <= pixels[j][0] + width_p <= right_p
+                    assert bottom_p <= top_p - pixels[j][1] - height_p <= top_p
