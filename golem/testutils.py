@@ -15,6 +15,8 @@ from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
 from golem.model import DB_MODELS, db, DB_FIELDS
 
+logger = logging.getLogger(__name__)
+
 
 class TempDirFixture(unittest.TestCase):
     root_dir = None
@@ -57,7 +59,14 @@ class TempDirFixture(unittest.TestCase):
         # Firstly kill Ethereum node to clean up after it later on.
         try:
             self.__remove_files()
-        except OSError:
+        except OSError as e:
+            logger.debug("%r", e, exc_info=True)
+            tree = ''
+            for path, dirs, files in os.walk(self.path):
+                tree += path + '\n'
+                for f in files:
+                    tree += f + '\n'
+            logger.error("Failed to remove files %r", tree)
             # Tie up loose ends.
             import gc
             gc.collect()

@@ -21,6 +21,7 @@ from golem import utils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
+from golem.network.concent.handlers_library import library
 
 logger = logging.getLogger(__name__)
 
@@ -172,14 +173,14 @@ class ConcentClientService(threading.Thread):
         self.keys_auth = keys_auth
         # self.private_key = private_key
         # self.public_key = public_key
-        self._enabled = enabled  # FIXME: remove
+        self.enabled = enabled
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
         self._grace_time = self.MIN_GRACE_TIME
 
         self._delayed = dict()
-        self.received_messages = queue.Queue(maxsize=100)
+        self.received_messages: queue.Queue = queue.Queue(maxsize=100)
 
     def run(self) -> None:
         while not self._stop_event.isSet():
@@ -244,6 +245,12 @@ class ConcentClientService(threading.Thread):
             msg_cls,
             DEFAULT_MSG_LIFETIME
         )
+        if (delay is not None) and delay < datetime.timedelta(seconds=0):
+            logger.warning(
+                '[CONCENT] Negative delay for %r. Assuming default...',
+                msg,
+            )
+            delay = None
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
@@ -286,7 +293,7 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        if not self._enabled:
+        if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
             return
 
@@ -310,10 +317,10 @@ class ConcentClientService(threading.Thread):
             self._grace_sleep()
         else:
             self._grace_time = self.MIN_GRACE_TIME
-            self.react_to_concent_message(res)
+            self.react_to_concent_message(res, response_to=req['msg'])
 
     def receive(self) -> None:
-        if not self._enabled:
+        if not self.enabled:
             return
 
         try:
@@ -328,7 +335,16 @@ class ConcentClientService(threading.Thread):
             return
         self.react_to_concent_message(res)
 
-    def react_to_concent_message(self, data: bytes):
+    @staticmethod
+    def process_synchronous_response(
+            msg, response_to: message.Message):
+        try:
+            library.interpret(msg, response_to=response_to)
+        except Exception:   # pylint: disable=broad-except
+            logger.debug("Error interpreting synchronous response: %r", msg)
+
+    def react_to_concent_message(self, data: typing.Optional[bytes],
+                                 response_to: message.Message = None):
         if data is None:
             return
         try:
@@ -341,7 +357,11 @@ class ConcentClientService(threading.Thread):
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
             return
-        self.received_messages.put(msg)
+
+        if not response_to:
+            self.received_messages.put(msg)
+        else:
+            self.process_synchronous_response(msg, response_to)
 
     def _grace_sleep(self):
         self._grace_time = min(self._grace_time * self.GRACE_FACTOR,
