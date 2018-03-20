@@ -146,10 +146,12 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         start_crossbar_worker(m)
     # Golem headless
     else:
+        install_reactor()
+
         from golem.core.common import config_logging
         config_logging(datadir=datadir, loglevel=log_level,
                        enable_talkback=enable_talkback)
-        install_reactor()
+
         log_golem_version()
         log_platform_info()
         log_ethereum_chain(mainnet)
