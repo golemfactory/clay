@@ -67,7 +67,7 @@ class DummyTaskDefinition(TaskDefinition):
         super().add_to_resources()
 
         # TODO create temp in task directory
-        # but for now TaskDefinition doesn't know root_path
+        # but for now TaskDefinition doesn't know root_path. Issue #2427
         # task_root_path = ""
         # self.tmp_dir = DirManager().get_task_temporary_dir(self.task_id, True)
 
@@ -94,7 +94,7 @@ class DummyTaskDefinition(TaskDefinition):
 
         self.resources = set(ls_R(self.tmp_dir))
 
-    # TODO maybe move it to the CoreTask?
+    # TODO maybe move it to the CoreTask? Issue #2428
     def set_defaults(self, defaults: DummyTaskDefaults):
         self.shared_data_files = deepcopy(defaults.shared_data_files)
         self.out_file_basename = defaults.out_file_basename

@@ -22,7 +22,8 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
                                         difficulty,
                                         result_size)
 
-    with open(result_path, "w") as f:  # TODO try catch and log errors
+    # TODO try catch and log errors. Issue #2425
+    with open(result_path, "w") as f:
         f.write("{}".format(solution))
 
 

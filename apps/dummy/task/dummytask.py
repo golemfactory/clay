@@ -45,7 +45,7 @@ class DummyTask(CoreTask):
                  node_name: str,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
-                 # TODO change that when TaskHeader will be updated
+                 # TODO change that when TaskHeader will be updated. Issue #80
                  owner_address="",
                  owner_port=0,
                  owner_key_id=""
@@ -110,10 +110,6 @@ class DummyTask(CoreTask):
 
     # FIXME quite tricky to know that this method should be overwritten
     def accept_results(self, subtask_id, result_files):
-        # TODO maybe move it to the base method
-        if self.subtasks_given[subtask_id]["status"] == SubtaskStatus.finished:
-            raise Exception("Subtask {} already accepted".format(subtask_id))
-
         super().accept_results(subtask_id, result_files)
         self.counting_nodes[
             self.subtasks_given[subtask_id]['node_id']
@@ -161,9 +157,6 @@ class DummyTaskBuilder(CoreTaskBuilder):
         difficulty = opts.get("difficulty",
                               definition.options.difficulty)
 
-        # TODO uncomment that when GUI will be fixed
-        # if not isinstance(sbs, int):
-        #     raise TypeError("Subtask data size should be int")
         sbs = int(sbs)
         # difficulty comes in hex string from GUI
         if isinstance(difficulty, str):
