@@ -263,13 +263,13 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_payment_timestamp(self):
         self.sci.get_eth_balance.return_value = denoms.ether
 
-        ts = 7
+        ts = 7000000
         p = Payment.create(subtask="p1", payee=urandom(20), value=1)
         with freeze_time(timestamp_to_datetime(ts)):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
 
-        new_ts = 9
+        new_ts = 900000
         with freeze_time(timestamp_to_datetime(new_ts)):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
@@ -379,7 +379,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         assert not self.pp.sendout()
         self.sci.batch_transfer.assert_not_called()
 
-        ts1 = 123
+        ts1 = 1230000
         ts2 = ts1 + 2 * deadline
         p1 = make_awaiting_payment(ts=ts1)
         p2 = make_awaiting_payment(ts=ts2)
@@ -416,16 +416,16 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         p1 = make_awaiting_payment()
         p2 = make_awaiting_payment()
         p5 = make_awaiting_payment()
-        with freeze_time(timestamp_to_datetime(1)):
+        with freeze_time(timestamp_to_datetime(1000000)):
             self.pp.add(p1)
-        with freeze_time(timestamp_to_datetime(2)):
+        with freeze_time(timestamp_to_datetime(2000000)):
             self.pp.add(p2)
-        with freeze_time(timestamp_to_datetime(5)):
+        with freeze_time(timestamp_to_datetime(5000000)):
             self.pp.add(p5)
 
         self.pp.DEFAULT_DEADLINE = 0
 
-        closure_time = 2
+        closure_time = 2000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
@@ -434,14 +434,14 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 closure_time)
             self.sci.batch_transfer.reset_mock()
 
-        closure_time = 4
+        closure_time = 4000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_not_called()
             self.sci.batch_transfer.reset_mock()
 
-        closure_time = 6
+        closure_time = 6000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
@@ -464,20 +464,20 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 5 * denoms.ether
         self.pp.gnt_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_gnt_closure_time(self):
@@ -494,20 +494,20 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 10 * denoms.ether
         self.pp.gnt_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p2, p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_eth(self):
@@ -525,20 +525,20 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_eth_balance.return_value = denoms.ether
         self.pp.eth_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
     def test_sorted_payments(self):
@@ -548,16 +548,16 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        p1 = make_awaiting_payment(value=1, ts=3)
-        p2 = make_awaiting_payment(value=2, ts=2)
-        p3 = make_awaiting_payment(value=3, ts=1)
+        p1 = make_awaiting_payment(value=1, ts=300000)
+        p2 = make_awaiting_payment(value=2, ts=200000)
+        p3 = make_awaiting_payment(value=3, ts=100000)
         self.pp.add(p1)
         self.pp.add(p2)
         self.pp.add(p3)
 
-        with freeze_time(timestamp_to_datetime(2)):
+        with freeze_time(timestamp_to_datetime(200000)):
             self.pp.sendout()
-            self.sci.batch_transfer.assert_called_with([p3, p2], 2)
+            self.sci.batch_transfer.assert_called_with([p3, p2], 200000)
 
 
 class FaucetTest(unittest.TestCase):

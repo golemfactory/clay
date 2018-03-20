@@ -6,6 +6,7 @@ import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
+from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional
 
@@ -63,6 +64,7 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.fundslocker import FundsLocker
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +179,9 @@ class Client(HardwarePresetsMixin):
             start_port=start_geth_port,
             address=geth_address,
         )
+
+        self.funds_locker = FundsLocker(self.transaction_system,
+                                        Path(self.datadir))
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -505,6 +510,9 @@ class Client(HardwarePresetsMixin):
             task = task_manager.create_task(task_dict)
         else:
             task = task_dict
+
+        if self.transaction_system:
+            self.funds_locker.lock_funds(task)
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)

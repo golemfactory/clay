@@ -88,11 +88,13 @@ class DummyTask(Task):
 
         self.shared_data_file = None
         self.total_subtasks = num_subtasks
+        self.total_tasks = self.total_subtasks
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
         self.assigned_nodes = {}
         self.assigned_subtasks = {}
+        self.total_tasks = 1
         self._lock = Lock()
 
     def __setstate__(self, state):

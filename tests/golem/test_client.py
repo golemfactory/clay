@@ -8,6 +8,7 @@ from types import MethodType
 from unittest import TestCase
 from unittest.mock import call, Mock, MagicMock, patch
 
+from ethereum.utils import denoms
 from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -450,13 +451,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
-        keys_auth = Mock()
-        keys_auth.key_id = "a" * 64
+        keys_auth = KeysAuth(self.path, 'priv_key', '')
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
@@ -465,6 +464,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
+
+        sci = self.client.transaction_system._sci
+        pp = make_mock_payment_processor(sci)
+        self.client.transaction_system.payment_processor = pp
+
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.start()
@@ -783,24 +787,38 @@ class TestTaskCleanerService(TestWithReactor):
             logger.info.assert_called()
 
 
+def make_mock_payment_processor(sci, eth=100, gnt=100):
+    pp = MagicMock()
+    pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
+    pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
+
+    val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
+    pp.eth_for_batch_payment.return_value = val
+
+    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
+    pp.eth_balance.return_value = eth * denoms.ether, time.time()
+    pp._gnt_available.return_value = gnt * denoms.ether
+    pp._eth_available.return_value = eth * denoms.ether
+    return pp
+
+
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-
+        keys_auth = KeysAuth(self.path, 'priv_key', '')
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
-            with patch('golem.client.EthereumTransactionSystem'):
-                client = Client(
-                    datadir=self.path,
-                    app_config=Mock(),
-                    config_desc=ClientConfigDescriptor(),
-                    keys_auth=Mock(),
-                    connect_to_known_hosts=False,
-                    use_docker_manager=False,
-                    use_monitor=False
-                )
+            client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False
+            )
 
         client.sync = Mock()
         client.keys_auth = Mock(key_id=str(uuid.uuid4()))
@@ -822,7 +840,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        c.keys_auth = KeysAuth(self.path, 'priv_key', '')
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -881,26 +899,39 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
         c = self.client
+        c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.transaction_system.payment_processor = \
+            make_mock_payment_processor(c.transaction_system._sci)
 
         task_header = Mock(
             max_price=1 * 10**18,
-            task_id=str(uuid.uuid4())
+            task_id=str(uuid.uuid4()),
+            subtask_timeout=37
         )
         task = Mock(
             header=task_header,
-            get_resources=Mock(return_value=[])
+            get_resources=Mock(return_value=[]),
+            total_tasks=5,
+            get_price=Mock(return_value=900)
         )
 
         c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
-
+        task_mock = MagicMock()
+        task_mock.header.max_price = 1 * 10**18
+        task_mock.header.subtask_timeout = 158
+        task_mock.total_tasks = 3
+        price = task_mock.header.max_price * task_mock.total_tasks
+        task_mock.get_price.return_value = price
+        c.task_server.task_manager.create_task.return_value = task_mock
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4())
         ))
         assert c.task_server.task_manager.create_task.called
+        c.funds_locker.persist = True
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
@@ -954,6 +985,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
+        c.transaction_system.payment_processor = \
+            make_mock_payment_processor(c.transaction_system._sci)
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
