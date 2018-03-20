@@ -1,5 +1,7 @@
 import datetime
 import json
+import logging
+
 import operator
 from functools import reduce
 from typing import Iterator, List, Optional, Tuple
@@ -12,6 +14,8 @@ from golem.core.simpleserializer import DictSerializer
 from golem.database import Database, GolemSqliteDatabase
 from golem.model import BaseModel, JsonField, collect_db_fields, \
     collect_db_models
+
+logger = logging.getLogger(__name__)
 
 ANY = object()
 db = GolemSqliteDatabase(
@@ -114,6 +118,10 @@ class PendingMessage(PendingObjectModel):
     type = IntegerField()
     slots = MessageSlotsField()
 
+    def as_message(self):
+        cls = message.registered_message_types[self.type]
+        return cls(slots=self.slots)
+
 
 # Mixins
 
@@ -122,7 +130,7 @@ class PendingMessagesMixin:
     @classmethod
     def put(cls,
             key_id: str,
-            msg: 'message.base.Message',
+            msg: message.base.Message,
             task_id: Optional[str] = None,
             subtask_id: Optional[str] = None) -> None:
 
@@ -138,7 +146,8 @@ class PendingMessagesMixin:
     def get(cls,
             key_id: str,
             task_id: Optional[object] = ANY,
-            subtask_id: Optional[object] = ANY) -> Iterator[PendingMessage]:
+            subtask_id: Optional[object] = ANY
+            ) -> Iterator[message.base.Message]:
 
         """ Returns a message iterator.
             Can be used by an established TaskSession between ourselves and
@@ -146,10 +155,20 @@ class PendingMessagesMixin:
 
         clauses = PendingMessage.build_select_clauses(key_id, task_id,
                                                       subtask_id)
-        return PendingMessage.select() \
+        iterator = PendingMessage.select() \
             .where(clauses) \
             .order_by(PendingMessage.created_date.asc()) \
             .iterator()
+
+        for pending_msg in iterator:
+            try:
+                yield pending_msg.as_message()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error('Cannot deserialize the pending message: %r', exc)
+                logger.debug('Pending message (type %r) slots: %r',
+                             pending_msg.type, pending_msg.slots)
+            finally:
+                pending_msg.delete_instance()
 
     @classmethod
     def exists(cls,

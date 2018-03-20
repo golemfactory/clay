@@ -929,15 +929,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.error("Error fetching pending messages: %r", exc)
             return
 
-        for pending_msg in iterator:
-            try:
-                cls = message.registered_message_types[pending_msg.type]
-                msg = cls(slots=pending_msg.slots)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.error('Cannot send the pending message: %r', exc)
-            else:
-                reactor.callLater(0, self.send, msg)
-                pending_msg.delete_instance()
+        for msg in iterator:
+            reactor.callLater(0, self.send, msg)
 
     def __set_msg_interpretations(self):
         self._interpretation.update({

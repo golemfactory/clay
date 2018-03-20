@@ -378,10 +378,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts.result_received(extra_data)
 
-        pending_message = next(pending_messages.get(key_id=ts.key_id))
-        assert pending_message.type == message.tasks.SubtaskResultsRejected.TYPE
+        msg = next(pending_messages.get(key_id=ts.key_id))
+        assert msg.TYPE == message.tasks.SubtaskResultsRejected.TYPE
         assert conn.close.called
-        pending_message.delete_instance()
 
         extra_data.update(dict(
             result_type=ResultType.DATA,
@@ -393,10 +392,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         ts.result_received(extra_data)
 
-        pending_message = next(pending_messages.get(key_id=ts.key_id))
-        assert pending_message.type == message.tasks.SubtaskResultsAccepted.TYPE
+        msg = next(pending_messages.get(key_id=ts.key_id))
+        assert msg.TYPE == message.tasks.SubtaskResultsAccepted.TYPE
         assert conn.close.called
-        pending_message.delete_instance()
 
         extra_data.update(dict(
             subtask_id=None,
@@ -405,11 +403,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.result_received(extra_data)
 
         try:
-            pending_message = next(pending_messages.get(key_id=ts.key_id))
+            msg = next(pending_messages.get(key_id=ts.key_id))
         except StopIteration:
-            pending_message = None
+            msg = None
 
-        assert pending_message is None
+        assert msg is None
         assert conn.close.called
         pending_messages.quit()
 
