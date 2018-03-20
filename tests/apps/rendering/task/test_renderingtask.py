@@ -389,7 +389,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
                                Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
         task_dict = {
-                'id': 'some_task_id',
                 'resources': {"file1.png", "file2.txt", 'file3.jpg',
                               'file4.txt'},
                 'task_type': 'TESTTASK',
@@ -401,7 +400,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             minimal=True
         )
 
-        assert definition.task_id == task_dict['id']
         assert definition.main_scene_file in ['file2.txt', 'file4.txt']
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',

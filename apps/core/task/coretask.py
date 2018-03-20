@@ -2,6 +2,7 @@ import abc
 import decimal
 import logging
 import os
+import uuid
 from enum import Enum
 from typing import Type
 
@@ -177,6 +178,10 @@ class CoreTask(Task):
         self.tmp_dir = None
         self.max_pending_client_results = max_pending_client_results
 
+    def create_subtask_id(self) -> str:
+        task_uuid = uuid.UUID(self.header.task_id)
+        return str(uuid.uuid1(node=task_uuid.node))
+
     def is_docker_task(self):
         return len(self.docker_images or ()) > 0
 
@@ -327,10 +332,11 @@ class CoreTask(Task):
             'progress': self.get_progress()
         }
 
-    def _new_compute_task_def(self, hash, extra_data, working_directory=".", perf_index=0):
+    def _new_compute_task_def(self, subtask_id, extra_data,
+                              working_directory=".", perf_index=0):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
-        ctd['subtask_id'] = hash
+        ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
@@ -564,7 +570,6 @@ class CoreTaskBuilder(TaskBuilder):
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
-        definition.task_id = str(dictionary['id'])
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])

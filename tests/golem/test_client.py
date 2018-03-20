@@ -459,7 +459,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=(Mock(key_id="a" * 64, public_key=b'a' * 128)),
+            keys_auth=(Mock(key_id="a" * 64)),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -946,6 +946,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             start_task, c.task_server.task_manager)
         c.task_server.task_manager.add_new_task = MethodType(
             add_new_task, c.task_server.task_manager)
+        c.task_server.task_manager.key_id = 'deadbeef'
 
         c.resource_server.create_resource_package = Mock(
             side_effect=create_resource_package)

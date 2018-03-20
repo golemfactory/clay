@@ -420,9 +420,7 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-    @patch("golem.task.taskmanager.TaskManager.create_task_id",
-           return_value="new_uuid")
-    def test_create(self, mock_uuid) -> None:
+    def test_create(self) -> None:
         client = self.client
 
         definition = TaskDefinition()
@@ -433,7 +431,6 @@ class TestTasks(TempDirFixture):
             tasks = Tasks()
             tasks._Tasks__create_from_json(def_str)
             task_def = json.loads(def_str)
-            task_def['id'] = "new_uuid"
             client.create_task.assert_called_with(task_def)
 
             patched_open = "golem.interface.client.tasks.open"
@@ -454,8 +451,7 @@ class TestTasks(TempDirFixture):
                 read_data='{"name": "Golem task"}'
             )):
                 tasks.create("foo")
-                task_def = json.loads(
-                    '{"id": "new_uuid", "name": "Golem task"}')
+                task_def = json.loads('{"name": "Golem task"}')
                 client.create_task.assert_called_with(task_def)
 
     def test_template(self) -> None:

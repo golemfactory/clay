@@ -1,12 +1,11 @@
 import abc
 import logging
 import time
-from typing import List, Tuple, Union, Type
+from typing import List, Type
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
-from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.task.taskstate import TaskState
 

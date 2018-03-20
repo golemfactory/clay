@@ -21,6 +21,7 @@ from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
+from golem.utils import decode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -113,24 +114,29 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
-        dictionary['id'] = TaskManager.create_task_id(self.keys_auth.public_key)
         type_name = dictionary['type'].lower()
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
-        builder = builder_type(self.node_name, definition,
-                               self.root_path, self.dir_manager)
+        definition.task_id = TaskManager.create_task_id(self.key_id)
+        builder = builder_type(self.node_name, definition, self.root_path,
+                               self.dir_manager)
 
         return Task.build_task(builder)
 
     @staticmethod
-    def create_task_id(public_key):
+    def create_task_id(key: str) -> str:
         """
-        gets top 48 bits from golem node public key, and inserts as uuid1 node
+        seeds top 48 bits from node key as uuid1 node
+
+        :param str key: `node.key` or equivalently `keys_auth.key_id`
+        :returns: uuid1 based on timestamp and given key
         """
-        return str(uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
+        public_key = decode_hex(key)
+        return str(
+            uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):

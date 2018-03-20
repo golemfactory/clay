@@ -8,7 +8,6 @@ from golem.core.deferred import sync_wait
 from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
-from golem.task.taskmanager import TaskManager
 
 CREATE_TASK_TIMEOUT = 300  # s
 
@@ -203,8 +202,7 @@ class Tasks:
                 "spaces, underline, dash or dot.")
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
-        dictionary['id'] = TaskManager.create_task_id(
-            self.client.keys_auth.public_key)
+
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 

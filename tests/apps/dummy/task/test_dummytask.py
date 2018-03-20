@@ -1,4 +1,5 @@
 import os
+import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -19,6 +20,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def _get_new_dummy(self):
         td = DummyTaskDefinition(DummyTaskDefaults())
+        td.task_id = str(uuid.uuid4())
         dt = DummyTask(5, "node", td, "root/path", "", "", "")
         return dt, td
 
@@ -30,11 +32,6 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dt, td = self._get_new_dummy()
         assert isinstance(dt, DummyTask)
 
-    def test_new_subtask_id(self):
-        dt, td = self._get_new_dummy()
-        new_id = dt._DummyTask__get_new_subtask_id()
-        assert len(new_id) == 32
-
     def test_get_result_filename(self):
         dt, td = self._get_new_dummy()
         subtask_id = "aaaaaaa"
@@ -44,7 +41,9 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
                                        dt.RESULT_EXT)
 
     @patch("random.getrandbits", lambda x: 0)
-    def test_query_extra_data_for_test_task(self):
+    @patch("apps.dummy.task.dummytask.DummyTask.create_subtask_id",
+           return_value="some_task_id")
+    def test_query_extra_data_for_test_task(self, _):
         dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()

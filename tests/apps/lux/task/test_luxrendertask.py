@@ -1,4 +1,5 @@
 import os
+import uuid
 from pathlib import Path
 import pickle
 import unittest
@@ -45,6 +46,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         lro.haltspp = haltspp
         td.total_subtasks = total_subtasks
         td.options = lro
+        td.task_id = str(uuid.uuid4())
 
         # td.main_scene_file= os.path.join(self.path, 'scene.lxs')
         # td.add_to_resources()

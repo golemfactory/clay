@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
@@ -45,6 +46,7 @@ class TestDummyTaskVerifier(TempDirFixture):
         dd.shared_data_files = [shared_file]
 
         td = DummyTaskDefinition(dd)
+        td.task_id = str(uuid.uuid4())
         dt = DummyTask(3, "a", td, self.tempdir)
         ver = DummyTaskVerifier(lambda: None)
         ed = dt.query_extra_data(perf_index=1.0)
