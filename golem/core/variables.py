@@ -44,7 +44,7 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules # noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules # noqa
     """
-    ID: ClassVar[str] = '25'
+    ID: ClassVar[str] = '26'
 
     @staticmethod
     def patch_protocol_id(ctx, param, value):

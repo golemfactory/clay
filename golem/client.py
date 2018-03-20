@@ -8,7 +8,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional
+from typing import Dict, Hashable, Optional, Union, List
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -848,6 +848,19 @@ class Client(HardwarePresetsMixin):
 
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
+
+    def withdraw(
+            self,
+            amount: Union[str, int],
+            destination: str,
+            currency: str) -> List[str]:
+        if not self.is_mainnet():
+            raise Exception("Withdrawals are disabled on testnet")
+
+        if isinstance(amount, str):
+            amount = int(amount)
+
+        return self.transaction_system.withdraw(amount, destination, currency)
 
     def get_task_cost(self, task_id):
         """
