@@ -163,7 +163,8 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None, loglevel=None):
+def config_logging(suffix='', datadir=None, loglevel=None,
+                   enable_talkback=False):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -187,6 +188,10 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         for _logger in LOGGING.get('loggers', {}).values():
             _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
+
+    if enable_talkback:
+        if 'sentry' not in LOGGING['root']['handlers']:
+            LOGGING['root']['handlers'].append('sentry')
 
     try:
         if not os.path.exists(logdir_path):

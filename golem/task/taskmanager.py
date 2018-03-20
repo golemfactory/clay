@@ -54,6 +54,12 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
+    class Error(Exception):
+        pass
+
+    class AlreadyRestartedError(Error):
+        pass
+
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
@@ -595,9 +601,12 @@ class TaskManager(TaskEventListener):
         When restarting task, it's put in a final state 'restarted' and
         a new one is created.
         """
+        task_state = self.tasks_states[task_id]
+        if task_state.status == TaskStatus.restarted:
+            raise self.AlreadyRestartedError()
         self.dir_manager.clear_temporary(task_id)
 
-        self.tasks_states[task_id].status = TaskStatus.restarted
+        task_state.status = TaskStatus.restarted
         for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted

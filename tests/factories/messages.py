@@ -190,3 +190,32 @@ class ForceGetTaskResultFailed(factory.Factory):
         model = concents.ForceGetTaskResultFailed
 
     task_to_compute = factory.SubFactory(TaskToCompute)
+
+
+class ForceSubtaskResultsResponse(factory.Factory):
+    class Meta:
+        model = concents.ForceSubtaskResultsResponse
+
+    subtask_results_accepted = factory.SubFactory(SubtaskResultsAcceptedFactory)
+    subtask_results_rejected = factory.SubFactory(SubtaskResultsRejected)
+
+
+class ForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResult
+
+    report_computed_task = factory.SubFactory(ReportComputedTask)
+
+
+class ForceGetTaskResultRejected(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultRejected
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)
+
+
+class AckForceGetTaskResult(factory.Factory):
+    class Meta:
+        model = concents.AckForceGetTaskResult
+
+    force_get_task_result = factory.SubFactory(ForceGetTaskResult)
