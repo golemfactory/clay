@@ -46,7 +46,7 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
                 )
                 if not self.is_closed():
                     self.close()
-                time.sleep(0.1)
+                time.sleep(0)
 
 
 class Database:
