@@ -546,19 +546,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
 
-    @patch('golem.client.EthereumTransactionSystem', autospec=True)
-    def test_is_mainnet(self, *_):
-        client = Client(
-            datadir=self.path,
-            config_desc=ClientConfigDescriptor(),
-            app_config=Mock(),
-            keys_auth=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        assert not client.is_mainnet()
-
 
 class TestDoWorkService(TestWithReactor):
 
@@ -1124,8 +1111,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsNone(c.rpc_publisher)
 
         rpc_session = Mock()
+        publisher = Publisher(rpc_session)
 
-        c.configure_rpc(rpc_session)
+        c.set_rpc_publisher(publisher)
         self.assertIsInstance(c.rpc_publisher, Publisher)
         self.assertIs(c.rpc_publisher.session, rpc_session)
 
