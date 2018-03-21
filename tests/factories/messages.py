@@ -192,6 +192,59 @@ class ForceGetTaskResultFailed(factory.Factory):
     task_to_compute = factory.SubFactory(TaskToCompute)
 
 
+class FileInfoFactory(factory.DictFactory):
+    class Meta:
+        model = concents.FileTransferToken.FileInfo
+
+    path = factory.Faker('file_path')
+    checksum = factory.Faker('sha1')
+    size = factory.Faker('random_int', min=1 << 20, max=10 << 20)
+
+
+class FileTransferTokenFactory(factory.Factory):
+    class Meta:
+        model = concents.FileTransferToken
+
+    subtask_id = factory.Faker('uuid4')
+    token_expiration_deadline = 1800
+    storage_cluster_address = factory.Faker('url')
+    authorized_client_public_key = factory.Faker('binary', length=64)
+    operation = concents.FileTransferToken.Operation.upload
+    files = factory.List([
+        factory.SubFactory(FileInfoFactory)
+    ])
+
+    # pylint: disable=no-self-argument
+
+    @factory.post_generation
+    def upload(obj, create, extracted, **_):
+        if not create:
+            return
+
+        if extracted:
+            obj.operation = concents.FileTransferToken.Operation.upload
+
+    @factory.post_generation
+    def download(obj, create, extracted, **_):
+        if not create:
+            return
+
+        if extracted:
+            obj.operation = concents.FileTransferToken.Operation.download
+
+    # pylint: enable=no-self-argument
+
+
+class ForceGetTaskResultUploadFactory(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultUpload
+
+    force_get_task_result = factory.SubFactory(
+        'tests.factories.messages.ForceGetTaskResult')
+    file_transfer_token = factory.SubFactory(
+        FileTransferTokenFactory, upload=True)
+
+
 class ForceSubtaskResultsResponse(factory.Factory):
     class Meta:
         model = concents.ForceSubtaskResultsResponse

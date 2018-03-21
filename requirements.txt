@@ -54,5 +54,5 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
-Golem-Messages==1.17.0
+Golem-Messages==1.17.2
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@716e885d3a907f8a0a73379f49e2e86b2cc44e39#egg=golem_sci
