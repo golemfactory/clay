@@ -179,18 +179,18 @@ class CoreTask(Task):
         self.max_pending_client_results = max_pending_client_results
 
     @staticmethod
-    def create_task_id(public_key: str) -> str:
+    def create_task_id(public_key: bytes) -> str:
         """
-        seeds top 48 bits from given public key as generated uuid1 node
+        seeds top 48 bits from given public key as node in generated uuid1
 
-        :param str public_key: `keys_auth.public_key`
+        :param bytes public_key: `KeysAuth.public_key`
         :returns: string uuid1 based on timestamp and given key
         """
         return str(uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
 
     def create_subtask_id(self) -> str:
         """
-        seeds low 48 bits from task_id as generated uuid1 node
+        seeds low 48 bits from task_id as node in generated uuid1
 
         :returns: uuid1 based on timestamp and task_id
         """
