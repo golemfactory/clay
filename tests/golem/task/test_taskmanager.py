@@ -12,7 +12,7 @@ from pydispatch import dispatcher
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
-from golem.core.common import get_timestamp_utc, timeout_to_deadline
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager

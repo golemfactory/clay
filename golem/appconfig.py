@@ -1,7 +1,7 @@
 import logging
 from os import path
 
-from typing import Set,Any
+from typing import Set, Any
 from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor

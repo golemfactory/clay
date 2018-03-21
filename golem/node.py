@@ -13,7 +13,9 @@ from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
+from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.model import DB_MODELS, db, DB_FIELDS, GenericKeyValue
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
@@ -28,6 +30,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
+    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
@@ -61,12 +64,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._peers: List[SocketAddress] = peers or []
 
+        # Initialize database
+        self._db = Database(
+            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
+
         self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             app_config=app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
+            database=self._db,
             mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
@@ -86,9 +94,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
             rpc = self._start_rpc()
 
             def on_rpc_ready() -> Deferred:
+                terms = self._check_terms()
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
-                return gatherResults([keys, docker], consumeErrors=True)
+                return gatherResults([terms, keys, docker], consumeErrors=True)
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
@@ -133,6 +142,34 @@ class Node(object):  # pylint: disable=too-few-public-methods
             StatusPublisher.set_publisher(self._rpc_publisher)
 
         return deferred.addCallbacks(set_publisher, self._error('rpc session'))
+
+    def are_terms_accepted(self):
+        return GenericKeyValue.select()\
+            .where(GenericKeyValue.key == self.TERMS_ACCEPTED_KEY)\
+            .count() > 0
+
+    def accept_terms(self):
+        GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
+
+    def _check_terms(self) -> Optional[Deferred]:
+        if not self.rpc_session:
+            self._error("RPC session is not available")
+            return None
+
+        self.rpc_session.register_methods([
+            (self.are_terms_accepted, 'golem.terms'),
+            (self.accept_terms, 'golem.terms.accept'),
+        ])
+
+        def wait_for_terms():
+            while not self.are_terms_accepted() and self._reactor.running:
+                logger.info(
+                    'Terms of use must be accepted before using Golem. '
+                    'Run `golemcli terms show` to display the terms '
+                    'and `golemcli terms accept` to accept them.')
+                time.sleep(5)
+
+        return threads.deferToThread(wait_for_terms)
 
     def _start_keys_auth(self) -> Optional[Deferred]:
         if not self.rpc_session:

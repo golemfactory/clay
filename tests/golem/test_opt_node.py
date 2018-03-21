@@ -81,6 +81,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=cfg,
                                        keys_auth=keys_auth,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
@@ -147,6 +148,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
@@ -227,6 +229,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -274,6 +277,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -339,6 +343,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -478,8 +483,7 @@ class TestOptNode(TempDirFixture):
             self.node.client.quit()
         super().tearDown()
 
-    @patch('golem.node.Client.are_terms_accepted', return_value=True)
-    def test_start_rpc_router(self, _terms, reactor, *_):
+    def test_start_rpc_router(self, reactor, *_):
         # given
         config_desc = ClientConfigDescriptor()
         config_desc.rpc_address = '127.0.0.1'
@@ -502,9 +506,7 @@ class TestOptNode(TempDirFixture):
             'before', 'shutdown', self.node.rpc_router.stop)
 
     @patch('golem.client.EthereumTransactionSystem')
-    @patch('golem.node.Client.are_terms_accepted', return_value=True)
-    def test_start_creates_client(
-            self, _terms, _ets, reactor, mock_gather_results, *_):
+    def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         # given
         config_descriptor = ClientConfigDescriptor()
 
@@ -531,10 +533,8 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.node.Node._run')
-    @patch('golem.node.Client.are_terms_accepted', return_value=True)
     def test_start_creates_client_and_calls_run(
             self,
-            _terms,
             mock_run,
             _ets,
             reactor,
@@ -567,9 +567,8 @@ class TestOptNode(TempDirFixture):
         assert mock_run.called
         assert reactor.addSystemEventTrigger.call_count == 2
 
-    @patch('golem.node.Client.are_terms_accepted', return_value=True)
     def test_start_starts_client(
-            self, _terms, reactor, mock_gather_results, mock_session, *_):
+            self, reactor, mock_gather_results, mock_session, *_):
 
         # given
         mock_gather_results.return_value = mock_gather_results

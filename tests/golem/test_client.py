@@ -94,6 +94,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -142,6 +143,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -187,6 +189,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -206,6 +209,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -221,6 +225,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -270,6 +275,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -280,7 +286,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             Client(datadir=datadir,
                    app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
-                   keys_auth=Mock())
+                   keys_auth=Mock(),
+                   database=Mock())
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_get_status(self, *_):
@@ -289,6 +296,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -328,6 +336,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
         )
         self.client.db = None
         self.client.quit()
@@ -341,6 +350,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -355,6 +365,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -380,6 +391,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -425,6 +437,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -443,24 +456,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.client.stop()
 
-        self.assertTrue(self.client.stopped)
         self.client.p2pservice.disconnect.assert_called_once()
         self.client.task_server.disconnect.assert_called_once()
-
-    @patch('golem.client.EthereumTransactionSystem')
-    @patch('golem.client.time.sleep')
-    def test_start_terms_unaccepted(self, sleep: MagicMock, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False
-        )
-        self.client.stopped = True
-        self.assertRaises(SystemExit, self.client.start)
-        sleep.assert_called_once()
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
@@ -476,6 +473,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -548,6 +546,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -564,6 +563,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             app_config=Mock(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -812,6 +812,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                     app_config=Mock(),
                     config_desc=ClientConfigDescriptor(),
                     keys_auth=Mock(),
+                    database=Mock(),
                     connect_to_known_hosts=False,
                     use_docker_manager=False,
                     use_monitor=False

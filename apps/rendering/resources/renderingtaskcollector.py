@@ -92,7 +92,7 @@ class RenderingTaskCollector(object):
                     final_img = self._paste_image(final_img, rgb8_im, i)
 
         return final_img
-        
+
     def finalize_pil(self):
         res_x, res_y = 0, 0
 
@@ -122,6 +122,7 @@ class RenderingTaskCollector(object):
 
     def _paste_image(self, final_img, new_part, num):
         img_offset = Image.new("RGB", (self.width, self.height))
-        offset = int(math.floor(num * float(self.height) / float(len(self.accepted_img_files))))
+        offset = int(math.floor(num * float(self.height) /
+                                float(len(self.accepted_img_files))))
         img_offset.paste(new_part, (0, offset))
         return ImageChops.add(final_img, img_offset)

@@ -1,8 +1,8 @@
 import logging
+import os
 from typing import Optional, Type, Sequence
 
 import peewee
-from os import path
 
 from playhouse.shortcuts import RetryOperationalError
 
@@ -34,8 +34,11 @@ class Database:
         self.models = models
         self.schemas_dir = schemas_dir
 
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+
         self.db = db
-        self.db.init(path.join(db_dir, db_name))
+        self.db.init(os.path.join(db_dir, db_name))
         self.db.connect()
 
         version = self.get_user_version()

@@ -4,8 +4,6 @@
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
-    are_terms_accepted=     'golem.terms',
-    accept_terms=           'golem.terms.accept',
     is_mainnet=             'golem.mainnet',
 
     get_settings=           'env.opts',

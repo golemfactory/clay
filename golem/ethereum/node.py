@@ -180,7 +180,8 @@ class NodeProcess(object):
         log.info('GETH: connecting to remote RPC interface at %s', addr)
         return HTTPProvider(addr)
 
-    def _find_geth(self):
+    @staticmethod
+    def _find_geth():
         geth = shutil.which('geth')
         if not geth:
             raise OSError("Ethereum client 'geth' not found")

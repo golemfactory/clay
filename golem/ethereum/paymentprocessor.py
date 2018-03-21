@@ -2,13 +2,13 @@ import calendar
 import logging
 import sys
 import time
-import requests
 from datetime import datetime
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
 from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
+import requests
 
 from golem_sci.gntconverter import GNTConverter
 from golem.core.service import LoopingCallService
@@ -221,7 +221,7 @@ class PaymentProcessor(LoopingCallService):
 
             now = get_timestamp()
             if self.deadline > now:
-                log.info("Next sendout in {} s".format(self.deadline - now))
+                log.info("Next sendout in %r s", self.deadline - now)
                 return False
 
             if self._gnt_converter.is_converting():
