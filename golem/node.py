@@ -205,9 +205,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
         # methods = core_methods + node_methods
         methods = core_methods
 
-        # TODO: These methods are needed before key_auth, to not cause errors
-        # they are un-registered before applying the map.
-
         self.rpc_session.register_methods(methods)
         self.client.set_rpc_publisher(self._rpc_publisher)
 
