@@ -151,12 +151,13 @@ class NodeProcess(object):
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
-            '--rinkeby' if not self._mainnet else '',
             '--port={}'.format(start_port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
             '--verbosity', '3',
         ]
+        if not self._mainnet:
+            args.append('--rinkeby')
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
