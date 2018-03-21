@@ -1,11 +1,11 @@
 import json
 import logging
 from ipaddress import AddressValueError, ip_address
-from typing import Optional
+from types import FunctionType
+from typing import Optional, Dict, Tuple, List, Iterable
 
 import collections
 
-import math
 import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -21,6 +21,10 @@ log = logging.getLogger(__name__)
 DEFAULT_HYPERDRIVE_PORT = 3282
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
 DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
+
+
+def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
+    return {'TCP': (host, port)}
 
 
 class HyperdriveClient(IClient):
@@ -231,43 +235,15 @@ class HyperdriveAsyncClient(HyperdriveClient):
 
 class HyperdriveClientOptions(ClientOptions):
 
-    max_peers = 64
-
-    @classmethod
-    def replace_host(cls,
-                     options: 'HyperdriveClientOptions',
-                     address: str) -> Optional['HyperdriveClientOptions']:
-        """
-        Replaces first peer's address and prepends it to the peers list.
-        Filters the options instance but does not remove valid peer addresses.
-
-        :param options: received client options
-        :param address: IP address to replace with
-        """
-        if not (options and options.peers):
-            return None
-
-        filtered = options.filtered()
-        # Version / client mismatch or no address
-        if not (filtered and address):
-            return None
-
-        peer = cls.filter_peer(options.peers[0], forced_ip=address)
-
-        if not peer:
-            pass
-        elif not filtered.peers:
-            filtered.peers = [peer]
-        elif peer not in filtered.peers:
-            filtered.peers.insert(0, peer)
-        return filtered
+    max_peers = 8
 
     def filtered(self,
-                 client_id=HyperdriveClient.CLIENT_ID,
-                 version=HyperdriveClient.VERSION,
-                 excluded_ips=None):
+                 client_id: str = HyperdriveClient.CLIENT_ID,
+                 version: float = HyperdriveClient.VERSION,
+                 verify_peer: Optional[FunctionType] = None,
+                 **_kwargs) -> Optional['HyperdriveClientOptions']:
 
-        opts = super(HyperdriveClientOptions, self).filtered(client_id, version)
+        opts = super().filtered(client_id, version)
 
         if not opts:
             pass
@@ -280,33 +256,35 @@ class HyperdriveClientOptions(ClientOptions):
             log.warning('Resource client: invalid type: %s; dict expected',
                         type(opts.options))
 
-        elif not isinstance(opts.options.get('peers'),
-                            collections.Iterable):
+        elif not isinstance(opts.options.get('peers'), collections.Iterable):
             log.warning('Resource client: peers not provided')
 
         else:
-            opts.peers = self.filter_peers(opts.peers, excluded_ips)
+            opts.options['peers'] = self.filter_peers(opts.options['peers'])
             return opts
 
     @classmethod
-    def filter_peers(cls, peers, excluded_ips=None):
+    def filter_peers(cls,
+                     peers: Iterable,
+                     verify_peer: Optional[FunctionType] = None) -> List:
         result = list()
 
         for peer in peers:
-            entry = cls.filter_peer(peer, excluded_ips)
-            if not entry:
-                continue
-
-            result.append(entry)
+            entry = cls.filter_peer(peer, verify_peer)
+            if entry:
+                result.append(entry)
             if len(result) == cls.max_peers:
                 break
 
         return result
 
     @classmethod
-    def filter_peer(cls, peer, excluded_ips=None, forced_ip=None):
+    def filter_peer(cls, peer,
+                    verify_peer: Optional[FunctionType] = None
+                    ) -> Optional[Dict]:
+
         if not isinstance(peer, dict):
-            return
+            return None
 
         new_entry = dict()
 
@@ -315,29 +293,18 @@ class HyperdriveClientOptions(ClientOptions):
                 ip_str = entry[0]
                 port = int(entry[1])
 
+                ip_address(ip_str)  # may raise an exception
+
+                if protocol != 'TCP':
+                    raise ValueError('protocol {} is invalid'.format(protocol))
                 if not 0 < port < 65536:
                     raise ValueError('port {} is invalid'.format(port))
-
-                if not forced_ip:
-                    cls.verify_ip(ip_str, excluded_ips)
-                elif ip_str != forced_ip:
-                    log.warning("Replacing provider's IP address %s with %s",
-                                ip_str, forced_ip)
-                    ip_str = forced_ip
+                if verify_peer and not verify_peer(ip_str, port):
+                    raise ValueError('peer not accepted')
 
             except (ValueError, TypeError, AddressValueError) as err:
-                log.warning('Resource client: %s %s', err, peer)
+                log.debug('Resource client: %r (%s)', err, peer)
             else:
                 new_entry[protocol] = (ip_str, port)
 
-        if new_entry:
-            return new_entry
-
-    @staticmethod
-    def verify_ip(ip_str, excluded_ips=None):
-        ip = ip_address(ip_str)
-
-        if ip.is_private or ip.is_multicast or ip.is_unspecified:
-            raise ValueError('address {} is not allowed'.format(ip))
-        if excluded_ips and ip_str in excluded_ips:
-            raise ValueError('address {} was excluded'.format(ip))
+        return new_entry
