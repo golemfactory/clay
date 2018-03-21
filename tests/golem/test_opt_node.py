@@ -494,7 +494,7 @@ class TestOptNode(TempDirFixture):
     @patch('golem.client.EthereumTransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         # given
-        keys_auth = Mock()
+        keys_auth = Mock(key_id="a")
         config_descriptor = ClientConfigDescriptor()
 
         mock_gather_results.return_value = mock_gather_results
