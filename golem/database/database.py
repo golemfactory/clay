@@ -1,10 +1,10 @@
+import datetime
 import logging
+from os import path
+import time
 from typing import Optional, Type, Sequence
 
 import peewee
-from os import path
-
-from playhouse.shortcuts import RetryOperationalError
 
 from golem.database.migration import default_migrate_dir
 from golem.database.migration.migrate import migrate_schema, MigrationError
@@ -12,10 +12,41 @@ from golem.database.migration.migrate import migrate_schema, MigrationError
 logger = logging.getLogger('golem.db')
 
 
-class GolemSqliteDatabase(RetryOperationalError, peewee.SqliteDatabase):
+class GolemSqliteDatabase(peewee.SqliteDatabase):
+    RETRY_TIMEOUT = datetime.timedelta(minutes=1)
 
     def sequence_exists(self, seq):
         raise NotImplementedError()
+
+    def execute_sql(self, sql, params=None, require_commit=True):
+        # Loosely based on
+        # https://github.com/coleifer/peewee/blob/2.10.2/playhouse/shortcuts.py#L206-L219
+        deadline = datetime.datetime.now() + self.RETRY_TIMEOUT
+        iterations = 0
+        while True:
+            iterations += 1
+            try:
+                return super().execute_sql(sql, params, require_commit)
+            except peewee.OperationalError as e:
+                if datetime.datetime.now() > deadline:
+                    logger.warning(
+                        "execute_sql() retry timeout after %d iterations."
+                        " Giving up.",
+                        iterations,
+                    )
+                    raise
+                logger.debug(
+                    "execute_sql(%r, params=%r, require_commit=%r)"
+                    " failed (%d) with: %r. Retrying...",
+                    sql,
+                    params,
+                    require_commit,
+                    iterations,
+                    e,
+                )
+                if not self.is_closed():
+                    self.close()
+                time.sleep(0)
 
 
 class Database:

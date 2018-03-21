@@ -117,72 +117,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.get_ether_from_faucet()
         donate.assert_called_once_with(self.addr)
 
-    @freeze_time(timestamp_to_datetime(10))
-    def test_payment_deadline(self):
-        a1 = urandom(20)
-        a2 = urandom(20)
-        a3 = urandom(20)
-
-        self.sci.get_eth_balance.return_value = 100 * denoms.ether
-
-        now = int(time.time())
-        self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
-        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
-
-        self.pp.add(
-            Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
-        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p3",
-                payee=a2,
-                value=1),
-            deadline=1)
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p5",
-                payee=a3,
-                value=1),
-            deadline=1)
-        assert check_deadline(self.pp.deadline, now + 1)
-
-        self.pp.add(
-            Payment.create(
-                subtask="p6",
-                payee=a3,
-                value=1),
-            deadline=0)
-        assert check_deadline(self.pp.deadline, now)
-
-        self.pp.add(
-            Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
-        assert check_deadline(self.pp.deadline, now - 1)
-
-    @freeze_time(timestamp_to_datetime(10))
-    def test_payment_deadline_not_reached(self):
-        a1 = urandom(20)
-
-        self.sci.get_eth_balance.return_value = 100 * denoms.ether
-
-        now = int(time.time())
-        inf = now + 12 * 30 * 24 * 60 * 60
-        deadline = self.pp.deadline
-        assert self.pp.deadline > inf
-        assert not self.pp.sendout()
-        assert self.pp.deadline == deadline
-
-        p = Payment.create(subtask="p1", payee=a1, value=1111)
-        self.pp.add(p, deadline=1111)
-        assert check_deadline(self.pp.deadline, now + 1111)
-        assert not self.pp.sendout()
-        assert check_deadline(self.pp.deadline, now + 1111)
-
     def test_monitor_progress(self):
         inprogress = self.pp._inprogress
 
@@ -210,7 +144,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         eth_available = balance_eth - eth_reserved
         assert self.pp._eth_available() == eth_available
 
-        self.pp.deadline = int(time.time())
+        self.pp.DEFAULT_DEADLINE = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
         assert self.pp.sendout()
@@ -288,7 +222,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
 
-        self.pp.deadline = int(time.time())
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
@@ -329,13 +263,13 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_payment_timestamp(self):
         self.sci.get_eth_balance.return_value = denoms.ether
 
-        ts = 7
+        ts = 7000000
         p = Payment.create(subtask="p1", payee=urandom(20), value=1)
         with freeze_time(timestamp_to_datetime(ts)):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
 
-        new_ts = 9
+        new_ts = 900000
         with freeze_time(timestamp_to_datetime(new_ts)):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
@@ -435,21 +369,44 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.assertFalse(self.pp.get_gnt_from_faucet())
         self.sci.request_gnt_from_faucet.assert_called_once()
 
-    @freeze_time(timestamp_to_datetime(0))
     def test_batch_transfer(self):
-        self.pp.deadline = 0
+        deadline = self.pp.DEFAULT_DEADLINE
         self.pp.CLOSURE_TIME_DELAY = 0
-        self.assertFalse(self.pp.sendout())
-
-        p1 = make_awaiting_payment()
-        p2 = make_awaiting_payment()
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+
+        assert not self.pp.sendout()
+        self.sci.batch_transfer.assert_not_called()
+
+        ts1 = 1230000
+        ts2 = ts1 + 2 * deadline
+        p1 = make_awaiting_payment(ts=ts1)
+        p2 = make_awaiting_payment(ts=ts2)
         self.pp.add(p1)
         self.pp.add(p2)
-        self.assertTrue(self.pp.sendout())
-        self.sci.batch_transfer.assert_called_once_with([p1, p2], mock.ANY)
+
+        with freeze_time(timestamp_to_datetime(ts1 + deadline - 1)):
+            assert not self.pp.sendout()
+            self.sci.batch_transfer.assert_not_called()
+        with freeze_time(timestamp_to_datetime(ts1 + deadline + 1)):
+            assert self.pp.sendout()
+            self.sci.batch_transfer.assert_called_once_with(
+                [p1],
+                ts1 + deadline + 1,
+            )
+            self.sci.batch_transfer.reset_mock()
+
+        with freeze_time(timestamp_to_datetime(ts2 + deadline - 1)):
+            assert not self.pp.sendout()
+            self.sci.batch_transfer.assert_not_called()
+        with freeze_time(timestamp_to_datetime(ts2 + deadline + 1)):
+            assert self.pp.sendout()
+            self.sci.batch_transfer.assert_called_once_with(
+                [p2],
+                ts2 + deadline + 1,
+            )
+            self.sci.batch_transfer.reset_mock()
 
     def test_closure_time(self):
         self.sci.get_eth_balance.return_value = denoms.ether
@@ -459,16 +416,16 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         p1 = make_awaiting_payment()
         p2 = make_awaiting_payment()
         p5 = make_awaiting_payment()
-        with freeze_time(timestamp_to_datetime(1)):
+        with freeze_time(timestamp_to_datetime(1000000)):
             self.pp.add(p1)
-        with freeze_time(timestamp_to_datetime(2)):
+        with freeze_time(timestamp_to_datetime(2000000)):
             self.pp.add(p2)
-        with freeze_time(timestamp_to_datetime(5)):
+        with freeze_time(timestamp_to_datetime(5000000)):
             self.pp.add(p5)
 
-        self.pp.deadline = 0
+        self.pp.DEFAULT_DEADLINE = 0
 
-        closure_time = 2
+        closure_time = 2000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
@@ -477,14 +434,14 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 closure_time)
             self.sci.batch_transfer.reset_mock()
 
-        closure_time = 4
+        closure_time = 4000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_not_called()
             self.sci.batch_transfer.reset_mock()
 
-        closure_time = 6
+        closure_time = 6000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout()
@@ -497,7 +454,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
-        self.pp.deadline = 0
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -507,27 +464,27 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 5 * denoms.ether
         self.pp.gnt_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_gnt_closure_time(self):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
-        self.pp.deadline = 0
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -537,20 +494,20 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 10 * denoms.ether
         self.pp.gnt_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p2, p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_eth(self):
@@ -558,7 +515,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             (self.sci.GAS_BATCH_PAYMENT_BASE + 2 * self.sci.GAS_PER_PAYMENT)
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
-        self.pp.deadline = 0
+        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1, ts=1)
@@ -568,21 +525,39 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p2)
         self.pp.add(p5)
 
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_eth_balance.return_value = denoms.ether
         self.pp.eth_balance(refresh=True)
-        with freeze_time(timestamp_to_datetime(10)):
+        with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout()
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10)
+                10000)
             self.sci.batch_transfer.reset_mock()
+
+    def test_sorted_payments(self):
+        self.sci.get_eth_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+        self.pp.DEFAULT_DEADLINE = 0
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1, ts=300000)
+        p2 = make_awaiting_payment(value=2, ts=200000)
+        p3 = make_awaiting_payment(value=3, ts=100000)
+        self.pp.add(p1)
+        self.pp.add(p2)
+        self.pp.add(p3)
+
+        with freeze_time(timestamp_to_datetime(200000)):
+            self.pp.sendout()
+            self.sci.batch_transfer.assert_called_with([p3, p2], 200000)
 
 
 class FaucetTest(unittest.TestCase):

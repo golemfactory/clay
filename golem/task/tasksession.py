@@ -313,8 +313,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
         # the Requestor safely
+
         if not task_to_compute.concent_enabled:
             return
+
         # we're preparing the `ForceReportComputedTask` here and
         # scheduling the dispatch of that message for later
         # (with an implicit delay in the concent service's `submit` method).
@@ -323,11 +325,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the `ReportComputedTask` sent above before the delay elapses,
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
+
         delayed_forcing_msg = message.ForceReportComputedTask(
             report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
         logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
+
         self.concent_service.submit_task_message(
             task_result.subtask_id,
             delayed_forcing_msg,

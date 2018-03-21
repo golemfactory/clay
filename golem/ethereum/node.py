@@ -11,6 +11,8 @@ import time
 from web3 import Web3, IPCProvider, HTTPProvider
 
 from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
+from golem.ethereum.web3.middleware import RemoteRPCErrorMiddlewareBuilder
+from golem.ethereum.web3.providers import ProviderProxy
 from golem.report import report_calls, Component
 from golem.utils import find_free_net_port
 from golem.utils import tee_target
@@ -55,6 +57,7 @@ class NodeProcess(object):
         self.start_node = start_node
         self._mainnet = mainnet
         self.web3 = None  # web3 client interface
+        self.provider_proxy = ProviderProxy()  # web3 ipc / rpc provider
         self.addr_list = [addr] if addr else get_public_nodes(mainnet)
 
         self.__ps = None  # child process
@@ -72,7 +75,12 @@ class NodeProcess(object):
         else:
             provider = self._create_remote_rpc_provider()
 
-        self.web3 = Web3(provider)
+        self.provider_proxy.provider = provider
+        self.web3 = Web3(self.provider_proxy)
+
+        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
+            self._handle_remote_rpc_provider_failure)
+        self.web3.middleware_stack.add(middleware_builder.build)
 
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
@@ -143,12 +151,13 @@ class NodeProcess(object):
             '--datadir={}'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
-            '--rinkeby' if not self._mainnet else '',
             '--port={}'.format(start_port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
             '--verbosity', '3',
         ]
+        if not self._mainnet:
+            args.append('--rinkeby')
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
@@ -178,9 +187,21 @@ class NodeProcess(object):
     def _create_remote_rpc_provider(self):
         addr = self.addr_list.pop()
         log.info('GETH: connecting to remote RPC interface at %s', addr)
-        return HTTPProvider(addr)
+        return ProviderProxy(HTTPProvider(addr))
 
-    def _find_geth(self):
+    def _handle_remote_rpc_provider_failure(self, exc):
+        from golem.core.async import async_run, AsyncRequest
+        log.warning('GETH: reconnecting to another provider (%r)', exc)
+
+        self.provider_proxy.provider = None
+
+        request = AsyncRequest(self.start)
+        async_run(request).addErrback(
+            lambda err: self._handle_remote_rpc_provider_failure(err)
+        )
+
+    @staticmethod
+    def _find_geth():
         geth = shutil.which('geth')
         if not geth:
             raise OSError("Ethereum client 'geth' not found")

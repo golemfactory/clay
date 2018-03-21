@@ -105,6 +105,10 @@ class TaskServerMessageHandler():
     def concent_service(self):
         return self.task_server.client.concent_service
 
+    @property
+    def concent_filetransfers(self):
+        return self.task_server.client.concent_filetransfers
+
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
                            response_to: message.Message = None):
@@ -276,3 +280,33 @@ class TaskServerMessageHandler():
         )
 
     # pylint:enable=no-self-use
+
+    @handler_for(message.concents.ForceGetTaskResultUpload)
+    def on_force_get_task_result_upload(self, msg, **_):
+        """
+        Concent requests an upload from a Provider
+        """
+        logger.debug(
+            "Concent requests a results upload, subtask: %r", msg.subtask_id)
+
+        ftt = msg.file_transfer_token
+        if not ftt or not ftt.is_upload:
+            logger.warning("File Transfer Token invalid: %r", msg.subtask_id)
+            return
+
+        wtr = self.task_server.results_to_send.get(msg.subtask_id, None)
+        if not wtr:
+            logger.warning(
+                "Cannot find the subtask %r in the send queue", msg.subtask_id)
+            return
+
+        def success(response):
+            logger.debug("Concent results upload sucessful: %r, %s",
+                         msg.subtask_id, response)
+
+        def error(exc):
+            logger.warning("Concent upload failed: %r, %s",
+                           msg.subtask_id, exc)
+
+        self.concent_filetransfers.transfer(
+            wtr.result_path, ftt, success=success, error=error)

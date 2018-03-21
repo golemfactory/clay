@@ -73,3 +73,7 @@ class EthereumTransactionSystem(TransactionSystem):
         av_gnt = self.payment_processor._gnt_available()
         eth, last_eth_update = self.payment_processor.eth_balance()
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
+
+    def eth_for_batch_payment(self, num_payments):
+        return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
+               self.payment_processor.ETH_PER_PAYMENT * num_payments
