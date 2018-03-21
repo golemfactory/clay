@@ -1,6 +1,6 @@
 import sys
 
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
 
 
@@ -20,9 +20,11 @@ class WebSocketCLI(object):
         from twisted.internet import reactor, threads
 
         def on_connected(_):
-            core_client = Client(self.session, CORE_METHOD_MAP)
+            methods = {**CORE_METHOD_MAP, **NODE_METHOD_MAP}
+            core_client = Client(self.session, methods)
             self.cli.register_client(core_client)
-            threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
+            threads.deferToThread(self.cli.execute, *args, **kwargs) \
+                .addBoth(self.shutdown)
 
         def on_error(_):
             sys.stderr.write("Error connecting to Golem instance ({})\n"

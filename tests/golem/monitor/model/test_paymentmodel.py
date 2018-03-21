@@ -31,6 +31,18 @@ class TestExpenditureModel(MonitorTestBaseClass):
             self.assertEqual(result.addr, addr)
             self.assertEqual(result.value, value)
 
+    def test_channel_disabled(self):
+        self.monitor.send_payment_info = False
+
+        with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
+            dispatcher.send(
+                signal='golem.monitor',
+                event='payment',
+                addr='',
+                value=0
+            )
+            send.assert_not_called()
+
 
 class TestIncomeModel(MonitorTestBaseClass):
 
@@ -52,3 +64,15 @@ class TestIncomeModel(MonitorTestBaseClass):
             self.assertEqual(result.type, 'Income')
             self.assertEqual(result.addr, addr)
             self.assertEqual(result.value, value)
+
+    def test_channel_disabled(self):
+        self.monitor.send_payment_info = False
+
+        with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
+            dispatcher.send(
+                signal='golem.monitor',
+                event='income',
+                addr='',
+                value=0
+            )
+            send.assert_not_called()

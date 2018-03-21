@@ -4,7 +4,6 @@
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
-    is_mainnet=             'golem.mainnet',
 
     get_settings=           'env.opts',
     update_settings=        'env.opts.update',
@@ -90,4 +89,10 @@ CORE_METHOD_MAP = dict(
     quit=                   'ui.quit',
     resume=                 'ui.start',
     pause=                  'ui.stop'
+)
+
+NODE_METHOD_MAP = dict(
+    set_password=           'golem.password.set',
+    key_exists=             'golem.password.key_exists',
+    is_mainnet=             'golem.mainnet',
 )
