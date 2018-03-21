@@ -93,7 +93,7 @@ class TaskResourcesMixin():
 
         resource_manager = self._get_resource_manager()
         peers = [{'TCP': [address, DEFAULT_HYPERDRIVE_PORT]}] if address else []
-        options = received_options
+        options: Optional[HyperdriveClientOptions] = received_options
 
         if isinstance(received_options, dict):
             try:
@@ -104,10 +104,9 @@ class TaskResourcesMixin():
         if isinstance(options, HyperdriveClientOptions) and address:
             options = HyperdriveClientOptions.replace_host(options, address)
 
-        if not options:
-            options = resource_manager.build_client_options(peers)
-
+        options = options or resource_manager.build_client_options(peers)
         task_header = self.task_keeper.task_headers.get(task_id)
+
         if task_header:
             options.set(size=task_header.resource_size)
         return options
