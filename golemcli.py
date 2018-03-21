@@ -20,12 +20,13 @@ from golem.interface.client.payments import payments, incomes  # noqa
 from golem.interface.client.resources import Resources  # noqa
 from golem.interface.client.settings import Settings  # noqa
 from golem.interface.client.tasks import Tasks, Subtasks  # noqa
+from golem.interface.client.terms import Terms  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
 
 
 # prevent 'unused' warnings
 _ = {
-    Tasks, Subtasks, Network, Environments, Resources, Settings,
+    Terms, Tasks, Subtasks, Network, Environments, Resources, Settings,
     Account, incomes, payments, debug
 }
 

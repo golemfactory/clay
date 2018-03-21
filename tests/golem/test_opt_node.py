@@ -81,6 +81,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=cfg,
                                        keys_auth=keys_auth,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
@@ -147,6 +148,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
@@ -227,6 +229,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -274,6 +277,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -339,6 +343,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -476,6 +481,8 @@ class TestOptNode(TempDirFixture):
     def tearDown(self):
         if self.node.client:
             self.node.client.quit()
+        if self.node._db:
+            self.node._db.close()
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):

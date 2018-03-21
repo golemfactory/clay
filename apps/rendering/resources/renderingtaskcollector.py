@@ -100,7 +100,7 @@ class RenderingTaskCollector(object):
             img.close()
 
         return final_img
-        
+
     def finalize_pil(self):
         res_x, res_y = 0, 0
 
