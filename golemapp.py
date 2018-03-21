@@ -109,7 +109,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          start_geth, start_geth_port, geth_address, password, version, 
+          start_geth, start_geth_port, geth_address, password, version,
           log_level, enable_talkback, m):
 
     freeze_support()
