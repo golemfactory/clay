@@ -20,7 +20,9 @@ class WebSocketCLI(object):
         from twisted.internet import reactor, threads
 
         def on_connected(_):
-            core_client = Client(self.session, CORE_METHOD_MAP)
+            method_map = CORE_METHOD_MAP
+            method_map['accept_terms'] = 'golem.terms.accept'
+            core_client = Client(self.session, method_map)
             self.cli.register_client(core_client)
             threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
 
