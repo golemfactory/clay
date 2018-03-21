@@ -58,6 +58,8 @@ def start():
     args = sys.argv[1:]
     parsed, forwarded = parser.parse_known_args(args)
 
+    install_reactor()
+
     # setup logging if in interactive mode
     interactive = parsed.interactive
 
@@ -70,7 +72,6 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     # run the cli
-    install_reactor()
     ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
 

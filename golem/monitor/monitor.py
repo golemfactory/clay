@@ -13,7 +13,7 @@ from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .model import statssnapshotmodel
 from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
-from .model.nodemetadatamodel import NodeInfoModel
+from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
 from .model.paymentmodel import ExpenditureModel, IncomeModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .transport.sender import DefaultJSONSender as Sender
@@ -49,10 +49,14 @@ class SenderThread(threading.Thread):
 
 
 class SystemMonitor(object):
-    def __init__(self, meta_data, monitor_config):
+    def __init__(self,
+                 meta_data: NodeMetadataModel,
+                 monitor_config: dict,
+                 send_payment_info: bool = True) -> None:
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
+        self.send_payment_info = send_payment_info
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
@@ -192,25 +196,33 @@ class SystemMonitor(object):
         self.sender_thread.send(msg)
 
     def on_payment(self, addr, value):
-        msg = ExpenditureModel(
-            self.meta_data.cliid,
-            self.meta_data.sessid,
-            addr,
-            value
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            ExpenditureModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
+            )
         )
-        self.sender_thread.send(msg)
 
     def on_income(self, addr, value):
-        msg = IncomeModel(
-            self.meta_data.cliid,
-            self.meta_data.sessid,
-            addr,
-            value
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            IncomeModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
+            )
         )
-        self.sender_thread.send(msg)
 
     def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
                             gntb_balance: int):
+        if not self.send_payment_info:
+            return
         self.sender_thread.send(
             BalanceModel(
                 self.meta_data,

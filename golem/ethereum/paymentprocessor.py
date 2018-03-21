@@ -1,8 +1,8 @@
 import calendar
 import logging
-import sys
 import time
 from datetime import datetime
+from sortedcontainers import SortedListWithKey
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -66,10 +66,9 @@ class PaymentProcessor(LoopingCallService):
         self.__eth_reserved = 0
         self.__gntb_reserved = 0
         self._awaiting_lock = Lock()
-        self._awaiting = []  # type: List[Any] # Awaiting individual payments
+        self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
         self.__faucet = faucet
-        self.deadline = sys.maxsize
         self.load_from_db()
         self._last_gnt_update = None
         self._last_eth_update = None
@@ -151,7 +150,7 @@ class PaymentProcessor(LoopingCallService):
                     .where(Payment.status == PaymentStatus.awaiting):
                 self.add(awaiting_payment)
 
-    def add(self, payment, deadline=DEFAULT_DEADLINE):
+    def add(self, payment):
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError(
                 "Invalid payment status: {}".format(payment.status))
@@ -168,9 +167,7 @@ class PaymentProcessor(LoopingCallService):
                     payment.processed_ts = ts
                     payment.save()
 
-            self._awaiting.append(payment)
-            # TODO: Optimize by checking the time once per service update.
-            self.deadline = min(self.deadline, ts + deadline)
+            self._awaiting.add(payment)
 
         self.__gntb_reserved += payment.value
         self.__eth_reserved += self.ETH_PER_PAYMENT
@@ -191,8 +188,7 @@ class PaymentProcessor(LoopingCallService):
     def __get_next_batch(
             self,
             payments: List[Payment],
-            closure_time: int) -> Tuple[List[Payment], List[Payment]]:
-        payments.sort(key=lambda p: p.processed_ts)
+            closure_time: int) -> int:
         gntb_balance = self.__gntb_balance
         eth_balance, _ = self.eth_balance()
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
@@ -212,7 +208,7 @@ class PaymentProcessor(LoopingCallService):
                     .processed_ts == payments[ind].processed_ts:
                 ind -= 1
 
-        return payments[:ind], payments[ind:]
+        return ind
 
     def sendout(self):
         with self._awaiting_lock:
@@ -220,8 +216,9 @@ class PaymentProcessor(LoopingCallService):
                 return False
 
             now = get_timestamp()
-            if self.deadline > now:
-                log.info("Next sendout in %r s", self.deadline - now)
+            deadline = self._awaiting[0].processed_ts + self.DEFAULT_DEADLINE
+            if deadline > now:
+                log.info("Next sendout in {} s".format(deadline - now))
                 return False
 
             if self._gnt_converter.is_converting():
@@ -230,19 +227,21 @@ class PaymentProcessor(LoopingCallService):
 
             closure_time = now - self.CLOSURE_TIME_DELAY
 
-            payments, rest = self.__get_next_batch(
+            payments_count = self.__get_next_batch(
                 self._awaiting.copy(),
-                closure_time)
-            if rest and self.__gnt_balance:
+                closure_time,
+            )
+            if payments_count < len(self._awaiting) and self.__gnt_balance:
                 log.info(
                     'Will convert %r GNT before sending out payments',
                     self.__gnt_balance / denoms.ether,
                 )
                 self._gnt_converter.convert(self.__gnt_balance)
                 return False
-            if not payments:
+            if payments_count == 0:
                 return False
-            self._awaiting = rest
+            payments = self._awaiting[:payments_count]
+            del self._awaiting[:payments_count]
 
         value = sum([p.value for p in payments])
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))

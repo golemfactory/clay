@@ -143,6 +143,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         new_img = Image.new("RGB", (10, 10), (255, 0, 0))
         img_path = self.temp_file_name("image2.png")
         new_img.save(img_path)
+        new_img.close()
         frame_task._update_frame_preview(img_path, 5, 2)
         frame_task._update_frame_preview(img_path, 7, 2)
         frame_task._update_frame_preview(img_path, 7, 1, True)
@@ -171,6 +172,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         with self.assertNoLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk(img, preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
+        img.close()
 
     def test_mark_task_area(self):
         task = self._get_frame_task()
@@ -198,6 +200,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
                 assert img.getpixel((i, j)) == (0, 13, 0)
             for j in range(10, 20):
                 assert img.getpixel((i, j)) == (0, 0, 201)
+        img.close()
 
     def test_choose_frames(self):
         task = self._get_frame_task()
@@ -258,6 +261,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img = Image.new("RGB", (10, 10), (0, 0, 0))
         tmp_path = self.temp_file_name("img.png")
         img.save(tmp_path)
+        img.close()
         task._update_preview_task_file_path(tmp_path)
         task = self._get_frame_task(False)
         task._update_preview_task_file_path(tmp_path)
@@ -275,6 +279,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task._put_image_together()
         img_repr = load_img(task.output_file)
         assert isinstance(img_repr, EXRImgRepr)
+        img_repr.close()
 
     def test_put_frame_together(self):
         task = self._get_frame_task(True)
@@ -292,6 +297,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         out_path = os.path.join(self.path, "output0005.exr")
         img_repr = load_img(out_path)
         assert isinstance(img_repr, EXRImgRepr)
+        img_repr.close()
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):

@@ -34,6 +34,7 @@ USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
+ENABLE_TALKBACK = 0
 
 PINGS_INTERVALS = 120
 GETTING_PEERS_INTERVAL = 4.0
@@ -120,6 +121,7 @@ class AppConfig:
             # flags
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
+            enable_talkback=ENABLE_TALKBACK,
             # hardware
             hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
             # price and trust

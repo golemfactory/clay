@@ -90,7 +90,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                 from twisted.internet import reactor
                 self.success = partial(reactor.callFromThread, success_)
                 self.failure = partial(reactor.callFromThread, failure)
-                self.crops_size = self.cropper.render_crops(
+                self.cropper.render_crops(
                     self.computer,
                     self.resources,
                     self._crop_rendered,
@@ -112,7 +112,8 @@ class BlenderVerifier(FrameRenderingVerifier):
     # The verification function will generate three random crops, from results
     #  only after all three will be generated, we can start verification process
     # pylint: disable=R0914
-    def _crop_rendered(self, results, time_spend, verification_context):
+    def _crop_rendered(self, results, time_spend, verification_context,
+                       crop_number):
         logger.info("Crop for verification rendered. Time spent: %r, "
                     "results: %r", time_spend, results)
 
@@ -124,7 +125,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             if self.wasFailure:
                 return
 
-        work_dir = verification_context.crop_path
+        work_dir = verification_context.get_crop_path(crop_number)
         di = DockerImage(BlenderVerifier.DOCKER_NAME,
                          tag=BlenderVerifier.DOCKER_TAG)
 
@@ -150,8 +151,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             "/golem/resources",
             os.path.basename(self.current_results_file))
 
-        params['xres'] = verification_context.crop_position_x
-        params['yres'] = verification_context.crop_position_y
+        params['xres'] = verification_context.crop_pixels[crop_number][0]
+        params['yres'] = verification_context.crop_pixels[crop_number][1]
 
         # pylint: disable=W0703
         try:
@@ -172,8 +173,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             result_path = os.path.join(output_dir, "result.txt")
             try:
                 with open(result_path) as json_data:
-                    self.metrics[
-                        verification_context.crop_id] = json.load(
+                    self.metrics[crop_number] = json.load(
                             json_data)
             except EnvironmentError as exc:
                 logger.error("Metrics not calculated %r", exc)
@@ -186,6 +186,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             else:
                 self.verified_crops_counter += 1
                 if self.verified_crops_counter == 3:
+                    self.crops_size = verification_context.crop_size
                     self.make_verdict()
 
     # One failure is enough to stop verification process, although this might
@@ -210,7 +211,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         w_ssim_min = 0.6
 
         if avg_ssim > w_ssim:
-            logger.info("Subtask %r verified", self.subtask_info['subtask_id'])
+            logger.info("Subtask %r verified with %r",
+                        self.subtask_info['subtask_id'], avg_ssim)
             self.success()
         elif avg_ssim > w_ssim_min and not self.additional_test:
             self.verified_crops_counter = 0
@@ -226,8 +228,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         elif avg_ssim < w_ssim_min:
-            logger.info("Subtask %r NOT verified",
-                        self.subtask_info['subtask_id'])
+            logger.info("Subtask %r NOT verified with %r",
+                        self.subtask_info['subtask_id'], avg_ssim)
             self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"

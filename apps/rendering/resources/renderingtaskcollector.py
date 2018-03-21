@@ -47,6 +47,7 @@ class RenderingTaskCollector(object):
             self.finalize_alpha(final_img)
         else:
             final_img = self.finalize_pil()
+        img_repr.close()
         return final_img
 
     def finalize_alpha(self, final_img):
@@ -81,15 +82,22 @@ class RenderingTaskCollector(object):
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_img_files)
             with Image.new('RGB', (self.width, self.height)) as img:
-                final_img = self._paste_image(img, final_img, 0)
+                new_img = self._paste_image(img, final_img, 0)
+                final_img.close()
+                final_img = new_img
 
         for i, img_path in enumerate(self.accepted_img_files[1:], start=1):
             img = load_img(img_path)
             with img.to_pil() as rgb8_im:
                 if not self.paste:
-                    final_img = ImageChops.add(final_img, rgb8_im)
+                    new_img = ImageChops.add(final_img, rgb8_im)
+                    final_img.close()
+                    final_img = new_img
                 else:
-                    final_img = self._paste_image(final_img, rgb8_im, i)
+                    new_img = self._paste_image(final_img, rgb8_im, i)
+                    final_img.close()
+                    final_img = new_img
+            img.close()
 
         return final_img
 
@@ -121,8 +129,9 @@ class RenderingTaskCollector(object):
         return final_img
 
     def _paste_image(self, final_img, new_part, num):
-        img_offset = Image.new("RGB", (self.width, self.height))
-        offset = int(math.floor(num * float(self.height) /
-                                float(len(self.accepted_img_files))))
-        img_offset.paste(new_part, (0, offset))
-        return ImageChops.add(final_img, img_offset)
+        with Image.new("RGB", (self.width, self.height)) as img_offset:
+            offset = int(math.floor(num * float(self.height)
+                                    / float(len(self.accepted_img_files))))
+            img_offset.paste(new_part, (0, offset))
+            result = ImageChops.add(final_img, img_offset)
+        return result

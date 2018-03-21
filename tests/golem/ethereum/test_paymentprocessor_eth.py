@@ -45,7 +45,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         )
         self.payment_processor.add(payment)
 
-        self.payment_processor._awaiting = []
+        del self.payment_processor._awaiting[:]
         self.payment_processor.load_from_db()
         expected = [payment]
         self.assertEqual(expected, self.payment_processor._awaiting)

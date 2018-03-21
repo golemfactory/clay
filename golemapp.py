@@ -93,6 +93,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   'DEBUG',
               ]),
               help="Change level for Golem loggers and handlers")
+@click.option('--enable-talkback', is_flag=True, default=None)
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -109,7 +110,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           start_geth, start_geth_port, geth_address, password, version,
-          log_level, m):
+          log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -135,6 +136,9 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
+    if enable_talkback is None:
+        enable_talkback = bool(config_desc.enable_talkback)
+
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
         config_desc.rpc_port = rpc_address.port
@@ -145,9 +149,12 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         start_crossbar_worker(m)
     # Golem headless
     else:
-        from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level)
         install_reactor()
+
+        from golem.core.common import config_logging
+        config_logging(datadir=datadir, loglevel=log_level,
+                       enable_talkback=enable_talkback)
+
         log_golem_version()
         log_platform_info()
         log_ethereum_chain(mainnet)

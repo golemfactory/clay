@@ -835,6 +835,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertRaises(IOError):
             self.tm.add_new_task(t)
 
+    def test_put_task_in_restarted_state_two_times(self):
+        task_id = 'qaz123WSX'
+        subtask_id = "qweasdzxc"
+        t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
+        self.tm.add_new_task(t)
+
+        self.tm.put_task_in_restarted_state(task_id)
+        with self.assertRaises(self.tm.AlreadyRestartedError):
+            self.tm.put_task_in_restarted_state(task_id)
+
     def test_restart_frame_subtasks(self):
         tm = self.tm
         old_notice_task_updated = tm.notice_task_updated
