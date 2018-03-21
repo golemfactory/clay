@@ -1,7 +1,8 @@
+import functools
 import logging
 from pathlib import Path
 import time
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
@@ -140,11 +141,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 
         # pylint: disable=protected-access
-        deferred = rpc._start_node(rpc.options, self._reactor)
+        deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
-    def _start_session(self) -> Deferred:
-        self.rpc_session = Session(self.rpc_router.address)  # type: ignore
+    def _start_session(self) -> Optional[Deferred]:
+        if not self.rpc_router:
+            self._stop_on_error("rpc", "RPC router is not available")
+            return None
+
+        self.rpc_session = Session(self.rpc_router.address,
+                                   cert_manager=self.rpc_router.cert_manager,
+                                   use_ipv6=self._config_desc.use_ipv6)
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
@@ -225,7 +232,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _setup_client(self, *_) -> None:
         if not self.rpc_session:
-            self._error("RPC session is not available")
+            self._stop_on_error("rpc", "RPC session is not available")
             return
 
         if not self._keys_auth:
@@ -245,7 +252,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _run(self, *_) -> None:
         if not self.client:
-            self._error("Client object is not available")
+            self._stop_on_error("client", "Client is not available")
             return
 
         self._setup_apps()
@@ -260,7 +267,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _setup_apps(self) -> None:
         if not self.client:
-            self._error("Client object is not available")
+            self._stop_on_error("client", "Client is not available")
             return
 
         apps_manager = AppsManager()
@@ -271,9 +278,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self.client.environments_manager.add_environment(env)
 
     def _error(self, msg: str) -> Callable:
-        def log_error_and_stop_reactor(err):
-            if self._reactor.running:
-                logger.error("Stopping because of %s error: %s", msg, err)
-                self._reactor.callFromThread(self._reactor.stop)
+        return functools.partial(self._stop_on_error, msg)
 
-        return log_error_and_stop_reactor
+    def _stop_on_error(self, msg: str, err: Any) -> None:
+        if self._reactor.running:
+            logger.error("Stopping because of %r error: %r", msg, err)
+            self._reactor.callFromThread(self._reactor.stop)

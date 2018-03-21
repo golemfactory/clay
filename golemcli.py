@@ -6,6 +6,8 @@ import sys
 
 from multiprocessing import freeze_support
 
+from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
+
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
@@ -39,15 +41,18 @@ def start():
         interactive=('-i', '--interactive'),
         address=('-a', '--address'),
         port=('-p', '--port'),
+        trust=('-t', '--verify-trust'),
     )
 
     flag_options = dict(
         interactive=dict(dest="interactive", action="store_true",
                          default=False, help="Enter interactive mode"),
-        address=dict(dest="address", type=str, default='localhost',
+        address=dict(dest="address", type=str, default=CROSSBAR_HOST,
                      help="Golem node's RPC address"),
-        port=dict(dest="port", type=int, default=61000,
+        port=dict(dest="port", type=int, default=CROSSBAR_PORT,
                   help="Golem node's RPC port"),
+        trust=dict(dest="verify_trust", action="store_true", default=False,
+                   help="Verify Golem node's certificate"),
     )
 
     # process initial arguments
@@ -59,6 +64,10 @@ def start():
     parsed, forwarded = parser.parse_known_args(args)
 
     install_reactor()
+
+    # platform trust settings
+    if not parsed.verify_trust:
+        disable_platform_trust()
 
     # setup logging if in interactive mode
     interactive = parsed.interactive
@@ -74,6 +83,11 @@ def start():
     # run the cli
     ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
+
+
+def disable_platform_trust():
+    from twisted.internet import _sslverify  # pylint: disable=protected-access
+    _sslverify.platformTrust = lambda: None
 
 
 def delete_reactor():

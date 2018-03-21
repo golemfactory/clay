@@ -101,11 +101,11 @@ class TestRouter(TestDirFixtureWithReactor):
             CrossbarRouter(crossbar_dir=tmp_file)
 
     def _start_router(self):
-        self.state.router = CrossbarRouter(datadir=self.path)
-        self.state.router.start(
-            self.state.reactor,
-            self._start_backend_session, self.state.add_errors
-        )
+        # pylint: disable=no-member
+        self.state.router = CrossbarRouter(datadir=self.path, ssl=False)
+        deferred = self.state.router.start(self.state.reactor)
+        deferred.addCallbacks(self._start_backend_session,
+                              self.state.add_errors)
 
     def _start_backend_session(self, *_):
         self.state.backend_session = Session(
