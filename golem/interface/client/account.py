@@ -50,26 +50,23 @@ class Account:
     @staticmethod
     @command(help="Unlock account, will prompt for your password")
     def unlock() -> str:
-
         client = Account.client
-
         has_key = sync_wait(client.key_exists())
 
         if not has_key:
             print("No account found, generate one by setting a password")
         else:
             print("Unlock your account to start golem")
+
         pswd = getpass.getpass('Password:')
 
         if not has_key:
             confirm = getpass.getpass('Confirm password:')
             if confirm != pswd:
                 return "Password and confirmation do not match."
-            print("Generating keys, this can take up to 5 minutes...")
-        else:
-            print("Unlocking account...")
+            print("Generating keys, this can take up to 10 minutes...")
 
-        success = sync_wait(client.set_password(pswd), timeout=300)
+        success = sync_wait(client.set_password(pswd), timeout=15 * 60)
         if not success:
             return "Incorrect password"
 
