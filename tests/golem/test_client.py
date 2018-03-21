@@ -1106,8 +1106,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsNone(c.rpc_publisher)
 
         rpc_session = Mock()
+        publisher = Publisher(rpc_session)
 
-        c.configure_rpc(rpc_session)
+        c.set_rpc_publisher(publisher)
         self.assertIsInstance(c.rpc_publisher, Publisher)
         self.assertIs(c.rpc_publisher.session, rpc_session)
 

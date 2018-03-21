@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import List, Optional, Callable
 
 from twisted.internet import threads
@@ -9,12 +10,12 @@ from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import chain_function
-from golem.core.keysauth import KeysAuth
+from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher
+from golem.report import StatusPublisher, Component, Stage
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
@@ -39,7 +40,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
-                 geth_address: Optional[str] = None) -> None:
+                 geth_address: Optional[str] = None,
+                 password: Optional[str] = None) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -51,8 +53,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
 
+        self._keys_auth: Optional[KeysAuth] = None
+
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
+        self._rpc_publisher: Optional[Publisher] = None
 
         self._peers: List[SocketAddress] = peers or []
 
@@ -71,23 +76,41 @@ class Node(object):  # pylint: disable=too-few-public-methods
             geth_address=geth_address,
         )
 
-    def start(self) -> None:
-        def _start(_):
-            publisher = Publisher(self.rpc_session)
-            StatusPublisher.set_publisher(publisher)
+        if password is not None:
+            if not self.set_password(password):
+                raise Exception("Password incorrect")
 
-            keys = self._start_keys_auth()
-            docker = self._start_docker()
-            gatherResults([keys, docker], consumeErrors=True).addCallbacks(
-                self._setup_client,
-                self._error('keys or docker')
-            ).addErrback(self._error('setup client'))
+    def start(self) -> None:
 
         try:
-            self._start_rpc().addCallbacks(_start, self._error('rpc'))
+            rpc = self._start_rpc()
+
+            def on_rpc_ready() -> Deferred:
+                keys = self._start_keys_auth()
+                docker = self._start_docker()
+                return gatherResults([keys, docker], consumeErrors=True)
+            chain_function(rpc, on_rpc_ready).addCallbacks(
+                self._setup_client,
+                self._error('keys or docker'),
+            ).addErrback(self._error('setup client'))
             self._reactor.run()
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Application error: %r", exc)
+
+    def set_password(self, password: str) -> bool:
+        logger.info("Got password")
+
+        try:
+            self._keys_auth = KeysAuth(
+                datadir=self._datadir,
+                private_key_name=PRIVATE_KEY,
+                password=password,
+                difficulty=self._config_desc.key_difficulty,
+            )
+        except WrongPassword:
+            logger.info("Password incorrect")
+            return False
+        return True
 
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
@@ -103,17 +126,43 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _start_session(self) -> Deferred:
         self.rpc_session = Session(self.rpc_router.address)  # type: ignore
-        return self.rpc_session.connect()
+        deferred = self.rpc_session.connect()
 
-    def _start_keys_auth(self) -> Deferred:
-        return threads.deferToThread(
-            KeysAuth,
-            datadir=self._datadir,
-            private_key_name=PRIVATE_KEY,
-            # TODO: user provided password
-            password='verystrongpasswodmuchsecurity',
-            difficulty=self._config_desc.key_difficulty
-        )
+        def set_publisher(*_):
+            self._rpc_publisher = Publisher(self.rpc_session)
+            StatusPublisher.set_publisher(self._rpc_publisher)
+
+        return deferred.addCallbacks(set_publisher, self._error('rpc session'))
+
+    def _start_keys_auth(self) -> Optional[Deferred]:
+        if not self.rpc_session:
+            self._error("RPC session is not available")
+            return None
+
+        def create_keysauth():
+            # If keys_auth already exists it means we used command line flag
+            # and don't need to inform client about required password
+            if self._keys_auth is not None:
+                return
+
+            if KeysAuth.key_exists(self._datadir, PRIVATE_KEY):
+                event = 'get_password'
+                logger.info("Waiting for password to unlock the account")
+            else:
+                event = 'new_password'
+                logger.info("New account, need to create new password")
+
+            while self._keys_auth is None and self._reactor.running:
+                StatusPublisher.publish(Component.client, event, Stage.pre)
+                time.sleep(5)
+
+            StatusPublisher.publish(Component.client, event, Stage.post)
+
+        self.rpc_session.register_methods([
+            (self.set_password, 'golem.password.set')
+        ])
+
+        return threads.deferToThread(create_keysauth)
 
     def _start_docker(self) -> Optional[Deferred]:
         if not self._use_docker_manager:
@@ -124,20 +173,22 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return threads.deferToThread(start_docker)
 
-    def _setup_client(self, gathered_results: List) -> None:
+    def _setup_client(self, *_) -> None:
         if not self.rpc_session:
             self._error("RPC session is not available")
             return
 
-        keys_auth = gathered_results[0]
-        self.client = self._client_factory(keys_auth)
+        if not self._keys_auth:
+            self._error("KeysAuth is not available")
+            return
+
+        self.client = self._client_factory(self._keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
-        self.rpc_session.methods = methods
         self.rpc_session.register_methods(methods)
-        self.client.configure_rpc(self.rpc_session)
+        self.client.set_rpc_publisher(self._rpc_publisher)
 
         async_run(AsyncRequest(self._run),
                   error=self._error('Cannot start the client'))
