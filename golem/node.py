@@ -136,9 +136,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            self.rpc_session.register_methods([
-                (self.is_mainnet, 'golem.mainnet')
-            ])
+            methods = object_method_map(self, NODE_METHOD_MAP)
+            self.rpc_session.register_methods(methods)
 
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
@@ -169,11 +168,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
             StatusPublisher.publish(Component.client, event, Stage.post)
 
-        self.rpc_session.register_methods([
-            (self.set_password, 'golem.password.set'),
-            (self.key_exists, 'golem.password.key_exists'),
-        ])
-
         return threads.deferToThread(create_keysauth)
 
     def _start_docker(self) -> Optional[Deferred]:
@@ -198,13 +192,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
-        core_methods = object_method_map(self.client, CORE_METHOD_MAP)
-        # TODO: Automaticaly assign NODE_METHOD_MAP
-        # this is done manually now in __init__
-        # node_methods = object_method_map(self, NODE_METHOD_MAP)
-        # methods = core_methods + node_methods
-        methods = core_methods
-
+        methods = object_method_map(self.client, CORE_METHOD_MAP)
         self.rpc_session.register_methods(methods)
         self.client.set_rpc_publisher(self._rpc_publisher)
 

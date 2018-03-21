@@ -94,4 +94,5 @@ CORE_METHOD_MAP = dict(
 NODE_METHOD_MAP = dict(
     set_password=           'golem.password.set',
     key_exists=             'golem.password.key_exists',
+    is_mainnet=             'golem.mainnet',
 )
