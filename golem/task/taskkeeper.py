@@ -2,17 +2,19 @@ import logging
 import pathlib
 import pickle
 import time
-from typing import Optional
-
+import typing
 
 import random
 from collections import Counter
-from golem_messages import message
+
+from golem_messages import message, helpers
+from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
+from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from .taskbase import TaskHeader
 
@@ -30,12 +32,26 @@ def compute_subtask_value(price: int, computation_time: int):
     return (price * computation_time + 3599) // 3600
 
 
+def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
+                                   num_of_res_transfers_needed: int =
+                                   NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER):
+    # FIXME get num of res transfers needed
+    verification_timeout = subtask_timeout
+    resource_timeout = helpers.maximum_download_time(resource_size).seconds
+    resource_timeout *= num_of_res_transfers_needed
+    return common.timeout_to_deadline(subtask_timeout + verification_timeout
+                                      + resource_timeout)
+
+
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
         self.price = price
         self.requests = 1
         self.subtasks = {}
+        # TODO Add concent communication timeout
+        self.keeping_deadline = comp_task_info_keeping_timeout(
+            self.header.subtask_timeout, self.header.resource_size)
 
     def __repr__(self):
         return "<CompTaskInfo(%r, %r) reqs: %r>" % (
@@ -44,11 +60,22 @@ class CompTaskInfo:
             self.requests
         )
 
-    def check_deadline(self, deadline):
+    def check_deadline(self, deadline: float) -> bool:
+        """
+        Checks if subtask deadline defined in newly received ComputeTaskDef
+        is properly set, ie. it's set to future date, but not much further than
+        it was declared in subtask timeout.
+        :param float deadline: subtask deadline
+        :return bool:
+        """
         now_ = common.get_timestamp_utc()
-        if now_ > deadline or deadline > now_ + self.header.subtask_timeout:
-            return False
-        return True
+        expected_deadline = now_ + self.header.subtask_timeout
+        if now_ < deadline < expected_deadline + MTD.seconds:
+            return True
+        logger.debug('check_deadline failed: (now: %r, deadline: %r, '
+                     'timeout: %r)', now_, deadline,
+                     self.header.subtask_timeout)
+        return False
 
 
 class CompSubtaskInfo:
@@ -106,7 +133,7 @@ class CompTaskKeeper:
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except (pickle.UnpicklingError, EOFError, AttributeError):
+            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
                     self.dump_path
@@ -134,6 +161,10 @@ class CompTaskKeeper:
     @handle_key_error
     def get_task_env(self, task_id):
         return self.active_tasks[task_id].header.environment
+
+    @handle_key_error
+    def get_task_header(self, task_id):
+        return self.active_tasks[task_id].header
 
     @handle_key_error
     def receive_subtask(self, comp_task_def):
@@ -168,11 +199,6 @@ class CompTaskKeeper:
             logger.info(not_accepted_message, *log_args,
                         "Definition of this subtask was already received.")
             return False
-        if comp_task_def['environment'] != task.header.environment:
-            msg = "Expected environment: %s, received: %s." % (
-                task.header.environment, comp_task_def['environment'])
-            logger.info(not_accepted_message, *log_args, msg)
-            return False
         return True
 
     def get_task_id_for_subtask(self, subtask_id):
@@ -206,7 +232,7 @@ class CompTaskKeeper:
 
     def remove_old_tasks(self):
         for task_id in frozenset(self.active_tasks):
-            deadline = self.active_tasks[task_id].header.deadline
+            deadline = self.active_tasks[task_id].keeping_deadline
             delta = deadline - common.get_timestamp_utc()
             if delta > 0:
                 continue
@@ -235,7 +261,7 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers = {}
+        self.task_headers: typing.Dict[str, TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # results of tasks' support checks
@@ -368,7 +394,7 @@ class TaskHeaderKeeper:
             return False
         return local.patch >= remote.patch
 
-    def get_support_status(self, task_id) -> Optional[SupportStatus]:
+    def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
         :param task_id: id of the task
         :return SupportStatus|None: the support status
@@ -506,6 +532,15 @@ class TaskHeaderKeeper:
             del self.support_status[task_id]
         self.removed_tasks[task_id] = time.time()
         return True
+
+    def get_owner(self, task_id) -> typing.Optional[str]:
+        """ Returns key_id of task owner or None if there is no information
+        about this task.
+        """
+        task = self.task_headers.get(task_id)
+        if task is None:
+            return None
+        return task.task_owner_key_id
 
     def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed

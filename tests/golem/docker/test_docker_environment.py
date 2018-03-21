@@ -26,7 +26,7 @@ class TestDockerEnvironment(DockerTestCase):
             DockerEnvironmentMock(additional_images=["aaa"])
 
         de = DockerEnvironmentMock(additional_images=[
-            DockerImage("golemfactory/blender", tag="1.3")])
+            DockerImage("golemfactory/blender", tag="1.4")])
         self.assertTrue(de.check_support())
         self.assertIn('Default environment for generic tasks without any'
                       ' additional requirements.', de.description())

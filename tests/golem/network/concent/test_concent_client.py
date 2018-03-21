@@ -4,21 +4,22 @@ import logging
 import time
 from unittest import mock, TestCase
 import urllib
-
-
-from freezegun import freeze_time
-import golem_messages
-from golem_messages import message
-import golem_messages.cryptography
-import golem_messages.exceptions
 import requests
 from requests.exceptions import RequestException
+from freezegun import freeze_time
+
+import golem_messages
+import golem_messages.cryptography
+import golem_messages.exceptions
+from golem_messages import message
+from golem_messages.constants import (
+    DEFAULT_MSG_LIFETIME, MSG_LIFETIMES
+)
 
 from golem import testutils
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import client
-from golem.network.concent import constants
 from golem.network.concent import exceptions
 
 from tests.factories import messages as msg_factories
@@ -100,6 +101,24 @@ class TestSendToConcent(TestCase):
         )
         verify_mock.assert_called_once_with(response)
 
+    @mock.patch('golem.network.concent.client.verify_response')
+    def test_delayed_timestamp(self, *_):
+        future = datetime.datetime.utcnow() + datetime.timedelta(days=5)
+        # messages use integer timestamps
+        future = future.replace(microsecond=0)
+        # freezegun requires naive datetime, .timestamp() works only with aware
+        future_aware = future.replace(tzinfo=datetime.timezone.utc)
+        with freeze_time(future):
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                public_key=self.public_key,
+            )
+        self.assertEqual(
+            self.msg.timestamp,
+            future_aware.timestamp(),
+        )
+
 
 @mock.patch('requests.get')
 class TestReceiveFromConcent(TestCase):
@@ -158,7 +177,11 @@ class TestReceiveFromConcent(TestCase):
 class TestConcentClientService(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
-        keys_auth = keysauth.KeysAuth(datadir=self.path)
+        keys_auth = keysauth.KeysAuth(
+            datadir=self.path,
+            private_key_name='priv_key',
+            password='password',
+        )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
             enabled=True,
@@ -183,7 +206,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         assert 'key' not in self.concent_service._delayed
@@ -209,7 +232,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         send_mock.side_effect = exceptions.ConcentRequestError
@@ -228,15 +251,15 @@ class TestConcentClientService(testutils.TempDirFixture):
 
     def test_loop_request_timeout(self, send_mock, *_):
         self.assertFalse(self.concent_service.isAlive())
-        delta = constants.MSG_LIFETIMES.get(
+        delta = MSG_LIFETIMES.get(
             self.msg.__class__,
-            constants.DEFAULT_MSG_LIFETIME,
+            DEFAULT_MSG_LIFETIME,
         )
         with freeze_time(datetime.datetime.now()) as frozen_time:
             self.concent_service.submit(
                 'key',
                 self.msg,
-                delay=0
+                delay=datetime.timedelta(),
             )
 
             self.assertEqual(send_mock.call_count, 0)
@@ -255,7 +278,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         self.concent_service.submit(
             'key',
             self.msg,
-            delay=0
+            delay=datetime.timedelta(),
         )
 
         self.concent_service._loop()
@@ -264,7 +287,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             self.concent_service.keys_auth._private_key,
             self.concent_service.keys_auth.public_key,
         )
-        react_mock.assert_called_once_with(data)
+        react_mock.assert_called_once_with(data, response_to=self.msg)
 
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'
@@ -360,7 +383,11 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.concent_service = client.ConcentClientService(
-            keys_auth=keysauth.KeysAuth(datadir=self.path),
+            keys_auth=keysauth.KeysAuth(
+                datadir=self.path,
+                private_key_name='priv_key',
+                password='password',
+            ),
             enabled=True,
         )
         self.msg = message.ForceReportComputedTask()

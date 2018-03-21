@@ -7,12 +7,15 @@ import unittest
 from pathlib import Path
 from time import sleep
 
+import ethereum.keys
 import pycodestyle
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.model import DB_MODELS, db
+from golem.model import DB_MODELS, db, DB_FIELDS
+
+logger = logging.getLogger(__name__)
 
 
 class TempDirFixture(unittest.TestCase):
@@ -41,6 +44,10 @@ class TempDirFixture(unittest.TestCase):
     #         shutil.rmtree(cls.root_dir)
 
     def setUp(self):
+
+        # KeysAuth uses it. Default val (250k+) slows down the tests terribly
+        ethereum.keys.PBKDF2_CONSTANTS['c'] = 1
+
         prefix = self.id().rsplit('.', 1)[1]  # Use test method name
         self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.root_dir)
         self.path = self.tempdir  # Alias for legacy tests
@@ -52,7 +59,14 @@ class TempDirFixture(unittest.TestCase):
         # Firstly kill Ethereum node to clean up after it later on.
         try:
             self.__remove_files()
-        except OSError:
+        except OSError as e:
+            logger.debug("%r", e, exc_info=True)
+            tree = ''
+            for path, dirs, files in os.walk(self.path):
+                tree += path + '\n'
+                for f in files:
+                    tree += f + '\n'
+            logger.error("Failed to remove files %r", tree)
             # Tie up loose ends.
             import gc
             gc.collect()
@@ -108,7 +122,8 @@ class DatabaseFixture(TempDirFixture):
 
     def setUp(self):
         super(DatabaseFixture, self).setUp()
-        self.database = Database(db, self.tempdir, DB_MODELS)
+        self.database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
+                                 db_dir=self.tempdir)
 
     def tearDown(self):
         self.database.db.close()

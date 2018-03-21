@@ -7,6 +7,8 @@ from golem_messages import message
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
+from golem.database import Database
+from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskserver import TaskServer
@@ -76,21 +78,35 @@ class AddGetResources(TempDirFixture, LogTestCase):
         resource_manager = cls.__new__(cls)
         resource_manager.__init__(dir_manager)
 
-        client = Client(datadir=dir_manager.root_path,
-                        config_desc=ClientConfigDescriptor(),
-                        keys_auth=mock.Mock(),
-                        connect_to_known_hosts=False,
-                        use_docker_manager=False,
-                        use_monitor=False)
+        database = Database(
+            db,
+            fields=DB_FIELDS,
+            models=DB_MODELS,
+            db_dir=directory)
+
+        with mock.patch('golem.client.EthereumTransactionSystem'):
+            client = Client(datadir=dir_manager.root_path,
+                            app_config=mock.Mock(),
+                            config_desc=ClientConfigDescriptor(),
+                            keys_auth=mock.Mock(),
+                            database=database,
+                            connect_to_known_hosts=False,
+                            use_docker_manager=False,
+                            use_monitor=False)
+
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
                                                     mock.Mock(), client)
-        client.task_server = TaskServer(
-            node=mock.Mock(),
-            config_desc=mock.Mock(),
-            client=client,
-            use_docker_manager=False,
-        )
+        with mock.patch(
+                "golem.network.concent.handlers_library"
+                ".HandlersLibrary"
+                ".register_handler"):
+            client.task_server = TaskServer(
+                node=mock.Mock(),
+                config_desc=mock.Mock(),
+                client=client,
+                use_docker_manager=False,
+            )
 
         client.start = mock.Mock()
         client.start_network = mock.Mock()

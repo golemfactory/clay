@@ -55,10 +55,15 @@ LOGGING = {
             'filename': '%(logdir)s/golem%(suffix)s.error.log',
             'encoding': 'utf-8',
         },
+        'sentry': {
+            'level': 'ERROR',
+            'class': 'golem.tools.customloggers.SwitchedSentryHandler',
+            'dsn': 'https://cdf4218c9dd24aa6adeb76ad0c990c9b:e6922bfaff9f49ccaa22ae4e406354aa@talkback.golem.network/2'  # noqa pylint: disable=line-too-long
+        },
     },
     'root': {
         'level': 'WARNING',
-        'handlers': ['console', 'file', 'error-file'],
+        'handlers': ['console', 'file', 'error-file', 'sentry'],
         'filters': [],
     },
     'loggers': {
@@ -99,6 +104,10 @@ LOGGING = {
             'propagate': True,
         },
         'golem.rpc.crossbar': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.rpc.cert': {
             'level': 'INFO',
             'propagate': True,
         },

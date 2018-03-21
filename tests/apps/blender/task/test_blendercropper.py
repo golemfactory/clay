@@ -1,3 +1,5 @@
+import numpy
+
 from unittest import TestCase
 
 from apps.blender.task.blendercropper import BlenderCropper
@@ -42,8 +44,8 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
             else:
                 crops_info = self.cropper.generate_split_data(resolution, crop,
                                                               num, ncrop_size)
-            assert len(crops_info) == 2
-            crops, pixels = crops_info
+            assert len(crops_info) == 3
+            crops, pixels, size = crops_info
             assert len(crops) == num
             assert len(pixels) == num
             for pixel_ in pixels:
@@ -53,12 +55,30 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
                 assert crop[0] <= ncrop[0] <= crop[1]
                 assert crop[0] <= ncrop[1] <= crop[1]
                 assert ncrop[0] <= ncrop[1]
+
                 assert crop[2] <= ncrop[2] <= crop[3]
                 assert crop[2] <= ncrop[3] <= crop[3]
                 assert ncrop[2] <= ncrop[2]
 
         for _ in range(100):
-            _test_crop([800, 600], (0.0, 0.1, 0.0, 0.1), 3)
-            _test_crop([800, 600], (0.5, 0.8, 0.2, 0.4), 3)
-            _test_crop([1000, 888], (0.2, 0.4, 0.2, 0.5), 3)
-            _test_crop([800, 600], (0.0, 0.1, 0.0, 0.1), 3, (0.04, 0.1))
+            _test_crop([800, 600], (numpy.float32(0.0),
+                                    numpy.float32(0.1),
+                                    numpy.float32(0.0),
+                                    numpy.float32(0.1)), 3)
+            _test_crop([800, 600], (numpy.float32(0.5),
+                                    numpy.float32(0.8),
+                                    numpy.float32(0.2),
+                                    numpy.float32(0.4)), 3)
+            _test_crop([1000, 888], (numpy.float32(0.2),
+                                     numpy.float32(0.4),
+                                     numpy.float32(0.2),
+                                     numpy.float32(0.5)), 3)
+            _test_crop([800, 600], (numpy.float32(0.0),
+                                    numpy.float32(0.1),
+                                    numpy.float32(0.0),
+                                    numpy.float32(0.4)), 3, (0.04, 0.1))
+            with self.assertRaises(Exception):
+                _test_crop([800, 600], (numpy.float32(0.0),
+                                        numpy.float32(0.1),
+                                        numpy.float32(0.0),
+                                        numpy.float32(0.1)), 3, (0.04, 0.1))

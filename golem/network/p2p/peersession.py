@@ -218,11 +218,13 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
+
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.WantToStartTaskSession(
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -242,12 +244,13 @@ class PeerSession(BasicSafeSession):
         """
         logger.debug('Forwarding session request: %s -> %s to %s',
                      node_info.key, key_id, self.key_id)
+        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.SetTaskSession(
                 key_id=key_id,
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
-                super_node_info=super_node_info
+                super_node_info=sni
             )
         )
 
@@ -270,9 +273,6 @@ class PeerSession(BasicSafeSession):
         if (self.address, port) in self.p2p_service.seeds:
             compare_version(getattr(msg, 'client_ver', None))
 
-        # We want to compare_version() before calling
-        # super()._react_to_hello() and potentially returning
-        super()._react_to_hello(msg)
         if not self.conn.opened:
             return
 
@@ -291,7 +291,7 @@ class PeerSession(BasicSafeSession):
 
         self.node_info = Node.from_dict(msg.node_info)
 
-        if not self.p2p_service.keys_auth.is_pubkey_difficult(
+        if not KeysAuth.is_pubkey_difficult(
                 self.node_info.key,
                 self.p2p_service.key_difficulty):
             logger.info(
@@ -375,9 +375,30 @@ class PeerSession(BasicSafeSession):
                 )
 
     def _react_to_remove_task(self, msg):
+        if not self._verify_remove_task(msg):
+            return
+        self._handle_remove_task(msg)
+
+    def _verify_remove_task(self, msg):
+        task_owner = self.p2p_service.task_server.task_keeper.get_owner(
+            msg.task_id)
+        if task_owner is None:
+            return False
+        if not self.p2p_service.keys_auth.verify(msg.sig, msg.get_short_hash(),
+                                                 task_owner):
+            logger.info("Someone tries to remove task header: %s without "
+                        "proper signature" % msg.task_id)
+            return False
+        return True
+
+    def _handle_remove_task(self, msg):
         removed = self.p2p_service.remove_task_header(msg.task_id)
         if removed:  # propagate the message
-            self.p2p_service.remove_task(msg.task_id)
+            self.p2p_service.send_remove_task_container(msg)
+
+    def _react_to_remove_task_container(self, msg):
+        for remove_task in msg.remove_tasks:
+            self._react_to_remove_task(remove_task)
 
     def _react_to_degree(self, msg):
         self.degree = msg.degree
@@ -399,6 +420,11 @@ class PeerSession(BasicSafeSession):
         self._send_peers(node_key_id=msg.node_key_id)
 
     def _react_to_rand_val(self, msg):
+        # If we disconnect in react_to_hello, we still might get the RandVal
+        # message
+        if self.key_id is None:
+            return
+
         # if self.solve_challenge:
         #    return
         if self.rand_val == msg.rand_val:
@@ -409,6 +435,11 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_challenge_solution(self, msg):
+        # If we disconnect in react_to_hello, we still might get the
+        # ChallengeSolution message
+        if self.key_id is None:
+            return
+
         if not self.solve_challenge:
             self.disconnect(
                 message.Disconnect.REASON.BadProtocol
@@ -428,18 +459,24 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_want_to_start_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.peer_want_task_session(
             Node.from_dict(msg.node_info),
-            msg.super_node_info,
+            super_node_info,
             msg.conn_id
         )
 
     def _react_to_set_task_session(self, msg):
+        super_node_info = None
+        if msg.super_node_info:
+            super_node_info = Node.from_dict(msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
             Node.from_dict(msg.node_info),
             msg.conn_id,
-            msg.super_node_info
+            super_node_info
         )
 
     def _react_to_disconnect(self, msg):
@@ -519,7 +556,7 @@ class PeerSession(BasicSafeSession):
                                             self.address,
                                             self.listen_port,
                                             self.node_info)
-        self.p2p_service.add_peer(self.key_id, self)
+        self.p2p_service.add_peer(self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(
             self.node_info,
@@ -547,6 +584,8 @@ class PeerSession(BasicSafeSession):
             message.GetTasks.TYPE: self._react_to_get_tasks,
             message.Tasks.TYPE: self._react_to_tasks,
             message.RemoveTask.TYPE: self._react_to_remove_task,
+            message.RemoveTaskContainer.TYPE:
+                self._react_to_remove_task_container,
             message.FindNode.TYPE: self._react_to_find_node,
             message.RandVal.TYPE: self._react_to_rand_val,
             message.WantToStartTaskSession.TYPE:

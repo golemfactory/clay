@@ -1,16 +1,21 @@
 import logging
-from pydispatch import dispatcher
-import threading
 import queue
+import threading
+import time
+from urllib.parse import urljoin
 
+import requests
+from pydispatch import dispatcher
+
+from golem.core import variables
 from golem.decorators import log_error
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .model import statssnapshotmodel
 from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
-from .model.nodemetadatamodel import NodeInfoModel
-from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
+from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
 from .model.paymentmodel import ExpenditureModel, IncomeModel
+from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .transport.sender import DefaultJSONSender as Sender
 
 log = logging.getLogger('golem.monitor')
@@ -44,10 +49,14 @@ class SenderThread(threading.Thread):
 
 
 class SystemMonitor(object):
-    def __init__(self, meta_data, monitor_config):
+    def __init__(self,
+                 meta_data: NodeMetadataModel,
+                 monitor_config: dict,
+                 send_payment_info: bool = True) -> None:
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
+        self.send_payment_info = send_payment_info
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
@@ -67,37 +76,44 @@ class SystemMonitor(object):
             )
         return self._sender_thread
 
-    def p2p_listener(self, sender, signal, event='default', **kwargs):
+    def p2p_listener(self, event='default', ports=None, *_, **__):
         if event != 'listening':
             return
-        try:
-            result = self.ping_request(kwargs['port'])
-            if not result['success']:
-                status = result['description'].replace('\n', ', ')
-                log.warning('Port status: {}'.format(status))
-                dispatcher.send(
-                    'golem.p2p',
-                    event='unreachable',
-                    port=kwargs['port'],
-                    description=result['description']
-                )
-        except Exception:
-            log.exception('Port reachability check error')
+        result = self.ping_request(ports)
 
-    def ping_request(self, port):
-        import requests
+        if not result['success']:
+            for port_status in result['port_statuses']:
+                if not port_status['is_open']:
+                    dispatcher.send(
+                        signal='golem.p2p',
+                        event='unreachable',
+                        port=port_status['port'],
+                        description=port_status['description']
+                    )
+
+        if result['time_diff'] > variables.MAX_TIME_DIFF:
+            dispatcher.send(
+                signal='golem.p2p',
+                event='unsynchronized',
+                time_diff=result['time_diff']
+            )
+
+    def ping_request(self, ports):
         timeout = 2.5  # seconds
         try:
             response = requests.post(
-                '%sping-me' % (self.config['HOST'],),
-                data={'port': port, },
+                urljoin(self.config['HOST'], 'ping-me'),
+                data={
+                    'ports': ports,
+                    'timestamp': time.time()
+                },
                 timeout=timeout,
             )
             result = response.json()
-        except requests.ConnectionError as e:
-            result = {'success': False, 'description': 'Local error: %s' % e}
-        log.debug('ping result %r', result)
-        return result
+            log.debug('Ping result: %r', result)
+            return result
+        except requests.ConnectionError:
+            log.exception('Ping connection error')
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):
@@ -180,30 +196,38 @@ class SystemMonitor(object):
         self.sender_thread.send(msg)
 
     def on_payment(self, addr, value):
-        msg = ExpenditureModel(
-            self.meta_data.cliid,
-            self.meta_data.sessid,
-            addr,
-            value
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            ExpenditureModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
+            )
         )
-        self.sender_thread.send(msg)
 
     def on_income(self, addr, value):
-        msg = IncomeModel(
-            self.meta_data.cliid,
-            self.meta_data.sessid,
-            addr,
-            value
+        if not self.send_payment_info:
+            return
+        self.sender_thread.send(
+            IncomeModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                addr,
+                value
+            )
         )
-        self.sender_thread.send(msg)
 
     def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
-                            gntw_balance: int):
+                            gntb_balance: int):
+        if not self.send_payment_info:
+            return
         self.sender_thread.send(
             BalanceModel(
                 self.meta_data,
                 eth_balance,
                 gnt_balance,
-                gntw_balance
+                gntb_balance
             )
         )

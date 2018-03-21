@@ -1,14 +1,16 @@
 import datetime
+import json
 import os
 import time
 import uuid
-import json
-
+from random import Random
 from types import MethodType
 from unittest import TestCase
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import call, Mock, MagicMock, patch
 
+from ethereum.utils import denoms
 from freezegun import freeze_time
+from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
@@ -34,12 +36,14 @@ from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
+    TaskTestStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex, encode_hex
-from golem.task.taskstate import TaskTestStatus
+
+random = Random(__name__)
 
 
 def mock_async_run(req, success, error):
@@ -88,9 +92,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -136,9 +141,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -181,9 +187,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -200,9 +207,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=True,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -211,12 +219,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
         # TODO: assertTrue when re-enabled
         self.assertFalse(self.client.transaction_system.sync.called)
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -256,15 +266,17 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_datadir_lock(self, *_):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
         datadir = os.path.join(self.path, "non-existing-dir")
         self.client = Client(
             datadir=datadir,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -273,15 +285,19 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir,
+                   app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
-                   keys_auth=Mock())
+                   keys_auth=Mock(),
+                   database=Mock())
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -314,23 +330,28 @@ class TestClient(TestWithDatabase, TestWithReactor):
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
         )
         self.client.db = None
         self.client.quit()
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_collect_gossip(self, *_):
         keys_auth = Mock()
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -338,12 +359,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -362,12 +385,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    @patch('golem.client.EthereumTransactionSystem')
     def test_restart_by_frame(self, *_):
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -400,6 +425,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -409,31 +435,30 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
 
         self.client.start()
         sync_wait(deferred)
 
-        p2p_disc = self.client.p2pservice.disconnect
-        task_disc = self.client.task_server.disconnect
-
-        self.client.p2pservice.disconnect = Mock()
-        self.client.p2pservice.disconnect.side_effect = p2p_disc
-        self.client.task_server.disconnect = Mock()
-        self.client.task_server.disconnect.side_effect = task_disc
+        self.client.p2pservice.disconnect = Mock(
+            side_effect=self.client.p2pservice.disconnect)
+        self.client.task_server.disconnect = Mock(
+            side_effect=self.client.task_server.disconnect)
 
         self.client.stop()
 
-        assert self.client.p2pservice.disconnect.called
-        assert self.client.task_server.disconnect.called
+        self.client.p2pservice.disconnect.assert_called_once()
+        self.client.task_server.disconnect.assert_called_once()
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
@@ -441,18 +466,24 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
-        keys_auth = Mock()
-        keys_auth.key_id = "a" * 64
+        keys_auth = KeysAuth(self.path, 'priv_key', '')
         self.client = Client(
             datadir=self.path,
+            app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            transaction_system=False,
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
+
+        sci = self.client.transaction_system._sci
+        pp = make_mock_payment_processor(sci)
+        self.client.transaction_system.payment_processor = pp
+
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
         self.client.start()
         sync_wait(deferred)
 
@@ -510,11 +541,30 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert task_manager.tasks_states[new_task_id].status \
             == TaskStatus.waiting
 
+    @patch('golem.client.EthereumTransactionSystem', autospec=True)
+    @patch('golem.client.Trust', autospec=True)
+    def test_check_payments(self, trust, *_):
+
+        client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        client.transaction_system\
+            .get_nodes_with_overdue_payments.return_value = ['a', 'b']
+        client.check_payments()
+        trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
+
 
 class TestDoWorkService(TestWithReactor):
 
-    @patch('golem.client.log')
-    def test_run(self, log):
+    @patch('golem.client.logger')
+    def test_run(self, logger):
         c = Mock()
         c.p2pservice = Mock()
         c.task_server = Mock()
@@ -527,14 +577,14 @@ class TestDoWorkService(TestWithReactor):
         do_work_service._run()
 
         assert not c.p2pservice.ping_peers.called
-        assert not log.exception.called
+        assert not logger.exception.called
         assert c.p2pservice.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
         assert c.check_payments.called
 
-    @patch('golem.client.log')
-    def test_pings(self, log):
+    @patch('golem.client.logger')
+    def test_pings(self, logger):
         c = Mock()
         c.p2pservice = Mock()
         c.p2pservice.peers = {str(uuid.uuid4()): Mock()}
@@ -558,7 +608,7 @@ class TestDoWorkService(TestWithReactor):
         do_work_service._run()
 
         assert c.p2pservice.ping_peers.called
-        assert log.exception.call_count == 5
+        assert logger.exception.call_count == 5
 
     @freeze_time("2018-01-01 00:00:00")
     def test_time_for(self):
@@ -617,9 +667,9 @@ class TestDoWorkService(TestWithReactor):
 
 class TestMonitoringPublisherService(TestWithReactor):
 
-    @patch('golem.client.log')
+    @patch('golem.client.logger')
     @patch('golem.client.dispatcher.send')
-    def test_run(self, send, log):
+    def test_run(self, send, logger):
         task_server = Mock()
         task_server.task_keeper = Mock()
         task_server.task_keeper.get_all_tasks.return_value = list()
@@ -631,33 +681,33 @@ class TestMonitoringPublisherService(TestWithReactor):
             interval_seconds=1)
         service._run()
 
-        assert not log.debug.called
+        assert not logger.debug.called
         assert send.call_count == 3
 
 
 class TestNetworkConnectionPublisherService(TestWithReactor):
 
-    @patch('golem.client.log')
-    def test_run(self, log):
+    @patch('golem.client.logger')
+    def test_run(self, logger):
         c = Mock()
 
         service = NetworkConnectionPublisherService(c, interval_seconds=1)
         service._run()
 
-        assert not log.debug.called
+        assert not logger.debug.called
         assert c._publish.call_count == 1
 
 
 class TestTaskArchiverService(TestWithReactor):
 
-    @patch('golem.client.log')
-    def test_run(self, log):
+    @patch('golem.client.logger')
+    def test_run(self, logger):
         task_archiver = Mock()
 
         service = TaskArchiverService(task_archiver)
         service._run()
 
-        assert not log.debug.called
+        assert not logger.debug.called
         assert task_archiver.do_maintenance.call_count == 1
 
 
@@ -682,8 +732,8 @@ class TestResourceCleanerService(TestWithReactor):
 class TestTaskCleanerService(TestWithReactor):
 
     @freeze_time('2017-11-27 10:00:00.1')
-    @patch('golem.client.log')
-    def test_run_noop(self, log):
+    @patch('golem.client.logger')
+    def test_run_noop(self, logger):
         older_than_seconds = 5
         now = time.time()
         timeout_seconds = 3
@@ -702,10 +752,10 @@ class TestTaskCleanerService(TestWithReactor):
         service._run()
 
         c.delete_task.assert_not_called()
-        log.info.assert_not_called()
+        logger.info.assert_not_called()
 
-    @patch('golem.client.log')
-    def test_run(self, log):
+    @patch('golem.client.logger')
+    def test_run(self, logger):
         with freeze_time('2017-11-27 10:00:00.1') as frozen_time:
 
             older_than_seconds = 5
@@ -735,8 +785,22 @@ class TestTaskCleanerService(TestWithReactor):
             service._run()
 
             c.delete_task.assert_called_with(task_id)
-            # log.info.assert_called()  is since python 3.6
-            assert log.info.called
+            logger.info.assert_called()
+
+
+def make_mock_payment_processor(sci, eth=100, gnt=100):
+    pp = MagicMock()
+    pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
+    pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
+
+    val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
+    pp.eth_for_batch_payment.return_value = val
+
+    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
+    pp.eth_balance.return_value = eth * denoms.ether, time.time()
+    pp._gnt_available.return_value = gnt * denoms.ether
+    pp._eth_available.return_value = eth * denoms.ether
+    return pp
 
 
 @patch('signal.signal')
@@ -744,15 +808,15 @@ class TestTaskCleanerService(TestWithReactor):
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler', ):
+        keys_auth = KeysAuth(self.path, 'priv_key', '')
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler', ):
             client = Client(
                 datadir=self.path,
+                app_config=Mock(),
                 config_desc=ClientConfigDescriptor(),
-                keys_auth=Mock(),
-                transaction_system=False,
+                keys_auth=keys_auth,
+                database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False
@@ -761,9 +825,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.sync = Mock()
         client.keys_auth = Mock(key_id=str(uuid.uuid4()))
         client.p2pservice = Mock(peers={})
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler', ):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler', ):
             client.task_server = TaskServer(
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
@@ -779,7 +842,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path)
+        c.keys_auth = KeysAuth(self.path, 'priv_key', '')
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -838,26 +901,39 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
         c = self.client
+        c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.transaction_system.payment_processor = \
+            make_mock_payment_processor(c.transaction_system._sci)
 
         task_header = Mock(
             max_price=1 * 10**18,
-            task_id=str(uuid.uuid4())
+            task_id=str(uuid.uuid4()),
+            subtask_timeout=37
         )
         task = Mock(
             header=task_header,
-            get_resources=Mock(return_value=[])
+            get_resources=Mock(return_value=[]),
+            total_tasks=5,
+            get_price=Mock(return_value=900)
         )
 
         c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
-
+        task_mock = MagicMock()
+        task_mock.header.max_price = 1 * 10**18
+        task_mock.header.subtask_timeout = 158
+        task_mock.total_tasks = 3
+        price = task_mock.header.max_price * task_mock.total_tasks
+        task_mock.get_price.return_value = price
+        c.task_server.task_manager.create_task.return_value = task_mock
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4())
         ))
         assert c.task_server.task_manager.create_task.called
+        c.funds_locker.persist = True
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
@@ -911,6 +987,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
+        c.transaction_system.payment_processor = \
+            make_mock_payment_processor(c.transaction_system._sci)
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
@@ -1048,8 +1126,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsNone(c.rpc_publisher)
 
         rpc_session = Mock()
+        publisher = Publisher(rpc_session)
 
-        c.configure_rpc(rpc_session)
+        c.set_rpc_publisher(publisher)
         self.assertIsInstance(c.rpc_publisher, Publisher)
         self.assertIs(c.rpc_publisher.session, rpc_session)
 
@@ -1086,10 +1165,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.remove_task = Mock()
         c.task_server = Mock()
 
-        c.delete_task(str(uuid.uuid4()))
+        task_id = str(uuid.uuid4())
+        c.delete_task(task_id)
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+        c.remove_task.assert_called_with(task_id)
 
     def test_get_unsupport_reasons(self, *_):
         c = self.client
@@ -1215,26 +1296,24 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert self.client.get_golem_status() == status
 
     def test_port_status(self, *_):
-        from pydispatch import dispatcher
-        import random
-        random.seed()
+        port = random.randint(1, 65535)
+        self.assertIsNone(self.client.node.port_statuses.get(port))
 
-        port = random.randint(1, 50000)
-        self.assertFalse(self.client.node.port_status)
         dispatcher.send(
             signal="golem.p2p",
             event="no event at all",
             port=port,
-            description="port 1234: closed"
+            description="timeout"
         )
-        self.assertFalse(self.client.node.port_status)
+        self.assertIsNone(self.client.node.port_statuses.get(port))
+
         dispatcher.send(
             signal="golem.p2p",
             event="unreachable",
             port=port,
-            description="port 1234: closed"
+            description="timeout"
         )
-        self.assertTrue(self.client.node.port_status)
+        self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
 
     def test_get_performance_values(self, *_):
         expected_perf = {DefaultEnvironment.get_id(): 0.0}

@@ -4,7 +4,7 @@ from functools import partial
 import io
 import json
 import unittest
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 import uuid
 
 from ethereum.utils import denoms
@@ -20,6 +20,7 @@ from golem.interface.client.payments import incomes, payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
+from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -242,10 +243,9 @@ class TestPayments(unittest.TestCase):
     def setUpClass(cls):
 
         incomes_list = [{
-            'value': '{}'.format(i),
             'payer': 'node_{}'.format(i),
             'status': 'waiting',
-            'block_number': 'deadbeef0{}'.format(i)
+            'value': '{}'.format(i),
         } for i in range(1, 6)]
 
         payments_list = [{
@@ -273,7 +273,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT', 'deadbeef01'
+                'node_1', 'waiting', '0.000000 GNT'
             ]
 
     def test_payments(self):
@@ -712,3 +712,29 @@ class TestDebug(unittest.TestCase):
 
             with self.assertRaises(CommandException):
                 debug.rpc((task_id, ))
+
+
+class TestTerms(unittest.TestCase):
+
+    def setUp(self):
+        super(TestTerms, self).setUp()
+
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    @patch('golem.interface.client.terms.html2text.html2text',
+           return_value=object())
+    def test_show(self, html2text: MagicMock):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            result = terms.show()
+            self.client.show_terms.assert_called_once()
+            html2text.assert_called_once_with(
+                self.client.show_terms.return_value)
+            self.assertEqual(result, html2text.return_value)
+
+    def test_accept(self):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            terms.accept()
+            self.client.accept_terms.assert_called_once()

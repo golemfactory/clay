@@ -1,21 +1,36 @@
 import os
+import time
 from random import random, randint
 from unittest.mock import patch
 
-from freezegun import freeze_time
 from golem_messages import message
-from golem_messages.cryptography import ECCx
+from golem_messages.cryptography import ECCx, privtopub
 
 from golem import testutils
-from golem.core.keysauth import KeysAuth, get_random, \
-    get_random_float, sha2
+from golem.core.keysauth import (
+    KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.core.simpleserializer import CBORSerializer
+from golem.tools.testwithreactor import TestWithReactor
 from golem.utils import decode_hex
 from golem.utils import encode_hex
 
 
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     PEP8_FILES = ['golem/core/keysauth.py']
+
+    def _create_keysauth(
+            self,
+            difficulty=0,
+            key_name=None,
+            password='') -> KeysAuth:
+        if key_name is None:
+            key_name = str(random())
+        return KeysAuth(
+            datadir=self.path,
+            private_key_name=key_name,
+            password=password,
+            difficulty=difficulty,
+        )
 
     def test_sha(self):
         """ Test sha2 function"""
@@ -40,85 +55,47 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             self.assertGreater(r, 0)
             self.assertGreater(1, r)
 
-    def test_init(self):
-        for _ in range(100):
-            ek = KeysAuth(os.path.join(self.path),
-                          private_key_name=str(random()))
-            self.assertEqual(len(ek._private_key),
-                             KeysAuth.PRIV_KEY_LEN)
-            self.assertEqual(len(ek.public_key), KeysAuth.PUB_KEY_LEN)
-            self.assertEqual(len(ek.key_id), KeysAuth.KEY_ID_LEN)
-
-    @freeze_time("2017-11-23 11:40:27.767804")
-    @patch('golem.core.keysauth.logger')
-    def test_init_priv_key_wrong_length(self, logger):
-        # given
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        key_name = "priv_key"
-        key_path = os.path.join(keys_dir, key_name)
-        with open(key_path, 'wb') as f:
-            f.write(b'123')
-        assert os.listdir(keys_dir) == [key_name]
-
-        # when
-        KeysAuth(self.path, key_name)
-
-        # then
-        assert logger.error.call_count == 1
-        assert logger.error.call_args[0] == (
-            'Wrong loaded private key size: %d.', 3)
-
-        with open(key_path, 'rb') as f:
-            new_priv_key = f.read()
-        assert len(new_priv_key) == KeysAuth.PRIV_KEY_LEN
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
-        )
+    def test_pubkey_suits_privkey(self):
+        ka = self._create_keysauth()
+        self.assertEqual(ka.public_key, privtopub(ka._private_key))
 
     def test_difficulty(self):
         difficulty = 5
-        ek = KeysAuth(self.path, difficulty=difficulty)
+        ek = self._create_keysauth(difficulty)
         assert difficulty <= ek.difficulty
         assert ek.difficulty == KeysAuth.get_difficulty(ek.key_id)
 
     def test_get_difficulty(self):
         difficulty = 8
-        ek = KeysAuth(self.path, difficulty=difficulty)
+        ek = self._create_keysauth(difficulty)
         # first 8 bits of digest must be 0
         assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
         assert KeysAuth.get_difficulty(ek.key_id) >= difficulty
         assert KeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
         assert KeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
 
-    @patch('golem.core.keysauth.logger')
-    def test_key_recreate_on_increased_difficulty(self, logger):
+    def test_exception_difficulty(self):
         # given
-        old_difficulty = 0
-        new_difficulty = 7
-
-        assert old_difficulty < new_difficulty  # just in case
+        lower_difficulty = 0
+        req_difficulty = 7
+        priv_key = str(random())[2:]
+        assert lower_difficulty < req_difficulty  # just in case
 
         keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        # create key that has difficulty lower than new_difficulty
+        # create key that has difficulty lower than req_difficulty
         while True:
-            ek = KeysAuth(self.path, difficulty=old_difficulty)
-            if not ek.is_difficult(new_difficulty):
+            ka = self._create_keysauth(lower_difficulty, priv_key)
+            if not ka.is_difficult(req_difficulty):
                 break
             os.rmdir(keys_dir)  # to enable keys regeneration
 
-        assert KeysAuth.get_difficulty(ek.key_id) >= old_difficulty
-        assert KeysAuth.get_difficulty(ek.key_id) < new_difficulty
-        logger.reset_mock()  # just in case
-
-        # when
-        ek = KeysAuth(self.path, difficulty=new_difficulty)
+        assert KeysAuth.get_difficulty(ka.key_id) >= lower_difficulty
+        assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
 
         # then
-        assert KeysAuth.get_difficulty(ek.key_id) >= new_difficulty
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args[0][0] == \
-            'Loaded key is not difficult enough.'
+        with self.assertRaisesRegex(Exception,
+                                    "Loaded key is not difficult enough"):
+            self._create_keysauth(difficulty=req_difficulty, key_name=priv_key)
 
     def test_save_keys(self):
         # given
@@ -127,7 +104,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         key_name = 'priv'
 
         # when
-        KeysAuth(self.path, key_name)
+        self._create_keysauth(key_name=key_name)
 
         # then
         self.assertCountEqual(os.listdir(keys_dir), [key_name])
@@ -135,7 +112,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
     @patch('golem.core.keysauth.logger')
     def test_key_successful_load(self, logger):
         # given
-        ek = KeysAuth(self.path)
+        priv_key = str(random())
+        ek = self._create_keysauth(key_name=priv_key)
         private_key = ek._private_key
         public_key = ek.public_key
         del ek
@@ -145,43 +123,20 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         logger.reset_mock()  # just in case
 
         # when
-        ek2 = KeysAuth(self.path)
+        ek2 = self._create_keysauth(key_name=priv_key)
 
         # then
         assert private_key == ek2._private_key
         assert public_key == ek2.public_key
         assert not logger.warning.called
 
-    @freeze_time("2017-11-23 11:40:27.767804")
-    @patch('golem.core.keysauth.logger')
-    def test_load_and_regenerate_because_of_difficulty_and_backup(self, logger):
-        # given
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        key_name = 'priv'
-        key_path = os.path.join(keys_dir, key_name)
-        with open(key_path, 'w') as f:
-            f.write("f" * 32)  # binary all ones
-        assert os.listdir(keys_dir) == [key_name]
-
-        # when
-        KeysAuth(self.path, key_name, difficulty=1)
-
-        # then
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args[0][0] == \
-            'Loaded key is not difficult enough.'
-        self.assertCountEqual(
-            os.listdir(keys_dir),
-            [key_name, "%s_2017-11-23_11-40-27_767804.bak" % key_name]
-        )
-
     def test_sign_verify(self):
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
         data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
         signature = ek.sign(data)
         self.assertTrue(ek.verify(signature, data))
         self.assertTrue(ek.verify(signature, data, ek.key_id))
-        ek2 = KeysAuth(os.path.join(self.path, str(random())))
+        ek2 = self._create_keysauth()
         self.assertTrue(ek2.verify(signature, data, ek.key_id))
         data2 = b"23103"
         sig = ek2.sign(data2)
@@ -195,7 +150,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         data2 = b"qaz123WSY./;'[]"
 
         # when
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
         sig1 = ek.sign(data1)
         sig2 = ek.sign(data2)
 
@@ -218,7 +173,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
                       b"3b4ac6ef078"
 
-        ek = KeysAuth(self.path)
+        ek = self._create_keysauth()
 
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
@@ -252,25 +207,44 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
-        dumped_l = msg.serialize(ek.sign, lambda x: ek.encrypt(x, public_key))
-        loaded_l = message.Message.deserialize(dumped_l, ek.decrypt)
+        dumped_l = msg.serialize(ek.sign, lambda x: x)
+        loaded_l = message.Message.deserialize(dumped_l, lambda x: x)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
         self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), public_key))
 
-    def test_encrypt_decrypt(self):
-        """ Test encryption and decryption with KeysAuth """
-        path = os.path.join(self.path, str(random()))
-        ek = KeysAuth(path)
-        data = b"abcdefgh\nafjalfa\rtajlajfrlajl\t" * 1000
-        enc = ek.encrypt(data)
-        self.assertEqual(ek.decrypt(enc), data)
-        ek2 = KeysAuth(os.path.join(self.path, str(random())))
-        self.assertEqual(ek2.decrypt(ek.encrypt(data, ek2.key_id)), data)
-        data2 = b"23103"
-        self.assertEqual(ek.decrypt(ek2.encrypt(data2, ek.key_id)), data2)
-        data3 = b"\x00" + os.urandom(1024)
-        ek2 = KeysAuth(path, difficulty=2)
-        self.assertEqual(ek2.decrypt(ek2.encrypt(data3)), data3)
-        with self.assertRaises(TypeError):
-            ek2.encrypt(None)
+    def test_keystore(self):
+        key_name = str(random())
+        password = 'passwd'
+
+        # Generate new key
+        self._create_keysauth(key_name=key_name, password=password)
+        # Try to load it, this shouldn't throw
+        self._create_keysauth(key_name=key_name, password=password)
+
+        with self.assertRaises(WrongPassword):
+            self._create_keysauth(key_name=key_name, password='wrong_pw')
+
+
+class TestKeysAuthWithReactor(TestWithReactor):
+
+    @patch('golem.core.keysauth.logger')
+    def test_generate_keys_stop_when_reactor_stopped(self, logger):
+        # given
+        from twisted.internet import threads
+        reactor = self._get_reactor()
+
+        # when
+        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
+
+        time.sleep(0.01)
+        reactor.stop()
+        time.sleep(0.01)
+
+        # then
+        assert not reactor.running
+        assert logger.info.call_count == 1
+        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
+        assert logger.warning.call_count == 1
+        assert logger.warning.call_args_list[0][0][0] == \
+            'reactor stopped, aborting key generation ..'

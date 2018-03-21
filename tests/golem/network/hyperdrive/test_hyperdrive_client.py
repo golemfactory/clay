@@ -157,7 +157,7 @@ class TestHyperdriveClientAsync(TestCase):
     def test_get_async_body_error(self):
         client = HyperdriveAsyncClient()
 
-        with mock.patch('golem.network.hyperdrive.client.readBody',
+        with mock.patch('twisted.web.client.readBody',
                         side_effect=self.failure), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):
@@ -175,7 +175,7 @@ class TestHyperdriveClientAsync(TestCase):
             d.callback(b'{"files": ["./file"]}')
             return d
 
-        with mock.patch('golem.network.hyperdrive.client.readBody',
+        with mock.patch('twisted.web.client.readBody',
                         side_effect=body), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):
@@ -196,7 +196,7 @@ class TestHyperdriveClientAsync(TestCase):
 
         files = {'path/to/file': 'file'}
 
-        with mock.patch('golem.network.hyperdrive.client.readBody',
+        with mock.patch('twisted.web.client.readBody',
                         side_effect=body), \
             mock.patch('golem.core.async.AsyncHTTPRequest.run',
                        side_effect=self.success):

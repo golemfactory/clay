@@ -111,7 +111,7 @@ class TestIGDPortMapper(TestCase):
         obj = object()
         mapper.upnp.deleteportmapping.return_value = obj
 
-        assert mapper.remove_mapping(40102) is obj
+        assert mapper.remove_mapping(40102, 40102) is obj
 
     def test_find_free_port(self, *_):
         mapping = '10.0.0.10', 40112, 'desc', True, 3600

@@ -147,6 +147,12 @@ class Settings(object):
             '{} >= int >= 1'.format(_cpu_count),
             _int,
             lambda x: _cpu_count >= x >= 1
+        ),
+        'enable_talkback': Setting(
+            'Enable error reporting with talkback service',
+            'int {0, 1}',
+            _int,
+            lambda x: x in [0, 1]
         )
     }
 

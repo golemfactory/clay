@@ -12,7 +12,7 @@ from pydispatch import dispatcher
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
-from golem.core.common import get_timestamp_utc, timeout_to_deadline
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
@@ -112,7 +112,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ctd['environment'] = "DEFAULT"
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
         task_mock.query_extra_data_return_value = Task.ExtraData(
@@ -396,7 +395,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 ctd = ComputeTaskDef()
                 ctd['task_id'] = self.header.task_id
                 ctd['subtask_id'] = self.subtasks_id[0]
-                ctd['environment'] = "DEFAULT"
                 self.subtasks_id = self.subtasks_id[1:]
                 e = self.ExtraData(False, ctd)
                 return e
@@ -797,7 +795,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                "key_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
-        self.tm.keys_auth = KeysAuth(self.path)
+        self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.tm.add_new_task(task)
         sig = task.header.signature
 
@@ -836,6 +834,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.key_id = "1"
         with self.assertRaises(IOError):
             self.tm.add_new_task(t)
+
+    def test_put_task_in_restarted_state_two_times(self):
+        task_id = 'qaz123WSX'
+        subtask_id = "qweasdzxc"
+        t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
+        self.tm.add_new_task(t)
+
+        self.tm.put_task_in_restarted_state(task_id)
+        with self.assertRaises(self.tm.AlreadyRestartedError):
+            self.tm.put_task_in_restarted_state(task_id)
 
     def test_restart_frame_subtasks(self):
         tm = self.tm

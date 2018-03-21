@@ -66,7 +66,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        self.keys_auth = KeysAuth(self.path)
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,
@@ -85,17 +85,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             self.resource_server.get_distributed_resource_root(),
             resource_dir
         )
-
-    def testDecrypt(self):
-
-        to_encrypt = "test string to enc"
-        encrypted = self.resource_server.encrypt(
-            to_encrypt,
-            self.keys_auth.public_key
-        )
-        decrypted = self.resource_server.decrypt(encrypted)
-
-        self.assertEqual(decrypted, to_encrypt.encode())
 
     def _resources(self):
         existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)

@@ -54,6 +54,12 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
+    class Error(Exception):
+        pass
+
+    class AlreadyRestartedError(Error):
+        pass
+
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
@@ -235,7 +241,8 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError):
+                except (pickle.UnpicklingError, EOFError, ImportError,
+                        KeyError):
                     logger.exception('Problem restoring task from: %s', path)
                     # On Windows, attempting to remove a file that is in use
                     # causes an exception to be raised, therefore
@@ -366,11 +373,6 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None, False, False
 
-        ctd['key_id'] = task.header.task_owner_key_id
-        ctd['return_address'] = task.header.task_owner_address
-        ctd['return_port'] = task.header.task_owner_port
-        ctd['task_owner'] = task.header.task_owner.to_dict()
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, price, ctd, address,
@@ -458,6 +460,7 @@ class TaskManager(TaskEventListener):
                                      op=OtherOp.UNEXPECTED)
             verification_finished_()
             return
+        subtask_state.subtask_status = SubtaskStatus.verifying
 
         def verification_finished():
             ss = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -598,9 +601,12 @@ class TaskManager(TaskEventListener):
         When restarting task, it's put in a final state 'restarted' and
         a new one is created.
         """
+        task_state = self.tasks_states[task_id]
+        if task_state.status == TaskStatus.restarted:
+            raise self.AlreadyRestartedError()
         self.dir_manager.clear_temporary(task_id)
 
-        self.tasks_states[task_id].status = TaskStatus.restarted
+        task_state.status = TaskStatus.restarted
         for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted

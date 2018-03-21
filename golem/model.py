@@ -2,6 +2,8 @@ import datetime
 import inspect
 import json
 import pickle
+
+import peewee
 from enum import Enum
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
@@ -36,6 +38,13 @@ class BaseModel(Model):
 
     created_date = DateTimeField(default=datetime.datetime.now)
     modified_date = DateTimeField(default=datetime.datetime.now)
+
+    def refresh(self):
+        """
+        https://github.com/coleifer/peewee/issues/686#issuecomment-130548126
+        :return: Refreshed version of the object retrieved from db
+        """
+        return type(self).get(self._pk_expr())
 
 
 class GenericKeyValue(BaseModel):
@@ -232,6 +241,7 @@ class Income(BaseModel):
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
+    overdue = BooleanField(default=False)
 
     class Meta:
         database = db
@@ -423,9 +433,9 @@ class NetworkMessage(BaseModel):
         return msg
 
 
-def _collect_db_models():
+def collect_db_models(module: str = __name__):
     return inspect.getmembers(
-        sys.modules[__name__],
+        sys.modules[module],
         lambda cls: (
             inspect.isclass(cls) and
             issubclass(cls, BaseModel) and
@@ -434,4 +444,15 @@ def _collect_db_models():
     )
 
 
-DB_MODELS = [cls for _, cls in _collect_db_models()]
+def collect_db_fields(module: str = __name__):
+    return inspect.getmembers(
+        sys.modules[module],
+        lambda cls: (
+            inspect.isclass(cls) and
+            issubclass(cls, peewee.Field)
+        )
+    )
+
+
+DB_FIELDS = [cls for _, cls in collect_db_fields()]
+DB_MODELS = [cls for _, cls in collect_db_models()]

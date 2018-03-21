@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
+from os import urandom
 import random
 import time
 import unittest.mock as mock
 import uuid
 
-from golem import testutils
+from twisted.internet.tcp import EISCONN
+
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import KeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
@@ -15,14 +17,18 @@ from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.tools.testwithreactor import TestDatabaseWithReactor
+from golem.utils import encode_hex
 
 
-class TestP2PService(testutils.DatabaseFixture):
+class TestP2PService(TestDatabaseWithReactor):
 
     def setUp(self):
         super(TestP2PService, self).setUp()
         random.seed()
-        self.keys_auth = KeysAuth(self.path)
+        # Mock saving keys as it takes long to compute and isn't needed here
+        KeysAuth._save_private_key = mock.Mock()
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.service = P2PService(
             None,
             ClientConfigDescriptor(),
@@ -63,7 +69,10 @@ class TestP2PService(testutils.DatabaseFixture):
             node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
             prv_addr=randaddr(),
-            prv_port=random.randint(1, 2 ** 16 - 1))
+            pub_addr=randaddr(),
+            p2p_prv_port=random.randint(1, 2 ** 16 - 1),
+            p2p_pub_port=random.randint(1, 2 ** 16 - 1),
+        )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
                 neighbour_node,
@@ -79,7 +88,7 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_add_to_peer_keeper(self):
         node = Node()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
@@ -109,18 +118,18 @@ class TestP2PService(testutils.DatabaseFixture):
 
     def test_remove_old_peers(self):
         node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
-        self.service.add_peer(node.key, node)
+        self.service.add_peer(node)
         assert len(self.service.peers) == 1
         node.last_message_time = 0
         self.service.sync_network()
 
         assert len(self.service.peers) == 0
 
-        self.service.add_peer(node.key, node)
+        self.service.add_peer(node)
         self.service.peers[node.key].last_message_time = time.time() + 1000
         assert len(self.service.peers) == 1
         self.service.sync_network()
@@ -130,17 +139,17 @@ class TestP2PService(testutils.DatabaseFixture):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "TESTPRIV").key_id
+        node.key = encode_hex(urandom(64))
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
-        node2.key = KeysAuth(self.path, "TESTPRIV2").key_id
+        node2.key = encode_hex(urandom(64))
         node2.key_id = node2.key
         node2.address = sa
 
-        self.service.add_peer(node.key, node)
-        self.service.add_peer(node2.key, node2)
+        self.service.add_peer(node)
+        self.service.add_peer(node2)
 
         self.service.peers[node.key].last_message_time = time.time() + 1000
         self.service.peers[node2.key].last_message_time = time.time() + 1000
@@ -159,7 +168,7 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = KeysAuth(self.path, "TESTPRIV").key_id
+        key_id = encode_hex(urandom(64))
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -216,11 +225,11 @@ class TestP2PService(testutils.DatabaseFixture):
         assert len(self.service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        node = mock.MagicMock()
-        node.key = KeysAuth(self.path, "PRIVTEST").key_id
-        node.key_id = node.key
-        node.pub_addr = '127.0.0.1'
-        node.pub_port = 10000
+        node = Node(
+            key=encode_hex(urandom(64)),
+            pub_addr='127.0.0.1',
+            p2p_pub_port=10000
+        )
 
         self.service.config_desc.opt_peer_num = 10
         self.service.free_peers.append(node.key)
@@ -233,6 +242,7 @@ class TestP2PService(testutils.DatabaseFixture):
         }
 
         self.service.last_peers_request = time.time() - 60
+        self.service._is_address_accessible = mock.Mock(return_value=True)
         self.service.sync_network()
 
         assert not self.service.free_peers
@@ -315,14 +325,14 @@ class TestP2PService(testutils.DatabaseFixture):
         m.transport.getPeer.return_value.host = "10.10.10.10"
         ps1 = PeerSession(m)
         ps1.key_id = self.keys_auth.key_id
-        self.service.add_peer(self.keys_auth.key_id, ps1)
+        self.service.add_peer(ps1)
         m2 = mock.MagicMock()
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        keys_auth2 = KeysAuth(self.path, "PUBTESTPATH1")
-        ps2.key_id = keys_auth2.key_id
-        self.service.add_peer(keys_auth2.key_id, ps2)
+        key_id2 = encode_hex(urandom(64))
+        ps2.key_id = key_id2
+        self.service.add_peer(ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
 
     def test(self):
@@ -405,3 +415,57 @@ class TestP2PService(testutils.DatabaseFixture):
             seed = self.service._get_next_random_seed()
             seeds.remove(seed)
         assert not seeds
+
+    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket')
+    @mock.patch('golem.network.p2p.p2pservice.'
+                'P2PService._P2PService__connection_established')
+    def test_connect_success(self, connection_established, createSocket):
+        createSocket.return_value = socket = mock.Mock()
+        socket.fileno = mock.Mock(return_value=0)
+        socket.getsockopt = mock.Mock(return_value=None)
+        socket.connect_ex = mock.Mock(return_value=EISCONN)
+
+        addr = SocketAddress('127.0.0.1', 40102)
+        self.service.connect(addr)
+        time.sleep(0.1)
+        assert connection_established.called
+        assert connection_established.call_args[0][0] is not None
+        assert connection_established.call_args[1]['conn_id'] is not None
+
+    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket',
+                side_effect=Exception('something has failed'))
+    @mock.patch('golem.network.p2p.p2pservice.'
+                'P2PService._P2PService__connection_failure')
+    def test_connect_failure(self, connection_failure, createSocket):
+        addr = SocketAddress('127.0.0.1', 40102)
+        self.service.connect(addr)
+        assert connection_failure.called
+        assert connection_failure.call_args[1]['conn_id'] is not None
+
+    def test_try_to_add_peer(self):
+        key_id = 'abcde1234567890'
+        peer_info = {
+            'node_name': 'test',
+            'port': 1,
+            'node': mock.Mock(key=key_id),
+            'address': '10.0.0.1',
+            'conn_trials': 0,
+        }
+        self.service.try_to_add_peer(peer_info, True)
+
+        assert key_id in self.service.free_peers
+        assert key_id in self.service.incoming_peers
+        assert peer_info == self.service.incoming_peers[key_id]
+
+    def test_get_socket_addresses(self):
+        key_id = 'abcd'
+        address = '10.0.0.1'
+        prv_port = 1
+        pub_port = 2
+        node_info = mock.Mock(key=key_id)
+
+        self.service.suggested_address[key_id] = address
+        result = self.service.get_socket_addresses(node_info, prv_port,
+                                                   pub_port)
+        assert SocketAddress(address, prv_port) in result
+        assert SocketAddress(address, pub_port) in result

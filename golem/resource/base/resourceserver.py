@@ -78,7 +78,8 @@ class BaseResourceServer(object):
 
     @staticmethod
     def _add_task_error(error):
-        logger.error("Resource server: add_task error: {}".format(error))
+        logger.error("Resource server: add_task error: %r", error)
+        return error  # continue with the errback chain
 
     def remove_task(self, task_id):
         self.resource_manager.remove_task(task_id)
@@ -167,14 +168,6 @@ class BaseResourceServer(object):
 
     def get_key_id(self):
         return self.keys_auth.key_id
-
-    def encrypt(self, message, public_key):
-        if public_key == 0:
-            return message
-        return self.keys_auth.encrypt(message, public_key)
-
-    def decrypt(self, message):
-        return self.keys_auth.decrypt(message)
 
     def sign(self, data):
         return self.keys_auth.sign(data)

@@ -4,6 +4,18 @@ from twisted.internet.defer import DebugInfo, Deferred, TimeoutError
 from twisted.python.failure import Failure
 
 
+def chain_function(deferred, fn, *args, **kwargs):
+    result = Deferred()
+
+    def resolve(_):
+        fn(*args, **kwargs).addCallbacks(result.callback,
+                                         result.errback)
+    deferred.addCallback(resolve)
+    deferred.addErrback(result.errback)
+
+    return result
+
+
 def sync_wait(deferred, timeout=10):
     if not isinstance(deferred, Deferred):
         return deferred
