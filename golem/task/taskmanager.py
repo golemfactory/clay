@@ -1,13 +1,13 @@
 import logging
 import pickle
 import time
-import uuid
 from pathlib import Path
 
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -21,7 +21,6 @@ from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
-from golem.utils import decode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -126,23 +125,11 @@ class TaskManager(TaskEventListener):
 
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
-        definition.task_id = TaskManager.create_task_id(self.key_id)
+        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         builder = builder_type(self.node_name, definition, self.root_path,
                                self.dir_manager)
 
         return Task.build_task(builder)
-
-    @staticmethod
-    def create_task_id(key: str) -> str:
-        """
-        seeds top 48 bits from node key as uuid1 node
-
-        :param str key: `node.key` or equivalently `keys_auth.key_id`
-        :returns: uuid1 based on timestamp and given key
-        """
-        public_key = decode_hex(key)
-        return str(
-            uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):

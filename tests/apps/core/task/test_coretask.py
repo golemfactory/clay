@@ -14,10 +14,10 @@ from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType, TaskEventListener
-from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
+from golem.utils import decode_hex
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
@@ -157,11 +157,23 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert l3.task_id == "deadbeef"
         assert l2.task_id is None
 
+    def test_create_task_id(self):
+        # when
+        task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+
+        # then
+        self.assertRegex(task_id, "^[-0-9a-f]{23}-beefdeadbeef$")
+
     def test_create_subtask_id(self):
-        task = self._get_core_task()
-        task.header.task_id = TaskManager.create_task_id("deadbeef")
-        new_id = task.create_subtask_id()
-        assert len(new_id) == 36
+        # given
+        t = self._get_core_task()
+        t.header.task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+
+        # when
+        subtask_id = t.create_subtask_id()
+
+        # then
+        self.assertRegex(subtask_id, "^[-0-9a-f]{23}-beefdeadbeef$")
 
     def test_interpret_task_results_without_sorting(self):
         task = self._get_core_task()

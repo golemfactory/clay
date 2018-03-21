@@ -446,7 +446,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=(Mock(key_id='a' * 64, _private_key='a' * 32)),
+            keys_auth=Mock(_private_key='a' * 32,
+                           key_id='a' * 64,
+                           public_key=b'a' * 128),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
