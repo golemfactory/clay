@@ -382,10 +382,11 @@ class TaskServer(
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
-    def subtask_accepted(self, subtask_id, accepted_ts):
+    def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
         logger.debug("Subtask {} result accepted".format(subtask_id))
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.update_awaiting(
+            sender_node_id,
             subtask_id,
             accepted_ts,
         )
@@ -423,6 +424,7 @@ class TaskServer(
 
         payment = self.client.transaction_system.add_payment_info(
             task_id, subtask_id, value, account_info)
+        self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
         return payment

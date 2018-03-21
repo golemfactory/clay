@@ -6,6 +6,7 @@ import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
+from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional
 
@@ -63,6 +64,7 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.fundslocker import FundsLocker
 
 logger = logging.getLogger(__name__)
 
@@ -177,6 +179,9 @@ class Client(HardwarePresetsMixin):
             start_port=start_geth_port,
             address=geth_address,
         )
+
+        self.funds_locker = FundsLocker(self.transaction_system,
+                                        Path(self.datadir))
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -506,6 +511,9 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        if self.transaction_system:
+            self.funds_locker.lock_funds(task)
+
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
         files = get_resources_for_task(resource_header=None,
@@ -641,7 +649,10 @@ class Client(HardwarePresetsMixin):
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
-        task_manager.put_task_in_restarted_state(task_id)
+        try:
+            task_manager.put_task_in_restarted_state(task_id)
+        except task_manager.AlreadyRestartedError:
+            return None
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
@@ -879,6 +890,7 @@ class Client(HardwarePresetsMixin):
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
 
+        self.enable_talkback(self.config_desc.enable_talkback)
         self.app_config.change_config(self.config_desc)
 
         dispatcher.send(
@@ -1157,6 +1169,21 @@ class Client(HardwarePresetsMixin):
         except Exception:
             pass
         self.__datadir_lock.close()
+
+    @staticmethod
+    def enable_talkback(value):
+        talkback_value = bool(value)
+        logger_root = logging.getLogger()
+        try:
+            sentry_handler = [
+                h for h in logger_root.handlers if h.name == 'sentry'][0]
+            msg_part = 'Enabling' if talkback_value else 'Disabling'
+            logger.info('%s talkback service', msg_part)
+            sentry_handler.set_enabled(talkback_value)
+        except Exception as e:  # pylint: disable=broad-except
+            msg_part = 'enable' if talkback_value else 'disable'
+            logger.error(
+                'Cannot %s talkback. Error was: %s', msg_part, str(e))
 
 
 class DoWorkService(LoopingCallService):

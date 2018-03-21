@@ -427,6 +427,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             img_x, img_y = img.get_size()
             self.assertEqual(self.bt.res_x, img_x)
             self.assertEqual(self.bt.res_y, img_y)
+            img.close()
 
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:
@@ -448,6 +449,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 self.assertTrue(path.isfile(self.bt.output_file))
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size
+                img.close()
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
     def test_update_frame_preview(self):
@@ -495,8 +497,10 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
         self.assertTrue(img.size == (300, 200))
+        img.close()
         img = Image.open(file4)
         self.assertTrue(img.size == (300, 200))
+        img.close()
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
@@ -545,6 +549,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertTrue(pixel == (0, 0, 0))
         pixel = img_task2.getpixel((0, 100))
         self.assertTrue(pixel == color)
+        img_task2.close()
 
     def test_query_extra_data(self):
         extra_data = self.bt.query_extra_data(100000, num_cores=0,
@@ -578,6 +583,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         preview = files[0]
         img = Image.new("RGBA", (20, 200))
         img.save(preview, "PNG")
+        img.close()
         bt._update_preview(preview, 3)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
@@ -623,6 +629,7 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
                 img = Image.new("RGB", (res_x, chunks_sizes[i]))
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
+                img.close()
                 pu.update_preview(file1, i)
             if int(round(res_y * scale_factor)) != PREVIEW_Y:
                 self.assertAlmostEqual(pu.perfect_match_area_y,
