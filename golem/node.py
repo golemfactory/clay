@@ -16,7 +16,7 @@ from golem.core.variables import PRIVATE_KEY
 from golem.docker.manager import DockerManager
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 
@@ -113,6 +113,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return False
         return True
 
+    def key_exists(self) -> bool:
+        return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
+
     def is_mainnet(self) -> bool:
         return self._mainnet
 
@@ -153,7 +156,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if self._keys_auth is not None:
                 return
 
-            if KeysAuth.key_exists(self._datadir, PRIVATE_KEY):
+            if self.key_exists():
                 event = 'get_password'
                 logger.info("Waiting for password to unlock the account")
             else:
@@ -167,7 +170,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             StatusPublisher.publish(Component.client, event, Stage.post)
 
         self.rpc_session.register_methods([
-            (self.set_password, 'golem.password.set')
+            (self.set_password, 'golem.password.set'),
+            (self.key_exists, 'golem.password.key_exists'),
         ])
 
         return threads.deferToThread(create_keysauth)
@@ -194,7 +198,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
-        methods = object_method_map(self.client, CORE_METHOD_MAP)
+        core_methods = object_method_map(self.client, CORE_METHOD_MAP)
+        node_methods = object_method_map(self, NODE_METHOD_MAP)
+        methods = core_methods + node_methods
+
+        # TODO: These methods are needed before key_auth, to not cause errors
+        # they are un-registered before applying the map.
+        self.rpc_session.unregister('golem.password.set')
+        self.rpc_session.unregister('golem.password.key_exists')
+
         self.rpc_session.register_methods(methods)
         self.client.set_rpc_publisher(self._rpc_publisher)
 

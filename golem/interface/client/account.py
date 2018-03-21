@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import getpass
 
 from ethereum.utils import denoms
 
@@ -45,6 +46,32 @@ class Account:
             )
         )
 
+    @command(help="Unlock account, will prompt for your password")
+    def unlock(self) -> str:
+
+        client = Account.client
+
+        has_key = sync_wait(client.key_exists())
+
+        if not has_key:
+            print("No account found, generate one by setting a password")
+        else:
+            print("Unlock your account to start golem")
+        pswd = getpass.getpass('Password:')
+
+        if not has_key:
+            confirm = getpass.getpass('Confirm password:')
+            if confirm != pswd:
+                return "Password and confirmation do not match."
+            print("Generating keys, this can take up to 5 minutes...")
+        else:
+            print("Unlocking account...")
+
+        success = sync_wait(client.set_password(pswd), timeout=300)
+        if not success:
+            return "Incorrect password"
+
+        return "Account unlock success"
 
 def _fmt(value: float, unit: str = "GNT") -> str:
     return "{:.6f} {}".format(value / denoms.ether, unit)
