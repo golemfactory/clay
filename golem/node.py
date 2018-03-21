@@ -199,13 +199,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
                                             self.client.quit)
 
         core_methods = object_method_map(self.client, CORE_METHOD_MAP)
-        node_methods = object_method_map(self, NODE_METHOD_MAP)
-        methods = core_methods + node_methods
+        # TODO: Automaticaly assign NODE_METHOD_MAP
+        # this is done manually now in __init__
+        # node_methods = object_method_map(self, NODE_METHOD_MAP)
+        # methods = core_methods + node_methods
+        methods = core_methods
 
         # TODO: These methods are needed before key_auth, to not cause errors
         # they are un-registered before applying the map.
-        self.rpc_session.unregister('golem.password.set')
-        self.rpc_session.unregister('golem.password.key_exists')
 
         self.rpc_session.register_methods(methods)
         self.client.set_rpc_publisher(self._rpc_publisher)
