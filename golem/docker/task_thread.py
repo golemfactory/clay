@@ -53,8 +53,10 @@ class DockerTaskThread(TaskThread):
 
     def run(self):
         if not self.image:
-            failure = JobException("None of the Docker images are available")
-            self._fail(failure)
+            try:
+                raise JobException("None of the Docker images are available")
+            except JobException as e:
+                self._fail(e)
             self._cleanup()
             return
         try:
@@ -103,8 +105,10 @@ class DockerTaskThread(TaskThread):
                     with open(stderr_file, 'r') as f:
                         logger.warning('Task stderr:\n%s', f.read())
 
-                    msg = self._exit_code_message(exit_code)
-                    self._fail(JobException(msg))
+                    try:
+                        raise JobException(self._exit_code_message(exit_code))
+                    except JobException as e:
+                        self._fail(e)
 
         except (requests.exceptions.ReadTimeout, TimeoutException) as exc:
             if not self.use_timeout:
