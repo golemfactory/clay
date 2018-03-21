@@ -1,7 +1,6 @@
 import calendar
 import logging
 import time
-import requests
 from datetime import datetime
 from sortedcontainers import SortedListWithKey
 from threading import Lock
@@ -9,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
+import requests
 
 from golem_sci.gntconverter import GNTConverter
 from golem.core.service import LoopingCallService

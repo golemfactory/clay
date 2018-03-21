@@ -56,3 +56,4 @@ humanize==0.5.1
 raven
 Golem-Messages==1.17.2
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@07c939221967cd9edb42dddba7cef460b905d953#egg=golem_sci
+html2text==2018.1.9

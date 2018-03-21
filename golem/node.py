@@ -1,5 +1,6 @@
 import functools
 import logging
+from pathlib import Path
 import time
 from typing import List, Optional, Callable, Any
 
@@ -10,14 +11,17 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_golem_path
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
+from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.model import DB_MODELS, db, DB_FIELDS, GenericKeyValue
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 
@@ -29,6 +33,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
+    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
+    TERMS_VERSION = 1
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
@@ -63,12 +69,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._peers: List[SocketAddress] = peers or []
 
+        # Initialize database
+        self._db = Database(
+            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
+
         self.client: Optional[Client] = None
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             app_config=app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
+            database=self._db,
             mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
@@ -88,9 +99,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
             rpc = self._start_rpc()
 
             def on_rpc_ready() -> Deferred:
+                terms = self._check_terms()
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
-                return gatherResults([keys, docker], consumeErrors=True)
+                return gatherResults([terms, keys, docker], consumeErrors=True)
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
@@ -113,6 +125,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             logger.info("Password incorrect")
             return False
         return True
+
+    def key_exists(self) -> bool:
+        return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
 
     def is_mainnet(self) -> bool:
         return self._mainnet
@@ -140,14 +155,45 @@ class Node(object):  # pylint: disable=too-few-public-methods
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            self.rpc_session.register_methods([
-                (self.is_mainnet, 'golem.mainnet')
-            ])
+            methods = object_method_map(self, NODE_METHOD_MAP)
+            self.rpc_session.register_methods(methods)
 
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
+
+    def are_terms_accepted(self):
+        return GenericKeyValue.select()\
+            .where(
+                GenericKeyValue.key == self.TERMS_ACCEPTED_KEY,
+                GenericKeyValue.value == self.TERMS_VERSION)\
+            .count() > 0
+
+    def accept_terms(self):
+        entry, _ = GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
+        entry.value = self.TERMS_VERSION
+        entry.save()
+
+    @staticmethod
+    def show_terms():
+        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
+        return terms_path.read_text()
+
+    def _check_terms(self) -> Optional[Deferred]:
+        if not self.rpc_session:
+            self._error("RPC session is not available")
+            return None
+
+        def wait_for_terms():
+            while not self.are_terms_accepted() and self._reactor.running:
+                logger.info(
+                    'Terms of use must be accepted before using Golem. '
+                    'Run `golemcli terms show` to display the terms '
+                    'and `golemcli terms accept` to accept them.')
+                time.sleep(5)
+
+        return threads.deferToThread(wait_for_terms)
 
     def _start_keys_auth(self) -> Optional[Deferred]:
         if not self.rpc_session:
@@ -160,7 +206,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if self._keys_auth is not None:
                 return
 
-            if KeysAuth.key_exists(self._datadir, PRIVATE_KEY):
+            if self.key_exists():
                 event = 'get_password'
                 logger.info("Waiting for password to unlock the account")
             else:
@@ -172,10 +218,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 time.sleep(5)
 
             StatusPublisher.publish(Component.client, event, Stage.post)
-
-        self.rpc_session.register_methods([
-            (self.set_password, 'golem.password.set')
-        ])
 
         return threads.deferToThread(create_keysauth)
 
