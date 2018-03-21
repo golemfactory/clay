@@ -1,6 +1,6 @@
-from pathlib import Path
+import html2text
 
-from golem.core.common import get_golem_path
+from golem.core.deferred import sync_wait
 from golem.interface.command import group, command
 from golem.rpc.session import Client
 
@@ -12,8 +12,8 @@ class Terms:
 
     @command(help="Show terms of use")
     def show(self):  # pylint: disable=no-self-use
-        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS'
-        return terms_path.read_text()
+        terms = sync_wait(self.client.show_terms())
+        return html2text.html2text(terms)
 
     @command(help="Accept terms of use")
     def accept(self):

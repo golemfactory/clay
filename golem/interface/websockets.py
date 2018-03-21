@@ -22,6 +22,7 @@ class WebSocketCLI(object):
         def on_connected(_):
             method_map = CORE_METHOD_MAP
             method_map['accept_terms'] = 'golem.terms.accept'
+            method_map['show_terms'] = 'golem.terms.show'
             core_client = Client(self.session, method_map)
             self.cli.register_client(core_client)
             threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)

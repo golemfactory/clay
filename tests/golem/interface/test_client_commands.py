@@ -722,13 +722,16 @@ class TestTerms(unittest.TestCase):
         self.client = Mock()
         self.client.__getattribute__ = assert_client_method
 
-    @patch('golem.interface.client.terms.Path.read_text', return_value=object())
-    def test_show(self, read_mock: MagicMock):
+    @patch('golem.interface.client.terms.html2text.html2text',
+           return_value=object())
+    def test_show(self, html2text: MagicMock):
         with client_ctx(Terms, self.client):
             terms = Terms()
             result = terms.show()
-            read_mock.assert_called_once()
-            self.assertEqual(result, read_mock.return_value)
+            self.client.show_terms.assert_called_once()
+            html2text.assert_called_once_with(
+                self.client.show_terms.return_value)
+            self.assertEqual(result, html2text.return_value)
 
     def test_accept(self):
         with client_ctx(Terms, self.client):

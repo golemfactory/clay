@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import time
 from typing import List, Optional, Callable
 
@@ -9,6 +10,7 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_golem_path
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
@@ -31,6 +33,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
     :type client golem.client.Client:
     """
     TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
+    TERMS_VERSION = 1
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
@@ -101,7 +104,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 return gatherResults([terms, keys, docker], consumeErrors=True)
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
-                self._error('keys or docker')
+                self._error('keys or docker'),
             ).addErrback(self._error('setup client'))
             self._reactor.run()
         except Exception as exc:  # pylint: disable=broad-except
@@ -153,11 +156,20 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def are_terms_accepted(self):
         return GenericKeyValue.select()\
-            .where(GenericKeyValue.key == self.TERMS_ACCEPTED_KEY)\
+            .where(
+                GenericKeyValue.key == self.TERMS_ACCEPTED_KEY,
+                GenericKeyValue.value == self.TERMS_VERSION)\
             .count() > 0
 
     def accept_terms(self):
-        GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
+        entry, _ = GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
+        entry.value = self.TERMS_VERSION
+        entry.save()
+
+    @staticmethod
+    def show_terms():
+        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
+        return terms_path.read_text()
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
@@ -167,6 +179,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_session.register_methods([
             (self.are_terms_accepted, 'golem.terms'),
             (self.accept_terms, 'golem.terms.accept'),
+            (self.show_terms, 'golem.terms.show')
         ])
 
         def wait_for_terms():
