@@ -32,3 +32,16 @@ class TestBalanceModel(MonitorTestBaseClass):
             self.assertEqual(result.eth_balance, eth_balance)
             self.assertEqual(result.gnt_balance, gnt_balance)
             self.assertEqual(result.gntb_balance, gntb_balance)
+
+    def test_channel_disabled(self):
+        self.monitor.send_payment_info = False
+
+        with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
+            dispatcher.send(
+                signal='golem.monitor',
+                event='balance_snapshot',
+                eth_balance=0,
+                gnt_balance=0,
+                gntb_balance=0
+            )
+            send.assert_not_called()

@@ -15,11 +15,20 @@ logger = logging.getLogger("blendercroppper")
 # FIXME #2086
 # pylint: disable=R0903
 class CropContext:
-    def __init__(self, crops_position, crop_id, crops_path):
-        self.crop_id = crop_id
-        self.crop_path = os.path.join(crops_path, str(crop_id))
-        self.crop_position_x = crops_position[crop_id][0]
-        self.crop_position_y = crops_position[crop_id][1]
+    def __init__(self, crops_data, computer,
+                 subtask_data, callbacks):
+        self.crops_path = crops_data['paths']
+        self.crop_values = crops_data['position'][0]
+        self.crop_pixels = crops_data['position'][1]
+        self.computer = computer
+        self.resources = subtask_data['resources']
+        self.subtask_info = subtask_data['subtask_info']
+        self.success = callbacks['success']
+        self.errback = callbacks['errback']
+        self.crop_size = crops_data['position'][2]
+
+    def get_crop_path(self, crop_number):
+        return os.path.join(self.crops_path, str(crop_number))
 
 
 class BlenderCropper:
@@ -31,12 +40,14 @@ class BlenderCropper:
         self.crop_size = ()
         self.split_values = []
         self.split_pixels = []
+        self.rendered_crops_results = {}
 
     def clear(self):
         self.crop_counter = 0
         self.crop_size = ()
         self.split_values = []
         self.split_pixels = []
+        self.rendered_crops_results = {}
 
     def generate_split_data(self, resolution, image_border, splits_num,
                             crop_size=None):
@@ -117,7 +128,7 @@ class BlenderCropper:
 
             self.split_values.append((x_f, right_f, y_f, bottom_f))
             self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
-        return self.split_values, self.split_pixels
+        return self.split_values, self.split_pixels, self.crop_size
 
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
@@ -134,14 +145,16 @@ class BlenderCropper:
                                               subtask_info['crop_window'],
                                               num_crops,
                                               crop_size)
-        for _ in range(num_crops):
-            verify_ctx = CropContext(crops_info[1], self.crop_counter,
-                                     crops_path)
-            self._render_one_crop(computer, resources,
-                                  crops_info[0][self.crop_counter],
-                                  subtask_info, verify_ctx, crop_rendered,
-                                  crop_render_failure)
-            self.crop_counter += 1
+
+        verify_ctx = CropContext({'paths': crops_path, 'position': crops_info},
+                                 computer,
+                                 {'resources': resources,
+                                  'subtask_info': subtask_info},
+                                 {'success': crop_rendered,
+                                  'errback': crop_render_failure})
+        self._render_one_crop(verify_ctx, self.crop_rendered,
+                              crop_render_failure, self.crop_counter)
+        self.crop_counter += 1
         return self.crop_size
 
     # FIXME it would be better to make this subtask agnostic, pass only data
@@ -149,9 +162,9 @@ class BlenderCropper:
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
     @staticmethod
-    def _render_one_crop(computer, resources, crop, subtask_info,
-                         verify_ctx, crop_rendered, crop_render_failure):
-        minx, maxx, miny, maxy = crop
+    def _render_one_crop(verify_ctx, crop_rendered, crop_render_failure,
+                         crop_number):
+        minx, maxx, miny, maxy = verify_ctx.crop_values[crop_number]
 
         def generate_ctd(subtask_info, script_src):
             ctd = deepcopy(subtask_info['ctd'])
@@ -164,22 +177,41 @@ class BlenderCropper:
             return ctd
 
         script_src = generate_blender_crop_file(
-            resolution=(subtask_info['res_x'], subtask_info['res_y']),
+            resolution=(verify_ctx.subtask_info['res_x'],
+                        verify_ctx.subtask_info['res_y']),
             borders_x=(minx, maxx),
             borders_y=(miny, maxy),
             use_compositing=False
         )
-        ctd = generate_ctd(subtask_info, script_src)
+        ctd = generate_ctd(verify_ctx.subtask_info, script_src)
         # FIXME issue #1955
-        computer.start_computation(
-            root_path=verify_ctx.crop_path,
+        verify_ctx.computer.start_computation(
+            root_path=verify_ctx.get_crop_path(crop_number),
             success_callback=partial(crop_rendered,
                                      verification_context=verify_ctx),
             error_callback=crop_render_failure,
             compute_task_def=ctd,
-            resources=resources,
+            resources=verify_ctx.resources,
             additional_resources=[]
         )
+
+    def crop_rendering_finished(self):
+        for i in range(1, 4):
+            self.rendered_crops_results[i][2].success(
+                self.rendered_crops_results[i][0],
+                self.rendered_crops_results[i][1],
+                self.rendered_crops_results[i][2], i-1)
+
+    def crop_rendered(self, results, time_spend, verification_context):
+        self.rendered_crops_results[self.crop_counter] \
+            = [results, time_spend, verification_context]
+        if self.crop_counter == 3:
+            self.crop_rendering_finished()
+            return
+
+        self._render_one_crop(verification_context, self.crop_rendered,
+                              verification_context.errback, self.crop_counter)
+        self.crop_counter += 1
 
     @staticmethod
     def _random_split(min_, max_, size_):
