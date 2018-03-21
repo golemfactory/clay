@@ -56,7 +56,6 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
@@ -212,9 +211,8 @@ class Client(HardwarePresetsMixin):
 
         logger.debug('Client init completed')
 
-    def configure_rpc(self, rpc_session):
-        self.rpc_publisher = Publisher(rpc_session)
-        StatusPublisher.set_publisher(self.rpc_publisher)
+    def set_rpc_publisher(self, rpc_publisher):
+        self.rpc_publisher = rpc_publisher
 
     def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':
@@ -1158,9 +1156,6 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
-
-    def is_mainnet(self) -> bool:
-        return self.mainnet
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
