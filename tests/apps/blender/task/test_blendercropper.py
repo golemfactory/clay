@@ -44,8 +44,8 @@ class TestGenerateCrops(TestCase, PEP8MixIn):
             else:
                 crops_info = self.cropper.generate_split_data(resolution, crop,
                                                               num, ncrop_size)
-            assert len(crops_info) == 2
-            crops, pixels = crops_info
+            assert len(crops_info) == 3
+            crops, pixels, size = crops_info
             assert len(crops) == num
             assert len(pixels) == num
             for pixel_ in pixels:

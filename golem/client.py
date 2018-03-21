@@ -6,6 +6,7 @@ import json
 from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
+from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional
 
@@ -39,6 +40,7 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.concent.client import ConcentClientService
+from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
@@ -54,7 +56,6 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.rpc.session import Publisher
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
@@ -63,6 +64,7 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.fundslocker import FundsLocker
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +141,9 @@ class Client(HardwarePresetsMixin):
             enabled=self.use_concent,
             keys_auth=self.keys_auth,
         )
+        self.concent_filetransfers = ConcentFiletransferService(
+            keys_auth=self.keys_auth,
+        )
 
         self.task_server = None
         self.port_mapper = None
@@ -178,6 +183,9 @@ class Client(HardwarePresetsMixin):
             address=geth_address,
         )
 
+        self.funds_locker = FundsLocker(self.transaction_system,
+                                        Path(self.datadir))
+
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
@@ -203,9 +211,8 @@ class Client(HardwarePresetsMixin):
 
         logger.debug('Client init completed')
 
-    def configure_rpc(self, rpc_session):
-        self.rpc_publisher = Publisher(rpc_session)
-        StatusPublisher.set_publisher(self.rpc_publisher)
+    def set_rpc_publisher(self, rpc_publisher):
+        self.rpc_publisher = rpc_publisher
 
     def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':
@@ -247,6 +254,7 @@ class Client(HardwarePresetsMixin):
         logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
         self.concent_service.start()
+        self.concent_filetransfers.start()
 
         if self.use_monitor and not self.monitor:
             self.init_monitor()
@@ -270,6 +278,8 @@ class Client(HardwarePresetsMixin):
             if service.running:
                 service.stop()
         self.concent_service.stop()
+        if self.concent_filetransfers.running:
+            self.concent_filetransfers.stop()
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
@@ -450,7 +460,8 @@ class Client(HardwarePresetsMixin):
     def init_monitor(self):
         logger.debug("Starting monitor ...")
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
+        self.monitor = SystemMonitor(
+            metadata, MONITOR_CONFIG, send_payment_info=(not self.mainnet))
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
@@ -505,6 +516,9 @@ class Client(HardwarePresetsMixin):
             task = task_manager.create_task(task_dict)
         else:
             task = task_dict
+
+        if self.transaction_system:
+            self.funds_locker.lock_funds(task)
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
@@ -1129,9 +1143,6 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
-
-    def is_mainnet(self) -> bool:
-        return self.mainnet
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
