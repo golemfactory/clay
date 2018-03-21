@@ -462,7 +462,8 @@ class Client(HardwarePresetsMixin):
     def init_monitor(self):
         logger.debug("Starting monitor ...")
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
+        self.monitor = SystemMonitor(
+            metadata, MONITOR_CONFIG, send_payment_info=(not self.mainnet))
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
