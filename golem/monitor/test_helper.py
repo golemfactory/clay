@@ -1,5 +1,5 @@
 import sys
-import unittest
+from unittest import mock, TestCase
 from uuid import uuid4
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -9,12 +9,14 @@ from golem.monitorconfig import MONITOR_CONFIG
 
 
 def meta_data():
-    cliid = str(uuid4())
-    sessid = str(uuid4())
-    return NodeMetadataModel(cliid, sessid, sys.platform,
-                             'app_version', ClientConfigDescriptor())
+    client_mock = mock.MagicMock()
+    client_mock.cliid = str(uuid4())
+    client_mock.sessid = str(uuid4())
+    client_mock.config_desc = ClientConfigDescriptor()
+    client_mock.mainnet = False
+    return NodeMetadataModel(client_mock, sys.platform, 'app_version')
 
 
-class MonitorTestBaseClass(unittest.TestCase):
+class MonitorTestBaseClass(TestCase):
     def setUp(self):
         self.monitor = SystemMonitor(meta_data(), MONITOR_CONFIG)
