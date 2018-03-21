@@ -90,3 +90,12 @@ CORE_METHOD_MAP = dict(
     resume=                 'ui.start',
     pause=                  'ui.stop'
 )
+
+NODE_METHOD_MAP = dict(
+    set_password=           'golem.password.set',
+    key_exists=             'golem.password.key_exists',
+    is_mainnet=             'golem.mainnet',
+    are_terms_accepted=     'golem.terms',
+    accept_terms=           'golem.terms.accept',
+    show_terms=             'golme.terms.show',
+)

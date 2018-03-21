@@ -20,7 +20,7 @@ from golem.docker.manager import DockerManager
 from golem.model import DB_MODELS, db, DB_FIELDS, GenericKeyValue
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 
@@ -125,6 +125,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return False
         return True
 
+    def key_exists(self) -> bool:
+        return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
+
     def is_mainnet(self) -> bool:
         return self._mainnet
 
@@ -145,9 +148,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            self.rpc_session.register_methods([
-                (self.is_mainnet, 'golem.mainnet')
-            ])
+            methods = object_method_map(self, NODE_METHOD_MAP)
+            self.rpc_session.register_methods(methods)
 
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
@@ -176,12 +178,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._error("RPC session is not available")
             return None
 
-        self.rpc_session.register_methods([
-            (self.are_terms_accepted, 'golem.terms'),
-            (self.accept_terms, 'golem.terms.accept'),
-            (self.show_terms, 'golem.terms.show')
-        ])
-
         def wait_for_terms():
             while not self.are_terms_accepted() and self._reactor.running:
                 logger.info(
@@ -203,7 +199,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if self._keys_auth is not None:
                 return
 
-            if KeysAuth.key_exists(self._datadir, PRIVATE_KEY):
+            if self.key_exists():
                 event = 'get_password'
                 logger.info("Waiting for password to unlock the account")
             else:
@@ -215,10 +211,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 time.sleep(5)
 
             StatusPublisher.publish(Component.client, event, Stage.post)
-
-        self.rpc_session.register_methods([
-            (self.set_password, 'golem.password.set')
-        ])
 
         return threads.deferToThread(create_keysauth)
 
