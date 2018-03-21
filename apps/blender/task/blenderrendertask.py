@@ -342,9 +342,9 @@ class BlenderRenderTask(FrameRenderingTask):
             and self.use_frames \
             and (self.total_tasks <= len(self.frames))
         if self.compositing != task_definition.options.compositing:
-            logger.warning(
-                f"Task {self.header.task_id}: Compositing not supported for"
-                "this type of task, turning compositing off")
+            logger.warning("Task %s: Compositing not supported "
+                           "for this type of task, turning compositing off",
+                           task_definition.task_id)
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)

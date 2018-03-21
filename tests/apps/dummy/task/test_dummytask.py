@@ -40,10 +40,10 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
                                        subtask_id[0:6],
                                        dt.RESULT_EXT)
 
-    @patch("random.getrandbits", lambda x: 0)
+    @patch("random.getrandbits", lambda _: 0)
     @patch("apps.dummy.task.dummytask.DummyTask.create_subtask_id",
-           return_value="some_task_id")
-    def test_query_extra_data_for_test_task(self, _):
+           lambda _: '')
+    def test_query_extra_data_for_test_task(self):
         dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()
@@ -96,7 +96,6 @@ class TestDummyTaskBuilder(TestCase):
     def test_build_full_definition(self):
         def get_dict():
             dictionary = {}
-            dictionary['id'] = 'some_task_id'
             dictionary['resources'] = {"aa"}
             dictionary['subtasks'] = 5
             dictionary['name'] = "name"
