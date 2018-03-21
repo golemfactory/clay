@@ -115,7 +115,7 @@ class ResourceHandshakeSessionMixin:
             self._start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
             options = self.task_server.get_share_options(handshake.nonce,
-                                                         key_id)
+                                                         self.address)
             self.send(message.ResourceHandshakeStart(resource=handshake.hash,
                                                      options=options.__dict__))
 
@@ -222,7 +222,8 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
-        options = self.task_server.get_share_options(handshake.nonce, key_id)
+        options = self.task_server.get_share_options(handshake.nonce,
+                                                     self.address)
         deferred = self.resource_manager.add_file(handshake.file,
                                                   self.NONCE_TASK,
                                                   async_=True)

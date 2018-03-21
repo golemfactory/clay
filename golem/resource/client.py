@@ -75,7 +75,7 @@ class ClientOptions(object):
             self.options = {}
         self.options.update(options)
 
-    def filtered(self, client_id, version):
+    def filtered(self, client_id, version, **_kwargs):
         if self.client_id != client_id:
             logger.warning('Resource client: invalid client id: %s',
                            self.client_id)

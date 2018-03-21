@@ -280,7 +280,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         client_options = self.task_server.get_share_options(task_result.task_id,
-                                                            self.key_id)
+                                                            self.address)
 
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -622,7 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         resources = self.task_server.get_resources(msg.task_id)
         options = self.task_server.get_share_options(
             task_id=msg.task_id,
-            key_id=self.task_server.get_key_id()
+            address=self.address
         )
 
         self.send(message.ResourceList(
