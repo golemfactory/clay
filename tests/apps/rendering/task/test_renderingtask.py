@@ -399,6 +399,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             task_dict,
             minimal=True
         )
+
         assert definition.main_scene_file in ['file2.txt', 'file4.txt']
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',

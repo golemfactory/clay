@@ -17,6 +17,7 @@ from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
+from golem.utils import decode_hex
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
@@ -41,7 +42,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     def _get_core_task_definition():
         task_definition = TaskDefinition()
         task_definition.max_price = 100
-        task_definition.task_id = "xyz"
+        task_definition.task_id = "deadbeef"
         task_definition.estimated_memory = 1024
         task_definition.full_task_timeout = 3000
         task_definition.subtask_timeout = 30
@@ -152,9 +153,27 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert not l2.notify_called
         assert l1.notify_called
         assert l3.notify_called
-        assert l1.task_id == "xyz"
-        assert l3.task_id == "xyz"
+        assert l1.task_id == "deadbeef"
+        assert l3.task_id == "deadbeef"
         assert l2.task_id is None
+
+    def test_create_task_id(self):
+        # when
+        task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+
+        # then
+        self.assertRegex(task_id, "^[-0-9a-f]{23}-beefdeadbeef$")
+
+    def test_create_subtask_id(self):
+        # given
+        t = self._get_core_task()
+        t.header.task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+
+        # when
+        subtask_id = t.create_subtask_id()
+
+        # then
+        self.assertRegex(subtask_id, "^[-0-9a-f]{23}-beefdeadbeef$")
 
     def test_interpret_task_results_without_sorting(self):
         task = self._get_core_task()
@@ -280,7 +299,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.num_failed_subtasks = 2
         task.counting_nodes = MagicMock()
 
-        task.subtasks_given["xyz"] = {'status': SubtaskStatus.finished,
+        task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
                                       'start_task': 1,
                                       'end_task': 1,
                                       'node_id': 'ABC'}
@@ -304,7 +323,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert task.num_tasks_received == 0
         assert task.last_task == 8
         assert task.num_failed_subtasks == 5
-        assert task.subtasks_given["xyz"]["status"] == SubtaskStatus.restarted
+        assert task.subtasks_given["deadbeef"]["status"] == \
+               SubtaskStatus.restarted
         assert task.subtasks_given["abc"]["status"] == SubtaskStatus.failure
         assert task.subtasks_given["def"]["status"] == SubtaskStatus.restarted
         assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.resent

@@ -1,3 +1,5 @@
+import uuid
+
 from golem_messages.message import ComputeTaskDef
 import os
 import unittest.mock as mock
@@ -101,6 +103,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
         task_definition.resolution = [200, 300]
+        task_definition.task_id = str(uuid.uuid4())
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
@@ -252,6 +255,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.output_format = "PNG"
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
+        task_definition.task_id = str(uuid.uuid4())
         bt = BlenderRenderTask(node_name="example-node-name",
                                task_definition=task_definition,
                                total_tasks=total_tasks,

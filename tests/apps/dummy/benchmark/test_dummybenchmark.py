@@ -21,7 +21,6 @@ class TestDummyBenchmark(TempDirFixture):
         self.assertTrue(os.path.isdir(self.db.dummy_task_path))
 
         self.assertEquals(self.db.task_definition.out_file_basename, "out")
-        self.assertEquals(self.db.task_definition.task_id, "dummy_benchmark")
 
         self.assertTrue(all(os.path.isfile(x) for x
                             in self.db.task_definition.shared_data_files))
