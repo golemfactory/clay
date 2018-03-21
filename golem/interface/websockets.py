@@ -1,6 +1,7 @@
 import sys
 
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
+from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
 
 
@@ -10,7 +11,12 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    def __init__(self, cli, host, port, realm='golem', ssl=False):
+    def __init__(self, cli,  # pylint: disable=too-many-arguments
+                 host: str = CROSSBAR_HOST,
+                 port: int = CROSSBAR_PORT,
+                 realm: str = CROSSBAR_REALM,
+                 ssl: bool = True) -> None:
+
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
@@ -20,13 +26,15 @@ class WebSocketCLI(object):
         from twisted.internet import reactor, threads
 
         def on_connected(_):
-            core_client = Client(self.session, CORE_METHOD_MAP)
+            methods = {**CORE_METHOD_MAP, **NODE_METHOD_MAP}
+            core_client = Client(self.session, methods)
             self.cli.register_client(core_client)
-            threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
+            threads.deferToThread(self.cli.execute, *args, **kwargs) \
+                .addBoth(self.shutdown)
 
-        def on_error(_):
-            sys.stderr.write("Error connecting to Golem instance ({})\n"
-                             .format(self.session.address))
+        def on_error(error):
+            sys.stderr.write("Error connecting to Golem instance ({}): {}\n"
+                             .format(self.session.address, error))
 
             self.cli.register_client(WebSocketCLI.NoConnection())
             self.cli.execute(*args, **kwargs)

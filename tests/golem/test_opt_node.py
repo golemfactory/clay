@@ -81,6 +81,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=cfg,
                                        keys_auth=keys_auth,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
@@ -147,6 +148,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
@@ -227,6 +229,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -274,6 +277,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -339,6 +343,7 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
+                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -473,9 +478,15 @@ def set_keys_auth(obj):
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
+    def setUp(self):
+        super().setUp()
+        self.node = None
+
     def tearDown(self):
         if self.node.client:
             self.node.client.quit()
+        if self.node._db:
+            self.node._db.close()
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):
@@ -495,7 +506,7 @@ class TestOptNode(TempDirFixture):
 
         # then
         assert self.node.rpc_router
-        assert self.node.rpc_router._start_node.called  # noqa pylint: disable=no-member
+        assert self.node.rpc_router.start.called  # noqa pylint: disable=no-member
         assert reactor.addSystemEventTrigger.called
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
@@ -606,3 +617,42 @@ class TestOptNode(TempDirFixture):
                          config_desc=ClientConfigDescriptor(),
                          use_docker_manager=False)
         assert not self.node.is_mainnet()
+
+    @patch('golem.node.Session')
+    def test_start_session(self, *_):
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+
+        self.node.rpc_router = Mock()
+
+        self.node._start_session()
+        assert self.node.rpc_session.connect.called  # noqa # pylint: disable=no-member
+
+    def test_start_session_failure(self, reactor, *_):
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+        self.node.rpc_router = None
+
+        assert self.node._start_session() is None
+        reactor.callFromThread.assert_called_with(reactor.stop)
+
+    def test_error(self, reactor, *_):
+        import functools
+        reactor.running = True
+
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+
+        error = self.node._error('any')
+        assert not reactor.callFromThread.called
+        assert isinstance(self.node._error('any'), functools.partial)
+
+        error_result = error('error message')
+        assert reactor.callFromThread.called
+        assert error_result is None
