@@ -281,6 +281,10 @@ class TaskServerMessageHandler():
 
     # pylint:enable=no-self-use
 
+    @staticmethod
+    def _log_ftt_invalid(self, msg):
+        logger.warning("File Transfer Token invalid in %r", msg)
+
     @handler_for(message.concents.ForceGetTaskResultUpload)
     def on_force_get_task_result_upload(self, msg, **_):
         """
@@ -291,7 +295,7 @@ class TaskServerMessageHandler():
 
         ftt = msg.file_transfer_token
         if not ftt or not ftt.is_upload:
-            logger.warning("File Transfer Token invalid: %r", msg.subtask_id)
+            self._log_ftt_invalid(msg)
             return
 
         wtr = self.task_server.results_to_send.get(msg.subtask_id, None)
@@ -310,3 +314,39 @@ class TaskServerMessageHandler():
 
         self.concent_filetransfers.transfer(
             wtr.result_path, ftt, success=success, error=error)
+
+    @handler_for(message.concents.ForceGetTaskResultDownload)
+    def on_force_get_task_results_download(self, msg, **_):
+        """
+        Concent informs the Requestor that the results are available for
+        download from the Concent.
+        """
+        logger.debug(
+            "Results available for download from the Concent, subtask: %r",
+            msg.subtask_id)
+
+        ftt = msg.file_transfer_token
+        if not ftt or not ftt.is_download:
+            self._log_ftt_invalid(msg)
+            return
+
+        # verify if the attached `ForceGetTaskResult` bears our
+        # (the requestor's) signature
+        fgtr = msg.force_get_task_result
+
+        if not fgtr or not concent_helpers.verify_message_signature(
+                fgtr, self.task_server.keys_auth.ecc):
+            logger.warning("ForceGetTaskResult invalid in %r", msg)
+            return
+
+        rct = fgtr.report_computed_task
+
+        def success(response):
+            pass
+
+        def error(response):
+            pass
+
+        self.concent_filetransfers.transfer(
+
+        )

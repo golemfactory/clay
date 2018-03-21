@@ -20,10 +20,25 @@ RESPONSE_FOR_RCT = typing.Union[
 ]
 
 
+def verify_message_signature(
+        msg: message.base.Message, ecc: cryptography.ECCx) -> bool:
+    try:
+        ecc.verify(
+            sig=msg.sig,
+            inputb=msg.get_short_hash(),
+        )
+    except msg_exceptions.InvalidSignature:
+        logger.warning('Message signature mismatch: %r', msg)
+        return False
+
+    return True
+
+
 def process_report_computed_task(
         msg: message.tasks.ReportComputedTask,
         ecc: cryptography.ECCx,
         task_header_keeper: taskkeeper.TaskHeaderKeeper) -> RESPONSE_FOR_RCT:
+
     def _reject(reason, **kwargs):
         logger.debug(
             '_react_to_computed_task._reject(%r, **%r)',
@@ -39,13 +54,7 @@ def process_report_computed_task(
         return reject_msg
 
     # Check msg.task_to_compute signature
-    try:
-        ecc.verify(
-            sig=msg.task_to_compute.sig,
-            inputb=msg.task_to_compute.get_short_hash(),
-        )
-    except msg_exceptions.InvalidSignature:
-        logger.warning('Received fake task_to_compute: %r', msg)
+    if not verify_message_signature(msg.task_to_compute, ecc):
         return _reject(None)
 
     reject_reasons = message.concents.RejectReportComputedTask.REASON
