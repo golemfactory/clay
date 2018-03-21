@@ -1124,9 +1124,6 @@ class Client(HardwarePresetsMixin):
     def get_golem_status():
         return StatusPublisher.last_status()
 
-    def is_mainnet(self) -> bool:
-        return self.mainnet
-
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:

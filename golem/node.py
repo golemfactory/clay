@@ -50,6 +50,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._reactor = reactor
         self._config_desc = config_desc
+        self._mainnet = mainnet
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
 
@@ -112,6 +113,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return False
         return True
 
+    def is_mainnet(self) -> bool:
+        return self._mainnet
+
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
             host=self._config_desc.rpc_address,
@@ -128,11 +132,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_session = Session(self.rpc_router.address)  # type: ignore
         deferred = self.rpc_session.connect()
 
-        def set_publisher(*_):
+        def on_connect(*_):
+            self.rpc_session.register_methods([
+                (self.is_mainnet, 'golem.mainnet')
+            ])
+
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
 
-        return deferred.addCallbacks(set_publisher, self._error('rpc session'))
+        return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
     def _start_keys_auth(self) -> Optional[Deferred]:
         if not self.rpc_session:
