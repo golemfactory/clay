@@ -859,7 +859,7 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-        if not self.is_mainnet():
+        if not self.mainnet:
             raise Exception("Withdrawals are disabled on testnet")
 
         if isinstance(amount, str):
