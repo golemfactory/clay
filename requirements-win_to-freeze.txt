@@ -1,5 +1,5 @@
 --extra-index-url https://builds.golem.network
+pyreadline
+pyvbox
 pywin32
 vboxapi
-pyvbox
-pyreadline
