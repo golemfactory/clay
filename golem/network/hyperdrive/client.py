@@ -1,8 +1,7 @@
 import json
 import logging
 from ipaddress import AddressValueError, ip_address
-from types import FunctionType
-from typing import Optional, Dict, Tuple, List, Iterable
+from typing import Optional, Dict, Tuple, List, Iterable, Callable
 
 import collections
 
@@ -240,7 +239,7 @@ class HyperdriveClientOptions(ClientOptions):
     def filtered(self,
                  client_id: str = HyperdriveClient.CLIENT_ID,
                  version: float = HyperdriveClient.VERSION,
-                 verify_peer: Optional[FunctionType] = None,
+                 verify_peer: Optional[Callable] = None,
                  **_kwargs) -> Optional['HyperdriveClientOptions']:
 
         opts = super().filtered(client_id, version)
@@ -267,7 +266,7 @@ class HyperdriveClientOptions(ClientOptions):
     @classmethod
     def filter_peers(cls,
                      peers: Iterable,
-                     verify_peer: Optional[FunctionType] = None) -> List:
+                     verify_peer: Optional[Callable] = None) -> List:
         result = list()
 
         for peer in peers:
@@ -280,9 +279,8 @@ class HyperdriveClientOptions(ClientOptions):
         return result
 
     @classmethod
-    def filter_peer(cls, peer,
-                    verify_peer: Optional[FunctionType] = None
-                    ) -> Optional[Dict]:
+    def filter_peer(cls, peer, verify_peer: Optional[Callable] = None) \
+            -> Optional[Dict]:
 
         if not isinstance(peer, dict):
             return None

@@ -106,7 +106,7 @@ class TaskResourcesMixin:
             received_options: Optional[Union[dict, HyperdriveClientOptions]],
             task_id: Optional[str] = None):
 
-        task_keeper = self.task_keeper  # noqa # pylint: disable=no-member
+        task_keeper = getattr(self, 'task_keeper')
         resource_manager = self._get_resource_manager()
         options = None
 
@@ -138,7 +138,7 @@ class TaskResourcesMixin:
         :param address: IP address of the node we're currently connected to
         """
 
-        node = self.node  # noqa # pylint: disable=no-member
+        node = getattr(self, 'node')
         resource_manager = self._get_resource_manager()
 
         # Create a list of private addresses
