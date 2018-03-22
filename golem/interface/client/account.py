@@ -11,9 +11,8 @@ from golem.interface.command import command, group
 class Account:
     client = None  # type: 'golem.rpc.session.Client'
 
-    @staticmethod
     @command(help="Display account & financial info")
-    def info() -> Dict[str, Any]:
+    def info(self) -> Dict[str, Any]:  # pylint: disable=no-self-use
         client = Account.client
 
         node = sync_wait(client.get_node())
@@ -47,9 +46,8 @@ class Account:
             )
         )
 
-    @staticmethod
     @command(help="Unlock account, will prompt for your password")
-    def unlock() -> str:
+    def unlock(self) -> str:  # pylint: disable=no-self-use
         client = Account.client
         has_key = sync_wait(client.key_exists())
 
@@ -71,6 +69,7 @@ class Account:
             return "Incorrect password"
 
         return "Account unlock success"
+
 
 def _fmt(value: float, unit: str = "GNT") -> str:
     return "{:.6f} {}".format(value / denoms.ether, unit)
