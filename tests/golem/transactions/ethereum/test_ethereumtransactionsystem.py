@@ -91,3 +91,71 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             golem_sci.chains.MAINNET,
         )
         pp.assert_called_once_with(sci=ANY, faucet=False)
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
+           Mock())
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
+    def test_withdraw(self, new_sci):
+        sci = Mock()
+        sci.GAS_PRICE = 0
+        sci.GAS_PER_PAYMENT = 0
+        sci.GAS_BATCH_PAYMENT_BASE = 0
+        new_sci.return_value = sci
+        eth_balance = 400
+        gnt_balance = 100
+        gntb_balance = 200
+        sci.get_eth_balance.return_value = eth_balance
+        sci.get_gnt_balance.return_value = gnt_balance
+        sci.get_gntb_balance.return_value = gntb_balance
+        eth_tx = '0xee'
+        gnt_tx = '0xbad'
+        gntb_tx = '0xfad'
+        sci.transfer_eth.return_value = eth_tx
+        sci.transfer_gnt.return_value = gnt_tx
+        sci.convert_gntb_to_gnt.return_value = gntb_tx
+        destination = '0xdead'
+
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+
+        # Unknown currency
+        with self.assertRaises(ValueError):
+            ets.withdraw(1, destination, 'asd')
+
+        # Not enough GNT
+        with self.assertRaises(ValueError):
+            ets.withdraw(gnt_balance + gntb_balance + 1, destination, 'GNT')
+
+        # Not enough ETH
+        with self.assertRaises(ValueError):
+            ets.withdraw(eth_balance + 1, destination, 'ETH')
+
+        # Enough GNT
+        res = ets.withdraw(gnt_balance - 1, destination, 'GNT')
+        assert res == [gnt_tx]
+        sci.transfer_gnt.assert_called_once_with(destination, gnt_balance - 1)
+        sci.reset_mock()
+
+        # Enough GNTB
+        res = ets.withdraw(gntb_balance - 1, destination, 'GNT')
+        assert res == [gntb_tx]
+        sci.convert_gntb_to_gnt.assert_called_once_with(
+            destination,
+            gntb_balance - 1,
+        )
+        sci.reset_mock()
+
+        # Enough total GNT
+        res = ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT')
+        assert res == [gnt_tx, gntb_tx]
+        sci.transfer_gnt.assert_called_once_with(destination, gnt_balance)
+        sci.convert_gntb_to_gnt.assert_called_once_with(
+            destination,
+            gntb_balance - 1,
+        )
+        sci.reset_mock()
+
+        # Enough ETH
+        res = ets.withdraw(eth_balance - 1, destination, 'ETH')
+        assert res == [eth_tx]
+        sci.transfer_eth.assert_called_once_with(destination, eth_balance - 1)
+        sci.reset_mock()

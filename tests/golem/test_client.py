@@ -177,6 +177,43 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 received_incomes[i]['value'], str(incomes[n - i].value)
             )
 
+    @patch('golem.client.EthereumTransactionSystem')
+    def test_withdraw_testnet(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=keys_auth,
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False,
+            mainnet=False,
+        )
+        with self.assertRaisesRegex(Exception, 'Withdrawals.*disabled'):
+            self.client.withdraw('123', '0xdead', 'ETH')
+
+    def test_withdraw(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+                mainnet=True,
+            )
+            self.client.withdraw('123', '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+
     def test_payment_address(self, *_):
         self.client = Client(
             datadir=self.path,

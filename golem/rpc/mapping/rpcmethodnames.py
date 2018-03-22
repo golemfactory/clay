@@ -85,6 +85,7 @@ CORE_METHOD_MAP = dict(
     get_balance=            'pay.balance',
     get_payments_list=      'pay.payments',
     get_incomes_list=       'pay.incomes',
+    withdraw=               'pay.withdraw',
 
     quit=                   'ui.quit',
     resume=                 'ui.start',
