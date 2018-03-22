@@ -280,7 +280,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         client_options = self.task_server.get_share_options(task_result.task_id,
-                                                            self.key_id)
+                                                            self.address)
 
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
@@ -545,13 +545,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.eth_account
         )
 
-        client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address)
-
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
         task = self.task_manager.tasks.get(task_id, None)
         output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
 
+        client_options = self.task_server.get_download_options(msg.options,
+                                                               self.address,
+                                                               task_id)
         logger.debug(
             "Task result hash received: %r from %r:%r (options: %r)",
             msg.multihash,
@@ -622,7 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         resources = self.task_server.get_resources(msg.task_id)
         options = self.task_server.get_share_options(
             task_id=msg.task_id,
-            key_id=self.task_server.get_key_id()
+            address=self.address
         )
 
         self.send(message.ResourceList(
@@ -692,8 +692,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
         resources = resource_manager.from_wire(msg.resources)
 
-        client_options = self.task_server.get_download_options(self.key_id,
-                                                               self.address,
+        client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 
         self.task_computer.wait_for_resources(self.task_id, resources)

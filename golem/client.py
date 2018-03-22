@@ -401,7 +401,6 @@ class Client(HardwarePresetsMixin):
         resource_manager = self.resource_server.resource_manager
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(resource_manager.peer_manager)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
