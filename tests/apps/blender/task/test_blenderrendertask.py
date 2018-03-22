@@ -68,27 +68,21 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
         # Compositing True, use frames, more subtasks than frames
         task_definition.options.compositing = True
-        with self.assertLogs(logger, level="WARNING") as logs:
-            bt = _get_blender_task(task_definition)
+        bt = _get_blender_task(task_definition)
         assert not bt.compositing
-        assert any("ABC" in log for log in logs.output)
-        assert any("Compositing not supported" for log in logs.output)
 
         # Compositing True, use frames, as many subtasks as frames
         bt = _get_blender_task(task_definition, 3)
-        assert bt.compositing
+        assert not bt.compositing
 
         # Compositing True, use frames, less subtasks than frames
         bt = _get_blender_task(task_definition, 1)
-        assert bt.compositing
+        assert not bt.compositing
 
         # Compositing True, use frames is False, as many subtask as frames
         task_definition.options.use_frames = False
-        with self.assertLogs(logger, level="WARNING") as logs:
-            bt = _get_blender_task(task_definition, 3)
+        bt = _get_blender_task(task_definition, 3)
         assert not bt.compositing
-        assert any("ABC" in log for log in logs.output)
-        assert any("Compositing not supported" for log in logs.output)
 
 
 class TestBlenderFrameTask(TempDirFixture):

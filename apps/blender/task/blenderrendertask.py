@@ -338,6 +338,10 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, task_definition=task_definition,
                                     **kwargs)
 
+        # https://github.com/golemfactory/golem/issues/2388
+        self.compositing = False
+        return
+
         self.compositing = task_definition.options.compositing \
             and self.use_frames \
             and (self.total_tasks <= len(self.frames))
