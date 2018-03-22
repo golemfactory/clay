@@ -9,10 +9,10 @@ from PyInstaller.utils.hooks import get_module_file_attribute
 
 binaries = []
 binary_module_names = (
-    'crypto.Cipher',
-    'crypto.Hash',
-    'crypto.Protocol',
-    'crypto.Util',
+    'Crypto.Cipher',
+    'Crypto.Hash',
+    'Crypto.Protocol',
+    'Crypto.Util',
 )
 
 for module_path in binary_module_names:

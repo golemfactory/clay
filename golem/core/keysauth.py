@@ -29,7 +29,7 @@ def get_random(min_value: int = 0, max_value: int = sys.maxsize) -> int:
              `<min_value, max_value>`
     """
 
-    from crypto.Random.random import randrange  # noqa pylint: disable=no-name-in-module,import-error
+    from Crypto.Random.random import randrange  # noqa pylint: disable=no-name-in-module,import-error
     if min_value > max_value:
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
