@@ -10,7 +10,7 @@ from golem_messages import message
 from twisted.internet.defer import Deferred
 
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
-    HyperdriveClient
+    HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
@@ -571,7 +571,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
             )
         )
 
-        peers = ['127.0.0.1:3282']
+        peers = to_hyperg_peer('127.0.0.1', 3282)
         client_options = HyperdriveClientOptions(
             HyperdriveClient.CLIENT_ID,
             HyperdriveClient.VERSION,
