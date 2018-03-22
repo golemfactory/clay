@@ -140,7 +140,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
         )
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 
-        # pylint: disable=protected-access
         deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
@@ -156,7 +155,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def on_connect(*_):
             methods = object_method_map(self, NODE_METHOD_MAP)
-            self.rpc_session.register_methods(methods)
+            self.rpc_session.add_methods(methods)
 
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
@@ -245,7 +244,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                                             self.client.quit)
 
         methods = object_method_map(self.client, CORE_METHOD_MAP)
-        self.rpc_session.register_methods(methods)
+        self.rpc_session.add_methods(methods)
+
         self.client.set_rpc_publisher(self._rpc_publisher)
 
         async_run(AsyncRequest(self._run),
