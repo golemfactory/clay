@@ -9,6 +9,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
 from golem.database import Database
 from golem.model import db, DB_FIELDS, DB_MODELS
+from golem.network.p2p.node import Node
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskserver import TaskServer
@@ -102,7 +103,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".HandlersLibrary"
                 ".register_handler"):
             client.task_server = TaskServer(
-                node=mock.Mock(),
+                node=Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
                 config_desc=mock.Mock(),
                 client=client,
                 use_docker_manager=False,
