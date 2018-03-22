@@ -2,22 +2,25 @@ import calendar
 import logging
 import time
 from datetime import datetime
-from sortedcontainers import SortedListWithKey
+from typing import Dict, List, Optional
 from threading import Lock
-from typing import Any, Dict, List, Optional, Tuple
 
+from sortedcontainers import SortedListWithKey
 from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
 import requests
 
 from golem_sci.gntconverter import GNTConverter
 from golem.core.service import LoopingCallService
+from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import db, Payment, PaymentStatus
 from golem.utils import encode_hex
 
 log = logging.getLogger("golem.pay")
 
 DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
+# We reserve 30 minutes for the payment to go through
+PAYMENT_MAX_DELAY = PAYMENT_DEADLINE - 30 * 60
 
 
 def get_timestamp() -> int:
@@ -43,10 +46,8 @@ def tETH_faucet_donate(addr):
     return True
 
 
+# pylint: disable=too-many-instance-attributes
 class PaymentProcessor(LoopingCallService):
-    # Default deadline in seconds for new payments.
-    DEFAULT_DEADLINE = 10 * 60
-
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
@@ -60,14 +61,14 @@ class PaymentProcessor(LoopingCallService):
             sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
         self._gnt_converter = GNTConverter(sci)
-        self.__eth_balance = None  # type: Optional[int]
-        self.__gnt_balance = None  # type: Optional[int]
-        self.__gntb_balance = None  # type: Optional[int]
+        self.__eth_balance: Optional[int] = None
+        self.__gnt_balance: Optional[int] = None
+        self.__gntb_balance: Optional[int] = None
         self.__eth_reserved = 0
         self.__gntb_reserved = 0
         self._awaiting_lock = Lock()
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
-        self._inprogress = {}  # type: Dict[Any,Any] # Sent transactions.
+        self._inprogress: Dict[str, List[Payment]] = {}  # Sent transactions.
         self.__faucet = faucet
         self.load_from_db()
         self._last_gnt_update = None
@@ -177,7 +178,7 @@ class PaymentProcessor(LoopingCallService):
             self.__gntb_reserved / denoms.ether))
 
         if self.__gntb_balance is not None and self.__gnt_balance is not None:
-            if self.__gntb_reserved > self.__gntb_balance:
+            if self.__gntb_reserved > self.__gntb_balance > 0:
                 if not self._gnt_converter.is_converting():
                     log.info(
                         'Will convert %f GNT to be ready for payments',
@@ -210,13 +211,13 @@ class PaymentProcessor(LoopingCallService):
 
         return ind
 
-    def sendout(self):
+    def sendout(self, acceptable_delay: int = PAYMENT_MAX_DELAY):
         with self._awaiting_lock:
             if not self._awaiting:
                 return False
 
             now = get_timestamp()
-            deadline = self._awaiting[0].processed_ts + self.DEFAULT_DEADLINE
+            deadline = self._awaiting[0].processed_ts + acceptable_delay
             if deadline > now:
                 log.info("Next sendout in {} s".format(deadline - now))
                 return False
@@ -370,3 +371,7 @@ class PaymentProcessor(LoopingCallService):
             self.monitor_progress()
             self.sendout()
             self._send_balance_snapshot()
+
+    def stop(self):
+        self.sendout(0)
+        super().stop()
