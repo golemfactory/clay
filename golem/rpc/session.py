@@ -161,6 +161,11 @@ class Session(ApplicationSession):
         super(Session, self).onDisconnect()
 
     @inlineCallbacks
+    def add_methods(self, methods):
+        self.methods += methods
+        yield self.register_methods(methods)
+
+    @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
             deferred = self.register(method, str(rpc_name))
