@@ -240,7 +240,7 @@ class HyperdriveClientOptions(ClientOptions):
     def filtered(self,
                  client_id: str = HyperdriveClient.CLIENT_ID,
                  version: float = HyperdriveClient.VERSION,
-                 verify_peer: Optional[FunctionType] = None,
+                 verify_peer: Optional[FunctionType] = None,  # noqa # pylint: disable=unused-argument
                  **_kwargs) -> Optional['HyperdriveClientOptions']:
 
         opts = super().filtered(client_id, version)

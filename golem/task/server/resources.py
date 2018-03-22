@@ -127,7 +127,7 @@ class TaskResourcesMixin:
             options.set(size=task_header.resource_size)
         return options
 
-    def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-variable
+    def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
                           address: str) -> HyperdriveClientOptions:
         """
         Builds share options with a list of peers in HyperG format.
