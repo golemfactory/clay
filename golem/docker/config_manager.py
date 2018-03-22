@@ -44,7 +44,7 @@ class DockerConfigManager(object):
                 host_config['cpuset'] = ','.join(cpu_set)
 
             with self._try():
-                host_config['mem_limit'] = int(max_memory_size) * 1000
+                host_config['mem_limit'] = int(max_memory_size) * 1024
 
         self.container_host_config.update(host_config)
 

@@ -73,8 +73,8 @@ class HardwarePresets(object):
         logger.info("updating config: name: %s, num_cores: %s, "
                     "max_memory_size: %s, max_resource_size: %s",
                     name, values['cpu_cores'],
-                    humanize.naturalsize(values['memory'], binary=True),
-                    humanize.naturalsize(values['disk'], binary=True))
+                    humanize.naturalsize(values['memory'] * 1024, binary=True),
+                    humanize.naturalsize(values['disk'] * 1024, binary=True))
         setattr(config, 'hardware_preset_name', name)
         setattr(config, 'num_cores', values['cpu_cores'])
         setattr(config, 'max_memory_size', values['memory'])

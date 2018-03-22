@@ -170,7 +170,7 @@ class DockerManager(DockerConfigManager):
             cpu_count = max(int(config_desc.num_cores), cpu_count)
 
         with self._try():
-            memory_size += int(config_desc.max_memory_size) // 1000
+            memory_size = int(config_desc.max_memory_size) // 1024
 
         with self._try():
             if config_desc.docker_machine_name:
