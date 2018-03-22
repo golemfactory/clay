@@ -18,7 +18,6 @@ click==6.7
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==17.12.1
-Crypto==1.4.1
 cryptography==2.2.1
 cytoolz==0.9.0.1
 docker-py==1.7.2
@@ -34,6 +33,7 @@ Golem-Messages==1.17.2
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@1cc2cd4d76cf504e6a5672da861107fc8666ef14#egg=Golem_Smart_Contracts_Interface
 h2==3.0.1
 hpack==3.0.0
+html2text==2018.1.9
 humanize==0.5.1
 hyperframe==5.1.0
 hyperlink==18.0.0
@@ -46,7 +46,6 @@ MarkupSafe==1.0
 miniupnpc==2.0.2
 mistune==0.8.3
 mock==2.0.0
-Naked==0.1.31
 ndg-httpsclient==0.4.4
 netaddr==0.7.19
 netifaces==0.10.4
@@ -68,6 +67,7 @@ py-ubjson==0.11.0
 pyasn1==0.4.1
 pyasn1-modules==0.2.1
 pycparser==2.17
+pycrypto==2.6.1
 pycryptodome==3.4.11
 PyDispatcher==2.0.5
 pyelliptic==1.5.9
@@ -94,7 +94,6 @@ secp256k1==0.13.2
 semantic-version==2.6.0
 service-identity==17.0.0
 setproctitle==1.1.10
-shellescape==3.4.1
 shutilwhich==1.1.0
 six==1.10.0
 sortedcontainers==1.5.9

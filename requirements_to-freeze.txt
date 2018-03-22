@@ -1,7 +1,7 @@
 --extra-index-url https://builds.golem.network
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@716e885d3a907f8a0a73379f49e2e86b2cc44e39#egg=golem_sci
 Automat==0.6.0
-Crypto
+pycrypto
 Golem-Messages==1.17.2
 OpenEXR
 Pillow==4.2.1
