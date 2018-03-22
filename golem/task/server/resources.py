@@ -1,9 +1,12 @@
 import logging
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 
 import requests
 
-from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
+from golem.core.hostaddress import ip_address_private
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.network.hyperdrive.client import HyperdriveClientOptions, \
+    to_hyperg_peer
 from golem.resource import resource
 from golem.resource.hyperdrive import resource as hpd_resource
 
@@ -11,7 +14,7 @@ from golem.resource.hyperdrive import resource as hpd_resource
 logger = logging.getLogger(__name__)
 
 
-class TaskResourcesMixin():
+class TaskResourcesMixin:
     """Resource management functionality of TaskServer"""
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -85,29 +88,6 @@ class TaskResourcesMixin():
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def get_download_options(self, key_id, address=None, task_id=None):
-        resource_manager = self._get_resource_manager()
-        peers = []
-
-        if address:
-            peers.append({'TCP': [address, DEFAULT_HYPERDRIVE_PORT]})
-        else:
-            peer = self.get_resource_peer(key_id)
-            if peer:
-                peers.append(peer)
-
-        client_options = resource_manager.build_client_options(peers=peers)
-
-        task_header = self.task_keeper.task_headers.get(task_id)
-        if task_header:
-            client_options.set(size=task_header.resource_size)
-        return client_options
-
-    def get_share_options(self, task_id, key_id):
-        resource_manager = self._get_resource_manager()
-        peers = self.get_resource_peers(task_id)
-        return resource_manager.build_client_options(peers=peers)
-
     def request_resource(self, task_id, subtask_id):
         if subtask_id not in self.task_sessions:
             logger.error("Cannot map subtask_id %r to session", subtask_id)
@@ -120,6 +100,70 @@ class TaskResourcesMixin():
     def pull_resources(self, task_id, resources, client_options=None):
         self.client.pull_resources(
             task_id, resources, client_options=client_options)
+
+    def get_download_options(
+            self,
+            received_options: Optional[Union[dict, HyperdriveClientOptions]],
+            task_id: Optional[str] = None):
+
+        task_keeper = getattr(self, 'task_keeper')
+        resource_manager = self._get_resource_manager()
+        options = None
+
+        if isinstance(received_options, dict):
+            try:
+                options = HyperdriveClientOptions(**received_options)
+                options = options.filtered(verify_peer=self._verify_peer)
+            except (AttributeError, TypeError):
+                options = None
+
+        elif isinstance(received_options, HyperdriveClientOptions):
+            options = received_options.filtered(verify_peer=self._verify_peer)
+
+        options = options or resource_manager.build_client_options()
+        task_header = task_keeper.task_headers.get(task_id)
+
+        if task_header:
+            options.set(size=task_header.resource_size)
+        return options
+
+    def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
+                          address: str) -> HyperdriveClientOptions:
+        """
+        Builds share options with a list of peers in HyperG format.
+        If the given address is a private one, put the list of private addresses
+        before own public address.
+
+        :param _task_id: Task id (unused)
+        :param address: IP address of the node we're currently connected to
+        """
+
+        node = getattr(self, 'node')
+        resource_manager = self._get_resource_manager()
+
+        # Create a list of private addresses
+        prv_addresses = [node.prv_addr] + node.prv_addresses
+        peers = [to_hyperg_peer(a, node.hyperdrive_prv_port)
+                 for a in prv_addresses[:MAX_CONNECT_SOCKET_ADDRESSES - 1]]
+
+        # If connected to a private address, pub_peer is the least important one
+        prefer_prv = ip_address_private(address) if address else False
+        pub_peer = to_hyperg_peer(node.pub_addr, node.hyperdrive_pub_port)
+
+        peers.insert(-1 if prefer_prv else 0, pub_peer)
+
+        return resource_manager.build_client_options(peers=peers)
+
+    def _verify_peer(self, ip_address, _port):
+        is_accessible = self._is_address_accessible  # noqa # pylint: disable=no-member
+
+        # Make an exception for localhost (local tests)
+        if ip_address in ['127.0.0.1', '::1']:
+            return True
+        if ip_address_private(ip_address) and not is_accessible(ip_address):
+            return False
+
+        return True
 
     def _get_resource_manager(self):
         resource_server = self.client.resource_server
