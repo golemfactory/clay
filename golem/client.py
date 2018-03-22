@@ -853,6 +853,10 @@ class Client(HardwarePresetsMixin):
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
 
+    def withdraw(self, _amount, _sendTo, _type):
+        print("MONEY WITHDRAWED:", _amount, _sendTo, _type)
+        return True
+
     def get_task_cost(self, task_id):
         """
         Get current cost of the task defined by @task_id
