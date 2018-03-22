@@ -1,3 +1,5 @@
+import uuid
+
 from golem_messages.message import ComputeTaskDef
 import os
 import unittest.mock as mock
@@ -66,27 +68,21 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
         # Compositing True, use frames, more subtasks than frames
         task_definition.options.compositing = True
-        with self.assertLogs(logger, level="WARNING") as logs:
-            bt = _get_blender_task(task_definition)
+        bt = _get_blender_task(task_definition)
         assert not bt.compositing
-        assert any("ABC" in log for log in logs.output)
-        assert any("Compositing not supported" for log in logs.output)
 
         # Compositing True, use frames, as many subtasks as frames
         bt = _get_blender_task(task_definition, 3)
-        assert bt.compositing
+        assert not bt.compositing
 
         # Compositing True, use frames, less subtasks than frames
         bt = _get_blender_task(task_definition, 1)
-        assert bt.compositing
+        assert not bt.compositing
 
         # Compositing True, use frames is False, as many subtask as frames
         task_definition.options.use_frames = False
-        with self.assertLogs(logger, level="WARNING") as logs:
-            bt = _get_blender_task(task_definition, 3)
+        bt = _get_blender_task(task_definition, 3)
         assert not bt.compositing
-        assert any("ABC" in log for log in logs.output)
-        assert any("Compositing not supported" for log in logs.output)
 
 
 class TestBlenderFrameTask(TempDirFixture):
@@ -101,6 +97,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
         task_definition.resolution = [200, 300]
+        task_definition.task_id = str(uuid.uuid4())
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
             node_name="example-node-name",
@@ -252,6 +249,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.output_format = "PNG"
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
+        task_definition.task_id = str(uuid.uuid4())
         bt = BlenderRenderTask(node_name="example-node-name",
                                task_definition=task_definition,
                                total_tasks=total_tasks,
