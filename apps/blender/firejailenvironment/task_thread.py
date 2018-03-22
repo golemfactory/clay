@@ -1,16 +1,31 @@
 import os
 import subprocess
+import tempfile
 
+import time
+
+from golem.docker.image import DockerImage
 from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread
 from golem.vm.memorychecker import MemoryChecker
 
+DOCKER_BLENDER_PATH = '/opt/blender/'
+
 FIREJAIL_COMMAND = 'firejail'
-BLENDER_COMMAND = 'blender'
+BLENDER_DIR = tempfile.gettempdir()
+BLENDER_BINARY_PATH = os.path.join(BLENDER_DIR, 'blender', 'blender')
 SCRIPT_FILE_NAME = 'blenderscript.py'
+BLENDER_IMAGE_REP = 'golemfactory/blender'
+BLENDER_IMAGE_TAG = '1.3'
 
 STDOUT_FILE = "stdout.log"
 STDERR_FILE = "stderr.log"
+
+
+def _prepare_blender():
+    if not os.path.isfile(BLENDER_BINARY_PATH):
+        img = DockerImage(BLENDER_IMAGE_REP, tag=BLENDER_IMAGE_TAG)
+        img.extract_path(DOCKER_BLENDER_PATH, BLENDER_DIR)
 
 
 class BlenderFirejailTaskThread(TaskThread):
@@ -29,6 +44,9 @@ class BlenderFirejailTaskThread(TaskThread):
 
     def run(self):
         try:
+            _prepare_blender()
+            # don't charge for the time it takes to prepare blender env
+            self.start_time = time.time()
             self._prepare_dirs()
             self._prepare_data()
             if self.check_mem:
@@ -72,7 +90,7 @@ class BlenderFirejailTaskThread(TaskThread):
                                      self.extra_data['start_task'])
         output_format = self.extra_data['output_format'].upper()
         cmd = [
-            BLENDER_COMMAND,
+            BLENDER_BINARY_PATH,
             "-b", scene_file,
             "-y",  # enable scripting by default
             "-P", script_file,
