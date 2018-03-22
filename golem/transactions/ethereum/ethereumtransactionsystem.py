@@ -22,9 +22,6 @@ class EthereumTransactionSystem(TransactionSystem):
         :param node_priv_key str: node's private key for Ethereum account(32b)
         """
 
-        # FIXME: Passing private key all around might be a security issue.
-        #        Proper account managment is needed.
-
         try:
             eth_addr = encode_hex(privtoaddr(node_priv_key))
         except AssertionError:

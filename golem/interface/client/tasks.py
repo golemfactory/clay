@@ -202,7 +202,6 @@ class Tasks:
             raise ValueError(
                 "Task name can only contain letters, numbers, "
                 "spaces, underline, dash or dot.")
-        # FIXME CHANGE TASKI ID
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
         dictionary['id'] = str(uuid4())

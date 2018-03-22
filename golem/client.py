@@ -511,7 +511,7 @@ class Client(HardwarePresetsMixin):
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
-        # FIXME: Statement only for old DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility #2467
         if isinstance(task_dict, dict):
             logger.warning('enqueue_new_task called with deprecated dict type')
             task = task_manager.create_task(task_dict)

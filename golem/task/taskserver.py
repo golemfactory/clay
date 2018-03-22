@@ -157,7 +157,7 @@ class TaskServer(
                     'num_cores': self.config_desc.num_cores
                 }
                 node = theader.task_owner
-                port = theader.task_owner_port  # FIXME: seems redundant
+                port = theader.task_owner_port  # FIXME: seems redundant. #109
 
                 added = self._add_pending_request(
                     TASK_CONN_TYPES['task_request'],
@@ -575,7 +575,7 @@ class TaskServer(
     def _listening_failure(self, **kwargs):
         logger.error("Listening on ports {} to {} failure".format(
             self.config_desc.start_port, self.config_desc.end_port))
-        # FIXME: some graceful terminations should take place here
+        # FIXME: some graceful terminations should take place here. #1287
         # sys.exit(0)
 
     #############################
