@@ -1,7 +1,14 @@
 # This template is rendered by
 # apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
 # written to tempfile and passed as arg to blender.
+import re
+import sys
 import bpy
+
+try:
+    argv = sys.argv[sys.argv.index("--") + 1:]
+except ValueError:
+    argv = []
 
 class EngineWarning(bpy.types.Operator):
     bl_idname = "wm.engine_warning"
@@ -15,7 +22,6 @@ class EngineWarning(bpy.types.Operator):
 class ShowInformation(bpy.types.Operator):
     bl_idname = "wm.scene_information"
     bl_label = "Inform user about scene settings"
-
 
     def execute(self, context):
         self.report({"INFO"}, "Resolution: " +
@@ -33,6 +39,30 @@ class ShowInformation(bpy.types.Operator):
 
         return {"FINISHED"}
 
+if 'GPU' in argv:
+    bpy.context.scene.cycles.device = 'GPU'
+
+    # We know the hierarchy from best to worst explicitly
+    for compute_device_type in ['CUDA', 'OPENCL', 'NONE']:
+        try:
+            bpy.context.user_preferences.system.compute_device_type = \
+                compute_device_type
+            break
+        except TypeError:
+            pass
+    # As for compute_device, probe the system and select the last option
+    # enumerated as legal options for "compute_device"
+    try:
+        bpy.context.user_preferences.system.compute_device = '_'
+    except TypeError:
+        _, error, _ = sys.exc_info()
+    # above was a guaranteed exception, so error is set for sure
+    error = str(error)
+    if re.match('bpy_struct', error):
+        possible_values_str = error[error.find('('):]
+        possible_values = re.findall(r'\'(\S+)\'', possible_values_str)
+        select_value = possible_values[-1]
+        bpy.context.user_preferences.system.compute_device = select_value
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine

@@ -80,7 +80,8 @@ class BlenderFirejailTaskThread(TaskThread):
             "-noaudio",
             "-F", output_format,
             "-t", str(os.cpu_count()),
-            "-f", str(frame)
+            "-f", str(frame),
+            "--", "GPU"
         ]
         return cmd
 
