@@ -582,20 +582,6 @@ class CoreTaskBuilder(TaskBuilder):
         return kwargs
 
     @classmethod
-    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
-        definition = task_type.definition()
-        definition.options = task_type.options()
-        definition.task_type = task_type.name
-        definition.resources = set(dictionary['resources'])
-        definition.total_subtasks = int(dictionary['subtasks'])
-        definition.main_program_file = task_type.defaults.main_program_file
-
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        definition.legacy = dictionary.get('legacy', False)
-
-        return definition
-
-    @classmethod
     def build_definition(cls, task_type: CoreTaskTypeInfo, dictionary, minimal=False):
         # dictionary comes from the GUI
         if not minimal:
@@ -627,22 +613,7 @@ class CoreTaskBuilder(TaskBuilder):
     @staticmethod
     def build_dictionary(definition: TaskDefinition) -> dict:
         return definition.to_dict()
-
-    @classmethod
-    def get_output_path(cls, dictionary, definition):
-        options = dictionary['options']
-
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        if definition.legacy:
-            return options['output_path']
-
-        absolute_path = cls.get_nonexistant_path(
-            options['output_path'],
-            definition.task_name,
-            options.get('format', ''))
-
-        return absolute_path
-
+    
     @classmethod
     def get_nonexistant_path(cls, path, name, extension=""):
         """
