@@ -232,8 +232,7 @@ class TestHyperdriveClientOptions(TestCase):
     def test_filtered(self):
         peers = [
             dict(
-                TCP=('1.2.3.4', 3282),
-                uTP=('::1.2.3.4', 3283)
+                TCP=('1.2.3.4', 3282)
             )
         ]
 
@@ -271,24 +270,20 @@ class TestHyperdriveClientOptions(TestCase):
     def test_filter_peers(self):
         peers_local = [
             dict(
-                TCP=('192.168.1.2', 3282),
-                uTP=('192.168.1.2', 3283)
+                TCP=('192.168.1.2', 3282)
             ),
             dict(
-                TCP=('::1', 3282),
-                uTP=('127.0.0.1', 3283)
+                TCP=('::1', 3282)
             )
         ]
         peers_remote = [
             dict(
-                TCP=('1.2.3.4', 3282),
-                uTP=('::1.2.3.4', 3283)
+                TCP=('1.2.3.4', 3282)
             )
         ]
         peers_mixed = [
             dict(
-                TCP=('1.2.3.4', 3282),
-                uTP=('127.0.0.1', 3283)
+                TCP=('1.2.3.4', 3282)
             )
         ]
 
@@ -311,44 +306,35 @@ class TestHyperdriveClientOptions(TestCase):
 
     def test_filter_peer(self):
         valid_v4 = ('1.2.3.4', 1234)
-        valid_v6 = ('::1.2.3.4', 1234)
 
         valid_addresses = dict(
-            TCP=valid_v4,
-            uTP=valid_v6
+            TCP=valid_v4
         )
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=(None, 12345),
             uTP=('test string', 12345)
-        )) is None
+        )) == {}
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('192.168.0.1', 12345),
             uTP=('::1', 12345)
-        )) is not None
+        )) != {}
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=('::1.2.3.4', -1),
             uTP=('1.2.3.4', None)
-        )) is None
+        )) == {}
 
         assert HyperdriveClientOptions.filter_peer(dict(
             TCP=(None, 12345),
             uTP=valid_v4
-        )) == dict(uTP=valid_v4)
+        )) == {}
 
         assert HyperdriveClientOptions.filter_peer(dict(
-            TCP=(None, 12345),
+            TCP=('1.2.3.4', 1234),
             uTP=valid_v4
-        ), excluded_ips=['1.2.3.4']) is None
-
-        assert HyperdriveClientOptions.filter_peer(
-            valid_addresses, forced_ip='2.3.4.5'
-        ) == dict(
-            TCP=('2.3.4.5', 1234),
-            uTP=('2.3.4.5', 1234)
-        )
+        )) == dict(TCP=valid_v4)
 
         assert HyperdriveClientOptions.filter_peer(
             valid_addresses) == valid_addresses
