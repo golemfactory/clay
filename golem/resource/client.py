@@ -75,7 +75,7 @@ class ClientOptions(object):
             self.options = {}
         self.options.update(options)
 
-    def filtered(self, client_id, version):
+    def filtered(self, client_id, version, **_kwargs):
         if self.client_id != client_id:
             logger.warning('Resource client: invalid client id: %s',
                            self.client_id)
@@ -84,6 +84,18 @@ class ClientOptions(object):
                            self.version)
         else:
             return self.clone()
+
+    @property
+    def peers(self) -> list:
+        if isinstance(self.options, dict):
+            return self.options.get('peers', [])
+        return []
+
+    @peers.setter
+    def peers(self, value: list) -> None:
+        if not isinstance(self.options, dict):
+            self.options = dict()
+        self.options['peers'] = value
 
     def clone(self):
         return self.__class__(
