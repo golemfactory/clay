@@ -41,6 +41,8 @@ pyasn1==0.4.1
 pycparser==2.17
 pycryptodome==3.4.11
 pydispatcher
+# Required lower version for windows
+pyethash==0.1.23
 pysha3>=1.0.2
 pyssim
 pytz
