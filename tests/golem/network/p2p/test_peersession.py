@@ -64,9 +64,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
-        self.peer_session.conn.server.metadata_manager = MagicMock()
-        self.peer_session.conn.server.metadata_manager. \
-            get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.key_difficulty = 2
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_SERVER
@@ -77,7 +74,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
-            metadata=metadata,
             node_info=node.to_dict(),
             node_name=node_name,
             port=port,
@@ -189,9 +185,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = node.key
-        self.peer_session.conn.server.metadata_manager = MagicMock()
-        self.peer_session.conn.server.metadata_manager. \
-            get_metadata.return_value = metadata = 'metadata'
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_CLIENT
         self.peer_session.start()
@@ -219,7 +212,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
-            metadata=metadata,
             node_info=node.to_dict(),
             node_name=node_name,
             port=port,
