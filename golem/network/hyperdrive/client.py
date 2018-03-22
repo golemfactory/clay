@@ -92,10 +92,7 @@ class HyperdriveClient(IClient):
         if client_options:
             size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
             timeout = maximum_download_time(size).seconds if size else None
-
-            filtered = client_options.filtered(cls.CLIENT_ID, cls.VERSION)
-            if filtered:
-                peers = filtered.options.get('peers')
+            peers = client_options.peers
 
         return dict(
             command='download',
