@@ -6,9 +6,15 @@ import random
 from OpenSSL import crypto
 from OpenSSL._util import ffi, lib
 
+from golem.core.common import is_windows
 from golem.rpc.common import X509_COMMON_NAME
 
 logger = logging.getLogger(__name__)
+
+
+DH_PARAM_BITS = 2048
+DH_PARAM_BITS_LOW = 1024
+KEY_BITS = 2048
 
 
 class CertificateManager:
@@ -19,17 +25,25 @@ class CertificateManager:
 
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
+        self.use_dh_params = self.forward_secrecy or is_windows()
+
         self.key_path = os.path.join(dest_dir, self.PRIVATE_KEY_FILE_NAME)
         self.cert_path = os.path.join(dest_dir, self.CERTIFICATE_FILE_NAME)
 
-        if self.forward_secrecy:
+        if self.use_dh_params:
             self.dh_path = os.path.join(dest_dir, self.DH_FILE_NAME)
         else:
             self.dh_path = ''
 
     def generate_if_needed(self):
-        if self.forward_secrecy and not os.path.exists(self.dh_path):
-            self._generate_dh_params(self.dh_path)
+        if self.use_dh_params and not os.path.exists(self.dh_path):
+
+            if self.forward_secrecy:
+                dh_param_bits = DH_PARAM_BITS
+            else:  # required to generate for Windows
+                dh_param_bits = DH_PARAM_BITS_LOW
+
+            self._generate_dh_params(self.dh_path, dh_param_bits)
 
         if not os.path.exists(self.key_path):
             self._generate_key_pair(self.key_path)
@@ -55,7 +69,7 @@ class CertificateManager:
             return cert_file.read()
 
     @staticmethod
-    def _generate_dh_params(output_path: str, bits: int = 2048) -> None:
+    def _generate_dh_params(output_path: str, bits: int) -> None:
         # pylint: disable=no-member
         logger.info("Generating DH key exchange params: %r", output_path)
 
@@ -66,7 +80,7 @@ class CertificateManager:
         lib.DH_free(dh)
 
     @staticmethod
-    def _generate_key_pair(output_path: str, bits: int = 2048) -> None:
+    def _generate_key_pair(output_path: str, bits: int = KEY_BITS) -> None:
         logger.info("Creating an RSA key pair: %r", output_path)
 
         key = crypto.PKey()
