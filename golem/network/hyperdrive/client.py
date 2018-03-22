@@ -240,7 +240,7 @@ class HyperdriveClientOptions(ClientOptions):
     def filtered(self,
                  client_id: str = HyperdriveClient.CLIENT_ID,
                  version: float = HyperdriveClient.VERSION,
-                 verify_peer: Optional[FunctionType] = None,  # noqa # pylint: disable=unused-argument
+                 verify_peer: Optional[FunctionType] = None,
                  **_kwargs) -> Optional['HyperdriveClientOptions']:
 
         opts = super().filtered(client_id, version)
@@ -260,7 +260,8 @@ class HyperdriveClientOptions(ClientOptions):
             log.warning('Resource client: peers not provided')
 
         else:
-            opts.options['peers'] = self.filter_peers(opts.options['peers'])
+            opts.options['peers'] = self.filter_peers(opts.options['peers'],
+                                                      verify_peer)
             return opts
 
     @classmethod
