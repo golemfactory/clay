@@ -171,7 +171,6 @@ class LuxTask(renderingtask.RenderingTask):
 
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
-        # FIXME With full verification
 
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:
@@ -301,7 +300,6 @@ class LuxTask(renderingtask.RenderingTask):
 
         return ctd
 
-    # FIXME check if just get_test_flm is not enough
     def get_reference_data(self):
         get_test_flm = self.get_test_flm_for_verifier()
         return [get_test_flm] + self.get_reference_imgs()
