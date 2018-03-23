@@ -1,6 +1,5 @@
 import functools
 import logging
-from pathlib import Path
 import time
 from typing import List, Optional, Callable, Any
 
@@ -11,19 +10,19 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_golem_path
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
-from golem.model import DB_MODELS, db, DB_FIELDS, GenericKeyValue
+from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
+from golem.terms import TermsOfUse
 
 logger = logging.getLogger("app")
 
@@ -33,8 +32,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
-    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
-    TERMS_VERSION = 1
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
@@ -162,22 +159,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
-    def are_terms_accepted(self):
-        return GenericKeyValue.select()\
-            .where(
-                GenericKeyValue.key == self.TERMS_ACCEPTED_KEY,
-                GenericKeyValue.value == self.TERMS_VERSION)\
-            .count() > 0
+    @staticmethod
+    def are_terms_accepted():
+        return TermsOfUse.are_terms_accepted()
 
-    def accept_terms(self):
-        entry, _ = GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
-        entry.value = self.TERMS_VERSION
-        entry.save()
+    @staticmethod
+    def accept_terms():
+        return TermsOfUse.accept_terms()
 
     @staticmethod
     def show_terms():
-        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
-        return terms_path.read_text()
+        return TermsOfUse.show_terms()
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
