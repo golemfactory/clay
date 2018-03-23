@@ -114,7 +114,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
@@ -160,7 +160,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
