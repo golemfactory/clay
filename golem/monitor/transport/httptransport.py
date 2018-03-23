@@ -3,21 +3,30 @@ import time
 from typing import Optional
 from urllib.parse import urljoin
 
+from base64 import b64encode
+
 import requests
 
+from golem.core.keysauth import KeysAuth
 
 log = logging.getLogger('golem.monitor.transport')
 
 
 class DefaultHttpSender(object):
-    def __init__(self, base_url, request_timeout):
+    def __init__(self, base_url, request_timeout,
+                 sign_key: KeysAuth) -> None:
         self.base_url = base_url
         self.timeout = request_timeout
         self.json_headers = {'content-type': 'application/json'}
-        self.last_exception_time = 0
+        self.last_exception_time: float = 0.0
+        self.sign_key = sign_key
 
     def post(self, headers, payload,
              base_url: str, url_path: str) -> Optional[requests.Response]:
+        headers = dict(headers)
+        headers['auth'] = b64encode(
+            self.sign_key.public_key
+            + self.sign_key.sign(payload))
         try:
             if not base_url:
                 base_url = self.base_url

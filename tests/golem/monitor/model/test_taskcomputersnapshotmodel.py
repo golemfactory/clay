@@ -24,7 +24,7 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
             )
             self.assertEqual(mock_send.call_count, 1)
             result = mock_send.call_args[1]['msg'].dict_repr()
-            for key in ('cliid', 'sessid', 'timestamp'):
+            for key in ('sessid', 'timestamp'):
                 del result[key]
             self.maxDiff = None
             expected = {

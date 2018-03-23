@@ -6,7 +6,6 @@ class StatsSnapshotModel(BasicModel):
     def __init__(self, meta_data, known_tasks, supported_tasks, stats):
         super(StatsSnapshotModel, self).__init__(
             "Stats",
-            meta_data.cliid,
             meta_data.sessid
         )
 
@@ -19,14 +18,14 @@ class StatsSnapshotModel(BasicModel):
 
 
 class VMSnapshotModel(BasicModel):
-    def __init__(self, cliid, sessid, vm_snapshot):
-        super(VMSnapshotModel, self).__init__("VMSnapshot", cliid, sessid)
+    def __init__(self, sessid, vm_snapshot):
+        super(VMSnapshotModel, self).__init__("VMSnapshot", sessid)
         self.vm_snapshot = vm_snapshot
 
 
 class P2PSnapshotModel(BasicModel):
-    def __init__(self, cliid, sessid, p2p_snapshot):
-        super(P2PSnapshotModel, self).__init__("P2PSnapshot", cliid, sessid)
+    def __init__(self, sessid, p2p_snapshot):
+        super(P2PSnapshotModel, self).__init__("P2PSnapshot", sessid)
         self.p2p_snapshot = p2p_snapshot
 
 
@@ -34,7 +33,6 @@ class ComputationTime(BasicModel):
     def __init__(self, meta_data, success, value):
         super(ComputationTime, self).__init__(
             "ComputationTime",
-            meta_data.cliid,
             meta_data.sessid
         )
         self.success = success
@@ -45,7 +43,7 @@ class RequestorStatsModel(BasicModel):
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     def __init__(self, meta_data: BasicModel, current_stats: CurrentStats,
                  finished_stats: FinishedTasksStats):
-        super().__init__("RequestorStats", meta_data.cliid, meta_data.sessid)
+        super().__init__("RequestorStats", meta_data.sessid)
 
         self.tasks_cnt = current_stats.tasks_cnt
         self.finished_task_cnt = current_stats.finished_task_cnt

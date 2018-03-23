@@ -1,3 +1,4 @@
+from base64 import b64decode
 import json
 import time
 from unittest import mock, TestCase
@@ -29,7 +30,6 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
     def setUp(self):
         mock.patch('requests.post')
         client_mock = mock.MagicMock()
-        client_mock.get_key_id.return_value = 'cliid'
         client_mock.session_id = 'sessid'
         client_mock.config_desc = ClientConfigDescriptor()
         meta_data = NodeMetadataModel(
@@ -37,7 +37,10 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         config = MONITOR_CONFIG.copy()
         config['HOST'] = 'http://localhost/88881'
         config['PING_ME_HOSTS'] = ['http://localhost/88881']
-        self.monitor = SystemMonitor(meta_data, config)
+        sign_mock = mock.MagicMock()
+        sign_mock.public_key = b''
+        sign_mock.sign.return_value = b''
+        self.monitor = SystemMonitor(meta_data, config, sign_mock)
         self.monitor.start()
 
     def tearDown(self):
@@ -62,8 +65,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         client_mock = mock.MagicMock()
-        client_mock.get_key_id.return_value = 'CLIID'
-        client_mock.session_id = 'SESSID'
+        client_mock.session_id = 'sessid'
         client_mock.config_desc = ccd
         new_meta_data = NodeMetadataModel(
             client_mock, "win32", "1.3")
@@ -96,13 +98,11 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                             'type': 'NodeMetadata',
                             'net': 'testnet',
                             'timestamp': mock.ANY,
-                            'cliid': 'cliid',
                             'sessid': 'sessid',
                             'os': 'os',
                             'version': 'ver',
                             'settings': mock.ANY,
                         },
-                        'cliid': 'cliid',
                         'sessid': 'sessid',
                         'timestamp': mock.ANY,
                     }
@@ -119,6 +119,24 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             event='no event at all',
             ports=[])
         self.assertEqual(post_mock.call_count, 0)
+
+    @mock.patch('requests.post')
+    def test_message_signature(self, post_mock):
+        """ check whether messages are signed correctly """
+
+        sign_key = mock.MagicMock()
+        self.monitor.sender_thread.sender.transport.sign_key = sign_key
+        sign_key.public_key = b'pubkey,'
+        sign_key.sign = lambda m: bytes('len:'+str(len(m)), 'ascii')
+
+        msg = mock.MagicMock()
+        msg.dict_repr.return_value = {'a': 1, 'b': 'c', 'd': {}}
+        self.monitor.sender_thread.process('send', msg=msg)
+
+        self.wait_for_first_call(post_mock)
+
+        signature = post_mock.call_args[1]['headers']['auth']
+        self.assertEqual(b64decode(signature), b'pubkey,len:93')
 
     @freeze_time()
     @mock.patch('requests.post')
@@ -168,8 +186,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             data=JsonMatcher(
                 data=JsonMatcher(
                     ports=[port],
-                    timestamp=mock.ANY,
-                    cliid='cliid')),
+                    timestamp=mock.ANY)),
             headers=mock.ANY,
             timeout=mock.ANY,
         )
@@ -289,10 +306,13 @@ class TestSenderThread(TestCase):
     def test_run_exception(self):
         node_info = mock.Mock()
         node_info.dict_repr.return_value = dict()
+        sign_mock = mock.MagicMock()
+        sign_mock.public_key = b''
+        sign_mock.sign.return_value = b''
         sender = SenderThread(
             node_info=node_info,
             config={'SENDER_THREAD_TIMEOUT': 0},
-            sender=Sender(None, 0, 0)
+            sender=Sender(None, 0, 0, sign_mock)
         )
         sender.stop_request.isSet = mock.Mock(side_effect=[False, True])
         with mock.patch('requests.post',

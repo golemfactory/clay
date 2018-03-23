@@ -2,8 +2,10 @@ from .modelbase import BasicModel
 
 
 class BasePaymentModel(BasicModel):
-    def __init__(self, cliid, sessid, addr, value):
-        super(BasePaymentModel, self).__init__(self.TYPE, cliid, sessid)
+    TYPE = "Payment"
+
+    def __init__(self, sessid, addr, value):
+        super(BasePaymentModel, self).__init__(self.TYPE, sessid)
         self.addr = addr
         self.value = value
 

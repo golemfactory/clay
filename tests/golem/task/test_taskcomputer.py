@@ -378,12 +378,14 @@ class TestTaskMonitor(DatabaseFixture):
         from golem.monitorconfig import MONITOR_CONFIG
         #  hold reference to avoid GC of monitor
         client_mock = mock.MagicMock()
-        client_mock.get_key_id.return_value = 'CLIID'
         client_mock.session_id = 'SESSID'
         client_mock.config_desc = ClientConfigDescriptor()
+        sign_mock = mock.MagicMock()
+        sign_mock.public_key = b''
+        sign_mock.sign.return_value = b''
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
             NodeMetadataModel(client_mock, "hackix", "3.1337"),
-            MONITOR_CONFIG)
+            MONITOR_CONFIG, sign_mock)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
         task = TaskComputer("ABC", task_server,
@@ -409,7 +411,7 @@ class TestTaskMonitor(DatabaseFixture):
                 task.task_computed(task_thread)
                 self.assertEqual(mock_send.call_count, 1)
                 result = mock_send.call_args[1]['msg'].dict_repr()
-                for key in ('cliid', 'sessid', 'timestamp'):
+                for key in ('sessid', 'timestamp'):
                     del result[key]
                 expected_d = {
                     'type': 'ComputationTime',

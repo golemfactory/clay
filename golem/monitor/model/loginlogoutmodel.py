@@ -3,15 +3,19 @@ from golem.monitorconfig import MONITOR_CONFIG
 
 from .modelbase import BasicModel
 
+
 class LoginLogoutBaseModel(BasicModel):
+    TYPE = "LoginLogoutBase"
+
     def __init__(self, metadata):
-        super(LoginLogoutBaseModel, self).__init__(self.TYPE, metadata.cliid, metadata.sessid)
+        super(LoginLogoutBaseModel, self).__init__(self.TYPE, metadata.sessid)
         self.metadata = metadata.dict_repr()
         self.protocol_versions = {
             'monitor': MONITOR_CONFIG['PROTO_VERSION'],
             'p2p': PROTOCOL_CONST.ID,
             'task': PROTOCOL_CONST.ID,
         }
+
 
 class LoginModel(LoginLogoutBaseModel):
     TYPE = "Login"

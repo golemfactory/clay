@@ -4,6 +4,7 @@ import threading
 
 import requests
 from pydispatch import dispatcher
+from golem.core.keysauth import KeysAuth
 
 from golem.config.active import SEND_PAYMENT_INFO_TO_MONITOR
 from golem.core import variables
@@ -67,8 +68,7 @@ class SenderThread(threading.Thread):
         try:
             for host in self.config['PING_ME_HOSTS']:
                 result = self.sender.send(
-                    PingModel(self.node_info.cliid,
-                              self.node_info.sessid, ports),
+                    PingModel(self.node_info.sessid, ports),
                     host=host, url_path='ping-me')
                 if result:
                     self.process_ping_result(result.json())
@@ -142,11 +142,13 @@ class PingService(LoopingCallService):
 class SystemMonitor:
     def __init__(self,
                  meta_data: NodeMetadataModel,
-                 monitor_config: dict) -> None:
+                 monitor_config: dict,
+                 sign_key: KeysAuth) -> None:
         self.meta_data = meta_data
-        self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
+        self.node_info = NodeInfoModel(meta_data.sessid)
         self.config = monitor_config
         self.send_payment_info = SEND_PAYMENT_INFO_TO_MONITOR
+        self.sign_key = sign_key
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
         self.sender_thread = self._create_sender_thread()
@@ -160,7 +162,7 @@ class SystemMonitor:
         return SenderThread(
             node_info=self.node_info,
             config=self.config,
-            sender=Sender(host, request_timeout, proto_ver)
+            sender=Sender(host, request_timeout, proto_ver, self.sign_key)
         )
 
     def p2p_listener(self, event='default', ports=None, *_, **__):
@@ -212,7 +214,7 @@ class SystemMonitor:
 
     def on_config_update(self, meta_data):
         self.meta_data = meta_data
-        self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
+        self.node_info = NodeInfoModel(meta_data.sessid)
         self.sender_thread.process('update_node_info', node_info=self.node_info)
         self.send_model(LoginModel(self.meta_data))
         self.ping_service.reconfigure(
@@ -240,7 +242,6 @@ class SystemMonitor:
 
     def on_vm_snapshot(self, vm_data):
         msg = statssnapshotmodel.VMSnapshotModel(
-            self.meta_data.cliid,
             self.meta_data.sessid,
             vm_data
         )
@@ -248,7 +249,6 @@ class SystemMonitor:
 
     def on_peer_snapshot(self, p2p_data):
         msg = statssnapshotmodel.P2PSnapshotModel(
-            self.meta_data.cliid,
             self.meta_data.sessid,
             p2p_data
         )
@@ -270,7 +270,6 @@ class SystemMonitor:
             return
         self.send_model(
             ExpenditureModel(
-                self.meta_data.cliid,
                 self.meta_data.sessid,
                 addr,
                 value
@@ -282,7 +281,6 @@ class SystemMonitor:
             return
         self.send_model(
             IncomeModel(
-                self.meta_data.cliid,
                 self.meta_data.sessid,
                 addr,
                 value

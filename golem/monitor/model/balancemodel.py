@@ -9,7 +9,6 @@ class BalanceModel(BasicModel):
                  gnt_balance: int, gntb_balance: int) -> None:
         super(BalanceModel, self).__init__(
             "Balance",
-            meta_data.cliid,
             meta_data.sessid
         )
         self.eth_balance = eth_balance

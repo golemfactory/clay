@@ -8,7 +8,6 @@ class NodeMetadataModel(BasicModel):
     def __init__(self, client, os, ver):
         super(NodeMetadataModel, self).__init__(
             "NodeMetadata",
-            client.get_key_id(),
             client.session_id)
 
         self.os = os
@@ -19,5 +18,5 @@ class NodeMetadataModel(BasicModel):
 
 
 class NodeInfoModel(BasicModel):
-    def __init__(self, cliid, sessid):
-        super(NodeInfoModel, self).__init__("NodeInfo", cliid, sessid)
+    def __init__(self, sessid):
+        super(NodeInfoModel, self).__init__("NodeInfo", sessid)
