@@ -80,10 +80,6 @@ class NodeProcess(object):
         self.provider_proxy.provider = provider
         self.web3 = Web3(self.provider_proxy)
 
-        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
-            self._handle_remote_rpc_provider_failure)
-        self.web3.middleware_stack.add(middleware_builder.build)
-
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
 
@@ -92,8 +88,11 @@ class NodeProcess(object):
                 return self._start_timed_out(provider, start_port)
             time.sleep(0.1)
 
-        log.info("Connected to node in %ss", time.time() - started)
+        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
+            self._handle_remote_rpc_provider_failure)
+        self.web3.middleware_stack.add(middleware_builder.build)
 
+        log.info("Connected to node in %ss", time.time() - started)
         return None
 
     @report_calls(Component.ethereum, 'node.stop')
@@ -120,7 +119,6 @@ class NodeProcess(object):
 
     def _start_timed_out(self, provider, start_port):
         if not self.start_node:
-            self.start_node = not self.addr_list
             return self.start(start_port)
         raise OSError("Cannot connect to geth: {}".format(provider))
 
