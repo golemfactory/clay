@@ -882,7 +882,7 @@ class TaskServer(
         node = report_computed_task.node_info
 
         self._add_pending_request(
-            TASK_CONN_TYPES['task_verification'],
+            TASK_CONN_TYPES['task_verification_result'],
             node,
             prv_port=node.prv_port,
             pub_port=node.pub_port,
@@ -985,7 +985,7 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
-    'task_verification': 8,
+    'task_verification_result': 8,
 }
 
 
