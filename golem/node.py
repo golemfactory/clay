@@ -163,7 +163,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
     def are_terms_accepted(self):
-        return True  # TODO: Remove when terms are ready
         return GenericKeyValue.select()\
             .where(
                 GenericKeyValue.key == self.TERMS_ACCEPTED_KEY,
