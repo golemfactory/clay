@@ -432,6 +432,19 @@ class TestNode(TestWithDatabase):
             )
             assert return_value.exit_code != 0
 
+    @patch('golem.terms.TermsOfUse.are_terms_accepted', return_value=object())
+    def test_are_terms_accepted(self, accepted, *_):
+        self.assertEqual(Node.are_terms_accepted(), accepted.return_value)
+
+    @patch('golem.terms.TermsOfUse.accept_terms')
+    def test_accept_terms(self, accept, *_):
+        Node.accept_terms()
+        accept.assert_called_once_with()
+
+    @patch('golem.terms.TermsOfUse.show_terms', return_value=object())
+    def test_show_terms(self, show, *_):
+        self.assertEqual(Node.show_terms(), show.return_value)
+
 
 def mock_async_run(req, success=None, error=None):
     deferred = Deferred()
