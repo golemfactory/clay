@@ -48,7 +48,7 @@ class CompTaskInfo:
         self.price = price
         self.requests = 1
         self.subtasks = {}
-        # TODO Add concent communication timeout
+        # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
 

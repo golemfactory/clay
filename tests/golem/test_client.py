@@ -244,7 +244,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         self.client.sync()
-        # TODO: assertTrue when re-enabled
+        # TODO: assertTrue when re-enabled. issue #2398
         self.assertFalse(self.client.transaction_system.sync.called)
 
     @patch('golem.client.EthereumTransactionSystem')

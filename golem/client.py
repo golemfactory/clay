@@ -168,9 +168,6 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        # TODO: Transaction system (and possible other modules) should be
-        #       modeled as a Service that run independently.
-        #       The Client/Application should be a collection of services.
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
@@ -243,7 +240,7 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable
+    # TODO: re-enable. issue #2398
     def sync(self):
         pass
 
@@ -1165,7 +1162,6 @@ class Client(HardwarePresetsMixin):
     def __lock_datadir(self):
         if not path.exists(self.datadir):
             # Create datadir if not exists yet.
-            # TODO: It looks we have the same code in many places
             makedirs(self.datadir)
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
@@ -1211,7 +1207,7 @@ class DoWorkService(LoopingCallService):
         super().start(now=False)
 
     def _run(self):
-        # TODO: split it into separate services
+        # TODO: split it into separate services. Issue #2431
 
         if self._client.config_desc.send_pings:
             self._client.p2pservice.ping_peers(
@@ -1320,6 +1316,7 @@ class ResourceCleanerService(LoopingCallService):
 
     def _run(self):
         # TODO: is any synchronization needed here? golemcli has none.
+        # Issue #2432
         self._client.remove_computed_files(self.older_than_seconds)
         self._client.remove_distributed_files(self.older_than_seconds)
         self._client.remove_received_files(self.older_than_seconds)

@@ -377,8 +377,8 @@ class TaskServer(
         if task_id is not None:
             self.decrease_trust_payment(task_id)
             # self.remove_task_header(task_id)
-            # TODO Inform transaction system and task manager about failed
-            # payment
+            # TODO Inform transaction system and task manager about rejected
+            # subtask. Issue #2405
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
@@ -401,7 +401,7 @@ class TaskServer(
     def get_result(self, rct_message):
         logger.warning('Should get result for %r', rct_message)
         # @todo: actually retrieve results from the provider based on
-        # the information in the `ReportComputedTask` message
+        # the information in the `ReportComputedTask` message. issue #2411
 
     def accept_result(self, subtask_id, account_info):
         mod = min(
@@ -521,7 +521,6 @@ class TaskServer(
         self.remove_responses(conn_id)
         super(TaskServer, self).final_conn_failure(conn_id)
 
-    # TODO: extend to multiple sessions
     def add_forwarded_session_request(self, key_id, conn_id):
         if self.task_computer.waiting_for_task:
             self.task_computer.wait(ttl=self.forwarded_session_request_timeout)
@@ -922,7 +921,7 @@ class WaitingTaskFailure(object):
         self.err_msg = err_msg
 
 
-# TODO: Get rid of archaic int labels and use plain strings instead.
+# TODO: Get rid of archaic int labels and use plain strings instead. issue #2404
 TASK_CONN_TYPES = {
     'task_request': 1,
     # unused: 'pay_for_task': 4,

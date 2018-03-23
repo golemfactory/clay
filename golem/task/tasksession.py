@@ -241,7 +241,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     # TODO address, port and eth_account should be in node_info
-    # (or shouldn't be here at all)
+    # (or shouldn't be here at all). Issue #2403
     def send_report_computed_task(
             self,
             task_result,

@@ -29,7 +29,9 @@ class TaskTypeInfo(object):
 
 
 # TODO change types to enums - for now it gets
-# evt.comp.task.test.status Error WAMP message serialization error: unsupported type: <enum 'ResultType'> undefined
+# evt.comp.task.test.status Error WAMP message serialization
+# error: unsupported type: <enum 'ResultType'> undefined
+# Issue #2408
 
 class ResultType(object): # class ResultType(Enum):
     DATA = 0
@@ -66,7 +68,7 @@ class TaskHeader(object):
         self.task_owner_address = task_owner_address
         self.task_owner_port = task_owner_port
         self.task_owner = task_owner
-        # TODO change last_checking param
+        # TODO change last_checking param. Issue #2407
         self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
@@ -165,7 +167,7 @@ class Task(abc.ABC):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    # TODO why do we need that instead of calling .build() directly?
+    # TODO why do we need that instead of calling .build() directly? issue #2409
     @classmethod
     def build_task(cls, task_builder: TaskBuilder) -> 'Task':
         if not isinstance(task_builder, TaskBuilder):
@@ -328,8 +330,8 @@ class Task(abc.ABC):
         """
         pass  # Implement in derived class
 
-    # TODO: Add description
     def get_resources(self) -> list:
+        """ Return list of files that are need to compute this task."""
         return []
 
     @abc.abstractmethod

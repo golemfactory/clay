@@ -820,7 +820,6 @@ class TaskManager(TaskEventListener):
         ss.computer.price = price
         ss.time_started = time.time()
         ss.deadline = ctd['deadline']
-        # TODO: read node ip address
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']

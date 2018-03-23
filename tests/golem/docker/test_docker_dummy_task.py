@@ -29,7 +29,7 @@ logging.getLogger("peewee").setLevel("INFO")
 
 
 # TODO: extract code common to this class and TestDockerBlenderTask
-# to a superclass
+# to a superclass. issue: G #2393
 
 @ci_skip
 class TestDockerDummyTask(TempDirFixture, DockerTestCase):

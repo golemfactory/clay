@@ -208,7 +208,7 @@ class PendingConnectionsServer(TCPServer):
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure()
-                # TODO Implement proper way to deal with failures
+                # TODO Implement proper way to deal with failures. Issue #2412
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()

@@ -25,7 +25,7 @@ class IncomesKeeper:
         pass
 
     def run_once(self):
-        # TODO Check for unpaid incomes and ask Concent for them
+        # TODO Check for unpaid incomes and ask Concent for them. issue #2194
         pass
 
     def received_batch_transfer(self, tx_hash, sender, amount, closure_time):
@@ -42,8 +42,9 @@ class IncomesKeeper:
             return
 
         if expected_value != amount:
-            # Need to report this to Concent if expected is greater
+            # TODO Need to report this to Concent if expected is greater
             # and probably move all these expected incomes to a different table
+            # issue #2255
             logger.warning(
                 'Batch transfer amount does not match, expected %r, got %r',
                 expected_value / denoms.ether,
@@ -55,7 +56,8 @@ class IncomesKeeper:
             value = min(amount_left, e.value)
             amount_left -= value
             e.transaction = tx_hash[2:]
-            e.value = value  # TODO don't change the value, wait for Concent
+            # TODO don't change the value, wait for Concent. issue #2255
+            e.value = value
             e.save()
 
         dispatcher.send(
@@ -97,7 +99,7 @@ class IncomesKeeper:
         income.save()
 
     def get_list_of_all_incomes(self):
-        # TODO: pagination
+        # TODO: pagination. issue #2402
         return Income.select(
             Income.created_date,
             Income.sender_node,

@@ -260,7 +260,7 @@ class PaymentProcessor(LoopingCallService):
             self._inprogress[tx_hash] = payments
 
         # Remove from reserved, because we monitor the pending block.
-        # TODO: Maybe we should only monitor the latest block?
+        # TODO: Maybe we should only monitor the latest block? issue #2414
         self.__gntb_reserved -= value
         self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
