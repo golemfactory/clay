@@ -58,7 +58,9 @@ class NodeProcess(object):
         self._mainnet = mainnet
         self.web3 = None  # web3 client interface
         self.provider_proxy = ProviderProxy()  # web3 ipc / rpc provider
-        self.addr_list = [addr] if addr else get_public_nodes(mainnet)
+
+        self.initial_addr_list = [addr] if addr else get_public_nodes(mainnet)
+        self.addr_list = self.initial_addr_list.copy()
 
         self.__ps = None  # child process
 
@@ -193,6 +195,7 @@ class NodeProcess(object):
         from golem.core.async import async_run, AsyncRequest
         log.warning('GETH: reconnecting to another provider (%r)', exc)
 
+        self.addr_list = self.initial_addr_list.copy()
         self.provider_proxy.provider = None
 
         request = AsyncRequest(self.start)

@@ -1,6 +1,5 @@
 import logging
 from os import path
-import unittest
 from unittest.mock import patch, Mock
 
 from ethereum.transactions import Transaction
@@ -71,7 +70,7 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
         assert np.start.called
 
 
-class TestPublicNodeList(unittest.TestCase):
+class TestPublicNodeList(TempDirFixture):
 
     def test_builtin_public_nodes(self):
         with patch('requests.get', lambda *_: None):
@@ -79,6 +78,21 @@ class TestPublicNodeList(unittest.TestCase):
 
         assert public_nodes is not NODE_LIST
         assert all(n in NODE_LIST for n in public_nodes)
+
+    @patch('golem.core.async.async_run')
+    def test_handle_remote_rpc_provider(self, _):
+        node = NodeProcess(self.tempdir, start_node=True)
+
+        assert node.provider_proxy
+        assert node.initial_addr_list
+        assert node.addr_list == node.initial_addr_list
+
+        node.provider_proxy.provider = Mock()
+        node.addr_list = []
+        node._handle_remote_rpc_provider_failure(Exception('test exception'))
+
+        assert node.provider_proxy.provider is None
+        assert node.addr_list == node.initial_addr_list
 
 
 class EthereumClientNodeTest(TempDirFixture):
