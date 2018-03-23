@@ -92,7 +92,6 @@ class DockerTaskThread(TaskThread):
                 if self.mc:
                     estm_mem = self.mc.stop()
                 if exit_code == 0:
-                    # TODO: this always returns file, implement returning data
                     out_files = []
                     for root, _, files in os.walk(output_dir):
                         for name in files:
@@ -129,7 +128,7 @@ class DockerTaskThread(TaskThread):
             self._cleanup()
 
     def get_progress(self):
-        # TODO: make the container update some status file?
+        # TODO: make the container update some status file? Issue #56
         return 0.0
 
     def end_comp(self):
