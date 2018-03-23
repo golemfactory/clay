@@ -22,6 +22,15 @@ RESPONSE_FOR_RCT = typing.Union[
 
 def verify_message_signature(
         msg: message.base.Message, ecc: cryptography.ECCx) -> bool:
+    """
+    Verifies that the message's signature belongs to the owner of the
+    specified key pair
+
+    :param msg: the Message to verify
+    :param ecc: the `ECCx` of the alleged owner
+    :return: `True` if the signature belongs to the same entity as the ecc
+             `False` otherwise
+    """
     try:
         ecc.verify(
             sig=msg.sig,
