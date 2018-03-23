@@ -1,6 +1,8 @@
 import logging
 
 import os.path
+import uuid
+
 from PIL import Image
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
@@ -24,7 +26,8 @@ class RenderingBenchmark(CoreBenchmark):
         self._task_definition.total_subtasks = 1
         self._task_definition.start_task = 1
         self._task_definition.end_task = 1
-        
+        self._task_definition.task_id = str(uuid.uuid4())
+
         # magic constant obtained experimentally
         self._normalization_constant = 9500
 

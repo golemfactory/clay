@@ -1,7 +1,6 @@
 import json
-from typing import Any, Optional
-from uuid import uuid4
 import re
+from typing import Any, Optional
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
@@ -9,7 +8,6 @@ from golem.core.deferred import sync_wait
 from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.resource.dirmanager import DirManager
-
 
 CREATE_TASK_TIMEOUT = 300  # s
 
@@ -202,10 +200,9 @@ class Tasks:
             raise ValueError(
                 "Task name can only contain letters, numbers, "
                 "spaces, underline, dash or dot.")
-        # FIXME CHANGE TASKI ID
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
-        dictionary['id'] = str(uuid4())
+
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 

@@ -66,3 +66,15 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         )
         assert node_class.called
         assert PROTOCOL_CONST.ID == custom_id
+
+    @mock.patch('golem.rpc.cert.CertificateManager')
+    def test_generate_rpc_cert(self, cert_manager, *_):
+        cert_manager.return_value = cert_manager
+
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--generate-rpc-cert'],
+            catch_exceptions=False,
+        )
+        assert cert_manager.generate_if_needed.called

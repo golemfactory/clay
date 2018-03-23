@@ -4,7 +4,7 @@ from functools import partial
 import io
 import json
 import unittest
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import MagicMock, Mock, mock_open, patch
 import uuid
 
 from ethereum.utils import denoms
@@ -20,6 +20,7 @@ from golem.interface.client.payments import incomes, payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
+from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -401,6 +402,7 @@ class TestTasks(TempDirFixture):
         client.get_tasks = self.get_tasks
         client.get_subtasks = self.get_subtasks
         client.get_unsupport_reasons = self.get_unsupport_reasons
+        client.keys_auth = Mock(public_key=b'a' * 128)
 
         self.client = client
 
@@ -419,10 +421,8 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-    @patch("golem.interface.client.tasks.uuid4")
-    def test_create(self, mock_uuid) -> None:
+    def test_create(self) -> None:
         client = self.client
-        mock_uuid.return_value = "new_uuid"
 
         definition = TaskDefinition()
         definition.task_name = "The greatest task ever"
@@ -432,7 +432,6 @@ class TestTasks(TempDirFixture):
             tasks = Tasks()
             tasks._Tasks__create_from_json(def_str)
             task_def = json.loads(def_str)
-            task_def['id'] = "new_uuid"
             client.create_task.assert_called_with(task_def)
 
             patched_open = "golem.interface.client.tasks.open"
@@ -453,8 +452,7 @@ class TestTasks(TempDirFixture):
                 read_data='{"name": "Golem task"}'
             )):
                 tasks.create("foo")
-                task_def = json.loads(
-                    '{"id": "new_uuid", "name": "Golem task"}')
+                task_def = json.loads('{"name": "Golem task"}')
                 client.create_task.assert_called_with(task_def)
 
     def test_template(self) -> None:
@@ -711,3 +709,29 @@ class TestDebug(unittest.TestCase):
 
             with self.assertRaises(CommandException):
                 debug.rpc((task_id, ))
+
+
+class TestTerms(unittest.TestCase):
+
+    def setUp(self):
+        super(TestTerms, self).setUp()
+
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    @patch('golem.interface.client.terms.html2text.html2text',
+           return_value=object())
+    def test_show(self, html2text: MagicMock):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            result = terms.show()
+            self.client.show_terms.assert_called_once()
+            html2text.assert_called_once_with(
+                self.client.show_terms.return_value)
+            self.assertEqual(result, html2text.return_value)
+
+    def test_accept(self):
+        with client_ctx(Terms, self.client):
+            terms = Terms()
+            terms.accept()
+            self.client.accept_terms.assert_called_once()

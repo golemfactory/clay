@@ -10,7 +10,7 @@ from golem_messages import message
 from twisted.internet.defer import Deferred
 
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
-    HyperdriveClient
+    HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
@@ -140,7 +140,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         assert session._start_handshake.called
         assert not session._handshake_error.called
-        session._download_handshake_nonce.assert_called_with(ANY, resource)
+        session._download_handshake_nonce.assert_called_with(ANY, resource, ANY)
 
     def test_react_to_resource_handshake_start_blocked_peer(self, *_):
         session = MockTaskSession(self.tempdir)
@@ -477,18 +477,19 @@ class TestResourceHandshakeShare(DatabaseFixture):
         remote_session._start_handshake(remote_session.key_id)
         msg = remote_session.send.call_args[0][0]
         remote_hash = msg.resource
+        options = Mock()
 
         local_session.send.reset_mock()
         remote_session.send.reset_mock()
 
         # Download nonces on both sides
         local_session._download_handshake_nonce(local_session.key_id,
-                                                remote_hash)
+                                                remote_hash, options)
         assert not local_session._handshake_error.called
         assert local_session.send.called
 
         remote_session._download_handshake_nonce(remote_session.key_id,
-                                                 local_hash)
+                                                 local_hash, options)
         assert not remote_session._handshake_error.called
         assert remote_session.send.called
 
@@ -570,7 +571,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
             )
         )
 
-        peers = ['127.0.0.1:3282']
+        peers = to_hyperg_peer('127.0.0.1', 3282)
         client_options = HyperdriveClientOptions(
             HyperdriveClient.CLIENT_ID,
             HyperdriveClient.VERSION,
@@ -597,6 +598,11 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.disconnect = Mock()
         self.dropped = Mock()
 
+        self.content_to_pull = str(uuid.uuid4())
+        self.successful_downloads = successful_downloads
+        self.successful_uploads = successful_uploads
+
+        self.address = "192.168.0.11"
         self.key_id = str(uuid.uuid4())
         self.address = '1.2.3.4'
         self.data_dir = data_dir

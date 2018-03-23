@@ -12,7 +12,11 @@ from golem_sci.interface import TransactionReceipt
 from twisted.internet.task import Clock
 
 from golem.core.common import timestamp_to_datetime
-from golem.ethereum.paymentprocessor import PaymentProcessor, tETH_faucet_donate
+from golem.ethereum.paymentprocessor import (
+    PaymentProcessor,
+    tETH_faucet_donate,
+    PAYMENT_MAX_DELAY,
+)
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
@@ -144,10 +148,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         eth_available = balance_eth - eth_reserved
         assert self.pp._eth_available() == eth_available
 
-        self.pp.DEFAULT_DEADLINE = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
-        assert self.pp.sendout()
+        assert self.pp.sendout(0)
         assert self.sci.batch_transfer.call_count == 1
 
         assert len(inprogress) == 1
@@ -222,11 +225,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
 
-        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
-        assert self.pp.sendout()
+        assert self.pp.sendout(0)
 
         # Check payment status in the Blockchain
         self.sci.get_transaction_receipt.return_value = None
@@ -247,7 +249,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.status, PaymentStatus.awaiting)
 
         self.pp.deadline = int(time.time())
-        assert self.pp.sendout()
+        assert self.pp.sendout(0)
         self.assertEqual(len(inprogress), 1)
 
         receipt.status = True
@@ -329,6 +331,12 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
+    def test_sendout_on_stop(self):
+        self.pp.sendout = mock.Mock()
+        self.pp.start()
+        self.pp.stop()
+        self.pp.sendout.assert_called_once_with(0)
+
 
 def make_awaiting_payment(value=None, ts=None):
     p = mock.Mock()
@@ -370,7 +378,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.request_gnt_from_faucet.assert_called_once()
 
     def test_batch_transfer(self):
-        deadline = self.pp.DEFAULT_DEADLINE
+        deadline = PAYMENT_MAX_DELAY
         self.pp.CLOSURE_TIME_DELAY = 0
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
@@ -423,12 +431,10 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         with freeze_time(timestamp_to_datetime(5000000)):
             self.pp.add(p5)
 
-        self.pp.DEFAULT_DEADLINE = 0
-
         closure_time = 2000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
                 closure_time)
@@ -437,14 +443,14 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         closure_time = 4000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_not_called()
             self.sci.batch_transfer.reset_mock()
 
         closure_time = 6000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p5],
                 closure_time)
@@ -454,7 +460,6 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
-        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -465,7 +470,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p5)
 
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
                 10000)
@@ -474,7 +479,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 5 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p5],
                 10000)
@@ -484,7 +489,6 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
-        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
@@ -495,7 +499,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p5)
 
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1],
                 10000)
@@ -504,7 +508,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 10 * denoms.ether
         self.pp.gnt_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p2, p5],
                 10000)
@@ -515,7 +519,6 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             (self.sci.GAS_BATCH_PAYMENT_BASE + 2 * self.sci.GAS_PER_PAYMENT)
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
-        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1, ts=1)
@@ -526,7 +529,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p5)
 
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
                 10000)
@@ -535,7 +538,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.pp.eth_balance(refresh=True)
         with freeze_time(timestamp_to_datetime(10000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p5],
                 10000)
@@ -545,7 +548,6 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = 1000 * denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
-        self.pp.DEFAULT_DEADLINE = 0
         self.pp.CLOSURE_TIME_DELAY = 0
 
         p1 = make_awaiting_payment(value=1, ts=300000)
@@ -556,7 +558,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.add(p3)
 
         with freeze_time(timestamp_to_datetime(200000)):
-            self.pp.sendout()
+            self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with([p3, p2], 200000)
 
 

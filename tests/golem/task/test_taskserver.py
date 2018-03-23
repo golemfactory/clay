@@ -3,7 +3,7 @@ import random
 import uuid
 from collections import deque
 from math import ceil
-from unittest.mock import Mock, MagicMock, patch, ANY
+from unittest.mock import Mock, MagicMock, patch
 
 from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
@@ -15,7 +15,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.hyperdrive.client import DEFAULT_HYPERDRIVE_PORT
+from golem.network.hyperdrive.client import HyperdriveClientOptions, \
+    HyperdriveClient, to_hyperg_peer
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
@@ -645,19 +646,29 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         self.client.resource_server.resource_manager = rm
         ts = self.ts
 
-        forced_peer = {'TCP': ['1.2.3.4', DEFAULT_HYPERDRIVE_PORT]}
-        existing_peer = {'TCP': ['4.5.6.7', 4282]}
+        options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
+                                          HyperdriveClient.VERSION)
 
-        client_options = ts.get_download_options('node_key_id')
-        assert client_options.options.get('peers') == []
-        client_options = ts.get_download_options('node_key_id', '1.2.3.4')
-        assert client_options.options.get('peers') == [forced_peer]
+        client_options = ts.get_download_options(options, task_id='task_id')
+        assert client_options.peers is None
 
-        ts.get_resource_peer = Mock(return_value=existing_peer)
-        client_options = ts.get_download_options('node_key_id')
-        assert client_options.options.get('peers') == [existing_peer]
-        client_options = ts.get_download_options('node_key_id', '1.2.3.4')
-        assert client_options.options.get('peers') == [forced_peer]
+        peers = [
+            to_hyperg_peer('127.0.0.1', 3282),
+            to_hyperg_peer('127.0.0.1', 0),
+            to_hyperg_peer('127.0.0.1', None),
+            to_hyperg_peer('1.2.3.4', 3282),
+            {'uTP': ('1.2.3.4', 3282)}
+        ]
+
+        options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
+                                          HyperdriveClient.VERSION,
+                                          options=dict(peers=peers))
+
+        client_options = ts.get_download_options(options, task_id='task_id')
+        assert client_options.options.get('peers') == [
+            to_hyperg_peer('127.0.0.1', 3282),
+            to_hyperg_peer('1.2.3.4', 3282),
+        ]
 
 
 class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):

@@ -13,9 +13,9 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
+import golem
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -25,7 +25,6 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, Income
@@ -88,13 +87,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.client.quit()
 
     def test_get_payments(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(_private_key='a' * 32)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -136,13 +134,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             )
 
     def test_get_incomes(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(_private_key='a' * 32)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -180,7 +177,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 received_incomes[i]['value'], str(incomes[n - i].value)
             )
 
-    def test_payment_address(self, *_):
+    @patch('golem.client.EthereumTransactionSystem')
+    def test_withdraw_testnet(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
         self.client = Client(
@@ -188,6 +186,41 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False,
+            mainnet=False,
+        )
+        with self.assertRaisesRegex(Exception, 'Withdrawals.*disabled'):
+            self.client.withdraw('123', '0xdead', 'ETH')
+
+    def test_withdraw(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+                mainnet=True,
+            )
+            self.client.withdraw('123', '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+
+    def test_payment_address(self, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=(Mock(_private_key='a' * 32)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -200,13 +233,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
            'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(_private_key='a' * 32)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -222,6 +254,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -271,6 +304,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -281,7 +315,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             Client(datadir=datadir,
                    app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
-                   keys_auth=Mock())
+                   keys_auth=Mock(),
+                   database=Mock())
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_get_status(self, *_):
@@ -290,6 +325,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -329,19 +365,19 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
         )
         self.client.db = None
         self.client.quit()
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_collect_gossip(self, *_):
-        keys_auth = Mock()
-        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(key_id='a' * 64)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -356,6 +392,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -381,6 +418,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -419,35 +457,32 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_start_stop(self, connect_to_network, *_):
-        keys_auth = Mock()
-        keys_auth.key_id = "a" * 64
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=(Mock(key_id='a' * 64)),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
 
         self.client.start()
         sync_wait(deferred)
 
-        p2p_disc = self.client.p2pservice.disconnect
-        task_disc = self.client.task_server.disconnect
-
-        self.client.p2pservice.disconnect = Mock()
-        self.client.p2pservice.disconnect.side_effect = p2p_disc
-        self.client.task_server.disconnect = Mock()
-        self.client.task_server.disconnect.side_effect = task_disc
+        self.client.p2pservice.disconnect = Mock(
+            side_effect=self.client.p2pservice.disconnect)
+        self.client.task_server.disconnect = Mock(
+            side_effect=self.client.task_server.disconnect)
 
         self.client.stop()
 
-        assert self.client.p2pservice.disconnect.called
-        assert self.client.task_server.disconnect.called
+        self.client.p2pservice.disconnect.assert_called_once()
+        self.client.task_server.disconnect.assert_called_once()
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
@@ -455,12 +490,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
-        keys_auth = KeysAuth(self.path, 'priv_key', '')
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
+            keys_auth=Mock(_private_key='a' * 32,
+                           key_id='a' * 64,
+                           public_key=b'a' * 128),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -471,6 +508,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
+        self.client.are_terms_accepted = lambda: True
         self.client.start()
         sync_wait(deferred)
 
@@ -549,6 +587,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
+            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -806,21 +845,22 @@ def make_mock_payment_processor(sci, eth=100, gnt=100):
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
-        keys_auth = KeysAuth(self.path, 'priv_key', '')
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             client = Client(
                 datadir=self.path,
                 app_config=Mock(),
                 config_desc=ClientConfigDescriptor(),
-                keys_auth=keys_auth,
+                keys_auth=Mock(_private_key='a' * 32,
+                               key_id='a' * 64,
+                               public_key=b'a' * 128),
+                database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False
             )
 
         client.sync = Mock()
-        client.keys_auth = Mock(key_id=str(uuid.uuid4()))
         client.p2pservice = Mock(peers={})
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
@@ -839,7 +879,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
-        c.keys_auth = KeysAuth(self.path, 'priv_key', '')
 
         self.assertIsInstance(c.get_node(), dict)
 
@@ -978,6 +1017,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             start_task, c.task_server.task_manager)
         c.task_server.task_manager.add_new_task = MethodType(
             add_new_task, c.task_server.task_manager)
+        c.task_server.task_manager.key_id = 'deadbeef'
 
         c.resource_server.create_resource_package = Mock(
             side_effect=create_resource_package)
@@ -1065,7 +1105,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                    return_value=True), \
                 patch("golem.docker.job.DockerJob.__init__",
                       side_effect=raise_exc), \
-                self.assertRaises(Exception):
+                self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")

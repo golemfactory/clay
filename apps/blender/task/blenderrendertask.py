@@ -2,29 +2,32 @@ import logging
 import math
 import os
 import random
-import numpy
+import time
 from collections import OrderedDict
 from copy import copy
-import time
+
+import numpy
 from PIL import Image, ImageChops, ImageFile
 
+import apps.blender.resources.blenderloganalyser as log_analyser
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task import coretask
+from apps.core.task.coretask import CoreTaskTypeInfo
+from apps.rendering.resources.imgrepr import load_as_pil
+from apps.rendering.resources.renderingtaskcollector import \
+    RenderingTaskCollector
+from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
+    FrameRenderingTaskBuilder, FrameRendererOptions
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
+    RendererDefaults
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-
-from apps.blender.blenderenvironment import BlenderEnvironment
-import apps.blender.resources.blenderloganalyser as log_analyser
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.blender.task.verifier import BlenderVerifier
-from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_as_pil
-from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error, handle_none
-from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 # Allow loading truncated images.
 # https://github.com/golemfactory/golem/issues/2059
@@ -335,6 +338,10 @@ class BlenderRenderTask(FrameRenderingTask):
         FrameRenderingTask.__init__(self, task_definition=task_definition,
                                     **kwargs)
 
+        # https://github.com/golemfactory/golem/issues/2388
+        self.compositing = False
+        return
+
         self.compositing = task_definition.options.compositing \
             and self.use_frames \
             and (self.total_tasks <= len(self.frames))
@@ -422,21 +429,23 @@ class BlenderRenderTask(FrameRenderingTask):
                       "output_format": self.output_format,
                       }
 
-        hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[hash] = copy(extra_data)
-        self.subtasks_given[hash]['subtask_id'] = hash
-        self.subtasks_given[hash]['status'] = SubtaskStatus.starting
-        self.subtasks_given[hash]['perf'] = perf_index
-        self.subtasks_given[hash]['node_id'] = node_id
-        self.subtasks_given[hash]['parts'] = parts
-        self.subtasks_given[hash]['res_x'] = self.res_x
-        self.subtasks_given[hash]['res_y'] = self.res_y
-        self.subtasks_given[hash]['use_frames'] = self.use_frames
-        self.subtasks_given[hash]['all_frames'] = self.frames
-        self.subtasks_given[hash]['crop_window'] = (0.0, 1.0, min_y, max_y)
-        self.subtasks_given[hash]['subtask_timeout'] = \
+        subtask_id = self.create_subtask_id()
+        self.subtasks_given[subtask_id] = copy(extra_data)
+        self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
+        self.subtasks_given[subtask_id]['perf'] = perf_index
+        self.subtasks_given[subtask_id]['node_id'] = node_id
+        self.subtasks_given[subtask_id]['parts'] = parts
+        self.subtasks_given[subtask_id]['res_x'] = self.res_x
+        self.subtasks_given[subtask_id]['res_y'] = self.res_y
+        self.subtasks_given[subtask_id]['use_frames'] = self.use_frames
+        self.subtasks_given[subtask_id]['all_frames'] = self.frames
+        self.subtasks_given[subtask_id]['crop_window'] = (0.0, 1.0, min_y,
+                                                          max_y)
+        self.subtasks_given[subtask_id]['subtask_timeout'] = \
             self.header.subtask_timeout
-        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir  # FIXME issue #1955
+        self.subtasks_given[subtask_id]['tmp_dir'] = self.tmp_dir
+        # FIXME issue #1955
 
         part = self._count_part(start_task, parts)
 
@@ -447,15 +456,16 @@ class BlenderRenderTask(FrameRenderingTask):
             state.status = TaskStatus.computing
             state.started = state.started or time.time()
 
-            self.frames_subtasks[frame_key][part - 1] = hash
+            self.frames_subtasks[frame_key][part - 1] = subtask_id
 
         if not self.use_frames:
             self._update_task_preview()
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, perf_index=perf_index)
-        self.subtasks_given[hash]['ctd'] = ctd
+        ctd = self._new_compute_task_def(subtask_id, extra_data,
+                                         perf_index=perf_index)
+        self.subtasks_given[subtask_id]['ctd'] = ctd
         return self.ExtraData(ctd=ctd)
 
     def restart(self):

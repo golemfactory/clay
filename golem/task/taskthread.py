@@ -3,7 +3,6 @@ import logging
 import os
 import threading
 import time
-import traceback
 
 
 logger = logging.getLogger("golem.task.taskthread")
@@ -48,16 +47,20 @@ class TaskThread(threading.Thread):
 
     def check_timeout(self):
         if not self._parent_thread.is_alive():
-            failure = JobException("Task terminated")
-            self._fail(failure)
+            try:
+                raise JobException("Task terminated")
+            except JobException as e:
+                self._fail(e)
         elif self.use_timeout:
             time_ = time.time()
             self.task_timeout -= time_ - self.last_time_checking
             self.last_time_checking = time_
             if self.task_timeout < 0:
-                failure = TimeoutException("Task timed out {:.1f}s"
+                try:
+                    raise TimeoutException("Task timed out {:.1f}s"
                                            .format(self.time_to_compute))
-                self._fail(failure)
+                except TimeoutException as e:
+                    self._fail(e)
 
     def get_subtask_id(self):
         return self.subtask_id
@@ -95,8 +98,7 @@ class TaskThread(threading.Thread):
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.error("Task computing error: %s", exception)
-        logger.error("%r", traceback.format_tb(exception.__traceback__))
+        logger.exception("Task computing error")
 
         self.error = True
         self.error_msg = str(exception)

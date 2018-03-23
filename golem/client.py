@@ -8,7 +8,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional
+from typing import Dict, Hashable, Optional, Union, List
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -35,7 +35,6 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -90,6 +89,7 @@ class Client(HardwarePresetsMixin):
             app_config: AppConfig,
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
+            database: Database,
             mainnet: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
@@ -117,10 +117,7 @@ class Client(HardwarePresetsMixin):
             self.config_desc.node_name,
             datadir
         )
-
-        # Initialize database
-        self.db = Database(db, fields=DB_FIELDS, models=DB_MODELS,
-                           db_dir=datadir)
+        self.db = database
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
@@ -185,6 +182,7 @@ class Client(HardwarePresetsMixin):
 
         self.funds_locker = FundsLocker(self.transaction_system,
                                         Path(self.datadir))
+        self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -251,6 +249,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
+
         logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
         self.concent_service.start()
@@ -399,10 +398,8 @@ class Client(HardwarePresetsMixin):
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
         logger.info("Starting p2p server ...")
-        resource_manager = self.resource_server.resource_manager
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(resource_manager.peer_manager)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
@@ -853,6 +850,19 @@ class Client(HardwarePresetsMixin):
 
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
+
+    def withdraw(
+            self,
+            amount: Union[str, int],
+            destination: str,
+            currency: str) -> List[str]:
+        if not self.mainnet:
+            raise Exception("Withdrawals are disabled on testnet")
+
+        if isinstance(amount, str):
+            amount = int(amount)
+
+        return self.transaction_system.withdraw(amount, destination, currency)
 
     def get_task_cost(self, task_id):
         """

@@ -8,7 +8,6 @@ from twisted.internet.defer import Deferred
 from golem.core.fileshelper import common_dir
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.resource.client import ClientHandler, DummyClient
-from golem.resource.hyperdrive.peermanager import HyperdrivePeerManager
 from golem.resource.hyperdrive.resource import Resource, ResourceStorage, \
     ResourceError
 
@@ -81,7 +80,6 @@ class HyperdriveResourceManager(ClientHandler):
         super().__init__(config)
 
         self.client = HyperdriveAsyncClient(**self.config.client)
-        self.peer_manager = HyperdrivePeerManager(daemon_address)
         self.storage = ResourceStorage(dir_manager, resource_dir_method or
                                        dir_manager.get_task_resource_dir)
 

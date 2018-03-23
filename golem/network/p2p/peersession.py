@@ -502,7 +502,6 @@ class PeerSession(BasicSafeSession):
             node_info=self.p2p_service.node.to_dict(),
             client_ver=golem.__version__,
             rand_val=self.rand_val,
-            metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,
             **challenge_kwargs
         )
@@ -551,10 +550,6 @@ class PeerSession(BasicSafeSession):
                 return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
-        self.p2p_service.interpret_metadata(self.metadata,
-                                            self.address,
-                                            self.listen_port,
-                                            self.node_info)
         self.p2p_service.add_peer(self)
         self.p2p_service.verified_conn(self.conn_id)
         self.p2p_service.add_known_peer(

@@ -31,7 +31,6 @@ class LuxBenchmark(RenderingBenchmark):
         self.task_definition.options = LuxRenderOptions()
         self.task_definition.options.haltspp = 5
         self.task_definition.options.halttime = 0
-        self.task_definition.task_id = "{}".format("lux_benchmark")
         self.task_definition.main_scene_file = join(self.lux_task_path,
                                                     "schoolcorridor.lxs")
         self.task_definition.main_program_file =\
