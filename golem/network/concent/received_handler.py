@@ -284,11 +284,12 @@ class TaskServerMessageHandler():
     # pylint:enable=no-self-use
 
     @staticmethod
-    def _log_ftt_invalid(self, msg):
+    def _log_ftt_invalid(msg: message.base.Message):
         logger.warning("File Transfer Token invalid in %r", msg)
 
     @handler_for(message.concents.ForceGetTaskResultUpload)
-    def on_force_get_task_result_upload(self, msg, **_):
+    def on_force_get_task_result_upload(
+            self, msg: message.concents.ForceGetTaskResultUpload, **_):
         """
         Concent requests an upload from a Provider
         """
@@ -318,7 +319,8 @@ class TaskServerMessageHandler():
             wtr.result_path, ftt, success=success, error=error)
 
     @handler_for(message.concents.ForceGetTaskResultDownload)
-    def on_force_get_task_results_download(self, msg, **_):
+    def on_force_get_task_results_download(
+            self, msg: message.concents.ForceGetTaskResultDownload, **_):
         """
         Concent informs the Requestor that the results are available for
         download from the Concent.
