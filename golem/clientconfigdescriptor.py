@@ -56,7 +56,6 @@ class ClientConfigDescriptor(object):
         self.eth_account = ""
         self.min_price = 0
         self.max_price = 0
-        self.public_address = ""
 
         self.accept_tasks = 1
 
