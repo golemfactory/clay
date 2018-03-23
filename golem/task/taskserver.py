@@ -22,6 +22,7 @@ from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
@@ -403,7 +404,7 @@ class TaskServer(
         # @todo: actually retrieve results from the provider based on
         # the information in the `ReportComputedTask` message. issue #2411
 
-    def accept_result(self, subtask_id, account_info):
+    def accept_result(self, subtask_id, account_info: EthAccountInfo):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -418,7 +419,7 @@ class TaskServer(
 
         if not account_info.eth_account.address:
             logger.warning("Unknown payment address of %r (%r). Subtask: %r",
-                           account_info.node_name, account_info.addr,
+                           account_info.node_name, account_info.key_id,
                            subtask_id)
             return
 

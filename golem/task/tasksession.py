@@ -538,8 +538,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.result_owner = EthAccountInfo(
             msg.key_id,
-            msg.port,
-            msg.address,
             msg.node_name,
             p2p_node.Node.from_dict(msg.node_info),
             msg.eth_account
