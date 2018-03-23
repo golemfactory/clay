@@ -28,7 +28,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
 
         # test get payments
         addr = urandom(20)
-        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", "info", addr)
+        ai = EthAccountInfo("DEF", "node1", "info", addr)
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
         with self.assertLogs(logger, level='DEBUG') as l:
             self.assertEqual(0, pd.get_payment_value(pi))
@@ -118,7 +118,7 @@ class TestPaymentsKeeper(TestWithDatabase):
         pk = PaymentsKeeper()
         addr = urandom(20)
         addr2 = urandom(20)
-        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "1", "i", addr2)
+        ai = EthAccountInfo("DEF", "1", "i", addr2)
         pi = PaymentInfo("xyz", "xxyyzz", 2023, ai)
         pk.finished_subtasks(pi)
         pi.subtask_id = "aabbcc"
@@ -159,14 +159,12 @@ class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
         k = KeysAuth(self.path, 'priv_key', 'password')
         e = urandom(20)
-        a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
-                           e)
-        b = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test", Node(),
-                           e)
+        a = EthAccountInfo(k.key_id, "test-test-test", Node(), e)
+        b = EthAccountInfo(k.key_id, "test-test-test", Node(), e)
         self.assertEqual(a, b)
         n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10",
                  pub_port=1032)
-        c = EthAccountInfo(k.key_id, 5112, "10.0.0.2", "test-test2-test", n, e)
+        c = EthAccountInfo(k.key_id, "test-test2-test", n, e)
         self.assertEqual(a, c)
         k = KeysAuth(
             "%s_other" % self.path,
