@@ -677,6 +677,7 @@ class Client(HardwarePresetsMixin):
         self.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
+        self.funds_locker.remove_task(task_id)
 
     def get_node(self):
         return self.node.to_dict()
