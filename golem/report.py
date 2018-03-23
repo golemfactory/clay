@@ -46,13 +46,16 @@ class StatusPublisher(object):
         :return: None
         """
         if cls._rpc_publisher:
+            from twisted.internet import reactor
+
             cls._last_status = (to_unicode(component),
                                 to_unicode(method),
                                 to_unicode(stage),
                                 data)
 
-            cls._rpc_publisher.publish(Golem.evt_golem_status,
-                                       *cls._last_status)
+            reactor.callFromThread(cls._rpc_publisher.publish,
+                                   Golem.evt_golem_status,
+                                   *cls._last_status)
 
     @classmethod
     def last_status(cls):

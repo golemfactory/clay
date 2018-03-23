@@ -64,7 +64,6 @@ def ipv4_networks():
     return addresses
 
 
-ip4Addresses = ip_addresses
 get_host_addresses = ip_addresses
 
 

@@ -1,3 +1,4 @@
+import uuid
 from os.path import join
 from pathlib import Path
 
@@ -25,7 +26,7 @@ class DummyTaskBenchmark(CoreBenchmark):
 
         td.out_file_basename = td.out_file_basename
 
-        td.task_id = "dummy_benchmark"
+        td.task_id = str(uuid.uuid4())
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()

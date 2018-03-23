@@ -2,17 +2,18 @@ import glob
 import logging
 import math
 import os
-from pathlib import Path
 import random
 import shutil
 from collections import OrderedDict
 from copy import copy
+from pathlib import Path
 
 from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
+from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
@@ -27,7 +28,6 @@ from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from apps.core.task.coretaskstate import Options
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")
@@ -217,21 +217,22 @@ class LuxTask(renderingtask.RenderingTask):
                       "scene_dir": scene_dir,
                       }
 
-        hash = "{}".format(random.getrandbits(128))
-        self.subtasks_given[hash] = copy(extra_data)
-        self.subtasks_given[hash]['status'] = SubtaskStatus.starting
-        self.subtasks_given[hash]['perf'] = perf_index
-        self.subtasks_given[hash]['node_id'] = node_id
-        self.subtasks_given[hash]['res_x'] = self.res_x
-        self.subtasks_given[hash]['res_y'] = self.res_y
-        self.subtasks_given[hash]['verification_crop_window'] = \
+        subtask_id = self.create_subtask_id()
+        self.subtasks_given[subtask_id] = copy(extra_data)
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
+        self.subtasks_given[subtask_id]['perf'] = perf_index
+        self.subtasks_given[subtask_id]['node_id'] = node_id
+        self.subtasks_given[subtask_id]['res_x'] = self.res_x
+        self.subtasks_given[subtask_id]['res_y'] = self.res_y
+        self.subtasks_given[subtask_id]['verification_crop_window'] = \
             self.random_crop_window_for_verification
-        self.subtasks_given[hash]['subtask_id'] = hash
-        self.subtasks_given[hash]['root_path'] = self.root_path
-        self.subtasks_given[hash]['tmp_dir'] = self.tmp_dir
-        self.subtasks_given[hash]['merge_ctd'] = self.__get_merge_ctd([])
+        self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
+        self.subtasks_given[subtask_id]['root_path'] = self.root_path
+        self.subtasks_given[subtask_id]['tmp_dir'] = self.tmp_dir
+        self.subtasks_given[subtask_id]['merge_ctd'] = self.__get_merge_ctd([])
 
-        ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
+        ctd = self._new_compute_task_def(
+            subtask_id, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
     # GG propably same as query_extra_data_for_merge
@@ -452,7 +453,7 @@ class LuxTask(renderingtask.RenderingTask):
 
         extra_data = {'output_flm': Path(self.output_file).as_posix(),
                       'flm_files': files}
-        ctd = self._new_compute_task_def(hash=self.header.task_id,
+        ctd = self._new_compute_task_def(subtask_id=self.header.task_id,
                                          extra_data=extra_data,
                                          perf_index=0)
 

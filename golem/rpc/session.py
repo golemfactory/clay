@@ -5,8 +5,14 @@ from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
+from twisted.internet import ssl as twisted_ssl
+from twisted.internet._sslverify import optionsForClientTLS  # noqa # pylint: disable=protected-access
 from twisted.internet.defer import inlineCallbacks, Deferred
-from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.internet.endpoints import (
+    TCP4ClientEndpoint, TCP6ClientEndpoint, SSL4ClientEndpoint
+)
+
+from golem.rpc.common import X509_COMMON_NAME
 
 logger = logging.getLogger('golem.rpc')
 
@@ -36,7 +42,7 @@ class RPCAddress(object):
 
 class WebSocketAddress(RPCAddress):
 
-    def __init__(self, host, port, realm, ssl=False):
+    def __init__(self, host, port, realm, ssl=True):
         self.realm = str(realm)
         self.ssl = ssl
 
@@ -46,7 +52,9 @@ class WebSocketAddress(RPCAddress):
 
 class Session(ApplicationSession):
 
-    def __init__(self, address, methods=None, events=None):
+    def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
+                 cert_manager=None, use_ipv6=False) -> None:
+
         self.address = address
         self.methods = methods or []
         self.events = events or []
@@ -55,8 +63,11 @@ class Session(ApplicationSession):
         self.ready = Deferred()
         self.connected = False
 
+        self._cert_manager = cert_manager
+
         self._client = None
         self._reconnect_service = None
+        self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
@@ -92,9 +103,29 @@ class Session(ApplicationSession):
             autoPingSize=4,
         )
 
-        self._client = TCP4ClientEndpoint(reactor,
-                                          self.address.host,
-                                          self.address.port)
+        if self.address.ssl:
+            if self._cert_manager:
+                cert_data = self._cert_manager.read_certificate()
+                authority = twisted_ssl.Certificate.loadPEM(cert_data)
+            else:
+                authority = None
+
+            context_factory = optionsForClientTLS(X509_COMMON_NAME,
+                                                  trustRoot=authority)
+            self._client = SSL4ClientEndpoint(reactor,
+                                              self.address.host,
+                                              self.address.port,
+                                              context_factory)
+        else:
+            if self._use_ipv6:
+                endpoint_cls = TCP6ClientEndpoint
+            else:
+                endpoint_cls = TCP4ClientEndpoint
+
+            self._client = endpoint_cls(reactor,
+                                        self.address.host,
+                                        self.address.port)
+
         if auto_reconnect:
             self._reconnect_service = ClientService(
                 endpoint=self._client,
@@ -130,6 +161,11 @@ class Session(ApplicationSession):
         super(Session, self).onDisconnect()
 
     @inlineCallbacks
+    def add_methods(self, methods):
+        self.methods += methods
+        yield self.register_methods(methods)
+
+    @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
             deferred = self.register(method, str(rpc_name))
@@ -161,6 +197,7 @@ class Session(ApplicationSession):
     @staticmethod
     def _on_error(err):
         logger.error("RPC: Session error: {}".format(err))
+        return err
 
 
 class Client(object):

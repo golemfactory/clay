@@ -60,6 +60,9 @@ setup(
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
         ]),
+        (path.normpath('../../golem/'), [
+            path.normpath('golem/TERMS.html'),
+        ]),
         (path.normpath('../../golem/apps'), [
             path.normpath('apps/registered.ini'),
             path.normpath('apps/images.ini')

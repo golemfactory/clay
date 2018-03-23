@@ -244,19 +244,19 @@ class TestDockerManager(unittest.TestCase):
         config_item_list = list(dmm._config.items())
         assert all([val == dmm.defaults[key] for key, val in config_item_list])
 
-        config = MockConfig(0, 768, 512)
+        config = MockConfig(0, 1024 * 1024, 512)
 
         dmm.build_config(config)
         assert len(dmm._config) < len(config.to_dict())
         assert dmm._config != dmm.defaults
 
-        assert dmm._config.get('cpu_count') \
-            == dmm.min_constraints.get('cpu_count')
+        self.assertEqual(dmm._config.get('cpu_count'),
+                         dmm.min_constraints.get('cpu_count'))
 
         assert dmm._config.get('memory_size') \
             == dmm.min_constraints.get('memory_size')
 
-        config = MockConfig(10, 10000000, 20000)
+        config = MockConfig(10, 10000 * 1024, 20000)
 
         dmm.build_config(config)
         assert dmm._config.get('cpu_count') == 10

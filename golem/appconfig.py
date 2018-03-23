@@ -14,8 +14,8 @@ from golem.ranking.helper.trust_const import \
 
 logger = logging.getLogger(__name__)
 
-MIN_DISK_SPACE = 1000 * 1024
-MIN_MEMORY_SIZE = 1000 * 1024
+MIN_DISK_SPACE = 1024 * 1024
+MIN_MEMORY_SIZE = 1024 * 1024
 MIN_CPU_CORES = 1
 
 DEFAULT_HARDWARE_PRESET_NAME = "default"
@@ -104,7 +104,6 @@ class AppConfig:
         node_config = NodeConfig(
             node_name="",
             node_address="",
-            public_address="",
             eth_account="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,

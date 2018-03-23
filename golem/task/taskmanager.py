@@ -1,14 +1,15 @@
-from golem_messages.message import ComputeTaskDef
 import logging
 import pickle
 import time
-
 from pathlib import Path
+
+from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline, to_unicode, update_dict
+    to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
@@ -16,10 +17,8 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
-
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
-
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
 
@@ -120,18 +119,15 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        if not isinstance(dictionary, dict):
-            return dictionary
-
         type_name = dictionary['type'].lower()
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
-        builder = builder_type(self.node_name, definition,
-                               self.root_path, self.dir_manager)
+        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        builder = builder_type(self.node_name, definition, self.root_path,
+                               self.dir_manager)
 
         return Task.build_task(builder)
 

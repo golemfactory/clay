@@ -24,13 +24,13 @@ class TestRPCAddress(unittest.TestCase):
 class TestWebSocketAddress(unittest.TestCase):
 
     def test_default_values(self):
-        address = WebSocketAddress('host', 1234, 'realm', ssl=True)
+        address = WebSocketAddress('host', 1234, 'realm')
 
         assert str(address) == 'wss://host:1234'
         assert isinstance(address.realm, str)
         assert address.realm == 'realm'
 
-        address = WebSocketAddress('host', 1234, 'realm')
+        address = WebSocketAddress('host', 1234, 'realm', ssl=False)
 
         assert str(address) == 'ws://host:1234'
 
