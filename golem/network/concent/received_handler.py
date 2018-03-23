@@ -10,6 +10,8 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
 
+from .filetransfers import ConcentFiletransferService
+
 logger = logging.getLogger(__name__)
 
 
@@ -106,7 +108,7 @@ class TaskServerMessageHandler():
         return self.task_server.client.concent_service
 
     @property
-    def concent_filetransfers(self):
+    def concent_filetransfers(self) -> ConcentFiletransferService:
         return self.task_server.client.concent_filetransfers
 
     @handler_for(message.concents.ServiceRefused)
@@ -339,14 +341,44 @@ class TaskServerMessageHandler():
             logger.warning("ForceGetTaskResult invalid in %r", msg)
             return
 
+        # everything okay, so we can proceed with download
+        # and should download succeed,
+        # we need to establish a session and proceed with the
+        # normal verification procedure the same way we would do,
+        # had we received the results from the Provider itself
+
         rct = fgtr.report_computed_task
 
-        def success(response):
-            pass
+        result_manager = self.task_server.task_manager.task_result_manager
+        _, file_path = result_manager.get_file_path_and_name(
+            rct.task_id, rct.subtask_id)
 
-        def error(response):
-            pass
+        task = self.task_server.task_manager.tasks.get(rct.task_id, None)
+        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+
+        def success(response):
+            logger.debug("Concent results download sucessful: %r, %s",
+                         msg.subtask_id, response)
+
+            extracted_package = result_manager.extract(
+                file_path, output_dir, rct.secret)
+
+            logger.debug("Task result extracted %r",
+                         extracted_package.__dict__)
+
+            # instantiate session and run the tasksession's reaction to
+            # received results
+            self.task_server.verify_results(
+                report_computed_task=rct,
+                extracted_package=extracted_package)
+
+        def error(exc):
+            logger.warning("Concent download failed: %r, %s",
+                           msg.subtask_id, exc)
 
         self.concent_filetransfers.transfer(
-
+            file_path=file_path,
+            file_transfer_token=ftt,
+            success=success,
+            error=error,
         )

@@ -5,7 +5,7 @@ import os
 
 from golem.core.async import AsyncRequest, async_run
 from golem.core.fileencrypt import FileEncryptor
-from .resultpackage import EncryptingTaskResultPackager
+from .resultpackage import EncryptingTaskResultPackager, ExtractedPackage
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +36,18 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
     def gen_secret(self):
         return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
 
+    def get_file_path_and_name(self, task_id, subtask_id):
+        file_name = task_id + "." + subtask_id
+        file_path = self.resource_manager.storage.get_path(file_name, task_id)
+        return file_name, file_path
+
     # Using a temp path
     def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
                      success, error, async_=True, client_options=None, output_dir=None):
 
-        file_name = task_id + "." + subtask_id
-        file_path = self.resource_manager.storage.get_path(file_name, task_id)
-        output_dir = os.path.join(output_dir or os.path.dirname(file_path), subtask_id)
+        file_name, file_path = self.get_file_path_and_name(task_id, subtask_id)
+        output_dir = os.path.join(
+            output_dir or os.path.dirname(file_path), subtask_id)
 
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -67,9 +72,8 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
-        task_id = task_result.task_id
-        file_name = task_id + "." + task_result.subtask_id
-        file_path = self.resource_manager.storage.get_path(file_name, task_id)
+        file_name, file_path = self.get_file_path_and_name(
+            task_result.task_id, task_result.subtask_id)
 
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -91,7 +95,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                    "'add' command failed")
         raise Exception("Error creating package: file not found")
 
-    def extract(self, path, output_dir=None, key_or_secret=None, **kwargs):
+    def extract(
+            self, path, output_dir=None,
+            key_or_secret=None, **kwargs) -> ExtractedPackage:
+
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
