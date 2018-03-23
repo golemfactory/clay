@@ -33,8 +33,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
-    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
-    TERMS_VERSION = 1
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  datadir: str,
@@ -162,22 +160,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
-    def are_terms_accepted(self):
-        return GenericKeyValue.select()\
-            .where(
-                GenericKeyValue.key == self.TERMS_ACCEPTED_KEY,
-                GenericKeyValue.value == self.TERMS_VERSION)\
-            .count() > 0
+    @staticmethod
+    def are_terms_accepted():
+        return TermsOfUse.are_terms_accepted()
 
-    def accept_terms(self):
-        entry, _ = GenericKeyValue.get_or_create(key=self.TERMS_ACCEPTED_KEY)
-        entry.value = self.TERMS_VERSION
-        entry.save()
+    @staticmethod
+    def accept_terms():
+        return TermsOfUse.accept_terms()
 
     @staticmethod
     def show_terms():
-        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
-        return terms_path.read_text()
+        return TermsOfUse.show_terms()
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
@@ -284,3 +277,27 @@ class Node(object):  # pylint: disable=too-few-public-methods
         if self._reactor.running:
             logger.error("Stopping because of %r error: %r", msg, err)
             self._reactor.callFromThread(self._reactor.stop)
+
+
+class TermsOfUse:
+    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
+    TERMS_VERSION = 1
+
+    @classmethod
+    def are_terms_accepted(cls):
+        return GenericKeyValue.select()\
+            .where(
+                GenericKeyValue.key == cls.TERMS_ACCEPTED_KEY,
+                GenericKeyValue.value == cls.TERMS_VERSION)\
+            .count() > 0
+
+    @classmethod
+    def accept_terms(cls):
+        entry, _ = GenericKeyValue.get_or_create(key=cls.TERMS_ACCEPTED_KEY)
+        entry.value = cls.TERMS_VERSION
+        entry.save()
+
+    @staticmethod
+    def show_terms():
+        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
+        return terms_path.read_text()
