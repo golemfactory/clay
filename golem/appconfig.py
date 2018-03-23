@@ -95,7 +95,6 @@ class AppConfig:
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        # FIXME: This check is only for transition to separated datadirs.
         cfg_file = path.join(datadir, cfg_file_name)
         if cfg_file in cls.__loaded_configs:
             raise RuntimeError("Config has been loaded: {}".format(cfg_file))

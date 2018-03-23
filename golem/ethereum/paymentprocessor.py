@@ -81,7 +81,6 @@ class PaymentProcessor(LoopingCallService):
             self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
-        # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             balance = self._sci.get_eth_balance(self._sci.get_eth_address())
             if balance is not None:

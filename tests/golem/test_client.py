@@ -79,7 +79,7 @@ def done_deferred(return_value=None):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
-    # this may completely break
+    # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
     def tearDown(self):

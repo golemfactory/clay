@@ -559,7 +559,7 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    # FIXME get the root path from dir_manager
+    # FIXME get the root path from dir_manager. Issue #2449
     def __init__(self, node_name, task_definition, root_path, dir_manager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
@@ -590,7 +590,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
 
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
         definition.legacy = dictionary.get('legacy', False)
 
         return definition
@@ -632,7 +632,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
 
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
         if definition.legacy:
             return options['output_path']
 

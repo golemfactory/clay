@@ -245,7 +245,7 @@ class PendingConnectionsServer(TCPServer):
     @classmethod
     def _is_address_valid(cls, address: str, port: int) -> bool:
         try:
-            # FIXME: Where did None become 'None'?
+            # FIXME: Where did None become 'None'? #2461
             if address == 'None':
                 logger.debug('Got "None" as socket address. Skipping...')
                 return False

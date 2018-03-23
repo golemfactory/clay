@@ -159,6 +159,7 @@ class BlenderCropper:
 
     # FIXME it would be better to make this subtask agnostic, pass only data
     # needed to generate crops. Drop local computer.
+    # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
     @staticmethod

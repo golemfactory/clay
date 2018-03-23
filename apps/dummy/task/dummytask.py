@@ -107,7 +107,6 @@ class DummyTask(CoreTask):
 
         return self.ExtraData(ctd=ctd)
 
-    # FIXME quite tricky to know that this method should be overwritten
     def accept_results(self, subtask_id, result_files):
         # TODO maybe move it to the base method
         if self.subtasks_given[subtask_id]["status"] == SubtaskStatus.finished:
