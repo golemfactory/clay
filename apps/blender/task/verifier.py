@@ -231,7 +231,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                                        self.crops_size[1] + 0.01))
         elif avg_ssim < w_ssim_min:
             logger.warning("Subtask %r NOT verified with %r",
-                        self.subtask_info['subtask_id'], avg_ssim)
+                           self.subtask_info['subtask_id'], avg_ssim)
             self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"

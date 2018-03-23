@@ -34,6 +34,8 @@ class CropContext:
 class BlenderCropper:
     MIN_CROP_RES = 8
     CROP_STEP = 0.01
+    CROPS_NO_FIRST = 3
+    CROPS_NO_SECOND = 6
 
     def __init__(self):
         self.crop_counter = 0
@@ -133,7 +135,7 @@ class BlenderCropper:
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
                      crop_render_failure, subtask_info,
-                     num_crops=3,
+                     num_crops=CROPS_NO_FIRST,
                      crop_size=None):
         # pylint: disable=unused-argument
         crops_path = os.path.join(subtask_info['tmp_dir'],
@@ -206,8 +208,12 @@ class BlenderCropper:
         self.rendered_crops_results[crop_number] \
             = [results, time_spend, verification_context]
         crop_number += 1
-        if crop_number == 3 or crop_number == 6:
-            self.crop_rendering_finished(crop_number-3, crop_number)
+        if crop_number == \
+                BlenderCropper.CROPS_NO_FIRST or crop_number == \
+                BlenderCropper.CROPS_NO_SECOND:
+            self.crop_rendering_finished(
+                crop_number-BlenderCropper.CROPS_NO_FIRST,
+                crop_number)
             return
 
         self._render_one_crop(verification_context, self.crop_rendered,
