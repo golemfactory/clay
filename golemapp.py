@@ -82,6 +82,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--password', default=None,
               help="Password to unlock Golem. This flag should be mostly used "
               "during development as it's not a safe way to provide password")
+@click.option('--accept-terms', is_flag=True, default=False,
+              help="Accept Golem terms of use. This is equivalent to calling "
+                   "`golemcli terms accept`")
 @click.option('--generate-rpc-cert', is_flag=True, default=False,
               help="Generate RPC certificate if they do not exist")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -111,7 +114,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          start_geth, start_geth_port, geth_address, password,
+          start_geth, start_geth_port, geth_address, password, accept_terms,
           generate_rpc_cert, version, log_level, enable_talkback, m):
 
     freeze_support()
@@ -178,6 +181,9 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
             geth_address=geth_address,
             password=password,
         )
+
+        if accept_terms:
+            node.accept_terms()
 
         node.start()
 
