@@ -32,7 +32,7 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'level': 'INFO',
-            'formatter': 'simple',
+            'formatter': 'date',
             'filters': [],
             'stream': 'ext://sys.stderr',
         },
