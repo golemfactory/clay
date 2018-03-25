@@ -1,12 +1,11 @@
 import ipaddress
 import logging
 import socket
+from collections import Iterable
 from typing import Union, List
 
 import os
 import netifaces
-
-from collections import Iterable
 
 from golem.network.stun import pystun as stun
 from .variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
