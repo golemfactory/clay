@@ -49,19 +49,73 @@ def is_ip_address(address):
 class TestIPAddresses(unittest.TestCase):
     """ Test getting IP addresses """
 
+    @patch('golem.core.hostaddress.netifaces.ifaddresses')
+    @patch('golem.core.hostaddress.netifaces.interfaces')
+    def test_empty_netifaces_ifaddresses(self, interfaces, ifaddresses):
+        interfaces.return_value = ['eth0']
+        ifaddresses.return_value = {}
+        assert ip_addresses(use_ipv6=True) == []
+        assert ip_addresses(use_ipv6=False) == []
+
+    @patch('golem.core.hostaddress.netifaces.ifaddresses')
+    @patch('golem.core.hostaddress.netifaces.interfaces')
+    def test_filter_ip_addresses_v4(self, interfaces, ifaddresses):
+        interfaces.return_value = ['eth0']
+        ifaddresses.return_value = {
+            netifaces.AF_INET: [
+                {'addr': None},  # invalid
+                {'addr': '?'},  # invalid
+                {'addr': '0.0.0.0'},  # unspecified
+                {'addr': '127.0.0.1'},  # loopback
+                {'addr': '127.0.0.123'},  # loopback
+                {'addr': '169.254.0.1'},  # link local
+                {'addr': '169.254.0.123'},  # link local
+                {'addr': '224.0.0.1'},  # multicast
+                {'addr': '240.0.0.1'},  # reserved
+                {'addr': '192.168.0.5'},  # private
+                {'addr': '1.2.3.4'},  # public
+            ]
+        }
+
+        assert ip_addresses(use_ipv6=False) == ['192.168.0.5', '1.2.3.4']
+
+    @patch('golem.core.hostaddress.netifaces.ifaddresses')
+    @patch('golem.core.hostaddress.netifaces.interfaces')
+    def test_filter_ip_addresses_v6(self, interfaces, ifaddresses):
+        interfaces.return_value = ['eth0']
+        ifaddresses.return_value = {
+            netifaces.AF_INET6: [
+                {'addr': None},  # invalid
+                {'addr': '?'},  # invalid
+                {'addr': '::'},
+                {'addr': '::1'},  # loopback
+                {'addr': 'fe80::'},  # link local
+                {'addr': 'fe80::dead'},  # link local
+                {'addr': 'ff00::'},  # multicast
+                {'addr': 'FE00::'},  # reserved
+                {'addr': '2001::1'},  # private
+                {'addr': '2001:4660:4660::6666'},  # public
+            ]
+        }
+
+        assert ip_addresses(use_ipv6=True) == ['2001::1',
+                                               '2001:4660:4660::6666']
+
     def test_ip_addresses_v4(self):
         """ Test getting IP addresses for IPv4 """
-        addresses = ip_addresses(False)
+        addresses = ip_addresses(use_ipv6=False)
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+                self.assertTrue(is_ip_address(address),
+                                "Incorrect IP address: {}".format(address))
 
     def test_ip_addresses_v6(self):
         """ Test getting IP addresses for IPv6 """
-        addresses = ip_addresses(True)
+        addresses = ip_addresses(use_ipv6=True)
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+                self.assertTrue(is_ip_address(address),
+                                "Incorrect IP address: {}".format(address))
 
 
 class TestHostAddress(unittest.TestCase):
