@@ -381,7 +381,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, dump_mock):
-        th = TaskHeader("ABC", "xyz", "10.10.10.10", 1024, "key_id", "DEFAULT")
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1024,
+                     key="key_id")
+        th = TaskHeader("xyz", "DEFAULT", owner)
         th.max_price = 50
 
         class TestTask(Task):
@@ -640,8 +644,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_resource_send(self):
         from pydispatch import dispatcher
         self.tm.task_persistence = True
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1023,
+                     key="abcde")
         t = Task(
-            TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"),
+            TaskHeader("xyz", "DEFAULT", owner),
             "print 'hello world'", None)
         listener_mock = Mock()
 
@@ -793,8 +801,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
-                               "key_id", "environment", task_owner=node), '',
+        task = Task(TaskHeader("task_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')

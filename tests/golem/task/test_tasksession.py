@@ -121,11 +121,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         task_id = '42'
         requestor_key = 'req pubkey'
         task_manager.tasks[task_id] = Mock(header=TaskHeader(
-            node_name='ABC',
             task_id='xyz',
             environment='',
             task_owner=Node(
                 key=requestor_key,
+                node_name='ABC',
                 pub_addr='10.10.10.10',
                 pub_port=12345,
             )
@@ -727,7 +727,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = Node(node_name="ABC", key=key_id,
+        task_owner = Node(node_name="ABC", key="KEY_ID",
                           pub_addr="10.10.10.10", pub_port=2311)
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(TaskHeader(environment='DEFAULT',

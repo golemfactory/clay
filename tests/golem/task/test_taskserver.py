@@ -114,11 +114,10 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
-        n2 = Node()
-        n2.prv_addr = "10.10.10.10"
-        n2.port = 10101
+        n2 = Node(key="key", node_name="name",
+                  pub_addr="10.10.10.10", pub_port=10101)
         task_header = get_example_task_header()
-        task_header["task_owner"] = n2
+        task_header["task_owner"] = n2.to_dict()
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), "uvw")
         assert ts.remove_task_header("uvw")
@@ -138,7 +137,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ts.config_desc.requesting_trust = 0.5
         task_header = get_example_task_header()
         task_header["task_id"] = "uvw3"
-        task_header["task_owner"] = n2
+        task_header["task_owner"] = n2.to_dict()
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -154,7 +153,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         task_header = get_example_task_header()
         task_header["task_id"] = "uvw4"
         task_header["max_price"] = 1
-        task_header["task_owner"] = n2
+        task_header["task_owner"] = n2.to_dict()
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -169,7 +168,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ts.acl.disallow("key")
         task_header = get_example_task_header()
         task_header["task_id"] = "uvw5"
-        task_header["task_owner"] = n2
+        task_header["task_owner"] = n2.to_dict()
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -206,9 +205,6 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         self.assertEqual(wtr.computing_time, 40)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner.pub_addr, "10.10.10.10")
-        self.assertEqual(wtr.owner.pub_port, 10101)
-        self.assertEqual(wtr.owner.key, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
         ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(

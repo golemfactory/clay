@@ -160,7 +160,8 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header["task_id"], th.task_id)
         self.assertEqual(task_header["max_price"], th.max_price)
-        self.assertEqual(task_header["node_name"], th.task_owner.node_name)
+        self.assertEqual(task_header["task_owner"]["node_name"],
+                         th.task_owner.node_name)
         self.assertEqual(task_header["task_owner"]["pub_port"],
                          th.task_owner.pub_port)
         self.assertEqual(task_header["task_owner"]["key"], th.task_owner.key)
@@ -469,7 +470,7 @@ def get_task_header():
     header = get_dict_task_header()
     return TaskHeader(header["task_id"],
                       header["environment"],
-                      header["task_owner"],
+                      Node(**header["task_owner"]),
                       header["deadline"],
                       header["subtask_timeout"], 1024, 1.0, 1000,
                       header['max_price'])
