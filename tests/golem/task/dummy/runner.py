@@ -31,6 +31,13 @@ from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
+LOGGING_DICT = {
+    'handlers': {
+        'console': {
+            'formatter': 'date'
+        }
+    }
+}
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +122,8 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
@@ -161,7 +169,8 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()

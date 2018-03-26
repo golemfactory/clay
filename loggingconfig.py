@@ -39,7 +39,7 @@ LOGGING = {
         'file': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'level': 'INFO',
-            'formatter': 'date',
+            'formatter': 'simple',
             # suffix is substituted in golem.core.common.config_logging()
             'filename': '%(logdir)s/golem%(suffix)s.log',
             'when': 'D',
