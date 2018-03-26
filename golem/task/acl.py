@@ -2,7 +2,7 @@ import abc
 import time
 
 from pathlib import Path
-from typing import Set, Sequence, Union
+from typing import Set, Union, Iterable
 
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
@@ -20,8 +20,9 @@ class Acl(abc.ABC):
 
 
 class _DenyAcl(Acl):
-    def __init__(self, deny_set: Set[str]):
-        self._deny_deadlines = dict.fromkeys(deny_set, self._deadline())
+    def __init__(self, deny_coll: Iterable[str]) -> None:
+        key_sequence = list(deny_coll)
+        self._deny_deadlines = dict.fromkeys(key_sequence, self._deadline())
 
     def is_allowed(self, node_id: str) -> bool:
         deadline = self._deny_deadlines.get(node_id)
@@ -44,7 +45,7 @@ class _DenyAcl(Acl):
 
 
 class _AllowAcl(Acl):
-    def __init__(self, allow_set: Set[str]):
+    def __init__(self, allow_set: Set[str]) -> None:
         self._allow_set = allow_set
 
     def is_allowed(self, node_id: str) -> bool:
