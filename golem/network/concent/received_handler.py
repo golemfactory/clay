@@ -352,7 +352,7 @@ class TaskServerMessageHandler():
         rct = fgtr.report_computed_task
 
         result_manager = self.task_server.task_manager.task_result_manager
-        _, file_path = result_manager.get_file_path_and_name(
+        _, file_path = result_manager.get_file_name_and_path(
             rct.task_id, rct.subtask_id)
 
         task = self.task_server.task_manager.tasks.get(rct.task_id, None)
@@ -362,8 +362,12 @@ class TaskServerMessageHandler():
             logger.debug("Concent results download sucessful: %r, %s",
                          msg.subtask_id, response)
 
-            extracted_package = result_manager.extract(
-                file_path, output_dir, rct.secret)
+            try:
+                extracted_package = result_manager.extract(
+                    file_path, output_dir, rct.secret)
+            except Exception as e:
+                logger.error("Concent results extraction failure: %r, %s",
+                             msg.subtask_id, e)
 
             logger.debug("Task result extracted %r",
                          extracted_package.__dict__)

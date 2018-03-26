@@ -36,7 +36,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
     def gen_secret(self):
         return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
 
-    def get_file_path_and_name(self, task_id, subtask_id):
+    def get_file_name_and_path(self, task_id, subtask_id):
         file_name = task_id + "." + subtask_id
         file_path = self.resource_manager.storage.get_path(file_name, task_id)
         return file_name, file_path
@@ -45,7 +45,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
     def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
                      success, error, async_=True, client_options=None, output_dir=None):
 
-        file_name, file_path = self.get_file_path_and_name(task_id, subtask_id)
+        file_name, file_path = self.get_file_name_and_path(task_id, subtask_id)
         output_dir = os.path.join(
             output_dir or os.path.dirname(file_path), subtask_id)
 
@@ -72,7 +72,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
-        file_name, file_path = self.get_file_path_and_name(
+        file_name, file_path = self.get_file_name_and_path(
             task_result.task_id, task_result.subtask_id)
 
         if os.path.exists(file_path):
