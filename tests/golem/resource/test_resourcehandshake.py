@@ -536,6 +536,25 @@ class TestResourceHandshakeShare(DatabaseFixture):
         msg = session.send.call_args[0][0]
         assert isinstance(msg, message.ResourceHandshakeStart)
 
+    def test_share_handshake_nonce_after_failure(self, *_):
+        session = MockTaskSession(self.tempdir)
+        self.__create_task_server(session)
+
+        handshake = ResourceHandshake(self.key_id)
+        handshake.start(self.tempdir)
+
+        nonce_shared = session._nonce_shared
+
+        def intercept_nonce_shared(*args, **kwargs):
+            session._set_handshake(session.key_id, None)
+            nonce_shared(*args, **kwargs)
+
+        session._nonce_shared = intercept_nonce_shared
+
+        session._set_handshake(session.key_id, handshake)
+        session._share_handshake_nonce(session.key_id)
+        assert not session.send.called
+
     @staticmethod
     def __create_task_server(session):
         from golem.clientconfigdescriptor import ClientConfigDescriptor
