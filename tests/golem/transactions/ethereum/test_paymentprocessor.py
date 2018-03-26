@@ -300,13 +300,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert not self.pp.monitor_progress.called
         assert not self.pp.sendout.called
 
-    def test_get_ether(self):
+    def test_get_ether_and_gnt_succces(self):
         self.pp.monitor_progress = mock.Mock()
         self.sci.is_synchronized.return_value = True
         self.pp.sendout = mock.Mock()
-
-        self.pp.get_gnt_from_faucet = mock.Mock(return_value=True)
-        self.pp.get_ether_from_faucet = mock.Mock(return_value=True)
 
         self.pp._run()
         assert self.pp.monitor_progress.called
