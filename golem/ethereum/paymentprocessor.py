@@ -364,7 +364,7 @@ class PaymentProcessor(LoopingCallService):
                 self.get_gnt_from_faucet():
 
             if time.time() - self._last_balance_log > 60:
-                log.info("ETH: %r, GNT: %r, GNTB: %r",
+                log.info("ETH: %.10f,  GNT: %.3f,  GNTB: %.3f",
                          self.__eth_balance / denoms.ether,
                          self.__gnt_balance / denoms.ether,
                          self.__gntb_balance / denoms.ether)
