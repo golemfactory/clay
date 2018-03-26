@@ -7,6 +7,7 @@ from golem.model import GenericKeyValue
 class TermsOfUse:
     TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
     TERMS_VERSION = 1
+    TERMS_PATH = Path('golem/TERMS.html')
 
     @classmethod
     def are_terms_accepted(cls):
@@ -22,7 +23,7 @@ class TermsOfUse:
         entry.value = cls.TERMS_VERSION
         entry.save()
 
-    @staticmethod
-    def show_terms():
-        terms_path = Path(get_golem_path()) / 'golem' / 'TERMS.html'
+    @classmethod
+    def show_terms(cls):
+        terms_path = Path(get_golem_path()) / cls.TERMS_PATH
         return terms_path.read_text()

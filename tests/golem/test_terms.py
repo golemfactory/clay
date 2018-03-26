@@ -49,8 +49,9 @@ class TestTermsOfUse(TestWithDatabase):
         ==================
         Bla bla bla bla
         """
-        os.makedirs(self.new_path / 'golem', exist_ok=True)
-        with open(self.new_path / 'golem' / 'TERMS.html', mode='w') as terms:
+        terms_path = self.new_path / TermsOfUse.TERMS_PATH
+        os.makedirs(terms_path.parent, exist_ok=True)
+        with open(terms_path, mode='w') as terms:
             terms.write(content)
 
         self.assertEqual(TermsOfUse.show_terms(), content)
