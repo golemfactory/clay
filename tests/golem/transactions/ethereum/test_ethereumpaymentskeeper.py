@@ -20,10 +20,10 @@ class TestEthereumPaymentsKeeper(TestWithDatabase, PEP8MixIn):
         e = PaymentsKeeper()
 
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
-        ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", Node(), addr1)
+        ai = EthAccountInfo("DEF", "node1", Node(), addr1)
 
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
-        ai2 = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", Node(), addr2)
+        ai2 = EthAccountInfo("DEF", "node1", Node(), addr2)
 
         pi = PaymentInfo("x-y-z", "xx-yy-zz", 1926, ai)
 
@@ -54,15 +54,12 @@ class TestEthAccountInfo(TempDirFixture):
     def test_comparison(self):
         k = KeysAuth(self.path, 'priv_key', 'password')
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
-        a = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
-                           Node(), addr1)
-        b = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
-                           Node(), addr1)
+        a = EthAccountInfo(k.key_id, "test-test-test", Node(), addr1)
+        b = EthAccountInfo(k.key_id, "test-test-test", Node(), addr1)
         self.assertEqual(a, b)
         n = Node(prv_addr="10.10.10.10", prv_port=1031, pub_addr="10.10.10.10",
                  pub_port=1032)
-        c = EthAccountInfo(k.key_id, 5111, "10.0.0.1", "test-test-test",
-                           n, addr1)
+        c = EthAccountInfo(k.key_id, "test-test-test", n, addr1)
         self.assertEqual(a, c)
         k = KeysAuth(
             "%s_other" % self.path,

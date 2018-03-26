@@ -164,7 +164,7 @@ class BasicSafeSession(BasicSession):
         super().__init__(conn)
         # how many unverified messages can be stored before dropping connection
         self.unverified_cnt = UNVERIFIED_CNT
-        self.rand_val = get_random_float()  # TODO: change rand val to hashcash
+        self.rand_val = get_random_float()
         self.verified = False
         # React to message even if it's self.verified is set to False
         self.can_be_unverified = [message.Disconnect.TYPE]

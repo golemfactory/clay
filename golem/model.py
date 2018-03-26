@@ -24,7 +24,7 @@ from golem.utils import decode_hex, encode_hex
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
 
-# TODO: migrate to golem.database
+# TODO: migrate to golem.database. issue #2415
 db = GolemSqliteDatabase(None, threadlocals=True,
                          pragmas=(
                              ('foreign_keys', True),

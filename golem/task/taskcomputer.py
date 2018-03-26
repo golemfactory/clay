@@ -250,7 +250,7 @@ class TaskComputer(object):
             0.0,
             c.get_progress(),
             c.get_task_short_desc()
-        )  # FIXME: cpu power and estimated time left
+        )
         ret[c.subtask_id] = tcss
 
         return ret

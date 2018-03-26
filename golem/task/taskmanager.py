@@ -587,6 +587,7 @@ class TaskManager(TaskEventListener):
                     t.get_progress(),
                     t.short_extra_data_repr(2200.0)
                 )  # FIXME in short_extra_data_repr should there be extra data
+                # Issue #2460
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses
@@ -819,7 +820,6 @@ class TaskManager(TaskEventListener):
         ss.computer.price = price
         ss.time_started = time.time()
         ss.deadline = ctd['deadline']
-        # TODO: read node ip address
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']

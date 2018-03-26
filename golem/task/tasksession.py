@@ -241,7 +241,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     # TODO address, port and eth_account should be in node_info
-    # (or shouldn't be here at all)
+    # (or shouldn't be here at all). Issue #2403
     def send_report_computed_task(
             self,
             task_result,
@@ -538,8 +538,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.result_owner = EthAccountInfo(
             msg.key_id,
-            msg.port,
-            msg.address,
             msg.node_name,
             p2p_node.Node.from_dict(msg.node_info),
             msg.eth_account
@@ -672,20 +670,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.check_provider_for_subtask(msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
-
-    def _react_to_delta_parts(self, msg):
-        if not self.check_requestor_for_task(self.task_id):
-            self.dropped()
-            return
-        self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
-        self.task_server.pull_resources(self.task_id, msg.parts)
-        self.task_server.add_resource_peer(
-            msg.node_name,
-            msg.address,
-            msg.port,
-            self.key_id,
-            msg.node_info
-        )
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
@@ -907,7 +891,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.tasks.SubtaskResultsRejected.TYPE:
                 self._react_to_subtask_results_rejected,
             message.TaskFailure.TYPE: self._react_to_task_failure,
-            message.DeltaParts.TYPE: self._react_to_delta_parts,
             message.Hello.TYPE: self._react_to_hello,
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa

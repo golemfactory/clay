@@ -208,7 +208,7 @@ class PendingConnectionsServer(TCPServer):
             if len(conn.socket_addresses) == 0:
                 conn.status = PenConnStatus.WaitingAlt
                 conn.failure()
-                # TODO Implement proper way to deal with failures
+                # TODO Implement proper way to deal with failures. Issue #2412
             else:
                 conn.status = PenConnStatus.Waiting
                 conn.last_try_time = time.time()
@@ -245,7 +245,7 @@ class PendingConnectionsServer(TCPServer):
     @classmethod
     def _is_address_valid(cls, address: str, port: int) -> bool:
         try:
-            # FIXME: Where did None become 'None'?
+            # FIXME: Where did None become 'None'? #2461
             if address == 'None':
                 logger.debug('Got "None" as socket address. Skipping...')
                 return False

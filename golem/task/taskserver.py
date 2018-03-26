@@ -22,6 +22,7 @@ from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 from .result.resultmanager import ExtractedPackage
 from .server import resources
@@ -161,7 +162,7 @@ class TaskServer(
                     'num_cores': self.config_desc.num_cores
                 }
                 node = theader.task_owner
-                port = theader.task_owner_port  # FIXME: seems redundant
+                port = theader.task_owner_port  # FIXME: seems redundant. #109
 
                 added = self._add_pending_request(
                     TASK_CONN_TYPES['task_request'],
@@ -381,8 +382,8 @@ class TaskServer(
         if task_id is not None:
             self.decrease_trust_payment(task_id)
             # self.remove_task_header(task_id)
-            # TODO Inform transaction system and task manager about failed
-            # payment
+            # TODO Inform transaction system and task manager about rejected
+            # subtask. Issue #2405
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
@@ -405,9 +406,9 @@ class TaskServer(
     def get_result(self, rct_message):
         logger.warning('Should get result for %r', rct_message)
         # @todo: actually retrieve results from the provider based on
-        # the information in the `ReportComputedTask` message
+        # the information in the `ReportComputedTask` message. issue #2411
 
-    def accept_result(self, subtask_id, account_info):
+    def accept_result(self, subtask_id, account_info: EthAccountInfo):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -422,7 +423,7 @@ class TaskServer(
 
         if not account_info.eth_account.address:
             logger.warning("Unknown payment address of %r (%r). Subtask: %r",
-                           account_info.node_name, account_info.addr,
+                           account_info.node_name, account_info.key_id,
                            subtask_id)
             return
 
@@ -525,7 +526,6 @@ class TaskServer(
         self.remove_responses(conn_id)
         super(TaskServer, self).final_conn_failure(conn_id)
 
-    # TODO: extend to multiple sessions
     def add_forwarded_session_request(self, key_id, conn_id):
         if self.task_computer.waiting_for_task:
             self.task_computer.wait(ttl=self.forwarded_session_request_timeout)
@@ -579,7 +579,7 @@ class TaskServer(
     def _listening_failure(self, **kwargs):
         logger.error("Listening on ports {} to {} failure".format(
             self.config_desc.start_port, self.config_desc.end_port))
-        # FIXME: some graceful terminations should take place here
+        # FIXME: some graceful terminations should take place here. #1287
         # sys.exit(0)
 
     #############################
@@ -978,7 +978,7 @@ class WaitingTaskFailure(object):
         self.err_msg = err_msg
 
 
-# TODO: Get rid of archaic int labels and use plain strings instead.
+# TODO: Get rid of archaic int labels and use plain strings instead. issue #2404
 TASK_CONN_TYPES = {
     'task_request': 1,
     # unused: 'pay_for_task': 4,

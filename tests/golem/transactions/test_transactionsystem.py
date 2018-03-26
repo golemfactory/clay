@@ -14,7 +14,7 @@ class TestTransactionSystem(TestWithDatabase):
         self.transaction_system = TransactionSystem()
 
     def test_add_payment_info(self):
-        ai = EthAccountInfo("DEF", 2010, "10.0.0.1", "node1", Node(), urandom(20))
+        ai = EthAccountInfo("DEF", "node1", Node(), urandom(20))
         self.transaction_system.add_payment_info("xyz", "xxyyzz", 10, ai)
 
     def test_check_payments(self):

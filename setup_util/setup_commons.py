@@ -247,7 +247,6 @@ def print_errors(*errors):
             print(error)
 
 
-# @todo do we really need it?
 def move_wheel():
     from shutil import move
     path_ = path.join(get_golem_path(), 'dist')
