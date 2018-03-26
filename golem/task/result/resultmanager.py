@@ -96,7 +96,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                    "'add' command failed")
         raise Exception("Error creating package: file not found")
 
-    def extract(
+    def extract(  # noqa: pylint:disable=arguments-differ
             self, path, output_dir=None,
             key_or_secret=None, **kwargs) -> ExtractedPackage:
 
