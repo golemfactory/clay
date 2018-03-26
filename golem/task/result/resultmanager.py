@@ -85,8 +85,9 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         size = os.path.getsize(path)
 
-        self.resource_manager.add_file(path, task_id)
-        for resource in self.resource_manager.get_resources(task_id):
+        self.resource_manager.add_file(path, task_result.task_id)
+        for resource in self.resource_manager.get_resources(
+                task_result.task_id):
             if file_name in resource.files:
                 return resource.hash, file_path, sha1, size
 
