@@ -54,6 +54,7 @@ class ResourceHandshake:
 class ResourceHandshakeSessionMixin:
 
     HANDSHAKE_TIMEOUT = 20  # s
+    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
     NONCE_TASK = 'nonce'
 
     def __init__(self):
@@ -308,7 +309,7 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.acl.disallow(key_id)
+        self.task_server.acl.disallow(key_id, timeout=self.PEER_BLOCK_TIMEOUT)
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
