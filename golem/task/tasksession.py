@@ -21,6 +21,7 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import pubkeytoaddr
 
 logger = logging.getLogger(__name__)
 
@@ -247,14 +248,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_result,
             address,
             port,
-            eth_account,
             node_info):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result
                                               with additional information
         :param str address: task result owner address
         :param int port: task result owner port
-        :param str eth_account: ethereum address (bytes20) of task result owner
         :param Node node_info: information about this node
         :return:
         """
@@ -291,7 +290,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             port=port,
             key_id=self.task_server.get_key_id(),
             node_info=node_info.to_dict(),
-            eth_account=eth_account,
             extra_data=extra_data,
             size=task_result.result_size,
             package_hash='sha1:' + task_result.package_sha1,
@@ -540,7 +538,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.key_id,
             msg.node_name,
             p2p_node.Node.from_dict(msg.node_info),
-            msg.eth_account
+            pubkeytoaddr(msg.key_id),
         )
 
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)

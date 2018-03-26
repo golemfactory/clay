@@ -194,9 +194,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             compute_task_def__task_id=wtr.task_id,
             compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
-        ts.task_server.get_key_id.return_value = 'key id'
+        ts.task_server.get_key_id.return_value = '0xc0de'
         ts.send_report_computed_task(
-            wtr, wtr.owner_address, wtr.owner_port, "0x00", wtr.owner)
+            wtr, wtr.owner_address, wtr.owner_port, wtr.owner)
 
         rct: message.ReportComputedTask = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(rct, message.ReportComputedTask)
@@ -206,7 +206,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(rct.node_name, "ABC")
         self.assertEqual(rct.address, wtr.owner_address)
         self.assertEqual(rct.port, wtr.owner_port)
-        self.assertEqual(rct.eth_account, "0x00")
         self.assertEqual(rct.extra_data, [])
         self.assertEqual(rct.node_info, wtr.owner.to_dict())
         self.assertEqual(rct.package_hash, 'sha1:' + wtr.package_sha1)
@@ -222,7 +221,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts2 = TaskSession(Mock())
         ts2.verified = True
-        ts2.key_id = "DEF"
+        ts2.key_id = "0xdead"
         ts2.can_be_not_encrypted.append(rct.TYPE)
         ts2.task_manager.subtask2task_mapping = {wtr.subtask_id: wtr.task_id}
         task_state = taskstate.TaskState()
@@ -232,7 +231,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.tasks_states = {
             wtr.task_id: task_state,
         }
-        ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
+        ts2.task_manager.get_node_id_for_subtask.return_value = "0xdead"
         get_mock.side_effect = history.MessageNotFound
 
         with patch(
@@ -245,7 +244,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         wtr.result_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(
-                wtr, wtr.owner_address, wtr.owner_port, "0x00", wtr.owner)
+                wtr, wtr.owner_address, wtr.owner_port, wtr.owner)
 
     def test_react_to_hello_protocol_version(self):
         # given
@@ -787,7 +786,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_no_message(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(owner=self.n)
         self.ts.send_report_computed_task(
-            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+            wtr, wtr.owner_address, wtr.owner_port, self.n)
         self.ts.concent_service.submit.assert_not_called()
 
     def test_send_report_computed_task_concent_success(self):
@@ -795,7 +794,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n)
         self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
         self.ts.send_report_computed_task(
-            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+            wtr, wtr.owner_address, wtr.owner_port, self.n)
 
         self.assert_submit_task_message(self.subtask_id, wtr)
 
@@ -814,7 +813,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
 
         self.ts.send_report_computed_task(
-            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+            wtr, wtr.owner_address, wtr.owner_port, self.n)
 
         self.assert_submit_task_message(self.subtask_id, wtr)
 
@@ -826,7 +825,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             self.task_id, self.subtask_id, self.node_id, concent_enabled=False)
 
         self.ts.send_report_computed_task(
-            wtr, wtr.owner_address, wtr.owner_port, "0x00", self.n)
+            wtr, wtr.owner_address, wtr.owner_port, self.n)
         self.ts.concent_service.submit.assert_not_called()
 
 

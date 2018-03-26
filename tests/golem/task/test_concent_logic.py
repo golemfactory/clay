@@ -34,7 +34,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
                 private_key_name='priv_key',
                 password='password',
             )
-        self.task_session.key_id = "KEY_ID"
+        self.task_session.key_id = "0xdead"
         self.msg = factories.messages.ReportComputedTask()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
@@ -52,9 +52,9 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
         ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = "KEY_ID"
+        ctk.get_node_for_task_id.return_value = "0xdead"
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
-            "KEY_ID"
+            "0xdead"
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
         subtask_state.deadline = self.msg.task_to_compute.compute_task_def[
