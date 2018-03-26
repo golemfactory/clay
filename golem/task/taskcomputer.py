@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 import os
 import time
 import uuid
@@ -64,7 +66,7 @@ class TaskComputer(object):
         self.waiting_deadline = None
 
         self.dir_manager = None
-        self.resource_manager = None
+        self.resource_manager: Optional[ResourcesManager] = None
         self.task_request_frequency = None
         # Is there a time limit after which we don't wait for task timeout
         # anymore

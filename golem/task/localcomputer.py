@@ -3,7 +3,7 @@ import os
 import shutil
 from threading import Lock
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from golem_messages.message import ComputeTaskDef
 
@@ -36,7 +36,7 @@ class LocalComputer:
         self.tmp_dir = None
         self.success = False
         self.lock = Lock()
-        self.tt = None
+        self.tt: Optional[DockerTaskThread] = None
         self.dir_manager = DirManager(root_path)
         self.compute_task_def = compute_task_def
         self.get_compute_task_def = get_compute_task_def
