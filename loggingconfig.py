@@ -32,14 +32,14 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
             'level': 'INFO',
-            'formatter': 'date',
+            'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
         },
         'file': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'level': 'INFO',
-            'formatter': 'simple',
+            'formatter': 'date',
             # suffix is substituted in golem.core.common.config_logging()
             'filename': '%(logdir)s/golem%(suffix)s.log',
             'when': 'D',
