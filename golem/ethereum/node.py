@@ -20,19 +20,29 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-NODE_LIST = [
+TESTNET_NODE_LIST = [
     'https://rinkeby.golem.network:55555',
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
 ]
 
+MAINNET_NODE_LIST = [
+    # Can't use this domain just yet, see issue #2446
+    # 'https://geth.golem.network:55555',
+    'https://0.geth.golem.network:55555',
+    'https://1.geth.golem.network:55555',
+    'https://2.geth.golem.network:55555',
+]
+
 
 def get_public_nodes(mainnet: bool):
     """Returns public geth RPC addresses"""
     if mainnet:
-        raise Exception('Mainnet not supported yet')
-    addr_list = NODE_LIST[:]
+        addr_list = MAINNET_NODE_LIST[:]
+    else:
+        addr_list = TESTNET_NODE_LIST[:]
+
     random.shuffle(addr_list)
     return addr_list
 
