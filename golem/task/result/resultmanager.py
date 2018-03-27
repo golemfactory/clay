@@ -42,8 +42,9 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         return file_name, file_path
 
     # Using a temp path
-    def pull_package(self, content_hash, task_id, subtask_id, key_or_secret,
-                     success, error, async_=True, client_options=None, output_dir=None):
+    def pull_package(  # noqa pylint:disable=too-many-arguments,too-many-locals
+            self, content_hash, task_id, subtask_id, key_or_secret,
+            success, error, async_=True, client_options=None, output_dir=None):
 
         file_name, file_path = self.get_file_name_and_path(task_id, subtask_id)
         output_dir = os.path.join(

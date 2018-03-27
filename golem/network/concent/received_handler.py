@@ -365,7 +365,7 @@ class TaskServerMessageHandler():
             try:
                 extracted_package = result_manager.extract(
                     file_path, output_dir, rct.secret)
-            except Exception as e:
+            except Exception as e:  # noqa pylint:disable=broad-except
                 logger.error("Concent results extraction failure: %r, %s",
                              msg.subtask_id, e)
 

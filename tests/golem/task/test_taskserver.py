@@ -30,6 +30,9 @@ from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
+from tests.factories.resultpackage import ExtractedPackageFactory
+from tests.factories.messages import ReportComputedTask
+
 
 def get_example_task_header():
     return {
@@ -65,12 +68,11 @@ def get_mock_task(task_id, subtask_id):
     return task_mock
 
 
-class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: disable=too-many-public-methods
-                     testutils.TestWithClient):
-
+class TaskServerTestBase(LogTestCase,
+                         testutils.DatabaseFixture,
+                         testutils.TestWithClient):
     def setUp(self):
-        for parent in self.__class__.__bases__:
-            parent.setUp(self)
+        super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
         with patch(
@@ -90,6 +92,8 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
+
+class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
     @patch(
         'golem.network.concent.handlers_library.HandlersLibrary'
         '.register_handler',
@@ -211,7 +215,8 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         self.assertEqual(wtr.owner_key_id, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
+        incomes_keeper = ts.client.transaction_system.incomes_keeper
+        incomes_keeper.expect.assert_called_once_with(
             sender_node_id="key",
             subtask_id="xyzxyz",
             value=1,
@@ -901,3 +906,68 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
+
+
+class TaskVerificationResultTest(TaskServerTestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.conn_id = 'connid'
+        self.key_id = 'keyid'
+        self.conn_type = TASK_CONN_TYPES['task_verification_result']
+
+    @staticmethod
+    def _mock_session():
+        session = Mock()
+        session.address = "10.10.10.10"
+        session.port = 1020
+        return session
+
+    def test_connection_established(self):
+        session = self._mock_session()
+        extracted_package = ExtractedPackageFactory()
+        subtask_id = extracted_package.descriptor.subtask_id
+
+        self.ts.conn_established_for_type[self.conn_type](
+            session, self.conn_id, extracted_package, self.key_id
+        )
+        self.assertEqual(session.task_id, subtask_id)
+        self.assertEqual(session.key_id, self.key_id)
+        self.assertEqual(session.conn_id, self.conn_id)
+        self.assertEqual(self.ts.task_sessions[subtask_id], session)
+        result_received_call = session.result_received.call_args[0]
+        self.assertEqual(result_received_call[0].get('subtask_id'), subtask_id)
+
+    @patch('golem.task.taskserver.logger.warning')
+    def test_conection_failed(self, log_mock):
+        extracted_package = ExtractedPackageFactory()
+        subtask_id = extracted_package.descriptor.subtask_id
+        self.ts.conn_failure_for_type[self.conn_type](
+            self.conn_id, extracted_package, self.key_id
+        )
+        self.assertIn(
+            "Failed to establish a session", log_mock.call_args[0][0])
+        self.assertIn(subtask_id, log_mock.call_args[0][1])
+        self.assertIn(self.key_id, log_mock.call_args[0][2])
+
+    @patch('golem.task.taskserver.TaskServer._is_address_accessible',
+           Mock(return_value=True))
+    @patch('golem.task.taskserver.TaskServer.get_socket_addresses',
+           Mock(return_value=[Mock()]))
+    def test_verify_results(self, *_):
+        rct = ReportComputedTask(node_info=self.ts.node.to_dict())
+        extracted_package = ExtractedPackageFactory()
+        self.ts.verify_results(rct, extracted_package)
+        pc = list(self.ts.pending_connections.values())[0]
+
+        self.assertEqual(
+            pc.established.func.__name__,
+            '__connection_for_task_verification_result_established')
+        self.assertEqual(
+            pc.failure.func.__name__,
+            '__connection_for_task_verification_result_failure',
+        )
+        self.assertEqual(
+            pc.final_failure.func.__name__,
+            '__connection_for_task_verification_result_failure',
+        )

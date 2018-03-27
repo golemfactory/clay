@@ -12,6 +12,7 @@ from golem_messages import message
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
@@ -31,7 +32,6 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-
 
 
 logger = logging.getLogger('golem.task.taskserver')
@@ -775,11 +775,11 @@ class TaskServer(
         session.result_received(extra_data)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, _conn_id, extracted_package):
+            self, _conn_id, extracted_package, key_id):
         subtask_id = extracted_package.to_extra_data().get('subtask_id')
         logger.warning("Failed to establish a session to deliver "
-                       "the verification result for %s to the provider",
-                       subtask_id)
+                       "the verification result for %s to the provider %s",
+                       subtask_id, key_id)
 
     # SYNC METHODS
     #############################
@@ -879,7 +879,7 @@ class TaskServer(
             'key_id': report_computed_task.key_id,
         }
 
-        node = report_computed_task.node_info
+        node = p2p_node.Node.from_dict(report_computed_task.node_info)
 
         self._add_pending_request(
             TASK_CONN_TYPES['task_verification_result'],
@@ -888,7 +888,6 @@ class TaskServer(
             pub_port=node.pub_port,
             args=kwargs,
         )
-
 
     # CONFIGURATION METHODS
     #############################

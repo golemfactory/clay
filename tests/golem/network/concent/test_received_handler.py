@@ -134,7 +134,6 @@ class TaskServerMessageHandlerTestCase(
 
         self.cf_transfer = self.client.concent_filetransfers.transfer
 
-
     def tearDown(self):
         # Remove registered handlers
         del self.task_server
