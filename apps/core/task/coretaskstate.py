@@ -50,7 +50,7 @@ class TaskDefinition(object):
         self.verification_options = None
         self.options = Options()
         self.docker_images = None
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
         self.legacy = False
 
     def is_valid(self):
@@ -120,11 +120,12 @@ class TaskDefinition(object):
                 'output_path': output_path
             },
             # FIXME: Backward compatibility only. Remove after upgrading GUI.
+            # Issue #2450
             'legacy': self.legacy,
         }
 
     def build_output_path(self) -> str:
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
         if self.legacy:
             return self.output_file
 

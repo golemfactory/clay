@@ -13,6 +13,7 @@ class TaskTester(LocalComputer):
 
     # TODO I think there should be Task, not CoreTask type
     # but Task doesn't have query_extra_data_for_test_task method
+    # Issue: #1355
     def __init__(self, task: Task, root_path, success_callback, error_callback):
         super(TaskTester, self).__init__(
             root_path=root_path,

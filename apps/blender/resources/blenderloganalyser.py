@@ -13,7 +13,6 @@ def make_log_analyses(log_content, return_data):
     if output_path:
         return_data["output_path"] = to_unicode(output_path)
     frames = find_frames(log_content)
-    # FIXME Convert to nice string and to unicode
     if frames:
         return_data["frames"] = frames
     resolution = find_resolution(log_content)

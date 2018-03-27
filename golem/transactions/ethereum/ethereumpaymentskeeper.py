@@ -10,10 +10,8 @@ logger = logging.getLogger(__name__)
 
 class EthAccountInfo(object):
     """ Information about node's payment account and Ethereum account. """
-    def __init__(self, key_id, port, addr, node_name, node_info, eth_account):
+    def __init__(self, key_id, node_name, node_info, eth_account):
         self.key_id = key_id
-        self.port = port
-        self.addr = addr
         self.node_name = node_name
         self.node_info = node_info
         self.eth_account = EthereumAddress(eth_account)

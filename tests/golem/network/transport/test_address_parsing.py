@@ -92,7 +92,7 @@ class TestSocketAddressParsing(unittest.TestCase):
         self.__expect_valid('0.a.b.c.d.e.f.g.h:40102')
         self.__expect_valid('x' * 63 + ':40102')
         self.__expect_valid('x' + ('.x' * 127) + ':40102')
-        # TODO: should we allow this one?
+        # TODO: should we allow this one? issue: GI #85
         self.__expect_valid('trailing.dot.is.allowed.:40102')
 
     def test_is_proper_address(self):

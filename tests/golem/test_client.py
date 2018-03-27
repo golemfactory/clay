@@ -79,7 +79,7 @@ def done_deferred(return_value=None):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
-    # this may completely break
+    # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
     def tearDown(self):
@@ -244,7 +244,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         self.client.sync()
-        # TODO: assertTrue when re-enabled
+        # TODO: assertTrue when re-enabled. issue #2398
         self.assertFalse(self.client.transaction_system.sync.called)
 
     @patch('golem.client.EthereumTransactionSystem')
@@ -597,6 +597,76 @@ class TestClient(TestWithDatabase, TestWithReactor):
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
 
+    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.client.get_timestamp_utc')
+    def test_clean_old_tasks_no_tasks(self, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.get_tasks = Mock(return_value=[])
+        self.client.delete_task = Mock()
+        self.client.clean_old_tasks()
+        self.client.delete_task.assert_not_called()
+
+    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.client.get_timestamp_utc')
+    def test_clean_old_tasks_only_new(self, get_timestamp, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.config_desc.clean_tasks_older_than_seconds = 5
+        self.client.get_tasks = Mock(return_value=[{
+            'time_started': 0,
+            'timeout': timeout_to_string(5),
+            'id': 'new_task'
+        }])
+        get_timestamp.return_value = 7
+        self.client.delete_task = Mock()
+        self.client.clean_old_tasks()
+        self.client.delete_task.assert_not_called()
+
+    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.client.get_timestamp_utc')
+    def test_clean_old_tasks_old_and_new(self, get_timestamp, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.config_desc.clean_tasks_older_than_seconds = 5
+        self.client.get_tasks = Mock(return_value=[{
+            'time_started': 0,
+            'timeout': timeout_to_string(5),
+            'id': 'old_task'
+        }, {
+            'time_started': 5,
+            'timeout': timeout_to_string(5),
+            'id': 'new_task'
+        }])
+        get_timestamp.return_value = 10
+        self.client.delete_task = Mock()
+        self.client.clean_old_tasks()
+        self.client.delete_task.assert_called_once_with('old_task')
+
 
 class TestDoWorkService(TestWithReactor):
 
@@ -768,61 +838,14 @@ class TestResourceCleanerService(TestWithReactor):
 
 class TestTaskCleanerService(TestWithReactor):
 
-    @freeze_time('2017-11-27 10:00:00.1')
-    @patch('golem.client.logger')
-    def test_run_noop(self, logger):
-        older_than_seconds = 5
-        now = time.time()
-        timeout_seconds = 3
-
-        c = Mock()
-        c.get_tasks = lambda: [{
-            'id': 'some_task_id',
-            'time_started': int(now),
-            'timeout': timeout_to_string(timeout_seconds)
-        }]
-
+    def test_run(self):
+        client = Mock(spec=Client)
         service = TaskCleanerService(
-            c,
-            interval_seconds=1,
-            older_than_seconds=older_than_seconds)
+            client=client,
+            interval_seconds=1
+        )
         service._run()
-
-        c.delete_task.assert_not_called()
-        logger.info.assert_not_called()
-
-    @patch('golem.client.logger')
-    def test_run(self, logger):
-        with freeze_time('2017-11-27 10:00:00.1') as frozen_time:
-
-            older_than_seconds = 5
-            task_id = 'some_task_id'
-            now = time.time()
-            timeout_seconds = 3
-
-            c = Mock()
-            c.get_tasks = lambda: [{
-                'id': task_id,
-                'time_started': int(now),
-                'timeout': timeout_to_string(timeout_seconds)
-            }]
-
-            service = TaskCleanerService(
-                c,
-                interval_seconds=1,
-                older_than_seconds=older_than_seconds)
-
-            frozen_time.tick(delta=datetime.timedelta(
-                seconds=older_than_seconds + timeout_seconds - 1))
-            service._run()
-
-            c.delete_task.assert_not_called()
-
-            frozen_time.tick()
-            service._run()
-
-            c.delete_task.assert_called_with(task_id)
-            logger.info.assert_called()
+        client.clean_old_tasks.assert_called_once()
 
 
 def make_mock_payment_processor(sci, eth=100, gnt=100):

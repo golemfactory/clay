@@ -78,3 +78,13 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             catch_exceptions=False,
         )
         assert cert_manager.generate_if_needed.called
+
+    @mock.patch('golemapp.Node')
+    def test_accept_terms(self, node_cls):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--accept-terms'],
+            catch_exceptions=False
+        )
+        node_cls().accept_terms.assert_called_once()

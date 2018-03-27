@@ -44,8 +44,8 @@ class ClientConfigDescriptor(object):
         self.max_results_sending_delay = 0.0
 
         self.num_cores = 0
-        self.max_resource_size = 0
-        self.max_memory_size = 0
+        self.max_resource_size = 0  # KiB
+        self.max_memory_size = 0  # KiB
         self.hardware_preset_name = ""
 
         self.use_distributed_resource_management = 1
@@ -56,7 +56,6 @@ class ClientConfigDescriptor(object):
         self.eth_account = ""
         self.min_price = 0
         self.max_price = 0
-        self.public_address = ""
 
         self.accept_tasks = 1
 

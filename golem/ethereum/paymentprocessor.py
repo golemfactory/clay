@@ -73,6 +73,7 @@ class PaymentProcessor(LoopingCallService):
         self.load_from_db()
         self._last_gnt_update = None
         self._last_eth_update = None
+        self._last_balance_log = 0
         super().__init__(13)
 
     def balance_known(self):
@@ -81,12 +82,10 @@ class PaymentProcessor(LoopingCallService):
             self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
-        # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             balance = self._sci.get_eth_balance(self._sci.get_eth_address())
             if balance is not None:
                 self.__eth_balance = balance
-                log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
                 self._last_eth_update = time.mktime(
                     datetime.today().timetuple())
             else:
@@ -111,11 +110,6 @@ class PaymentProcessor(LoopingCallService):
 
             if self.__gnt_balance is not None and \
                self.__gntb_balance is not None:
-                log.info(
-                    "GNT: %r GNTB: %r",
-                    self.__gnt_balance / denoms.ether,
-                    self.__gntb_balance / denoms.ether,
-                )
                 self._last_gnt_update = time.mktime(
                     datetime.today().timetuple())
 
@@ -261,7 +255,7 @@ class PaymentProcessor(LoopingCallService):
             self._inprogress[tx_hash] = payments
 
         # Remove from reserved, because we monitor the pending block.
-        # TODO: Maybe we should only monitor the latest block?
+        # TODO: Maybe we should only monitor the latest block? issue #2414
         self.__gntb_reserved -= value
         self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
         return True
@@ -368,6 +362,14 @@ class PaymentProcessor(LoopingCallService):
         if self._sci.is_synchronized() and \
                 self.get_ether_from_faucet() and \
                 self.get_gnt_from_faucet():
+
+            if time.time() - self._last_balance_log > 60:
+                log.info("ETH: %.10f,  GNT: %.3f,  GNTB: %.3f",
+                         self.__eth_balance / denoms.ether,
+                         self.__gnt_balance / denoms.ether,
+                         self.__gntb_balance / denoms.ether)
+                self._last_balance_log = time.time()
+
             self.monitor_progress()
             self.sendout()
             self._send_balance_snapshot()

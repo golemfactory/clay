@@ -23,7 +23,7 @@ from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import to_unicode, string_to_timeout
+from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -168,9 +168,6 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        # TODO: Transaction system (and possible other modules) should be
-        #       modeled as a Service that run independently.
-        #       The Client/Application should be a collection of services.
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
@@ -243,7 +240,7 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable
+    # TODO: re-enable. issue #2398
     def sync(self):
         pass
 
@@ -293,48 +290,36 @@ class Client(HardwarePresetsMixin):
 
         logger.debug("Is super node? %s", self.node.is_super_node())
 
-        if not self.p2pservice:
-            self.p2pservice = P2PService(
-                self.node,
-                self.config_desc,
-                self.keys_auth,
-                connect_to_known_hosts=self.connect_to_known_hosts
-            )
+        self.p2pservice = P2PService(
+            self.node,
+            self.config_desc,
+            self.keys_auth,
+            self.mainnet,
+            connect_to_known_hosts=self.connect_to_known_hosts
+        )
 
-        if not self.task_server:
-            self.task_server = TaskServer(
-                self.node,
-                self.config_desc,
-                self,
-                use_ipv6=self.config_desc.use_ipv6,
-                use_docker_manager=self.use_docker_manager,
-                task_archiver=self.task_archiver)
+        self.task_server = TaskServer(
+            self.node,
+            self.config_desc,
+            self,
+            use_ipv6=self.config_desc.use_ipv6,
+            use_docker_manager=self.use_docker_manager,
+            task_archiver=self.task_archiver)
 
-            monitoring_publisher_service = MonitoringPublisherService(
-                self.task_server,
-                interval_seconds=max(
-                    int(self.config_desc.node_snapshot_interval),
-                    1))
-            monitoring_publisher_service.start()
-            self._services.append(monitoring_publisher_service)
-
-            clean_tasks_older_than = \
-                self.config_desc.clean_tasks_older_than_seconds
-            if clean_tasks_older_than > 0:
-                task_cleaner_service = TaskCleanerService(
-                    self,
-                    interval_seconds=max(1, int(clean_tasks_older_than / 10)),
-                    older_than_seconds=clean_tasks_older_than)
-                task_cleaner_service.start()
-                self._services.append(task_cleaner_service)
+        monitoring_publisher_service = MonitoringPublisherService(
+            self.task_server,
+            interval_seconds=max(
+                int(self.config_desc.node_snapshot_interval),
+                1))
+        monitoring_publisher_service.start()
+        self._services.append(monitoring_publisher_service)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
         logger.info("Starting resource server ...")
 
-        if not self.daemon_manager:
-            self.daemon_manager = HyperdriveDaemonManager(self.datadir)
-            self.daemon_manager.start()
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
 
         hyperdrive_addrs = self.daemon_manager.public_addresses(
             self.node.pub_addr)
@@ -342,13 +327,31 @@ class Client(HardwarePresetsMixin):
 
         self.node.hyperdrive_prv_port = next(iter(hyperdrive_ports))
 
-        if not self.resource_server:
-            resource_manager = HyperdriveResourceManager(dir_manager,
-                                                         hyperdrive_addrs)
-            self.resource_server = BaseResourceServer(resource_manager,
-                                                      dir_manager,
-                                                      self.keys_auth, self)
-            self.task_server.restore_resources()
+        clean_tasks_older_than = \
+            self.config_desc.clean_tasks_older_than_seconds
+        if clean_tasks_older_than > 0:
+            self.clean_old_tasks()
+
+        resource_manager = HyperdriveResourceManager(
+            dir_manager=dir_manager,
+            daemon_address=hyperdrive_addrs
+        )
+        self.resource_server = BaseResourceServer(
+            resource_manager=resource_manager,
+            dir_manager=dir_manager,
+            keys_auth=self.keys_auth,
+            client=self
+        )
+        self.task_server.restore_resources()
+
+        # Start service after restore_resources() to avoid race conditions
+        if clean_tasks_older_than:
+            task_cleaner_service = TaskCleanerService(
+                client=self,
+                interval_seconds=max(1, clean_tasks_older_than // 10)
+            )
+            task_cleaner_service.start()
+            self._services.append(task_cleaner_service)
 
         def connect(ports):
             logger.info(
@@ -507,7 +510,7 @@ class Client(HardwarePresetsMixin):
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
-        # FIXME: Statement only for old DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility #2467
         if isinstance(task_dict, dict):
             logger.warning('enqueue_new_task called with deprecated dict type')
             task = task_manager.create_task(task_dict)
@@ -677,6 +680,7 @@ class Client(HardwarePresetsMixin):
         self.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
+        self.funds_locker.remove_task(task_id)
 
     def get_node(self):
         return self.node.to_dict()
@@ -996,6 +1000,16 @@ class Client(HardwarePresetsMixin):
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
 
+    def clean_old_tasks(self):
+        now = get_timestamp_utc()
+        for task in self.get_tasks():
+            deadline = task['time_started'] \
+                + string_to_timeout(task['timeout'])\
+                + self.config_desc.clean_tasks_older_than_seconds
+            if deadline <= now:
+                logger.info('Task %s got too old. Deleting.', task['id'])
+                self.delete_task(task['id'])
+
     def get_known_tasks(self):
         headers = {}
         for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
@@ -1165,7 +1179,6 @@ class Client(HardwarePresetsMixin):
     def __lock_datadir(self):
         if not path.exists(self.datadir):
             # Create datadir if not exists yet.
-            # TODO: It looks we have the same code in many places
             makedirs(self.datadir)
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
@@ -1211,7 +1224,7 @@ class DoWorkService(LoopingCallService):
         super().start(now=False)
 
     def _run(self):
-        # TODO: split it into separate services
+        # TODO: split it into separate services. Issue #2431
 
         if self._client.config_desc.send_pings:
             self._client.p2pservice.ping_peers(
@@ -1320,6 +1333,7 @@ class ResourceCleanerService(LoopingCallService):
 
     def _run(self):
         # TODO: is any synchronization needed here? golemcli has none.
+        # Issue #2432
         self._client.remove_computed_files(self.older_than_seconds)
         self._client.remove_distributed_files(self.older_than_seconds)
         self._client.remove_received_files(self.older_than_seconds)
@@ -1327,22 +1341,12 @@ class ResourceCleanerService(LoopingCallService):
 
 class TaskCleanerService(LoopingCallService):
     _client = None  # type: Client
-    older_than_seconds = 0  # type: int
 
     def __init__(self,
                  client: Client,
-                 interval_seconds: int,
-                 older_than_seconds: int) -> None:
+                 interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
-        self.older_than_seconds = older_than_seconds
 
     def _run(self):
-        now = time.time()
-        for task in self._client.get_tasks():
-            deadline = task['time_started'] \
-                + string_to_timeout(task['timeout'])\
-                + self.older_than_seconds
-            if deadline <= now:
-                logger.info('Task %s got too old. Deleting.', task['id'])
-                self._client.delete_task(task['id'])
+        self._client.clean_old_tasks()

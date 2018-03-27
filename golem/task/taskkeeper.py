@@ -35,7 +35,6 @@ def compute_subtask_value(price: int, computation_time: int):
 def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
                                    num_of_res_transfers_needed: int =
                                    NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER):
-    # FIXME get num of res transfers needed
     verification_timeout = subtask_timeout
     resource_timeout = helpers.maximum_download_time(resource_size).seconds
     resource_timeout *= num_of_res_transfers_needed
@@ -49,7 +48,7 @@ class CompTaskInfo:
         self.price = price
         self.requests = 1
         self.subtasks = {}
-        # TODO Add concent communication timeout
+        # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
 

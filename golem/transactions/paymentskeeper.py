@@ -44,7 +44,7 @@ class PaymentsDatabase(object):
         :param state: new state
         :return:
         """
-        # FIXME: Remove this method
+        # FIXME: Remove this method #2457
         query = Payment.update(status=state, modified_date=str(datetime.now()))
         query = query.where(Payment.subtask == subtask_id)
         query.execute()
@@ -53,7 +53,7 @@ class PaymentsDatabase(object):
         """ Return state of a payment for given task that should be / was made to given node
         :return str|None: return state of payment or none if such payment don't exist in database
         """
-        # FIXME: Remove this method
+        # FIXME: Remove this method #2457
         try:
             return Payment.get(Payment.subtask == payment_info.subtask_id).status
         except Payment.DoesNotExist:
