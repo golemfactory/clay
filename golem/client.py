@@ -431,6 +431,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -441,9 +442,10 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            self.task_server.pause()
+            yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        logger.info("Paused")
 
     def resume(self):
         logger.info("Resuming ...")
@@ -456,6 +458,7 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        logger.info("Resumed")
 
     def init_monitor(self):
         logger.debug("Starting monitor ...")
