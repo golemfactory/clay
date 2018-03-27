@@ -212,7 +212,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 mainnet=True,
             )
             self.client.withdraw('123', '0xdead', 'ETH')
-            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
 
     def test_payment_address(self, *_):
         self.client = Client(
