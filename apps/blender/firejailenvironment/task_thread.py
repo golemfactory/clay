@@ -4,7 +4,9 @@ import tempfile
 
 import time
 
+from golem.core import common
 from golem.docker.image import DockerImage
+from golem.resource import dirmanager
 from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread
 from golem.vm.memorychecker import MemoryChecker
@@ -12,20 +14,42 @@ from golem.vm.memorychecker import MemoryChecker
 DOCKER_BLENDER_PATH = '/opt/blender/'
 
 FIREJAIL_COMMAND = 'firejail'
-BLENDER_DIR = tempfile.gettempdir()
+BLENDER_DIR = os.path.join(tempfile.gettempdir(), 'golem_blender279')
 BLENDER_BINARY_PATH = os.path.join(BLENDER_DIR, 'blender', 'blender')
 SCRIPT_FILE_NAME = 'blenderscript.py'
 BLENDER_IMAGE_REP = 'golemfactory/blender'
-BLENDER_IMAGE_TAG = '1.3'
+BLENDER_IMAGE_TAG = '1.4'
 
 STDOUT_FILE = "stdout.log"
 STDERR_FILE = "stderr.log"
+
+BLENDER_SETUP_FILE = dirmanager.find_task_script(
+    os.path.join(common.get_golem_path(),
+                 'apps', 'blender', 'firejailenvironment'),
+    'blender_setup.py')
 
 
 def _prepare_blender():
     if not os.path.isfile(BLENDER_BINARY_PATH):
         img = DockerImage(BLENDER_IMAGE_REP, tag=BLENDER_IMAGE_TAG)
         img.extract_path(DOCKER_BLENDER_PATH, BLENDER_DIR)
+        # run blender with predefined task in order to load in
+        # kernel modules for GPU. Must be done outside of firejail
+        _init_gpu_blender()
+
+
+def _init_gpu_blender():
+    cmd = [
+        BLENDER_BINARY_PATH,
+        "-b",
+        "-y",  # enable scripting by default
+        "-P", BLENDER_SETUP_FILE,
+        "-noaudio"
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        raise Exception('Failed to initialize blender with GPU support')
 
 
 class BlenderFirejailTaskThread(TaskThread):

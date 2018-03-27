@@ -39,30 +39,20 @@ class ShowInformation(bpy.types.Operator):
 
         return {"FINISHED"}
 
+uses_gpu = False
 if 'GPU' in argv:
-    bpy.context.scene.cycles.device = 'GPU'
-
-    # We know the hierarchy from best to worst explicitly
-    for compute_device_type in ['CUDA', 'OPENCL', 'NONE']:
-        try:
-            bpy.context.user_preferences.system.compute_device_type = \
-                compute_device_type
+    context = bpy.context
+    context.scene.cycles.device = 'GPU'
+    cycles_pref = bpy.context.user_preferences.addons['cycles'].preferences
+    device_types_by_preference = ['CUDA', 'OPENCL', 'NONE']
+    present_dev_types = [dt[0] for dt in cycles_pref.get_device_types(context)]
+    for device_type in device_types_by_preference:
+        if device_type in present_dev_types:
+            cycles_pref.compute_device_type = device_type
             break
-        except TypeError:
-            pass
-    # As for compute_device, probe the system and select the last option
-    # enumerated as legal options for "compute_device"
-    try:
-        bpy.context.user_preferences.system.compute_device = '_'
-    except TypeError:
-        _, error, _ = sys.exc_info()
-    # above was a guaranteed exception, so error is set for sure
-    error = str(error)
-    if re.match('bpy_struct', error):
-        possible_values_str = error[error.find('('):]
-        possible_values = re.findall(r'\'(\S+)\'', possible_values_str)
-        select_value = possible_values[-1]
-        bpy.context.user_preferences.system.compute_device = select_value
+    for dev in cycles_pref.devices:
+        dev.use = True
+    uses_gpu = cycles_pref.compute_device_type in ['CUDA', 'OPENCL']
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
@@ -75,8 +65,8 @@ bpy.ops.wm.scene_information()
 
 for scene in bpy.data.scenes:
 
-    scene.render.tile_x = 0
-    scene.render.tile_y = 0
+    tile_size = 2048 if uses_gpu else 16
+    scene.render.tile_x = scene.render.tile_y = tile_size
     scene.render.resolution_x = %(resolution_x)d
     scene.render.resolution_y = %(resolution_y)d
     scene.render.resolution_percentage = 100

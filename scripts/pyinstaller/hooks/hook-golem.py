@@ -15,6 +15,8 @@ datas = [
      'apps/blender/resources/scripts/'),
     ('apps/blender/dockerenvironment/resources/scripts/docker_blendertask.py',
      'apps/blender/dockerenvironment/resources/scripts'),
+    ('apps/blender/firejailenvironment/resources/scripts/blender_setup.py',
+     'apps/blender/firejailenvironment/resources/scripts'),
     ('apps/lux/resources/scripts/docker_luxtask.py',
      'apps/lux/resources/scripts/'),
     ('apps/lux/resources/scripts/docker_luxmerge.py',
