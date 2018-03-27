@@ -1,10 +1,10 @@
 import ipaddress
 import logging
+import os
 import socket
 from collections import Iterable
 from typing import Union, List
 
-import os
 import netifaces
 
 from golem.network.stun import pystun as stun
