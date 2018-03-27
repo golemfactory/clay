@@ -119,10 +119,14 @@ class KeysAuth:
         )
 
         if loaded_keys:
+            logger.debug('Existing keys loaded')
             priv_key, pub_key = loaded_keys
         else:
+            logger.debug('No keys found, generating new one')
             priv_key, pub_key = KeysAuth._generate_keys(difficulty)
+            logger.debug('Generation completed, saving keys')
             KeysAuth._save_private_key(priv_key, priv_key_path, password)
+            logger.debug('Keys stored succesfully')
 
         return priv_key, pub_key
 

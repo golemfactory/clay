@@ -30,6 +30,7 @@ class TaskArchiver(object):
         self._archive = Archive()
         self._dump_file = None
         self._max_tasks = max_tasks
+        log.debug('Starting taskarchiver in dir: %r', datadir)
         if datadir:
             try:
                 self._dump_file = os.path.join(datadir, TASKARCHIVE_FILENAME)

@@ -2,6 +2,7 @@ import logging
 import pickle
 import time
 from pathlib import Path
+from typing import Optional, Dict, List
 
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
@@ -692,17 +693,19 @@ class TaskManager(TaskEventListener):
 
         return ts
 
-    def get_subtasks(self, task_id):
+    def get_subtasks(self, task_id) -> Optional[List[str]]:
         """
         Get all subtasks related to given task id
         :param task_id: Task ID
         :return: list of all subtasks related with @task_id or None
                  if @task_id is not known
         """
-        if task_id not in self.tasks_states:
+        task_state = self.tasks_states.get(task_id)
+        if not task_state:
             return None
-        return [sub.subtask_id for sub in
-                list(self.tasks_states[task_id].subtask_states.values())]
+
+        subtask_states = list(task_state.subtask_states.values())
+        return [subtask_state.subtask_id for subtask_state in subtask_states]
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
@@ -711,11 +714,10 @@ class TaskManager(TaskEventListener):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def get_task_dict(self, task_id):
-        task = self.tasks[task_id]
-
-        if task is None:
-            return
+    def get_task_dict(self, task_id) -> Optional[Dict]:
+        task = self.tasks.get(task_id)
+        if not task:  # task might have been deleted after the request was made
+            return None
 
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
@@ -734,9 +736,11 @@ class TaskManager(TaskEventListener):
                            state.to_dictionary(),
                            self.get_task_definition_dict(task))
 
-    def get_tasks_dict(self):
-        return [self.get_task_dict(task_id) for task_id
-                in self.tasks.keys()]
+    def get_tasks_dict(self) -> List[Dict]:
+        task_ids = list(self.tasks.keys())
+        mapped = map(self.get_task_dict, task_ids)
+        filtered = filter(None, mapped)
+        return list(filtered)
 
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]

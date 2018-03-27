@@ -294,6 +294,7 @@ class Client(HardwarePresetsMixin):
             self.node,
             self.config_desc,
             self.keys_auth,
+            self.mainnet,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
 
@@ -636,13 +637,13 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    @inlineCallbacks
     def create_task(self, t_dict):
         try:
-            task = yield self.enqueue_new_task(t_dict)
-            return task.header.task_id
-        except Exception:
+            self.enqueue_new_task(t_dict)
+            return True, ''
+        except Exception as ex:
             logger.exception("Cannot create task %r", t_dict)
+            return False, str(ex)
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
@@ -679,6 +680,7 @@ class Client(HardwarePresetsMixin):
         self.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
+        self.funds_locker.remove_task(task_id)
 
     def get_node(self):
         return self.node.to_dict()

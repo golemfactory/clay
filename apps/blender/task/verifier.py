@@ -125,7 +125,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             if self.wasFailure:
                 return
 
-        work_dir = verification_context.get_crop_path(crop_number)
+        work_dir = verification_context.get_crop_path(
+            crop_number+self.cropper.crop_counter)
         di = DockerImage(BlenderVerifier.DOCKER_NAME,
                          tag=BlenderVerifier.DOCKER_TAG)
 
@@ -220,6 +221,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.additional_test = True
             logger.info("Performing additional verification for subtask %r ",
                         self.subtask_info['subtask_id'])
+            self.cropper.crop_counter = 3
             self.cropper.render_crops(self.computer, self.resources,
                                       self._crop_rendered,
                                       self._crop_render_failure,
@@ -228,8 +230,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         elif avg_ssim < w_ssim_min:
-            logger.info("Subtask %r NOT verified with %r",
-                        self.subtask_info['subtask_id'], avg_ssim)
+            logger.warning("Subtask %r NOT verified with %r",
+                           self.subtask_info['subtask_id'], avg_ssim)
             self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"
