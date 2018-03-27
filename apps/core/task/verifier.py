@@ -1,12 +1,14 @@
 import logging
 import queue
+import os
 import threading
+
 from collections import namedtuple
 from datetime import datetime
-import os
-from twisted.internet.defer import Deferred, inlineCallbacks, gatherResults
 from types import FunctionType
 from typing import Optional, Type, Dict
+
+from twisted.internet.defer import Deferred, inlineCallbacks, gatherResults
 
 from golem.core.common import deadline_to_timeout
 from golem.task.localcomputer import ComputerAdapter
