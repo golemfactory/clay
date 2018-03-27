@@ -8,13 +8,15 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem import testutils
+from golem.core import keysauth
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
 from golem.network.concent.handlers_library import library
+from golem.network.concent.filetransfers import ConcentFiletransferService
 from tests.factories import messages as msg_factories
 from tests.factories import taskserver as taskserver_factories
-
+from tests.factories.resultpackage import ExtractedPackageFactory
 
 class RegisterHandlersTestCase(unittest.TestCase):
     def setUp(self):
@@ -119,11 +121,11 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
         ])
 
 
-class TaskServerMessageHandlerTestCase(
+class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
+
     def setUp(self):
-        for parent in self.__class__.__bases__:
-            parent.setUp(self)
+        super().setUp()
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
         )
@@ -137,6 +139,9 @@ class TaskServerMessageHandlerTestCase(
         # Remove registered handlers
         del self.task_server
         gc.collect()
+
+
+class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch("golem.network.concent.received_handler.logger.warning")
     def test_concent_service_refused(self, logger_mock):
@@ -304,8 +309,33 @@ class TaskServerMessageHandlerTestCase(
         library.interpret(afgtr, response_to=afgtr.force_get_task_result)
         self.assertEqual(log.call_count, 1)
 
-    def test_force_get_task_result_upload(self):
 
+class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.client.concent_filetransfers = ConcentFiletransferService(
+            keys_auth=keysauth.KeysAuth(
+                datadir=self.path,
+                private_key_name='priv_key',
+                password='password',
+            )
+        )
+
+        self.cft = self.client.concent_filetransfers
+
+        cft_patch = mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.running',
+            mock.Mock(return_value=True)
+        )
+        cft_patch.start()
+        self.addCleanup(cft_patch.stop)
+
+
+class ForceGetTaskResultUploadTest(FiletransfersTestBase):
+
+    def test_force_get_task_result_upload(self):
         wtr = taskserver_factories.WaitingTaskResultFactory(
             result_path=self.path)
         rct = msg_factories.ReportComputedTask(subtask_id=wtr.subtask_id)
@@ -315,11 +345,21 @@ class TaskServerMessageHandlerTestCase(
         self.task_server.results_to_send[wtr.subtask_id] = wtr
         library.interpret(fgtru)
 
-        self.cf_transfer.assert_called_once()
-        self.assertEqual(self.cf_transfer.call_args[0][0],
-                         wtr.result_path)
-        self.assertEqual(self.cf_transfer.call_args[0][1],
-                         fgtru.file_transfer_token)
+        with mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.upload',
+        ) as upload_mock:
+            self.cft._run()
+
+        upload_mock.assert_called_once()
+        self.assertEqual(
+            upload_mock.call_args[0][0].file_path,
+            wtr.result_path)
+        self.assertEqual(
+            upload_mock.call_args[0][0].file_transfer_token,
+            fgtru.file_transfer_token)
+
+    # @todo add tests for success/error callbacks of the _handler_
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_force_get_task_result_upload_no_ftt(self, log_mock):
@@ -346,3 +386,39 @@ class TaskServerMessageHandlerTestCase(
         self.cf_transfer.assert_not_called()
         log_mock.assert_called_once()
         self.assertIn('Cannot find the subtask', log_mock.call_args[0][0])
+
+
+class ForceGetTaskResultDownloadTest(FiletransfersTestBase):
+
+    def test_force_get_task_result_download(self):
+        wtr = taskserver_factories.WaitingTaskResultFactory(
+            result_path=self.path)
+        rct = msg_factories.ReportComputedTask(subtask_id=wtr.subtask_id)
+        fgtrd = msg_factories.ForceGetTaskResultDownloadFactory(
+            force_get_task_result__report_computed_task=rct)
+
+        library.interpret(fgtrd)
+
+        ep = ExtractedPackageFactory()
+
+        extract = \
+            self.task_server.task_manager.task_result_manager.extract = \
+            mock.Mock(return_value=ep)
+
+        verify_results = self.task_server.verify_results = mock.Mock()
+
+        with mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.download',
+        ) as download_mock:
+            self.cft._run()
+
+        download_mock.assert_called_once()
+        self.assertEqual(
+            download_mock.call_args[0][0].file_transfer_token,
+            fgtrd.file_transfer_token)
+
+        extract.assert_called_once()
+        verify_results.assert_called_once_with(
+            report_computed_task=rct, extracted_package=ep
+        )

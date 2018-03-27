@@ -245,6 +245,16 @@ class ForceGetTaskResultUploadFactory(factory.Factory):
         FileTransferTokenFactory, upload=True)
 
 
+class ForceGetTaskResultDownloadFactory(factory.Factory):
+    class Meta:
+        model = concents.ForceGetTaskResultDownload
+
+    force_get_task_result = factory.SubFactory(
+        'tests.factories.messages.ForceGetTaskResult')
+    file_transfer_token = factory.SubFactory(
+        FileTransferTokenFactory, download=True)
+
+
 class ForceSubtaskResultsResponse(factory.Factory):
     class Meta:
         model = concents.ForceSubtaskResultsResponse

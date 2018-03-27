@@ -112,7 +112,7 @@ class ConcentFiletransferService(LoopingCallService):
                 self.keys_auth.public_key)
         }
 
-    def upload(self, request):
+    def upload(self, request: ConcentFileRequest):
         uri = self._get_upload_uri(request.file_transfer_token)
         ftt = request.file_transfer_token
         headers = self._get_auth_headers(ftt)
@@ -123,7 +123,7 @@ class ConcentFiletransferService(LoopingCallService):
             response = requests.post(uri, data=f, headers=headers)
         return response
 
-    def download(self, request):
+    def download(self, request: ConcentFileRequest):
         uri = self._get_download_uri(request.file_transfer_token)
         headers = self._get_auth_headers(request.file_transfer_token)
         response = requests.get(uri, stream=True, headers=headers)

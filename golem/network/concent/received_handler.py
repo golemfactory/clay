@@ -316,7 +316,10 @@ class TaskServerMessageHandler():
                            msg.subtask_id, exc)
 
         self.concent_filetransfers.transfer(
-            wtr.result_path, ftt, success=success, error=error)
+            file_path=wtr.result_path,
+            file_transfer_token=ftt,
+            success=success,
+            error=error)
 
     @handler_for(message.concents.ForceGetTaskResultDownload)
     def on_force_get_task_results_download(
