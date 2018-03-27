@@ -2,6 +2,7 @@ from os import path
 from unittest.mock import patch, Mock, ANY
 
 from click.testing import CliRunner
+import pytest
 from twisted.internet.defer import Deferred
 
 import golem.argsparser as argsparser
@@ -193,6 +194,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --geth-address', return_value.output)
 
+    @pytest.mark.skip('Issue #2476')
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.Node')
     def test_start_geth_should_be_passed_to_node(self, mock_node, *_):
@@ -286,6 +288,7 @@ class TestNode(TestWithDatabase):
                                        use_monitor=False,
                                        mainnet=True)
 
+    @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--start-geth-port'])
@@ -293,6 +296,7 @@ class TestNode(TestWithDatabase):
         self.assertIn('Error: --start-geth-port option requires an argument',
                       return_value.output)
 
+    @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_start_geth_should_fail(self, *_):
         runner = CliRunner()
         args = self.args + ['--start-geth-port', 1]
@@ -301,6 +305,7 @@ class TestNode(TestWithDatabase):
         self.assertIn('it makes sense only together with --start-geth',
                       return_value.output)
 
+    @pytest.mark.skip('Issue #2476')
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.Node')
     def test_start_geth_port_should_be_passed_to_node(self, mock_node, *_):
