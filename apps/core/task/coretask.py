@@ -286,7 +286,7 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if SubtaskStatus.is_active(subtask_info['status']):
+        if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
             self._mark_subtask_failed(subtask_id)
@@ -453,7 +453,7 @@ class CoreTask(Task):
     @handle_key_error
     def should_accept(self, subtask_id):
         status = self.subtasks_given[subtask_id]['status']
-        return SubtaskStatus.is_computed(status)
+        return status.is_computed()
 
     @staticmethod
     def _interpret_log(log):

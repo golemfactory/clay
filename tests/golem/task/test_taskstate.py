@@ -51,7 +51,7 @@ class TestSubtaskState(unittest.TestCase):
         assert ss_dict.get('extra_data') is None
 
         assert ss_dict['time_remaining'] == 5
-        assert ss_dict['status'] == SubtaskStatus.starting
+        assert ss_dict['status'] == SubtaskStatus.starting.value
 
         assert ss_dict.get('value') is None
 

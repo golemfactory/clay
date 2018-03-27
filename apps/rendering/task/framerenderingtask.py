@@ -88,7 +88,7 @@ class FrameState(object):
         self.started = None
 
     def serialize(self):
-        return to_unicode(self.status), self.started
+        return self.status.name, self.started
 
 
 class FrameRenderingTask(RenderingTask):
@@ -331,7 +331,7 @@ class FrameRenderingTask(RenderingTask):
         failed_color = (255, 0, 0)
 
         for sub in list(self.subtasks_given.values()):
-            if SubtaskStatus.is_active(sub['status']):
+            if sub['status'].is_active():
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
 
