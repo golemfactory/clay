@@ -130,7 +130,8 @@ def run_requesting_node(datadir, num_subtasks=3):
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-    task = DummyTask(client.get_node_name(), params, num_subtasks)
+    task = DummyTask(client.get_node_name(), params, num_subtasks,
+                     client.keys_auth.public_key)
     task.initialize(DirManager(datadir))
     client.enqueue_new_task(task)
 
