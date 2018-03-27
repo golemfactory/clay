@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import itertools
 import logging
+from typing import Optional
+
 import os
 import time
 import weakref
 from collections import deque
 from pathlib import Path
 
+from golem.network.p2p.node import Node
+from golem.network.pending import PendingSessionMessages
 from golem_messages import message
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -44,7 +48,9 @@ class TaskServer(
                  client,
                  use_ipv6=False,
                  use_docker_manager=True,
-                 task_archiver=None):
+                 task_archiver=None,
+                 persist_messages=True):
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -75,6 +81,10 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
+
+        self.pending_messages: Optional[PendingSessionMessages] = None
+        if persist_messages:
+            self.pending_messages = PendingSessionMessages(client.datadir)
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -121,6 +131,24 @@ class TaskServer(
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r',
                          self.task_manager.tasks_states)
+
+    def sync_sessions(self):
+        if not self.pending_messages:
+            return
+
+        for session in self.pending_messages.get_sessions():
+            # Messages may have not appeared (yet; e.g. task results)
+            if not self.pending_messages.exists(session.key_id):
+                continue
+
+            logger.info('Reconnecting to %r', session.node_info)
+
+            try:
+                node = Node.from_dict(session.node_info)
+                self.start_task_session(node, None, None)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning('Cannot reconnect to node %r: %r',
+                               session.node_info, exc)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(
@@ -510,6 +538,8 @@ class TaskServer(
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
     def quit(self):
+        if self.pending_messages:
+            self.pending_messages.quit()
         self.task_computer.quit()
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):

@@ -18,8 +18,8 @@ from twisted.internet.defer import (
     Deferred)
 
 import golem
-from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
-                             PAYMENT_CHECK_INTERVAL, AppConfig)
+from golem.appconfig import (AppConfig, TASKARCHIVE_MAINTENANCE_INTERVAL,
+                             PAYMENT_CHECK_INTERVAL, SESSION_CHECK_INTERVAL)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
@@ -277,7 +277,7 @@ class Client(HardwarePresetsMixin):
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.task_computer.quit()
+            self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.stop_monitor()
             self.monitor = None
@@ -1246,6 +1246,12 @@ class DoWorkService(LoopingCallService):
             self._client.ranking.sync_network()
         except Exception:
             logger.exception("ranking.sync_network failed")
+
+        if self._time_for('sessions', SESSION_CHECK_INTERVAL):
+            try:
+                self._client.task_server.sync_sessions()
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("sync_sessions failed")
 
         if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
             try:

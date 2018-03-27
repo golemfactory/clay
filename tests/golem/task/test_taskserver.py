@@ -81,6 +81,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
+                persist_messages=False,
             )
 
     def tearDown(self):
@@ -104,6 +105,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
             config_desc=ccd,
             client=self.client,
             use_docker_manager=False,
+            persist_messages=False,
             task_archiver=tar,
         )
         ts.verify_header_sig = lambda x: True
@@ -685,10 +687,12 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
+                persist_messages=False,
             )
         self.ts.task_computer = MagicMock()
 
     def tearDown(self):
+        self.ts.quit()
         for parent in self.__class__.__bases__:
             parent.tearDown(self)
 
@@ -821,6 +825,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
+                persist_messages=False,
             )
         self.ts.task_manager.notify_update_task = Mock(
             side_effect=self.ts.task_manager.notify_update_task
@@ -833,6 +838,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         )
         self.ts.task_manager.dump_task = Mock()
         self.task_count = 3
+
+    def tearDown(self):
+        self.ts.quit()
+        for parent in self.__class__.__bases__:
+            parent.tearDown(self)
 
     @staticmethod
     def _create_tasks(task_server, count):

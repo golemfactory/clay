@@ -5,6 +5,7 @@ import time
 import semantic_version
 from golem_messages import message
 from pydispatch import dispatcher
+from twisted.internet.error import ConnectionDone
 
 import golem
 from golem.appconfig import SEND_PEERS_NUM
@@ -92,7 +93,7 @@ class PeerSession(BasicSafeSession):
     def __str__(self):
         return "{} : {}".format(self.address, self.port)
 
-    def dropped(self):
+    def dropped(self, _reason=ConnectionDone):
         """
         Close connection and inform p2p service about disconnection
         """
@@ -116,15 +117,12 @@ class PeerSession(BasicSafeSession):
         )
         BasicSafeSession.interpret(self, msg)
 
-    def send(self, msg, send_unverified=False):
+    def send(self, msg) -> bool:
         """Send given message if connection was verified or send_unverified
            option is set to True.
-        :param Message message: message to be sent.
-        :param boolean send_unverified: should message be sent even if
-                                        the connection hasn't been
-                                        verified yet?
+        :param Message msg: message to be sent.
         """
-        BasicSafeSession.send(self, msg, send_unverified)
+        BasicSafeSession.send(self, msg)
         self.p2p_service.set_last_message(
             "->",
             self.key_id,
@@ -133,6 +131,7 @@ class PeerSession(BasicSafeSession):
             self.address,
             self.port
         )
+        return True
 
     @property
     def my_private_key(self):
@@ -505,7 +504,7 @@ class PeerSession(BasicSafeSession):
             solve_challenge=self.solve_challenge,
             **challenge_kwargs
         )
-        self.send(msg, send_unverified=True)
+        self.send(msg)
 
     def __send_ping(self):
         self.send(message.Ping())

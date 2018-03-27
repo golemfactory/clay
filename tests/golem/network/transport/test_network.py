@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 import logging
-import os
 import time
 import unittest
 
@@ -9,7 +8,6 @@ import golem_messages.cryptography
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory, \
     SessionProtocol
-from golem.network.transport import session
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
     TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
@@ -28,7 +26,7 @@ class ASession(object):
         self.my_private_key = my_keys.raw_privkey
         self.theirs_public_key = their_keys.raw_pubkey
 
-    def dropped(self):
+    def dropped(self, _=None):
         self.dropped_called = True
 
     def interpret(self, msg):

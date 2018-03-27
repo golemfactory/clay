@@ -107,6 +107,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 config_desc=mock.Mock(),
                 client=client,
                 use_docker_manager=False,
+                persist_messages=False,
             )
 
         client.start = mock.Mock()

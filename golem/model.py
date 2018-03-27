@@ -3,10 +3,11 @@ import inspect
 import json
 import pickle
 
+from typing import Optional, Type  # noqa # pylint: disable=unused-import
+
 import peewee
 from enum import Enum
 # Type is used for old-style (pre Python 3.6) type annotation
-from typing import Optional, Type  # pylint: disable=unused-import
 
 import sys
 from ethereum.utils import denoms
@@ -433,12 +434,15 @@ class NetworkMessage(BaseModel):
         return msg
 
 
-def collect_db_models(module: str = __name__):
+def collect_db_models(module: str = __name__, excluded=None):
+
+    excluded = excluded or []
     return inspect.getmembers(
         sys.modules[module],
         lambda cls: (
             inspect.isclass(cls) and
             issubclass(cls, BaseModel) and
+            cls not in excluded and
             cls is not BaseModel
         )
     )

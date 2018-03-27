@@ -14,6 +14,7 @@ class TaskServer(factory.Factory):
     node = factory.SubFactory('tests.factories.p2p.Node')
     config_desc = clientconfigdescriptor.ClientConfigDescriptor()
     use_docker_manager = False
+    persist_messages = False
 
 
 class WaitingTaskResultFactory(factory.Factory):

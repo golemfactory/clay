@@ -5,6 +5,8 @@ import time
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from peewee import PeeweeException, DoesNotExist
+from twisted.internet.error import ConnectionDone, ConnectionLost
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
@@ -99,9 +101,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # for the result
         self.result_owner = None
         self.err_msg = None  # Keep track of errors
+        self.node_info = None
         self.__set_msg_interpretations()
 
-        # self.threads = []
     ########################
     # BasicSession methods #
     ########################
@@ -122,13 +124,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         BasicSafeSession.interpret(self, msg)
 
-    def dropped(self):
-        """ Close connection """
-        BasicSafeSession.dropped(self)
-        if self.task_server:
-            self.task_server.remove_task_session(self)
-            if self.key_id:
-                self.task_server.remove_resource_peer(self.task_id, self.key_id)
+    def dropped(self, reason=ConnectionDone):
+        """ Close connection. Save session state if connection was lost. """
+        BasicSafeSession.dropped(self, reason)
+
+        if not self.task_server:
+            return
+        self.task_server.remove_task_session(self)
+
+        if not self.key_id:
+            return
+        self.task_server.remove_resource_peer(self.task_id, self.key_id)
+
+        pending_messages = self.task_server.pending_messages
+        if not (self.task_server.pending_messages and self.node_info):
+            return
+
+        if reason == ConnectionLost or pending_messages.exists(self.key_id):
+            pending_messages.put_session(self)
 
     #######################
     # SafeSession methods #
@@ -377,9 +390,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID
-            ),
-            send_unverified=True
+                proto_id=PROTOCOL_CONST.ID,
+                node_info=self.task_server.node.to_dict()
+            )
         )
 
     def send_start_session_response(self, conn_id):
@@ -487,7 +500,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
-        if not self.msgs_to_send:
+        if not self.task_server.pending_messages.exists(self.key_id):
             self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
@@ -691,6 +704,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
+        if self.node_info is None:
+            self.node_info = msg.node_info
+
         if msg.proto_id != PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
@@ -713,10 +729,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if send_hello:
             self.send_hello()
-        self.send(
-            message.RandVal(rand_val=msg.rand_val),
-            send_unverified=True
-        )
+        self.send(message.RandVal(rand_val=msg.rand_val))
 
     def _react_to_rand_val(self, msg):
         # If we disconnect in react_to_hello, we still might get the RandVal
@@ -726,10 +739,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if self.rand_val == msg.rand_val:
             self.verified = True
-            self.task_server.verified_conn(self.conn_id, )
-            for msg_ in self.msgs_to_send:
-                self.send(msg_)
-            self.msgs_to_send = []
+            self.task_server.verified_conn(self.conn_id)
+            if self.task_server.pending_messages:
+                self._restore_session_state()
+                self._restore_messages()
         else:
             self.disconnect(message.Disconnect.REASON.Unverified)
 
@@ -791,11 +804,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            "an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
-    def send(self, msg, send_unverified=False):
-        if not self.verified and not send_unverified:
-            self.msgs_to_send.append(msg)
-            return
-        BasicSafeSession.send(self, msg, send_unverified=send_unverified)
+    def send(self, msg) -> bool:  # noqa pylint: disable=arguments-differ
+
+        basic_messages = [message.Hello.TYPE,
+                          message.RandVal.TYPE,
+                          message.Disconnect.TYPE]
+
+        if not BasicSafeSession.send(self, msg):
+            if self.key_id and msg.TYPE not in basic_messages:
+                self.task_server.pending_messages.put(
+                    key_id=self.key_id,
+                    msg=msg,
+                    task_id=self.task_id,
+                    subtask_id=self.subtask_id
+                )
+            return False
+
         self.task_server.set_last_message(
             "->",
             time.localtime(),
@@ -803,6 +827,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port
         )
+        return True
 
     def check_provider_for_subtask(self, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
@@ -875,6 +900,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         reasons = message.CannotComputeTask.REASON
         self.err_msg = reasons.WrongDockerImages
         return False
+
+    def _restore_session_state(self) -> None:
+        try:
+            state = self.task_server.pending_messages.get_session(self.key_id)
+        except (PeeweeException, DoesNotExist):
+            logger.debug('No session data to restore for session %r',
+                         self.key_id)
+        else:
+            state.update_sesion(self)
+
+    def _restore_messages(self) -> None:
+        from twisted.internet import reactor
+
+        try:
+            iterator = self.task_server.pending_messages.get(self.key_id)
+        except PeeweeException as exc:
+            logger.error("Error fetching pending messages: %r", exc)
+            return
+
+        for msg in iterator:
+            reactor.callLater(0, self.send, msg)
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
