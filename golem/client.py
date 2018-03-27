@@ -244,7 +244,13 @@ class Client(HardwarePresetsMixin):
             'taskmanager_listen (sender: %r, signal: %r, event: %r, args: %r)',
             sender, signal, event, kwargs
         )
-        self._publish(Task.evt_task_status, kwargs['task_id'])
+
+        if 'op' in kwargs and kwargs['op'] is not None \
+                and kwargs['op'].subtask_related():
+            self._publish(Task.evt_subtask_status, kwargs['task_id'],
+                          kwargs['subtask_id'])
+        else:
+            self._publish(Task.evt_task_status, kwargs['task_id'])
 
     # TODO: re-enable. issue #2398
     def sync(self):
