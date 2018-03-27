@@ -18,6 +18,7 @@ from tests.factories import messages as msg_factories
 from tests.factories import taskserver as taskserver_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
 
+
 class RegisterHandlersTestCase(unittest.TestCase):
     def setUp(self):
         library._handlers = {}
@@ -335,31 +336,64 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
 
 class ForceGetTaskResultUploadTest(FiletransfersTestBase):
 
-    def test_force_get_task_result_upload(self):
-        wtr = taskserver_factories.WaitingTaskResultFactory(
+    def setUp(self):
+        super().setUp()
+        self.wtr = taskserver_factories.WaitingTaskResultFactory(
             result_path=self.path)
-        rct = msg_factories.ReportComputedTask(subtask_id=wtr.subtask_id)
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
-            force_get_task_result__report_computed_task=rct)
+        self.rct = msg_factories.ReportComputedTask(
+            subtask_id=self.wtr.subtask_id)
 
-        self.task_server.results_to_send[wtr.subtask_id] = wtr
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_force_get_task_result_upload(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            force_get_task_result__report_computed_task=self.rct)
+
+        self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
         library.interpret(fgtru)
+
+        response = ''
 
         with mock.patch(
             'golem.network.concent.filetransfers'
             '.ConcentFiletransferService.upload',
+            mock.Mock(return_value=response)
         ) as upload_mock:
             self.cft._run()
 
         upload_mock.assert_called_once()
         self.assertEqual(
             upload_mock.call_args[0][0].file_path,
-            wtr.result_path)
+            self.wtr.result_path)
         self.assertEqual(
             upload_mock.call_args[0][0].file_transfer_token,
             fgtru.file_transfer_token)
 
-    # @todo add tests for success/error callbacks of the _handler_
+        log_mock.assert_called_with(
+            "Concent results upload sucessful: %r, %s",
+            fgtru.subtask_id,
+            response)
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_upload_failed(self, log_mock):
+        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+            force_get_task_result__report_computed_task=self.rct)
+
+        self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
+        library.interpret(fgtru)
+
+        exception = Exception()
+
+        with mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.upload',
+            mock.Mock(side_effect=exception)
+        ):
+            self.cft._run()
+
+        log_mock.assert_called_with(
+            "Concent upload failed: %r, %s",
+            fgtru.subtask_id,
+            exception)
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_force_get_task_result_upload_no_ftt(self, log_mock):
