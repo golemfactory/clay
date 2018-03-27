@@ -15,7 +15,7 @@ class Acl(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def disallow(self, node_id: str, timeout: int) -> None:
+    def disallow(self, node_id: str, timeout_seconds: int) -> None:
         pass
 
 
@@ -36,8 +36,9 @@ class _DenyAcl(Acl):
 
         return False
 
-    def disallow(self, node_id: str, timeout: int = DEFAULT_TIMEOUT) -> None:
-        self._deny_deadlines[node_id] = self._deadline(timeout)
+    def disallow(self, node_id: str,
+                 timeout_seconds: int = DEFAULT_TIMEOUT) -> None:
+        self._deny_deadlines[node_id] = self._deadline(timeout_seconds)
 
     @staticmethod
     def _deadline(timeout: int = DEFAULT_TIMEOUT):
@@ -51,7 +52,7 @@ class _AllowAcl(Acl):
     def is_allowed(self, node_id: str) -> bool:
         return node_id in self._allow_set
 
-    def disallow(self, node_id: str, _timeout: int) -> None:
+    def disallow(self, node_id: str, _timeout_seconds: int) -> None:
         self._allow_set.discard(node_id)
 
 

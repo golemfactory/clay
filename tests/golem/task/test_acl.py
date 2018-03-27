@@ -30,7 +30,7 @@ class TestAcl(TempDirFixture):
     def test_deny_timeout(self):
         acl = get_acl(self.new_path)
 
-        acl.disallow("Node1", timeout=10)
+        acl.disallow("Node1", timeout_seconds=10)
         assert not acl.is_allowed("Node1")
         assert "Node1" in acl._deny_deadlines
 
