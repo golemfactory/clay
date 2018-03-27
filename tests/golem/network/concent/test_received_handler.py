@@ -119,7 +119,6 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
         ])
 
 
-# pylint: disable=no-self-use
 class TaskServerMessageHandlerTestCase(
         testutils.DatabaseFixture, testutils.TestWithClient):
     def setUp(self):
@@ -347,6 +346,3 @@ class TaskServerMessageHandlerTestCase(
         self.cf_transfer.assert_not_called()
         log_mock.assert_called_once()
         self.assertIn('Cannot find the subtask', log_mock.call_args[0][0])
-
-
-# pylint: enable=no-self-use
