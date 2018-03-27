@@ -359,7 +359,7 @@ class TaskServerMessageHandler():
             rct.task_id, rct.subtask_id)
 
         task = self.task_server.task_manager.tasks.get(rct.task_id, None)
-        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+        output_dir = getattr(task, 'tmp_dir', None)
 
         def success(response):
             logger.debug("Concent results download sucessful: %r, %s",
