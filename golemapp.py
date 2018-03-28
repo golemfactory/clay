@@ -24,6 +24,7 @@ from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
+from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -161,6 +162,10 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         from golem.core.common import config_logging
         config_logging(datadir=datadir, loglevel=log_level)
 
+        if enable_talkback is None:
+            enable_talkback = bool(config_desc.enable_talkback)
+        enable_sentry_logger(enable_talkback)
+
         log_golem_version()
         log_platform_info()
         log_ethereum_chain(mainnet)
@@ -177,7 +182,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
             start_geth_port=None,
             geth_address=geth_address,
             password=password,
-            enable_talkback=enable_talkback,
         )
 
         if accept_terms:

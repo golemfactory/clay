@@ -64,6 +64,7 @@ from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,7 @@ class Client(HardwarePresetsMixin):
             use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None,
-            enable_talkback: Optional[bool] = None) -> None:
+            geth_address: Optional[str] = None) -> None:
 
         self.mainnet = mainnet
         self.datadir = datadir
@@ -112,10 +112,6 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
-
-        if enable_talkback is None:
-            enable_talkback = bool(config_desc.enable_talkback)
-        self.enable_talkback(self.config_desc.enable_talkback)
 
         logger.info(
             'Client "%s", datadir: %s',
@@ -1203,18 +1199,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def enable_talkback(value):
-        talkback_value = bool(value)
-        logger_root = logging.getLogger()
-        try:
-            sentry_handler = [
-                h for h in logger_root.handlers if h.name == 'sentry'][0]
-            msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback service', msg_part)
-            sentry_handler.set_enabled(talkback_value)
-        except Exception as e:  # pylint: disable=broad-except
-            msg_part = 'enable' if talkback_value else 'disable'
-            logger.error(
-                'Cannot %s talkback. Error was: %s', msg_part, str(e))
+        enable_sentry_logger(value)
 
 
 class DoWorkService(LoopingCallService):
