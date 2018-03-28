@@ -118,24 +118,21 @@ class LocalComputer:
             logger.error("Cannot measure execution time")
 
     def __prepare_resources(self, resources):
-
         self.test_task_res_path = self.dir_manager.get_task_test_dir("")
-        if not os.path.exists(self.test_task_res_path):
-            os.makedirs(self.test_task_res_path)
-        else:
+
+        if os.path.exists(self.test_task_res_path):
             shutil.rmtree(self.test_task_res_path, True)
-            os.makedirs(self.test_task_res_path)
 
         if resources:
-            rh = TaskResourceHeader(self.test_task_res_path)
-            res_file = get_resources_for_task(resource_header=rh,
-                                              resource_type=ResourceType.ZIP,
-                                              tmp_dir=self.tmp_dir,
-                                              resources=resources)
+            if len(resources) == 1:
+                path = os.path.dirname(resources[0])
+            else:
+                path = os.path.commonprefix(resources)
+            shutil.copytree(path, self.test_task_res_path)
 
-            if res_file:
-                decompress_dir(self.test_task_res_path, res_file)
         for res in self.additional_resources:
+            if not os.path.exists(self.test_task_res_path):
+                os.makedirs(self.test_task_res_path)
             shutil.copy(res, self.test_task_res_path)
 
         return True
