@@ -184,7 +184,6 @@ class TaskComputer(object):
                 self.task_server.task_keeper.task_headers[subtask['task_id']]
             work_time_to_be_paid = task_header.subtask_timeout
 
-
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
             return
@@ -359,6 +358,10 @@ class TaskComputer(object):
 
         working_dir = self.assigned_subtasks[subtask_id]['working_directory']
         unique_str = str(uuid.uuid4())
+
+        logger.info("Starting computation of subtask %r (task: %r, deadline: "
+                    "%r, docker images: %r)", subtask_id, task_id, deadline,
+                    docker_images)
 
         self.reset(counting_task=task_id)
 
