@@ -8,7 +8,7 @@ from datetime import datetime
 from types import FunctionType
 from typing import Optional, Type, Dict
 
-from twisted.internet.defer import Deferred, inlineCallbacks, gatherResults
+from twisted.internet.defer import Deferred, gatherResults
 
 from golem.core.common import deadline_to_timeout
 from golem.task.localcomputer import ComputerAdapter
@@ -81,7 +81,6 @@ class VerificationQueue:
         self._queue.put(entry)
         self._process_queue()
 
-    @inlineCallbacks
     def pause(self) -> Deferred:
         self._paused = True
         deferred_list = list(self._jobs.values())
