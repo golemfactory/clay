@@ -55,5 +55,5 @@ py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
 Golem-Messages==1.17.2
--e git://github.com/golemfactory/golem-smart-contracts-interface.git@1cc2cd4d76cf504e6a5672da861107fc8666ef14#egg=golem_sci
+-e git://github.com/golemfactory/golem-smart-contracts-interface.git@1e3b54bfabef05153fa939aa67901e9263878393#egg=golem_sci
 html2text==2018.1.9
