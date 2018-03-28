@@ -434,17 +434,9 @@ def compress_dir(root_path, header, output_dir):
 
     zipf = zipfile.ZipFile(output_file, 'w', compression=zipfile.ZIP_DEFLATED, allowZip64=True)
 
-    cur_working_dir = os.getcwd()
-    os.chdir(root_path)
-    logger.debug("Working directory {}".format(os.getcwd()))
+    compress_dir_impl(root_path, header, zipf)
 
-    try:
-        compress_dir_impl("", header, zipf)
-
-        zipf.close()
-    finally:
-        os.chdir(cur_working_dir)
-        logger.debug("Return to prev working directory {}".format(os.getcwd()))
+    zipf.close()
 
     return output_file
 
@@ -455,12 +447,12 @@ def decompress_dir(root_path, zip_file):
     zipf.extractall(root_path)
 
 
-def compress_dir_impl(root_path, header, zipf):
+def compress_dir_impl(root_path, header, zipf, rel_path = ""):
     for sdh in header.sub_dir_headers:
-        compress_dir_impl(os.path.join(root_path, sdh.dir_name), sdh, zipf)
+        compress_dir_impl(os.path.join(root_path, sdh.dir_name), sdh, zipf, os.path.join(rel_path, sdh.dir_name))
 
     for fdata in header.files_data:
-        zipf.write(os.path.join(root_path, fdata[0]))
+        zipf.write(os.path.join(root_path, fdata[0]), os.path.join(rel_path, fdata[0]))
 
 
 def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
