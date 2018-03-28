@@ -146,9 +146,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
-    if enable_talkback is None:
-        enable_talkback = bool(config_desc.enable_talkback)
-
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
         config_desc.rpc_port = rpc_address.port
@@ -162,8 +159,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         install_reactor()
 
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level,
-                       enable_talkback=enable_talkback)
+        config_logging(datadir=datadir, loglevel=log_level)
 
         log_golem_version()
         log_platform_info()
@@ -181,6 +177,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
             start_geth_port=None,
             geth_address=geth_address,
             password=password,
+            enable_talkback=enable_talkback,
         )
 
         if accept_terms:

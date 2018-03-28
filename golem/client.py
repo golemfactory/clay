@@ -97,7 +97,8 @@ class Client(HardwarePresetsMixin):
             use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None) -> None:
+            geth_address: Optional[str] = None,
+            enable_talkback: Optional[bool] = None) -> None:
 
         self.mainnet = mainnet
         self.datadir = datadir
@@ -111,6 +112,10 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
+
+        if enable_talkback is None:
+            enable_talkback = bool(config_desc.enable_talkback)
+        self.enable_talkback(self.config_desc.enable_talkback)
 
         logger.info(
             'Client "%s", datadir: %s',

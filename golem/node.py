@@ -45,7 +45,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None,
+                 enable_talkback: Optional[bool] = None) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -84,6 +85,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
+            enable_talkback=enable_talkback,
         )
 
         if password is not None:
