@@ -54,6 +54,7 @@ class ResourceHandshake:
 class ResourceHandshakeSessionMixin:
 
     HANDSHAKE_TIMEOUT = 20  # s
+    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
     NONCE_TASK = 'nonce'
 
     def __init__(self):
@@ -234,6 +235,11 @@ class ResourceHandshakeSessionMixin:
 
     def _nonce_shared(self, key_id, result, options):
         handshake = self._get_handshake(key_id)
+        if not handshake:
+            logger.debug('Resource handshake: nonce shared after '
+                         'handshake failure with peer %r', key_id)
+            return
+
         handshake.hash, _ = result
 
         logger.debug("Resource handshake: sending resource hash: "
@@ -308,7 +314,8 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.acl.disallow(key_id)
+        self.task_server.acl.disallow(key_id,
+                                      timeout_seconds=self.PEER_BLOCK_TIMEOUT)
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):

@@ -31,6 +31,13 @@ from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
+LOGGING_DICT = {
+    'handlers': {
+        'console': {
+            'formatter': 'date'
+        }
+    }
+}
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +68,7 @@ def create_client(datadir):
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc.key_difficulty = 0
+    config_desc.use_upnp = False
 
     from golem.core.keysauth import KeysAuth
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
@@ -114,7 +122,8 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
@@ -160,7 +169,8 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()

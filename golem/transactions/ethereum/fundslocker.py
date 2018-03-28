@@ -112,4 +112,15 @@ class FundsLocker(LoopingCallService):
         if task_lock is None:
             logger.warning("I can't remove payment lock for subtask from task"
                            "%r: unkown task.", task_id)
+            return
         task_lock.num_tasks -= 1
+        self.dump_locks()
+
+    def remove_task(self, task_id):
+        task_lock = self.task_lock.get(task_id)
+        if task_lock is None:
+            logger.warning("I can't remove payment lock from task"
+                           "%r: unkown task.", task_id)
+            return
+        del self.task_lock[task_id]
+        self.dump_locks()

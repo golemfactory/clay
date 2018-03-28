@@ -73,6 +73,7 @@ class PaymentProcessor(LoopingCallService):
         self.load_from_db()
         self._last_gnt_update = None
         self._last_eth_update = None
+        self._last_balance_log = 0
         super().__init__(13)
 
     def balance_known(self):
@@ -85,7 +86,6 @@ class PaymentProcessor(LoopingCallService):
             balance = self._sci.get_eth_balance(self._sci.get_eth_address())
             if balance is not None:
                 self.__eth_balance = balance
-                log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
                 self._last_eth_update = time.mktime(
                     datetime.today().timetuple())
             else:
@@ -110,11 +110,6 @@ class PaymentProcessor(LoopingCallService):
 
             if self.__gnt_balance is not None and \
                self.__gntb_balance is not None:
-                log.info(
-                    "GNT: %r GNTB: %r",
-                    self.__gnt_balance / denoms.ether,
-                    self.__gntb_balance / denoms.ether,
-                )
                 self._last_gnt_update = time.mktime(
                     datetime.today().timetuple())
 
@@ -176,8 +171,8 @@ class PaymentProcessor(LoopingCallService):
             self._gnt_available() / denoms.ether,
             self.__gntb_reserved / denoms.ether))
 
-        if self.__gntb_balance is not None and self.__gnt_balance is not None:
-            if self.__gntb_reserved > self.__gntb_balance > 0:
+        if self.__gntb_balance is not None and (self.__gnt_balance or 0) > 0:
+            if self.__gntb_reserved > self.__gntb_balance:
                 if not self._gnt_converter.is_converting():
                     log.info(
                         'Will convert %f GNT to be ready for payments',
@@ -367,6 +362,14 @@ class PaymentProcessor(LoopingCallService):
         if self._sci.is_synchronized() and \
                 self.get_ether_from_faucet() and \
                 self.get_gnt_from_faucet():
+
+            if time.time() - self._last_balance_log > 60:
+                log.info("ETH: %.10f,  GNT: %.3f,  GNTB: %.3f",
+                         self.__eth_balance / denoms.ether,
+                         self.__gnt_balance / denoms.ether,
+                         self.__gntb_balance / denoms.ether)
+                self._last_balance_log = time.time()
+
             self.monitor_progress()
             self.sendout()
             self._send_balance_snapshot()
