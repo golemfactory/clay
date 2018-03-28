@@ -24,7 +24,7 @@ from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
-from golem.tools.talkback import enable_sentry_logger
+from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
