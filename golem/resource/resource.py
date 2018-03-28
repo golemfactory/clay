@@ -434,7 +434,11 @@ def compress_dir(root_path, header, output_dir):
 
     zipf = zipfile.ZipFile(output_file, 'w', compression=zipfile.ZIP_DEFLATED, allowZip64=True)
 
-    compress_dir_impl(root_path, header, zipf)
+    try:
+        compress_dir_impl(root_path, header, zipf)
+    except ValueError as e:
+        logger.warning("Unexpected error %r during copmressing %r",
+                       e, output_file)
 
     zipf.close()
 
@@ -447,12 +451,14 @@ def decompress_dir(root_path, zip_file):
     zipf.extractall(root_path)
 
 
-def compress_dir_impl(root_path, header, zipf, rel_path = ""):
+def compress_dir_impl(root_path, header, zipf, rel_path=""):
     for sdh in header.sub_dir_headers:
-        compress_dir_impl(os.path.join(root_path, sdh.dir_name), sdh, zipf, os.path.join(rel_path, sdh.dir_name))
+        compress_dir_impl(os.path.join(root_path, sdh.dir_name),
+                          sdh, zipf, os.path.join(rel_path, sdh.dir_name))
 
     for fdata in header.files_data:
-        zipf.write(os.path.join(root_path, fdata[0]), os.path.join(rel_path, fdata[0]))
+        zipf.write(os.path.join(root_path, fdata[0]),
+                   os.path.join(rel_path, fdata[0]))
 
 
 def prepare_delta_zip(root_dir, header, output_dir, chosen_files=None):
