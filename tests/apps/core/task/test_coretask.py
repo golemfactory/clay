@@ -643,7 +643,6 @@ class TestCoreTaskBuilder(TestCase):
 
         class Definition:
             task_name = "test_file"  # something doesn't exist
-            legacy = None
 
         definition = Definition()
         absolute_path = builder.get_output_path(mockDict, definition)

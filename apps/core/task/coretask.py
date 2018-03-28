@@ -587,9 +587,6 @@ class CoreTaskBuilder(TaskBuilder):
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
 
-        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
-        definition.legacy = dictionary.get('legacy', False)
-
         return definition
 
     @classmethod
@@ -628,10 +625,6 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
-
-        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
-        if definition.legacy:
-            return options['output_path']
 
         absolute_path = cls.get_nonexistant_path(
             options['output_path'],
