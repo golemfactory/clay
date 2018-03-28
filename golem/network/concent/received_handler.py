@@ -99,7 +99,7 @@ def on_force_subtask_results_rejected(msg):
 
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
-    def __init__(self, task_server: taskserver.TaskServer):
+    def __init__(self, task_server: taskserver.TaskServer) -> None:
         self.task_server = task_server
         register_handlers(self)
 
@@ -371,6 +371,7 @@ class TaskServerMessageHandler():
             except Exception as e:  # noqa pylint:disable=broad-except
                 logger.error("Concent results extraction failure: %r, %s",
                              msg.subtask_id, e)
+                return
 
             logger.debug("Task result extracted %r",
                          extracted_package.__dict__)

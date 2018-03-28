@@ -126,6 +126,7 @@ class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
     def setUp(self):
+        gc.collect()
         super().setUp()
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
@@ -334,21 +335,57 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class ForceGetTaskResultUploadTest(FiletransfersTestBase):
+class FileTransferTokenTests:
+    MSG_FACTORY: msg_factories.factory.Factory
 
     def setUp(self):
-        super().setUp()
+        super().setUp()  # noqa: pylint:disable=no-member
+
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             result_path=self.path)
         self.rct = msg_factories.ReportComputedTask(
             subtask_id=self.wtr.subtask_id)
 
-    @mock.patch('golem.network.concent.received_handler.logger.debug')
-    def test_force_get_task_result_upload(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
+    def _get_correct_message(self):
+        return self.MSG_FACTORY(
             force_get_task_result__report_computed_task=self.rct)
 
+    def _get_message_without_ftt(self):
+        return self.MSG_FACTORY(file_transfer_token=None)
+
+    def _get_message_ftt_wrong_type(self):
+        raise NotImplementedError()
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_no_ftt(self, log_mock):
+        msg = self._get_message_without_ftt()
+        library.interpret(msg)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_ftt_wrong_type(self, log_mock):
+        msg = self._get_message_ftt_wrong_type()
+        library.interpret(msg)
+        self.cf_transfer.assert_not_called()
+        log_mock.assert_called_once()
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+
+class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disable=too-many-ancestors
+                                   FiletransfersTestBase):
+    MSG_FACTORY = msg_factories.ForceGetTaskResultUploadFactory
+
+    def _get_message_ftt_wrong_type(self):
+        return self.MSG_FACTORY(file_transfer_token__download=True,
+                                file_transfer_token__upload=False)
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_force_get_task_result_upload(self, log_mock):
+        fgtru = self._get_correct_message()
         self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
+
         library.interpret(fgtru)
 
         response = ''
@@ -375,10 +412,9 @@ class ForceGetTaskResultUploadTest(FiletransfersTestBase):
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_force_get_task_result_upload_failed(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
-            force_get_task_result__report_computed_task=self.rct)
-
+        fgtru = self._get_correct_message()
         self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
+
         library.interpret(fgtru)
 
         exception = Exception()
@@ -396,40 +432,24 @@ class ForceGetTaskResultUploadTest(FiletransfersTestBase):
             exception)
 
     @mock.patch('golem.network.concent.received_handler.logger.warning')
-    def test_force_get_task_result_upload_no_ftt(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
-            file_transfer_token=None)
-        library.interpret(fgtru)
-        self.cf_transfer.assert_not_called()
-        log_mock.assert_called_once()
-        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
-
-    @mock.patch('golem.network.concent.received_handler.logger.warning')
-    def test_force_get_task_result_upload_ftt_not_upload(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory(
-            file_transfer_token__download=True)
-        library.interpret(fgtru)
-        self.cf_transfer.assert_not_called()
-        log_mock.assert_called_once()
-        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
-
-    @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_force_get_task_result_upload_wtr_not_found(self, log_mock):
-        fgtru = msg_factories.ForceGetTaskResultUploadFactory()
+        fgtru = self._get_correct_message()
         library.interpret(fgtru)
         self.cf_transfer.assert_not_called()
         log_mock.assert_called_once()
         self.assertIn('Cannot find the subtask', log_mock.call_args[0][0])
 
 
-class ForceGetTaskResultDownloadTest(FiletransfersTestBase):
+class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disable=too-many-ancestors
+                                     FiletransfersTestBase):
+    MSG_FACTORY = msg_factories.ForceGetTaskResultDownloadFactory
+
+    def _get_message_ftt_wrong_type(self):
+        return self.MSG_FACTORY(file_transfer_token__download=False,
+                                file_transfer_token__upload=True)
 
     def test_force_get_task_result_download(self):
-        wtr = taskserver_factories.WaitingTaskResultFactory(
-            result_path=self.path)
-        rct = msg_factories.ReportComputedTask(subtask_id=wtr.subtask_id)
-        fgtrd = msg_factories.ForceGetTaskResultDownloadFactory(
-            force_get_task_result__report_computed_task=rct)
+        fgtrd = self._get_correct_message()
 
         library.interpret(fgtrd)
 
@@ -454,5 +474,48 @@ class ForceGetTaskResultDownloadTest(FiletransfersTestBase):
 
         extract.assert_called_once()
         verify_results.assert_called_once_with(
-            report_computed_task=rct, extracted_package=ep
+            report_computed_task=self.rct, extracted_package=ep
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_force_get_task_result_download_failed(self, log_mock):
+        fgtrd = self._get_correct_message()
+
+        library.interpret(fgtrd)
+
+        exception = Exception()
+
+        with mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.download',
+            mock.Mock(side_effect=exception)
+        ):
+            self.cft._run()
+
+        log_mock.assert_called_with(
+            "Concent download failed: %r, %s",
+            self.rct.subtask_id, exception
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.error')
+    def test_force_get_task_result_download_extraction_failed(self, log_mock):
+        fgtrd = self._get_correct_message()
+
+        library.interpret(fgtrd)
+
+        exception = Exception()
+        extract = \
+            self.task_server.task_manager.task_result_manager.extract = \
+            mock.Mock(side_effect=exception)
+
+        with mock.patch(
+            'golem.network.concent.filetransfers'
+            '.ConcentFiletransferService.download',
+        ):
+            self.cft._run()
+
+        extract.assert_called_once()
+        log_mock.assert_called_with(
+            "Concent results extraction failure: %r, %s",
+            fgtrd.subtask_id, exception
         )
