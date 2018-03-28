@@ -343,6 +343,4 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
         path = parent.get_output_path(dictionary, definition)
 
-        if definition.legacy:
-            return path
         return '{}.{}'.format(path, dictionary['options']['format'])

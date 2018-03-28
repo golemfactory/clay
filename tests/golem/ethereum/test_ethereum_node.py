@@ -1,6 +1,5 @@
 import logging
 from os import path
-import unittest
 from unittest.mock import patch, Mock
 
 from ethereum.transactions import Transaction
@@ -53,25 +52,8 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
         np.stop()
         np1.stop()
 
-    def test_start_timed_out(self):
-        provider = Mock()
-        port = 3000
 
-        np = NodeProcess(self.tempdir)
-        np.web3 = Mock()
-        np.start = Mock()
-        np.start_node = True
-
-        with self.assertRaises(OSError):
-            np._start_timed_out(provider, port)
-        assert not np.start.called
-
-        np.start_node = False
-        np._start_timed_out(provider, port)
-        assert np.start.called
-
-
-class TestPublicNodeList(unittest.TestCase):
+class TestPublicNodeList(TempDirFixture):
 
     def test_builtin_public_nodes(self):
         with patch('requests.get', lambda *_: None):
@@ -79,6 +61,34 @@ class TestPublicNodeList(unittest.TestCase):
 
         assert public_nodes is not TESTNET_NODE_LIST
         assert all(n in TESTNET_NODE_LIST for n in public_nodes)
+
+    def test_node_start(self):
+        node = NodeProcess(self.tempdir)
+        node.web3 = Mock()
+        node.is_connected = Mock()
+        node._handle_remote_rpc_provider_failure = Mock()
+
+        assert node.addr_list is None
+        node.start()
+        assert node.addr_list
+        assert node.is_connected.called
+
+    @patch('golem.core.async.async_run',
+           side_effect=lambda r, *_: r.method(*r.args, **r.kwargs))
+    def test_handle_remote_rpc_provider(self, _async_run):
+        node = NodeProcess(self.tempdir, start_node=True)
+        node.start = Mock()
+
+        assert node.provider_proxy
+        assert node.initial_addr_list
+        assert node.addr_list is None
+
+        node.provider_proxy.provider = Mock()
+        node.addr_list = []
+        node._handle_remote_rpc_provider_failure(Exception('test exception'))
+
+        assert node.provider_proxy.provider is None
+        assert node.start.called
 
 
 class EthereumClientNodeTest(TempDirFixture):
