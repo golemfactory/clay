@@ -214,6 +214,25 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.client.withdraw('123', '0xdead', 'ETH')
             ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
 
+    def test_get_withdraw_gas_cost(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+                mainnet=True,
+            )
+            self.client.get_withdraw_gas_cost('123', 'ETH')
+            ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
+
     def test_payment_address(self, *_):
         self.client = Client(
             datadir=self.path,

@@ -76,6 +76,23 @@ class EthereumTransactionSystem(TransactionSystem):
         return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
             self.payment_processor.ETH_PER_PAYMENT * num_payments
 
+    def get_withdraw_gas_cost(self, amount: int, currency: str) -> int:
+        gas_price = self._sci.get_current_gas_price()
+        if currency == 'ETH':
+            return 21000 * gas_price
+        if currency == 'GNT':
+            total_gnt = \
+                self.payment_processor._gnt_available()  # pylint: disable=W0212
+            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
+            gntb = total_gnt - gnt
+            if gnt >= amount:
+                return self._sci.GAS_GNT_TRANSFER * gas_price
+            if gntb >= amount:
+                return self._sci.GAS_WITHDRAW * gas_price
+            return (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_WITHDRAW) \
+                * gas_price
+        raise ValueError('Unknown currency {}'.format(currency))
+
     def withdraw(
             self,
             amount: int,
