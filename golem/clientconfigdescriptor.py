@@ -12,6 +12,9 @@ class ClientConfigDescriptor(object):
         """ Create new basic empty configuration scheme """
         self.node_name = ""
         self.node_address = ""
+        self.pub_node_address = ""
+        self.pub_p2p_port = 0
+        self.pub_task_port = 0
         self.start_port = 0
         self.end_port = 0
         self.rpc_address = ""

@@ -45,7 +45,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None,
+                 config_args: Optional[ClientConfigDescriptor] = None) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -54,6 +55,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._reactor = reactor
         self._config_desc = config_desc
+        self._config_args = config_args or ClientConfigDescriptor()
         self._mainnet = mainnet
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
@@ -75,6 +77,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             datadir=datadir,
             app_config=app_config,
             config_desc=config_desc,
+            config_args=config_args,
             keys_auth=keys_auth,
             database=self._db,
             mainnet=mainnet,
@@ -131,8 +134,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
-            host=self._config_desc.rpc_address,
-            port=self._config_desc.rpc_port,
+            host=(self._config_args.rpc_address or
+                  self._config_desc.rpc_address),
+            port=(self._config_args.rpc_port or
+                  self._config_desc.rpc_port),
             datadir=self._datadir,
         )
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)

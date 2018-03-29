@@ -65,3 +65,14 @@ def parse_peer(ctx, param, value):
             raise click.BadParameter(
                 "Invalid peer address specified: {}".format(e))
     return addresses
+
+
+def parse_port(ctx, param, value):
+    del ctx, param
+    if value is not None:
+        try:
+            if not 0 < value < 65536:
+                raise Exception(value)
+        except Exception:  # pylint: disable=broad-except
+            raise click.BadParameter('Invalid port: {}'.format(value))
+    return value

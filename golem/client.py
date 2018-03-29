@@ -98,7 +98,8 @@ class Client(HardwarePresetsMixin):
             use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None) -> None:
+            geth_address: Optional[str] = None,
+            config_args: Optional[ClientConfigDescriptor] = None) -> None:
 
         self.mainnet = mainnet
         self.datadir = datadir
@@ -112,6 +113,7 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
+        self.config_args = config_args or ClientConfigDescriptor()
 
         logger.info(
             'Client "%s", datadir: %s',
@@ -128,9 +130,18 @@ class Client(HardwarePresetsMixin):
         self.keys_auth = keys_auth
 
         # NETWORK
-        self.node = Node(node_name=self.config_desc.node_name,
-                         prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.key_id)
+        self.node = Node(
+            key=self.keys_auth.key_id,
+            node_name=self.config_desc.node_name,
+            pub_addr=(self.config_args.pub_node_address or
+                      self.config_desc.pub_node_address),
+            prv_addr=(self.config_args.node_address or
+                      self.config_desc.node_address),
+            pub_port=(self.config_args.pub_task_port or
+                      self.config_desc.pub_task_port),
+            p2p_pub_port=(self.config_args.pub_p2p_port or
+                          self.config_desc.pub_p2p_port),
+        )
 
         self.p2pservice = None
         self.diag_service = None
@@ -363,7 +374,12 @@ class Client(HardwarePresetsMixin):
                 self.node.hyperdrive_prv_port
             )
 
-            if self.config_desc.use_upnp:
+            if self.config_args.use_upnp is not None:
+                use_upnp = self.config_args.use_upnp
+            else:
+                use_upnp = self.config_desc.use_upnp
+
+            if use_upnp:
                 self.start_upnp(ports + list(hyperdrive_ports))
             self.node.update_public_info()
 

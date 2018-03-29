@@ -48,6 +48,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.command()
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--concent/--noconcent', default=False)
+@click.option('--upnp/--noupnp', default=None)
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
               type=click.Path(
@@ -63,7 +64,16 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                    "a given protocol id")
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=argsparser.parse_node_addr, metavar="<host>",
-              help="Network address to use for this node")
+              help="Private network address to use for this node")
+@click.option('--pub-node-address', multiple=False, type=click.STRING,
+              callback=argsparser.parse_node_addr, metavar="<host>",
+              help="Public network address to use for this node")
+@click.option('--pub-p2p-port', multiple=False, type=click.INT,
+              callback=argsparser.parse_port, metavar="<port>",
+              help="Public P2P network port sent to the network")
+@click.option('--pub-task-port', multiple=False, type=click.INT,
+              callback=argsparser.parse_port, metavar="<port>",
+              help="Public Task network port sent to the network")
 @click.option('--rpc-address', '-r', multiple=False,
               callback=argsparser.parse_rpc_address, metavar="<host>:<port>",
               help="RPC server address to use")
@@ -115,9 +125,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          geth_address, password, accept_terms, generate_rpc_cert, version,
-          log_level, enable_talkback, m):
+def start(monitor, concent, upnp, datadir, node_address, pub_node_address,
+          pub_p2p_port, pub_task_port, rpc_address, peer, mainnet, geth_address,
+          password, accept_terms, generate_rpc_cert, version, log_level,
+          enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -142,16 +153,22 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
+    config_args = ClientConfigDescriptor()
+    config_args.node_address = node_address
+    config_args.pub_node_address = pub_node_address
+    config_args.pub_p2p_port = pub_p2p_port
+    config_args.pub_task_port = pub_task_port
+    config_args.use_upnp = upnp
+
+    if rpc_address:
+        config_args.rpc_address = rpc_address.address
+        config_args.rpc_port = rpc_address.port
+
     app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
-    if rpc_address:
-        config_desc.rpc_address = rpc_address.address
-        config_desc.rpc_port = rpc_address.port
-    if node_address:
-        config_desc.node_address = node_address
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
@@ -173,6 +190,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         node = Node(
             datadir=datadir,
             app_config=app_config,
+            config_args=config_args,
             config_desc=config_desc,
             peers=peer,
             use_monitor=monitor,
