@@ -130,18 +130,9 @@ class Client(HardwarePresetsMixin):
         self.keys_auth = keys_auth
 
         # NETWORK
-        self.node = Node(
-            key=self.keys_auth.key_id,
-            node_name=self.config_desc.node_name,
-            pub_addr=(self.config_args.pub_node_address or
-                      self.config_desc.pub_node_address),
-            prv_addr=(self.config_args.node_address or
-                      self.config_desc.node_address),
-            pub_port=(self.config_args.pub_task_port or
-                      self.config_desc.pub_task_port),
-            p2p_pub_port=(self.config_args.pub_p2p_port or
-                          self.config_desc.pub_p2p_port),
-        )
+        self.node = Node(node_name=self.config_desc.node_name,
+                         prv_addr=self.config_desc.node_address,
+                         key=self.keys_auth.key_id)
 
         self.p2pservice = None
         self.diag_service = None
@@ -382,6 +373,7 @@ class Client(HardwarePresetsMixin):
             if use_upnp:
                 self.start_upnp(ports + list(hyperdrive_ports))
             self.node.update_public_info()
+            self._override_node_properties(self.node)
 
             public_ports = [
                 self.node.p2p_pub_port,
@@ -427,6 +419,23 @@ class Client(HardwarePresetsMixin):
         logger.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+
+    def _override_node_properties(self, node):
+        configurations = [self.config_desc, self.config_args]  # mind the order
+        properties = {
+            'node_address': 'prv_addr',
+            'pub_node_address': 'pub_addr',
+            'pub_p2p_port': 'pub_p2p_port',
+            'pub_task_port': 'pub_port'
+        }
+
+        for configuration in configurations:
+            for _property, _node_property in properties.items():
+                value = getattr(configuration, _property, None)
+                if not value:
+                    continue
+                logger.info('Overriding node.%r with %r', _node_property, value)
+                setattr(node, _node_property, value)
 
     def start_upnp(self, ports):
         logger.debug("Starting upnp ...")
