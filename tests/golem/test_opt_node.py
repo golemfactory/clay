@@ -58,7 +58,7 @@ class TestNode(TestWithDatabase):
         init_call_kwargs = init_call[2]
         self.assertEqual(init_call_args, ())
         self.assertEqual(
-            init_call_kwargs.get('config_desc').node_address,
+            init_call_kwargs.get('config_args').node_address,
             node_address,
         )
 
@@ -66,14 +66,16 @@ class TestNode(TestWithDatabase):
     def test_cfg_and_keys_should_be_passed_to_client(self, mock_client, *_):
         # given
         cfg = ClientConfigDescriptor()
-        cfg.node_address = '1.2.3.4'
+        arg = ClientConfigDescriptor()
+        arg.node_address = '1.2.3.4'
         keys_auth = object()
 
         # when
         node = Node(
             datadir=self.path,
             app_config=Mock(),
-            config_desc=cfg)
+            config_desc=cfg,
+            config_args=arg)
 
         node._client_factory(keys_auth)
 
@@ -81,6 +83,7 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
                                        config_desc=cfg,
+                                       config_args=arg,
                                        keys_auth=keys_auth,
                                        database=ANY,
                                        mainnet=False,
@@ -121,6 +124,7 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
                                      app_config=ANY,
                                      config_desc=ANY,
+                                     config_args=ANY,
                                      mainnet=False,
                                      geth_address=geth_address,
                                      peers=[],
@@ -140,6 +144,7 @@ class TestNode(TestWithDatabase):
             datadir=self.path,
             app_config=Mock(),
             config_desc=Mock(),
+            config_args=Mock(),
             geth_address=geth_address)
 
         node._client_factory(None)
@@ -148,6 +153,7 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
                                        config_desc=ANY,
+                                       config_args=ANY,
                                        keys_auth=None,
                                        database=ANY,
                                        mainnet=False,
@@ -206,6 +212,7 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
                                      app_config=ANY,
                                      config_desc=ANY,
+                                     config_args=ANY,
                                      mainnet=False,
                                      geth_address=None,
                                      peers=[],
@@ -222,6 +229,7 @@ class TestNode(TestWithDatabase):
             datadir=self.path,
             app_config=Mock(),
             config_desc=Mock(),
+            config_args=Mock(),
             start_geth=True)
 
         node._client_factory(None)
@@ -230,6 +238,7 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
                                        config_desc=ANY,
+                                       config_args=ANY,
                                        keys_auth=None,
                                        database=ANY,
                                        mainnet=False,
@@ -254,6 +263,7 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
                                      app_config=ANY,
                                      config_desc=ANY,
+                                     config_args=ANY,
                                      geth_address=None,
                                      peers=[],
                                      start_geth=False,
@@ -270,6 +280,7 @@ class TestNode(TestWithDatabase):
             datadir=self.path,
             app_config=Mock(),
             config_desc=Mock(),
+            config_args=Mock(),
             mainnet=True)
 
         node._client_factory(None)
@@ -278,6 +289,7 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
                                        config_desc=ANY,
+                                       config_args=ANY,
                                        keys_auth=None,
                                        database=ANY,
                                        geth_address=None,
@@ -319,6 +331,7 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
                                      app_config=ANY,
                                      config_desc=ANY,
+                                     config_args=ANY,
                                      mainnet=False,
                                      geth_address=None,
                                      peers=[],
@@ -338,6 +351,7 @@ class TestNode(TestWithDatabase):
             datadir=self.path,
             app_config=Mock(),
             config_desc=Mock(),
+            config_args=Mock(),
             start_geth=True,
             start_geth_port=port)
 
@@ -347,6 +361,7 @@ class TestNode(TestWithDatabase):
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
                                        config_desc=ANY,
+                                       config_args=ANY,
                                        keys_auth=None,
                                        database=ANY,
                                        mainnet=False,
