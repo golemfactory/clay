@@ -870,8 +870,14 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
+        if currency == 'GNT':
+            lock = gnt_lock
+        else:
+            lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency)
+        return self.transaction_system.withdraw(amount, destination, currency,
+                                                lock)
 
     def get_task_cost(self, task_id):
         """

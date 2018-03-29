@@ -80,11 +80,12 @@ class EthereumTransactionSystem(TransactionSystem):
             self,
             amount: int,
             destination: str,
-            currency: str) -> List[str]:
+            currency: str,
+            lock: int = 0) -> List[str]:
         pp = self.payment_processor
         if currency == 'ETH':
             eth = pp._eth_available()  # pylint: disable=W0212
-            if amount > eth:
+            if amount > eth - lock:
                 raise ValueError('Not enough ETH available')
             log.info(
                 "Withdrawing %f ETH to %s",
@@ -95,7 +96,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         if currency == 'GNT':
             total_gnt = pp._gnt_available()  # pylint: disable=W0212
-            if amount > total_gnt:
+            if amount > total_gnt - lock:
                 raise ValueError('Not enough GNT available')
             gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
             gntb = total_gnt - gnt
