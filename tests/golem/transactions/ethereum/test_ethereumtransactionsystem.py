@@ -182,7 +182,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         )
         sci.reset_mock()
 
-        # Enough total GNT
+        # Not enough GNT with lock
         with self.assertRaises(ValueError):
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()
