@@ -28,8 +28,8 @@ class SocketAddress():
     def is_proper_address(cls, address, port):
         try:
             SocketAddress(address, port)
-        except (ipaddress.AddressValueError, TypeError) as err:
-            logger.info("Wrong address %r", err)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.info("Wrong address %r", exc)
             return False
         return True
 

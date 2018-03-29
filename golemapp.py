@@ -24,6 +24,7 @@ from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
+from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -146,9 +147,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
 
-    if enable_talkback is None:
-        enable_talkback = bool(config_desc.enable_talkback)
-
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
         config_desc.rpc_port = rpc_address.port
@@ -162,8 +160,11 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         install_reactor()
 
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level,
-                       enable_talkback=enable_talkback)
+        config_logging(datadir=datadir, loglevel=log_level)
+
+        if enable_talkback is None:
+            enable_talkback = bool(config_desc.enable_talkback)
+        enable_sentry_logger(enable_talkback)
 
         log_golem_version()
         log_platform_info()

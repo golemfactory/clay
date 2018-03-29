@@ -235,6 +235,11 @@ class ResourceHandshakeSessionMixin:
 
     def _nonce_shared(self, key_id, result, options):
         handshake = self._get_handshake(key_id)
+        if not handshake:
+            logger.debug('Resource handshake: nonce shared after '
+                         'handshake failure with peer %r', key_id)
+            return
+
         handshake.hash, _ = result
 
         logger.debug("Resource handshake: sending resource hash: "

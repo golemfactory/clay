@@ -119,6 +119,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.task': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.token': {
             'level': 'INFO',
             'propagate': True,

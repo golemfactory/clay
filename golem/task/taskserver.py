@@ -8,7 +8,9 @@ from collections import deque
 from pathlib import Path
 
 from golem_messages import message
+from twisted.internet.defer import inlineCallbacks
 
+from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
@@ -125,6 +127,15 @@ class TaskServer(
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r',
                          self.task_manager.tasks_states)
+
+    @inlineCallbacks
+    def pause(self):
+        super().pause()
+        yield CoreTask.VERIFICATION_QUEUE.pause()
+
+    def resume(self):
+        super().resume()
+        CoreTask.VERIFICATION_QUEUE.resume()
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(

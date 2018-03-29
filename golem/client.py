@@ -64,6 +64,7 @@ from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -431,6 +432,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -441,9 +443,10 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            self.task_server.pause()
+            yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        logger.info("Paused")
 
     def resume(self):
         logger.info("Resuming ...")
@@ -456,6 +459,7 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        logger.info("Resumed")
 
     def init_monitor(self):
         logger.debug("Starting monitor ...")
@@ -1198,18 +1202,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def enable_talkback(value):
-        talkback_value = bool(value)
-        logger_root = logging.getLogger()
-        try:
-            sentry_handler = [
-                h for h in logger_root.handlers if h.name == 'sentry'][0]
-            msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback service', msg_part)
-            sentry_handler.set_enabled(talkback_value)
-        except Exception as e:  # pylint: disable=broad-except
-            msg_part = 'enable' if talkback_value else 'disable'
-            logger.error(
-                'Cannot %s talkback. Error was: %s', msg_part, str(e))
+        enable_sentry_logger(value)
 
 
 class DoWorkService(LoopingCallService):

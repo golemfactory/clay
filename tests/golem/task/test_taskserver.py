@@ -675,6 +675,22 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             to_hyperg_peer('1.2.3.4', 3282),
         ]
 
+    def test_pause_and_resume(self, *_):
+        from apps.core.task.coretask import CoreTask
+
+        assert self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.pause()
+
+        assert not self.ts.active
+        assert CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
+        assert self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
 
 class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
     def setUp(self):
