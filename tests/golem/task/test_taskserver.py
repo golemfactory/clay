@@ -13,7 +13,7 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.core.idgenerator import generate_id
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -205,12 +205,14 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         task_id = task_header["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
-        self.assertTrue(ts.send_results("xxyyzz", task_id, results, 40))
+        subtask_id = generate_new_id_from_id(task_id)
+        subtask_id2 = generate_new_id_from_id(task_id)
+        self.assertTrue(ts.send_results(subtask_id, task_id, results, 40))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(ts.send_results("xyzxyz", task_id, results, 40))
-        wtr = ts.results_to_send["xxyyzz"]
+        self.assertTrue(ts.send_results(subtask_id2, task_id, results, 40))
+        wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
-        self.assertEqual(wtr.subtask_id, "xxyyzz")
+        self.assertEqual(wtr.subtask_id, subtask_id)
         self.assertEqual(wtr.result, "")
         self.assertEqual(wtr.result_type, ResultType.DATA)
         self.assertEqual(wtr.computing_time, 40)
@@ -224,12 +226,13 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         incomes_keeper = ts.client.transaction_system.incomes_keeper
         incomes_keeper.expect.assert_called_once_with(
             sender_node_id=keys_auth.key_id,
-            subtask_id="xyzxyz",
+            subtask_id=subtask_id2,
             value=1,
         )
 
+        subtask_id3 = generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected("aabbcc")
+            ts.subtask_rejected(subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
 
         prev_call_count = trust.PAYMENT.increase.call_count
@@ -238,7 +241,7 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
-        ctd['subtask_id'] = "xxyyzz"
+        ctd['subtask_id'] = subtask_id
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
         model.Income.create(
             sender_node=keys_auth.public_key,

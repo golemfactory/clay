@@ -8,7 +8,7 @@ import unittest.mock as mock
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.idgenerator import generate_id
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -518,13 +518,13 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 1.5
             header.resource_size = 1
-            header.task_id = "test%d-%d" % (x, random.random() * 1000)
+
             test_headers.append(header)
             ctk.add_request(header, int(random.random() * 100))
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
-            ctd['subtask_id'] = "test_subtask%d-%d" % (x, random.random() * 1000)
+            ctd['subtask_id'] = generate_new_id_from_id(header.task_id)
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
             self.assertTrue(ctk.receive_subtask(ctd))
             test_subtasks_ids.append(ctd['subtask_id'])
@@ -618,23 +618,25 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         th = get_task_header()
         task_id = th.task_id
         ctk.add_request(th, 5)
+        subtask_id = generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
-        ctd['subtask_id'] = "abc"
+        ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks[task_id].requests == 0
-        assert ctk.subtask_to_task["abc"] == task_id
-        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, "abc")
+        assert ctk.subtask_to_task[subtask_id] == task_id
+        assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, subtask_id)
         assert not ctk.check_task_owner_by_subtask(th.task_owner_key_id, "!!!")
-        assert not ctk.check_task_owner_by_subtask('???', "abc")
+        assert not ctk.check_task_owner_by_subtask('???', subtask_id)
+        subtask_id2 = generate_new_id_from_id(task_id)
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = task_id
-        ctd2['subtask_id'] = "def"
+        ctd2['subtask_id'] = subtask_id2
         ctk.receive_subtask(ctd2)
         assert ctk.active_tasks[task_id].requests == 0
-        assert ctk.subtask_to_task.get("def") is None
-        assert ctk.subtask_to_task["abc"] == task_id
+        assert ctk.subtask_to_task.get(subtask_id2) is None
+        assert ctk.subtask_to_task[subtask_id] == task_id
         ctk.active_tasks[task_id].requests = 1
         ctk.receive_subtask(ctd)
         assert ctk.active_tasks[task_id].requests == 1
@@ -663,22 +665,25 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         task_id = header.task_id
         ctk.add_request(header, 40003)
         ctk.active_tasks[task_id].requests = 0
+        subtask_id = generate_new_id_from_id(task_id)
         comp_task_def = {
             'task_id': task_id,
-            'subtask_id': 'xxyyzz',
+            'subtask_id': subtask_id,
             'deadline': get_timestamp_utc() + 100,
         }
         with self.assertLogs(logger, level="INFO") as l:
             assert not ctk.check_comp_task_def(comp_task_def)
-        assert 'Cannot accept subtask xxyyzz for task %s. ' \
-               'Request for this task was not send.' % task_id in l.output[0]
+        assert 'Cannot accept subtask %s for task %s. ' \
+               'Request for this task was not send.' % (subtask_id, task_id)\
+               in l.output[0]
 
         ctk.active_tasks[task_id].requests = 1
         comp_task_def['deadline'] = 0
         with self.assertLogs(logger, level="INFO") as l:
             assert not ctk.check_comp_task_def(comp_task_def)
-        assert 'Cannot accept subtask xxyyzz for task %s. ' \
-               'Request for this task has wrong deadline 0' % task_id \
+        assert 'Cannot accept subtask %s for task %s. ' \
+               'Request for this task has wrong deadline 0' % (subtask_id,
+                                                               task_id) \
                in l.output[0]
 
         comp_task_def['deadline'] = get_timestamp_utc() + 240
@@ -689,12 +694,13 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         comp_task_def['deadline'] = get_timestamp_utc() + 100
         assert ctk.check_comp_task_def(comp_task_def)
 
-        ctk.active_tasks[task_id].subtasks['xxyyzz'] = comp_task_def
+        ctk.active_tasks[task_id].subtasks[subtask_id] = comp_task_def
         with self.assertLogs(logger, level="INFO") as l:
             assert not ctk.check_comp_task_def(comp_task_def)
-        assert 'Cannot accept subtask xxyyzz for task %s. ' \
-               'Definition of this subtask was already received.' % task_id \
+        assert 'Cannot accept subtask %s for task %s. ' \
+               'Definition of this subtask was already received.' % (subtask_id,
+                                                                     task_id) \
                in l.output[0]
 
-        del ctk.active_tasks[task_id].subtasks['xxyyzz']
+        del ctk.active_tasks[task_id].subtasks[subtask_id]
         assert ctk.check_comp_task_def(comp_task_def)
