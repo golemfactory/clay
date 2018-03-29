@@ -47,9 +47,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                 patch('twisted.internet.task.LoopingCall.stop'), \
                 patch(new_sci_method_name), \
                 patch(pkg + 'node.NodeProcess.start'), \
-                patch(pkg + 'node.NodeProcess.stop'), \
-                patch(pkg + 'node.NodeProcess.__init__', _init), \
-                patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+                patch(pkg + 'paymentprocessor.GNTConverter'), \
+                patch(pkg + 'node.NodeProcess.stop'):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
@@ -100,6 +99,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.GAS_PRICE = 0
         sci.GAS_PER_PAYMENT = 0
         sci.GAS_BATCH_PAYMENT_BASE = 0
+        sci.get_gate_address.return_value = None
         new_sci.return_value = sci
         eth_balance = 400
         gnt_balance = 100

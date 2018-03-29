@@ -14,6 +14,7 @@ def mock_sci():
     sci.GAS_PRICE = 0
     sci.GAS_PER_PAYMENT = 0
     sci.GAS_BATCH_PAYMENT_BASE = 0
+    sci.get_gate_address.return_value = None
     return sci
 
 
