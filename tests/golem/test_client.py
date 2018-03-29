@@ -539,23 +539,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        created, error = self.client.create_task(task_dict)
+        task_id, error = sync_wait(self.client.create_task(task_dict))
 
-        assert created
+        assert task_id
         assert not error
 
-        time.sleep(1)
-        task_id = list(task_manager.tasks_states)[0]
-
-        created, error = sync_wait(self.client.restart_task(task_id))
-        assert created
+        new_task_id, error = sync_wait(self.client.restart_task(task_id))
+        assert new_task_id
         assert not error
         assert len(task_manager.tasks_states) == 2
-        new_task_id = None
-        for i in task_manager.tasks_states.keys():
-            if i != task_id:
-                new_task_id = i
-                return
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[

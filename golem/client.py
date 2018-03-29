@@ -100,6 +100,11 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
+class CreatingTaskFailed(Exception):
+    def __init__(self, task_id: str) -> None:
+        self.task_id = task_id
+
+
 class Client(HardwarePresetsMixin):
     _services = []  # type: List[IService]
 
@@ -638,7 +643,9 @@ class Client(HardwarePresetsMixin):
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
-            _result.errback(exception)
+            e = CreatingTaskFailed(task_id)
+            e.__cause__ = exception
+            _result.errback(e)
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
@@ -725,21 +732,31 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
+    @inlineCallbacks
     def create_task(self, t_dict):
+        """
+        -> Tuple[Optional[str], Optional[str]]
+        :return: (task_id, None) on success; (task_id or None, error_message)
+                 on failure
+        """
         try:
-            deferred = self.enqueue_new_task(t_dict)
-            deferred.addErrback(
-                lambda err: logger.error("Cannot create task: %r", err))
-            return True, ''
-        except Exception as ex:
+            task = yield self.enqueue_new_task(t_dict)
+            return task.header.task_id, None
+        except CreatingTaskFailed as ex:
             logger.exception("Cannot create task %r", t_dict)
-            return False, str(ex)
+            return ex.task_id, str(ex.__cause__)
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[bool, Optional[str]]:
+    @inlineCallbacks
+    def restart_task(self, task_id: str):
+        """
+        -> Tuple[Optional[str], Optional[str]]
+        :return: (new_task_id, None) on success; (None, error_message)
+                 on failure
+        """
         logger.debug('Restarting task "%r" ...', task_id)
         task_manager = self.task_server.task_manager
 
@@ -748,7 +765,7 @@ class Client(HardwarePresetsMixin):
         try:
             task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return False, "Task already restarted: '{}'".format(task_id)
+            return None, "Task already restarted: '{}'".format(task_id)
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
@@ -757,14 +774,14 @@ class Client(HardwarePresetsMixin):
                 task_manager.get_task_definition_dict(
                     task_manager.tasks[task_id]))
         except KeyError:
-            return False, "Task not found: '{}'".format(task_id)
+            return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        success, msg = self.create_task(task_dict)
-        if success:
+        new_task_id, msg = yield self.create_task(task_dict)
+        if new_task_id:
             task_manager.put_task_in_restarted_state(task_id)
 
-        return success, msg
+        return new_task_id, msg
 
     def restart_subtasks_from_task(
             self, task_id: str, subtask_ids: Iterable[str]):

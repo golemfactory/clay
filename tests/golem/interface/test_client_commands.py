@@ -538,7 +538,7 @@ class TestTasks(TempDirFixture):
 
     def test_restart_success(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = True, 'whatever'
+            self.client.restart_task.return_value = 'new_task_id', 'whatever'
             tasks = Tasks()
             result = tasks.restart('task_id')
             self.assertIsNone(result)
@@ -546,7 +546,7 @@ class TestTasks(TempDirFixture):
 
     def test_restart_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = False, 'error'
+            self.client.restart_task.return_value = None, 'error'
             tasks = Tasks()
             result = tasks.restart('task_id')
             self.assertEqual(result, 'error')
