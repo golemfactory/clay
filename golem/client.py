@@ -557,7 +557,6 @@ class Client(HardwarePresetsMixin):
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
-            _result.errback(exception)
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
