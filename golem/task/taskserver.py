@@ -14,6 +14,7 @@ from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
@@ -25,12 +26,15 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+
+from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
+
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -46,7 +50,7 @@ class TaskServer(
                  client,
                  use_ipv6=False,
                  use_docker_manager=True,
-                 task_archiver=None):
+                 task_archiver=None) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -763,6 +767,31 @@ class TaskServer(
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
+    def __connection_for_task_verification_result_established(
+            self,
+            session: TaskSession,
+            conn_id,
+            extracted_package: ExtractedPackage,
+            key_id):
+
+        extra_data = extracted_package.to_extra_data()
+        self.new_session_prepare(
+            session=session,
+            subtask_id=extra_data.get('subtask_id'),
+            key_id=key_id,
+            conn_id=conn_id,
+        )
+
+        session.send_hello()
+        session.result_received(extra_data)
+
+    def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
+            self, _conn_id, extracted_package, key_id):
+        subtask_id = extracted_package.to_extra_data().get('subtask_id')
+        logger.warning("Failed to establish a session to deliver "
+                       "the verification result for %s to the provider %s",
+                       subtask_id, key_id)
+
     # SYNC METHODS
     #############################
     def __remove_old_tasks(self):
@@ -851,6 +880,26 @@ class TaskServer(
 
         self.failures_to_send.clear()
 
+    def verify_results(
+            self,
+            report_computed_task: message.tasks.ReportComputedTask,
+            extracted_package: ExtractedPackage) -> None:
+
+        kwargs = {
+            'extracted_package': extracted_package,
+            'key_id': report_computed_task.key_id,
+        }
+
+        node = p2p_node.Node.from_dict(report_computed_task.node_info)
+
+        self._add_pending_request(
+            TASK_CONN_TYPES['task_verification_result'],
+            node,
+            prv_port=node.prv_port,
+            pub_port=node.pub_port,
+            args=kwargs,
+        )
+
     # CONFIGURATION METHODS
     #############################
     @staticmethod
@@ -867,6 +916,8 @@ class TaskServer(
             self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_established,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_established,
         })
 
     def _set_conn_failure(self):
@@ -879,6 +930,8 @@ class TaskServer(
             self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_failure,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -891,6 +944,8 @@ class TaskServer(
             self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_final_failure,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_failure,
         })
 
 
@@ -940,6 +995,7 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
+    'task_verification_result': 8,
 }
 
 
