@@ -119,8 +119,8 @@ class HyperdriveResourceManager(ClientHandler):
                 .addErrback(on_error)
 
     @handle_async(on_error=partial(log_error, "Error adding task: %r"))
-    def add_task(self, files, task_id, resource_hash=None, async_=True,
-                 client_options=None):
+    def add_task(self, files, task_id,  # pylint: disable=too-many-arguments
+                 resource_hash=None, async_=True, client_options=None):
 
         prefix = self.storage.cache.get_prefix(task_id)
         resources = self.storage.get_resources(task_id)
@@ -148,15 +148,15 @@ class HyperdriveResourceManager(ClientHandler):
                                client_options=client_options)
 
     @handle_async(on_error=partial(log_error, "Error adding files: %r"))
-    def add_files(self, files, task_id, resource_hash=None, async_=False,
-                  client_options=None):
+    def add_files(self, files, task_id,  # pylint: disable=too-many-arguments
+                  resource_hash=None, async_=False, client_options=None):
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
                                async_=async_,
                                client_options=client_options)
 
-    def _add_files(self, files, task_id, resource_hash=None, async_=False,
-                   client_options=None):
+    def _add_files(self, files, task_id,  # pylint: disable=too-many-arguments
+                   resource_hash=None, async_=False, client_options=None):
         """
         Adds files to hyperdrive.
         :param files: File collection
