@@ -14,7 +14,7 @@ from semantic_version import Version
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
-from golem.core.idgenerator import check_id_generator
+from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.utils import decode_hex
@@ -498,7 +498,7 @@ class TaskHeaderKeeper:
 
     @staticmethod
     def check_owner(task_id, owner_id):
-        if not check_id_generator(task_id, decode_hex(owner_id)):
+        if not check_id_seed(task_id, decode_hex(owner_id)):
             raise WrongOwnerException("Task_id %s doesn't suit to task "
                                       "owner %s", task_id, owner_id)
 
