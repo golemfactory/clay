@@ -187,13 +187,15 @@ class CompTaskKeeper:
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
         key_id = self.get_node_for_task_id(comp_task_def['task_id'])
-        if not check_id_seed(comp_task_def['subtask_id'],
-                             decode_hex(key_id)):
-            return False
-
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
+        if not check_id_seed(comp_task_def['subtask_id'],
+                             decode_hex(key_id)):
+            logger.info(not_accepted_message, *log_args, "Subtask id was not "
+                                                         "generated from "
+                                                         "requestor's key.")
+            return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")

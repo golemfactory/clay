@@ -23,8 +23,11 @@ def generate_new_id_from_id(id_: str) -> str:
 
 
 def check_id_seed(id_: str, seed: bytes) -> bool:
-    checked_uuid = uuid.UUID(id_)
-    return __seed_to_node(seed) == checked_uuid.node
+    try:
+        checked_uuid = uuid.UUID(id_)
+        return __seed_to_node(seed) == checked_uuid.node
+    except ValueError:
+        return False
 
 
 def __seed_to_node(seed: bytes) -> int:
