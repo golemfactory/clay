@@ -25,7 +25,8 @@ from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
+from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout,\
+    deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -543,9 +544,12 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
             task_manager.add_new_task(task)
 
-            _resources = self.resource_server.add_task(package_path,
-                                                       package_sha1,
-                                                       task_id)
+            client_options = self.task_server.get_share_options(task_id, None)
+            client_options.timeout = deadline_to_timeout(task.header.deadline)
+
+            _resources = self.resource_server.add_task(
+                package_path, package_sha1, task_id,
+                client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):

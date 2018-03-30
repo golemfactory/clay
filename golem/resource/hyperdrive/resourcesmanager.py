@@ -119,7 +119,8 @@ class HyperdriveResourceManager(ClientHandler):
                 .addErrback(on_error)
 
     @handle_async(on_error=partial(log_error, "Error adding task: %r"))
-    def add_task(self, files, task_id, resource_hash=None, async_=True):
+    def add_task(self, files, task_id, resource_hash=None, async_=True,
+                 client_options=None):
 
         prefix = self.storage.cache.get_prefix(task_id)
         resources = self.storage.get_resources(task_id)
@@ -138,19 +139,24 @@ class HyperdriveResourceManager(ClientHandler):
         self.storage.cache.set_prefix(task_id, prefix)
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
+                               client_options=client_options,
                                async_=async_)
 
     @handle_async(on_error=partial(log_error, "Error adding file: %r"))
-    def add_file(self, path, task_id, async_=False):
-        return self._add_files([path], task_id, async_=async_)
+    def add_file(self, path, task_id, async_=False, client_options=None):
+        return self._add_files([path], task_id, async_=async_,
+                               client_options=client_options)
 
     @handle_async(on_error=partial(log_error, "Error adding files: %r"))
-    def add_files(self, files, task_id, resource_hash=None, async_=False):
+    def add_files(self, files, task_id, resource_hash=None, async_=False,
+                  client_options=None):
         return self._add_files(files, task_id,
                                resource_hash=resource_hash,
-                               async_=async_)
+                               async_=async_,
+                               client_options=client_options)
 
-    def _add_files(self, files, task_id, resource_hash=None, async_=False):
+    def _add_files(self, files, task_id, resource_hash=None, async_=False,
+                   client_options=None):
         """
         Adds files to hyperdrive.
         :param files: File collection
@@ -178,10 +184,13 @@ class HyperdriveResourceManager(ClientHandler):
                                 "\n{}".format(task_id, missing))
 
         if async_:
-            return self._add_files_async(resource_hash, files, task_id)
-        return self._add_files_sync(resource_hash, files, task_id)
+            return self._add_files_async(resource_hash, files, task_id,
+                                         client_options=client_options)
+        return self._add_files_sync(resource_hash, files, task_id,
+                                    client_options=client_options)
 
-    def _add_files_async(self, resource_hash: str, files: dict, task_id: str):
+    def _add_files_async(self, resource_hash: str, files: dict, task_id: str,
+                         client_options=None):
         """
         Adds files to hyperdrive using the asynchronous HyperdriveAsyncClient
         method.
@@ -199,14 +208,17 @@ class HyperdriveResourceManager(ClientHandler):
             result.callback((hyperdrive_hash, resource_files))
 
         if resource_hash:
-            client_result = self.client.restore_async(resource_hash)
+            client_result = self.client.restore_async(
+                resource_hash, client_options=client_options)
         else:
-            client_result = self.client.add_async(files)
+            client_result = self.client.add_async(
+                files, client_options=client_options)
 
         client_result.addCallbacks(success, result.errback)
         return result
 
-    def _add_files_sync(self, resource_hash: str, files: dict, task_id: str):
+    def _add_files_sync(self, resource_hash: str, files: dict, task_id: str,
+                        client_options=None):
         """
         Adds files to hyperdrive using the synchronous HyperdriveClient method.
         :param resource_hash: If set, the 'restore' method is called; 'add'
@@ -219,9 +231,11 @@ class HyperdriveResourceManager(ClientHandler):
 
         try:
             if resource_hash:
-                self.client.restore(resource_hash)
+                self.client.restore(resource_hash,
+                                    client_options=client_options)
             else:
-                resource_hash = self.client.add(files)
+                resource_hash = self.client.add(files,
+                                                client_options=client_options)
         except Exception as exc:
             raise ResourceError("Resource manager: error adding files: {}"
                                 .format(exc))

@@ -63,18 +63,22 @@ class HyperdriveClient(IClient):
         return addresses
 
     def add(self, files, client_options=None, **kwargs):
+        timeout = client_options.timeout if client_options else None
         response = self._request(
             command='upload',
             id=kwargs.get('id'),
-            files=files
+            files=files,
+            timeout=timeout
         )
         return response['hash']
 
-    def restore(self, content_hash, **kwargs):
+    def restore(self, content_hash, client_options=None, **kwargs):
+        timeout = client_options.timeout if client_options else None
         response = self._request(
             command='upload',
             id=kwargs.get('id'),
-            hash=content_hash
+            hash=content_hash,
+            timeout=timeout
         )
         return response['hash']
 
@@ -140,11 +144,13 @@ class HyperdriveAsyncClient(HyperdriveClient):
         self._url_bytes = self._url.encode('utf-8')
         self._headers_obj = Headers({'Content-Type': ['application/json']})
 
-    def add_async(self, files, **kwargs):
+    def add_async(self, files, client_options=None, **kwargs):
+        timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
-            files=files
+            files=files,
+            timeout=timeout
         )
 
         return self._async_request(
@@ -152,11 +158,13 @@ class HyperdriveAsyncClient(HyperdriveClient):
             lambda response: response['hash']
         )
 
-    def restore_async(self, content_hash, **kwargs):
+    def restore_async(self, content_hash, client_options=None, **kwargs):
+        timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
-            hash=content_hash
+            hash=content_hash,
+            timeout=timeout
         )
 
         return self._async_request(
