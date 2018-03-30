@@ -37,7 +37,7 @@ class FrameRenderingTaskMock(FrameRenderingTask):
 
 
 class TestFrameRenderingTask(TestDirFixture, LogTestCase):
-    def _get_frame_task(self, use_frames=True):
+    def _get_frame_task(self, use_frames=True, num_tasks=3):
         files_ = self.additional_dir_content([3])
         rt = RenderingTaskDefinition()
         rt.options = FrameRendererOptions()
@@ -55,7 +55,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = FrameRenderingTaskMock(files_[0],
                                       node_name="ABC",
                                       task_definition=rt,
-                                      total_tasks=3,
+                                      total_tasks=num_tasks,
                                       root_path=self.path
                                       )
         dm = DirManager(self.path)
@@ -299,6 +299,19 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img_repr = load_img(out_path)
         assert isinstance(img_repr, EXRImgRepr)
         img_repr.close()
+
+    def test_get_subtask_for_multiple_subtask_per_frame(self):
+        task = self._get_frame_task(True, 18)
+        print(task.frames_subtasks)
+        assert task.get_subtasks(4) == {}
+        task.frames_subtasks["4"][0] = "abc"
+        task.frames_subtasks["4"][1] = "def"
+        task.subtasks_given["abc"] = {"ABC": 3}
+        task.subtasks_given["def"] = {"DEF": 4}
+        states = task.get_subtasks(4)
+        assert states["abc"].extra_data["ABC"] == 3
+        assert states["def"].extra_data["DEF"] == 4
+        assert len(states) == 2
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):

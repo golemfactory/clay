@@ -162,6 +162,7 @@ class FrameRenderingTask(RenderingTask):
     def get_subtasks(self, frame):
         if self.task_definition.options.use_frames:
             subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+            subtask_ids = filter(None, subtask_ids)
         else:
             subtask_ids = self.subtasks_given.keys()
 

@@ -91,6 +91,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.docker': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
             'level': 'INFO',
             'propagate': True,
@@ -112,6 +116,10 @@ LOGGING = {
             'propagate': True,
         },
         'golem.resources': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.task': {
             'level': 'INFO',
             'propagate': True,
         },

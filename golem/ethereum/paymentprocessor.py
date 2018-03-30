@@ -171,8 +171,8 @@ class PaymentProcessor(LoopingCallService):
             self._gnt_available() / denoms.ether,
             self.__gntb_reserved / denoms.ether))
 
-        if self.__gntb_balance is not None and self.__gnt_balance is not None:
-            if self.__gntb_reserved > self.__gntb_balance > 0:
+        if self.__gntb_balance is not None and (self.__gnt_balance or 0) > 0:
+            if self.__gntb_reserved > self.__gntb_balance:
                 if not self._gnt_converter.is_converting():
                     log.info(
                         'Will convert %f GNT to be ready for payments',

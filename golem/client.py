@@ -64,6 +64,7 @@ from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -431,6 +433,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -441,9 +444,10 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            self.task_server.pause()
+            yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        logger.info("Paused")
 
     def resume(self):
         logger.info("Resuming ...")
@@ -456,6 +460,7 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        logger.info("Resumed")
 
     def init_monitor(self):
         logger.debug("Starting monitor ...")
@@ -855,6 +860,14 @@ class Client(HardwarePresetsMixin):
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
 
+    def get_withdraw_gas_cost(
+            self,
+            amount: Union[str, int],
+            currency: str) -> int:
+        if isinstance(amount, str):
+            amount = int(amount)
+        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+
     def withdraw(
             self,
             amount: Union[str, int],
@@ -865,8 +878,14 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
+        if currency == 'GNT':
+            lock = gnt_lock
+        else:
+            lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency)
+        return self.transaction_system.withdraw(amount, destination, currency,
+                                                lock)
 
     def get_task_cost(self, task_id):
         """
@@ -1114,11 +1133,9 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_key_id(),
-            self.session_id,
-            sys.platform,
-            golem.__version__,
-            self.config_desc
+            client=self,
+            os=sys.platform,
+            ver=golem.__version__
         )
 
     def connection_status(self):
@@ -1198,18 +1215,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def enable_talkback(value):
-        talkback_value = bool(value)
-        logger_root = logging.getLogger()
-        try:
-            sentry_handler = [
-                h for h in logger_root.handlers if h.name == 'sentry'][0]
-            msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback service', msg_part)
-            sentry_handler.set_enabled(talkback_value)
-        except Exception as e:  # pylint: disable=broad-except
-            msg_part = 'enable' if talkback_value else 'disable'
-            logger.error(
-                'Cannot %s talkback. Error was: %s', msg_part, str(e))
+        enable_sentry_logger(value)
 
 
 class DoWorkService(LoopingCallService):
