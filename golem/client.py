@@ -195,6 +195,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -432,6 +433,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -442,9 +444,10 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            self.task_server.pause()
+            yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        logger.info("Paused")
 
     def resume(self):
         logger.info("Resuming ...")
@@ -457,6 +460,7 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        logger.info("Resumed")
 
     def init_monitor(self):
         logger.debug("Starting monitor ...")
@@ -856,6 +860,14 @@ class Client(HardwarePresetsMixin):
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
 
+    def get_withdraw_gas_cost(
+            self,
+            amount: Union[str, int],
+            currency: str) -> int:
+        if isinstance(amount, str):
+            amount = int(amount)
+        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+
     def withdraw(
             self,
             amount: Union[str, int],
@@ -866,8 +878,14 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
+        if currency == 'GNT':
+            lock = gnt_lock
+        else:
+            lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency)
+        return self.transaction_system.withdraw(amount, destination, currency,
+                                                lock)
 
     def get_task_cost(self, task_id):
         """
@@ -1115,11 +1133,9 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_key_id(),
-            self.session_id,
-            sys.platform,
-            golem.__version__,
-            self.config_desc
+            client=self,
+            os=sys.platform,
+            ver=golem.__version__
         )
 
     def connection_status(self):

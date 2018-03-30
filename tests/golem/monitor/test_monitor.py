@@ -1,15 +1,16 @@
-from random import Random
+import json
 import time
 from unittest import mock, TestCase
 from urllib.parse import urljoin
 
+from random import Random
+import requests
 from freezegun import freeze_time
 from pydispatch import dispatcher
-import requests
 
 from golem import testutils
-from golem.core import variables
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core import variables
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor, SenderThread
 from golem.monitorconfig import MONITOR_CONFIG
@@ -25,18 +26,25 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
     )
 
     def setUp(self):
+        client_mock = mock.MagicMock()
+        client_mock.get_key_id = mock.MagicMock(return_value='cliid')
+        client_mock.session_id = 'sessid'
+        client_mock.config_desc = ClientConfigDescriptor()
+        client_mock.mainnet = False
         meta_data = NodeMetadataModel(
-            'cliid', 'sessid', 'os', 'ver', ClientConfigDescriptor())
+            client_mock, 'os', 'ver')
         config = MONITOR_CONFIG.copy()
         config['HOST'] = 'http://localhost/88881'
+        config['SENDER_THREAD_TIMEOUT'] = 0.05
         self.monitor = SystemMonitor(meta_data, config)
+        self.monitor.start()
 
     def tearDown(self):
+        self.monitor.shut_down()
         del self.monitor
 
     def test_monitor_messages(self):
         """Just check if all signal handlers run without errors"""
-        self.monitor.start()
         self.monitor.on_login()
 
         self.monitor.on_payment(addr="some address", value=30139019301)
@@ -52,30 +60,52 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                 EMPTY_FINISHED_SUMMARY))
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
+        client_mock = mock.MagicMock()
+        client_mock.cliid = 'CLIID'
+        client_mock.sessid = 'SESSID'
+        client_mock.config_desc = ccd
+        client_mock.mainnet = False
         new_meta_data = NodeMetadataModel(
-            "CLIID", "SESSID", "win32", "1.3", ccd)
+            client_mock, "win32", "1.3")
         self.monitor.on_config_update(new_meta_data)
         self.monitor.on_logout()
-        self.monitor.shut_down()
 
-    def test_protocol_versions(self):
-        """Test whether correct protocol versions were sent."""
+    def test_login_logout_messages(self):
+        """Test whether correct login and logout messages
+            and protocol data were sent."""
 
         def check(f, msg_type):
-            with mock.patch('golem.monitor.monitor.SenderThread.send') \
+            with mock.patch(
+                'golem.monitor.transport.httptransport.'
+                + 'DefaultHttpSender.post_json') \
                     as mock_send:
                 f()
+                time.sleep(0.005)
                 self.assertEqual(mock_send.call_count, 1)
-                result = mock_send.call_args[0][0].dict_repr()
-                for key in ('cliid', 'sessid', 'timestamp', 'metadata'):
-                    del result[key]
+                result = json.loads(mock_send.call_args[0][0])
                 expected_d = {
-                    'type': msg_type,
-                    'protocol_versions': {
-                        'monitor': self.monitor.config['PROTO_VERSION'],
-                        'p2p': variables.PROTOCOL_CONST.ID,
-                        'task': variables.PROTOCOL_CONST.ID,
-                    },
+                    'proto_ver': MONITOR_CONFIG['PROTO_VERSION'],
+                    'data': {
+                        'type': msg_type,
+                        'protocol_versions': {
+                            'monitor': self.monitor.config['PROTO_VERSION'],
+                            'p2p': variables.PROTOCOL_CONST.ID,
+                            'task': variables.PROTOCOL_CONST.ID,
+                        },
+                        'metadata': {
+                            'type': 'NodeMetadata',
+                            'net': 'testnet',
+                            'timestamp': mock.ANY,
+                            'cliid': 'cliid',
+                            'sessid': 'sessid',
+                            'os': 'os',
+                            'version': 'ver',
+                            'settings': mock.ANY,
+                        },
+                        'cliid': 'cliid',
+                        'sessid': 'sessid',
+                        'timestamp': mock.ANY,
+                    }
                 }
                 self.assertEqual(expected_d, result)
 

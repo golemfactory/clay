@@ -212,7 +212,26 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 mainnet=True,
             )
             self.client.withdraw('123', '0xdead', 'ETH')
-            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
+
+    def test_get_withdraw_gas_cost(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+                mainnet=True,
+            )
+            self.client.get_withdraw_gas_cost('123', 'ETH')
+            ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
 
     def test_payment_address(self, *_):
         self.client = Client(
@@ -483,6 +502,39 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.client.p2pservice.disconnect.assert_called_once()
         self.client.task_server.disconnect.assert_called_once()
+
+    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.environments.environmentsmanager.'
+           'EnvironmentsManager.load_config')
+    @patch('golem.client.SystemMonitor')
+    @patch('golem.client.P2PService.connect_to_network')
+    def test_pause_resume(self, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(key_id='a' * 64),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False
+        )
+
+        self.client.start()
+
+        assert self.client.p2pservice.active
+        assert self.client.task_server.active
+
+        self.client.pause()
+
+        assert not self.client.p2pservice.active
+        assert not self.client.task_server.active
+
+        self.client.resume()
+
+        assert self.client.p2pservice.active
+        assert self.client.task_server.active
+
+        self.client.stop()
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', mock_async_run)
