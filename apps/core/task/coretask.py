@@ -180,20 +180,9 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        """
-        seeds top 48 bits from given public key as node in generated uuid1
-
-        :param bytes public_key: `KeysAuth.public_key`
-        :returns: string uuid1 based on timestamp and given key
-        """
         return generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        """
-        seeds low 48 bits from task_id as node in generated uuid1
-
-        :returns: uuid1 based on timestamp and task_id
-        """
         return generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
