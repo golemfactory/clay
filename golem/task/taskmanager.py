@@ -731,31 +731,49 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id, op=TaskOp.RESTARTED)
 
     @handle_subtask_key_error
-    def restart_subtask(self, subtask_id):
+    def restart_subtask(self, subtask_id: str) -> bool:
+        """
+        Restarts given subtask
+        :param str subtask_id:
+        :return bool: True if task was already finished and properly
+        verified, False otherwise
+        """
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.computing
         subtask_state = task_state.subtask_states[subtask_id]
+        finished_before = task_state.subtask_states == SubtaskStatus.finished
         subtask_state.subtask_status = SubtaskStatus.restarted
         subtask_state.stderr = "[GOLEM] Restarted"
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
                                  op=SubtaskOp.RESTARTED)
+        return finished_before
 
     @handle_task_key_error
-    def restart_frame_subtasks(self, task_id, frame):
+    def restart_frame_subtasks(self, task_id, frame) -> int:
+        """
+        Restarts all the subtasks in given frame
+        :param task_id:
+        :param frame:
+        :return int: returns number of subtasks that were finished and verified
+        in the moment of restarting
+        """
         task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
         subtasks = task.get_subtasks(frame)
+        cnt = 0
 
         if not subtasks:
-            return
+            return cnt
 
         for subtask_id in list(subtasks.keys()):
             task.restart_subtask(subtask_id)
             subtask_state = task_state.subtask_states[subtask_id]
+            if subtask_state.subtask_status == SubtaskStatus.finished:
+                cnt += 1
             subtask_state.subtask_status = SubtaskStatus.restarted
             subtask_state.stderr = "[GOLEM] Restarted"
             self.notice_task_updated(task_id,
@@ -765,6 +783,7 @@ class TaskManager(TaskEventListener):
 
         task.status = TaskStatus.computing
         self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
+        return cnt
 
     @handle_task_key_error
     def abort_task(self, task_id):

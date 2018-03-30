@@ -122,6 +122,17 @@ class FundsLocker(LoopingCallService):
         task_lock.num_tasks -= 1
         self.dump_locks()
 
+    def add_subtasks(self, task_id: str, num=1):
+        """ This method should be called after finished subtasks were restarted
+        and we should increase the amount of locked resources"""
+        task_lock = self.task_lock.get(task_id)
+        if task_lock is None:
+            logger.warning("I can't remove payment lock for subtask from task"
+                           "%r: unkown task.", task_id)
+            return
+        task_lock.num_tasks += num
+        self.dump_locks()
+
     def remove_task(self, task_id):
         task_lock = self.task_lock.get(task_id)
         if task_lock is None:

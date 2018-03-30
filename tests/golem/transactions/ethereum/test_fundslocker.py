@@ -171,3 +171,18 @@ class TestFundsLocker(TempDirFixture):
 
         with self.assertLogs(logger, level="WARNING"):
             fl.remove_subtask("NONEXISTING")
+
+    def test_add_subtasks(self):
+        fl = FundsLocker(self.ts, self.new_path)
+        self._add_tasks(fl)
+        assert fl.task_lock.get("ghi")
+        assert fl.task_lock["ghi"].num_tasks == 4
+        fl.add_subtasks("ghi", 3)
+        assert fl.task_lock["ghi"].num_tasks == 7
+
+        fl.add_subtasks("notask", 3)
+        assert fl.task_lock.get("notask") is None
+
+        assert fl.task_lock["jkl"].num_tasks == 1
+        fl.add_subtasks("jkl", 1)
+        assert fl.task_lock["jkl"].num_tasks == 2
