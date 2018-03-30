@@ -61,6 +61,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.get_eth_address.return_value = self.addr
+        self.sci.get_gate_address.return_value = None
         # FIXME: PaymentProcessor should be started and stopped! #2455
         self.pp = PaymentProcessor(self.sci)
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
@@ -353,6 +354,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.GAS_BATCH_PAYMENT_BASE = 10
         self.sci.GAS_PER_PAYMENT = 1
         self.sci.GAS_PRICE = 20
+        self.sci.get_gate_address.return_value = None
 
         self.tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = self.tx_hash
