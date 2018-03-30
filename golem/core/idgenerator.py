@@ -1,9 +1,11 @@
 import uuid
+
+
 GEN_LEN = 6
 
 
-def generate_id(gen: bytes, len_: int = GEN_LEN) -> str:
-    return str(uuid.uuid1(node=gen_to_node(gen, len_)))
+def generate_id(gen: bytes) -> str:
+    return str(uuid.uuid1(node=gen_to_node(gen)))
 
 
 def generate_new_id_from_id(id_: str):
@@ -11,10 +13,10 @@ def generate_new_id_from_id(id_: str):
     return str(uuid.uuid1(node=from_uuid.node))
 
 
-def check_id_generator(id_: str, gen: bytes, len_: int = GEN_LEN):
+def check_id_generator(id_: str, gen: bytes):
     checked_uuid = uuid.UUID(id_)
-    return gen_to_node(gen, len_) == checked_uuid.node
+    return gen_to_node(gen) == checked_uuid.node
 
 
-def gen_to_node(gen: bytes, len_: int = GEN_LEN) -> int:
-    return int.from_bytes(gen[:len_], 'big')
+def gen_to_node(gen: bytes) -> int:
+    return int.from_bytes(gen[:GEN_LEN], 'big')
