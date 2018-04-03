@@ -20,13 +20,19 @@ class App(object):
 
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
-    def __init__(self):
+    def __init__(self, mainnet):
         self.apps = OrderedDict()
+        self._mainnet = mainnet
 
-    def load_apps(self):
+    def load_all_apps(self):
+        self._load_apps(REGISTERED_CONFIG_FILE)
+        if not self._mainnet:
+            self._load_apps(os.path.join('apps', 'registered_test.ini'))
+
+    def _load_apps(self, apps_config_file):
 
         parser = ConfigParser()
-        config_path = os.path.join(get_golem_path(), REGISTERED_CONFIG_FILE)
+        config_path = os.path.join(get_golem_path(), apps_config_file)
         parser.readfp(open(config_path))
 
         for section in parser.sections():
