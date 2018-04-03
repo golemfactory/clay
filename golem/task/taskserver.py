@@ -455,7 +455,7 @@ class TaskServer(
 
         if event == 'confirmed':
             self.increase_trust_payment(task_id)
-        elif event == 'rejected':
+        elif event in ['rejected', 'overdue']:
             self.decrease_trust_payment(task_id)
 
     def increase_trust_payment(self, task_id):

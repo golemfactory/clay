@@ -7,7 +7,6 @@ from typing import List
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
-from golem.core.common import get_timestamp_utc
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 from golem.utils import encode_hex, pubkeytoaddr
@@ -98,11 +97,7 @@ class IncomesKeeper:
                 subtask_id)
             return
 
-        # Mark as accepted + overdue to exclude it from other queries
-        income.accepted_ts = get_timestamp_utc()
-        income.overdue = True
-        income.save()
-
+        income.delete_instance()
         dispatcher.send(
             signal='golem.income',
             event='rejected',
@@ -161,7 +156,7 @@ class IncomesKeeper:
 
             dispatcher.send(
                 signal='golem.income',
-                event='rejected',
+                event='overdue',
                 subtask_id=income.subtask
             )
 
