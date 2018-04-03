@@ -7,6 +7,7 @@ from typing import List
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem.core.common import get_timestamp_utc
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 from golem.utils import encode_hex, pubkeytoaddr
@@ -60,6 +61,12 @@ class IncomesKeeper:
             e.value = value
             e.save()
 
+            dispatcher.send(
+                signal='golem.income',
+                event='confirmed',
+                subtask_id=e.subtask
+            )
+
         dispatcher.send(
             signal='golem.monitor',
             event='income',
@@ -78,6 +85,28 @@ class IncomesKeeper:
             sender_node=sender_node_id,
             subtask=subtask_id,
             value=value
+        )
+
+    @staticmethod
+    def reject(subtask_id):
+        try:
+            income = Income.get(subtask=subtask_id, accepted_ts=None,
+                                overdue=False)
+        except Income.DoesNotExist:
+            logger.error(
+                "Income.DoesNotExist subtask_id: %r",
+                subtask_id)
+            return
+
+        # Mark as accepted + overdue to exclude it from other queries
+        income.accepted_ts = get_timestamp_utc()
+        income.overdue = True
+        income.save()
+
+        dispatcher.send(
+            signal='golem.income',
+            event='rejected',
+            subtask_id=subtask_id
         )
 
     def update_awaiting(self, sender_node, subtask_id, accepted_ts):
@@ -125,7 +154,15 @@ class IncomesKeeper:
                 (Income.created_date < created_deadline)
             )
         ))
+
         for income in incomes:
             income.overdue = True
             income.save()
+
+            dispatcher.send(
+                signal='golem.income',
+                event='rejected',
+                subtask_id=income.subtask
+            )
+
         return incomes

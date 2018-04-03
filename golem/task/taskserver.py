@@ -8,6 +8,7 @@ from collections import deque
 from pathlib import Path
 
 from golem_messages import message
+from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.core.task.coretask import CoreTask
@@ -106,6 +107,11 @@ class TaskServer(
             received_handler as concent_received_handler
         self.concent_handler = \
             concent_received_handler.TaskServerMessageHandler(self)
+
+        dispatcher.connect(
+            self.income_listener,
+            signal='golem.income'
+        )
 
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
@@ -387,7 +393,7 @@ class TaskServer(
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
         if task_id is not None:
-            self.decrease_trust_payment(task_id)
+            self.client.transaction_system.incomes_keeper.reject(subtask_id)
             # self.remove_task_header(task_id)
             # TODO Inform transaction system and task manager about rejected
             # subtask. Issue #2405
@@ -440,6 +446,17 @@ class TaskServer(
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
         return payment
+
+    def income_listener(self, event='default', subtask_id=None, **_kwargs):
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
+            subtask_id)
+        if not task_id:
+            return
+
+        if event == 'confirmed':
+            self.increase_trust_payment(task_id)
+        elif event == 'rejected':
+            self.decrease_trust_payment(task_id)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
