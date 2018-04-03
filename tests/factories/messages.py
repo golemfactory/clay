@@ -13,7 +13,6 @@ from golem_messages.message import concents
 from golem_messages.message import tasks
 
 
-
 class Hello(factory.Factory):
     class Meta:
         model = base.Hello
