@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch, call, ANY
+
 from random import Random
 import time
 
@@ -54,7 +56,8 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert expected_income.accepted_ts is None
         assert expected_income.transaction is None
 
-    def test_received_batch_transfer_closure_time(self):
+    @patch('golem.transactions.incomeskeeper.dispatcher')
+    def test_received_batch_transfer_closure_time(self, dispatcher):
         sender_node_id = '0x' + 64 * 'a'
         subtask_id1 = 'sample_subtask_id1'
         value1 = MAX_INT + 10
@@ -91,6 +94,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert income1.transaction is None
         income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
         assert income2.transaction is None
+        assert dispatcher.send.call_count == 0
 
         # now we accept both
         self.incomes_keeper.update_awaiting(
@@ -113,6 +117,15 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
         assert income2.transaction is None
+
+        calls = dispatcher.send.mock_calls
+        dispatcher.send.reset_mock()
+
+        assert calls == [call(signal='golem.income', event='confirmed',
+                              subtask_id=subtask_id1),
+                         call(signal='golem.monitor', event='income',
+                              addr=ANY, value=ANY)]
+
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
             pubkeytoaddr(sender_node_id),
@@ -123,6 +136,12 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
+
+        calls = dispatcher.send.mock_calls
+        assert calls == [call(signal='golem.income', event='confirmed',
+                              subtask_id=subtask_id2),
+                         call(signal='golem.monitor', event='income',
+                              addr=ANY, value=ANY)]
 
     def test_received_batch_transfer_two_senders(self):
         sender_node_id1 = '0x' + 64 * 'a'
@@ -237,3 +256,17 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             overdue=True)
         incomes = self.incomes_keeper.update_overdue_incomes()
         self.assertSequenceEqual(incomes, ())
+
+    @freeze_time()
+    def test_reject(self):
+        subtask_id = "subtask"
+        self._create_income(subtask=subtask_id)
+
+        assert Income.get(subtask=subtask_id)
+        self.incomes_keeper.reject(subtask_id)
+
+        with self.assertRaises(Income.DoesNotExist):
+            Income.get(subtask=subtask_id)
+
+        # Should not throw an exception
+        self.incomes_keeper.reject(subtask_id)
