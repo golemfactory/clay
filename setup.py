@@ -94,6 +94,7 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
+    DockerManager.MAINNET = False
     DockerManager.pull_images()
 
 if building_wheel:
