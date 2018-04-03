@@ -28,8 +28,7 @@ TESTNET_NODE_LIST = [
 ]
 
 MAINNET_NODE_LIST = [
-    # Can't use this domain just yet, see issue #2446
-    # 'https://geth.golem.network:55555',
+    'https://geth.golem.network:55555',
     'https://0.geth.golem.network:55555',
     'https://1.geth.golem.network:55555',
     'https://2.geth.golem.network:55555',
