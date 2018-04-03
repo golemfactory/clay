@@ -103,6 +103,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
+            config_args=ClientConfigDescriptor(),
             use_docker_manager=False,
         )
         with mock.patch('golem.client.EthereumTransactionSystem'):
