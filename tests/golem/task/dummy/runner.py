@@ -88,6 +88,7 @@ def create_client(datadir):
         return Client(datadir=datadir,
                       app_config=app_config,
                       config_desc=config_desc,
+                      config_args=None,
                       keys_auth=keys_auth,
                       database=database,
                       use_monitor=False,

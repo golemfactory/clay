@@ -553,6 +553,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=config_desc,
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
 
         self.node._setup_client = Mock()
@@ -578,6 +579,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=config_descriptor,
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
         self.node.start()
 
@@ -614,7 +616,8 @@ class TestOptNode(TempDirFixture):
         # when
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
-                         config_desc=(ClientConfigDescriptor()),
+                         config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
         self.node.start()
 
@@ -650,6 +653,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          peers=parsed_peer,
                          use_docker_manager=False)
 
@@ -669,6 +673,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
         assert not self.node.is_mainnet()
 
@@ -677,6 +682,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
 
         self.node.rpc_router = Mock()
@@ -688,6 +694,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
         self.node.rpc_router = None
 
@@ -701,6 +708,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(datadir=self.path,
                          app_config=Mock(),
                          config_desc=ClientConfigDescriptor(),
+                         config_args=ClientConfigDescriptor(),
                          use_docker_manager=False)
 
         error = self.node._error('any')

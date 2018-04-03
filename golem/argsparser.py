@@ -73,6 +73,6 @@ def parse_port(ctx, param, value):
         try:
             if not 0 < value < 65536:
                 raise Exception(value)
-        except Exception:  # pylint: disable=broad-except
-            raise click.BadParameter('Invalid port: {}'.format(value))
+        except Exception as e:  # pylint: disable=broad-except
+            raise click.BadParameter('Invalid port {}: {}'.format(value, e))
     return value

@@ -89,6 +89,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
             client = Client(datadir=dir_manager.root_path,
                             app_config=mock.Mock(),
                             config_desc=ClientConfigDescriptor(),
+                            config_args=ClientConfigDescriptor(),
                             keys_auth=mock.Mock(),
                             database=database,
                             connect_to_known_hosts=False,

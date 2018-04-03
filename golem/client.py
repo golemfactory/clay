@@ -89,6 +89,7 @@ class Client(HardwarePresetsMixin):
             datadir: str,
             app_config: AppConfig,
             config_desc: ClientConfigDescriptor,
+            config_args: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
             mainnet: bool = False,
@@ -98,8 +99,7 @@ class Client(HardwarePresetsMixin):
             use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None,
-            config_args: Optional[ClientConfigDescriptor] = None) -> None:
+            geth_address: Optional[str] = None) -> None:
 
         self.mainnet = mainnet
         self.datadir = datadir
@@ -425,7 +425,7 @@ class Client(HardwarePresetsMixin):
         properties = {
             'node_address': 'prv_addr',
             'pub_node_address': 'pub_addr',
-            'pub_p2p_port': 'pub_p2p_port',
+            'pub_p2p_port': 'p2p_pub_port',
             'pub_task_port': 'pub_port'
         }
 

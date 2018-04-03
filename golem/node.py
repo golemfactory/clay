@@ -37,6 +37,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  datadir: str,
                  app_config: AppConfig,
                  config_desc: ClientConfigDescriptor,
+                 config_args: ClientConfigDescriptor,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = False,
                  use_concent: bool = False,
@@ -45,8 +46,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None,
-                 config_args: Optional[ClientConfigDescriptor] = None) -> None:
+                 password: Optional[str] = None) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
