@@ -4,12 +4,14 @@ import logging
 import time
 import typing
 
+from ethereum.utils import privtoaddr
 from golem_messages import cryptography
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
 from golem.task import taskkeeper
+from golem.utils import decode_hex
 
 
 logger = logging.getLogger(__name__)
@@ -46,6 +48,12 @@ def process_report_computed_task(
         )
     except msg_exceptions.InvalidSignature:
         logger.warning('Received fake task_to_compute: %r', msg)
+        return _reject(None)
+
+    # Prevent self payments. This check deserve its own reject_reason but also
+    # it belongs ealier in the flow rather then here.
+    if privtoaddr(ecc.get_privkey()) == decode_hex(msg.eth_account):
+        logger.warning('Prevented self payment: %r', msg)
         return _reject(None)
 
     reject_reasons = message.concents.RejectReportComputedTask.REASON
