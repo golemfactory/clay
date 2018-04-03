@@ -130,7 +130,7 @@ def receive_from_concent(public_key) -> typing.Optional[bytes]:
             concent_receive_url,
             headers,
         )
-        response = requests.get(
+        response = requests.post(
             concent_receive_url,
             headers=headers,
         )

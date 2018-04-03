@@ -6,9 +6,12 @@ import time
 import factory.fuzzy
 from eth_utils import encode_hex
 
+from golem_messages import cryptography
+
 from golem_messages.message import base
 from golem_messages.message import concents
 from golem_messages.message import tasks
+
 
 
 class Hello(factory.Factory):
@@ -37,6 +40,10 @@ class TaskToCompute(factory.Factory):
     requestor_id = factory.Faker('binary', length=64)
     provider_id = factory.Faker('binary', length=64)
     compute_task_def = factory.SubFactory(ComputeTaskDef)
+    provider_public_key = factory.LazyFunction(
+        lambda: cryptography.ECCx(None).raw_pubkey)
+    requestor_public_key = factory.LazyFunction(
+        lambda: cryptography.ECCx(None).raw_pubkey)
 
     @classmethod
     def _create(cls, *args, **kwargs):
