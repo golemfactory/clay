@@ -63,11 +63,11 @@ class TaskManager(TaskEventListener):
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
-            tasks_dir="tasks", task_persistence=True):
+            tasks_dir="tasks", task_persistence=True, mainnet=False):
         super().__init__()
 
-        self.apps_manager = AppsManager()
-        self.apps_manager.load_apps()
+        self.apps_manager = AppsManager(mainnet)
+        self.apps_manager.load_all_apps()
 
         apps = list(self.apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]

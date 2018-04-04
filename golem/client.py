@@ -306,7 +306,9 @@ class Client(HardwarePresetsMixin):
             self,
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
-            task_archiver=self.task_archiver)
+            task_archiver=self.task_archiver,
+            mainnet=self.mainnet
+        )
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,

@@ -2,33 +2,11 @@ import json
 import re
 from typing import Any, Optional
 
-from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
-from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
-from golem.resource.dirmanager import DirManager
 
 CREATE_TASK_TIMEOUT = 300  # s
-
-
-class CommandAppLogic(AppLogic):
-
-    def __init__(self, client, datadir):
-        super(CommandAppLogic, self).__init__()
-
-        self.node_name = sync_wait(client.get_node_name())
-        self.datadir = datadir
-        self.dir_manager = DirManager(self.datadir)
-
-    @staticmethod
-    def instantiate(client, datadir):
-        logic = CommandAppLogic(client, datadir)
-        apps_manager = AppsManager()
-        apps_manager.load_apps()
-        for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info())
-        return logic
 
 
 @group(help="Manage tasks")
