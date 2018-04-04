@@ -1,6 +1,6 @@
 from typing import List
 
-from golem.core.common import datetime_to_timestamp, to_unicode
+from golem.core.common import datetime_to_timestamp_utc, to_unicode
 from golem.model import Payment, PaymentStatus, PaymentDetails
 
 from .paymentskeeper import PaymentsKeeper
@@ -76,8 +76,8 @@ class TransactionSystem(object):
                 "value": to_unicode(o.value),
                 "status": to_unicode(status.name),
                 "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp(o.created_date),
-                "modified": datetime_to_timestamp(o.modified_date)
+                "created": datetime_to_timestamp_utc(o.created_date),
+                "modified": datetime_to_timestamp_utc(o.modified_date)
             }
 
         return [item(income) for income in incomes]

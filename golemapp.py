@@ -142,7 +142,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir)
+    app_config = AppConfig.load_config(datadir, mainnet=mainnet)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
