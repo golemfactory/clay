@@ -119,6 +119,11 @@ def datetime_to_timestamp(then):
     return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
 
 
+def datetime_to_timestamp_utc(then):
+    then_utc = then.astimezone(pytz.utc)
+    return datetime_to_timestamp(then_utc)
+
+
 def timeout_to_string(timeout):
     hours = int(timeout / 3600)
     timeout -= hours * 3600

@@ -47,9 +47,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                 patch('twisted.internet.task.LoopingCall.stop'), \
                 patch(new_sci_method_name), \
                 patch(pkg + 'node.NodeProcess.start'), \
-                patch(pkg + 'node.NodeProcess.stop'), \
-                patch(pkg + 'node.NodeProcess.__init__', _init), \
-                patch('web3.providers.rpc.HTTPProvider.__init__', _init):
+                patch(pkg + 'paymentprocessor.GNTConverter'), \
+                patch(pkg + 'node.NodeProcess.stop'):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
@@ -95,11 +94,47 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
+    def test_get_withdraw_gas_cost(self, new_sci):
+        sci = Mock()
+        sci.GAS_PRICE = 0
+        sci.GAS_PER_PAYMENT = 0
+        sci.GAS_BATCH_PAYMENT_BASE = 0
+        sci.get_gate_address.return_value = None
+        sci.GAS_GNT_TRANSFER = 222
+        sci.GAS_WITHDRAW = 555
+        gas_price = 123
+        sci.get_current_gas_price.return_value = gas_price
+        new_sci.return_value = sci
+        eth_balance = 400
+        gnt_balance = 100
+        gntb_balance = 200
+        sci.get_eth_balance.return_value = eth_balance
+        sci.get_gnt_balance.return_value = gnt_balance
+        sci.get_gntb_balance.return_value = gntb_balance
+
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+
+        cost = ets.get_withdraw_gas_cost(eth_balance, 'ETH')
+        assert cost == 21000 * gas_price
+
+        cost = ets.get_withdraw_gas_cost(gnt_balance, 'GNT')
+        assert cost == sci.GAS_GNT_TRANSFER * gas_price
+
+        cost = ets.get_withdraw_gas_cost(gntb_balance, 'GNT')
+        assert cost == sci.GAS_WITHDRAW * gas_price
+
+        cost = ets.get_withdraw_gas_cost(gntb_balance + gnt_balance, 'GNT')
+        assert cost == (sci.GAS_GNT_TRANSFER + sci.GAS_WITHDRAW) * gas_price
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
+           Mock())
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_withdraw(self, new_sci):
         sci = Mock()
         sci.GAS_PRICE = 0
         sci.GAS_PER_PAYMENT = 0
         sci.GAS_BATCH_PAYMENT_BASE = 0
+        sci.get_gate_address.return_value = None
         new_sci.return_value = sci
         eth_balance = 400
         gnt_balance = 100

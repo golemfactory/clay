@@ -669,7 +669,9 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            self.enqueue_new_task(t_dict)
+            deferred = self.enqueue_new_task(t_dict)
+            deferred.addErrback(
+                lambda err: logger.error("Cannot create task: %r", err))
             return True, ''
         except Exception as ex:
             logger.exception("Cannot create task %r", t_dict)
@@ -884,6 +886,14 @@ class Client(HardwarePresetsMixin):
 
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
+
+    def get_withdraw_gas_cost(
+            self,
+            amount: Union[str, int],
+            currency: str) -> int:
+        if isinstance(amount, str):
+            amount = int(amount)
+        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
 
     def withdraw(
             self,

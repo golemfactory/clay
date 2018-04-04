@@ -93,7 +93,11 @@ class AppConfig:
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
-    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, mainnet=False):
+
+        if not mainnet:
+            global ENABLE_TALKBACK
+            ENABLE_TALKBACK = 1
 
         cfg_file = path.join(datadir, cfg_file_name)
         if cfg_file in cls.__loaded_configs:

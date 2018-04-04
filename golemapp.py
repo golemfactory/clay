@@ -164,7 +164,7 @@ def start(monitor, concent, upnp, datadir, node_address, pub_node_address,
         config_args.rpc_address = rpc_address.address
         config_args.rpc_port = rpc_address.port
 
-    app_config = AppConfig.load_config(datadir)
+    app_config = AppConfig.load_config(datadir, mainnet=mainnet)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()

@@ -940,6 +940,9 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
             })
         }
         ts.task_server.task_keeper.task_headers = {}
+        ecc = Mock()
+        ecc.get_privkey.return_value = os.urandom(32)
+        ts.task_server.keys_auth.ecc = ecc
         self.ts = ts
 
         gsam = patch('golem.network.concent.helpers.history'
