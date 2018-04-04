@@ -291,16 +291,16 @@ class PeerSession(BasicSafeSession):
 
         self.node_info = Node.from_dict(msg.node_info)
 
-        # if not KeysAuth.is_pubkey_difficult(
-        #         self.node_info.key,
-        #         self.p2p_service.key_difficulty):
-        #     logger.info(
-        #         "Key from %r (%s:%d) is not difficult enough (%d < %d).",
-        #         self.node_info.node_name, self.address, self.port,
-        #         KeysAuth.get_difficulty(self.node_info.key),
-        #         self.p2p_service.key_difficulty)
-        #     self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
-        #     return
+        if not KeysAuth.is_pubkey_difficult(
+                self.node_info.key,
+                self.p2p_service.key_difficulty):
+            logger.info(
+                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
+                self.node_info.node_name, self.address, self.port,
+                KeysAuth.get_difficulty(self.node_info.key),
+                self.p2p_service.key_difficulty)
+            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            return
 
         self.node_name = msg.node_name
         self.client_ver = msg.client_ver
