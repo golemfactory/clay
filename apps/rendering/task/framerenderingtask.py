@@ -27,6 +27,25 @@ logger = logging.getLogger("apps.rendering")
 DEFAULT_PADDING = 4
 
 
+def calculate_subtasks_count_with_frames(total_subtasks: int, frames: int):
+    num_frames = len(frames)
+    if total_subtasks > num_frames:
+        est = math.floor(total_subtasks / num_frames) * num_frames
+        est = int(est)
+        if est != total_subtasks:
+            logger.warning("Too many subtasks for this task. %s "
+                           "subtasks will be used", est)
+        return est
+
+    est = num_frames / math.ceil(num_frames / total_subtasks)
+    est = int(math.ceil(est))
+    if est != total_subtasks:
+        logger.warning("Too many subtasks for this task. %s "
+                       "subtasks will be used.", est)
+
+    return est
+
+
 def calculate_subtasks_count(
         total_subtasks: int,
         optimize_total: bool,
@@ -40,22 +59,10 @@ def calculate_subtasks_count(
             return defaults.default_subtasks
 
     if use_frames:
-        num_frames = len(frames)
-        if total_subtasks > num_frames:
-            est = math.floor(total_subtasks / num_frames) * num_frames
-            est = int(est)
-            if est != total_subtasks:
-                logger.warning("Too many subtasks for this task. %s "
-                               "subtasks will be used", est)
-            return est
-
-        est = num_frames / math.ceil(num_frames / total_subtasks)
-        est = int(math.ceil(est))
-        if est != total_subtasks:
-            logger.warning("Too many subtasks for this task. %s "
-                           "subtasks will be used.", est)
-
-        return est
+        return calculate_subtasks_count_with_frames(
+            total_subtasks=total_subtasks,
+            frames=frames,
+        )
 
     total = total_subtasks
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
