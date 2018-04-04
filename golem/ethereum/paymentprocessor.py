@@ -220,11 +220,9 @@ class PaymentProcessor(LoopingCallService):
                 log.info('Waiting for GNT-GNTB conversion')
                 return False
 
-            closure_time = now - self.CLOSURE_TIME_DELAY
-
             payments_count = self.__get_next_batch(
                 self._awaiting.copy(),
-                closure_time,
+                now - self.CLOSURE_TIME_DELAY,
             )
             if payments_count < len(self._awaiting) and self.__gnt_balance:
                 log.info(
@@ -241,6 +239,7 @@ class PaymentProcessor(LoopingCallService):
         value = sum([p.value for p in payments])
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
 
+        closure_time = payments[-1].processed_ts
         tx_hash = self._sci.batch_transfer(payments, closure_time)
         with Payment._meta.database.transaction():
             for payment in payments:
