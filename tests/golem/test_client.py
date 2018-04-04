@@ -98,6 +98,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
 
+        now = datetime.datetime.now()
         n = 9
         payments = [
             Payment(
@@ -105,8 +106,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 status=PaymentStatus.awaiting,
                 payee=decode_hex(random_hex_str()),
                 value=i * 10**18,
-                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
-                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+                created_date=now + datetime.timedelta(days=i),
+                modified_date=now + datetime.timedelta(days=i)
             ) for i in range(n + 1)
         ]
 
@@ -145,14 +146,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
 
+        now = datetime.datetime.now()
         n = 9
         incomes = [
             Income.create(
                 sender_node=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
-                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
-                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+                created_date=now + datetime.timedelta(days=i),
+                modified_date=now + datetime.timedelta(days=i)
             ) for i in range(n + 1)
         ]
 
@@ -212,7 +214,26 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 mainnet=True,
             )
             self.client.withdraw('123', '0xdead', 'ETH')
-            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
+
+    def test_get_withdraw_gas_cost(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = "a" * 32
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+                mainnet=True,
+            )
+            self.client.get_withdraw_gas_cost('123', 'ETH')
+            ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
 
     def test_payment_address(self, *_):
         self.client = Client(

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from golem.core.common import datetime_to_timestamp, to_unicode
+from golem.core.common import to_unicode, datetime_to_timestamp_utc
 from golem.model import Payment
 from golem.utils import encode_hex
 
@@ -88,8 +88,8 @@ class PaymentsKeeper:
             "fee": to_unicode(payment.details.fee),
             "block_number": to_unicode(payment.details.block_number),
             "transaction": to_unicode(payment.details.tx),
-            "created": datetime_to_timestamp(payment.created_date),
-            "modified": datetime_to_timestamp(payment.modified_date)
+            "created": datetime_to_timestamp_utc(payment.created_date),
+            "modified": datetime_to_timestamp_utc(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
 
     def finished_subtasks(self, payment_info):

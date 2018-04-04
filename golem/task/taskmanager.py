@@ -784,6 +784,20 @@ class TaskManager(TaskEventListener):
         :return:
         """
         task_id = self.subtask2task_mapping[subtask_id]
+
+        # Max computation time should be in range [0;timeout]
+        timeout = self.tasks[task_id].task_definition.subtask_timeout
+        if computation_time > timeout:
+            logger.warning(
+                'Received computation time (%r) for subtask %r exceeds subtask '
+                'timeout (%r)', computation_time, subtask_id, timeout)
+            computation_time = timeout
+        if computation_time < 0:
+            logger.warning(
+                'Received computation time (%r) for subtask %r is lower than 0',
+                computation_time, subtask_id)
+            computation_time = 0
+
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.computation_time = computation_time
         ss.value = compute_subtask_value(ss.computer.price, computation_time)

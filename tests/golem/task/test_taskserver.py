@@ -749,6 +749,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
+        task_mock.task_definition.subtask_timeout = 3600
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = \
@@ -796,6 +797,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
+        task_mock.task_definition.subtask_timeout = 3600
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = \
