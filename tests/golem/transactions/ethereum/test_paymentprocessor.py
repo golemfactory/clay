@@ -400,7 +400,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             assert self.pp.sendout()
             self.sci.batch_transfer.assert_called_once_with(
                 [p1],
-                ts1 + deadline + 1,
+                ts1,
             )
             self.sci.batch_transfer.reset_mock()
 
@@ -411,7 +411,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             assert self.pp.sendout()
             self.sci.batch_transfer.assert_called_once_with(
                 [p2],
-                ts2 + deadline + 1,
+                ts2,
             )
             self.sci.batch_transfer.reset_mock()
 
@@ -446,7 +446,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.sci.batch_transfer.assert_not_called()
             self.sci.batch_transfer.reset_mock()
 
-        closure_time = 6000000
+        closure_time = 5000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
         with freeze_time(timestamp_to_datetime(time_value)):
             self.pp.sendout(0)
@@ -472,7 +472,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10000)
+                2)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 5 * denoms.ether
@@ -481,7 +481,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10000)
+                3)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_gnt_closure_time(self):
@@ -489,10 +489,12 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
         self.pp.CLOSURE_TIME_DELAY = 0
+        ts1 = 1000
+        ts2 = 2000
 
-        p1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
-        p2 = make_awaiting_payment(value=2 * denoms.ether, ts=2)
-        p5 = make_awaiting_payment(value=5 * denoms.ether, ts=2)
+        p1 = make_awaiting_payment(value=1 * denoms.ether, ts=ts1)
+        p2 = make_awaiting_payment(value=2 * denoms.ether, ts=ts2)
+        p5 = make_awaiting_payment(value=5 * denoms.ether, ts=ts2)
         self.pp.add(p1)
         self.pp.add(p2)
         self.pp.add(p5)
@@ -501,7 +503,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1],
-                10000)
+                ts1)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_gntb_balance.return_value = 10 * denoms.ether
@@ -510,7 +512,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p2, p5],
-                10000)
+                ts2)
             self.sci.batch_transfer.reset_mock()
 
     def test_short_on_eth(self):
@@ -531,7 +533,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p1, p2],
-                10000)
+                2)
             self.sci.batch_transfer.reset_mock()
 
         self.sci.get_eth_balance.return_value = denoms.ether
@@ -540,7 +542,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with(
                 [p5],
-                10000)
+                3)
             self.sci.batch_transfer.reset_mock()
 
     def test_sorted_payments(self):
