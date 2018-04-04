@@ -195,6 +195,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -643,7 +644,9 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            self.enqueue_new_task(t_dict)
+            deferred = self.enqueue_new_task(t_dict)
+            deferred.addErrback(
+                lambda err: logger.error("Cannot create task: %r", err))
             return True, ''
         except Exception as ex:
             logger.exception("Cannot create task %r", t_dict)
@@ -859,6 +862,14 @@ class Client(HardwarePresetsMixin):
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
 
+    def get_withdraw_gas_cost(
+            self,
+            amount: Union[str, int],
+            currency: str) -> int:
+        if isinstance(amount, str):
+            amount = int(amount)
+        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+
     def withdraw(
             self,
             amount: Union[str, int],
@@ -869,8 +880,14 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
+        if currency == 'GNT':
+            lock = gnt_lock
+        else:
+            lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency)
+        return self.transaction_system.withdraw(amount, destination, currency,
+                                                lock)
 
     def get_task_cost(self, task_id):
         """
@@ -1118,11 +1135,9 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_key_id(),
-            self.session_id,
-            sys.platform,
-            golem.__version__,
-            self.config_desc
+            client=self,
+            os=sys.platform,
+            ver=golem.__version__
         )
 
     def connection_status(self):

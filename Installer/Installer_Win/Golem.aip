@@ -23,10 +23,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{5E60F4D9-3118-46DA-BE45-D2219385ED42} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{73423877-9C12-4FED-9853-291C0CDFF8B9} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.14.0" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.15.0" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -39,6 +39,8 @@
     <ROW Property="WindowsTypeNT50Display" MultiBuildValue="DefaultBuild:Windows 2000" ValueLocId="-"/>
     <ROW Property="WindowsTypeNT5X" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
     <ROW Property="WindowsTypeNT5XDisplay" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT64" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT64Display" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64" ValueLocId="-"/>
     <ROW Property="WindowsTypeNTDisplay" MultiBuildValue="DefaultBuild:32-bit Windows versions" ValueLocId="-"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
@@ -508,6 +510,8 @@
     <ROW Environment="PATH" Name="=-*Path" Value="[~];[APPDIR]" Component_="ProductInformation"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
+    <ROW Name="Golem.exe" SourcePath="Installer\favicon-mainnet.ico" Index="0"/>
+    <ROW Name="Golem_1.exe" SourcePath="Installer\favicon-testnet.ico" Index="0"/>
     <ROW Name="favicon.exe" SourcePath="Installer\favicon.ico" Index="0"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstExSeqComponent">
@@ -566,6 +570,7 @@
     <ROW Action="ForceReboot" Condition="( Installed AND ( REMOVE = &quot;ALL&quot; OR AI_INSTALL_MODE = &quot;Remove&quot; ) )" Sequence="1301"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
+    <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="( Version9X OR VersionNT64 )" Description="[ProductName] can not be installed on [WindowsTypeNTDisplay]." DescriptionLocId="AI.LaunchCondition.NoNT" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="(VersionNT &lt;&gt; 400)" Description="[ProductName] can not be installed on [WindowsTypeNT40Display]." DescriptionLocId="AI.LaunchCondition.NoNT40" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="(VersionNT &lt;&gt; 500)" Description="[ProductName] can not be installed on [WindowsTypeNT50Display]." DescriptionLocId="AI.LaunchCondition.NoNT50" IsPredefined="true" Builds="DefaultBuild"/>
@@ -611,7 +616,8 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiShortsComponent">
     <ROW Shortcut="Golem" Directory_="SHORTCUTDIR" Name="Golem" Component_="ProductInformation" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
-    <ROW Shortcut="Golem_1" Directory_="DesktopFolder" Name="Golem" Component_="ProductInformation" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Golem1" Directory_="DesktopFolder" Name="GOLEMM~1|Golem Mainnet" Component_="AI_ExePath" Target="[APPDIR]\Golem.exe" Arguments="--mainnet" Hotkey="0" Icon_="Golem.exe" IconIndex="0" ShowCmd="1"/>
+    <ROW Shortcut="Golem_1" Directory_="DesktopFolder" Name="GOLEMT~1|Golem Testnet" Component_="ProductInformation" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="Golem_1.exe" IconIndex="0" ShowCmd="1"/>
     <ROW Shortcut="Golem_2" Directory_="StartupFolder" Name="Golem" Component_="AIShRegAnswer" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
     <ROW Shortcut="Golem_3" Directory_="NewFolder_2_Dir" Name="Golem" Component_="AIShRegAnswer" Target="[APPDIR]\Golem.exe" Hotkey="0" Icon_="favicon.exe" IconIndex="0" ShowCmd="1"/>
   </COMPONENT>

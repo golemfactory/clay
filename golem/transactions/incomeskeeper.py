@@ -60,6 +60,12 @@ class IncomesKeeper:
             e.value = value
             e.save()
 
+            dispatcher.send(
+                signal='golem.income',
+                event='confirmed',
+                subtask_id=e.subtask
+            )
+
         dispatcher.send(
             signal='golem.monitor',
             event='income',
@@ -78,6 +84,24 @@ class IncomesKeeper:
             sender_node=sender_node_id,
             subtask=subtask_id,
             value=value
+        )
+
+    @staticmethod
+    def reject(subtask_id):
+        try:
+            income = Income.get(subtask=subtask_id, accepted_ts=None,
+                                overdue=False)
+        except Income.DoesNotExist:
+            logger.error(
+                "Income.DoesNotExist subtask_id: %r",
+                subtask_id)
+            return
+
+        income.delete_instance()
+        dispatcher.send(
+            signal='golem.income',
+            event='rejected',
+            subtask_id=subtask_id
         )
 
     def update_awaiting(self, sender_node, subtask_id, accepted_ts):
@@ -125,7 +149,15 @@ class IncomesKeeper:
                 (Income.created_date < created_deadline)
             )
         ))
+
         for income in incomes:
             income.overdue = True
             income.save()
+
+            dispatcher.send(
+                signal='golem.income',
+                event='overdue',
+                subtask_id=income.subtask
+            )
+
         return incomes

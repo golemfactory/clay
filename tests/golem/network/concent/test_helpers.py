@@ -1,19 +1,25 @@
-import unittest
+import os
 
+from unittest import mock, TestCase
+
+from ethereum.utils import privtoaddr
+from eth_utils import encode_hex
+
+from golem_messages import message
 from golem_messages import shortcuts as msg_shortcuts
+from golem_messages.cryptography import ECCx
 
 from golem import testutils
 from golem.core.keysauth import KeysAuth
 
-from golem.network.concent.helpers import verify_message_signature
+from golem.network.concent import helpers
 
 from tests.factories.messages import (
     ReportComputedTask as ReportComputedTaskFactory
 )
 
 
-class VerifyMessageSignatureTest(testutils.TempDirFixture,
-                                 unittest.TestCase):
+class VerifyMessageSignatureTest(testutils.TempDirFixture, TestCase):
     def setUp(self):
         super().setUp()
         self.keys_auth = KeysAuth(
@@ -32,7 +38,7 @@ class VerifyMessageSignatureTest(testutils.TempDirFixture,
         msg_dump = msg_shortcuts.dump(msg,
                                       self.keys_auth._private_key,
                                       None)
-        sig_ok = verify_message_signature(
+        sig_ok = helpers.verify_message_signature(
             msg_shortcuts.load(msg_dump, None, self.keys_auth.public_key),
             self.keys_auth.ecc)
 
@@ -43,8 +49,22 @@ class VerifyMessageSignatureTest(testutils.TempDirFixture,
         msg_dump = msg_shortcuts.dump(msg,
                                       self.other_keys._private_key,
                                       None)
-        sig_ok = verify_message_signature(
+        sig_ok = helpers.verify_message_signature(
             msg_shortcuts.load(msg_dump, None, self.other_keys.public_key),
             self.keys_auth.ecc,
         )
         self.assertFalse(sig_ok)
+
+
+class HelpersTest(TestCase):
+    def test_self_payment(self):
+        privkey = os.urandom(32)
+        addr = privtoaddr(privkey)
+
+        ecc = ECCx(privkey)
+        ecc.verify = mock.Mock()
+        msg = mock.Mock()
+        msg.eth_account = encode_hex(addr)
+
+        res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
+        self.assertIsInstance(res, message.concents.RejectReportComputedTask)
