@@ -1,8 +1,10 @@
 # pylint: disable=too-few-public-methods
 import calendar
+import os
 import time
 
 import factory.fuzzy
+from eth_utils import encode_hex
 
 from golem_messages.message import base
 from golem_messages.message import concents
@@ -69,6 +71,7 @@ class ReportComputedTask(factory.Factory):
     node_name = factory.Faker('name')
     address = factory.Faker('ipv4')
     port = factory.Faker('pyint')
+    eth_account = factory.LazyFunction(lambda: encode_hex(os.urandom(20)))
     key_id = factory.Faker('binary', length=64)
     task_to_compute = factory.SubFactory(
         TaskToCompute,

@@ -644,7 +644,9 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            self.enqueue_new_task(t_dict)
+            deferred = self.enqueue_new_task(t_dict)
+            deferred.addErrback(
+                lambda err: logger.error("Cannot create task: %r", err))
             return True, ''
         except Exception as ex:
             logger.exception("Cannot create task %r", t_dict)

@@ -98,6 +98,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
 
+        now = datetime.datetime.now()
         n = 9
         payments = [
             Payment(
@@ -105,8 +106,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 status=PaymentStatus.awaiting,
                 payee=decode_hex(random_hex_str()),
                 value=i * 10**18,
-                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
-                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+                created_date=now + datetime.timedelta(days=i),
+                modified_date=now + datetime.timedelta(days=i)
             ) for i in range(n + 1)
         ]
 
@@ -145,14 +146,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
 
+        now = datetime.datetime.now()
         n = 9
         incomes = [
             Income.create(
                 sender_node=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10**18,
-                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
-                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+                created_date=now + datetime.timedelta(days=i),
+                modified_date=now + datetime.timedelta(days=i)
             ) for i in range(n + 1)
         ]
 
