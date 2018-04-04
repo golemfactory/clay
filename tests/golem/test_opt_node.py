@@ -206,6 +206,12 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
 
+    def test_pub_port_empty_should_fail(self, *_):
+        runner = CliRunner()
+        args = self.args + ['--pub-task-port', '']
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+        self.assertEqual(return_value.exit_code, 2)
+
     def test_pub_port_invalid_should_fail(self, *_):
         runner = CliRunner()
         args = self.args + ['--pub-task-port', 'string']
