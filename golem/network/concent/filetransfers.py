@@ -65,7 +65,7 @@ class ConcentFiletransferService(LoopingCallService):
             file_path, file_transfer_token, success=success, error=error)
 
         logger.debug("Scheduling: %r", request)
-        return self._transfers.put(request)
+        self._transfers.put(request)
 
     def _run(self):
         try:

@@ -1,6 +1,8 @@
+import base64
 import calendar
 import datetime
 import time
+
 import unittest
 
 from golem_messages.message import concents as concent_msg
@@ -19,8 +21,7 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         response = self._send_to_concent(fgtr)
         msg = self._load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
-        self.assertEqual(msg.force_get_task_result.get_short_hash(),
-                         fgtr.get_short_hash())
+        self.assertSameMessage(msg.force_get_task_result, fgtr)
 
     def test_send_fail_timeout(self):
         past_deadline = calendar.timegm(time.gmtime()) -\
@@ -53,12 +54,31 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         self.assertIsInstance(msg, concent_msg.ServiceRefused)
         self.assertEqual(msg.reason, msg.REASON.DuplicateRequest)
 
-    def test_send_receive(self):
+    def test_provider_receive(self):
+        provider_key = self.op_keys.raw_pubkey
         fgtr = msg_factories.ForceGetTaskResult()
-        ack = self._load_response(self._send_to_concent(fgtr))
+        fgtr.report_computed_task.task_to_compute.provider_public_key = \
+            provider_key
+        ack = self._load_response(
+            self._send_to_concent(fgtr, other_party_public_key=provider_key)
+        )
         self.assertIsInstance(ack, concent_msg.AckForceGetTaskResult)
-        content = client.receive_from_concent(
-            fgtr.report_computed_task.task_to_compute.provider_public_key)
-        self.assertIsNotNone(content)
+        fgtru = self._load_response(
+            client.receive_from_concent(provider_key),
+            priv_key=self.op_keys.raw_privkey
+        )
+        self.assertIsInstance(fgtru, concent_msg.ForceGetTaskResultUpload)
+        self.assertSameMessage(fgtru.force_get_task_result, fgtr)
 
-        # @todo verify the response
+        ftt = fgtru.file_transfer_token
+        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
+        self.assertEqual(ftt.subtask_id, fgtr.subtask_id)
+        self.assertEqual(
+            provider_key,
+            base64.standard_b64decode(ftt.authorized_client_public_key)
+        )
+        self.assertGreater(
+            ftt.token_expiration_deadline,
+            calendar.timegm(time.gmtime())
+        )
+        self.assertEqual(ftt.operation, ftt.Operation.upload)

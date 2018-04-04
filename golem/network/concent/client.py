@@ -63,13 +63,21 @@ def verify_response(response: requests.Response) -> None:
         )
 
 
-def send_to_concent(msg: message.Message, signing_key, public_key) \
-        -> typing.Optional[bytes]:
+def send_to_concent(
+        msg: message.Message,
+        signing_key,
+        public_key,
+        other_party_public_key=None) -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception
     :rtype: Bytes|None
     """
+
+    # @todo remove `Concent-Other-Party-Public-Key`
+    # and the `other_party_public_key` parameter
+    # after it's removed as a requirement on Concent's end
+    # https://github.com/golemfactory/golem/issues/2561
 
     logger.debug('send_to_concent(): Updating timestamp msg %r', msg)
     # Delayed messages are prepared before they're needed
@@ -95,7 +103,8 @@ def send_to_concent(msg: message.Message, signing_key, public_key) \
     headers = {
         'Content-Type': 'application/octet-stream',
         'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
-        'Concent-Other-Party-Public-Key': base64.standard_b64encode(b'dummy'),
+        'Concent-Other-Party-Public-Key': base64.standard_b64encode(
+            other_party_public_key or b'\x2a'),
         'X-Golem-Messages': golem_messages.__version__,
     }
     try:
