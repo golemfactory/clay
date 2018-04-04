@@ -21,3 +21,12 @@ class HelpersTest(TestCase):
 
         res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
         assert isinstance(res, message.concents.RejectReportComputedTask)
+
+    def test_payment_to_zero(self):
+        ecc = mock.Mock()
+        ecc.get_privkey.return_value = os.urandom(32)
+        msg = mock.Mock()
+        msg.eth_account = '0x' + 40 * '0'
+
+        res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
+        assert isinstance(res, message.concents.RejectReportComputedTask)
