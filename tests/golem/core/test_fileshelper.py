@@ -289,7 +289,8 @@ class TestFindAndCopy(TestDirFixture):
         """ Test find_file_with_ext method """
 
         # try to find not existing file
-        self.assertIsNone(find_file_with_ext(self.test_file_6, ['.avi']))
+        self.assertRaises(
+            RuntimeError, find_file_with_ext, self.test_file_6, ['.avi'])
         # search recursively
         self.assertTrue(find_file_with_ext(self.test_dir1, ['.txt2']).endswith(".txt2"))
         # simple search
