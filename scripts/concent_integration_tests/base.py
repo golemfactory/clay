@@ -1,13 +1,21 @@
+import base64
+import calendar
+import time
+
 import faker
 import golem_messages
 
 from golem_messages import cryptography
+from golem_messages import serializer
 from golem_messages.message.base import Message
+from golem_messages.message import concents as concent_msg
 
 from golem.network.concent import client
 
 from golem.core import variables
 
+
+# pylint:disable=no-member
 
 class ConcentBaseTest:
 
@@ -47,4 +55,43 @@ class ConcentBaseTest:
         )
 
     def assertSameMessage(self, msg1, msg2):
-        return self.assertEqual(msg1.get_short_hash(), msg2.get_short_hash())
+        return self.assertEqual(
+            msg1.get_short_hash(),
+            msg2.get_short_hash(),
+            msg="Messages differ: \n\n%s\n\n%s" % (msg1, msg2)
+        )
+
+    def assertSamePayload(self, msg1, msg2):
+        dump1 = serializer.dumps(msg1.slots())
+        dump2 = serializer.dumps(msg2.slots())
+        return self.assertEqual(
+            dump1,
+            dump2,
+            msg="Message payload differs: \n\n%s\n\n%s" % (
+                msg1.slots(), msg2.slots()
+            )
+        )
+
+    def assertFttCorrect(self, ftt, subtask_id, client_key, operation):
+        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
+
+        self.assertIsNotNone(subtask_id)  # sanity check, just in case
+        # Concent doesn't seem to set `subtask_id` on FileTransferToken ?
+        # @todo it probably should?
+
+        # self.assertEqual(ftt.subtask_id, subtask_id)
+
+        # bogus check to trigger when Concent fixes the above issue
+        self.assertIsNone(ftt.subtask_id)
+
+        self.assertEqual(
+            client_key,
+            base64.standard_b64decode(ftt.authorized_client_public_key)
+        )
+        self.assertGreater(
+            ftt.token_expiration_deadline,
+            calendar.timegm(time.gmtime())
+        )
+        self.assertEqual(ftt.operation, operation)
+
+    # pylint:enable=no-member

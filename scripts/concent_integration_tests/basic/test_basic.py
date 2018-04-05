@@ -1,4 +1,4 @@
-import base64
+import logging
 import unittest
 
 from golem_messages import cryptography
@@ -10,15 +10,21 @@ from tests.factories import messages as msg_factories
 from ..base import ConcentBaseTest
 
 
+logger = logging.getLogger(__name__)
+
+
 class SendTest(ConcentBaseTest, unittest.TestCase):
     def test_send(self):
         msg = msg_factories.ForceReportComputedTask()
+
+        logger.debug("Sending FRCT: %s", msg)
+
         response = self._send_to_concent(msg)
 
         self.assertIsNone(
             response,
             msg="Expected nothing, got %s" % (
-                base64.standard_b64decode(response) if response else None
+                self._load_response(response) if response else None
             )
         )
 

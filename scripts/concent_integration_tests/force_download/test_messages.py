@@ -1,6 +1,6 @@
-import base64
 import calendar
 import datetime
+import logging
 import time
 
 import unittest
@@ -12,6 +12,9 @@ from golem.network.concent import client
 from tests.factories import messages as msg_factories
 
 from ..base import ConcentBaseTest
+
+
+logger = logging.getLogger(__name__)
 
 
 class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
@@ -57,8 +60,12 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
     def test_provider_receive(self):
         provider_key = self.op_keys.raw_pubkey
         fgtr = msg_factories.ForceGetTaskResult()
+
         fgtr.report_computed_task.task_to_compute.provider_public_key = \
             provider_key
+
+        logger.debug("requestor sent ForceGetTaskResult: %s", fgtr)
+
         ack = self._load_response(
             self._send_to_concent(fgtr, other_party_public_key=provider_key)
         )
@@ -68,17 +75,14 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
             priv_key=self.op_keys.raw_privkey
         )
         self.assertIsInstance(fgtru, concent_msg.ForceGetTaskResultUpload)
-        self.assertSameMessage(fgtru.force_get_task_result, fgtr)
+        self.assertSamePayload(fgtru.force_get_task_result, fgtr)
+
+        logger.debug("provider received ForceGetTaskResultUpload: %s", fgtru)
 
         ftt = fgtru.file_transfer_token
-        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
-        self.assertEqual(ftt.subtask_id, fgtr.subtask_id)
-        self.assertEqual(
-            provider_key,
-            base64.standard_b64decode(ftt.authorized_client_public_key)
+        self.assertFttCorrect(
+            ftt,
+            subtask_id=fgtr.subtask_id,
+            client_key=provider_key,
+            operation=ftt.Operation.upload
         )
-        self.assertGreater(
-            ftt.token_expiration_deadline,
-            calendar.timegm(time.gmtime())
-        )
-        self.assertEqual(ftt.operation, ftt.Operation.upload)

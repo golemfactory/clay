@@ -1,5 +1,6 @@
 # pylint: disable=too-few-public-methods
 import calendar
+import datetime
 import os
 import time
 
@@ -28,7 +29,9 @@ class ComputeTaskDef(factory.DictFactory):
 
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
-    deadline = factory.LazyFunction(lambda: calendar.timegm(time.gmtime()))
+    deadline = factory.LazyFunction(
+        lambda: calendar.timegm(time.gmtime()) +
+        int(datetime.timedelta(days=1).total_seconds()))
     src_code = factory.Faker('text')
 
 
