@@ -908,7 +908,7 @@ class Client(HardwarePresetsMixin):
             total_subtasks: int,
             optimize_total: bool,
             use_frames: bool,
-            frames: int):
+            frames: list):
         """Returns computed number of subtasks, before task creation."""
         return framerenderingtask.calculate_subtasks_count(
             total_subtasks=total_subtasks,

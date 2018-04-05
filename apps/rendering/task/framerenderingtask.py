@@ -31,6 +31,7 @@ def calculate_subtasks_count_with_frames(
         total_subtasks: int,
         frames: list) -> int:
     num_frames = len(frames)
+    est_f: float
     if total_subtasks > num_frames:
         est_f = math.floor(total_subtasks / num_frames) * num_frames
         est = int(est_f)
@@ -57,8 +58,7 @@ def calculate_subtasks_count(
     if optimize_total or not total_subtasks:
         if use_frames:
             return len(frames)
-        else:
-            return defaults.default_subtasks
+        return defaults.default_subtasks
 
     if use_frames:
         return calculate_subtasks_count_with_frames(
@@ -69,8 +69,7 @@ def calculate_subtasks_count(
     total = total_subtasks
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
         return total
-    else:
-        return defaults.default_subtasks
+    return defaults.default_subtasks
 
 
 class FrameRendererOptions(Options):
