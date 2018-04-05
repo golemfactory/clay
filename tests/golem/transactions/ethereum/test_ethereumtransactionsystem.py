@@ -148,13 +148,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.transfer_eth.return_value = eth_tx
         sci.transfer_gnt.return_value = gnt_tx
         sci.convert_gntb_to_gnt.return_value = gntb_tx
-        destination = '0xdead'
+        destination = '0x' + 40 * 'd'
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
         # Unknown currency
         with self.assertRaises(ValueError):
             ets.withdraw(1, destination, 'asd')
+
+        # Invalid address
+        with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
+            ets.withdraw(1, 'asd', 'ETH')
 
         # Not enough GNT
         with self.assertRaises(ValueError):
