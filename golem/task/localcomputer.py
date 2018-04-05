@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import stat
 from threading import Lock
 import time
 from typing import Callable
@@ -119,8 +120,15 @@ class LocalComputer:
     def __prepare_resources(self, resources):
         self.test_task_res_path = self.dir_manager.get_task_test_dir("")
 
+        def onerror(func, target_path, _):
+            if not os.access(target_path, os.W_OK):
+                os.chmod(target_path, stat.S_IWUSR)
+                func(target_path)
+            else:
+                raise
+
         if os.path.exists(self.test_task_res_path):
-            shutil.rmtree(self.test_task_res_path, True)
+            shutil.rmtree(self.test_task_res_path, onerror=onerror)
 
         if resources:
             if len(resources) == 1:
