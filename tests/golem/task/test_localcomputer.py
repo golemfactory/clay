@@ -1,5 +1,7 @@
-from os import path
+import os
+import stat
 import unittest.mock as mock
+from pathlib import Path
 
 from golem_messages.message import ComputeTaskDef
 
@@ -46,8 +48,8 @@ class TestLocalComputer(TestDirFixture):
                            additional_resources=files)
         lc.run()
         lc.tt.join(60.0)
-        path_ = path.join(lc.test_task_res_path, path.basename(files[0]))
-        assert path.isfile(path_)
+        path_ = os.path.join(lc.test_task_res_path, os.path.basename(files[0]))
+        assert os.path.isfile(path_)
         assert self.error_counter == 1
         assert self.success_counter == 1
 
@@ -76,6 +78,42 @@ class TestLocalComputer(TestDirFixture):
         assert self.last_error is None
         assert self.error_counter == 4
         assert self.success_counter == 2
+
+    def test_prepare_resources_onerror(self):
+
+        def remove_permissions(_path):
+            perms = stat.S_IMODE(os.lstat(_path).st_mode)
+            os.chmod(_path, perms & ~stat.S_IWUSR & ~stat.S_IWRITE)
+
+        def reset_permissions(_path):
+            perms = stat.S_IMODE(os.lstat(_path).st_mode)
+            os.chmod(_path, perms | stat.S_IWUSR | stat.S_IWRITE)
+
+        lc = LocalComputer(root_path=self.path,
+                           success_callback=self._success_callback,
+                           error_callback=self._failure_callback,
+                           get_compute_task_def=self._get_better_task_def)
+
+        task_dir = lc.dir_manager.get_task_test_dir("")
+        resource_dir = os.path.join(self.path, 'subdir')
+        existing_file = os.path.join(task_dir, 'file')
+
+        os.makedirs(resource_dir)
+        resources = [os.path.join(resource_dir, 'file')]
+
+        Path(existing_file).touch()
+        remove_permissions(existing_file)
+
+        lc._prepare_resources(resources)
+
+        Path(existing_file).touch()
+        remove_permissions(existing_file)
+
+        with mock.patch('shutil.os.unlink', side_effect=OSError):
+            with self.assertRaises(OSError):
+                lc._prepare_resources(resources)
+
+        reset_permissions(existing_file)
 
     def _get_bad_task_def(self):
         ctd = ComputeTaskDef()

@@ -58,8 +58,8 @@ class LocalComputer:
     def run(self) -> None:
         try:
             self.start_time = time.time()
-            self.__prepare_tmp_dir()
-            self.__prepare_resources(self.resources)  # makes a copy
+            self._prepare_tmp_dir()
+            self._prepare_resources(self.resources)  # makes a copy
 
             if not self.compute_task_def:
                 ctd = self.get_compute_task_def()
@@ -117,10 +117,11 @@ class LocalComputer:
         except TypeError:
             logger.error("Cannot measure execution time")
 
-    def __prepare_resources(self, resources):
+    def _prepare_resources(self, resources):
         self.test_task_res_path = self.dir_manager.get_task_test_dir("")
 
         def onerror(func, target_path, exc_info):
+            # Try to set write permissions
             if not os.access(target_path, os.W_OK):
                 os.chmod(target_path, stat.S_IWUSR)
                 func(target_path)
@@ -145,7 +146,7 @@ class LocalComputer:
 
         return True
 
-    def __prepare_tmp_dir(self):
+    def _prepare_tmp_dir(self):
         self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
