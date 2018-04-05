@@ -27,7 +27,9 @@ logger = logging.getLogger("apps.rendering")
 DEFAULT_PADDING = 4
 
 
-def calculate_subtasks_count_with_frames(total_subtasks: int, frames: int):
+def calculate_subtasks_count_with_frames(
+        total_subtasks: int,
+        frames: int) -> int:
     num_frames = len(frames)
     if total_subtasks > num_frames:
         est = math.floor(total_subtasks / num_frames) * num_frames
@@ -50,7 +52,7 @@ def calculate_subtasks_count(
         total_subtasks: int,
         optimize_total: bool,
         use_frames: bool,
-        frames: int):
+        frames: int) -> int:
     defaults = RendererDefaults()
     if optimize_total or not total_subtasks:
         if use_frames:
