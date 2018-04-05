@@ -29,18 +29,18 @@ DEFAULT_PADDING = 4
 
 def calculate_subtasks_count_with_frames(
         total_subtasks: int,
-        frames: int) -> int:
+        frames: list) -> int:
     num_frames = len(frames)
     if total_subtasks > num_frames:
-        est = math.floor(total_subtasks / num_frames) * num_frames
-        est = int(est)
+        est_f = math.floor(total_subtasks / num_frames) * num_frames
+        est = int(est_f)
         if est != total_subtasks:
             logger.warning("Too many subtasks for this task. %s "
                            "subtasks will be used", est)
         return est
 
-    est = num_frames / math.ceil(num_frames / total_subtasks)
-    est = int(math.ceil(est))
+    est_f = num_frames / math.ceil(num_frames / total_subtasks)
+    est = int(math.ceil(est_f))
     if est != total_subtasks:
         logger.warning("Too many subtasks for this task. %s "
                        "subtasks will be used.", est)
@@ -52,7 +52,7 @@ def calculate_subtasks_count(
         total_subtasks: int,
         optimize_total: bool,
         use_frames: bool,
-        frames: int) -> int:
+        frames: list) -> int:
     defaults = RendererDefaults()
     if optimize_total or not total_subtasks:
         if use_frames:
