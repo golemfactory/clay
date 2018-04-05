@@ -1,4 +1,6 @@
+import base64
 import binascii
+import logging
 import os
 import faker
 import tempfile
@@ -19,6 +21,9 @@ from tests.factories import messages as msg_factories
 from ..base import ConcentBaseTest
 
 
+logger = logging.getLogger(__name__)
+
+
 class ForceGetTaskResultUploadTest(ConcentBaseTest, unittest.TestCase):
     def setUp(self):
         super().setUp()
@@ -28,7 +33,7 @@ class ForceGetTaskResultUploadTest(ConcentBaseTest, unittest.TestCase):
         self.filename = file.name
         self.addCleanup(os.unlink, self.filename)
 
-        keys = mock.Mock(public_key=self.pub_key)
+        keys = mock.Mock(public_key=self.op_keys.raw_pubkey)
         self.filetransfers = ConcentFiletransferService(keys_auth=keys)
 
     @property
@@ -48,6 +53,11 @@ class ForceGetTaskResultUploadTest(ConcentBaseTest, unittest.TestCase):
             size=self.size,
             package_hash=self.hash
         )
+
+        logger.debug(
+            'Provider key: ' + base64.b64encode(provider_key).decode()
+        )
+
         fgtr = msg_factories.ForceGetTaskResult(report_computed_task=rct)
         self._send_to_concent(fgtr, other_party_public_key=provider_key)
 
