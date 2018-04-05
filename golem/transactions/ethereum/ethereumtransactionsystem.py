@@ -73,8 +73,10 @@ class EthereumTransactionSystem(TransactionSystem):
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
 
     def eth_for_batch_payment(self, num_payments):
-        return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
-            self.payment_processor.ETH_PER_PAYMENT * num_payments
+        return self.payment_processor.ETH_PER_PAYMENT * num_payments
+
+    def eth_base_for_batch_payment(self):
+        return self.payment_processor.ETH_BATCH_PAYMENT_BASE
 
     def get_withdraw_gas_cost(self, amount: int, currency: str) -> int:
         gas_price = self._sci.get_current_gas_price()
