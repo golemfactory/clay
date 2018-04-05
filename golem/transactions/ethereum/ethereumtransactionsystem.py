@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex
+from eth_utils import encode_hex, is_address
 
 from golem_sci import new_sci, chains
 from golem.ethereum.node import NodeProcess
@@ -99,6 +99,9 @@ class EthereumTransactionSystem(TransactionSystem):
             destination: str,
             currency: str,
             lock: int = 0) -> List[str]:
+        if not is_address(destination):
+            raise ValueError("{} is not valid ETH address".format(destination))
+
         pp = self.payment_processor
         if currency == 'ETH':
             eth = pp._eth_available()  # pylint: disable=W0212
