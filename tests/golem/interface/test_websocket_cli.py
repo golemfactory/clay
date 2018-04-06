@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from golem.interface.websockets import WebSocketCLI
+from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
 from golem.rpc.session import Session, Client
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
@@ -54,3 +55,31 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with self.assertRaises(Exception):
             client.some_unknown_method()
+
+    @patch('twisted.internet.reactor', create=True)
+    @patch('golem.interface.websockets.Client._call')
+    def test_client(self, call, reactor):
+
+        def success(*_a, **_kw):
+            _deferred = Deferred()
+            _deferred.callback(True)
+            return _deferred
+
+        reactor.callFromThread.side_effect = lambda x: x()
+        client = WebSocketCLI.CLIClient(session=Mock(),
+                                        method_map=CORE_METHOD_MAP)
+
+        call.side_effect = success
+
+        deferred = client._call('ui.stop')
+        assert reactor.callFromThread.called
+        assert deferred.called
+        assert deferred.result is True
+
+        reactor.callFromThread.reset_mock()
+        call.side_effect = Exception
+
+        deferred = client._call('ui.stop')
+        assert reactor.callFromThread.called
+        assert deferred.called
+        assert isinstance(deferred.result, Failure)
