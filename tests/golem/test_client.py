@@ -479,7 +479,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.task_server = TaskServer(Mock(), self.client.config_desc,
                                              self.client)
         ts = self.client.transaction_system
+        self.client.funds_locker.persist = False
+        ts.eth_for_batch_payment.return_value = 10
+        ts.eth_base_for_batch_payment.return_value = 100
+        ts.get_balance.return_value = 1000, 2000, 2000, 2000, 1000
         task_mock = Mock(total_tasks=10)
+        task_mock.header = Mock(max_price=10, subtask_timeout=60)
         self.client.funds_locker.lock_funds(task_mock)
         tm = self.client.task_server.task_manager
         tm.task_persistence = False

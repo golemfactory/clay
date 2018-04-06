@@ -743,7 +743,7 @@ class TaskManager(TaskEventListener):
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.computing
         subtask_state = task_state.subtask_states[subtask_id]
-        finished_before = task_state.subtask_states == SubtaskStatus.finished
+        finished_before = subtask_state.subtask_status == SubtaskStatus.finished
         subtask_state.subtask_status = SubtaskStatus.restarted
         subtask_state.stderr = "[GOLEM] Restarted"
 
