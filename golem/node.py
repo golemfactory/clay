@@ -108,6 +108,12 @@ class Node(object):  # pylint: disable=too-few-public-methods
         except Exception as exc:  # pylint: disable=broad-except
             logger.exception("Application error: %r", exc)
 
+    def quit(self) -> None:
+        if self.client:
+            self.client.quit()
+        if self._reactor.running:
+            self._reactor.stop()
+
     def set_password(self, password: str) -> bool:
         logger.info("Got password")
 
