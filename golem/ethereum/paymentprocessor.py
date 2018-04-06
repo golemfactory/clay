@@ -51,7 +51,7 @@ class PaymentProcessor(LoopingCallService):
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
-    CLOSURE_TIME_DELAY = 10
+    CLOSURE_TIME_DELAY = 2
 
     def __init__(self,
                  sci,
@@ -240,7 +240,14 @@ class PaymentProcessor(LoopingCallService):
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
 
         closure_time = payments[-1].processed_ts
-        tx_hash = self._sci.batch_transfer(payments, closure_time)
+        try:
+            tx_hash = self._sci.batch_transfer(payments, closure_time)
+        except Exception as e:
+            log.warning("Exception while sending batch transfer {}".format(e))
+            with self._awaiting_lock:
+                self._awaiting.update(payments)
+            return False
+
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent

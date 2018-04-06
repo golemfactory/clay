@@ -562,6 +562,27 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_with([p3, p2], 200000)
 
+    def test_batch_transfer_throws(self):
+        self.sci.get_eth_balance.return_value = 1000 * denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        ts = 100000
+        p = make_awaiting_payment(value=1, ts=ts)
+        self.pp.add(p)
+        self.sci.batch_transfer.side_effect = Exception
+
+        with freeze_time(timestamp_to_datetime(ts)):
+            self.pp.sendout(0)
+            self.sci.batch_transfer.assert_called_once_with([p], ts)
+            self.sci.batch_transfer.reset_mock()
+
+        self.sci.batch_transfer.side_effect = None
+        with freeze_time(timestamp_to_datetime(ts)):
+            self.pp.sendout(0)
+            self.sci.batch_transfer.assert_called_once_with([p], ts)
+
 
 class FaucetTest(unittest.TestCase):
 
