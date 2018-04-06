@@ -83,7 +83,7 @@ class Account:
             amount,
             destination,
             currency) -> str:
-        amount = int(Decimal(amount) * denoms.ether)
+        amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
 
