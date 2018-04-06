@@ -26,6 +26,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime, timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Payment, PaymentStatus, Income
@@ -462,6 +463,36 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.client.task_server.task_manager.restart_frame_subtasks.\
             assert_called_with('tid', 10)
+
+    @patch('golem.client.EthereumTransactionSystem')
+    def test_restart_subtask(self, *_):
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=KeysAuth(self.new_path, 'prv_key', ''),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.task_server = TaskServer(Mock(), self.client.config_desc,
+                                             self.client)
+        ts = self.client.transaction_system
+        task_mock = Mock(total_tasks=10)
+        self.client.funds_locker.lock_funds(task_mock)
+        tm = self.client.task_server.task_manager
+        tm.task_persistence = False
+        subtask_id = "subtask1"
+        task_id = "task1"
+        tm.subtask2task_mapping[subtask_id] = task_id
+        tm.tasks[task_id] = MagicMock()
+        task_state_mock = MagicMock()
+        subtask_state_mock = MagicMock(subtask_status=SubtaskStatus.finished)
+        task_state_mock.subtask_states = {subtask_id: subtask_state_mock}
+        tm.tasks_states[task_id] = task_state_mock
+
+        self.client.restart_subtask(subtask_id)
 
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")
