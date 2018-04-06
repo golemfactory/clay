@@ -114,10 +114,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if self.client:
                 self.client.quit()
             if self._reactor.running:
-                self._reactor.stop()
+                self._reactor.callFromThread(self._reactor.stop)
 
         if self._reactor.running:
-            self._reactor.callLater(0, do_quit)
+            self._reactor.callInThread(do_quit)
         else:
             do_quit()
 

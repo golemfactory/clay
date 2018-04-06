@@ -485,7 +485,7 @@ def set_keys_auth(obj):
     obj._keys_auth = Mock()
 
 
-def call_later(_, fn, *args, **kwargs):
+def call_now(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
@@ -684,7 +684,8 @@ class TestOptNode(TempDirFixture):
     @patch('twisted.internet.reactor', create=True)
     def test_quit_mock(self, reactor, *_):
         reactor.running = False
-        reactor.callLater = call_later
+        reactor.callInThread = call_now
+        reactor.callFromThread = call_now
 
         node = Node.__new__(Node)
 
@@ -706,7 +707,8 @@ class TestOptNode(TempDirFixture):
                          use_docker_manager=False)
 
         self.node.client = Mock()
-        self.node._reactor.callLater = call_later
+        self.node._reactor.callInThread = call_now
+        self.node._reactor.callFromThread = call_now
 
         self.node.quit()
         assert self.node.client.quit.called
