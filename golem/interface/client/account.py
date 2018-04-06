@@ -1,15 +1,20 @@
 from typing import Dict, Any
 import getpass
 
+from decimal import Decimal
 from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
-from golem.interface.command import command, group
+from golem.interface.command import Argument, command, group
 
 
 @group(help="Manage account")
 class Account:
     client = None  # type: 'golem.rpc.session.Client'
+
+    amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
+    address_arg = Argument('destination', help='Address to send the funds to')
+    currency_arg = Argument('currency', help='ETH or GNT')
 
     @command(help="Display account & financial info")
     def info(self) -> Dict[str, Any]:  # pylint: disable=no-self-use
@@ -69,6 +74,17 @@ class Account:
             return "Incorrect password"
 
         return "Account unlock success"
+
+    @command(
+        arguments=(amount_arg, address_arg, currency_arg),
+        help="Withdraw GNT/ETH")
+    def withdraw(
+            self,
+            amount,
+            destination,
+            currency) -> str:  # pylint: disable=no-self-use
+        amount = int(Decimal(amount) * denoms.ether)
+        return sync_wait(Account.client.withdraw(amount, destination, currency))
 
 
 def _fmt(value: float, unit: str = "GNT") -> str:
