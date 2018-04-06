@@ -99,5 +99,5 @@ NODE_METHOD_MAP = dict(
     is_mainnet=             'golem.mainnet',
     are_terms_accepted=     'golem.terms',
     accept_terms=           'golem.terms.accept',
-    show_terms=             'golme.terms.show',
+    show_terms=             'golem.terms.show',
 )
