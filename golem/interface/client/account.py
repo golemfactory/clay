@@ -78,11 +78,11 @@ class Account:
     @command(
         arguments=(amount_arg, address_arg, currency_arg),
         help="Withdraw GNT/ETH")
-    def withdraw(
+    def withdraw(  # pylint: disable=no-self-use
             self,
             amount,
             destination,
-            currency) -> str:  # pylint: disable=no-self-use
+            currency) -> str:
         amount = int(Decimal(amount) * denoms.ether)
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
