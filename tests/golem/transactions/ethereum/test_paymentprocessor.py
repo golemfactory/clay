@@ -67,6 +67,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
         self.pp._gnt_converter = mock.Mock()
         self.pp._gnt_converter.is_converting.return_value = False
+        self.pp._gnt_converter.get_gate_balance.return_value = 0
 
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
@@ -362,6 +363,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp = PaymentProcessor(self.sci)
         self.pp._gnt_converter = mock.Mock()
         self.pp._gnt_converter.is_converting.return_value = False
+        self.pp._gnt_converter.get_gate_balance.return_value = 0
 
     def test_faucet(self):
         self.pp._PaymentProcessor__faucet = True

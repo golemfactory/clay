@@ -97,7 +97,8 @@ class PaymentProcessor(LoopingCallService):
             gnt_balance = self._sci.get_gnt_balance(
                 self._sci.get_eth_address())
             if gnt_balance is not None:
-                self.__gnt_balance = gnt_balance
+                self.__gnt_balance = \
+                    gnt_balance + self._gnt_converter.get_gate_balance()
             else:
                 log.warning("Failed to retrieve GNT balance")
 
