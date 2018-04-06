@@ -501,10 +501,11 @@ class TestOptNode(TempDirFixture):
         self.node = None
 
     def tearDown(self):
-        if self.node.client:
-            self.node.client.quit()
-        if self.node._db:
-            self.node._db.close()
+        if self.node:
+            if self.node.client:
+                self.node.client.quit()
+            if self.node._db:
+                self.node._db.close()
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):
@@ -674,3 +675,34 @@ class TestOptNode(TempDirFixture):
         error_result = error('error message')
         assert reactor.callFromThread.called
         assert error_result is None
+
+    @patch('golem.node.Database')
+    @patch('twisted.internet.reactor', create=True)
+    def test_quit_mock(self, reactor, *_):
+        reactor.running = False
+
+        node = Node.__new__(Node)
+
+        setattr(node, '_reactor', reactor)
+        setattr(node, 'client', None)
+
+        node.quit()
+
+        assert not node._reactor.stop.called
+
+    @patch('golem.node.Database')
+    @patch('twisted.internet.reactor', create=True)
+    def test_quit(self, reactor, *_):
+        reactor.return_value = reactor
+        reactor.running = True
+
+        self.node = Node(datadir=self.path,
+                         app_config=Mock(),
+                         config_desc=ClientConfigDescriptor(),
+                         use_docker_manager=False)
+
+        self.node.client = Mock()
+        self.node.quit()
+
+        assert self.node.client.quit.called
+        assert self.node._reactor.stop.called
