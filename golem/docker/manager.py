@@ -28,8 +28,6 @@ CONSTRAINT_KEYS = dict(
 
 class DockerManager(DockerConfigManager):
 
-    MAINNET = False
-
     docker_machine_commands = dict(
         create=['docker-machine', 'create'],
         rm=['docker-machine', 'rm', '-y'],
@@ -381,13 +379,6 @@ class DockerManager(DockerConfigManager):
             for line in f:
                 if line:
                     images.append(line.split())
-
-        if not DockerManager.MAINNET:
-            with open(os.path.join(APPS_DIR,
-                                   'images_test.ini')) as f:
-                for line in f:
-                    if line:
-                        images.append(line.split())
 
         return images
 

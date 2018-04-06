@@ -6,7 +6,7 @@ from importlib import import_module
 from golem.core.common import get_golem_path
 
 REGISTERED_CONFIG_FILE = os.path.join('apps', 'registered.ini')
-
+REGISTERED_TEST_CONFIG_FILE = os.path.join('apps', 'registered_test.ini')
 
 class App(object):
     """ Basic Golem App Representation """
@@ -27,7 +27,7 @@ class AppsManager(object):
     def load_all_apps(self):
         self._load_apps(REGISTERED_CONFIG_FILE)
         if not self._mainnet:
-            self._load_apps(os.path.join('apps', 'registered_test.ini'))
+            self._load_apps(REGISTERED_TEST_CONFIG_FILE)
 
     def _load_apps(self, apps_config_file):
 

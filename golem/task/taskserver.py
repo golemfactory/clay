@@ -48,7 +48,7 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 mainnet=False):
+                 apps_manager=None):
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -67,7 +67,7 @@ class TaskServer(
             use_distributed_resources=config_desc.
             use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
-            mainnet=mainnet
+            apps_manager=apps_manager
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,

@@ -52,9 +52,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
         # and will prevent the IOCP / kqueue reactors from being installed.
         from twisted.internet import reactor
 
-        if mainnet:
-            DockerManager.MAINNET = True
-
         self._reactor = reactor
         self._config_desc = config_desc
         self._mainnet = mainnet
@@ -74,6 +71,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
         self.client: Optional[Client] = None
+
+        self.apps_manager = AppsManager(self._mainnet)
+
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             app_config=app_config,
@@ -87,6 +87,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
+            apps_manager=self.apps_manager
         )
 
         if password is not None:
@@ -265,10 +266,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("client", "Client is not available")
             return
 
-        apps_manager = AppsManager(self._mainnet)
-        apps_manager.load_all_apps()
+        self.apps_manager.load_all_apps()
 
-        for env in apps_manager.get_env_list():
+        for env in self.apps_manager.get_env_list():
             env.accept_tasks = True
             self.client.environments_manager.add_environment(env)
 

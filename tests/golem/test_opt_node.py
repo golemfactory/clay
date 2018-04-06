@@ -25,7 +25,6 @@ class TestNode(TestWithDatabase):
         self.args = ['--datadir', self.path]
 
     def tearDown(self):
-        DockerManager.MAINNET = False
         super(TestNode, self).tearDown()
 
     @patch('twisted.internet.reactor', create=True)
