@@ -485,6 +485,10 @@ def set_keys_auth(obj):
     obj._keys_auth = Mock()
 
 
+def call_later(_, fn, *args, **kwargs):
+    fn(*args, **kwargs)
+
+
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
 @patch('golem.node.async_run', mock_async_run)
@@ -680,6 +684,7 @@ class TestOptNode(TempDirFixture):
     @patch('twisted.internet.reactor', create=True)
     def test_quit_mock(self, reactor, *_):
         reactor.running = False
+        reactor.callLater = call_later
 
         node = Node.__new__(Node)
 
@@ -693,7 +698,6 @@ class TestOptNode(TempDirFixture):
     @patch('golem.node.Database')
     @patch('twisted.internet.reactor', create=True)
     def test_quit(self, reactor, *_):
-        reactor.return_value = reactor
         reactor.running = True
 
         self.node = Node(datadir=self.path,
@@ -702,7 +706,8 @@ class TestOptNode(TempDirFixture):
                          use_docker_manager=False)
 
         self.node.client = Mock()
-        self.node.quit()
+        self.node._reactor.callLater = call_later
 
+        self.node.quit()
         assert self.node.client.quit.called
         assert self.node._reactor.stop.called

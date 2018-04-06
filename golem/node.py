@@ -109,10 +109,17 @@ class Node(object):  # pylint: disable=too-few-public-methods
             logger.exception("Application error: %r", exc)
 
     def quit(self) -> None:
-        if self.client:
-            self.client.quit()
+
+        def do_quit():
+            if self.client:
+                self.client.quit()
+            if self._reactor.running:
+                self._reactor.stop()
+
         if self._reactor.running:
-            self._reactor.stop()
+            self._reactor.callLater(0, do_quit)
+        else:
+            do_quit()
 
     def set_password(self, password: str) -> bool:
         logger.info("Got password")
