@@ -11,7 +11,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.docker.manager import DockerManager
 from golemapp import start, Node
 
 
