@@ -23,11 +23,13 @@ class AppsManager(object):
     def __init__(self, mainnet):
         self.apps = OrderedDict()
         self._mainnet = mainnet
+        self.isLoaded = False
 
     def load_all_apps(self):
         self._load_apps(REGISTERED_CONFIG_FILE)
         if not self._mainnet:
             self._load_apps(REGISTERED_TEST_CONFIG_FILE)
+        self.isLoaded = True
 
     def _load_apps(self, apps_config_file):
 

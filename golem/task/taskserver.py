@@ -11,6 +11,7 @@ from golem_messages import message
 from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
+from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
@@ -48,7 +49,7 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=None):
+                 apps_manager=AppsManager(False)):
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc

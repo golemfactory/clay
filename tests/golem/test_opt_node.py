@@ -90,7 +90,8 @@ class TestNode(TestWithDatabase):
                                        start_geth_port=None,
                                        use_docker_manager=True,
                                        use_concent=False,
-                                       use_monitor=False)
+                                       use_monitor=False,
+                                       apps_manager=ANY)
         self.assertEqual(
             cfg.node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
@@ -157,7 +158,8 @@ class TestNode(TestWithDatabase):
                                        start_geth_port=None,
                                        use_docker_manager=True,
                                        use_concent=False,
-                                       use_monitor=False)
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -239,7 +241,8 @@ class TestNode(TestWithDatabase):
                                        start_geth_port=None,
                                        use_docker_manager=True,
                                        use_concent=False,
-                                       use_monitor=False)
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     @patch('golemapp.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
@@ -287,7 +290,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        use_concent=False,
                                        use_monitor=False,
-                                       mainnet=True)
+                                       mainnet=True,
+                                       apps_manager=ANY)
 
     @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):
@@ -356,7 +360,8 @@ class TestNode(TestWithDatabase):
                                        start_geth_port=port,
                                        use_docker_manager=True,
                                        use_concent=False,
-                                       use_monitor=False)
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     @patch('golemapp.Node')
     def test_single_peer(self, mock_node, *_):

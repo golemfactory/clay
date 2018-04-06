@@ -100,7 +100,7 @@ class Client(HardwarePresetsMixin):
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = None) -> None:
+            apps_manager: AppsManager = AppsManager(False)) -> None:
 
         self.mainnet = mainnet
         self.apps_manager = apps_manager
