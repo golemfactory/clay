@@ -489,6 +489,19 @@ def call_now(fn, *args, **kwargs):
     fn(*args, **kwargs)
 
 
+class MockThread:
+
+    def __init__(self, target=None) -> None:
+        self._target = target
+
+    def start(self):
+        self._target()
+
+    @property
+    def target(self):
+        return self._target
+
+
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
 @patch('golem.node.async_run', mock_async_run)
@@ -681,10 +694,10 @@ class TestOptNode(TempDirFixture):
         assert error_result is None
 
     @patch('golem.node.Database')
+    @patch('threading.Thread', MockThread)
     @patch('twisted.internet.reactor', create=True)
     def test_quit_mock(self, reactor, *_):
         reactor.running = False
-        reactor.callInThread = call_now
         reactor.callFromThread = call_now
 
         node = Node.__new__(Node)
@@ -697,6 +710,7 @@ class TestOptNode(TempDirFixture):
         assert not node._reactor.stop.called
 
     @patch('golem.node.Database')
+    @patch('threading.Thread', MockThread)
     @patch('twisted.internet.reactor', create=True)
     def test_quit(self, reactor, *_):
         reactor.running = True
@@ -707,7 +721,6 @@ class TestOptNode(TempDirFixture):
                          use_docker_manager=False)
 
         self.node.client = Mock()
-        self.node._reactor.callInThread = call_now
         self.node._reactor.callFromThread = call_now
 
         self.node.quit()

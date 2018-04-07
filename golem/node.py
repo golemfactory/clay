@@ -110,16 +110,16 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def quit(self) -> None:
 
-        def do_quit():
+        def _quit():
+            reactor = self._reactor
             if self.client:
                 self.client.quit()
-            if self._reactor.running:
-                self._reactor.callFromThread(self._reactor.stop)
+            if reactor.running:
+                reactor.callFromThread(reactor.stop)
 
-        if self._reactor.running:
-            self._reactor.callInThread(do_quit)
-        else:
-            do_quit()
+        # Call in a separate thread and return early
+        from threading import Thread
+        Thread(target=_quit).start()
 
     def set_password(self, password: str) -> bool:
         logger.info("Got password")
