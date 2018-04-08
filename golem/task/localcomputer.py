@@ -137,7 +137,10 @@ class LocalComputer:
                 shutil.copytree(resources[0], self.test_task_res_path)
             else:
                 # no trailing separator
-                base_dir = os.path.normpath(common_dir(resources))
+                if len(resources) == 1:
+                    base_dir = os.path.dirname(resources[0])
+                else:
+                    base_dir = os.path.normpath(common_dir(resources))
 
                 for resource in filter(None, resources):
                     norm_path = os.path.normpath(resource)
