@@ -874,7 +874,7 @@ class Client(HardwarePresetsMixin):
             self,
             amount: Union[str, int],
             destination: str,
-            currency: str) -> List[str]:
+            currency: str) -> Union[List[str], Exception]:
         if not self.mainnet:
             raise Exception("Withdrawals are disabled on testnet")
 
@@ -886,8 +886,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
+        try:
+            return self.transaction_system.withdraw(amount, destination,
+                                                    currency, lock)
+        # Return any exceptions risen
+        except Exception as exc:  # pylint: disable=broad-except
+            return exc
 
     def get_task_cost(self, task_id):
         """
