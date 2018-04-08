@@ -34,7 +34,8 @@ COMPUTING_NODE_KIND = "computer"
 LOGGING_DICT = {
     'handlers': {
         'console': {
-            'formatter': 'date'
+            'formatter': 'date',
+            'class': '',
         }
     }
 }
