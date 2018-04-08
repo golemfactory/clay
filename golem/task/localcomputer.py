@@ -9,10 +9,11 @@ from typing import Callable
 from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import to_unicode
-from golem.core.fileshelper import common_dir
 from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
+from golem.resource.resource import TaskResourceHeader, decompress_dir, \
+    get_resources_for_task, ResourceType
 
 logger = logging.getLogger("golem.task")
 
@@ -132,12 +133,16 @@ class LocalComputer:
         if os.path.exists(self.test_task_res_path):
             shutil.rmtree(self.test_task_res_path, onerror=onerror)
 
+        os.makedirs(self.test_task_res_path)
+
         if resources:
-            if len(resources) == 1:
-                path = os.path.dirname(resources[0])
-            else:
-                path = common_dir(resources)
-            shutil.copytree(path, self.test_task_res_path)
+            rh = TaskResourceHeader(self.test_task_res_path)
+            res_file = get_resources_for_task(resource_header=rh,
+                                              resource_type=ResourceType.ZIP,
+                                              tmp_dir=self.test_task_res_path,
+                                              resources=resources)
+            if res_file:
+                decompress_dir(self.test_task_res_path, res_file)
 
         for res in self.additional_resources:
             if not os.path.exists(self.test_task_res_path):

@@ -97,9 +97,13 @@ class TestLocalComputer(TestDirFixture):
         task_dir = lc.dir_manager.get_task_test_dir("")
         resource_dir = os.path.join(self.path, 'subdir')
         existing_file = os.path.join(task_dir, 'file')
+        with open(existing_file, 'w') as f:
+            f.write("Blabla")
 
         os.makedirs(resource_dir)
         resources = [os.path.join(resource_dir, 'file')]
+        with open(resources[0], 'w') as f:
+            f.write("Blabla")
 
         Path(existing_file).touch()
         remove_permissions(existing_file)
