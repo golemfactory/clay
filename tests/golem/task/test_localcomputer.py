@@ -102,6 +102,9 @@ class TestLocalComputer(TestDirFixture):
         resources = [os.path.join(resource_dir, 'file')]
 
         Path(existing_file).touch()
+        for resource in resources:
+            Path(resource).touch()
+
         remove_permissions(existing_file)
 
         lc._prepare_resources(resources)
