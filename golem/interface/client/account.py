@@ -1,11 +1,15 @@
 from typing import Dict, Any
 import getpass
+from zxcvbn import zxcvbn
 
 from decimal import Decimal
 from ethereum.utils import denoms
 
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, command, group
+
+MIN_LENGTH = 5
+MIN_SCORE = 2
 
 
 @group(help="Manage account")
@@ -64,6 +68,19 @@ class Account:
         pswd = getpass.getpass('Password:')
 
         if not has_key:
+            # Check password length
+            if len(pswd) < MIN_LENGTH:
+                return "Password is too short, minimum is 5"
+
+            # Check password score, same library and settings used on electron
+            account_name = getpass.getuser() or ''
+            result = zxcvbn(pswd, user_inputs=['Golem', account_name])
+            print(result['score'])
+            if result['score'] < MIN_SCORE:
+                return "Password is not strong enough. " \
+                    "Please use capitals, numbers and special characters."
+
+            # Confirm the password
             confirm = getpass.getpass('Confirm password:')
             if confirm != pswd:
                 return "Password and confirmation do not match."

@@ -114,3 +114,4 @@ web3==3.16.4
 websocket-client==0.47.0
 wrapt==1.10.11
 zope.interface==4.4.2
+zxcvbn-python==4.4.22
