@@ -140,12 +140,14 @@ class LocalComputer:
                 if len(resources) == 1:
                     base_dir = os.path.dirname(resources[0])
                 else:
-                    base_dir = os.path.normpath(common_dir(resources))
+                    base_dir = common_dir(resources)
+
+                base_dir = os.path.normpath(base_dir)
 
                 for resource in filter(None, resources):
                     norm_path = os.path.normpath(resource)
 
-                    sub_path = norm_path.replace(base_dir + os.path.sep, '')
+                    sub_path = norm_path.replace(base_dir + os.path.sep, '', 1)
                     sub_dir = os.path.dirname(sub_path)
                     dst_dir = os.path.join(self.test_task_res_path, sub_dir)
                     os.makedirs(dst_dir, exist_ok=True)
