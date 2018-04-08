@@ -133,11 +133,20 @@ class LocalComputer:
             shutil.rmtree(self.test_task_res_path, onerror=onerror)
 
         if resources:
-            if len(resources) == 1:
-                path = os.path.dirname(resources[0])
+            if len(resources) == 1 and os.path.isdir(resources[0]):
+                shutil.copytree(resources[0], self.test_task_res_path)
             else:
-                path = common_dir(resources)
-            shutil.copytree(path, self.test_task_res_path)
+                base_dir = common_dir(resources)  # no trailing separator
+
+                for resource in filter(None, resources):
+                    norm_path = os.path.normpath(resource)
+                    sub_path = norm_path.replace(base_dir + os.path.sep, '')
+                    sub_dir = os.path.dirname(sub_path)
+                    dst_dir = os.path.join(self.test_task_res_path, sub_dir)
+                    name = os.path.basename(resource)
+
+                    os.makedirs(dst_dir, exist_ok=True)
+                    shutil.copy2(resource, os.path.join(dst_dir, name))
 
         for res in self.additional_resources:
             if not os.path.exists(self.test_task_res_path):
