@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 from pydispatch import dispatcher
 
+from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
@@ -775,8 +776,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
         count = 3
-
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        apps_manager = AppsManager(False)
+        apps_manager.load_all_apps()
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+                         apps_manager=apps_manager)
         task_id, subtask_id = self.__build_tasks(tm, count)
 
         one_task = tm.get_task_dict(task_id)
@@ -803,7 +806,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('apps.blender.task.blenderrendertask.'
            'BlenderTaskTypeInfo.get_preview')
     def test_get_task_preview(self, get_preview, _):
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        apps_manager = AppsManager(False)
+        apps_manager.load_all_apps()
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+                         apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
         tm.get_task_preview(task_id)
@@ -812,7 +818,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_subtasks_borders(self, _):
         count = 3
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        apps_manager = AppsManager(False)
+        apps_manager.load_all_apps()
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+                         apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, count)
 
         borders = tm.get_subtasks_borders(task_id, 0)

@@ -14,6 +14,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 import golem
+from apps.appsmanager import AppsManager
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem import testutils
@@ -545,6 +546,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
+        apps_manager = AppsManager(False)
+        apps_manager.load_all_apps()
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
@@ -554,7 +557,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                            public_key=b'a' * 128),
             database=Mock(),
             connect_to_known_hosts=False,
-            use_docker_manager=False
+            use_docker_manager=False,
+            apps_manager=apps_manager
         )
 
         sci = self.client.transaction_system._sci
@@ -925,6 +929,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
+            apps_manager = AppsManager(False)
+            apps_manager.load_all_apps()
             client = Client(
                 datadir=self.path,
                 app_config=Mock(),
@@ -935,7 +941,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
-                use_monitor=False
+                use_monitor=False,
+                apps_manager=apps_manager
             )
 
         client.sync = Mock()
@@ -946,7 +953,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=client,
-                use_docker_manager=False
+                use_docker_manager=False,
+                apps_manager=apps_manager
             )
         client.monitor = Mock()
 
