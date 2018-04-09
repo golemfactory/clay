@@ -532,6 +532,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
+        def after_success():
+            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
+
         def after_error():
             if msg.task_to_compute.concent_enabled:
                 return
@@ -546,9 +549,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 'Error downloading task result'
             )
+            self.dropped()
+
         task_server_resources.computed_task_reported(
             task_server=self.task_server,
             report_computed_task=msg,
+            after_success=after_success,
             after_error=after_error,
         )
 
@@ -565,8 +571,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port,
         )
-
-        self.dropped()
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg

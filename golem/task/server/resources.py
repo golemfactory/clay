@@ -23,6 +23,7 @@ def noop():
 def computed_task_reported(
         task_server,
         report_computed_task,
+        after_success=noop,
         after_error=noop):
     task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
@@ -68,6 +69,7 @@ def computed_task_reported(
             report_computed_task.subtask_id,
             'ForceGetTaskResult',
         )
+        after_success()
 
     def on_error(exc, *_args, **_kwargs):
         logger.warning(
