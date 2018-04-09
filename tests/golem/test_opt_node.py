@@ -1,5 +1,5 @@
 from os import path
-from unittest.mock import patch, Mock, ANY
+from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
 import pytest
@@ -8,6 +8,7 @@ from twisted.internet.defer import Deferred
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -363,51 +364,72 @@ class TestNode(TestWithDatabase):
                                        apps_manager=ANY)
 
     @patch('golemapp.Node')
-    def test_single_peer(self, mock_node, *_):
-        mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
+    def test_single_peer(self, mock_node: MagicMock, *_):
+        host, port = '10.30.10.216', 40111
 
         runner = CliRunner()
-        return_value = runner.invoke(start, self.args + ['--peer', addr1],
-                                     catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1]. issue: #2395
-
-    @patch('golemapp.Node')
-    def test_many_peers(self, mock_node, *_):
-        mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
-        addr2 = '10.30.10.214:3333'
-
-        runner = CliRunner()
-        args = self.args + ['--peer', addr1, '--peer', addr2]
+        args = self.args + ['--peer', '{}:{}'.format(host, port)]
         return_value = runner.invoke(start, args, catch_exceptions=False)
 
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1, addr2]. issue #2395
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [SocketAddress(host, port)])
 
     @patch('golemapp.Node')
-    def test_bad_peer(self, *_):
+    def test_many_peers(self, mock_node: MagicMock, *_):
+        host1, port1 = '10.30.10.216', 40111
+        host2, port2 = '10.30.10.214', 3333
+
+        runner = CliRunner()
+        args = self.args + [
+            '--peer', '{}:{}'.format(host1, port1),
+            '--peer', '{}:{}'.format(host2, port2)
+        ]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+
+        self.assertEqual(return_value.exit_code, 0)
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [
+            SocketAddress(host1, port1),
+            SocketAddress(host2, port2)
+        ])
+
+    @patch('golemapp.Node')
+    def test_bad_peer(self, mock_node: MagicMock, *_):
         addr1 = '10.30.10.216:40111'
+
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', 'bla']
         return_value = runner.invoke(start, args, catch_exceptions=False)
+
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
+        mock_node.assert_not_called()
 
     @patch('golemapp.Node')
-    def test_peers(self, mock_node, *_):
-        mock_node.return_value = mock_node
+    def test_peers(self, mock_node: MagicMock, *_):
+        host1, port1 = '10.30.10.216', 40111
+        host2, port2 = '2001:db8:85a3:8d3:1319:8a2e:370:7348', 443
+        host3, port3 = '::ffff:0:0:0', 96
+
         runner = CliRunner()
-        return_value = runner.invoke(
-            start, self.args + [
-                '--peer', '10.30.10.216:40111',
-                '--peer', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                '--peer', '[::ffff:0:0:0]:96'
-            ], catch_exceptions=False
-        )
+        args = self.args + [
+            '--peer', '{}:{}'.format(host1, port1),
+            '--peer', '[{}]:{}'.format(host2, port2),
+            '--peer', '[{}]:{}'.format(host3, port3)
+        ]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addrs...]. issue: #2395
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [
+            SocketAddress(host1, port1),
+            SocketAddress(host2, port2),
+            SocketAddress(host3, port3)
+        ])
 
     @patch('golemapp.Node')
     def test_rpc_address(self, *_):
