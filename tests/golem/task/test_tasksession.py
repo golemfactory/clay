@@ -964,7 +964,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
             self._create_pull_package(True)
 
         self.ts._react_to_report_computed_task(msg)
-        self.assertTrue(self.ts.result_received.called)
+        self.assertTrue(self.ts.task_server.verify_results.called)
 
         cancel = self.ts.concent_service.cancel_task_message
         self.assert_concent_cancel(
