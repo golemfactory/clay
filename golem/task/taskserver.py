@@ -423,11 +423,6 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def get_result(self, rct_message):
-        logger.warning('Should get result for %r', rct_message)
-        # @todo: actually retrieve results from the provider based on
-        # the information in the `ReportComputedTask` message. issue #2411
-
     def accept_result(self, subtask_id, account_info: EthAccountInfo):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
