@@ -104,13 +104,7 @@ class ConcentBaseTest:
         self.assertIsInstance(ftt, concent_msg.FileTransferToken)
 
         self.assertIsNotNone(subtask_id)  # sanity check, just in case
-        # Concent doesn't seem to set `subtask_id` on FileTransferToken ?
-        # @todo it probably should?
-
-        # self.assertEqual(ftt.subtask_id, subtask_id)
-
-        # bogus check to trigger when Concent fixes the above issue
-        self.assertIsNone(ftt.subtask_id)
+        self.assertEqual(ftt.subtask_id, subtask_id)
 
         self.assertEqual(
             client_key,
