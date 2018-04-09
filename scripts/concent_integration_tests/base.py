@@ -53,11 +53,40 @@ class ConcentBaseTest:
             variables.CONCENT_PUBKEY,
         )
 
+    @staticmethod
+    def _clone_message(msg):
+        # @todo possibly redundant (see below)
+        # https://github.com/golemfactory/golem-messages/pull/187
+        return msg.__class__(
+            header=msg.header,
+            sig=msg.sig,
+            slots=msg.slots(),
+        )
+
     def assertSameMessage(self, msg1, msg2):
+        # verify if the message is the same, disregarding its `encrypted` flag
+
+        # @todo possibly redundant, if we removed `encrypted`
+        # from the equality check in `golem-messages`
+        # https://github.com/golemfactory/golem-messages/pull/187
+
+        msg2 = self._clone_message(msg2)
+        msg2.encrypted = msg1.encrypted
         return self.assertEqual(
-            msg1.get_short_hash(),
-            msg2.get_short_hash(),
-            msg="Messages differ: \n\n%s\n\n%s" % (msg1, msg2)
+            msg1, msg2, msg="Messages differ: \n\n%s\n\n%s" % (msg1, msg2)
+        )
+
+    def assertNotSameMessage(self, msg1, msg2):
+        # verify if the message differs, disregarding its `encrypted` flag
+
+        # @todo possibly redundant, if we removed `encrypted`
+        # from the equality check in `golem-messages`
+        # https://github.com/golemfactory/golem-messages/pull/187
+
+        msg2 = self._clone_message(msg2)
+        msg2.encrypted = msg1.encrypted
+        return self.assertNotEqual(
+            msg1, msg2, msg="Messages are equal: \n\n%s\n\n%s" % (msg1, msg2)
         )
 
     def assertSamePayload(self, msg1, msg2):
