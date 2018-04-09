@@ -2,7 +2,6 @@ import base64
 import calendar
 import time
 
-import faker
 import golem_messages
 
 from golem_messages import cryptography
@@ -21,7 +20,7 @@ class ConcentBaseTest:
 
     @staticmethod
     def _fake_keys():
-        return cryptography.ECCx(faker.Faker().binary(length=32))
+        return cryptography.ECCx(None)
 
     def setUp(self):
         self.keys = self._fake_keys()

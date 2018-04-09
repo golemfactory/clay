@@ -55,7 +55,5 @@ py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
 html2text==2018.1.9
-factory-boy==2.9.2
-Faker==0.8.9
 Golem-Messages==2.0.0
 -e git://github.com/golemfactory/golem-smart-contracts-interface.git@e1b1f4cafeaf73035effaad501d3b04770044ce6#egg=golem_sci
