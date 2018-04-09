@@ -392,20 +392,23 @@ class TaskServer(
         return os.path.join(self.client.datadir, "ComputerRes")
 
     def subtask_rejected(self, subtask_id):
-        logger.debug("Subtask {} result rejected".format(subtask_id))
+        """My (providers) results were rejected"""
+        logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
-        if task_id is not None:
-            self.client.transaction_system.incomes_keeper.reject(subtask_id)
-            # self.remove_task_header(task_id)
-            # TODO Inform transaction system and task manager about rejected
-            # subtask. Issue #2405
-        else:
-            logger.warning("Not my subtask rejected {}".format(subtask_id))
+        if task_id is None:
+            logger.warning("Not my subtask rejected %r", subtask_id)
+            return
+
+        self.client.transaction_system.incomes_keeper.reject(subtask_id)
+        # self.remove_task_header(task_id)
+        # TODO Inform transaction system and task manager about rejected
+        # subtask. Issue #2405
 
     def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
-        logger.debug("Subtask {} result accepted".format(subtask_id))
+        """My (providers) results were accepted"""
+        logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.update_awaiting(
             sender_node_id,
