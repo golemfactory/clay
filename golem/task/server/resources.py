@@ -16,15 +16,11 @@ from golem.resource.hyperdrive import resource as hpd_resource
 logger = logging.getLogger(__name__)
 
 
-def noop():
-    pass
-
-
 def computed_task_reported(
         task_server,
         report_computed_task,
-        after_success=noop,
-        after_error=noop):
+        after_success=lambda: None,
+        after_error=lambda: None):
     task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
 
