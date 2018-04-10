@@ -202,6 +202,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         avg_corr = 0
         avg_ssim = 0
         for _, metric in self.metrics.items():
+            logger.info("METRIC: Subtask: %r SSIM %r, PSNR: %r", self.subtask_info['subtask_id'], metric['SSIM_normal'],
+                        metric['PSNR'])
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']
         avg_corr /= 3

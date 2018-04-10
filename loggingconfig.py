@@ -27,7 +27,11 @@ LOGGING = {
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
-    'filters': {},
+    'filters': {
+        'sentry-metrics': {
+            '()': 'golem.tools.customloggers.SentryMetricsFilter'
+        }
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
@@ -60,10 +64,16 @@ LOGGING = {
             'class': 'golem.tools.customloggers.SwitchedSentryHandler',
             'dsn': 'https://cdf4218c9dd24aa6adeb76ad0c990c9b:e6922bfaff9f49ccaa22ae4e406354aa@talkback.golem.network/2'  # noqa pylint: disable=line-too-long
         },
+        'sentry-metrics': {
+            'level': 'DEBUG',
+            'class': 'golem.tools.customloggers.SwitchedSentryHandler',
+            'filters': ['sentry-metrics'],
+            'dsn': 'https://d0e50b89f1ef4794a4b7f82b06fbe1e7:1043fecec0db4b818ccf76eb03003d03@talkback.golem.network/5'  # noqa pylint: disable=line-too-long
+        },
     },
     'root': {
         'level': 'WARNING',
-        'handlers': ['console', 'file', 'error-file', 'sentry'],
+        'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],
         'filters': [],
     },
     'loggers': {
